@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="git-teamcity" default="all">
+  
+  
+  <property file="git-teamcity.properties"/>
+  <!-- Uncomment the following property if no tests compilation is needed -->
+  <!-- 
+  <property name="skip.tests" value="true"/>
+   -->
+  
+  <!-- Compiler options -->
+  
+  <property name="compiler.debug" value="on"/>
+  <property name="compiler.generate.no.warnings" value="off"/>
+  <property name="compiler.args" value=""/>
+  <property name="compiler.max.memory" value="128m"/>
+  <patternset id="ignored.files">
+    <exclude name="**/CVS/**"/>
+    <exclude name="**/SCCS/**"/>
+    <exclude name="**/RCS/**"/>
+    <exclude name="**/rcs/**"/>
+    <exclude name="**/.DS_Store/**"/>
+    <exclude name="**/.svn/**"/>
+    <exclude name="**/.pyc/**"/>
+    <exclude name="**/.pyo/**"/>
+    <exclude name="**/*.pyc/**"/>
+    <exclude name="**/*.pyo/**"/>
+    <exclude name="**/.git/**"/>
+  </patternset>
+  <patternset id="library.patterns">
+    <include name="*.zip"/>
+    <include name="*.war"/>
+    <include name="*.egg"/>
+    <include name="*.ear"/>
+    <include name="*.swc"/>
+    <include name="*.jar"/>
+  </patternset>
+  <patternset id="compiler.resources">
+    <include name="**/?*.properties"/>
+    <include name="**/?*.xml"/>
+    <include name="**/?*.gif"/>
+    <include name="**/?*.png"/>
+    <include name="**/?*.jpeg"/>
+    <include name="**/?*.jpg"/>
+    <include name="**/?*.html"/>
+    <include name="**/?*.dtd"/>
+    <include name="**/?*.tld"/>
+    <include name="**/?*.ftl"/>
+  </patternset>
+  
+  <!-- JDK definitions -->
+  
+  <property name="jdk.bin.1.5" value="${jdk.home.1.5}/bin"/>
+  <path id="jdk.classpath.1.5">
+    <fileset dir="${jdk.home.1.5}">
+      <include name="jre/lib/charsets.jar"/>
+      <include name="jre/lib/deploy.jar"/>
+      <include name="jre/lib/javaws.jar"/>
+      <include name="jre/lib/jce.jar"/>
+      <include name="jre/lib/jsse.jar"/>
+      <include name="jre/lib/plugin.jar"/>
+      <include name="jre/lib/rt.jar"/>
+      <include name="jre/lib/ext/dnsns.jar"/>
+      <include name="jre/lib/ext/localedata.jar"/>
+      <include name="jre/lib/ext/sunjce_provider.jar"/>
+      <include name="jre/lib/ext/sunpkcs11.jar"/>
+    </fileset>
+  </path>
+  
+  <property name="project.jdk.home" value="${jdk.home.1.5}"/>
+  <property name="project.jdk.bin" value="${jdk.bin.1.5}"/>
+  <property name="project.jdk.classpath" value="jdk.classpath.1.5"/>
+  
+  
+  <!-- Project Libraries -->
+  
+  <!-- Modules -->
+  
+  
+  <!-- Module git-server -->
+  
+  <dirname property="module.git-server.basedir" file="${ant.file}"/>
+  
+  
+  <property name="module.jdk.home.git-server" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.git-server" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.git-server" value="${project.jdk.classpath}"/>
+  
+  <property name="compiler.args.git-server" value="${compiler.args}"/>
+  
+  <property name="git-server.output.dir" value="${module.git-server.basedir}/out/production/git-server"/>
+  <property name="git-server.testoutput.dir" value="${module.git-server.basedir}/out/test/git-server"/>
+  
+  <path id="git-server.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="git-server.module.classpath">
+    <path refid="${module.jdk.classpath.git-server}"/>
+  </path>
+  
+  <path id="git-server.runtime.module.classpath">
+    <pathelement location="${git-server.output.dir}"/>
+    <pathelement location="${git-server.testoutput.dir}"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.git-server">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.git-server">
+    <patternset refid="excluded.from.module.git-server"/>
+  </patternset>
+  
+  <path id="git-server.module.sourcepath">
+    <dirset dir="${module.git-server.basedir}/git-server">
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.git-server" depends="compile.module.git-server.production,compile.module.git-server.tests" description="Compile module git-server"/>
+  
+  <target name="compile.module.git-server.production" description="Compile module git-server; production classes">
+    <mkdir dir="${git-server.output.dir}"/>
+    <javac destdir="${git-server.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-server}/javac">
+      <compilerarg line="${compiler.args.git-server}"/>
+      <bootclasspath refid="git-server.module.bootclasspath"/>
+      <classpath refid="git-server.module.classpath"/>
+      <src refid="git-server.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.git-server"/>
+    </javac>
+    
+    <copy todir="${git-server.output.dir}">
+      <fileset dir="${module.git-server.basedir}/git-server/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.git-server.tests" depends="compile.module.git-server.production" description="compile module git-server; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.git-server" description="cleanup module">
+    <delete dir="${git-server.output.dir}"/>
+    <delete dir="${git-server.testoutput.dir}"/>
+  </target>
+  
+  <target name="init" description="Build initialization">
+    <!-- Perform any build initialization in this target -->
+  </target>
+  
+  <target name="clean" depends="clean.module.git-server" description="cleanup all"/>
+  
+  <target name="all" depends="init, clean, compile.module.git-server" description="build all"/>
+</project>

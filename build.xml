@@ -1,0 +1,30 @@
+<project name="GIT VCS Support" default="dist" basedir=".">
+  <property file="git-teamcity.properties"/>
+  <import file="git-teamcity.xml"/>
+
+  <property name="distPath" value="${basedir}/dist"/>
+
+  <target name="dist" depends="all">
+    <delete dir="${distPath}"/>
+    <mkdir dir="${distPath}/unpacked"/>
+    <jar destfile="${distPath}/unpacked/git-server.jar" basedir="${git-server.output.dir}"/>
+
+    <mkdir dir="${distPath}/4.0"/>
+
+    <zip basedir="${distPath}/unpacked" destfile="${distPath}/4.0/git.zip" excludes="**/*">
+      <zipfileset prefix="server" dir="${distPath}/unpacked">
+          <include name="git-server.jar"/>
+      </zipfileset>
+    </zip>
+
+    <zip basedir="${basedir}" destfile="${distPath}/git-src.zip">
+      <exclude name=".git/**"/>
+      <exclude name="dist/**"/>
+      <exclude name="**/classes/**"/>
+      <exclude name="*.iws"/>
+      <exclude name="test-output/**"/>
+    </zip>
+
+    <delete dir="${distPath}/unpacked"/>
+  </target>
+</project>
