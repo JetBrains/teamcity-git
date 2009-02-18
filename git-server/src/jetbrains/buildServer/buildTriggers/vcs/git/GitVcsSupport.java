@@ -5,12 +5,16 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.spearce.jgit.lib.Commit;
+import org.spearce.jgit.lib.NullProgressMonitor;
 import org.spearce.jgit.lib.Ref;
 import org.spearce.jgit.lib.Repository;
 import org.spearce.jgit.transport.FetchConnection;
+import org.spearce.jgit.transport.RefSpec;
 import org.spearce.jgit.transport.Transport;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +24,10 @@ import java.util.Map;
  * Git VCS support
  */
 public class GitVcsSupport extends VcsSupport {
+    /**
+     * Amount of characters disiplayed for in the display version of revision number
+     */
+    private static final int DISPLAY_VERSION_AMOUNT = 8;
 
     public List<ModificationData> collectBuildChanges(VcsRoot root, @NotNull String fromVersion, @NotNull String currentVersion, CheckoutRules checkoutRules) throws VcsException {
         return null;  //To change body of implemented methods use File | Settings | File Templates.
@@ -46,46 +54,88 @@ public class GitVcsSupport extends VcsSupport {
         return new byte[0];  //To change body of implemented methods use File | Settings | File Templates.
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @NotNull
     public String getName() {
-        return Constants.VCS_NAME;  //To change body of implemented methods use File | Settings | File Templates.
+        return Constants.VCS_NAME;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @NotNull
     public String getDisplayName() {
-        return "Git";  //To change body of implemented methods use File | Settings | File Templates.
+        return "Git";
     }
 
     public PropertiesProcessor getVcsPropertiesProcessor() {
         return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @NotNull
     public String getVcsSettingsJspFilePath() {
-        return "gitSettings.jsp";  //To change body of implemented methods use File | Settings | File Templates.
+        return "gitSettings.jsp";
     }
 
     @NotNull
     public String describeVcsRoot(VcsRoot vcsRoot) {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        Settings s = new Settings(vcsRoot);
+        return s.getRepositoryURL() + "#" + s.getBranch();
     }
 
     public Map<String, String> getDefaultVcsProperties() {
         return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public String getVersionDisplayName(@NotNull String version, @NotNull VcsRoot root) throws VcsException {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        return version.substring(DISPLAY_VERSION_AMOUNT, 0);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @NotNull
     public Comparator<String> getVersionComparator() {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        return GitUtils.VERSION_COMPATOR;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @NotNull
     public String getCurrentVersion(@NotNull VcsRoot root) throws VcsException {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        Settings s = new Settings(root);
+        try {
+            Repository r = GitUtils.getRepository(s.getRepositoryPath());
+            try {
+                String refName = GitUtils.branchRef(s.getBranch());
+                // Fetch current version of the branch
+                final Transport tn = Transport.open(r, s.getRepositoryURL());
+                try {
+                    RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
+                    tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
+                } finally {
+                    tn.close();
+                }
+                Commit c = r.mapCommit(refName);
+                if (c == null) {
+                    throw new VcsException("The branch name could not be resolved " + refName);
+                }
+                return GitUtils.makeVersion(c.getCommitId().name(), c.getCommitter().getWhen().getTime());
+            } finally {
+                r.close();
+            }
+        } catch (Exception e) {
+            throw new VcsException("The current version failed: " + e, e);
+        }
     }
 
     /**
@@ -100,7 +150,7 @@ public class GitVcsSupport extends VcsSupport {
                 try {
                     final FetchConnection c = tn.openFetch();
                     try {
-                        String refName = "refs/heads/" + s.getBranch();
+                        String refName = GitUtils.branchRef(s.getBranch());
                         for (final Ref ref : c.getRefs()) {
                             if (refName.equals(ref.getName())) {
                                 return null;
@@ -117,7 +167,7 @@ public class GitVcsSupport extends VcsSupport {
                 r.close();
             }
         } catch (Exception e) {
-            throw new VcsException("Repository test failed: "+e, e);
+            throw new VcsException("Repository test failed: " + e, e);
         }
     }
 }
