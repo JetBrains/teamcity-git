@@ -7,6 +7,15 @@
   <!-- 
   <property name="skip.tests" value="true"/>
    -->
+  <property name="javac2.home" value="${idea.home}/lib"/>
+  <path id="javac2.classpath">
+    <pathelement location="${javac2.home}/javac2.jar"/>
+    <pathelement location="${javac2.home}/jdom.jar"/>
+    <pathelement location="${javac2.home}/asm.jar"/>
+    <pathelement location="${javac2.home}/asm-commons.jar"/>
+  </path>
+  <taskdef name="javac2" classname="com.intellij.ant.Javac2" classpathref="javac2.classpath"/>
+  <taskdef name="instrumentIdeaExtensions" classname="com.intellij.ant.InstrumentIdeaExtensions" classpathref="javac2.classpath"/>
   
   <!-- Compiler options -->
   
@@ -46,6 +55,7 @@
     <include name="**/?*.dtd"/>
     <include name="**/?*.tld"/>
     <include name="**/?*.ftl"/>
+    <include name="**/?*.jsp"/>
   </patternset>
   
   <!-- JDK definitions -->
@@ -74,6 +84,32 @@
   
   <!-- Project Libraries -->
   
+  <path id="library.jgit.classpath">
+    <pathelement location="${basedir}/lib/jgit-0.4-FEDD114B.jar"/>
+    <pathelement location="${basedir}/lib/jsch-0.1.37.jar"/>
+  </path>
+  
+  <path id="library.teamcity_open_api_common.classpath">
+    <pathelement location="${path.variable.teamcitydistribution}/devPackage/common-api.jar"/>
+    <pathelement location="${path.variable.teamcitydistribution}/devPackage/runtime-util.jar"/>
+  </path>
+  
+  <path id="library.teamcity_open_api_server.classpath">
+    <pathelement location="${path.variable.teamcitydistribution}/devPackage/server-api.jar"/>
+  </path>
+  
+  <path id="library.teamcity_third-party.classpath">
+    <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/annotations.jar"/>
+    <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/openapi.jar"/>
+    <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/spring-webmvc.jar"/>
+    <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/spring.jar"/>
+    <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/util.jar"/>
+  </path>
+  
+  <path id="library.tomcat.classpath">
+    <pathelement location="${path.variable.teamcitydistribution}/lib/servlet-api.jar"/>
+  </path>
+  
   <!-- Modules -->
   
   
@@ -97,11 +133,21 @@
   
   <path id="git-server.module.classpath">
     <path refid="${module.jdk.classpath.git-server}"/>
+    <path refid="library.teamcity_open_api_common.classpath"/>
+    <path refid="library.teamcity_open_api_server.classpath"/>
+    <path refid="library.teamcity_third-party.classpath"/>
+    <path refid="library.tomcat.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
   
   <path id="git-server.runtime.module.classpath">
     <pathelement location="${git-server.output.dir}"/>
     <pathelement location="${git-server.testoutput.dir}"/>
+    <path refid="library.teamcity_open_api_common.classpath"/>
+    <path refid="library.teamcity_open_api_server.classpath"/>
+    <path refid="library.teamcity_third-party.classpath"/>
+    <path refid="library.tomcat.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
   
   
@@ -116,6 +162,7 @@
   <path id="git-server.module.sourcepath">
     <dirset dir="${module.git-server.basedir}/git-server">
       <include name="src"/>
+      <include name="resources"/>
     </dirset>
   </path>
   
@@ -124,16 +171,20 @@
   
   <target name="compile.module.git-server.production" description="Compile module git-server; production classes">
     <mkdir dir="${git-server.output.dir}"/>
-    <javac destdir="${git-server.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-server}/javac">
+    <javac2 destdir="${git-server.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-server}/javac">
       <compilerarg line="${compiler.args.git-server}"/>
       <bootclasspath refid="git-server.module.bootclasspath"/>
       <classpath refid="git-server.module.classpath"/>
       <src refid="git-server.module.sourcepath"/>
       <patternset refid="excluded.from.compilation.git-server"/>
-    </javac>
+    </javac2>
     
     <copy todir="${git-server.output.dir}">
       <fileset dir="${module.git-server.basedir}/git-server/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+      <fileset dir="${module.git-server.basedir}/git-server/resources">
         <patternset refid="compiler.resources"/>
         <type type="file"/>
       </fileset>

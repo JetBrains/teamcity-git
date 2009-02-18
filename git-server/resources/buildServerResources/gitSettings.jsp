@@ -6,16 +6,16 @@
   <l:settingsGroup title="General Settings">
   <tr>
     <th><label for="repositoryPath">Clone URL: <l:star/></label></th>
-    <td><props:textProperty name="repositoryURL" className="longField"/>
+    <td><props:textProperty name="url" className="longField"/>
       <span class="error" id="error_repositoryURL"></span></td>
   </tr>
   <tr>
     <th><label for="branchName">Branch name: </label></th>
-    <td><props:textProperty name="branchName" /></td>
+    <td><props:textProperty name="branch" /></td>
   </tr>
   <tr>
     <th><label for="serverClonePath">Clone repository to: </label></th>
-    <td><props:textProperty name="serverClonePath" className="longField"/>
+    <td><props:textProperty name="path" className="longField"/>
       <div class="smallNote" style="margin: 0;">Provide path to a parent directory on TeamCity server where a cloned repository should be created. Leave blank to use default path.</div>
     </td>
   </tr>

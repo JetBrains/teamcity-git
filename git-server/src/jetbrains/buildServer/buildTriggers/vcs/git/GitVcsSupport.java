@@ -1,16 +1,19 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
-import jetbrains.buildServer.serverSide.PropertiesProcessor;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Comparator;
-import java.io.IOException;
-
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.spearce.jgit.lib.Ref;
+import org.spearce.jgit.lib.Repository;
+import org.spearce.jgit.transport.FetchConnection;
+import org.spearce.jgit.transport.Transport;
+
+import java.io.IOException;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -22,8 +25,11 @@ public class GitVcsSupport extends VcsSupport {
         return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public boolean isTestConnectionSupported() {
-        return false;  //To change body of implemented methods use File | Settings | File Templates.
+        return true;
     }
 
     public void buildPatch(@NotNull VcsRoot root, @Nullable String fromVersion, @NotNull String toVersion, @NotNull PatchBuilder builder, @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
@@ -42,12 +48,12 @@ public class GitVcsSupport extends VcsSupport {
 
     @NotNull
     public String getName() {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        return Constants.VCS_NAME;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @NotNull
     public String getDisplayName() {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        return "Git";  //To change body of implemented methods use File | Settings | File Templates.
     }
 
     public PropertiesProcessor getVcsPropertiesProcessor() {
@@ -56,7 +62,7 @@ public class GitVcsSupport extends VcsSupport {
 
     @NotNull
     public String getVcsSettingsJspFilePath() {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        return "gitSettings.jsp";  //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @NotNull
@@ -82,7 +88,36 @@ public class GitVcsSupport extends VcsSupport {
         return null;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        Settings s = new Settings(vcsRoot);
+        try {
+            Repository r = GitUtils.getRepository(s.getRepositoryPath());
+            try {
+                final Transport tn = Transport.open(r, s.getRepositoryURL());
+                try {
+                    final FetchConnection c = tn.openFetch();
+                    try {
+                        String refName = "refs/heads/" + s.getBranch();
+                        for (final Ref ref : c.getRefs()) {
+                            if (refName.equals(ref.getName())) {
+                                return null;
+                            }
+                        }
+                        throw new VcsException("The branch " + refName + " was not found in the repository " + s.getRepositoryURL());
+                    } finally {
+                        c.close();
+                    }
+                } finally {
+                    tn.close();
+                }
+            } finally {
+                r.close();
+            }
+        } catch (Exception e) {
+            throw new VcsException("Repository test failed: "+e, e);
+        }
     }
 }

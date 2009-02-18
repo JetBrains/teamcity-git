@@ -28,6 +28,7 @@
       <entry name="?*.dtd" />
       <entry name="?*.tld" />
       <entry name="?*.ftl" />
+      <entry name="?*.jsp" />
     </wildcardResourcePatterns>
   </component>
   <component name="CopyrightManager" default="">
@@ -256,7 +257,7 @@
     <option name="ADDITIONAL_OPTIONS_STRING" value="" />
   </component>
   <component name="VcsDirectoryMappings">
-    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
   </component>
   <component name="WebServicesPlugin" addRequiredLibraries="true" />
   <component name="libraryTable">
@@ -311,6 +312,16 @@
       </CLASSES>
       <JAVADOC />
       <SOURCES />
+    </library>
+    <library name="JGit">
+      <CLASSES>
+        <root url="jar://$PROJECT_DIR$/lib/jgit-0.4-FEDD114B.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/jsch-0.1.37.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES>
+        <root url="jar://$PROJECT_DIR$/lib/jgit-0.4-FEDD114B-sources.zip!/" />
+      </SOURCES>
     </library>
   </component>
   <UsedPathMacros>

@@ -1,8 +1,10 @@
 <project name="GIT VCS Support" default="dist" basedir=".">
   <property file="git-teamcity.properties"/>
+  <property name="lib-dir" location="${basedir}/lib"/>
   <import file="git-teamcity.xml"/>
 
   <property name="distPath" value="${basedir}/dist"/>
+  <property name="plugins" location="${user.home}/.BuildServer/plugins"/>
 
   <target name="dist" depends="all">
     <delete dir="${distPath}"/>
@@ -14,6 +16,9 @@
     <zip basedir="${distPath}/unpacked" destfile="${distPath}/4.0/git.zip" excludes="**/*">
       <zipfileset prefix="server" dir="${distPath}/unpacked">
           <include name="git-server.jar"/>
+      </zipfileset>
+      <zipfileset prefix="server" dir="${lib-dir}">
+          <include name="*.jar"/>
       </zipfileset>
     </zip>
 
@@ -27,4 +32,8 @@
 
     <delete dir="${distPath}/unpacked"/>
   </target>
+  <target name="deploy" depends="dist">
+    <mkdir dir="${plugins}"/>
+    <copy file="${distPath}/4.0/git.zip" toDir="${plugins}"/>
+  </target>    
 </project>
