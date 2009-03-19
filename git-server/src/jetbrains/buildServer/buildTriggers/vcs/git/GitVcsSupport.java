@@ -6,10 +6,7 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.spearce.jgit.lib.Commit;
-import org.spearce.jgit.lib.NullProgressMonitor;
-import org.spearce.jgit.lib.Ref;
-import org.spearce.jgit.lib.Repository;
+import org.spearce.jgit.lib.*;
 import org.spearce.jgit.transport.FetchConnection;
 import org.spearce.jgit.transport.RefSpec;
 import org.spearce.jgit.transport.Transport;
@@ -66,7 +63,29 @@ public class GitVcsSupport extends VcsSupport {
 
     @NotNull
     public byte[] getContent(String filePath, VcsRoot versionedRoot, String version) throws VcsException {
-        return new byte[0];  //To change body of implemented methods use File | Settings | File Templates.
+        Settings s = createSettings(versionedRoot);
+        try {
+            Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+            try {
+                final String rev = GitUtils.versionRevision(version);
+                Commit c = r.mapCommit(rev);
+                if (c == null) {
+                    throw new VcsException("The version name could not be resolved " + rev);
+                }
+                Tree t = c.getTree();
+                TreeEntry e = t.findBlobMember(filePath);
+                ObjectId id = e.getId();
+                final ObjectLoader loader = r.openBlob(id);
+                return loader.getBytes();
+            } finally {
+                r.close();
+            }
+        } catch (VcsException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new VcsException("The get content failed: " + e, e);
+        }
+
     }
 
     /**
@@ -148,6 +167,8 @@ public class GitVcsSupport extends VcsSupport {
             } finally {
                 r.close();
             }
+        } catch (VcsException e) {
+            throw e;
         } catch (Exception e) {
             throw new VcsException("The current version failed: " + e, e);
         }
@@ -181,6 +202,8 @@ public class GitVcsSupport extends VcsSupport {
             } finally {
                 r.close();
             }
+        } catch (VcsException e) {
+            throw e;
         } catch (Exception e) {
             throw new VcsException("Repository test failed: " + e, e);
         }

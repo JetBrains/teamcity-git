@@ -29,6 +29,11 @@ public class VersionTests {
      * Temporary files
      */
     protected static TempFiles myTempFiles = new TempFiles();
+    /**
+     * The version of "version-test" HEAD
+     */
+    private static final String VERSION_TEST_HEAD = GitUtils.makeVersion("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", 1237391915L*1000);
+
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
           public void run() {
@@ -43,8 +48,12 @@ public class VersionTests {
      * @param path the file path relatively to data directory
      * @return the IO file object (the file is absolute)
      */
-    protected File dataFile(String path) {
-        return new File("git-tests"+File.separatorChar+"data", path).getAbsoluteFile();
+    protected File dataFile(String... path) {
+        File f = new File("git-tests", "data");
+        for(String p : path) {
+            f = new File(f, p);
+        }
+        return f.getAbsoluteFile();
     }
 
     /**
@@ -69,9 +78,6 @@ public class VersionTests {
     protected GitVcsSupport getSupport() {
       return new GitVcsSupport(null);
     }
-
-    
-
 
     /**
      * Setup test environment
@@ -127,6 +133,20 @@ public class VersionTests {
         GitVcsSupport support = getSupport();
         VcsRoot root = getRoot("version-test");
         String version = support.getCurrentVersion(root);
-        Assert.assertEquals(GitUtils.makeVersion("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", 1237391915L*1000), version);
+        Assert.assertEquals(VERSION_TEST_HEAD, version);
+    }
+
+    /**
+     * Test get content for the file
+     * @throws Exception in case of bug
+     */
+    @Test
+    public void testGetContent() throws Exception {
+        GitVcsSupport support = getSupport();
+        VcsRoot root = getRoot("version-test");
+        String version = support.getCurrentVersion(root);
+        byte[] data1 = support.getContent("readme.txt", root, version);
+        byte[] data2 = FileUtil.loadFileBytes(dataFile("content","readme.txt"));
+        Assert.assertEquals(data1, data2);
     }
 }
