@@ -1,6 +1,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
+import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.jetbrains.annotations.NotNull;
@@ -14,6 +15,7 @@ import org.spearce.jgit.transport.RefSpec;
 import org.spearce.jgit.transport.Transport;
 
 import java.io.IOException;
+import java.io.File;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -28,6 +30,19 @@ public class GitVcsSupport extends VcsSupport {
      * Amount of characters disiplayed for in the display version of revision number
      */
     private static final int DISPLAY_VERSION_AMOUNT = 8;
+    /**
+     * Paths to the server
+     */
+    final ServerPaths myServerPaths;
+
+    /**
+     * The constructor
+     *
+     * @param serverPaths the paths to the server
+     */
+    public GitVcsSupport(ServerPaths serverPaths) {
+        this.myServerPaths = serverPaths;
+    }
 
     public List<ModificationData> collectBuildChanges(VcsRoot root, @NotNull String fromVersion, @NotNull String currentVersion, CheckoutRules checkoutRules) throws VcsException {
         return null;  //To change body of implemented methods use File | Settings | File Templates.
@@ -114,7 +129,7 @@ public class GitVcsSupport extends VcsSupport {
     public String getCurrentVersion(@NotNull VcsRoot root) throws VcsException {
         Settings s = new Settings(root);
         try {
-            Repository r = GitUtils.getRepository(s.getRepositoryPath());
+            Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
             try {
                 String refName = GitUtils.branchRef(s.getBranch());
                 // Fetch current version of the branch
@@ -142,9 +157,9 @@ public class GitVcsSupport extends VcsSupport {
      * {@inheritDoc}
      */
     public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
-        Settings s = new Settings(vcsRoot);
+        Settings s = createSettings(vcsRoot);
         try {
-            Repository r = GitUtils.getRepository(s.getRepositoryPath());
+            Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
             try {
                 final Transport tn = Transport.open(r, s.getRepositoryURL());
                 try {
@@ -169,5 +184,22 @@ public class GitVcsSupport extends VcsSupport {
         } catch (Exception e) {
             throw new VcsException("Repository test failed: " + e, e);
         }
+    }
+
+    /**
+     * Create settings object
+     *
+     * @param vcsRoot the root object
+     * @return the created object
+     */
+    private Settings createSettings(VcsRoot vcsRoot) {
+        final Settings settings = new Settings(vcsRoot);
+        if(settings.getRepositoryPath() == null) {
+            String url = settings.getRepositoryURL();
+            File dir = new File(myServerPaths.getCachesDir());
+            String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
+            settings.setRepositoryPath(new File(dir,"git"+File.separatorChar+name));
+        }
+        return settings;
     }
 }

@@ -14,12 +14,21 @@ import java.util.Comparator;
 public class GitUtils {
 
     /**
+     * Convert remote URL to JGIT form
+     * @param file the file to convert
+     * @return the file URL recongnized by JGit
+     */
+    public static String toURL(File file) {
+        return "file:///"+file.getAbsolutePath().replace(File.separatorChar,'/');
+    }
+
+    /**
      * The version comparator
      */
     public static final Comparator<String> VERSION_COMPATOR = new Comparator<String>() {
         public int compare(String o1, String o2) {
             long r = versionTime(o1) - versionTime(o2);
-            return r<0?-1:r>0?1:0;
+            return r < 0 ? -1 : r > 0 ? 1 : 0;
         }
     };
 
@@ -44,8 +53,8 @@ public class GitUtils {
     @NotNull
     public static String versionRevision(@NotNull String version) {
         int i = version.indexOf('@');
-        if(i == -1) {
-            throw new IllegalArgumentException("Invalid format of version: "+version);
+        if (i == -1) {
+            throw new IllegalArgumentException("Invalid format of version: " + version);
         }
         return version.substring(0, i);
     }
@@ -58,21 +67,22 @@ public class GitUtils {
      */
     public static long versionTime(@NotNull String version) {
         int i = version.indexOf('@');
-        if(i == -1) {
-            throw new IllegalArgumentException("Invalid format of version: "+version);
+        if (i == -1) {
+            throw new IllegalArgumentException("Invalid format of version: " + version);
         }
-        return Long.parseLong(version.substring(i+1),16);
+        return Long.parseLong(version.substring(i + 1), 16);
     }
 
     /**
      * Ensures that a bare repository exists at the specified path.
      * If it does not, the directory is attempted to be created.
      *
-     * @param dir the path to the directory to init
+     * @param dir    the path to the directory to init
+     * @param remote the remote URL
      * @return a connection to repository
      * @throws VcsException if the there is a problem with accessing VCS
      */
-    public static Repository getRepository(File dir) throws VcsException {
+    public static Repository getRepository(File dir, String remote) throws VcsException {
         final File parentFile = dir.getParentFile();
         if (!parentFile.exists()) {
             if (!parentFile.mkdirs()) {
@@ -89,7 +99,14 @@ public class GitUtils {
                 r.create();
                 final RepositoryConfig config = r.getConfig();
                 config.setString("core", null, "bare", "true");
+                config.setString("teamcity", null, "remote", remote);
                 config.save();
+            } else {
+                final RepositoryConfig config = r.getConfig();
+                final String existingRemote = config.getString("teamcity", null, "remote");
+                if (existingRemote != null && !remote.equals(existingRemote)) {
+                    throw new VcsException("The specified directory " + dir + " is already used for another remote " + existingRemote + " and cannot be used for others.");
+                }
             }
             return r;
         } catch (Exception ex) {
@@ -99,6 +116,7 @@ public class GitUtils {
 
     /**
      * Create reference name from branch name
+     *
      * @param branch the branch name
      * @return the reference name
      */

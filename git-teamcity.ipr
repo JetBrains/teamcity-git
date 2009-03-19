@@ -237,6 +237,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/git-server/git-server.iml" filepath="$PROJECT_DIR$/git-server/git-server.iml" />
+      <module fileurl="file://$PROJECT_DIR$/git-tests/git-tests.iml" filepath="$PROJECT_DIR$/git-tests/git-tests.iml" />
     </modules>
   </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_1_5" assert-keyword="true" jdk-15="true" project-jdk-name="1.5" project-jdk-type="JavaSDK">
@@ -322,6 +323,14 @@
       <SOURCES>
         <root url="jar://$PROJECT_DIR$/lib/jgit-0.4-FEDD114B-sources.zip!/" />
       </SOURCES>
+    </library>
+    <library name="TestLibs">
+      <CLASSES>
+        <root url="file://$PROJECT_DIR$/git-tests/lib" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES />
+      <jarDirectory url="file://$PROJECT_DIR$/git-tests/lib" recursive="false" />
     </library>
   </component>
   <UsedPathMacros>
