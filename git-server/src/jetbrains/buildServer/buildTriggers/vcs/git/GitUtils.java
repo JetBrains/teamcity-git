@@ -89,7 +89,7 @@ public class GitUtils {
                 throw new VcsException("Unable to created parent directory: " + parentFile);
             }
         }
-        boolean create = !dir.exists();
+        boolean create = !dir.exists() || !new File(dir, "config").exists();
         if (!create && !dir.isDirectory()) {
             throw new VcsException("The specified path is not a directory: " + dir);
         }
@@ -110,7 +110,7 @@ public class GitUtils {
             }
             return r;
         } catch (Exception ex) {
-            throw new VcsException("The repository at " + dir + " cannot be openned or created: " + ex);
+            throw new VcsException("The repository at " + dir + " cannot be openned or created: " + ex, ex);
         }
     }
 

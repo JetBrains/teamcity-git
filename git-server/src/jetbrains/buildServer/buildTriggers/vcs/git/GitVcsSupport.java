@@ -127,7 +127,7 @@ public class GitVcsSupport extends VcsSupport {
      */
     @NotNull
     public String getCurrentVersion(@NotNull VcsRoot root) throws VcsException {
-        Settings s = new Settings(root);
+        Settings s = createSettings(root);
         try {
             Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
             try {

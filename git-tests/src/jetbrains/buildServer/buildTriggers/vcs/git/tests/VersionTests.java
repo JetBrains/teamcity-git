@@ -83,9 +83,9 @@ public class VersionTests {
         mySourceRep = myTempFiles.createTempDir();
         FileUtil.copyDir(masterRep, mySourceRep);
         myCloneRep = myTempFiles.createTempDir();
-
-        // TODO create temp local repository
-        // TODO setup root
+        // TODO The directory is deleted because JGIT wants to create a git directory itself
+        //noinspection ResultOfMethodCallIgnored
+        myCloneRep.delete();
     }
 
 
@@ -115,5 +115,18 @@ public class VersionTests {
         } catch(VcsException ex) {
             // test successful
         }
+    }
+
+    /**
+     * The current version test
+     * 
+     * @throws Exception in case of IO problem
+     */
+    @Test
+    public void testCurrentVersion() throws Exception {
+        GitVcsSupport support = getSupport();
+        VcsRoot root = getRoot("version-test");
+        String version = support.getCurrentVersion(root);
+        Assert.assertEquals(GitUtils.makeVersion("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", 1237391915L*1000), version);
     }
 }
