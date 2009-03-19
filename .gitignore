@@ -1,1 +1,5 @@
 /git-teamcity.properties
+/git-teamcity.iws
+/dist
+/out
+/test-output
