@@ -56,11 +56,19 @@ public class GitVcsSupport extends VcsSupport {
         //To change body of implemented methods use File | Settings | File Templates.
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @NotNull
     public byte[] getContent(VcsModification vcsModification, VcsChangeInfo change, VcsChangeInfo.ContentType contentType, VcsRoot vcsRoot) throws VcsException {
-        return new byte[0];  //To change body of implemented methods use File | Settings | File Templates.
+        String version = contentType == VcsChangeInfo.ContentType.BEFORE_CHANGE ? change.getBeforeChangeRevisionNumber() : change.getAfterChangeRevisionNumber();
+        String file = change.getRelativeFileName();
+        return getContent(file, vcsRoot, version);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @NotNull
     public byte[] getContent(String filePath, VcsRoot versionedRoot, String version) throws VcsException {
         Settings s = createSettings(versionedRoot);
