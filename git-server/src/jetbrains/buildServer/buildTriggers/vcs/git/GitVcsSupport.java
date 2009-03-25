@@ -6,17 +6,20 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.spearce.jgit.errors.MissingObjectException;
 import org.spearce.jgit.lib.*;
+import org.spearce.jgit.revwalk.RevCommit;
+import org.spearce.jgit.revwalk.RevSort;
+import org.spearce.jgit.revwalk.RevWalk;
 import org.spearce.jgit.transport.FetchConnection;
 import org.spearce.jgit.transport.RefSpec;
 import org.spearce.jgit.transport.Transport;
+import org.spearce.jgit.treewalk.TreeWalk;
+import org.spearce.jgit.treewalk.filter.TreeFilter;
 
-import java.io.IOException;
 import java.io.File;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
+import java.util.*;
 
 
 /**
@@ -41,8 +44,176 @@ public class GitVcsSupport extends VcsSupport {
         this.myServerPaths = serverPaths;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public List<ModificationData> collectBuildChanges(VcsRoot root, @NotNull String fromVersion, @NotNull String currentVersion, CheckoutRules checkoutRules) throws VcsException {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        List<ModificationData> rc = new ArrayList<ModificationData>();
+        Settings s = createSettings(root);
+        try {
+            Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+            try {
+                final String current = GitUtils.versionRevision(currentVersion);
+                final String from = GitUtils.versionRevision(currentVersion);
+                RevWalk revs = new RevWalk(r);
+                final RevCommit currentRev = revs.parseCommit(ObjectId.fromString(current));
+                revs.markStart(currentRev);
+                revs.sort(RevSort.TOPO);
+                revs.sort(RevSort.COMMIT_TIME_DESC);
+                try {
+                    final RevCommit fromRev = revs.parseCommit(ObjectId.fromString(from));
+                    revs.markUninteresting(fromRev);
+                    RevCommit c;
+                    while ((c = revs.next()) != null) {
+                        Commit cc = c.asCommit(revs);
+                        final ObjectId[] parentIds = cc.getParentIds();
+                        String cv = GitUtils.makeVersion(cc);
+                        String pv = parentIds.length == 0 ? GitUtils.makeVersion(ObjectId.zeroId().name(), 0) : GitUtils.makeVersion(r.mapCommit(cc.getParentIds()[0]));
+                        List<VcsChange> changes = getCommitChanges(r, cc, parentIds, cv, pv);
+                        ModificationData m = new ModificationData(cc.getCommitter().getWhen(), changes, cc.getMessage(), GitUtils.getUser(cc), root, cv, GitUtils.displayVersion(cc));
+                        rc.add(m);
+                    }
+                } catch (MissingObjectException ex) {
+                    // TODO commit not found should be handled in orther way
+                    throw new VcsException("Unalble to resolve previous commit: " + fromVersion, ex);
+                }
+            } finally {
+                r.close();
+            }
+        } catch (VcsException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new VcsException("The get content failed: " + e, e);
+        }
+        // TODO checkout rules are ignored right now
+        return rc;
+    }
+
+    /**
+     * Get changes for the commit
+     *
+     * @param r         the change version
+     * @param cc        the current commit
+     * @param parentIds parent commit identifiers
+     * @param cv        the commit version
+     * @param pv        the parent commit version
+     * @return the commit changes
+     * @throws IOException if there is a repository access problem
+     */
+    private static List<VcsChange> getCommitChanges(Repository r, Commit cc, ObjectId[] parentIds, String cv, String pv) throws IOException {
+        List<VcsChange> changes = new ArrayList<VcsChange>();
+        TreeWalk tw = new TreeWalk(r);
+        tw.setFilter(TreeFilter.ANY_DIFF);
+        tw.setRecursive(true);
+        tw.addTree(cc.getTreeId());
+        int nTrees = parentIds.length + 1;
+        for (ObjectId pid : parentIds) {
+            Commit pc = r.mapCommit(pid);
+            tw.addTree(pc.getTreeId());
+        }
+        while (tw.next()) {
+            String path = tw.getPathString();
+            VcsChange.Type type;
+            String description = null;
+            switch (classifyChange(nTrees, tw)) {
+                case UNCHANGED:
+                    // change is ignored
+                    continue;
+                case ADDED:
+                    type = VcsChange.Type.ADDED;
+                    break;
+                case DELETED:
+                    type = VcsChange.Type.REMOVED;
+                    break;
+                case MODIFIED:
+                    type = VcsChange.Type.CHANGED;
+                    break;
+                case FILE_MODE_CHANGED:
+                    type = VcsChange.Type.CHANGED;
+                    description = "File mode changed";
+                    break;
+                default:
+                    throw new IllegalStateException("Unknown change type");
+            }
+            VcsChange change = new VcsChange(type, description, path, path, cv, pv);
+            changes.add(change);
+        }
+        return changes;
+    }
+
+    /**
+     * Classify change in tree walker. The first tree is assumed to be a current commit and other
+     * trees are assumed to be parent commits. In the case of multiple changes, the changes that
+     * come from at lease one parent commit are assumed to be reported in the parent commit.
+     *
+     * @param nTrees number of trees
+     * @param tw     tree walker to examine
+     * @return change type
+     */
+    @NotNull
+    private static ChangeType classifyChange(int nTrees, @NotNull TreeWalk tw) {
+        final FileMode mode0 = tw.getFileMode(0);
+        if (FileMode.MISSING.equals(mode0)) {
+            for (int i = 1; i < nTrees; i++) {
+                FileMode m = tw.getFileMode(i);
+                if (FileMode.MISSING.equals(tw.getFileMode(i))) {
+                    // the delete merge
+                    return ChangeType.UNCHANGED;
+                }
+            }
+            return ChangeType.DELETED;
+        }
+        boolean fileAdded = true;
+        for (int i = 1; i < nTrees; i++) {
+            FileMode m = tw.getFileMode(i);
+            if (!FileMode.MISSING.equals(tw.getFileMode(i))) {
+                fileAdded = false;
+                break;
+            }
+        }
+        if (fileAdded) {
+            return ChangeType.ADDED;
+        }
+        boolean fileModified = true;
+        for (int i = 1; i < nTrees; i++) {
+            if (tw.idEqual(0, i)) {
+                fileModified = false;
+                break;
+            }
+        }
+        if (fileModified) {
+            return ChangeType.MODIFIED;
+        }
+        int modeBits0 = mode0.getBits();
+        boolean fileModeModified = true;
+        for (int i = 1; i < nTrees; i++) {
+            int modebits = tw.getFileMode(i).getBits();
+            if (modebits == modeBits0) {
+                fileModeModified = false;
+                break;
+            }
+        }
+        if (fileModeModified) {
+            return ChangeType.FILE_MODE_CHANGED;
+        }
+        return ChangeType.UNCHANGED;
+    }
+
+    /**
+     * Check if the file is an added file according to the tree walker
+     *
+     * @param nTrees amount of trees
+     * @param tw     the tree walker
+     * @return true if the file is an added file
+     */
+    private static boolean isModified(int nTrees, TreeWalk tw) {
+        for (int i = 1; i < nTrees; i++) {
+            FileMode m = tw.getFileMode(i);
+            if (tw.idEqual(0, i)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -93,7 +264,6 @@ public class GitVcsSupport extends VcsSupport {
         } catch (Exception e) {
             throw new VcsException("The get content failed: " + e, e);
         }
-
     }
 
     /**
@@ -171,7 +341,7 @@ public class GitVcsSupport extends VcsSupport {
                 if (c == null) {
                     throw new VcsException("The branch name could not be resolved " + refName);
                 }
-                return GitUtils.makeVersion(c.getCommitId().name(), c.getCommitter().getWhen().getTime());
+                return GitUtils.makeVersion(c);
             } finally {
                 r.close();
             }
@@ -225,12 +395,39 @@ public class GitVcsSupport extends VcsSupport {
      */
     private Settings createSettings(VcsRoot vcsRoot) {
         final Settings settings = new Settings(vcsRoot);
-        if(settings.getRepositoryPath() == null) {
+        if (settings.getRepositoryPath() == null) {
             String url = settings.getRepositoryURL();
             File dir = new File(myServerPaths.getCachesDir());
             String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
-            settings.setRepositoryPath(new File(dir,"git"+File.separatorChar+name));
+            settings.setRepositoryPath(new File(dir, "git" + File.separatorChar + name));
         }
         return settings;
+    }
+
+    /**
+     * Git change type
+     */
+    private enum ChangeType {
+        /**
+         * the file is added
+         */
+        ADDED,
+        /**
+         * the file is deleted
+         */
+        DELETED,
+        /**
+         * the file content (or content+mode) changed
+         */
+        MODIFIED,
+        /**
+         * the file mode only changed
+         */
+        FILE_MODE_CHANGED,
+        /**
+         * no change detected
+         */
+        UNCHANGED,
+
     }
 }
