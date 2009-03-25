@@ -2,5 +2,5 @@
 <!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
 
 <beans default-autowire="constructor">
-  <bean id="gitServer" class="jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport" />
+    <bean id="gitServer" class="jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport"/>
 </beans>

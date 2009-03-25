@@ -2,6 +2,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+import org.spearce.jgit.lib.Commit;
 import org.spearce.jgit.lib.Repository;
 import org.spearce.jgit.lib.RepositoryConfig;
 
@@ -12,14 +13,19 @@ import java.util.Comparator;
  * Commands that allows working with git repositories
  */
 public class GitUtils {
+    /**
+     * Ellipsis character (...)
+     */
+    private static final char ELLIPSIS = '\u2026';
 
     /**
      * Convert remote URL to JGIT form
+     *
      * @param file the file to convert
      * @return the file URL recongnized by JGit
      */
     public static String toURL(File file) {
-        return "file:///"+file.getAbsolutePath().replace(File.separatorChar,'/');
+        return "file:///" + file.getAbsolutePath().replace(File.separatorChar, '/');
     }
 
     /**
@@ -122,5 +128,36 @@ public class GitUtils {
      */
     public static String branchRef(String branch) {
         return "refs/heads/" + branch;
+    }
+
+
+    /**
+     * Make version from commit object
+     *
+     * @param c the commit object
+     * @return the version string
+     */
+    public static String makeVersion(Commit c) {
+        return makeVersion(c.getCommitId().name(), c.getCommitter().getWhen().getTime());
+    }
+
+    /**
+     * Get user for the commit
+     *
+     * @param c the commit
+     * @return the user name
+     */
+    public static String getUser(Commit c) {
+        return c.getAuthor().getName() + " <" + c.getAuthor().getEmailAddress() + ">";
+    }
+
+    /**
+     * Create display version for the commit
+     *
+     * @param c the commit to examine
+     * @return the display version
+     */
+    public static String displayVersion(Commit c) {
+        return c.getCommitId().name().substring(0, 8) + ELLIPSIS;
     }
 }
