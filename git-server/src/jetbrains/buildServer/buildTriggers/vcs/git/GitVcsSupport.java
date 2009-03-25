@@ -200,23 +200,6 @@ public class GitVcsSupport extends VcsSupport {
     }
 
     /**
-     * Check if the file is an added file according to the tree walker
-     *
-     * @param nTrees amount of trees
-     * @param tw     the tree walker
-     * @return true if the file is an added file
-     */
-    private static boolean isModified(int nTrees, TreeWalk tw) {
-        for (int i = 1; i < nTrees; i++) {
-            FileMode m = tw.getFileMode(i);
-            if (tw.idEqual(0, i)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
      * {@inheritDoc}
      */
     public boolean isTestConnectionSupported() {
