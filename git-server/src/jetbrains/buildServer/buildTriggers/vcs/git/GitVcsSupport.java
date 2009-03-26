@@ -54,7 +54,7 @@ public class GitVcsSupport extends VcsSupport {
             Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
             try {
                 final String current = GitUtils.versionRevision(currentVersion);
-                final String from = GitUtils.versionRevision(currentVersion);
+                final String from = GitUtils.versionRevision(fromVersion);
                 RevWalk revs = new RevWalk(r);
                 final RevCommit currentRev = revs.parseCommit(ObjectId.fromString(current));
                 revs.markStart(currentRev);
@@ -105,6 +105,8 @@ public class GitVcsSupport extends VcsSupport {
         TreeWalk tw = new TreeWalk(r);
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.setRecursive(true);
+        // remove empty tree iterator before adding new tree
+        tw.reset();
         tw.addTree(cc.getTreeId());
         int nTrees = parentIds.length + 1;
         for (ObjectId pid : parentIds) {
