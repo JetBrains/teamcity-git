@@ -137,7 +137,7 @@ public class GitVcsSupport extends VcsSupport {
                 default:
                     throw new IllegalStateException("Unknown change type");
             }
-            VcsChange change = new VcsChange(type, description, path, path, cv, pv);
+            VcsChange change = new VcsChange(type, description, path, path, pv, cv);
             changes.add(change);
         }
         return changes;
