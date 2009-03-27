@@ -234,5 +234,12 @@ public class VersionTests extends Assert {
         ModificationData md3 = mms1.get(2);
         assertEquals("a-mod, c-rm\n", md3.getDescription());
         assertEquals(2, md3.getChanges().size());
+        // check the case with broken commit
+        String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), GitUtils.versionTime(CUD1_VERSION));
+        final List<ModificationData> mms2 = support.collectBuildChanges(root, missing, MERGE_VERSION, null);
+        assertEquals(4, mms2.size());
+        ModificationData mb3 = mms2.get(3);
+        assertEquals("<system>", mb3.getUserName());
+        assertEquals(0, mb3.getChanges().size());
     }
 }

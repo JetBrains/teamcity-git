@@ -6,7 +6,6 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.spearce.jgit.errors.MissingObjectException;
 import org.spearce.jgit.lib.*;
 import org.spearce.jgit.revwalk.RevCommit;
 import org.spearce.jgit.revwalk.RevSort;
@@ -27,9 +26,9 @@ import java.util.*;
  */
 public class GitVcsSupport extends VcsSupport {
     /**
-     * Amount of characters disiplayed for in the display version of revision number
+     * Random number generator used to generate artifitial versions
      */
-    private static final int DISPLAY_VERSION_AMOUNT = 8;
+    private static final Random ourRandom = new Random();
     /**
      * Paths to the server
      */
@@ -60,22 +59,36 @@ public class GitVcsSupport extends VcsSupport {
                 revs.markStart(currentRev);
                 revs.sort(RevSort.TOPO);
                 revs.sort(RevSort.COMMIT_TIME_DESC);
-                try {
-                    final RevCommit fromRev = revs.parseCommit(ObjectId.fromString(from));
+                final ObjectId fromId = ObjectId.fromString(from);
+                if (r.hasObject(fromId)) {
+                    final RevCommit fromRev = revs.parseCommit(fromId);
                     revs.markUninteresting(fromRev);
                     RevCommit c;
                     while ((c = revs.next()) != null) {
-                        Commit cc = c.asCommit(revs);
-                        final ObjectId[] parentIds = cc.getParentIds();
-                        String cv = GitUtils.makeVersion(cc);
-                        String pv = parentIds.length == 0 ? GitUtils.makeVersion(ObjectId.zeroId().name(), 0) : GitUtils.makeVersion(r.mapCommit(cc.getParentIds()[0]));
-                        List<VcsChange> changes = getCommitChanges(r, cc, parentIds, cv, pv);
-                        ModificationData m = new ModificationData(cc.getCommitter().getWhen(), changes, cc.getMessage(), GitUtils.getUser(cc), root, cv, GitUtils.displayVersion(cc));
-                        rc.add(m);
+                        addCommit(root, rc, r, revs, c);
                     }
-                } catch (MissingObjectException ex) {
-                    // TODO commit not found should be handled in orther way
-                    throw new VcsException("Unalble to resolve previous commit: " + fromVersion, ex);
+                } else {
+                    RevCommit c;
+                    long limitTime = GitUtils.versionTime(fromVersion);
+                    while ((c = revs.next()) != null) {
+                        if (c.getCommitTime() * 1000L <= limitTime) {
+                            revs.markUninteresting(c);
+                        } else {
+                            addCommit(root, rc, r, revs, c);
+                        }
+                    }
+                    // add revision with warning text and randmon number as version
+                    byte[] idBytes = new byte[20];
+                    ourRandom.nextBytes(idBytes);
+                    String version = GitUtils.makeVersion(ObjectId.fromRaw(idBytes).name(), limitTime);
+                    rc.add(new ModificationData(new Date(currentRev.getCommitTime()),
+                            new ArrayList<VcsChange>(),
+                            "The previous version was removed from repository, " +
+                                    "getting changes using date. The changes reported might be not accurate.",
+                            "<system>",
+                            root,
+                            version,
+                            GitUtils.displayVersion(version)));
                 }
             } finally {
                 r.close();
@@ -87,6 +100,26 @@ public class GitVcsSupport extends VcsSupport {
         }
         // TODO checkout rules are ignored right now
         return rc;
+    }
+
+    /**
+     * Add commit as a list of modification data
+     *
+     * @param root the vcs root
+     * @param rc   list of commits to update
+     * @param r    repository
+     * @param revs revision iterator
+     * @param c    the current commit
+     * @throws IOException in case of IO problem
+     */
+    private static void addCommit(VcsRoot root, List<ModificationData> rc, Repository r, RevWalk revs, RevCommit c) throws IOException {
+        Commit cc = c.asCommit(revs);
+        final ObjectId[] parentIds = cc.getParentIds();
+        String cv = GitUtils.makeVersion(cc);
+        String pv = parentIds.length == 0 ? GitUtils.makeVersion(ObjectId.zeroId().name(), 0) : GitUtils.makeVersion(r.mapCommit(cc.getParentIds()[0]));
+        List<VcsChange> changes = getCommitChanges(r, cc, parentIds, cv, pv);
+        ModificationData m = new ModificationData(cc.getCommitter().getWhen(), changes, cc.getMessage(), GitUtils.getUser(cc), root, cv, GitUtils.displayVersion(cc));
+        rc.add(m);
     }
 
     /**
@@ -293,7 +326,7 @@ public class GitVcsSupport extends VcsSupport {
      * {@inheritDoc}
      */
     public String getVersionDisplayName(@NotNull String version, @NotNull VcsRoot root) throws VcsException {
-        return version.substring(DISPLAY_VERSION_AMOUNT, 0);
+        return GitUtils.displayVersion(version);
     }
 
     /**

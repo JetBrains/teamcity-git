@@ -14,9 +14,9 @@ import java.util.Comparator;
  */
 public class GitUtils {
     /**
-     * Ellipsis character (...)
+     * Amount of characters disiplayed for in the display version of revision number
      */
-    private static final char ELLIPSIS = '\u2026';
+    public static final int DISPLAY_VERSION_AMOUNT = 8;
 
     /**
      * Convert remote URL to JGIT form
@@ -158,6 +158,16 @@ public class GitUtils {
      * @return the display version
      */
     public static String displayVersion(Commit c) {
-        return c.getCommitId().name().substring(0, 8) + ELLIPSIS;
+        return displayVersion(c.getCommitId().name());
+    }
+
+    /**
+     * Create display version for the commit
+     *
+     * @param version the version to examine
+     * @return the display version
+     */
+    public static String displayVersion(String version) {
+        return version.substring(0, DISPLAY_VERSION_AMOUNT);
     }
 }
