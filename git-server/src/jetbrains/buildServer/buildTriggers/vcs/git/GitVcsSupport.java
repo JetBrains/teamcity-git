@@ -95,6 +95,8 @@ public class GitVcsSupport extends VcsSupport {
             }
         } catch (VcsException e) {
             throw e;
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             throw new VcsException("The get content failed: " + e, e);
         }
@@ -240,6 +242,7 @@ public class GitVcsSupport extends VcsSupport {
     }
 
     public void buildPatch(@NotNull VcsRoot root, @Nullable String fromVersion, @NotNull String toVersion, @NotNull PatchBuilder builder, @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
+
         //To change body of implemented methods use File | Settings | File Templates.
     }
 
@@ -276,6 +279,8 @@ public class GitVcsSupport extends VcsSupport {
                 r.close();
             }
         } catch (VcsException e) {
+            throw e;
+        } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
             throw new VcsException("The get content failed: " + e, e);
@@ -363,6 +368,8 @@ public class GitVcsSupport extends VcsSupport {
             }
         } catch (VcsException e) {
             throw e;
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             throw new VcsException("The current version failed: " + e, e);
         }
@@ -397,6 +404,8 @@ public class GitVcsSupport extends VcsSupport {
                 r.close();
             }
         } catch (VcsException e) {
+            throw e;
+        } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
             throw new VcsException("Repository test failed: " + e, e);
