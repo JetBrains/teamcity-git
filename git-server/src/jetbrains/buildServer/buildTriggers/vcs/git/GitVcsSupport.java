@@ -190,7 +190,6 @@ public class GitVcsSupport extends VcsSupport {
         final FileMode mode0 = tw.getFileMode(0);
         if (FileMode.MISSING.equals(mode0)) {
             for (int i = 1; i < nTrees; i++) {
-                FileMode m = tw.getFileMode(i);
                 if (FileMode.MISSING.equals(tw.getFileMode(i))) {
                     // the delete merge
                     return ChangeType.UNCHANGED;
@@ -200,7 +199,6 @@ public class GitVcsSupport extends VcsSupport {
         }
         boolean fileAdded = true;
         for (int i = 1; i < nTrees; i++) {
-            FileMode m = tw.getFileMode(i);
             if (!FileMode.MISSING.equals(tw.getFileMode(i))) {
                 fileAdded = false;
                 break;
