@@ -288,6 +288,7 @@
       <CLASSES>
         <root url="jar://$TeamCityDistribution$/devPackage/runtime-util.jar!/" />
         <root url="jar://$TeamCityDistribution$/devPackage/common-api.jar!/" />
+        <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/log4j-1.2.12.jar!/" />
       </CLASSES>
       <JAVADOC>
         <root url="jar://$TeamCityDistribution$/devPackage/javadoc/openApi-help.jar!/" />
@@ -331,6 +332,13 @@
       <JAVADOC />
       <SOURCES />
       <jarDirectory url="file://$PROJECT_DIR$/git-tests/lib" recursive="false" />
+    </library>
+    <library name="TeamCity Tests">
+      <CLASSES>
+        <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/patches-impl.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES />
     </library>
   </component>
   <UsedPathMacros>

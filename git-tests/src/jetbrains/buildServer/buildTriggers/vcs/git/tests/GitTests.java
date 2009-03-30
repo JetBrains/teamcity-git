@@ -5,17 +5,16 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.vcs.ModificationData;
-import jetbrains.buildServer.vcs.VcsChange;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import jetbrains.buildServer.vcs.patches.PatchTestCase;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -249,5 +248,28 @@ public class GitTests extends PatchTestCase {
         ModificationData mb3 = mms2.get(3);
         assertEquals("<system>", mb3.getUserName());
         assertEquals(0, mb3.getChanges().size());
+    }
+
+    public void testPatches() throws IOException, VcsException {
+        checkPatch("cleanPatch1", null, GitUtils.makeVersion("a894d7d58ffde625019a9ecf8267f5f1d1e5c341", 1237391915000L));
+        checkPatch("patch1", GitUtils.makeVersion("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", 1238420977000L),
+                GitUtils.makeVersion("0dd03338d20d2e8068fbac9f24899d45d443df38", 1238421020000L));
+        checkPatch("patch2", GitUtils.makeVersion("7e916b0edd394d0fca76456af89f4ff7f7f65049", 1238421159000L),
+                GitUtils.makeVersion("049a98762a29677da352405b27b3d910cb94eb3b", 1238421214000L));
+        checkPatch("patch3", null, GitUtils.makeVersion("1837cf38309496165054af8bf7d62a9fe8997202", 1238421349000L));
+        checkPatch("patch4", GitUtils.makeVersion("1837cf38309496165054af8bf7d62a9fe8997202", 1238421349000L),
+                GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L));
+    }
+
+    private void checkPatch(final String name, final String fromVersion, final String toVersion) throws IOException, VcsException {
+        setName(name);
+        GitVcsSupport support = getSupport();
+        VcsRoot root = getRoot("patch-tests");
+        support.getCurrentVersion(root);
+        final ByteArrayOutputStream output = new ByteArrayOutputStream();
+        final PatchBuilderImpl builder = new PatchBuilderImpl(output);
+        support.buildPatch(root, fromVersion, toVersion, builder, new CheckoutRules(""));
+        builder.close();
+        checkPatchResult(output.toByteArray());
     }
 }
