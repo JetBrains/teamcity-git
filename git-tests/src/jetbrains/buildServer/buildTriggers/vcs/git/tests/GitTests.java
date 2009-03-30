@@ -10,6 +10,7 @@ import jetbrains.buildServer.vcs.VcsChange;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import jetbrains.buildServer.vcs.patches.PatchTestCase;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -23,7 +24,7 @@ import java.util.List;
  * The tests for version detection funcitonality
  */
 @Test
-public class VersionTests extends Assert {
+public class GitTests extends PatchTestCase {
     /**
      * The version of "version-test" HEAD
      */
@@ -114,6 +115,13 @@ public class VersionTests extends Assert {
         // TODO The directory is deleted because JGIT wants to create a git directory itself
         //noinspection ResultOfMethodCallIgnored
         myCloneRep.delete();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected String getTestDataPath() {
+        return dataFile().getPath();
     }
 
 
