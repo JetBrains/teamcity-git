@@ -170,4 +170,14 @@ public class GitUtils {
     public static String displayVersion(String version) {
         return version.substring(0, DISPLAY_VERSION_AMOUNT);
     }
+
+    /**
+     * Convert Git path to a relative File
+     *
+     * @param path the path to covert
+     * @return the {@link File} object
+     */
+    public static File toFile(String path) {
+        return new File(path.replace('/', File.separatorChar));
+    }
 }

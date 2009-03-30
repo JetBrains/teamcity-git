@@ -13,9 +13,11 @@ import org.spearce.jgit.revwalk.RevWalk;
 import org.spearce.jgit.transport.FetchConnection;
 import org.spearce.jgit.transport.RefSpec;
 import org.spearce.jgit.transport.Transport;
+import org.spearce.jgit.treewalk.EmptyTreeIterator;
 import org.spearce.jgit.treewalk.TreeWalk;
 import org.spearce.jgit.treewalk.filter.TreeFilter;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -241,9 +243,96 @@ public class GitVcsSupport extends VcsSupport {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public void buildPatch(@NotNull VcsRoot root, @Nullable String fromVersion, @NotNull String toVersion, @NotNull PatchBuilder builder, @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
+        // TODO checkout rules are ignored right now
+        Settings s = createSettings(root);
+        try {
+            Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+            try {
+                TreeWalk tw = new TreeWalk(r);
+                tw.setFilter(TreeFilter.ANY_DIFF);
+                tw.setRecursive(true);
+                tw.reset();
+                Commit toCommit = r.mapCommit(GitUtils.versionRevision(toVersion));
+                if (toCommit == null) {
+                    throw new VcsException("Missing commit for version: " + toVersion);
+                }
+                tw.addTree(toCommit.getTreeId());
+                if (fromVersion != null) {
+                    Commit fromCommit = r.mapCommit(GitUtils.versionRevision(fromVersion));
+                    if (fromCommit == null) {
+                        // TODO add handling for the missing from version
+                        throw new RuntimeException();
+                    }
+                    tw.addTree(fromCommit.getTreeId());
+                } else {
+                    tw.addTree(new EmptyTreeIterator());
+                }
+                while (tw.next()) {
+                    String path = tw.getPathString();
+                    switch (classifyChange(2, tw)) {
+                        case UNCHANGED:
+                            // change is ignored
+                            continue;
+                        case MODIFIED:
+                        case ADDED:
+                        case FILE_MODE_CHANGED:
+                            ObjectId blobId = tw.getObjectId(0);
+                            ObjectLoader loader = r.openBlob(blobId);
+                            byte[] bytes = loader.getCachedBytes();
+                            String mode = getModeDiff(tw);
+                            builder.changeOrCreateBinaryFile(GitUtils.toFile(path), mode, new ByteArrayInputStream(bytes), bytes.length);
+                            break;
+                        case DELETED:
+                            builder.deleteFile(GitUtils.toFile(path), true);
+                            break;
+                        default:
+                            throw new IllegalStateException("Unknown change type");
+                    }
+                }
+            } finally {
+                r.close();
+            }
+        } catch (VcsException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new VcsException("The get content failed: " + e, e);
+        }
+    }
 
-        //To change body of implemented methods use File | Settings | File Templates.
+    /**
+     * Get difference in the file mode (passed to chmod), null if there is no difference
+     *
+     * @param tw the tree walker to check
+     * @return the mode difference or null if there is no different
+     */
+    private static String getModeDiff(TreeWalk tw) {
+        boolean cExec = isExecutable(tw.getFileMode(0));
+        boolean pExec = isExecutable(tw.getFileMode(1));
+        String mode;
+        if (cExec & !pExec) {
+            mode = "a+x";
+        } else if (!cExec & pExec) {
+            mode = "a-x";
+        } else {
+            mode = null;
+        }
+        return mode;
+    }
+
+    /**
+     * Check if the file mode is executable
+     *
+     * @param m file mode to check
+     * @return true if the file is executable
+     */
+    private static boolean isExecutable(FileMode m) {
+        return (m.getBits() & (1 << 6)) != 0;
     }
 
     /**
@@ -453,6 +542,5 @@ public class GitVcsSupport extends VcsSupport {
          * no change detected
          */
         UNCHANGED,
-
     }
 }
