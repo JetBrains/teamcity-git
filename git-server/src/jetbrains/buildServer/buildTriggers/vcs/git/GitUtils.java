@@ -16,7 +16,7 @@ public class GitUtils {
     /**
      * Amount of characters disiplayed for in the display version of revision number
      */
-    public static final int DISPLAY_VERSION_AMOUNT = 8;
+    public static final int DISPLAY_VERSION_AMOUNT = 40;
 
     /**
      * Convert remote URL to JGIT form
