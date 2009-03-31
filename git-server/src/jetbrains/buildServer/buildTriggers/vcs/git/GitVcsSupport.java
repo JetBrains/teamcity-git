@@ -1,5 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.vcs.*;
@@ -392,8 +393,20 @@ public class GitVcsSupport extends VcsSupport {
         return "Git";
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public PropertiesProcessor getVcsPropertiesProcessor() {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        return new PropertiesProcessor() {
+            public Collection<InvalidProperty> process(Map<String, String> properties) {
+                Collection<InvalidProperty> rc = new LinkedList<InvalidProperty>();
+                String url = properties.get(Constants.URL);
+                if (url == null || url.trim().length() == 0) {
+                    rc.add(new InvalidProperty(Constants.URL, "The URL must be specified"));
+                }
+                return rc;
+            }
+        };
     }
 
     /**
@@ -410,8 +423,13 @@ public class GitVcsSupport extends VcsSupport {
         return s.getRepositoryURL() + "#" + s.getBranch();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public Map<String, String> getDefaultVcsProperties() {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        final HashMap<String, String> map = new HashMap<String, String>();
+        map.put(Constants.BRANCH_NAME, "master");
+        return map;
     }
 
     /**
