@@ -14,6 +14,7 @@ import org.spearce.jgit.revwalk.RevWalk;
 import org.spearce.jgit.transport.FetchConnection;
 import org.spearce.jgit.transport.RefSpec;
 import org.spearce.jgit.transport.Transport;
+import org.spearce.jgit.transport.URIish;
 import org.spearce.jgit.treewalk.EmptyTreeIterator;
 import org.spearce.jgit.treewalk.TreeWalk;
 import org.spearce.jgit.treewalk.filter.TreeFilter;
@@ -21,6 +22,7 @@ import org.spearce.jgit.treewalk.filter.TreeFilter;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.*;
 
 
@@ -415,6 +417,12 @@ public class GitVcsSupport extends VcsSupport {
         String url = properties.get(Constants.URL);
         if (url == null || url.trim().length() == 0) {
           rc.add(new InvalidProperty(Constants.URL, "The URL must be specified"));
+        } else {
+          try {
+            new URIish(url);
+          } catch (URISyntaxException e) {
+            rc.add(new InvalidProperty(Constants.URL, "Invalid URL syntax: " + url));
+          }
         }
         return rc;
       }
@@ -429,10 +437,12 @@ public class GitVcsSupport extends VcsSupport {
     return "gitSettings.jsp";
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @NotNull
-  public String describeVcsRoot(VcsRoot vcsRoot) {
-    Settings s = new Settings(vcsRoot);
-    return s.getRepositoryURL() + "#" + s.getBranch();
+  public String describeVcsRoot(VcsRoot root) {
+    return root.getProperty(Constants.URL) + "#" + root.getProperty(Constants.BRANCH_NAME);
   }
 
   /**
@@ -537,7 +547,7 @@ public class GitVcsSupport extends VcsSupport {
    * @param vcsRoot the root object
    * @return the created object
    */
-  private Settings createSettings(VcsRoot vcsRoot) {
+  private Settings createSettings(VcsRoot vcsRoot) throws VcsException {
     final Settings settings = new Settings(vcsRoot);
     if (settings.getRepositoryPath() == null) {
       String url = settings.getRepositoryURL();

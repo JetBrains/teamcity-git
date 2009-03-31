@@ -1,8 +1,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.openapi.util.text.StringUtil;
+import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import org.spearce.jgit.transport.URIish;
 
 import java.io.File;
+import java.net.URISyntaxException;
 
 /**
  * Git Vcs Settings
@@ -34,13 +38,26 @@ public class Settings {
    *
    * @param root the root
    */
-  public Settings(VcsRoot root) {
-    repositoryURL = root.getProperty(Constants.URL);
+  public Settings(VcsRoot root) throws VcsException {
     final String p = root.getProperty(Constants.PATH);
     repositoryPath = p == null ? null : new File(p);
     branch = root.getProperty(Constants.BRANCH_NAME);
     username = root.getProperty(Constants.USERNAME);
     password = root.getProperty(Constants.PASSWORD);
+    final String remote = root.getProperty(Constants.URL);
+    URIish uri;
+    try {
+      uri = new URIish(remote);
+    } catch (URISyntaxException e) {
+      throw new VcsException("Invalid URI: " + remote);
+    }
+    if (!StringUtil.isEmptyOrSpaces(username)) {
+      uri.setUser(username);
+    }
+    if (!StringUtil.isEmpty(password)) {
+      uri.setUser(password);
+    }
+    repositoryURL = uri.toPrivateString();
   }
 
   /**
