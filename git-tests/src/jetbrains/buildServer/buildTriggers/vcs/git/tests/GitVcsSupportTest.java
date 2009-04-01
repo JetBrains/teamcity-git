@@ -250,6 +250,30 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(0, mb3.getChanges().size());
   }
 
+  public void testPatchClean1() throws IOException, VcsException {
+    checkPatch("cleanPatch1", null, GitUtils.makeVersion("a894d7d58ffde625019a9ecf8267f5f1d1e5c341", 1237391915000L));
+  }
+
+  public void testPatch1() throws IOException, VcsException {
+    checkPatch("patch1", GitUtils.makeVersion("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", 1238420977000L),
+               GitUtils.makeVersion("0dd03338d20d2e8068fbac9f24899d45d443df38", 1238421020000L));
+  }
+
+  public void testPatch2() throws IOException, VcsException {
+    checkPatch("patch2", GitUtils.makeVersion("7e916b0edd394d0fca76456af89f4ff7f7f65049", 1238421159000L),
+               GitUtils.makeVersion("049a98762a29677da352405b27b3d910cb94eb3b", 1238421214000L));
+  }
+
+  public void testPatch3() throws IOException, VcsException {
+    checkPatch("patch3", null, GitUtils.makeVersion("1837cf38309496165054af8bf7d62a9fe8997202", 1238421349000L));
+  }
+
+  public void testPatch4() throws IOException, VcsException {
+    checkPatch("patch4", GitUtils.makeVersion("1837cf38309496165054af8bf7d62a9fe8997202", 1238421349000L),
+               GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L));
+  }
+
+  @Test(enabled = false)
   public void testPatches() throws IOException, VcsException {
     checkPatch("cleanPatch1", null, GitUtils.makeVersion("a894d7d58ffde625019a9ecf8267f5f1d1e5c341", 1237391915000L));
     checkPatch("patch1", GitUtils.makeVersion("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", 1238420977000L),
@@ -260,6 +284,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     checkPatch("patch4", GitUtils.makeVersion("1837cf38309496165054af8bf7d62a9fe8997202", 1238421349000L),
                GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L));
   }
+
 
   private void checkPatch(final String name, final String fromVersion, final String toVersion) throws IOException, VcsException {
     setName(name);
