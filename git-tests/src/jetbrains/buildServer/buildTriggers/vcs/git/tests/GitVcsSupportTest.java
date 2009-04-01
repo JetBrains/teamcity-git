@@ -23,7 +23,7 @@ import java.util.List;
  * The tests for version detection funcitonality
  */
 @Test
-public class GitTests extends PatchTestCase {
+public class GitVcsSupportTest extends PatchTestCase {
   /**
    * The version of "version-test" HEAD
    */
