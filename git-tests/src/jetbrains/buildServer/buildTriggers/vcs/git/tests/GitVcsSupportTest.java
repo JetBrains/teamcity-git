@@ -246,7 +246,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     final List<ModificationData> mms2 = support.collectBuildChanges(root, missing, MERGE_VERSION, null);
     assertEquals(4, mms2.size());
     ModificationData mb3 = mms2.get(3);
-    assertEquals("<system>", mb3.getUserName());
+    assertEquals(GitUtils.SYSTEM_USER, mb3.getUserName());
     assertEquals(0, mb3.getChanges().size());
   }
 

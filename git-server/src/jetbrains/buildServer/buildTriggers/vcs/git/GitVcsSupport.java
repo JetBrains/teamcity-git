@@ -90,7 +90,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
                                       new ArrayList<VcsChange>(),
                                       "The previous version was removed from repository, " +
                                       "getting changes using date. The changes reported might be not accurate.",
-                                      "<system>",
+                                      GitUtils.SYSTEM_USER,
                                       root,
                                       version,
                                       GitUtils.displayVersion(version)));
@@ -561,7 +561,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
   public LabelingSupport getLabelingSupport() {
     return this;
   }
-  
+
   /**
    * {@inheritDoc}
    */

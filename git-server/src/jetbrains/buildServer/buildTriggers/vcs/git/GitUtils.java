@@ -17,6 +17,10 @@ public class GitUtils {
    * Amount of characters disiplayed for in the display version of revision number
    */
   public static final int DISPLAY_VERSION_AMOUNT = 40;
+  /**
+   * User name for the system user
+   */
+  public static final String SYSTEM_USER = "system@git-plugin.teamcity";
 
   /**
    * Convert remote URL to JGIT form
@@ -149,7 +153,7 @@ public class GitUtils {
    * @return the user name
    */
   public static String getUser(Commit c) {
-    return c.getAuthor().getName() + " <" + c.getAuthor().getEmailAddress() + ">";
+    return c.getAuthor().getEmailAddress();
   }
 
   /**
