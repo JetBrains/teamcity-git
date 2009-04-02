@@ -1,6 +1,7 @@
 <project name="GIT VCS Support" default="dist" basedir=".">
   <property file="git-teamcity.properties"/>
   <property name="lib-dir" location="${basedir}/lib"/>
+  <property name="javac2.home" location="${basedir}/buildtime/javac2"/>
   <import file="git-teamcity.xml"/>
 
   <property name="distPath" value="${basedir}/dist"/>
@@ -32,6 +33,7 @@
 
     <delete dir="${distPath}/unpacked"/>
   </target>
+  
   <target name="deploy" depends="dist">
     <mkdir dir="${plugins}"/>
     <copy file="${distPath}/4.1/git.zip" toDir="${plugins}"/>
