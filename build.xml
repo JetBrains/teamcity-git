@@ -6,12 +6,12 @@
   <property name="distPath" value="${basedir}/dist"/>
   <property name="plugins" location="${user.home}/.BuildServer/plugins"/>
 
-  <target name="dist" depends="all, run-tests">
+  <target name="dist" depends="all">
     <delete dir="${distPath}"/>
     <mkdir dir="${distPath}/unpacked"/>
     <jar destfile="${distPath}/unpacked/git-server.jar" basedir="${git-server.output.dir}"/>
 
-    <mkdir dir="${distPath}/4.0"/>
+    <mkdir dir="${distPath}/4.1"/>
 
     <zip basedir="${distPath}/unpacked" destfile="${distPath}/4.1/git.zip" excludes="**/*">
       <zipfileset prefix="server" dir="${distPath}/unpacked">
@@ -39,7 +39,7 @@
 
   <taskdef name="testng" classname="org.testng.TestNGAntTask" classpath="${basedir}/git-tests/lib/testng-5.7-jdk15.jar"/>
 
-  <target name="run-tests" depends="clean, init, compile.module.git-tests.production">
+  <target name="run-tests" depends="clean, init, compile.module.git-tests.production, dist">
     <property name="suspend" value="n"/>
 
     <testng haltonfailure="no" failureProperty="failure_found" listener="org.testng.reporters.TestHTMLReporter"
