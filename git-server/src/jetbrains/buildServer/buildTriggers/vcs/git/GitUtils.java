@@ -181,4 +181,14 @@ public class GitUtils {
   public static File toFile(String path) {
     return new File(path.replace('/', File.separatorChar));
   }
+
+  /**
+   * Ref name for the tag
+   *
+   * @param label the tag name
+   * @return the reference name
+   */
+  public static String tagName(String label) {
+    return "refs/tags/" + label;
+  }
 }

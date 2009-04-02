@@ -11,10 +11,7 @@ import org.spearce.jgit.lib.*;
 import org.spearce.jgit.revwalk.RevCommit;
 import org.spearce.jgit.revwalk.RevSort;
 import org.spearce.jgit.revwalk.RevWalk;
-import org.spearce.jgit.transport.FetchConnection;
-import org.spearce.jgit.transport.RefSpec;
-import org.spearce.jgit.transport.Transport;
-import org.spearce.jgit.transport.URIish;
+import org.spearce.jgit.transport.*;
 import org.spearce.jgit.treewalk.EmptyTreeIterator;
 import org.spearce.jgit.treewalk.TreeWalk;
 import org.spearce.jgit.treewalk.filter.TreeFilter;
@@ -29,7 +26,7 @@ import java.util.*;
 /**
  * Git VCS support
  */
-public class GitVcsSupport extends VcsSupport {
+public class GitVcsSupport extends VcsSupport implements LabelingSupport {
   /**
    * Random number generator used to generate artifitial versions
    */
@@ -556,6 +553,69 @@ public class GitVcsSupport extends VcsSupport {
       settings.setRepositoryPath(new File(dir, "git" + File.separatorChar + name));
     }
     return settings;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public LabelingSupport getLabelingSupport() {
+    return this;
+  }
+  
+  /**
+   * {@inheritDoc}
+   */
+  public String label(@NotNull String label, @NotNull String version, @NotNull VcsRoot root, @NotNull CheckoutRules checkoutRules)
+    throws VcsException {
+    Settings s = createSettings(root);
+    try {
+      Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+      try {
+        Tag t = new Tag(r);
+        t.setTag(label);
+        t.setObjId(versionObjectId(version));
+        t.tag();
+        String tagRef = GitUtils.tagName(label);
+        final Transport tn = Transport.open(r, s.getRepositoryURL());
+        try {
+          final PushConnection c = tn.openPush();
+          try {
+            RemoteRefUpdate ru = new RemoteRefUpdate(r, tagRef, tagRef, false, null, null);
+            c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(tagRef, ru));
+            switch (ru.getStatus()) {
+              case UP_TO_DATE:
+              case OK:
+                break;
+              default:
+                throw new VcsException("The remote reference was not updated: " + label);
+            }
+          } finally {
+            c.close();
+          }
+          return label;
+        } finally {
+          tn.close();
+        }
+      } finally {
+        r.close();
+      }
+    } catch (VcsException e) {
+      throw e;
+    } catch (RuntimeException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new VcsException("Repository test failed: " + e, e);
+    }
+  }
+
+  /**
+   * Make object identifier from the version string
+   *
+   * @param version the version string
+   * @return object identifier
+   */
+  private static ObjectId versionObjectId(String version) {
+    return ObjectId.fromString(GitUtils.versionRevision(version));
   }
 
   /**
