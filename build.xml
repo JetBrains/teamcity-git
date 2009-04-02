@@ -2,6 +2,7 @@
   <property file="git-teamcity.properties"/>
   <property name="lib-dir" location="${basedir}/lib"/>
   <property name="javac2.home" location="${basedir}/buildtime/javac2"/>
+  <property name="product-name" value="jetbrains.git"/>
   <import file="git-teamcity.xml"/>
 
   <property name="distPath" value="${basedir}/dist"/>
@@ -14,7 +15,7 @@
 
     <mkdir dir="${distPath}/4.1"/>
 
-    <zip basedir="${distPath}/unpacked" destfile="${distPath}/4.1/git.zip" excludes="**/*">
+    <zip basedir="${distPath}/unpacked" destfile="${distPath}/4.1/${product-name}.zip" excludes="**/*">
       <zipfileset prefix="server" dir="${distPath}/unpacked">
         <include name="git-server.jar"/>
       </zipfileset>
@@ -23,7 +24,7 @@
       </zipfileset>
     </zip>
 
-    <zip basedir="${basedir}" destfile="${distPath}/4.1/git-src.zip">
+    <zip basedir="${basedir}" destfile="${distPath}/4.1/${product-name}-src.zip">
       <exclude name=".git/**"/>
       <exclude name="dist/**"/>
       <exclude name="**/classes/**"/>
@@ -36,7 +37,7 @@
   
   <target name="deploy" depends="dist">
     <mkdir dir="${plugins}"/>
-    <copy file="${distPath}/4.1/git.zip" toDir="${plugins}"/>
+    <copy file="${distPath}/4.1/${product-name}.zip" toDir="${plugins}"/>
   </target>
 
   <taskdef name="testng" classname="org.testng.TestNGAntTask" classpath="${basedir}/git-tests/lib/testng-5.7-jdk15.jar"/>
