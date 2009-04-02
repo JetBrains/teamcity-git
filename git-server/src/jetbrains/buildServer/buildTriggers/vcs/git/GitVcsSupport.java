@@ -348,7 +348,10 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    * {@inheritDoc}
    */
   @NotNull
-  public byte[] getContent(VcsModification vcsModification, VcsChangeInfo change, VcsChangeInfo.ContentType contentType, VcsRoot vcsRoot)
+  public byte[] getContent(@NotNull VcsModification vcsModification,
+                           @NotNull VcsChangeInfo change,
+                           @NotNull VcsChangeInfo.ContentType contentType,
+                           @NotNull VcsRoot vcsRoot)
     throws VcsException {
     String version = contentType == VcsChangeInfo.ContentType.BEFORE_CHANGE
                      ? change.getBeforeChangeRevisionNumber()
@@ -361,7 +364,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    * {@inheritDoc}
    */
   @NotNull
-  public byte[] getContent(String filePath, VcsRoot versionedRoot, String version) throws VcsException {
+  public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot versionedRoot, @NotNull String version) throws VcsException {
     Settings s = createSettings(versionedRoot);
     try {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
@@ -543,6 +546,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    *
    * @param vcsRoot the root object
    * @return the created object
+   * @throws VcsException in case of IO problems
    */
   private Settings createSettings(VcsRoot vcsRoot) throws VcsException {
     final Settings settings = new Settings(vcsRoot);
