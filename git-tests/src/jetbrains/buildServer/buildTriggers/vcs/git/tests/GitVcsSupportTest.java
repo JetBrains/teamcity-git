@@ -9,6 +9,9 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import jetbrains.buildServer.vcs.patches.PatchTestCase;
+import org.spearce.jgit.lib.Repository;
+import org.spearce.jgit.lib.Tag;
+import org.spearce.jgit.transport.URIish;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -17,12 +20,12 @@ import org.testng.annotations.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.List;
 
 /**
  * The tests for version detection funcitonality
  */
-@Test
 public class GitVcsSupportTest extends PatchTestCase {
   /**
    * The version of "version-test" HEAD
@@ -256,6 +259,7 @@ public class GitVcsSupportTest extends PatchTestCase {
    * @throws IOException  in case of test failure
    * @throws VcsException in case of test failure
    */
+  @Test
   public void testPatches() throws IOException, VcsException {
     checkPatch("cleanPatch1", null, GitUtils.makeVersion("a894d7d58ffde625019a9ecf8267f5f1d1e5c341", 1237391915000L));
     checkPatch("patch1", GitUtils.makeVersion("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", 1238420977000L),
@@ -287,5 +291,27 @@ public class GitVcsSupportTest extends PatchTestCase {
     support.buildPatch(root, fromVersion, toVersion, builder, new CheckoutRules(""));
     builder.close();
     checkPatchResult(output.toByteArray());
+  }
+
+  /**
+   * Test label implementation
+   *
+   * @throws IOException  in case of test failure
+   * @throws VcsException in case of test failure
+   */
+  @Test
+  public void testLabels() throws IOException, VcsException, URISyntaxException {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("master");
+    // ensure that all revisions reachable from master are fetched
+    support.getCurrentVersion(root);
+    support.label("test_label", VERSION_TEST_HEAD, root, new CheckoutRules(""));
+    Repository r = new Repository(new File(new URIish(root.getProperty(Constants.URL)).getPath()));
+    try {
+      Tag t = r.mapTag("test_label");
+      assertEquals(t.getObjId().name(), GitUtils.versionRevision(VERSION_TEST_HEAD));
+    } finally {
+      r.close();
+    }
   }
 }
