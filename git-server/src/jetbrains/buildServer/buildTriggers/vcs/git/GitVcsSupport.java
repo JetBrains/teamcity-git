@@ -404,7 +404,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    */
   @NotNull
   public String getDisplayName() {
-    return "Git";
+    return "Git (JetBrains)";
   }
 
   /**
