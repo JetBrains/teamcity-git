@@ -296,8 +296,9 @@ public class GitVcsSupportTest extends PatchTestCase {
   /**
    * Test label implementation
    *
-   * @throws IOException  in case of test failure
-   * @throws VcsException in case of test failure
+   * @throws IOException        in case of test failure
+   * @throws VcsException       in case of test failure
+   * @throws URISyntaxException in case of test failure
    */
   @Test
   public void testLabels() throws IOException, VcsException, URISyntaxException {
