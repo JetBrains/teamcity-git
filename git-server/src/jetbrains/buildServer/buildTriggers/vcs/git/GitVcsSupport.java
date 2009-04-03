@@ -103,7 +103,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     } catch (RuntimeException e) {
       throw e;
     } catch (Exception e) {
-      throw new VcsException("The get content failed: " + e, e);
+      throw new VcsException("The collecting changes failed: " + e, e);
     }
     // TODO checkout rules are ignored right now
     return rc;
@@ -310,7 +310,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     } catch (RuntimeException e) {
       throw e;
     } catch (Exception e) {
-      throw new VcsException("The get content failed: " + e, e);
+      throw new VcsException("The patch building failed: " + e.getMessage(), e);
     }
   }
 
@@ -387,7 +387,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     } catch (RuntimeException e) {
       throw e;
     } catch (Exception e) {
-      throw new VcsException("The get content failed: " + e, e);
+      throw new VcsException("The retrieving content failed: " + e, e);
     }
   }
 
@@ -591,7 +591,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
               case OK:
                 break;
               default:
-                throw new VcsException("The remote reference was not updated: " + label);
+                throw new VcsException("The remote tag was not created (" + ru.getStatus() + "): " + label);
             }
           } finally {
             c.close();
@@ -608,7 +608,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     } catch (RuntimeException e) {
       throw e;
     } catch (Exception e) {
-      throw new VcsException("Repository test failed: " + e, e);
+      throw new VcsException("The labelling failed: " + e, e);
     }
   }
 
