@@ -289,8 +289,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
         if (fromVersion != null) {
           Commit fromCommit = r.mapCommit(GitUtils.versionRevision(fromVersion));
           if (fromCommit == null) {
-            // TODO add handling for the missing from version
-            throw new RuntimeException();
+            throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not availalbe in the repository");
           }
           tw.addTree(fromCommit.getTreeId());
         } else {
