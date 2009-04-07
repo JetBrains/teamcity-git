@@ -121,7 +121,6 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     } catch (Exception e) {
       throw new VcsException("The collecting changes failed: " + e, e);
     }
-    // TODO checkout rules are ignored right now
     return rc;
   }
 
@@ -270,9 +269,10 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
   public void buildPatch(@NotNull VcsRoot root,
                          @Nullable String fromVersion,
                          @NotNull String toVersion,
-                         @NotNull PatchBuilder builder,
+                         @NotNull PatchBuilder builderOrig,
                          @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
-    // TODO checkout rules are ignored right now
+    final PatchBuilderFileNamesCorrector builder = new PatchBuilderFileNamesCorrector(builderOrig);
+    builder.setWorkingMode_WithCheckoutRules(checkoutRules);
     Settings s = createSettings(root);
     try {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
@@ -298,6 +298,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
         }
         while (tw.next()) {
           String path = tw.getPathString();
+          final File file = GitUtils.toFile(path);
           switch (classifyChange(2, tw)) {
             case UNCHANGED:
               // change is ignored
@@ -305,14 +306,16 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
             case MODIFIED:
             case ADDED:
             case FILE_MODE_CHANGED:
-              ObjectId blobId = tw.getObjectId(0);
-              ObjectLoader loader = r.openBlob(blobId);
-              byte[] bytes = loader.getCachedBytes();
-              String mode = getModeDiff(tw);
-              builder.changeOrCreateBinaryFile(GitUtils.toFile(path), mode, new ByteArrayInputStream(bytes), bytes.length);
+              if (isFileIncluded(checkoutRules, file)) {
+                ObjectId blobId = tw.getObjectId(0);
+                ObjectLoader loader = r.openBlob(blobId);
+                byte[] bytes = loader.getCachedBytes();
+                String mode = getModeDiff(tw);
+                builder.changeOrCreateBinaryFile(file, mode, new ByteArrayInputStream(bytes), bytes.length);
+              }
               break;
             case DELETED:
-              builder.deleteFile(GitUtils.toFile(path), true);
+              builder.deleteFile(file, true);
               break;
             default:
               throw new IllegalStateException("Unknown change type");
@@ -328,6 +331,17 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     } catch (Exception e) {
       throw new VcsException("The patch building failed: " + e.getMessage(), e);
     }
+  }
+
+  /**
+   * Check if the file is included
+   *
+   * @param checkoutRules checkout rules to check
+   * @param path          the path to check
+   * @return true if the file is included
+   */
+  private static boolean isFileIncluded(CheckoutRules checkoutRules, File path) {
+    return checkoutRules.getIncludeRuleFor(path.getPath()) != null;
   }
 
   /**
