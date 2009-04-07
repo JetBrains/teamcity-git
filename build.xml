@@ -21,20 +21,35 @@
       </zipfileset>
       <zipfileset prefix="server" dir="${lib-dir}">
         <include name="*.jar"/>
+        <include name="*.jar"/>
+        <exclude name="*sources.jar"/>
+      </zipfileset>
+      <zipfileset prefix="license" dir="${lib-dir}/license">
+        <include name="*.txt"/>
+      </zipfileset>
+      <zipfileset prefix="license" dir="${basedir}">
+        <include name="git-plugin-LICENSE.txt"/>
       </zipfileset>
     </zip>
 
     <zip basedir="${basedir}" destfile="${distPath}/4.1/${product-name}-src.zip">
-      <exclude name=".git/**"/>
-      <exclude name="dist/**"/>
-      <exclude name="**/classes/**"/>
-      <exclude name="*.iws"/>
-      <exclude name="test-output/**"/>
+      <include name="buildtime/**/*"/>
+      <include name="git-server/**/*"/>
+      <include name="git-tests/**/*"/>
+      <include name="lib/**/*"/>
+      <include name="git-server/**/*"/>
+      <include name="git-tests/**/*"/>
+      <include name="lib/**/*"/>
+      <include name="build.xml"/>
+      <include name="git-plugin-LICENSE.txt"/>
+      <include name="git-teamcity.ipr"/>
+      <include name="git-teamcity.xml"/>
+      <include name="sample.git-teamcity.properties"/>
     </zip>
 
     <delete dir="${distPath}/unpacked"/>
   </target>
-  
+
   <target name="deploy" depends="dist">
     <mkdir dir="${plugins}"/>
     <copy file="${distPath}/4.1/${product-name}.zip" toDir="${plugins}"/>
