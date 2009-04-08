@@ -471,7 +471,8 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    */
   @NotNull
   public String describeVcsRoot(VcsRoot root) {
-    return root.getProperty(Constants.URL) + "#" + root.getProperty(Constants.BRANCH_NAME);
+    final String branch = root.getProperty(Constants.BRANCH_NAME);
+    return root.getProperty(Constants.URL) + "#" + (branch == null ? "master" : branch);
   }
 
   /**
