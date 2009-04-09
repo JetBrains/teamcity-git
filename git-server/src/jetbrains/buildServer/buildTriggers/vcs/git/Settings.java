@@ -33,6 +33,10 @@ public class Settings {
    */
   private String repositoryURL;
   /**
+   * The public URL
+   */
+  private String publicURL;
+  /**
    * The current branch
    */
   private String branch;
@@ -40,26 +44,19 @@ public class Settings {
    * The repository path
    */
   private File repositoryPath;
-  /**
-   * The repository user name
-   */
-  private String username;
-  /**
-   * The repository password
-   */
-  private String password;
 
   /**
    * The constructor from the root object
    *
    * @param root the root
+   * @throws VcsException in case of incorrect configuration
    */
   public Settings(VcsRoot root) throws VcsException {
     final String p = root.getProperty(Constants.PATH);
     repositoryPath = p == null ? null : new File(p);
     branch = root.getProperty(Constants.BRANCH_NAME);
-    username = root.getProperty(Constants.USERNAME);
-    password = root.getProperty(Constants.PASSWORD);
+    String username = root.getProperty(Constants.USERNAME);
+    String password = root.getProperty(Constants.PASSWORD);
     final String remote = root.getProperty(Constants.URL);
     URIish uri;
     try {
@@ -73,7 +70,15 @@ public class Settings {
     if (!StringUtil.isEmpty(password)) {
       uri.setUser(password);
     }
+    publicURL = uri.toString();
     repositoryURL = uri.toPrivateString();
+  }
+
+  /**
+   * @return the URL with pasword removed
+   */
+  public String getPublicURL() {
+    return publicURL;
   }
 
   /**
@@ -104,5 +109,12 @@ public class Settings {
    */
   public String getBranch() {
     return branch == null || branch.length() == 0 ? "master" : branch;
+  }
+
+  /**
+   * @return debug information that allows identify repository operation context
+   */
+  public String debugInfo() {
+    return " (" + getRepositoryPath() + ", " + getPublicURL() + "#" + getBranch() + ")";
   }
 }
