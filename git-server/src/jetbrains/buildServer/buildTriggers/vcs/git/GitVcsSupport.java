@@ -65,7 +65,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    *
    * @param serverPaths the paths to the server
    */
-  public GitVcsSupport(ServerPaths serverPaths) {
+  public GitVcsSupport(@Nullable ServerPaths serverPaths) {
     this.myServerPaths = serverPaths;
   }
 
@@ -119,6 +119,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     try {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
       try {
+        LOG.info("Collecting changes " + fromVersion + ".." + currentVersion + " for " + s.debugInfo());
         fetchBranchData(s, r);
         final String current = GitUtils.versionRevision(currentVersion);
         final String from = GitUtils.versionRevision(fromVersion);
@@ -133,16 +134,17 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
           revs.markUninteresting(fromRev);
           RevCommit c;
           while ((c = revs.next()) != null) {
-            addCommit(root, rc, r, revs, c);
+            addCommit(root, rc, r, s, revs, c);
           }
         } else {
+          LOG.warn("The from version " + fromVersion + " is not found, collecting changes basing on date and commit time " + s.debugInfo());
           RevCommit c;
           long limitTime = GitUtils.versionTime(fromVersion);
           while ((c = revs.next()) != null) {
             if (c.getCommitTime() * 1000L <= limitTime) {
               revs.markUninteresting(c);
             } else {
-              addCommit(root, rc, r, revs, c);
+              addCommit(root, rc, r, s, revs, c);
             }
           }
           // add revision with warning text and randmon number as version
@@ -173,17 +175,24 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    * @param root the vcs root
    * @param rc   list of commits to update
    * @param r    repository
+   * @param s    the settings object
    * @param revs revision iterator
    * @param c    the current commit
    * @throws IOException in case of IO problem
    */
-  private static void addCommit(VcsRoot root, List<ModificationData> rc, Repository r, RevWalk revs, RevCommit c) throws IOException {
+  private static void addCommit(VcsRoot root, List<ModificationData> rc, Repository r, Settings s, RevWalk revs, RevCommit c)
+    throws IOException {
     Commit cc = c.asCommit(revs);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(
+        "Collecting changes in commit " + c.getId() + ":" + c.getShortMessage() + " (" + c.getCommitterIdent().getWhen() + ") for " +
+        s.debugInfo());
+    }
     final ObjectId[] parentIds = cc.getParentIds();
     String cv = GitUtils.makeVersion(cc);
     String pv =
       parentIds.length == 0 ? GitUtils.makeVersion(ObjectId.zeroId().name(), 0) : GitUtils.makeVersion(r.mapCommit(cc.getParentIds()[0]));
-    List<VcsChange> changes = getCommitChanges(r, cc, parentIds, cv, pv);
+    List<VcsChange> changes = getCommitChanges(s, r, cc, parentIds, cv, pv);
     ModificationData m = new ModificationData(cc.getCommitter().getWhen(), changes, cc.getMessage(), GitUtils.getUser(cc), root, cv,
                                               GitUtils.displayVersion(cc));
     rc.add(m);
@@ -192,6 +201,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
   /**
    * Get changes for the commit
    *
+   * @param s         the setting object
    * @param r         the change version
    * @param cc        the current commit
    * @param parentIds parent commit identifiers
@@ -200,7 +210,8 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    * @return the commit changes
    * @throws IOException if there is a repository access problem
    */
-  private static List<VcsChange> getCommitChanges(Repository r, Commit cc, ObjectId[] parentIds, String cv, String pv) throws IOException {
+  private static List<VcsChange> getCommitChanges(Settings s, Repository r, Commit cc, ObjectId[] parentIds, String cv, String pv)
+    throws IOException {
     List<VcsChange> changes = new ArrayList<VcsChange>();
     TreeWalk tw = new TreeWalk(r);
     tw.setFilter(TreeFilter.ANY_DIFF);
@@ -217,7 +228,11 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
       String path = tw.getPathString();
       VcsChange.Type type;
       String description = null;
-      switch (classifyChange(nTrees, tw)) {
+      final ChangeType changeType = classifyChange(nTrees, tw);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Processing change " + treeWalkInfo(tw) + " as " + changeType + " " + s.debugInfo());
+      }
+      switch (changeType) {
         case UNCHANGED:
           // change is ignored
           continue;
@@ -314,33 +329,42 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
                          @NotNull String toVersion,
                          @NotNull PatchBuilder builderOrig,
                          @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
+    final boolean debugFlag = LOG.isDebugEnabled();
     final PatchBuilderFileNamesCorrector builder = new PatchBuilderFileNamesCorrector(builderOrig);
     builder.setWorkingMode_WithCheckoutRules(checkoutRules);
     Settings s = createSettings(root);
     try {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
       try {
-        fetchBranchData(s, r);
+        Commit toCommit = ensureCommitLoaded(s, r, GitUtils.versionRevision(toVersion));
+        if (toCommit == null) {
+          throw new VcsException("Missing commit for version: " + toVersion);
+        }
         TreeWalk tw = new TreeWalk(r);
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.setRecursive(true);
         tw.reset();
-        Commit toCommit = r.mapCommit(GitUtils.versionRevision(toVersion));
-        if (toCommit == null) {
-          throw new VcsException("Missing commit for version: " + toVersion);
-        }
         tw.addTree(toCommit.getTreeId());
         if (fromVersion != null) {
+          if (debugFlag) {
+            LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
+          }
           Commit fromCommit = r.mapCommit(GitUtils.versionRevision(fromVersion));
           if (fromCommit == null) {
             throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not availalbe in the repository");
           }
           tw.addTree(fromCommit.getTreeId());
         } else {
+          if (debugFlag) {
+            LOG.debug("Creating clean patch " + toVersion + " for " + s.debugInfo());
+          }
           tw.addTree(new EmptyTreeIterator());
         }
         while (tw.next()) {
           String path = tw.getPathString();
+          if (debugFlag) {
+            LOG.debug("File found " + treeWalkInfo(tw) + " for " + s.debugInfo());
+          }
           final File file = GitUtils.toFile(path);
           switch (classifyChange(2, tw)) {
             case UNCHANGED:
@@ -373,6 +397,28 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
   }
 
   /**
+   * Get debug info for treewalk (used in logging)
+   *
+   * @param tw tree walk object
+   * @return debug info about tree walk
+   */
+  private static String treeWalkInfo(TreeWalk tw) {
+    StringBuilder b = new StringBuilder();
+    b.append(tw.getPathString());
+    b.append('(');
+    final int n = tw.getTreeCount();
+    for (int i = 0; i < n; i++) {
+      if (i != 0) {
+        b.append(", ");
+      }
+      b.append(tw.getObjectId(i).name());
+      b.append(String.format("%04o", tw.getFileMode(i).getBits()));
+    }
+    b.append(')');
+    return b.toString();
+  }
+
+  /**
    * Check if the file is included
    *
    * @param checkoutRules checkout rules to check
@@ -399,6 +445,9 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
       mode = "a-x";
     } else {
       mode = null;
+    }
+    if (mode != null && LOG.isDebugEnabled()) {
+      LOG.debug("The mode change " + mode + " is detected for " + treeWalkInfo(tw));
     }
     return mode;
   }
@@ -438,23 +487,61 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     try {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
       try {
-        fetchBranchData(s, r);
-        final String rev = GitUtils.versionRevision(version);
-        Commit c = r.mapCommit(rev);
-        if (c == null) {
-          throw new VcsException("The version name could not be resolved " + rev);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
         }
+        final String rev = GitUtils.versionRevision(version);
+        Commit c = ensureCommitLoaded(s, r, rev);
         Tree t = c.getTree();
         TreeEntry e = t.findBlobMember(filePath);
+        if (e == null) {
+          throw new VcsException("The file " + filePath + " could not be found in " + rev + s.debugInfo());
+        }
         ObjectId id = e.getId();
         final ObjectLoader loader = r.openBlob(id);
-        return loader.getBytes();
+        final byte[] data = loader.getBytes();
+        if (LOG.isDebugEnabled()) {
+          LOG.debug(
+            "File found " + version + ":" + filePath + " (hash = " + id.name() + ", length = " + data.length + ") for " + s.debugInfo());
+        }
+        return data;
       } finally {
         r.close();
       }
     } catch (Exception e) {
       throw processException("retriving content", e);
     }
+  }
+
+  /**
+   * Ensure that the specified commit is loaded in the repository
+   *
+   * @param s   the settings
+   * @param r   the repository
+   * @param rev the revision to fetch
+   * @return the mapped commit
+   * @throws Exception in case of IO problem
+   */
+  private Commit ensureCommitLoaded(Settings s, Repository r, String rev) throws Exception {
+    Commit c = null;
+    try {
+      c = r.mapCommit(rev);
+    } catch (IOException ex) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("IO problem for commit " + rev + " in " + s.debugInfo(), ex);
+      }
+    }
+    if (c == null) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Commit " + rev + " is not in the repository for " + s.debugInfo() + " fetching data... ");
+      }
+      fetchBranchData(s, r);
+      c = r.mapCommit(rev);
+      if (c == null) {
+        throw new VcsException("The version name could not be resolved " + rev + "(" + s.getPublicURL() + "#" + s.getBranch() + ")");
+      }
+    }
+    return c;
   }
 
   /**
@@ -533,7 +620,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    */
   @NotNull
   public Comparator<String> getVersionComparator() {
-    return GitUtils.VERSION_COMPATOR;
+    return GitUtils.VERSION_COMPARATOR;
   }
 
   /**
@@ -551,6 +638,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
         if (c == null) {
           throw new VcsException("The branch name could not be resolved " + refName);
         }
+        LOG.info("The current version is " + c.getCommitId() + " " + s.debugInfo());
         return GitUtils.makeVersion(c);
       } finally {
         r.close();
@@ -568,10 +656,14 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    * @throws Exception if there is a problem with fetching data
    */
   private static void fetchBranchData(Settings settings, Repository repository) throws Exception {
-    final String branch = GitUtils.branchRef(settings.getBranch());
-    final Transport tn = Transport.open(repository, settings.getRepositoryURL());
+    final String refName = GitUtils.branchRef(settings.getBranch());
+    final String remote = settings.getRepositoryURL();
+    final Transport tn = Transport.open(repository, remote);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Fetching data for " + refName + "... " + settings.debugInfo());
+    }
     try {
-      RefSpec spec = new RefSpec().setSource(branch).setDestination(branch).setForceUpdate(true);
+      RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
       tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
     } finally {
       tn.close();
@@ -586,17 +678,24 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     try {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
       try {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Openning connection for " + s.debugInfo());
+        }
         final Transport tn = Transport.open(r, s.getRepositoryURL());
         try {
           final FetchConnection c = tn.openFetch();
           try {
+            if (LOG.isDebugEnabled()) {
+              LOG.debug("Checking references... " + s.debugInfo());
+            }
             String refName = GitUtils.branchRef(s.getBranch());
             for (final Ref ref : c.getRefs()) {
               if (refName.equals(ref.getName())) {
+                LOG.info("The branch reference found " + refName + "=" + ref.getObjectId() + " for " + s.debugInfo());
                 return null;
               }
             }
-            throw new VcsException("The branch " + refName + " was not found in the repository " + s.getRepositoryURL());
+            throw new VcsException("The branch " + refName + " was not found in the repository " + s.getPublicURL());
           } finally {
             c.close();
           }
@@ -625,6 +724,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
       File dir = new File(myServerPaths.getCachesDir());
       String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
       settings.setRepositoryPath(new File(dir, "git" + File.separatorChar + name));
+      LOG.info("Internal directory created " + settings.debugInfo());
     }
     return settings;
   }
@@ -645,18 +745,23 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     try {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
       try {
-        fetchBranchData(s, r);
+        final ObjectId rev = versionObjectId(version);
+        ensureCommitLoaded(s, r, rev.name());
         Tag t = new Tag(r);
         t.setTag(label);
-        t.setObjId(versionObjectId(version));
+        t.setObjId(rev);
         t.tag();
         String tagRef = GitUtils.tagName(label);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
+        }
         final Transport tn = Transport.open(r, s.getRepositoryURL());
         try {
           final PushConnection c = tn.openPush();
           try {
             RemoteRefUpdate ru = new RemoteRefUpdate(r, tagRef, tagRef, false, null, null);
             c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(tagRef, ru));
+            LOG.info("Tag  " + label + "=" + version + " pushed with status " + ru.getStatus() + " for " + s.debugInfo());
             switch (ru.getStatus()) {
               case UP_TO_DATE:
               case OK:
@@ -674,12 +779,8 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
       } finally {
         r.close();
       }
-    } catch (VcsException e) {
-      throw e;
-    } catch (RuntimeException e) {
-      throw e;
     } catch (Exception e) {
-      throw new VcsException("The labelling failed: " + e, e);
+      throw processException("labelling", e);
     }
   }
 
