@@ -51,7 +51,7 @@ public class GitUtils {
   /**
    * The version comparator
    */
-  public static final Comparator<String> VERSION_COMPATOR = new Comparator<String>() {
+  public static final Comparator<String> VERSION_COMPARATOR = new Comparator<String>() {
     public int compare(String o1, String o2) {
       long r = versionTime(o1) - versionTime(o2);
       return r < 0 ? -1 : r > 0 ? 1 : 0;
