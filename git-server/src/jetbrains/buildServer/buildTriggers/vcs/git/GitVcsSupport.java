@@ -77,7 +77,9 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    * @return a converted vcs exception
    */
   private static VcsException processException(String operation, Exception ex) {
-    LOG.error("The error during GIT vcs operation " + operation, ex);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("The error during GIT vcs operation " + operation, ex);
+    }
     if (ex instanceof VcsException) {
       return (VcsException)ex;
     }
@@ -117,6 +119,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     try {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
       try {
+        fetchBranchData(s, r);
         final String current = GitUtils.versionRevision(currentVersion);
         final String from = GitUtils.versionRevision(fromVersion);
         RevWalk revs = new RevWalk(r);
@@ -317,6 +320,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     try {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
       try {
+        fetchBranchData(s, r);
         TreeWalk tw = new TreeWalk(r);
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.setRecursive(true);
@@ -434,6 +438,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     try {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
       try {
+        fetchBranchData(s, r);
         final String rev = GitUtils.versionRevision(version);
         Commit c = r.mapCommit(rev);
         if (c == null) {
@@ -540,15 +545,8 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     try {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
       try {
+        fetchBranchData(s, r);
         String refName = GitUtils.branchRef(s.getBranch());
-        // Fetch current version of the branch
-        final Transport tn = Transport.open(r, s.getRepositoryURL());
-        try {
-          RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
-          tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
-        } finally {
-          tn.close();
-        }
         Commit c = r.mapCommit(refName);
         if (c == null) {
           throw new VcsException("The branch name could not be resolved " + refName);
@@ -559,6 +557,24 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
       }
     } catch (Exception e) {
       throw processException("retriving current version", e);
+    }
+  }
+
+  /**
+   * Fetch data for the branch
+   *
+   * @param settings   settings for the root
+   * @param repository the repository
+   * @throws Exception if there is a problem with fetching data
+   */
+  private static void fetchBranchData(Settings settings, Repository repository) throws Exception {
+    final String branch = GitUtils.branchRef(settings.getBranch());
+    final Transport tn = Transport.open(repository, settings.getRepositoryURL());
+    try {
+      RefSpec spec = new RefSpec().setSource(branch).setDestination(branch).setForceUpdate(true);
+      tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
+    } finally {
+      tn.close();
     }
   }
 
@@ -629,6 +645,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     try {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
       try {
+        fetchBranchData(s, r);
         Tag t = new Tag(r);
         t.setTag(label);
         t.setObjId(versionObjectId(version));

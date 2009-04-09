@@ -209,7 +209,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master");
     // ensure that all revisions reachable from master are fetched
-    support.getCurrentVersion(root);
     final List<ModificationData> ms = support.collectBuildChanges(root, VERSION_TEST_HEAD, CUD1_VERSION, null);
     assertEquals(2, ms.size());
     ModificationData m2 = ms.get(1);
@@ -301,7 +300,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     setName(name);
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("patch-tests");
-    support.getCurrentVersion(root);
     final ByteArrayOutputStream output = new ByteArrayOutputStream();
     final PatchBuilderImpl builder = new PatchBuilderImpl(output);
     support.buildPatch(root, fromVersion, toVersion, builder, new CheckoutRules(""));
@@ -321,7 +319,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master");
     // ensure that all revisions reachable from master are fetched
-    support.getCurrentVersion(root);
     support.label("test_label", VERSION_TEST_HEAD, root, new CheckoutRules(""));
     Repository r = new Repository(new File(new URIish(root.getProperty(Constants.URL)).getPath()));
     try {
