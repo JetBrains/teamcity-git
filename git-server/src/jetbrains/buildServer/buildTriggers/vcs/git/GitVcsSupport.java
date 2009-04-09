@@ -120,8 +120,8 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
       try {
         LOG.info("Collecting changes " + fromVersion + ".." + currentVersion + " for " + s.debugInfo());
-        fetchBranchData(s, r);
         final String current = GitUtils.versionRevision(currentVersion);
+        ensureCommitLoaded(s, r, current);
         final String from = GitUtils.versionRevision(fromVersion);
         RevWalk revs = new RevWalk(r);
         final RevCommit currentRev = revs.parseCommit(ObjectId.fromString(current));
@@ -346,18 +346,14 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
         tw.reset();
         tw.addTree(toCommit.getTreeId());
         if (fromVersion != null) {
-          if (debugFlag) {
-            LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
-          }
+          LOG.info("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
           Commit fromCommit = r.mapCommit(GitUtils.versionRevision(fromVersion));
           if (fromCommit == null) {
             throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not availalbe in the repository");
           }
           tw.addTree(fromCommit.getTreeId());
         } else {
-          if (debugFlag) {
-            LOG.debug("Creating clean patch " + toVersion + " for " + s.debugInfo());
-          }
+          LOG.info("Creating clean patch " + toVersion + " for " + s.debugInfo());
           tw.addTree(new EmptyTreeIterator());
         }
         while (tw.next()) {
@@ -487,9 +483,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     try {
       Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
       try {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
-        }
+        LOG.info("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
         final String rev = GitUtils.versionRevision(version);
         Commit c = ensureCommitLoaded(s, r, rev);
         Tree t = c.getTree();
@@ -500,10 +494,8 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
         ObjectId id = e.getId();
         final ObjectLoader loader = r.openBlob(id);
         final byte[] data = loader.getBytes();
-        if (LOG.isDebugEnabled()) {
-          LOG.debug(
-            "File found " + version + ":" + filePath + " (hash = " + id.name() + ", length = " + data.length + ") for " + s.debugInfo());
-        }
+        LOG.info(
+          "File retrived " + version + ":" + filePath + " (hash = " + id.name() + ", length = " + data.length + ") for " + s.debugInfo());
         return data;
       } finally {
         r.close();
@@ -533,7 +525,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     }
     if (c == null) {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Commit " + rev + " is not in the repository for " + s.debugInfo() + " fetching data... ");
+        LOG.debug("Commit " + rev + " is not in the repository for " + s.debugInfo() + ", fetching data... ");
       }
       fetchBranchData(s, r);
       c = r.mapCommit(rev);
@@ -638,7 +630,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
         if (c == null) {
           throw new VcsException("The branch name could not be resolved " + refName);
         }
-        LOG.info("The current version is " + c.getCommitId() + " " + s.debugInfo());
+        LOG.info("The current version is " + c.getCommitId().name() + " " + s.debugInfo());
         return GitUtils.makeVersion(c);
       } finally {
         r.close();
@@ -724,7 +716,9 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
       File dir = new File(myServerPaths.getCachesDir());
       String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
       settings.setRepositoryPath(new File(dir, "git" + File.separatorChar + name));
-      LOG.info("Internal directory created " + settings.debugInfo());
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Using internal directory for " + settings.debugInfo());
+      }
     }
     return settings;
   }
