@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -23,6 +24,7 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.spearce.jgit.errors.TransportException;
 import org.spearce.jgit.lib.*;
 import org.spearce.jgit.revwalk.RevCommit;
 import org.spearce.jgit.revwalk.RevSort;
@@ -34,8 +36,10 @@ import org.spearce.jgit.treewalk.filter.TreeFilter;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.util.*;
 
 
@@ -43,6 +47,10 @@ import java.util.*;
  * Git VCS support
  */
 public class GitVcsSupport extends VcsSupport implements LabelingSupport {
+  /**
+   * logger instance
+   */
+  private static Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   /**
    * Random number generator used to generate artifitial versions
    */
@@ -59,6 +67,42 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    */
   public GitVcsSupport(ServerPaths serverPaths) {
     this.myServerPaths = serverPaths;
+  }
+
+  /**
+   * Convert exception to vcs exception with readable message
+   *
+   * @param operation operation name (like "collecting changes")
+   * @param ex        an exception to convert
+   * @return a converted vcs exception
+   */
+  private static VcsException processException(String operation, Exception ex) {
+    LOG.error("The error during GIT vcs operation " + operation, ex);
+    if (ex instanceof VcsException) {
+      return (VcsException)ex;
+    }
+    if (ex instanceof RuntimeException) {
+      throw (RuntimeException)ex;
+    }
+    String message;
+    if (ex instanceof TransportException && ex.getCause() != null) {
+      Throwable t = ex.getCause();
+      if (t instanceof FileNotFoundException) {
+        message = "File not found: " + t.getMessage();
+      } else if (t instanceof UnknownHostException) {
+        message = "Unknown host: " + t.getMessage();
+      } else {
+        message = t.toString();
+      }
+    } else {
+      StringBuilder b = new StringBuilder();
+      for (Throwable t = ex; ex != null; t = t.getCause()) {
+        b.append('\n');
+        b.append(t.toString());
+      }
+      message = b.toString();
+    }
+    return new VcsException("The " + operation + " failed: " + message, ex);
   }
 
   /**
@@ -114,12 +158,8 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
       } finally {
         r.close();
       }
-    } catch (VcsException e) {
-      throw e;
-    } catch (RuntimeException e) {
-      throw e;
     } catch (Exception e) {
-      throw new VcsException("The collecting changes failed: " + e, e);
+      throw processException("collecting changes", e);
     }
     return rc;
   }
@@ -323,12 +363,8 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
       } finally {
         r.close();
       }
-    } catch (VcsException e) {
-      throw e;
-    } catch (RuntimeException e) {
-      throw e;
     } catch (Exception e) {
-      throw new VcsException("The patch building failed: " + e.getMessage(), e);
+      throw processException("patch building", e);
     }
   }
 
@@ -411,12 +447,8 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
       } finally {
         r.close();
       }
-    } catch (VcsException e) {
-      throw e;
-    } catch (RuntimeException e) {
-      throw e;
     } catch (Exception e) {
-      throw new VcsException("The retrieving content failed: " + e, e);
+      throw processException("retriving content", e);
     }
   }
 
@@ -525,12 +557,8 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
       } finally {
         r.close();
       }
-    } catch (VcsException e) {
-      throw e;
-    } catch (RuntimeException e) {
-      throw e;
     } catch (Exception e) {
-      throw new VcsException("The current version failed: " + e, e);
+      throw processException("retriving current version", e);
     }
   }
 
@@ -562,12 +590,8 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
       } finally {
         r.close();
       }
-    } catch (VcsException e) {
-      throw e;
-    } catch (RuntimeException e) {
-      throw e;
     } catch (Exception e) {
-      throw new VcsException("Repository test failed: " + e, e);
+      throw processException("connection test", e);
     }
   }
 
