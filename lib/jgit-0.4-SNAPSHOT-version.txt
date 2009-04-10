@@ -1,16 +1,2 @@
-commit 88a1acb00db8f216a48a4f7d878044e3d9bbae4d
-Date: 2009-04-10 06:33:10
-
-With patch:
-
-Author: Constantine Plotnikov <constantine.plotnikov@gmail.com>  2009-04-10 19:57:02
-
-    Added support for StrictHostKeyChecking property in SSH config
-    
-    StrictHostKeyChecking property allows to specify ssh behavior
-    when ssh client encounters a new host or a change of the host key.
-    So in addition to the default policy "ask", it is now possible to specify
-    "yes" and "no" policies that automatically reject and accept new host
-    keys.
-    
-    Signed-off-by: Constantine Plotnikov <constantine.plotnikov@gmail.com>
+commit 7b778e80c3fbf8ab360706b0b7eff15cc6c0c0b6
+Date:   Fri Apr 10 20:27:31 2009 +0400
