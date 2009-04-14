@@ -1,63 +1,50 @@
-<project name="GIT VCS Support" default="dist" basedir=".">
-  <property file="git-teamcity.properties"/>
-  <property name="lib-dir" location="${basedir}/lib"/>
-  <property name="javac2.home" location="${basedir}/buildtime/javac2"/>
-  <property name="product-name" value="jetbrains.git"/>
+<project name="git-custom-build" default="dist" basedir=".">
+
+  <property file="build.properties"/>
+  <property name="plugin.name" value="jetbrains.git"/>
+
+  <property name="build.number" value="SNAPSHOT"/>
+  <property name="build.vcs.revision" value=""/>
+
+  <property name="plugin.version" value="1.0.${build.number}-${build.vcs.revision}"/>
+
+  <property name="javac2.home" value="${basedir}/lib/lib-compile/javac2"/>
+
   <import file="git-teamcity.xml"/>
+  <import file="teamcity-common.xml"/>
 
-  <property name="distPath" value="${basedir}/dist"/>
-  <property name="plugins" location="${user.home}/.BuildServer/plugins"/>
+  <target name="package">
+    <package.teamcity.plugin name="${plugin.name}" server.output="${git-server.output.dir}"
+                             server.lib.dir="lib" server.lib.includes="*.jar"
+                             plugin.descriptor.file="teamcity-plugin.dist.xml"
+                             plugin.version="${plugin.version}">
+      <additional-files>
+        <fileset dir="${basedir}" includes="license/**"/>
+      </additional-files>
+    </package.teamcity.plugin>
 
-  <target name="dist" depends="all">
-    <delete dir="${distPath}"/>
-    <mkdir dir="${distPath}/unpacked"/>
-    <jar destfile="${distPath}/unpacked/git-server.jar" basedir="${git-server.output.dir}"/>
-
-    <mkdir dir="${distPath}/4.1"/>
-
-    <echo file="${distPath}/build.txt">Git Version: ${build.vcs.number}</echo>
-
-    <zip basedir="${distPath}/unpacked" destfile="${distPath}/4.1/${product-name}.zip" excludes="**/*">
-      <zipfileset prefix="server" dir="${distPath}/unpacked">
-        <include name="git-server.jar"/>
-      </zipfileset>
-      <zipfileset prefix="server" dir="${lib-dir}">
-        <include name="*.jar"/>
-        <include name="*.jar"/>
-        <exclude name="*sources.jar"/>
-      </zipfileset>
-      <zipfileset prefix="license" dir="${lib-dir}/license">
-        <include name="*.txt"/>
-      </zipfileset>
-      <zipfileset prefix="license" dir="${basedir}">
-        <include name="git-plugin-LICENSE.txt"/>
-      </zipfileset>
-      <zipfileset dir="${distPath}">
-        <include name="build.txt"/>
-      </zipfileset>
-    </zip>
-
-    <zip basedir="${basedir}" destfile="${distPath}/4.1/${product-name}-src.zip">
-      <include name="buildtime/**/*"/>
-      <include name="git-server/**/*"/>
-      <include name="git-tests/**/*"/>
-      <include name="lib/**/*"/>
-      <include name="git-server/**/*"/>
-      <include name="git-tests/**/*"/>
-      <include name="lib/**/*"/>
+    <zip basedir="${basedir}" destfile="dist/${plugin.name}-src.zip">
+      <include name="git-server/**"/>
+      <include name="git-tests/**"/>
+      <include name="lib/**"/>
+      <include name="license/**"/>
+      <include name="*.iml"/>
+      <include name="*.ipr"/>
       <include name="build.xml"/>
-      <include name="git-plugin-LICENSE.txt"/>
-      <include name="git-teamcity.ipr"/>
+      <include name="build.properties"/>
       <include name="git-teamcity.xml"/>
-      <include name="sample.git-teamcity.properties"/>
+      <include name="teamcity-common.xml"/>
     </zip>
+  </target>
 
-    <delete dir="${distPath}/unpacked"/>
+  <target name="dist" depends="check.teamcitydistribution,all,package"/>
+
+  <target name="clean" depends="git-teamcity.clean">
+    <delete dir="dist" quiet="true"/>
   </target>
 
   <target name="deploy" depends="dist">
-    <mkdir dir="${plugins}"/>
-    <copy file="${distPath}/4.1/${product-name}.zip" toDir="${plugins}"/>
+    <deploy.teamcity.plugin name="${plugin.name}"/>
   </target>
 
   <taskdef name="testng" classname="org.testng.TestNGAntTask" classpath="${basedir}/git-tests/lib/testng-5.7-jdk15.jar"/>
@@ -78,4 +65,7 @@
       </xmlfileset>
     </testng>
   </target>
+
 </project>
+
+        
