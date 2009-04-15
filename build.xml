@@ -49,7 +49,7 @@
 
   <taskdef name="testng" classname="org.testng.TestNGAntTask" classpath="${basedir}/git-tests/lib/testng-5.7-jdk15.jar"/>
 
-  <target name="run-tests" depends="clean, init, compile.module.git-tests.production, dist">
+  <target name="run-tests" depends="clean, init, compile.module.git-tests.production">
     <property name="suspend" value="n"/>
 
     <testng haltonfailure="no" failureProperty="failure_found" listener="org.testng.reporters.TestHTMLReporter"
