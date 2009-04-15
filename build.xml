@@ -4,9 +4,9 @@
   <property name="plugin.name" value="jetbrains.git"/>
 
   <property name="build.number" value="SNAPSHOT"/>
-  <property name="build.vcs.revision" value=""/>
+  <property name="build.vcs.number" value=""/>
 
-  <property name="plugin.version" value="1.0.${build.number}-${build.vcs.revision}"/>
+  <property name="plugin.version" value="1.0.0.${build.number}-${build.vcs.number}"/>
 
   <property name="javac2.home" value="${basedir}/lib/lib-compile/javac2"/>
 
