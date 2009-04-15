@@ -1,3 +1,6 @@
+# Copy the file to 'build.properties' to make it used by the build
+# Please specify the folowing properties. Remember to use Java string values escaping rules.
+
 # Path to unpacked .tar.gz distribution or installed .exe distribution of TeamCity
 # for example:
 #path.variable.teamcitydistribution=C\:/TeamCity4
