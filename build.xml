@@ -31,7 +31,7 @@
       <include name="*.iml"/>
       <include name="*.ipr"/>
       <include name="build.xml"/>
-      <include name="build.properties"/>
+      <include name="build.properties.dist"/>
       <include name="git-teamcity.xml"/>
       <include name="teamcity-common.xml"/>
     </zip>
