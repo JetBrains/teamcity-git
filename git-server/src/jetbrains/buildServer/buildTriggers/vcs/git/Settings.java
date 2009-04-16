@@ -69,10 +69,10 @@ public class Settings {
       throw new VcsException("Invalid URI: " + remote);
     }
     if (!StringUtil.isEmptyOrSpaces(username)) {
-      uri.setUser(username);
+      uri = uri.setUser(username);
     }
     if (!StringUtil.isEmpty(password)) {
-      uri.setUser(password);
+      uri = uri.setPass(password);
     }
     publicURL = uri.toString();
     repositoryURL = uri.toPrivateString();
