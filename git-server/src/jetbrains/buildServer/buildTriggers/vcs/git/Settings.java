@@ -77,7 +77,7 @@ public class Settings {
     publicURL = uri.toString();
     repositoryURL = uri.toPrivateString();
     final String style = root.getProperty(Constants.USERNAME_STYLE);
-    usernameStyle = style == null ? UserNameStyle.NAME : Enum.valueOf(UserNameStyle.class, style);
+    usernameStyle = style == null ? UserNameStyle.USERID : Enum.valueOf(UserNameStyle.class, style);
   }
 
   /**
