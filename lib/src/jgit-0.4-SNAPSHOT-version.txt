@@ -1,2 +1,8 @@
-commit 7b778e80c3fbf8ab360706b0b7eff15cc6c0c0b6
-Date:   Fri Apr 10 20:27:31 2009 +0400
+commit 7c1e465d5d2deee065ee3e0f5b5da2b446fd4f56
+Date:   Mon Apr 13 13:53:36 2009 +0200
+
+With patches:
+
+ * Changed Transport class hierarchy basing on underlying transport
+ * Moved common SSH related functionality to the base class SshTransport
+ * Extracted AWT-independent superclass from DefaultSshSessionFactory
