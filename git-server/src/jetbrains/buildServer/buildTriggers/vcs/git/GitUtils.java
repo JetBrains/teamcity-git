@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.spearce.jgit.lib.Commit;
+import org.spearce.jgit.lib.PersonIdent;
 import org.spearce.jgit.lib.Repository;
 import org.spearce.jgit.lib.RepositoryConfig;
 
@@ -165,11 +166,26 @@ public class GitUtils {
   /**
    * Get user for the commit
    *
+   * @param s the vcs root settings
    * @param c the commit
    * @return the user name
    */
-  public static String getUser(Commit c) {
-    return c.getAuthor().getEmailAddress();
+  public static String getUser(Settings s, Commit c) {
+    final PersonIdent a = c.getAuthor();
+    switch (s.getUsernameStyle()) {
+      case NAME:
+        return a.getName();
+      case EMAIL:
+        return a.getEmailAddress();
+      case FULL:
+        return a.getName() + " <" + a.getEmailAddress() + ">";
+      case USERID:
+        String email = a.getEmailAddress();
+        final int i = email.lastIndexOf("@");
+        return email.substring(0, i > 0 ? i : email.length());
+      default:
+        throw new IllegalStateException("Unsupported username style: " + s.getUsernameStyle());
+    }
   }
 
   /**

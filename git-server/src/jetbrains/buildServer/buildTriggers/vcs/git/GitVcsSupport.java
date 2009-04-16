@@ -98,7 +98,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
       }
     } else {
       StringBuilder b = new StringBuilder();
-      for (Throwable t = ex; ex != null; t = t.getCause()) {
+      for (Throwable t = ex; t != null; t = t.getCause()) {
         b.append('\n');
         b.append(t.toString());
       }
@@ -193,7 +193,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     String pv =
       parentIds.length == 0 ? GitUtils.makeVersion(ObjectId.zeroId().name(), 0) : GitUtils.makeVersion(r.mapCommit(cc.getParentIds()[0]));
     List<VcsChange> changes = getCommitChanges(s, r, cc, parentIds, cv, pv);
-    ModificationData m = new ModificationData(cc.getCommitter().getWhen(), changes, cc.getMessage(), GitUtils.getUser(cc), root, cv,
+    ModificationData m = new ModificationData(cc.getCommitter().getWhen(), changes, cc.getMessage(), GitUtils.getUser(s, cc), root, cv,
                                               GitUtils.displayVersion(cc));
     rc.add(m);
   }

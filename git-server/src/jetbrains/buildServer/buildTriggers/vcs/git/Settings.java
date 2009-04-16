@@ -44,6 +44,10 @@ public class Settings {
    * The repository path
    */
   private File repositoryPath;
+  /**
+   * The style for user name
+   */
+  private UserNameStyle usernameStyle;
 
   /**
    * The constructor from the root object
@@ -72,6 +76,15 @@ public class Settings {
     }
     publicURL = uri.toString();
     repositoryURL = uri.toPrivateString();
+    final String style = root.getProperty(Constants.USERNAME_STYLE);
+    usernameStyle = style == null ? UserNameStyle.NAME : Enum.valueOf(UserNameStyle.class, style);
+  }
+
+  /**
+   * @return username sytle
+   */
+  public UserNameStyle getUsernameStyle() {
+    return usernameStyle;
   }
 
   /**
@@ -116,5 +129,27 @@ public class Settings {
    */
   public String debugInfo() {
     return " (" + getRepositoryPath() + ", " + getPublicURL() + "#" + getBranch() + ")";
+  }
+
+  /**
+   * The stype for user names
+   */
+  enum UserNameStyle {
+    /**
+     * Name (John Smith)
+     */
+    NAME,
+    /**
+     * User id based on email (jsmith)
+     */
+    USERID,
+    /**
+     * Email (jsmith@example.org)
+     */
+    EMAIL,
+    /**
+     * Name and Email (John Smith &ltjsmith@example.org&gt)
+     */
+    FULL
   }
 }
