@@ -24,6 +24,7 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.spearce.jgit.errors.NotSupportedException;
 import org.spearce.jgit.errors.TransportException;
 import org.spearce.jgit.lib.*;
 import org.spearce.jgit.revwalk.RevCommit;
@@ -59,6 +60,11 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    * Paths to the server
    */
   final ServerPaths myServerPaths;
+  /**
+   * The default SSH session factory used for not explicitly configured host
+   * It fails when user is prompted for some information.
+   */
+  final HeadlessSshSessionFactory mySshSessionFactory;
 
   /**
    * The constructor
@@ -67,6 +73,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    */
   public GitVcsSupport(@Nullable ServerPaths serverPaths) {
     this.myServerPaths = serverPaths;
+    this.mySshSessionFactory = new HeadlessSshSessionFactory();
   }
 
   /**
@@ -647,10 +654,9 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    * @param repository the repository
    * @throws Exception if there is a problem with fetching data
    */
-  private static void fetchBranchData(Settings settings, Repository repository) throws Exception {
+  private void fetchBranchData(Settings settings, Repository repository) throws Exception {
     final String refName = GitUtils.branchRef(settings.getBranch());
-    final String remote = settings.getRepositoryURL();
-    final Transport tn = Transport.open(repository, remote);
+    final Transport tn = openTransport(settings, repository);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Fetching data for " + refName + "... " + settings.debugInfo());
     }
@@ -673,7 +679,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Openning connection for " + s.debugInfo());
         }
-        final Transport tn = Transport.open(r, s.getRepositoryURL());
+        final Transport tn = openTransport(s, r);
         try {
           final FetchConnection c = tn.openFetch();
           try {
@@ -749,7 +755,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
         }
-        final Transport tn = Transport.open(r, s.getRepositoryURL());
+        final Transport tn = openTransport(s, r);
         try {
           final PushConnection c = tn.openPush();
           try {
@@ -776,6 +782,24 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     } catch (Exception e) {
       throw processException("labelling", e);
     }
+  }
+
+  /**
+   * Open transport for the repository
+   *
+   * @param s the vcs settings
+   * @param r the repository to open
+   * @return the transport instance
+   * @throws NotSupportedException if transport is not supported
+   * @throws URISyntaxException    if URI is incorrect syntax
+   */
+  private Transport openTransport(Settings s, Repository r) throws NotSupportedException, URISyntaxException {
+    final Transport t = Transport.open(r, s.getRepositoryURL());
+    if (t instanceof SshTransport) {
+      SshTransport ssh = (SshTransport)t;
+      ssh.setSshSessionFactory(mySshSessionFactory);
+    }
+    return t;
   }
 
   /**
