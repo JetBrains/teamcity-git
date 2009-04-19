@@ -10,8 +10,8 @@
 
   <property name="javac2.home" value="${basedir}/lib/lib-compile/javac2"/>
 
-  <import file="git-teamcity.xml"/>
   <import file="teamcity-common.xml"/>
+  <import file="git-teamcity.xml"/>
 
   <target name="package">
     <package.teamcity.plugin name="${plugin.name}" server.output="${git-server.output.dir}"

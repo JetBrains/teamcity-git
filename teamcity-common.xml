@@ -11,6 +11,9 @@
   Targets:
                 check.teamcitydistribution
   -->
+
+  <property name="path.variable.teamcitydistribution" value="${teamcity.distribution}" />
+
   <property name="teamcity.internal.default.out" value="dist"/>
 
 
@@ -59,16 +62,15 @@
       </condition>
 
 
-      <antcall target="prepare.common.part">
-        <param name="common.output" value="@{common.output}"/>
-        <param name="common.jar.name" value="@{common.jar.name}"/>
-      </antcall>
+      <mkdir dir="${teamcity.internal.distrib.prep.common}"/>
+      <prepare.common.part common.output="@{common.output}"
+                           common.jar.path="${teamcity.internal.distrib.prep.common}/@{common.jar.name}"/>
 
       <antcall target="prepare.server.part">
         <param name="out.unpacked" value="@{out.unpacked}"/>
         <param name="name" value="@{name}"/>
         <param name="server.output" value="@{server.output}"/>
-        <param name="common.jar.name" value="@{common.jar.name}"/>
+        <param name="common.jar.path" value="${teamcity.internal.distrib.prep.common}/@{common.jar.name}"/>
         <param name="lib.dir" value="@{server.lib.dir}"/>
         <param name="lib.includes" value="@{server.lib.includes}"/>
       </antcall>
@@ -77,7 +79,7 @@
         <param name="out.unpacked" value="@{out.unpacked}"/>
         <param name="name" value="@{name}"/>
         <param name="agent.output" value="@{agent.output}"/>
-        <param name="common.jar.name" value="@{common.jar.name}"/>
+        <param name="common.jar.path" value="${teamcity.internal.distrib.prep.common}/@{common.jar.name}"/>
       </antcall>
 
       <!-- copy teamcity-plugin.xml -->
@@ -106,7 +108,7 @@
 
   <target name="check.teamcitydistribution" description="checks whether TeamCity distribution ready to be used by IDEA-generated build">
     <check.property name="path.variable.teamcitydistribution"
-                    fail-message="Please define 'path.variable.teamcitydistribution' property in build.properties file (see build.properties.dist). The property should point to unpacked TeamCity .tar.gz or .exe distribution."
+                    fail-message="Please define 'teamcity.distribution' or 'path.variable.teamcitydistribution' property in build.properties file (see build.properties.dist). The property should point to unpacked TeamCity .tar.gz or .exe distribution."
         />
 
       <condition property="teamcity.distribution.not.present">
@@ -117,7 +119,7 @@
         </not>
       </condition>
       <fail if="teamcity.distribution.not.present"
-            message="Cannot find TeamCity distribution at path '${path.variable.teamcitydistribution}'. The property 'path.variable.teamcitydistribution' should point to unpacked TeamCity .tar.gz or .exe distribution."/>
+            message="Cannot find TeamCity distribution at path '${path.variable.teamcitydistribution}'. The property 'teamcity.distribution' or 'path.variable.teamcitydistribution' should point to unpacked TeamCity .tar.gz or .exe distribution."/>
   </target>
 
   <macrodef name="deploy.teamcity.plugin">
@@ -188,12 +190,18 @@
   </macrodef>
 
 
-  <target name="prepare.common.part" if="common.needed">
-    <mkdir dir="${teamcity.internal.distrib.prep.common}"/>
-    <jar destfile="${teamcity.internal.distrib.prep.common}/${common.jar.name}">
-      <fileset dir="${common.output}"/>
-    </jar>
-  </target>
+
+
+
+  <macrodef name="prepare.common.part">
+    <attribute name="common.jar.path"/>
+    <attribute name="common.output"/>
+    <sequential>
+      <jar destfile="@{common.jar.path}">
+        <fileset dir="@{common.output}"/>
+      </jar>
+    </sequential>
+  </macrodef>
 
 
   <target name="prepare.server.part" if="server.needed">
@@ -204,7 +212,7 @@
     </jar>
 
     <copy todir="${out.unpacked}/server" failonerror="false">
-      <fileset file="${teamcity.internal.distrib.prep.common}/${common.jar.name}"/>
+      <fileset file="${common.jar.path}"/>
       <fileset dir="${lib.dir}" includes="${lib.includes}"/>
     </copy>
   </target>
@@ -221,7 +229,7 @@
     </jar>
 
     <copy todir="${teamcity.internal.distrib.prep.agent.jars}/${name}/lib" failonerror="false">
-      <fileset file="${teamcity.internal.distrib.prep.common}/${common.jar.name}"/>
+      <fileset file="${common.jar.path}"/>
     </copy>
 
     <zip destfile="${out.unpacked}/agent/${name}.zip">
