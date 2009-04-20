@@ -1,8 +1,6 @@
-commit 7c1e465d5d2deee065ee3e0f5b5da2b446fd4f56
-Date:   Mon Apr 13 13:53:36 2009 +0200
+Last commit:
 
-With patches:
-
- * Changed Transport class hierarchy basing on underlying transport
- * Moved common SSH related functionality to the base class SshTransport
- * Extracted AWT-independent superclass from DefaultSshSessionFactory
+Commit 9582c39bebb3f624cb6c462c09872fd64d2dc11b
+Author: Robin Rosenberg <robin.rosenberg@dewire.com>
+Date:   Sun Apr 19 00:17:20 2009 +0200
+Subject: Add a reference to majordomo for Git ML.
