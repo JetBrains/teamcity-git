@@ -1,2 +1,6 @@
-commit 7b778e80c3fbf8ab360706b0b7eff15cc6c0c0b6
-Date:   Fri Apr 10 20:27:31 2009 +0400
+Last commit:
+
+Commit 9582c39bebb3f624cb6c462c09872fd64d2dc11b
+Author: Robin Rosenberg <robin.rosenberg@dewire.com>
+Date:   Sun Apr 19 00:17:20 2009 +0200
+Subject: Add a reference to majordomo for Git ML.
