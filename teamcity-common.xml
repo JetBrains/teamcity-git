@@ -63,8 +63,10 @@
 
 
       <mkdir dir="${teamcity.internal.distrib.prep.common}"/>
-      <prepare.common.part common.output="@{common.output}"
-                           common.jar.path="${teamcity.internal.distrib.prep.common}/@{common.jar.name}"/>
+      <antcall target="prepare.common.part">
+        <param name="common.output" value="@{common.output}"/>
+        <param name="common.jar.path" value="${teamcity.internal.distrib.prep.common}/@{common.jar.name}"/>
+      </antcall>
 
       <antcall target="prepare.server.part">
         <param name="out.unpacked" value="@{out.unpacked}"/>
@@ -193,15 +195,11 @@
 
 
 
-  <macrodef name="prepare.common.part">
-    <attribute name="common.jar.path"/>
-    <attribute name="common.output"/>
-    <sequential>
-      <jar destfile="@{common.jar.path}">
-        <fileset dir="@{common.output}"/>
-      </jar>
-    </sequential>
-  </macrodef>
+  <target name="prepare.common.part" if="common.needed">
+    <jar destfile="${common.jar.path}">
+      <fileset dir="${common.output}"/>
+    </jar>
+  </target>
 
 
   <target name="prepare.server.part" if="server.needed">
