@@ -132,7 +132,7 @@ public class GitUtils {
       } else {
         final RepositoryConfig config = r.getConfig();
         final String existingRemote = config.getString("teamcity", null, "remote");
-        if (existingRemote != null && !remote.equals(existingRemote)) {
+        if (existingRemote != null && !remote.toString().equals(existingRemote)) {
           throw new VcsException(
             "The specified directory " + dir + " is already used for another remote " + existingRemote + " and cannot be used for others.");
         }
