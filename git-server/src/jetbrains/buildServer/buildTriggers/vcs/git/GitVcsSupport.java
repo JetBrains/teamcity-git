@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import jetbrains.buildServer.buildTriggers.vcs.git.ssh.HeadlessSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.RefreshableSshConfigSessionFactory;
@@ -76,7 +77,12 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    */
   public GitVcsSupport(@Nullable ServerPaths serverPaths) {
     this.myServerPaths = serverPaths;
-    this.mySshSessionFactory = new RefreshableSshConfigSessionFactory();
+    if (serverPaths == null) {
+      // the test mode
+      this.mySshSessionFactory = new HeadlessSshSessionFactory();
+    } else {
+      this.mySshSessionFactory = new RefreshableSshConfigSessionFactory();
+    }
   }
 
   /**
