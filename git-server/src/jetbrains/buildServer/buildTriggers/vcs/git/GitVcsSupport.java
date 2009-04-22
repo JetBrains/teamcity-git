@@ -17,9 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.ssh.HeadlessSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
+import jetbrains.buildServer.buildTriggers.vcs.git.ssh.RefreshableSshConfigSessionFactory;
 import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -67,7 +67,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    * The default SSH session factory used for not explicitly configured host
    * It fails when user is prompted for some information.
    */
-  final HeadlessSshSessionFactory mySshSessionFactory;
+  final SshSessionFactory mySshSessionFactory;
 
   /**
    * The constructor
@@ -76,7 +76,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    */
   public GitVcsSupport(@Nullable ServerPaths serverPaths) {
     this.myServerPaths = serverPaths;
-    this.mySshSessionFactory = new HeadlessSshSessionFactory();
+    this.mySshSessionFactory = new RefreshableSshConfigSessionFactory();
   }
 
   /**
@@ -792,7 +792,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    *
    * @param s settings object
    * @return the repository instance
-   * @throws VcsException
+   * @throws VcsException if the repository could not be accessed
    */
   private static Repository getRepository(Settings s) throws VcsException {
     return GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
@@ -806,6 +806,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    * @return the transport instance
    * @throws NotSupportedException if transport is not supported
    * @throws URISyntaxException    if URI is incorrect syntax
+   * @throws VcsException          if there is a problem with configuring the transport
    */
   private Transport openTransport(Settings s, Repository r) throws NotSupportedException, URISyntaxException, VcsException {
     final Transport t = Transport.open(r, s.getRepositoryURL());
