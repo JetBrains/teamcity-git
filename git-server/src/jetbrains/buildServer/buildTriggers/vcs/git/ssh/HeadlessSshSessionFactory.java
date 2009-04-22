@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git;
+package jetbrains.buildServer.buildTriggers.vcs.git.ssh;
 
 import com.jcraft.jsch.Session;
 import org.spearce.jgit.transport.OpenSshConfig;
 import org.spearce.jgit.transport.SshConfigSessionFactory;
+
+import java.io.OutputStream;
 
 /**
  * A headless SSH session factory that is based on ~/.ssh/config settings.
@@ -31,5 +33,13 @@ public class HeadlessSshSessionFactory extends SshConfigSessionFactory {
    */
   protected void configure(OpenSshConfig.Host hc, Session session) {
     // do nothing, UserInfo will not be set and openning connection will fail
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public OutputStream getErrorStream() {
+    return SshUtils.craeteStdErr();
   }
 }

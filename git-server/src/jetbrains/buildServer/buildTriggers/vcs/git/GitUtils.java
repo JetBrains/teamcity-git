@@ -22,6 +22,7 @@ import org.spearce.jgit.lib.Commit;
 import org.spearce.jgit.lib.PersonIdent;
 import org.spearce.jgit.lib.Repository;
 import org.spearce.jgit.lib.RepositoryConfig;
+import org.spearce.jgit.transport.URIish;
 
 import java.io.File;
 import java.util.Comparator;
@@ -109,7 +110,7 @@ public class GitUtils {
    * @return a connection to repository
    * @throws VcsException if the there is a problem with accessing VCS
    */
-  public static Repository getRepository(File dir, String remote) throws VcsException {
+  public static Repository getRepository(File dir, URIish remote) throws VcsException {
     final File parentFile = dir.getParentFile();
     if (!parentFile.exists()) {
       if (!parentFile.mkdirs()) {
@@ -126,7 +127,7 @@ public class GitUtils {
         r.create();
         final RepositoryConfig config = r.getConfig();
         config.setString("core", null, "bare", "true");
-        config.setString("teamcity", null, "remote", remote);
+        config.setString("teamcity", null, "remote", remote.toString());
         config.save();
       } else {
         final RepositoryConfig config = r.getConfig();

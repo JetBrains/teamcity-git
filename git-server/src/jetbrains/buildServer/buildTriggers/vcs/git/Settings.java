@@ -31,7 +31,7 @@ public class Settings {
   /**
    * The url for the repository
    */
-  private String repositoryURL;
+  private URIish repositoryURL;
   /**
    * The public URL
    */
@@ -48,6 +48,18 @@ public class Settings {
    * The style for user name
    */
   private UserNameStyle usernameStyle;
+  /**
+   * The authentication method
+   */
+  private AuthenticationMethod authenticationMethod;
+  /**
+   * The passphrase (used for {@link AuthenticationMethod#PRIVATE_KEY_FILE})
+   */
+  private String passprase;
+  /**
+   * The private key file (used for {@link AuthenticationMethod#PRIVATE_KEY_FILE})
+   */
+  private String privateKeyFile;
 
   /**
    * The constructor from the root object
@@ -59,8 +71,12 @@ public class Settings {
     final String p = root.getProperty(Constants.PATH);
     repositoryPath = p == null ? null : new File(p);
     branch = root.getProperty(Constants.BRANCH_NAME);
-    String username = root.getProperty(Constants.USERNAME);
-    String password = root.getProperty(Constants.PASSWORD);
+    final String style = root.getProperty(Constants.USERNAME_STYLE);
+    usernameStyle = style == null ? UserNameStyle.USERID : Enum.valueOf(UserNameStyle.class, style);
+    final String authMethod = root.getProperty(Constants.AUTH_METHOD);
+    authenticationMethod = authMethod == null ? AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, authMethod);
+    String username = authenticationMethod == AuthenticationMethod.ANONYMOUS ? null : root.getProperty(Constants.USERNAME);
+    String password = authenticationMethod != AuthenticationMethod.PASSWORD ? null : root.getProperty(Constants.PASSWORD);
     final String remote = root.getProperty(Constants.URL);
     URIish uri;
     try {
@@ -74,10 +90,12 @@ public class Settings {
     if (!StringUtil.isEmpty(password)) {
       uri = uri.setPass(password);
     }
+    if (authenticationMethod == AuthenticationMethod.PRIVATE_KEY_FILE) {
+      passprase = root.getProperty(Constants.PASSPHRASE);
+      privateKeyFile = root.getProperty(Constants.PRIVATE_KEY_PATH);
+    }
     publicURL = uri.toString();
-    repositoryURL = uri.toPrivateString();
-    final String style = root.getProperty(Constants.USERNAME_STYLE);
-    usernameStyle = style == null ? UserNameStyle.USERID : Enum.valueOf(UserNameStyle.class, style);
+    repositoryURL = uri;
   }
 
   /**
@@ -113,7 +131,7 @@ public class Settings {
   /**
    * @return the URL for the repository
    */
-  public String getRepositoryURL() {
+  public URIish getRepositoryURL() {
     return repositoryURL;
   }
 
@@ -129,6 +147,52 @@ public class Settings {
    */
   public String debugInfo() {
     return " (" + getRepositoryPath() + ", " + getPublicURL() + "#" + getBranch() + ")";
+  }
+
+  /**
+   * Authentication method to use
+   *
+   * @return the authentication method
+   */
+  public AuthenticationMethod getAuthenticationMethod() {
+    return authenticationMethod;
+  }
+
+
+  /**
+   * @return the passphrase for private key
+   */
+  public String getPassprase() {
+    return passprase;
+  }
+
+  /**
+   * @return the path to private key file
+   */
+  public String getPrivateKeyFile() {
+    return privateKeyFile;
+  }
+
+  /**
+   * Authentication method
+   */
+  enum AuthenticationMethod {
+    /**
+     * Anonymous access (or password is a part of URL)
+     */
+    ANONYMOUS,
+    /**
+     * The default SSH private key
+     */
+    PRIVATE_KEY_DEFAULT,
+    /**
+     * The private key is specified in the file
+     */
+    PRIVATE_KEY_FILE,
+    /**
+     * The password is used
+     */
+    PASSWORD
   }
 
   /**

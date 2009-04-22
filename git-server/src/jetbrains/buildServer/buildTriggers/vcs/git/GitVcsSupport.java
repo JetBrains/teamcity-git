@@ -17,6 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import jetbrains.buildServer.buildTriggers.vcs.git.ssh.HeadlessSshSessionFactory;
+import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
+import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
 import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -124,7 +127,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     List<ModificationData> rc = new ArrayList<ModificationData>();
     Settings s = createSettings(root);
     try {
-      Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+      Repository r = getRepository(s);
       try {
         LOG.info("Collecting changes " + fromVersion + ".." + currentVersion + " for " + s.debugInfo());
         final String current = GitUtils.versionRevision(currentVersion);
@@ -341,7 +344,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     builder.setWorkingMode_WithCheckoutRules(checkoutRules);
     Settings s = createSettings(root);
     try {
-      Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+      Repository r = getRepository(s);
       try {
         Commit toCommit = ensureCommitLoaded(s, r, GitUtils.versionRevision(toVersion));
         if (toCommit == null) {
@@ -488,7 +491,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
   public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot versionedRoot, @NotNull String version) throws VcsException {
     Settings s = createSettings(versionedRoot);
     try {
-      Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+      Repository r = getRepository(s);
       try {
         LOG.info("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
         final String rev = GitUtils.versionRevision(version);
@@ -629,7 +632,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
   public String getCurrentVersion(@NotNull VcsRoot root) throws VcsException {
     Settings s = createSettings(root);
     try {
-      Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+      Repository r = getRepository(s);
       try {
         fetchBranchData(s, r);
         String refName = GitUtils.branchRef(s.getBranch());
@@ -674,7 +677,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
     Settings s = createSettings(vcsRoot);
     try {
-      Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+      Repository r = getRepository(s);
       try {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Openning connection for " + s.debugInfo());
@@ -718,7 +721,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
   private Settings createSettings(VcsRoot vcsRoot) throws VcsException {
     final Settings settings = new Settings(vcsRoot);
     if (settings.getRepositoryPath() == null) {
-      String url = settings.getRepositoryURL();
+      String url = settings.getRepositoryURL().toString();
       File dir = new File(myServerPaths.getCachesDir());
       String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
       settings.setRepositoryPath(new File(dir, "git" + File.separatorChar + name));
@@ -743,7 +746,7 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     throws VcsException {
     Settings s = createSettings(root);
     try {
-      Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+      Repository r = getRepository(s);
       try {
         final ObjectId rev = versionObjectId(version);
         ensureCommitLoaded(s, r, rev.name());
@@ -785,6 +788,17 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
   }
 
   /**
+   * Get repository using settings objct
+   *
+   * @param s settings object
+   * @return the repository instance
+   * @throws VcsException
+   */
+  private static Repository getRepository(Settings s) throws VcsException {
+    return GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+  }
+
+  /**
    * Open transport for the repository
    *
    * @param s the vcs settings
@@ -793,13 +807,33 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    * @throws NotSupportedException if transport is not supported
    * @throws URISyntaxException    if URI is incorrect syntax
    */
-  private Transport openTransport(Settings s, Repository r) throws NotSupportedException, URISyntaxException {
+  private Transport openTransport(Settings s, Repository r) throws NotSupportedException, URISyntaxException, VcsException {
     final Transport t = Transport.open(r, s.getRepositoryURL());
     if (t instanceof SshTransport) {
       SshTransport ssh = (SshTransport)t;
-      ssh.setSshSessionFactory(mySshSessionFactory);
+      ssh.setSshSessionFactory(getSshSessionFactory(s));
     }
     return t;
+  }
+
+  /**
+   * Get appropriate session factory object using settings
+   *
+   * @param s a vcs root settings
+   * @return session factory object
+   * @throws VcsException in case of problems with creating object
+   */
+  private SshSessionFactory getSshSessionFactory(Settings s) throws VcsException {
+    switch (s.getAuthenticationMethod()) {
+      case PRIVATE_KEY_DEFAULT:
+        return mySshSessionFactory;
+      case PRIVATE_KEY_FILE:
+        return new PrivateKeyFileSshSessionFactory(s);
+      case PASSWORD:
+        return PasswordSshSessionFactory.INSTANCE;
+      default:
+        throw new VcsException("The authentication method " + s.getAuthenticationMethod() + " is not supported for SSH");
+    }
   }
 
   /**

@@ -46,23 +46,83 @@
         <props:option value="FULL">Full (John Smith &lt;jsmith@example.org&gt;)</props:option>
       </props:selectProperty>
         <div class="smallNote" style="margin: 0;">Changing user name style will affect only newly collected changes.
-          old changes will continue to be stored with the style that was active at the time of collecting changes.
+          Old changes will continue to be stored with the style that was active at the time of collecting changes.
         </div>
       </td>
     </tr>
   </l:settingsGroup>
-  <l:settingsGroup title="Authorization settings">
+  <l:settingsGroup title="Authentication settings">
     <tr>
       <td colspan="2">Authorization settings can be required if the repository is password protected.</td>
     </tr>
     <tr>
-      <th><label for="username">User name:</label></th>
-      <td><props:textProperty name="username"/></td>
+      <th><label for="authMethod">Authentication Method:</label></th>
+      <td><props:selectProperty name="authMethod" onchange="gitSelectAuthentication()">
+        <props:option value="ANONYMOUS">Anonymous</props:option>
+        <props:option value="PRIVATE_KEY_DEFAULT">Default Private Key</props:option>
+        <props:option value="PASSWORD">Password</props:option>
+        <props:option value="PRIVATE_KEY_FILE">Private Key</props:option>
+      </props:selectProperty>
+        <div id="sshPrivateKeyNote" class="smallNote" style="margin: 0">Valid only for SSH protocol.</div>
+        <div id="defaultPrivateKeyNote" class="smallNote" style="margin: 0">Uses mapping specified in the file ~/.ssh/config if that that
+          file exists.
+        </div>
+      </td>
     </tr>
-    <tr>
+    <tr id="gitUsername">
+      <th><label for="username">User name:</label></th>
+      <td><props:textProperty name="username"/>
+        <div class="smallNote" style="margin: 0">Username must be specified is there is no username in the clone URL.
+          The user name specified here overrides username from URL.
+        </div>
+      </td>
+    </tr>
+    <tr id="gitPasswordRow">
       <th><label for="secure:password">Password:</label></th>
       <td><props:passwordProperty name="secure:password"/></td>
     </tr>
+    <tr id="gitPrivateKeyRow">
+      <th><label for="privateKeyPath">Private Key Path: <l:star/></label></th>
+      <td><props:textProperty name="privateKeyPath" className="longField"/>
+        <div class="smallNote" style="margin: 0;">Specify path to the private key
+          on the TeamCity server host.
+        </div>
+      </td>
+    </tr>
+    <tr id="gitPassphraseRow">
+      <th><label for="secure:passphrase">Passphrase:</label></th>
+      <td><props:passwordProperty name="secure:passphrase"/></td>
+    </tr>
   </l:settingsGroup>
-
 </table>
+<script type="text/javascript">
+  function gitSelectAuthentication() {
+    var c = $('authMethod');
+    switch (c.value) {
+      case 'PRIVATE_KEY_DEFAULT':
+        BS.Util.hide('gitPasswordRow', 'gitPrivateKeyRow', 'gitPassphraseRow');
+        BS.Util.show('gitUsername');
+        BS.Util.show('sshPrivateKeyNote', 'defaultPrivateKeyNote');
+        break;
+      case 'PRIVATE_KEY_FILE':
+        BS.Util.hide('gitPasswordRow');
+        BS.Util.show('gitUsername', 'gitPrivateKeyRow', 'gitPassphraseRow');
+        BS.Util.hide('defaultPrivateKeyNote');
+        BS.Util.show('sshPrivateKeyNote');
+        break;
+      case 'PASSWORD':
+        BS.Util.show('gitUsername', 'gitPasswordRow');
+        BS.Util.hide('gitPrivateKeyRow', 'gitPassphraseRow');
+        BS.Util.hide('sshPrivateKeyNote', 'defaultPrivateKeyNote');
+        break;
+      case 'ANONYMOUS':
+        BS.Util.hide('gitUsername', 'gitPasswordRow', 'gitPrivateKeyRow', 'gitPassphraseRow');
+        BS.Util.hide('sshPrivateKeyNote', 'defaultPrivateKeyNote');
+        break;
+      default:
+        alert('Unknown value: ' + c.value);
+        break;
+    }
+  }
+  gitSelectAuthentication();
+</script>

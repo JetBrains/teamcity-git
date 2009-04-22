@@ -37,11 +37,23 @@ public interface Constants {
   /**
    * The user name property
    */
+  public static String AUTH_METHOD = "authMethod";
+  /**
+   * The user name property
+   */
   public static String USERNAME = "username";
+  /**
+   * The user name property
+   */
+  public static String PRIVATE_KEY_PATH = "privateKeyPath";
   /**
    * The password property name
    */
   public static String PASSWORD = VcsRoot.SECURE_PROPERTY_PREFIX + "password";
+  /**
+   * The password property name
+   */
+  public static String PASSPHRASE = VcsRoot.SECURE_PROPERTY_PREFIX + "passphrase";
   /**
    * The vcs name
    */
