@@ -209,7 +209,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master");
     // ensure that all revisions reachable from master are fetched
-    final List<ModificationData> ms = support.collectBuildChanges(root, VERSION_TEST_HEAD, CUD1_VERSION, null);
+    final List<ModificationData> ms = support.collectChanges(root, VERSION_TEST_HEAD, CUD1_VERSION, new CheckoutRules(""));
     assertEquals(2, ms.size());
     ModificationData m2 = ms.get(1);
     assertEquals("The second commit\n", m2.getDescription());
@@ -234,10 +234,10 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals("dir/tr.txt", ch12.getFileName());
     assertEquals(VcsChange.Type.REMOVED, ch12.getType());
     // now check merge commit relatively to the branch
-    final List<ModificationData> mms0 = support.collectBuildChanges(root, MERGE_BRANCH_VERSION, MERGE_VERSION, null);
+    final List<ModificationData> mms0 = support.collectChanges(root, MERGE_BRANCH_VERSION, MERGE_VERSION, new CheckoutRules(""));
     assertEquals(2, mms0.size());
     // no check the merge commit relatively to the fork
-    final List<ModificationData> mms1 = support.collectBuildChanges(root, CUD1_VERSION, MERGE_VERSION, null);
+    final List<ModificationData> mms1 = support.collectChanges(root, CUD1_VERSION, MERGE_VERSION, new CheckoutRules(""));
     assertEquals(3, mms1.size());
     ModificationData md1 = mms1.get(0);
     assertEquals("merge commit\n", md1.getDescription());
@@ -261,7 +261,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(2, md3.getChanges().size());
     // check the case with broken commit
     String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), GitUtils.versionTime(CUD1_VERSION));
-    final List<ModificationData> mms2 = support.collectBuildChanges(root, missing, MERGE_VERSION, null);
+    final List<ModificationData> mms2 = support.collectChanges(root, missing, MERGE_VERSION, new CheckoutRules(""));
     assertEquals(4, mms2.size());
     ModificationData mb3 = mms2.get(3);
     assertEquals(GitUtils.SYSTEM_USER, mb3.getUserName());

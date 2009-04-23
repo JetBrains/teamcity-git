@@ -51,7 +51,8 @@ import java.util.*;
 /**
  * Git VCS support
  */
-public class GitVcsSupport extends VcsSupport implements LabelingSupport {
+public class GitVcsSupport extends ServerVcsSupport
+  implements LabelingSupport, VcsFileContentProvider, CollectChangesByCheckoutRules, BuildPatchByCheckoutRules {
   /**
    * logger instance
    */
@@ -123,13 +124,14 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
     return new VcsException("The " + operation + " failed: " + message, ex);
   }
 
+
   /**
    * {@inheritDoc}
    */
-  public List<ModificationData> collectBuildChanges(VcsRoot root,
-                                                    @NotNull String fromVersion,
-                                                    @NotNull String currentVersion,
-                                                    CheckoutRules checkoutRules) throws VcsException {
+  public List<ModificationData> collectChanges(@NotNull VcsRoot root,
+                                               @NotNull String fromVersion,
+                                               @Nullable String currentVersion,
+                                               @NotNull CheckoutRules checkoutRules) throws VcsException {
     List<ModificationData> rc = new ArrayList<ModificationData>();
     Settings s = createSettings(root);
     try {
@@ -657,6 +659,13 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
   }
 
   /**
+   * {@inheritDoc}
+   */
+  public boolean sourcesUpdatePossibleIfChangesNotFound(@NotNull VcsRoot root) {
+    return true;
+  }
+
+  /**
    * Fetch data for the branch
    *
    * @param settings   settings for the root
@@ -742,6 +751,21 @@ public class GitVcsSupport extends VcsSupport implements LabelingSupport {
    * {@inheritDoc}
    */
   public LabelingSupport getLabelingSupport() {
+    return this;
+  }
+
+  @NotNull
+  public VcsFileContentProvider getContentProvider() {
+    return this;
+  }
+
+  @NotNull
+  public CollectChangesPolicy getCollectChangesPolicy() {
+    return this;
+  }
+
+  @NotNull
+  public BuildPatchPolicy getBuildPatchPolicy() {
     return this;
   }
 
