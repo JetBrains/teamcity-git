@@ -1,3 +1,4 @@
+<%@ page import="java.io.File" %>
 <%@include file="/include.jsp" %>
 <%@ taglib prefix="props" tagdir="/WEB-INF/tags/props" %>
 <%--
@@ -18,7 +19,8 @@
 
 <jsp:useBean id="propertiesBean" scope="request" type="jetbrains.buildServer.controllers.BasePropertiesBean"/>
 <table class="runnerFormTable">
-
+  <c:set var="userHome"
+         value='<%=new File(System.getProperty("user.home"), ".ssh"+File.separator+"config").getAbsolutePath() %>'/>
   <l:settingsGroup title="General Settings">
     <tr>
       <th><label for="repositoryPath">Clone URL: <l:star/></label></th>
@@ -64,8 +66,8 @@
         <props:option value="PRIVATE_KEY_FILE">Private Key</props:option>
       </props:selectProperty>
         <div id="sshPrivateKeyNote" class="smallNote" style="margin: 0">Valid only for SSH protocol.</div>
-        <div id="defaultPrivateKeyNote" class="smallNote" style="margin: 0">Uses mapping specified in the file ~/.ssh/config if that that
-          file exists.
+        <div id="defaultPrivateKeyNote" class="smallNote" style="margin: 0">Uses mapping specified in the file
+          ${userHome} if that that file exists.
         </div>
       </td>
     </tr>
