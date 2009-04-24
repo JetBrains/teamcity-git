@@ -23,8 +23,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.spearce.jgit.transport.SshSessionFactory;
 
-import java.io.OutputStream;
-
 /**
  * The SSH session factory that uses explicitly specified private key file
  * for authentication.
@@ -65,13 +63,5 @@ public class PrivateKeyFileSshSessionFactory extends SshSessionFactory {
    */
   public Session getSession(String user, String pass, String host, int port) throws JSchException {
     return SshUtils.createSession(sch, user, host, port);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public OutputStream getErrorStream() {
-    return SshUtils.craeteStdErr();
   }
 }

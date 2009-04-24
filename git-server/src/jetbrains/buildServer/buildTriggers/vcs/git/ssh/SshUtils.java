@@ -20,8 +20,6 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 
-import java.io.OutputStream;
-
 /**
  * Some common functionality for SSH
  */
@@ -48,15 +46,5 @@ public class SshUtils {
     final Session session = sch.getSession(user, host, port);
     session.setConfig("StrictHostKeyChecking", "no");
     return session;
-  }
-
-  /**
-   * Placeholder method for creating stderr stream.
-   *
-   * @return nothing yet
-   * @throws IllegalStateException always thrown
-   */
-  static OutputStream craeteStdErr() {
-    throw new IllegalStateException("This method should not be reachable");
   }
 }

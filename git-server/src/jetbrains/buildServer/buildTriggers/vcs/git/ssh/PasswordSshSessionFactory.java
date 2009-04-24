@@ -21,8 +21,6 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import org.spearce.jgit.transport.SshSessionFactory;
 
-import java.io.OutputStream;
-
 /**
  * A simple session factory used for passowrd authentication.
  * It assume that password was passed in URL to ssh.
@@ -51,12 +49,5 @@ public class PasswordSshSessionFactory extends SshSessionFactory {
     final Session session = SshUtils.createSession(sch, user, host, port);
     session.setPassword(pass);
     return session;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  public OutputStream getErrorStream() {
-    return SshUtils.craeteStdErr();
   }
 }

@@ -1,6 +1,6 @@
 Last commit:
 
-Commit 9582c39bebb3f624cb6c462c09872fd64d2dc11b
-Author: Robin Rosenberg <robin.rosenberg@dewire.com>
-Date:   Sun Apr 19 00:17:20 2009 +0200
-Subject: Add a reference to majordomo for Git ML.
+commit 0114d4c082779d7e5f3f1a04564fc0d149d7b89a
+Author: Constantine Plotnikov <constantine.plotnikov@gmail.com>
+Date:   Tue Apr 21 22:49:56 2009 +0400
+Subject: Removed possibility to change stderr for ssh sessions

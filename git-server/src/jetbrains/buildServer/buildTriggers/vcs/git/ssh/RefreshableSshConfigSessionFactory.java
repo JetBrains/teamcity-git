@@ -25,7 +25,6 @@ import org.jetbrains.annotations.NotNull;
 import org.spearce.jgit.transport.SshSessionFactory;
 
 import java.io.File;
-import java.io.OutputStream;
 
 /**
  * A {@link SshSessionFactory} that refreshes it states when the content of ~/.ssh directory changes. The factory delegates its work to {@link HeadlessSshSessionFactory}.
@@ -96,12 +95,5 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
    */
   public Session getSession(String user, String pass, String host, int port) throws JSchException {
     return delegate().getSession(user, pass, host, port);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  public OutputStream getErrorStream() {
-    return delegate().getErrorStream();
   }
 }
