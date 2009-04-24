@@ -60,6 +60,10 @@ public class Settings {
    * The private key file (used for {@link AuthenticationMethod#PRIVATE_KEY_FILE})
    */
   private String privateKeyFile;
+  /**
+   * If true, known hosts are ignored
+   */
+  private boolean ignoreKnownHosts;
 
   /**
    * The constructor from the root object
@@ -77,6 +81,7 @@ public class Settings {
     authenticationMethod = authMethod == null ? AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, authMethod);
     String username = authenticationMethod == AuthenticationMethod.ANONYMOUS ? null : root.getProperty(Constants.USERNAME);
     String password = authenticationMethod != AuthenticationMethod.PASSWORD ? null : root.getProperty(Constants.PASSWORD);
+    ignoreKnownHosts = "true".equals(root.getProperty(Constants.IGNORE_KNOWN_HOSTS));
     final String remote = root.getProperty(Constants.URL);
     URIish uri;
     try {
@@ -171,6 +176,13 @@ public class Settings {
    */
   public String getPrivateKeyFile() {
     return privateKeyFile;
+  }
+
+  /**
+   * @return true if the result of checking in known hosts database should be ignored
+   */
+  public boolean isKnownHostsIgnored() {
+    return ignoreKnownHosts;
   }
 
   /**

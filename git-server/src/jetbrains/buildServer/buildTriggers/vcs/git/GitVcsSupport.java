@@ -17,7 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.ssh.HeadlessSshSessionFactory;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.RefreshableSshConfigSessionFactory;
@@ -52,7 +53,7 @@ import java.util.*;
  * Git VCS support
  */
 public class GitVcsSupport extends ServerVcsSupport
-  implements LabelingSupport, VcsFileContentProvider, CollectChangesByCheckoutRules, BuildPatchByCheckoutRules {
+  implements LabelingSupport, VcsFileContentProvider, CollectChangesByCheckoutRules, BuildPatchByCheckoutRules, TestConnectionSupport {
   /**
    * logger instance
    */
@@ -70,6 +71,10 @@ public class GitVcsSupport extends ServerVcsSupport
    * It fails when user is prompted for some information.
    */
   final SshSessionFactory mySshSessionFactory;
+  /**
+   * This factory is used when known host database is specified to be ignored
+   */
+  final SshSessionFactory mySshSessionFactoryKnownHostsIgnored;
 
   /**
    * The constructor
@@ -79,10 +84,19 @@ public class GitVcsSupport extends ServerVcsSupport
   public GitVcsSupport(@Nullable ServerPaths serverPaths) {
     this.myServerPaths = serverPaths;
     if (serverPaths == null) {
-      // the test mode
-      this.mySshSessionFactory = new HeadlessSshSessionFactory();
+      // the test mode, ssh is not available
+      this.mySshSessionFactory = null;
+      this.mySshSessionFactoryKnownHostsIgnored = null;
     } else {
       this.mySshSessionFactory = new RefreshableSshConfigSessionFactory();
+      this.mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory() {
+        // note that different instance is used because JSch cannot be shared with strick host checking
+        public Session getSession(String user, String pass, String host, int port) throws JSchException {
+          final Session session = super.getSession(user, pass, host, port);
+          session.setConfig("StrictHostKeyChecking", "no");
+          return session;
+        }
+      };
     }
   }
 
@@ -727,6 +741,14 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   /**
+   * {@inheritDoc}
+   */
+  @Override
+  public TestConnectionSupport getTestConnectionSupport() {
+    return this;
+  }
+
+  /**
    * Create settings object
    *
    * @param vcsRoot the root object
@@ -857,7 +879,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private SshSessionFactory getSshSessionFactory(Settings s) throws VcsException {
     switch (s.getAuthenticationMethod()) {
       case PRIVATE_KEY_DEFAULT:
-        return mySshSessionFactory;
+        return s.isKnownHostsIgnored() ? mySshSessionFactoryKnownHostsIgnored : mySshSessionFactory;
       case PRIVATE_KEY_FILE:
         return new PrivateKeyFileSshSessionFactory(s);
       case PASSWORD:

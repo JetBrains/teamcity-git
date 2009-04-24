@@ -77,6 +77,11 @@
         </div>
       </td>
     </tr>
+    <tr id="gitKnownHosts">
+      <th>Known Hosts Database:</th>
+      <td><props:checkboxProperty name="ignoreKnownHosts"/>
+        <label for="ignoreKnownHosts">Do not check</label></td>
+    </tr>
     <tr id="gitPasswordRow">
       <th><label for="secure:password">Password:</label></th>
       <td><props:passwordProperty name="secure:password"/></td>
@@ -101,22 +106,22 @@
     switch (c.value) {
       case 'PRIVATE_KEY_DEFAULT':
         BS.Util.hide('gitPasswordRow', 'gitPrivateKeyRow', 'gitPassphraseRow');
-        BS.Util.show('gitUsername');
+        BS.Util.show('gitUsername', 'gitKnownHosts');
         BS.Util.show('sshPrivateKeyNote', 'defaultPrivateKeyNote');
         break;
       case 'PRIVATE_KEY_FILE':
-        BS.Util.hide('gitPasswordRow');
+        BS.Util.hide('gitPasswordRow', 'gitKnownHosts');
         BS.Util.show('gitUsername', 'gitPrivateKeyRow', 'gitPassphraseRow');
         BS.Util.hide('defaultPrivateKeyNote');
         BS.Util.show('sshPrivateKeyNote');
         break;
       case 'PASSWORD':
         BS.Util.show('gitUsername', 'gitPasswordRow');
-        BS.Util.hide('gitPrivateKeyRow', 'gitPassphraseRow');
+        BS.Util.hide('gitPrivateKeyRow', 'gitPassphraseRow', 'gitKnownHosts');
         BS.Util.hide('sshPrivateKeyNote', 'defaultPrivateKeyNote');
         break;
       case 'ANONYMOUS':
-        BS.Util.hide('gitUsername', 'gitPasswordRow', 'gitPrivateKeyRow', 'gitPassphraseRow');
+        BS.Util.hide('gitUsername', 'gitPasswordRow', 'gitPrivateKeyRow', 'gitPassphraseRow', 'gitKnownHosts');
         BS.Util.hide('sshPrivateKeyNote', 'defaultPrivateKeyNote');
         break;
       default:

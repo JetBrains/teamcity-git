@@ -62,4 +62,8 @@ public interface Constants {
    * The user name property
    */
   public static String USERNAME_STYLE = "usernameStyle";
+  /**
+   * The ignore known hosts property
+   */
+  public static String IGNORE_KNOWN_HOSTS = "ignoreKnownHosts";
 }
