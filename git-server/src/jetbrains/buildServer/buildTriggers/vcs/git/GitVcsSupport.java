@@ -349,13 +349,6 @@ public class GitVcsSupport extends ServerVcsSupport
   /**
    * {@inheritDoc}
    */
-  public boolean isTestConnectionSupported() {
-    return true;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
   public void buildPatch(@NotNull VcsRoot root,
                          @Nullable String fromVersion,
                          @NotNull String toVersion,
@@ -749,7 +742,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   /**
-   * Create settings object
+   * Create settings object basing on vcs root configuration
    *
    * @param vcsRoot the root object
    * @return the created object
@@ -760,6 +753,8 @@ public class GitVcsSupport extends ServerVcsSupport
     if (settings.getRepositoryPath() == null) {
       String url = settings.getRepositoryURL().toString();
       File dir = new File(myServerPaths.getCachesDir());
+      // TODO the directory needs to be cleaned up
+      // TODO consider using a better hash in order to reduce a chance for conflict
       String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
       settings.setRepositoryPath(new File(dir, "git" + File.separatorChar + name));
       if (LOG.isDebugEnabled()) {
@@ -776,16 +771,25 @@ public class GitVcsSupport extends ServerVcsSupport
     return this;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @NotNull
   public VcsFileContentProvider getContentProvider() {
     return this;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @NotNull
   public CollectChangesPolicy getCollectChangesPolicy() {
     return this;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @NotNull
   public BuildPatchPolicy getBuildPatchPolicy() {
     return this;
