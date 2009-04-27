@@ -1,6 +1,6 @@
 Last commit:
 
-commit 0114d4c082779d7e5f3f1a04564fc0d149d7b89a
+commit 5c12302f5c412bc4d9bb4a98756b5b9f2c500f76
 Author: Constantine Plotnikov <constantine.plotnikov@gmail.com>
-Date:   Tue Apr 21 22:49:56 2009 +0400
-Subject: Removed possibility to change stderr for ssh sessions
+Date:   Fri Apr 24 19:36:57 2009 +0400
+Subject: Added support for creating bare repositories
