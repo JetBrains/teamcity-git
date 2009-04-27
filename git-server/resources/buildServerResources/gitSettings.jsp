@@ -34,8 +34,8 @@
     <tr>
       <th><label for="serverClonePath">Clone repository to: </label></th>
       <td><props:textProperty name="path" className="longField"/>
-        <div class="smallNote" style="margin: 0;">Provide path to a parent directory on TeamCity server where a
-          cloned repository should be created. Leave blank to use default path.
+        <div class="smallNote" style="margin: 0;">Provide path to a directory on TeamCity server where a
+          bare cloned repository should be created. Leave blank to use default path.
         </div>
       </td>
     </tr>

@@ -111,22 +111,14 @@ public class GitUtils {
    * @throws VcsException if the there is a problem with accessing VCS
    */
   public static Repository getRepository(File dir, URIish remote) throws VcsException {
-    final File parentFile = dir.getParentFile();
-    if (!parentFile.exists()) {
-      if (!parentFile.mkdirs()) {
-        throw new VcsException("Unable to created parent directory: " + parentFile);
-      }
-    }
-    boolean create = !dir.exists() || !new File(dir, "config").exists();
-    if (!create && !dir.isDirectory()) {
+    if (dir.exists() && !dir.isDirectory()) {
       throw new VcsException("The specified path is not a directory: " + dir);
     }
     try {
       Repository r = new Repository(dir);
-      if (create) {
-        r.create();
+      if (!new File(dir, "config").exists()) {
+        r.create(true);
         final RepositoryConfig config = r.getConfig();
-        config.setString("core", null, "bare", "true");
         config.setString("teamcity", null, "remote", remote.toString());
         config.save();
       } else {
@@ -134,7 +126,8 @@ public class GitUtils {
         final String existingRemote = config.getString("teamcity", null, "remote");
         if (existingRemote != null && !remote.toString().equals(existingRemote)) {
           throw new VcsException(
-            "The specified directory " + dir + " is already used for another remote " + existingRemote + " and cannot be used for others.");
+            "The specified directory " + dir + " is already used for another remote " + existingRemote +
+            " and cannot be used for others. Please specify the other directory explicitly.");
         }
       }
       return r;

@@ -130,9 +130,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     mySourceRep = myTempFiles.createTempDir();
     FileUtil.copyDir(masterRep, mySourceRep);
     myCloneRep = myTempFiles.createTempDir();
-    // TODO The directory is deleted because JGIT wants to create a git directory itself
-    //noinspection ResultOfMethodCallIgnored
-    myCloneRep.delete();
   }
 
   /**
