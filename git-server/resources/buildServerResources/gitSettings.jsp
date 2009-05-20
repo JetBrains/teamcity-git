@@ -103,7 +103,7 @@
   </l:settingsGroup>
 </table>
 <script type="text/javascript">
-  function gitSelectAuthentication() {
+  window.gitSelectAuthentication = function() {
     var c = $('authMethod');
     switch (c.value) {
       case 'PRIVATE_KEY_DEFAULT':
