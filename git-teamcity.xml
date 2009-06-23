@@ -68,11 +68,14 @@
       <include name="jre/lib/javaws.jar"/>
       <include name="jre/lib/jce.jar"/>
       <include name="jre/lib/jsse.jar"/>
+      <include name="jre/lib/management-agent.jar"/>
       <include name="jre/lib/plugin.jar"/>
+      <include name="jre/lib/resources.jar"/>
       <include name="jre/lib/rt.jar"/>
       <include name="jre/lib/ext/dnsns.jar"/>
       <include name="jre/lib/ext/localedata.jar"/>
       <include name="jre/lib/ext/sunjce_provider.jar"/>
+      <include name="jre/lib/ext/sunmscapi.jar"/>
       <include name="jre/lib/ext/sunpkcs11.jar"/>
     </fileset>
   </path>
@@ -85,7 +88,7 @@
   <!-- Project Libraries -->
 
   <path id="library.jgit.classpath">
-    <pathelement location="${basedir}/lib/jgit-0.4-SNAPSHOT.jar"/>
+    <pathelement location="${basedir}/lib/jgit-0.4.9-SNAPSHOT.jar"/>
     <pathelement location="${basedir}/lib/jsch-0.1.37.jar"/>
   </path>
 
@@ -124,6 +127,9 @@
   <path id="library.tomcat.classpath">
     <pathelement location="${path.variable.teamcitydistribution}/lib/servlet-api.jar"/>
   </path>
+
+
+  <!-- Global Libraries -->
 
   <!-- Modules -->
 
@@ -176,8 +182,8 @@
 
   <path id="git-server.module.sourcepath">
     <dirset dir="${module.git-server.basedir}/git-server">
-      <include name="src"/>
       <include name="resources"/>
+      <include name="src"/>
     </dirset>
   </path>
 
@@ -197,11 +203,11 @@
     </javac2>
 
     <copy todir="${git-server.output.dir}">
-      <fileset dir="${module.git-server.basedir}/git-server/src">
+      <fileset dir="${module.git-server.basedir}/git-server/resources">
         <patternset refid="compiler.resources"/>
         <type type="file"/>
       </fileset>
-      <fileset dir="${module.git-server.basedir}/git-server/resources">
+      <fileset dir="${module.git-server.basedir}/git-server/src">
         <patternset refid="compiler.resources"/>
         <type type="file"/>
       </fileset>
@@ -214,6 +220,56 @@
   <target name="clean.module.git-server" description="cleanup module">
     <delete dir="${git-server.output.dir}"/>
     <delete dir="${git-server.testoutput.dir}"/>
+  </target>
+
+
+  <!-- Module root -->
+
+  <dirname property="module.root.basedir" file="${ant.file}"/>
+
+
+  <property name="module.jdk.home.root" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.root" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.root" value="${project.jdk.classpath}"/>
+
+  <property name="compiler.args.root" value="${compiler.args}"/>
+
+  <property name="root.output.dir" value="${module.root.basedir}/out/production/root"/>
+  <property name="root.testoutput.dir" value="${module.root.basedir}/out/test/root"/>
+
+  <path id="root.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+
+  <path id="root.module.classpath">
+    <path refid="${module.jdk.classpath.root}"/>
+  </path>
+
+  <path id="root.runtime.module.classpath">
+    <pathelement location="${root.output.dir}"/>
+    <pathelement location="${root.testoutput.dir}"/>
+  </path>
+
+
+  <patternset id="excluded.from.module.root">
+    <patternset refid="ignored.files"/>
+  </patternset>
+
+  <patternset id="excluded.from.compilation.root">
+    <patternset refid="excluded.from.module.root"/>
+  </patternset>
+
+
+  <target name="compile.module.root" depends="compile.module.root.production,compile.module.root.tests" description="Compile module root"/>
+
+  <target name="compile.module.root.production" description="Compile module root; production classes"/>
+
+  <target name="compile.module.root.tests" depends="compile.module.root.production" description="compile module root; test classes"
+          unless="skip.tests"/>
+
+  <target name="clean.module.root" description="cleanup module">
+    <delete dir="${root.output.dir}"/>
+    <delete dir="${root.testoutput.dir}"/>
   </target>
 
 
@@ -314,7 +370,8 @@
     <!-- Perform any build initialization in this target -->
   </target>
 
-  <target name="clean" depends="clean.module.git-server, clean.module.git-tests" description="cleanup all"/>
+  <target name="clean" depends="clean.module.git-server, clean.module.root, clean.module.git-tests" description="cleanup all"/>
 
-  <target name="all" depends="init, clean, compile.module.git-server, compile.module.git-tests" description="build all"/>
+  <target name="all" depends="init, clean, compile.module.git-server, compile.module.root, compile.module.git-tests"
+          description="build all"/>
 </project>
