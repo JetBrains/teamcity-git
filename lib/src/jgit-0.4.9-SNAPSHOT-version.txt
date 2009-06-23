@@ -1,0 +1,6 @@
+Last commit:
+
+commit fd4bde3eac74946ab356d37f3516e2c5e2fed17c
+Author: Robin Rosenberg <robin.rosenberg@dewire.com>
+Date:   Mon Jun 15 23:25:36 2009 +0200
+Subject: Add a ref log reader class
