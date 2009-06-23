@@ -62,6 +62,10 @@ public class GitVcsSupportTest extends PatchTestCase {
   /**
    * The merge branch version
    */
+  private static final String SUBMODULE_MODIFIED_VERSION = GitUtils.makeVersion("37c371a6db0acefc77e3be99d16a44413e746591", 1245773817000L);
+  /**
+   * The merge branch version
+   */
   private static final String SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", 1245766034000L);
   /**
    * The merge branch version
@@ -294,7 +298,16 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(".gitmodules", ch11.getFileName());
     VcsChange ch12 = m1.getChanges().get(1);
     assertEquals("submodule", ch12.getFileName());
-    assertEquals(VcsChange.Type.ADDED, ch11.getType());
+    assertEquals(VcsChange.Type.ADDED, ch12.getType());
+    final List<ModificationData> ms2 =
+      support.collectChanges(root, SUBMODULE_ADDED_VERSION, SUBMODULE_MODIFIED_VERSION, new CheckoutRules(""));
+    assertEquals(1, ms.size());
+    ModificationData m2 = ms2.get(0);
+    assertEquals("submodule updated\n", m2.getDescription());
+    assertEquals(1, m2.getChanges().size());
+    VcsChange ch21 = m2.getChanges().get(0);
+    assertEquals("submodule", ch21.getFileName());
+    assertEquals(VcsChange.Type.CHANGED, ch21.getType());
   }
 
 
@@ -314,6 +327,19 @@ public class GitVcsSupportTest extends PatchTestCase {
     checkPatch("patch3", null, GitUtils.makeVersion("1837cf38309496165054af8bf7d62a9fe8997202", 1238421349000L));
     checkPatch("patch4", GitUtils.makeVersion("1837cf38309496165054af8bf7d62a9fe8997202", 1238421349000L),
                GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L));
+  }
+
+  /**
+   * Test patches
+   *
+   * @throws IOException  in case of test failure
+   * @throws VcsException in case of test failure
+   */
+  @Test
+  public void testSubmodulePatches() throws IOException, VcsException {
+    checkPatch("submodule-added-ignore", BEFORE_SUBMODULE_ADDED_VERSION, SUBMODULE_ADDED_VERSION);
+    checkPatch("submodule-removed-ignore", SUBMODULE_ADDED_VERSION, BEFORE_SUBMODULE_ADDED_VERSION);
+    checkPatch("submodule-modified-ignore", SUBMODULE_ADDED_VERSION, SUBMODULE_MODIFIED_VERSION);
   }
 
 

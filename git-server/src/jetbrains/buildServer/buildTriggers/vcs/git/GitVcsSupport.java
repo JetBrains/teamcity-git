@@ -394,7 +394,7 @@ public class GitVcsSupport extends ServerVcsSupport
             case MODIFIED:
             case ADDED:
             case FILE_MODE_CHANGED:
-              if (isFileIncluded(checkoutRules, file)) {
+              if (isFileIncluded(checkoutRules, file) && !FileMode.GITLINK.equals(tw.getFileMode(0))) {
                 ObjectId blobId = tw.getObjectId(0);
                 ObjectLoader loader = r.openBlob(blobId);
                 byte[] bytes = loader.getCachedBytes();
@@ -403,7 +403,9 @@ public class GitVcsSupport extends ServerVcsSupport
               }
               break;
             case DELETED:
-              builder.deleteFile(file, true);
+              if (!FileMode.GITLINK.equals(tw.getFileMode(0))) {
+                builder.deleteFile(file, true);
+              }
               break;
             default:
               throw new IllegalStateException("Unknown change type");
