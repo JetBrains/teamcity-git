@@ -60,6 +60,15 @@ public class GitVcsSupportTest extends PatchTestCase {
    */
   private static final String MERGE_BRANCH_VERSION = GitUtils.makeVersion("ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", 1238085489000L);
   /**
+   * The merge branch version
+   */
+  private static final String SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", 1245766034000L);
+  /**
+   * The merge branch version
+   */
+  private static final String BEFORE_SUBMODULE_ADDED_VERSION =
+    GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L);
+  /**
    * The source directory
    */
   protected File mySourceRep;
@@ -264,6 +273,30 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(GitUtils.SYSTEM_USER, mb3.getUserName());
     assertEquals(0, mb3.getChanges().size());
   }
+
+  /**
+   * Test getting changes for the build
+   *
+   * @throws Exception in case of IO problem
+   */
+  @Test
+  public void testCollectBuildChangesSubmodules() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("patch-tests");
+    final List<ModificationData> ms =
+      support.collectChanges(root, BEFORE_SUBMODULE_ADDED_VERSION, SUBMODULE_ADDED_VERSION, new CheckoutRules(""));
+    assertEquals(1, ms.size());
+    ModificationData m1 = ms.get(0);
+    assertEquals("added submodule\n", m1.getDescription());
+    assertEquals(2, m1.getChanges().size());
+    VcsChange ch11 = m1.getChanges().get(0);
+    assertEquals(VcsChange.Type.ADDED, ch11.getType());
+    assertEquals(".gitmodules", ch11.getFileName());
+    VcsChange ch12 = m1.getChanges().get(1);
+    assertEquals("submodule", ch12.getFileName());
+    assertEquals(VcsChange.Type.ADDED, ch11.getType());
+  }
+
 
   /**
    * Test patches
