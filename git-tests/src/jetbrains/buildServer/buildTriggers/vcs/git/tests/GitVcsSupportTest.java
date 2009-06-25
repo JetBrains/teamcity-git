@@ -20,6 +20,7 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -66,7 +67,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   /**
    * The merge branch version
    */
-  private static final String SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", 1245766034000L);
+  public static final String SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", 1245766034000L);
   /**
    * The merge branch version
    */
@@ -93,20 +94,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     }));
   }
 
-
-  /**
-   * Test data file
-   *
-   * @param path the file path relatively to data directory
-   * @return the IO file object (the file is absolute)
-   */
-  protected File dataFile(String... path) {
-    File f = new File("git-tests", "data");
-    for (String p : path) {
-      f = new File(f, p);
-    }
-    return f.getAbsoluteFile();
-  }
 
   /**
    * Create a VCS root for the current parameters and specified branch
