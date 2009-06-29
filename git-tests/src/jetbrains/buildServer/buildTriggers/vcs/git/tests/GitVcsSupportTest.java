@@ -63,7 +63,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   /**
    * The merge branch version
    */
-  private static final String SUBMODULE_MODIFIED_VERSION = GitUtils.makeVersion("37c371a6db0acefc77e3be99d16a44413e746591", 1245773817000L);
+  public static final String SUBMODULE_MODIFIED_VERSION = GitUtils.makeVersion("37c371a6db0acefc77e3be99d16a44413e746591", 1245773817000L);
   /**
    * The merge branch version
    */
@@ -71,7 +71,11 @@ public class GitVcsSupportTest extends PatchTestCase {
   /**
    * The merge branch version
    */
-  private static final String BEFORE_SUBMODULE_ADDED_VERSION =
+  public static final String SUBMODULE_TXT_ADDED_VERSION = GitUtils.makeVersion("d1a88fd33c516c1b607db75eb62244b2ea495c42", 1246534153000L);
+  /**
+   * The merge branch version
+   */
+  public static final String BEFORE_SUBMODULE_ADDED_VERSION =
     GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L);
   /**
    * The source directory

@@ -20,6 +20,7 @@ import org.spearce.jgit.lib.Config;
 import org.spearce.jgit.lib.RepositoryConfig;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 /**
@@ -38,6 +39,10 @@ public class SubmodulesConfig {
    * Loaded entries
    */
   private final Map<String, Submodule> myPathToEntry = new HashMap<String, Submodule>();
+  /**
+   * The set of direct parents for submodules
+   */
+  private final HashSet<String> mySubmoduleDirectParents = new HashSet<String>();
   /**
    * If true the configuration is loaded
    */
@@ -79,7 +84,24 @@ public class SubmodulesConfig {
         url = myModulesConfig.getString("submodule", name, "url");
       }
       myPathToEntry.put(path, new Submodule(name, path, url));
+      int p = path.lastIndexOf('/');
+      if (p == -1) {
+        p = 0;
+      }
+      mySubmoduleDirectParents.add(path.substring(0, p));
     }
     myIsLoaded = true;
+  }
+
+  /**
+   * Check if the specified prefix is a direct submodule parent. This check is used to detect
+   * situation when the directory might be reordered due to the submodules.
+   *
+   * @param path the path to be checked if it is a submoulde parent.
+   * @return true if the path can directly contain submodules
+   */
+  public boolean isSubmodulePrefix(String path) {
+    ensureLoaded();
+    return mySubmoduleDirectParents.contains(path);
   }
 }
