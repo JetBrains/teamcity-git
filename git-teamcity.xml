@@ -88,7 +88,7 @@
   <!-- Project Libraries -->
 
   <path id="library.jgit.classpath">
-    <pathelement location="${basedir}/lib/jgit-0.4.9-SNAPSHOT.jar"/>
+    <pathelement location="${basedir}/lib/jgit-0.5.0-SNAPSHOT.jar"/>
     <pathelement location="${basedir}/lib/jsch-0.1.37.jar"/>
   </path>
 
