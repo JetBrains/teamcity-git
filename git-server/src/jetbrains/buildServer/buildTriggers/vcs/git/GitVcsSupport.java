@@ -750,21 +750,14 @@ public class GitVcsSupport extends ServerVcsSupport
    * @return the created object
    * @throws VcsException in case of IO problems
    */
-  private Settings createSettings(VcsRoot vcsRoot) throws VcsException {
+  protected Settings createSettings(VcsRoot vcsRoot) throws VcsException {
     final Settings settings = new Settings(vcsRoot);
-    if (settings.getRepositoryPath() == null) {
-      String url = settings.getRepositoryURL().toString();
-      File dir = new File(myServerPaths.getCachesDir());
-      // TODO the directory needs to be cleaned up
-      // TODO consider using a better hash in order to reduce a chance for conflict
-      String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
-      settings.setRepositoryPath(new File(dir, "git" + File.separatorChar + name));
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Using internal directory for " + settings.debugInfo());
-      }
+    if (myServerPaths != null) {
+      settings.setCachesDirectory(myServerPaths.getCachesDir());
     }
     return settings;
   }
+
 
   /**
    * {@inheritDoc}

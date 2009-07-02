@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -28,6 +29,10 @@ import java.net.URISyntaxException;
  * Git Vcs Settings
  */
 public class Settings {
+  /**
+   * logger instance
+   */
+  private static Logger LOG = Logger.getInstance(Settings.class.getName());
   /**
    * The url for the repository
    */
@@ -68,6 +73,10 @@ public class Settings {
    * If true, known hosts are ignored
    */
   private boolean ignoreKnownHosts;
+  /**
+   * The directory where internal roots are created
+   */
+  private String cachesDirectory;
 
   /**
    * The constructor from the root object
@@ -110,7 +119,6 @@ public class Settings {
     repositoryURL = uri;
   }
 
-
   /**
    * @return true if submodules should be checked out
    */
@@ -136,6 +144,12 @@ public class Settings {
    * @return the local repository path
    */
   public File getRepositoryPath() {
+    if (repositoryPath == null) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Using internal directory for " + debugInfo());
+      }
+      repositoryPath = getPathForUrl(getRepositoryURL().toString());
+    }
     return repositoryPath;
   }
 
@@ -199,6 +213,30 @@ public class Settings {
   public boolean isKnownHostsIgnored() {
     return ignoreKnownHosts;
   }
+
+  /**
+   * Get server paths for the URL
+   *
+   * @param url the URL to get path for
+   * @return the internal directory name for the URL
+   */
+  public File getPathForUrl(String url) {
+    File dir = new File(cachesDirectory);
+    // TODO the directory needs to be cleaned up
+    // TODO consider using a better hash in order to reduce a chance for conflict
+    String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
+    return new File(dir, "git" + File.separatorChar + name);
+  }
+
+  /**
+   * Set caches directory for the settings
+   *
+   * @param cachesDirectory caches directory
+   */
+  public void setCachesDirectory(String cachesDirectory) {
+    this.cachesDirectory = cachesDirectory;
+  }
+
 
   /**
    * Authentication method

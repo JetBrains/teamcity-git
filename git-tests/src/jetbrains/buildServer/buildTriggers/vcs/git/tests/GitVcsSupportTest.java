@@ -20,6 +20,7 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.*;
@@ -82,9 +83,9 @@ public class GitVcsSupportTest extends PatchTestCase {
    */
   protected File mySourceRep;
   /**
-   * The source directory
+   * The caches directory
    */
-  protected File myCloneRep;
+  private File myCachesDir;
   /**
    * Temporary files
    */
@@ -109,7 +110,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   protected VcsRoot getRoot(String branchName) throws IOException {
     VcsRootImpl myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
     myRoot.addProperty(Constants.URL, GitUtils.toURL(mySourceRep));
-    myRoot.addProperty(Constants.PATH, myCloneRep.getPath());
     if (branchName != null) {
       myRoot.addProperty(Constants.BRANCH_NAME, branchName);
     }
@@ -120,7 +120,14 @@ public class GitVcsSupportTest extends PatchTestCase {
    * @return a created vcs support object
    */
   protected GitVcsSupport getSupport() {
-    return new GitVcsSupport(null);
+    return new GitVcsSupport(null) {
+      @Override
+      protected Settings createSettings(VcsRoot vcsRoot) throws VcsException {
+        final Settings s = super.createSettings(vcsRoot);
+        s.setCachesDirectory(myCachesDir.getPath());
+        return s;
+      }
+    };
   }
 
   /**
@@ -133,7 +140,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     File masterRep = dataFile("repo.git");
     mySourceRep = myTempFiles.createTempDir();
     FileUtil.copyDir(masterRep, mySourceRep);
-    myCloneRep = myTempFiles.createTempDir();
+    myCachesDir = myTempFiles.createTempDir();
   }
 
   /**
