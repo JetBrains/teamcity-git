@@ -52,6 +52,17 @@
         </div>
       </td>
     </tr>
+    <tr>
+      <th><label for="submoduleCheckout">Submodules:</label></th>
+      <td><props:selectProperty name="submoduleCheckout">
+        <props:option value="IGNORE">Ignore</props:option>
+        <props:option value="CHECKOUT">Checkout</props:option>
+      </props:selectProperty>
+        <div class="smallNote" style="margin: 0">If the option "Checkout" is selected, the submodules are
+          treated as part of the source tree.
+        </div>
+      </td>
+    </tr>
   </l:settingsGroup>
   <l:settingsGroup title="Authentication settings">
     <tr>
@@ -132,4 +143,7 @@
     }
   }
   gitSelectAuthentication();
+  if ($('url').value == "") {
+    $('submoduleCheckout').selectedIndex = 1;
+  }
 </script>

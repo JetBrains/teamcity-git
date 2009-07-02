@@ -53,6 +53,10 @@ public class Settings {
    */
   private AuthenticationMethod authenticationMethod;
   /**
+   * Submodule checkout policy
+   */
+  private SubmodulesCheckoutPolicy submodulePolicy;
+  /**
    * The passphrase (used for {@link AuthenticationMethod#PRIVATE_KEY_FILE})
    */
   private String passprase;
@@ -77,6 +81,9 @@ public class Settings {
     branch = root.getProperty(Constants.BRANCH_NAME);
     final String style = root.getProperty(Constants.USERNAME_STYLE);
     usernameStyle = style == null ? UserNameStyle.USERID : Enum.valueOf(UserNameStyle.class, style);
+    String submoduleCheckout = root.getProperty(Constants.SUBMODULES_CHECKOUT);
+    submodulePolicy =
+      submoduleCheckout != null ? Enum.valueOf(SubmodulesCheckoutPolicy.class, submoduleCheckout) : SubmodulesCheckoutPolicy.IGNORE;
     final String authMethod = root.getProperty(Constants.AUTH_METHOD);
     authenticationMethod = authMethod == null ? AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, authMethod);
     String username = authenticationMethod == AuthenticationMethod.ANONYMOUS ? null : root.getProperty(Constants.USERNAME);
@@ -101,6 +108,14 @@ public class Settings {
     }
     publicURL = uri.toString();
     repositoryURL = uri;
+  }
+
+
+  /**
+   * @return true if submodules should be checked out
+   */
+  public boolean areSubmodulesCheckedOut() {
+    return submodulePolicy == SubmodulesCheckoutPolicy.CHECKOUT;
   }
 
   /**
@@ -205,6 +220,20 @@ public class Settings {
      * The password is used
      */
     PASSWORD
+  }
+
+  /**
+   * Submodule checkout policy
+   */
+  enum SubmodulesCheckoutPolicy {
+    /**
+     * Ignore submodules
+     */
+    IGNORE,
+    /**
+     * Checkout submodules
+     */
+    CHECKOUT,
   }
 
   /**

@@ -35,6 +35,10 @@ public interface Constants {
    */
   public static String BRANCH_NAME = "branch";
   /**
+   * The branch name property
+   */
+  public static String SUBMODULES_CHECKOUT = "submoduleCheckout";
+  /**
    * The user name property
    */
   public static String AUTH_METHOD = "authMethod";
