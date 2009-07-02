@@ -25,6 +25,7 @@ import org.spearce.jgit.lib.RepositoryConfig;
 import org.spearce.jgit.transport.URIish;
 
 import java.io.File;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.Comparator;
 
@@ -234,6 +235,10 @@ public class GitUtils {
    * @return a UTF8 bytes for the string
    */
   public static byte[] getUtf8(String s) {
-    return s.getBytes(UTF8);
+    try {
+      return s.getBytes(UTF8.name());
+    } catch (UnsupportedEncodingException e) {
+      throw new RuntimeException("UTF-8 encoding not found", e);
+    }
   }
 }
