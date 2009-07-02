@@ -96,4 +96,11 @@ public abstract class SubmoduleResolver {
     ensureConfigLoaded();
     return myConfig.isSubmodulePrefix(path);
   }
+
+  /**
+   * @return the current repository
+   */
+  public Repository getRepository() {
+    return myCommit.getRepository();
+  }
 }

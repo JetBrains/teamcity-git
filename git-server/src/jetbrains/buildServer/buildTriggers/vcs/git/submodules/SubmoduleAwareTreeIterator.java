@@ -51,10 +51,6 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    */
   protected boolean myIsEof;
   /**
-   * The repository that is being actually scanned (in case of submodules)
-   */
-  protected Repository myDelegateRepository;
-  /**
    * The referenced commit for the submodule, the commit is in other repository.
    */
   protected Commit mySubmoduleCommit;
@@ -124,6 +120,13 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     this(parent, createTreeParser(commit), submoduleResolver);
   }
 
+  /**
+   * @return the current repository for the submodule
+   */
+  public Repository getRepository() {
+    return mySubmoduleResolver.getRepository();
+  }
+
 
   /**
    * Move iterator to the specific entry.
@@ -190,7 +193,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
       return createSubmoduleAwareTreeIterator(this, p, mySubmoduleResolver.getSubResolver(mySubmoduleCommit), "");
     } else {
       String path = myWrappedIterator.getEntryPathString();
-      return createSubmoduleAwareTreeIterator(this, myWrappedIterator.createSubtreeIterator(myDelegateRepository, idBuffer, curs),
+      return createSubmoduleAwareTreeIterator(this, myWrappedIterator.createSubtreeIterator(getRepository(), idBuffer, curs),
                                               mySubmoduleResolver,
                                               path);
     }
@@ -256,7 +259,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
       }
     } else {
       String path = myWrappedIterator.getEntryPathString();
-      return createSubmoduleAwareTreeIterator(this, myWrappedIterator.createSubtreeIterator(myDelegateRepository), mySubmoduleResolver,
+      return createSubmoduleAwareTreeIterator(this, myWrappedIterator.createSubtreeIterator(getRepository()), mySubmoduleResolver,
                                               path);
     }
   }

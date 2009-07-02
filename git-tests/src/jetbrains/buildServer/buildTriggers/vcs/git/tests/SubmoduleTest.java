@@ -86,14 +86,18 @@ public class SubmoduleTest {
         tw.addTree(SubmoduleAwareTreeIterator.create(submoduleAdded, r));
         tw.setFilter(TreeFilter.ANY_DIFF);
         checkElement(tw, ".gitmodules");
+        assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rm);
         checkElement(tw, "submodule/file.txt");
+        assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rs);
         assertFalse(tw.next());
         tw.reset();
         tw.addTree(SubmoduleAwareTreeIterator.create(submoduleModified, r));
         tw.addTree(SubmoduleAwareTreeIterator.create(submoduleTxtAdded, r));
         tw.setFilter(TreeFilter.ANY_DIFF);
         checkElement(tw, "submodule.txt");
+        assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rm);
         checkElement(tw, "submodule/new file.txt");
+        assertSame(tw.getTree(0, SubmoduleAwareTreeIterator.class).getRepository(), rs);
         assertFalse(tw.next());
       } finally {
         rs.close();
