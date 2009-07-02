@@ -158,20 +158,20 @@ public class SubmoduleTest {
     /**
      * {@inheritDoc}
      */
-    protected Repository resolveRepository(String url) {
+    protected Repository resolveRepository(String path, String url) {
       return myReferencedRepository;
     }
 
     /**
      * {@inheritDoc}
      */
-    public SubmoduleResolver getSubResolver(Commit commit) {
+    public SubmoduleResolver getSubResolver(Commit commit, String path) {
       return new SubmoduleResolver(commit) {
-        protected Repository resolveRepository(String url) throws IOException {
+        protected Repository resolveRepository(String path, String url) throws IOException {
           throw new IOException("Repository not found");
         }
 
-        public SubmoduleResolver getSubResolver(Commit commit) {
+        public SubmoduleResolver getSubResolver(Commit commit, String path) {
           throw new RuntimeException("There are no submodules");
         }
       };

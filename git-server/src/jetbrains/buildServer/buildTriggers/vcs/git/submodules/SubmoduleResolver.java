@@ -56,7 +56,7 @@ public abstract class SubmoduleResolver {
   public Commit getSubmodule(String path, ObjectId commit) throws IOException {
     ensureConfigLoaded();
     final Submodule submodule = myConfig.findEntry(path);
-    Repository r = resolveRepository(submodule.getUrl());
+    Repository r = resolveRepository(path, submodule.getUrl());
     return r.mapCommit(commit);
   }
 
@@ -72,19 +72,21 @@ public abstract class SubmoduleResolver {
   /**
    * Get repository by the URL. Note that the repository is retrived but not cleaned up. This should be done by implementer of this component at later time.
    *
-   * @param url the URL to resolve
+   * @param path the local path within repository
+   * @param url  the URL to resolve  @return the resolved repository
    * @return the resolved repository
    * @throws IOException if repository could not be resolved
    */
-  protected abstract Repository resolveRepository(String url) throws IOException;
+  protected abstract Repository resolveRepository(String path, String url) throws IOException;
 
   /**
    * Get submodule resolver for the path
    *
    * @param commit the start commit
+   * @param path   the local path within repository
    * @return the submodule resolver that handles submodules inside the specified commit
    */
-  public abstract SubmoduleResolver getSubResolver(Commit commit);
+  public abstract SubmoduleResolver getSubResolver(Commit commit, String path);
 
   /**
    * Check if the specified directory is a submodule prefix

@@ -188,11 +188,11 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   @Override
   public AbstractTreeIterator createSubtreeIterator(Repository repo, MutableObjectId idBuffer, WindowCursor curs)
     throws IOException {
+    String path = myWrappedIterator.getEntryPathString();
     if (myIsOnSubmodule) {
       CanonicalTreeParser p = createTreeParser(curs, mySubmoduleCommit);
-      return createSubmoduleAwareTreeIterator(this, p, mySubmoduleResolver.getSubResolver(mySubmoduleCommit), "");
+      return createSubmoduleAwareTreeIterator(this, p, mySubmoduleResolver.getSubResolver(mySubmoduleCommit, path), "");
     } else {
-      String path = myWrappedIterator.getEntryPathString();
       return createSubmoduleAwareTreeIterator(this, myWrappedIterator.createSubtreeIterator(getRepository(), idBuffer, curs),
                                               mySubmoduleResolver,
                                               path);
@@ -249,16 +249,16 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    * {@inheritDoc}
    */
   public AbstractTreeIterator createSubtreeIterator(Repository repo) throws IOException {
+    String path = myWrappedIterator.getEntryPathString();
     if (myIsOnSubmodule) {
       WindowCursor curs = new WindowCursor();
       try {
         CanonicalTreeParser p = createTreeParser(curs, mySubmoduleCommit);
-        return createSubmoduleAwareTreeIterator(this, p, mySubmoduleResolver.getSubResolver(mySubmoduleCommit), "");
+        return createSubmoduleAwareTreeIterator(this, p, mySubmoduleResolver.getSubResolver(mySubmoduleCommit, path), "");
       } finally {
         curs.release();
       }
     } else {
-      String path = myWrappedIterator.getEntryPathString();
       return createSubmoduleAwareTreeIterator(this, myWrappedIterator.createSubtreeIterator(getRepository()), mySubmoduleResolver,
                                               path);
     }
