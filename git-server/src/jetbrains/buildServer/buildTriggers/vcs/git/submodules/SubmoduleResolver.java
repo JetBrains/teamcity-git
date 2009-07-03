@@ -57,7 +57,11 @@ public abstract class SubmoduleResolver {
     ensureConfigLoaded();
     final Submodule submodule = myConfig.findEntry(path);
     Repository r = resolveRepository(path, submodule.getUrl());
-    return r.mapCommit(commit);
+    final Commit c = r.mapCommit(commit);
+    if (c == null) {
+      throw new IOException("The commit " + commit + " (referenced by " + path + ") is not found in repository: " + r);
+    }
+    return c;
   }
 
   /**

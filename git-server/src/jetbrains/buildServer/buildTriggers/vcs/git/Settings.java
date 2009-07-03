@@ -24,6 +24,8 @@ import org.spearce.jgit.transport.URIish;
 
 import java.io.File;
 import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Git Vcs Settings
@@ -77,6 +79,14 @@ public class Settings {
    * The directory where internal roots are created
    */
   private String cachesDirectory;
+  /**
+   * The submodule URLs
+   */
+  private final Map<String, String> submoduleUrls = new HashMap<String, String>();
+  /**
+   * The submodule paths.
+   */
+  private final Map<String, String> submodulePaths = new HashMap<String, String>();
 
   /**
    * The constructor from the root object
@@ -117,6 +127,60 @@ public class Settings {
     }
     publicURL = uri.toString();
     repositoryURL = uri;
+    String urls = root.getProperty(Constants.SUBMODULE_URLS);
+    if (urls != null) {
+      final String[] pairs = urls.split("\n");
+      final int n = pairs.length / 2;
+      for (int i = 0; i < n; i++) {
+        setSubmoduleUrl(pairs[i * 2], pairs[i * 2 + 1]);
+      }
+    }
+  }
+
+
+  /**
+   * Set submodule path
+   *
+   * @param submodule the local path of submodule within vcs root
+   * @param path      the path to set
+   */
+  public void setSubmodulePath(String submodule, String path) {
+    submodulePaths.put(submodule, path);
+  }
+
+  /**
+   * Get submodule path
+   *
+   * @param submodule the local path of submodule within vcs root
+   * @param url       the url used to construct a default path
+   * @return the path on file system or null if path is not set
+   */
+  public String getSubmodulePath(String submodule, String url) {
+    String path = submodulePaths.get(submodule);
+    if (path == null) {
+      path = getPathForUrl(url).getPath();
+    }
+    return path;
+  }
+
+  /**
+   * Set submodule url
+   *
+   * @param submodule the local path of submodule within vcs root
+   * @param url       the url to set
+   */
+  public void setSubmoduleUrl(String submodule, String url) {
+    submoduleUrls.put(submodule, url);
+  }
+
+  /**
+   * Get submodule url
+   *
+   * @param submodule the local path of submodule within vcs root
+   * @return the url or null if url is not set
+   */
+  public String getSubmoduleUrl(String submodule) {
+    return submoduleUrls.get(submodule);
   }
 
   /**
@@ -263,7 +327,7 @@ public class Settings {
   /**
    * Submodule checkout policy
    */
-  enum SubmodulesCheckoutPolicy {
+  public enum SubmodulesCheckoutPolicy {
     /**
      * Ignore submodules
      */

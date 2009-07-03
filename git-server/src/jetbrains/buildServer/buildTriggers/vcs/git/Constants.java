@@ -70,4 +70,8 @@ public interface Constants {
    * The ignore known hosts property
    */
   public static String IGNORE_KNOWN_HOSTS = "ignoreKnownHosts";
+  /**
+   * The ignore known hosts property
+   */
+  public static String SUBMODULE_URLS = "submoduleUrls_TEST_ONLY";
 }
