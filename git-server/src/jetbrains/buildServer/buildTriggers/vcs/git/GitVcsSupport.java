@@ -237,7 +237,7 @@ public class GitVcsSupport extends ServerVcsSupport
     String pv =
       parentIds.length == 0 ? GitUtils.makeVersion(ObjectId.zeroId().name(), 0) : GitUtils.makeVersion(r.mapCommit(cc.getParentIds()[0]));
     List<VcsChange> changes = getCommitChanges(repositories, s, r, cc, parentIds, cv, pv);
-    ModificationData m = new ModificationData(cc.getCommitter().getWhen(), changes, cc.getMessage(), GitUtils.getUser(s, cc), root, cv,
+    ModificationData m = new ModificationData(cc.getAuthor().getWhen(), changes, cc.getMessage(), GitUtils.getUser(s, cc), root, cv,
                                               GitUtils.displayVersion(cc));
     rc.add(m);
   }
