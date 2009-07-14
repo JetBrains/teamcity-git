@@ -389,6 +389,8 @@ public class GitVcsSupportTest extends PatchTestCase {
     checkPatch("patch3", null, GitUtils.makeVersion("1837cf38309496165054af8bf7d62a9fe8997202", 1238421349000L));
     checkPatch("patch4", GitUtils.makeVersion("1837cf38309496165054af8bf7d62a9fe8997202", 1238421349000L),
                GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L));
+    checkPatch("patch-case", "rename-test", GitUtils.makeVersion("cbf1073bd3f938e7d7d85718dbc6c3bee10360d9", 1247581634000L),
+               GitUtils.makeVersion("2eed4ae6732536f76a65136a606f635e8ada63b9", 1247581803000L), true);
   }
 
   /**
@@ -402,9 +404,9 @@ public class GitVcsSupportTest extends PatchTestCase {
     checkPatch("submodule-added-ignore", BEFORE_SUBMODULE_ADDED_VERSION, SUBMODULE_ADDED_VERSION);
     checkPatch("submodule-removed-ignore", SUBMODULE_ADDED_VERSION, BEFORE_SUBMODULE_ADDED_VERSION);
     checkPatch("submodule-modified-ignore", SUBMODULE_ADDED_VERSION, SUBMODULE_MODIFIED_VERSION);
-    checkPatch("submodule-added", BEFORE_SUBMODULE_ADDED_VERSION, SUBMODULE_ADDED_VERSION, true);
-    checkPatch("submodule-removed", SUBMODULE_ADDED_VERSION, BEFORE_SUBMODULE_ADDED_VERSION, true);
-    checkPatch("submodule-modified", SUBMODULE_ADDED_VERSION, SUBMODULE_MODIFIED_VERSION, true);
+    checkPatch("submodule-added", "patch-tests", BEFORE_SUBMODULE_ADDED_VERSION, SUBMODULE_ADDED_VERSION, true);
+    checkPatch("submodule-removed", "patch-tests", SUBMODULE_ADDED_VERSION, BEFORE_SUBMODULE_ADDED_VERSION, true);
+    checkPatch("submodule-modified", "patch-tests", SUBMODULE_ADDED_VERSION, SUBMODULE_MODIFIED_VERSION, true);
   }
 
 
@@ -418,24 +420,29 @@ public class GitVcsSupportTest extends PatchTestCase {
    * @throws VcsException in case of test failure
    */
   private void checkPatch(final String name, final String fromVersion, final String toVersion) throws IOException, VcsException {
-    checkPatch(name, fromVersion, toVersion, false);
+    checkPatch(name, "patch-tests", fromVersion, toVersion, false);
   }
 
   /**
    * Check single patch
    *
    * @param name             the name of patch
+   * @param branchName       the name of branch to use
    * @param fromVersion      from version
    * @param toVersion        to version
    * @param enableSubmodules if true, submodules are enabled
    * @throws IOException  in case of test failure
    * @throws VcsException in case of test failure
    */
-  private void checkPatch(final String name, final String fromVersion, final String toVersion, boolean enableSubmodules)
+  private void checkPatch(final String name,
+                          final String branchName, final String fromVersion,
+                          final String toVersion,
+                          boolean enableSubmodules
+  )
     throws IOException, VcsException {
     setName(name);
     GitVcsSupport support = getSupport();
-    VcsRoot root = getRoot("patch-tests", enableSubmodules);
+    VcsRoot root = getRoot(branchName, enableSubmodules);
     final ByteArrayOutputStream output = new ByteArrayOutputStream();
     final PatchBuilderImpl builder = new PatchBuilderImpl(output);
     support.buildPatch(root, fromVersion, toVersion, builder, new CheckoutRules(""));

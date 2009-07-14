@@ -51,6 +51,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.*;
+import java.util.concurrent.Callable;
 
 
 /**
@@ -416,13 +417,13 @@ public class GitVcsSupport extends ServerVcsSupport
     Settings s = createSettings(root);
     try {
       Map<String, Repository> repositories = new HashMap<String, Repository>();
-      Repository r = getRepository(s, repositories);
+      final Repository r = getRepository(s, repositories);
       try {
         Commit toCommit = ensureCommitLoaded(s, r, GitUtils.versionRevision(toVersion));
         if (toCommit == null) {
           throw new VcsException("Missing commit for version: " + toVersion);
         }
-        TreeWalk tw = new TreeWalk(r);
+        final TreeWalk tw = new TreeWalk(r);
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.setRecursive(true);
         tw.reset();
@@ -438,8 +439,9 @@ public class GitVcsSupport extends ServerVcsSupport
           LOG.info("Creating clean patch " + toVersion + " for " + s.debugInfo());
           tw.addTree(new EmptyTreeIterator());
         }
+        List<Callable<Void>> actions = new LinkedList<Callable<Void>>();
         while (tw.next()) {
-          String path = tw.getPathString();
+          final String path = tw.getPathString();
           if (debugFlag) {
             LOG.debug("File found " + treeWalkInfo(tw) + " for " + s.debugInfo());
           }
@@ -452,9 +454,16 @@ public class GitVcsSupport extends ServerVcsSupport
             case ADDED:
             case FILE_MODE_CHANGED:
               if (isFileIncluded(checkoutRules, file) && !FileMode.GITLINK.equals(tw.getFileMode(0))) {
-                byte[] bytes = loadObject(r, tw, 0);
-                String mode = getModeDiff(tw);
-                builder.changeOrCreateBinaryFile(file, mode, new ByteArrayInputStream(bytes), bytes.length);
+                final String mode = getModeDiff(tw);
+                final ObjectId id = tw.getObjectId(0);
+                final Repository objRep = getRepository(r, tw, 0);
+                actions.add(new Callable<Void>() {
+                  public Void call() throws Exception {
+                    byte[] bytes = loadObject(objRep, path, id);
+                    builder.changeOrCreateBinaryFile(file, mode, new ByteArrayInputStream(bytes), bytes.length);
+                    return null;
+                  }
+                });
               }
               break;
             case DELETED:
@@ -465,6 +474,9 @@ public class GitVcsSupport extends ServerVcsSupport
             default:
               throw new IllegalStateException("Unknown change type");
           }
+        }
+        for (Callable<Void> a : actions) {
+          a.call();
         }
       } finally {
         close(repositories);
@@ -601,6 +613,37 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   private byte[] loadObject(Repository r, TreeWalk tw, final int nth) throws IOException {
     ObjectId id = tw.getObjectId(nth);
+    Repository objRep = getRepository(r, tw, nth);
+    final String path = tw.getPathString();
+    return loadObject(objRep, path, id);
+  }
+
+  /**
+   * Load object by blob ID
+   *
+   * @param r    the repository
+   * @param path the path (might be null)
+   * @param id   the object id
+   * @return the object's bytes
+   * @throws IOException in case of IO problem
+   */
+  private byte[] loadObject(Repository r, String path, ObjectId id) throws IOException {
+    final ObjectLoader loader = r.openBlob(id);
+    if (loader == null) {
+      throw new IOException("Unabile to find blob " + id + (path == null ? "" : "(" + path + ")") + " in reposistory " + r);
+    }
+    return loader.getBytes();
+  }
+
+  /**
+   * Get repository from tree walker
+   *
+   * @param r   the initial repositoyr
+   * @param tw  the tree walker
+   * @param nth the position
+   * @return the actual repository
+   */
+  private Repository getRepository(Repository r, TreeWalk tw, int nth) {
     Repository objRep;
     AbstractTreeIterator ti = tw.getTree(nth, AbstractTreeIterator.class);
     if (ti instanceof SubmoduleAwareTreeIterator) {
@@ -608,11 +651,7 @@ public class GitVcsSupport extends ServerVcsSupport
     } else {
       objRep = r;
     }
-    final ObjectLoader loader = objRep.openBlob(id);
-    if (loader == null) {
-      throw new IOException("Unabile to find blob " + id + "(" + tw.getPathString() + ") in reposistory " + objRep);
-    }
-    return loader.getBytes();
+    return objRep;
   }
 
   /**
