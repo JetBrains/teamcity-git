@@ -35,6 +35,10 @@ public interface Constants {
    */
   public static String BRANCH_NAME = "branch";
   /**
+   * The branch name property
+   */
+  public static String SUBMODULES_CHECKOUT = "submoduleCheckout";
+  /**
    * The user name property
    */
   public static String AUTH_METHOD = "authMethod";
@@ -66,4 +70,8 @@ public interface Constants {
    * The ignore known hosts property
    */
   public static String IGNORE_KNOWN_HOSTS = "ignoreKnownHosts";
+  /**
+   * The ignore known hosts property
+   */
+  public static String SUBMODULE_URLS = "submoduleUrls_TEST_ONLY";
 }

@@ -19,6 +19,7 @@
   <test name="Git Tests">
     <classes>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVcsSupportTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SubmoduleTest"/>
     </classes>
   </test>
 </suite>

@@ -23,16 +23,16 @@
          value='<%=new File(System.getProperty("user.home"), ".ssh"+File.separator+"config").getAbsolutePath() %>'/>
   <l:settingsGroup title="General Settings">
     <tr>
-      <th><label for="repositoryPath">Clone URL: <l:star/></label></th>
+      <th><label for="url">Clone URL: <l:star/></label></th>
       <td><props:textProperty name="url" className="longField"/>
-        <span class="error" id="error_repositoryURL"></span></td>
+        <span class="error" id="error_url"></span></td>
     </tr>
     <tr>
-      <th><label for="branchName">Branch name: </label></th>
+      <th><label for="branch">Branch name: </label></th>
       <td><props:textProperty name="branch"/></td>
     </tr>
     <tr>
-      <th><label for="serverClonePath">Clone repository to: </label></th>
+      <th><label for="path">Clone repository to: </label></th>
       <td><props:textProperty name="path" className="longField"/>
         <div class="smallNote" style="margin: 0;">Provide path to a directory on TeamCity server where a
           bare cloned repository should be created. Leave blank to use default path.
@@ -40,7 +40,7 @@
       </td>
     </tr>
     <tr>
-      <th><label for="userNameStytle">User Name Style:</label></th>
+      <th><label for="usernameStyle">User Name Style:</label></th>
       <td><props:selectProperty name="usernameStyle">
         <props:option value="USERID">UserId (jsmith)</props:option>
         <props:option value="EMAIL">Email (jsmith@example.org)</props:option>
@@ -49,6 +49,17 @@
       </props:selectProperty>
         <div class="smallNote" style="margin: 0;">Changing user name style will affect only newly collected changes.
           Old changes will continue to be stored with the style that was active at the time of collecting changes.
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <th><label for="submoduleCheckout">Submodules:</label></th>
+      <td><props:selectProperty name="submoduleCheckout">
+        <props:option value="IGNORE">Ignore</props:option>
+        <props:option value="CHECKOUT">Checkout</props:option>
+      </props:selectProperty>
+        <div class="smallNote" style="margin: 0">If the option "Checkout" is selected, the submodules are
+          treated as part of the source tree.
         </div>
       </td>
     </tr>
@@ -132,4 +143,7 @@
     }
   }
   gitSelectAuthentication();
+  if ($('url').value == "") {
+    $('submoduleCheckout').selectedIndex = 1;
+  }
 </script>

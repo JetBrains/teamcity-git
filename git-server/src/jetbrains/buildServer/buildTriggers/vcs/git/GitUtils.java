@@ -25,6 +25,8 @@ import org.spearce.jgit.lib.RepositoryConfig;
 import org.spearce.jgit.transport.URIish;
 
 import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.util.Comparator;
 
 /**
@@ -39,6 +41,10 @@ public class GitUtils {
    * User name for the system user
    */
   public static final String SYSTEM_USER = "system@git-plugin.teamcity";
+  /**
+   * The UTF8 character set
+   */
+  public static final Charset UTF8 = Charset.forName("UTF-8");
 
   /**
    * Convert remote URL to JGIT form
@@ -220,5 +226,19 @@ public class GitUtils {
    */
   public static String tagName(String label) {
     return "refs/tags/" + label;
+  }
+
+  /**
+   * Get UTF8 bytes
+   *
+   * @param s a string to convert
+   * @return a UTF8 bytes for the string
+   */
+  public static byte[] getUtf8(String s) {
+    try {
+      return s.getBytes(UTF8.name());
+    } catch (UnsupportedEncodingException e) {
+      throw new RuntimeException("UTF-8 encoding not found", e);
+    }
   }
 }

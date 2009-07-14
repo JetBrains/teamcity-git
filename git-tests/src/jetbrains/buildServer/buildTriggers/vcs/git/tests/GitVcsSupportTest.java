@@ -20,6 +20,8 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -60,13 +62,30 @@ public class GitVcsSupportTest extends PatchTestCase {
    */
   private static final String MERGE_BRANCH_VERSION = GitUtils.makeVersion("ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", 1238085489000L);
   /**
+   * The merge branch version
+   */
+  public static final String SUBMODULE_MODIFIED_VERSION = GitUtils.makeVersion("37c371a6db0acefc77e3be99d16a44413e746591", 1245773817000L);
+  /**
+   * The merge branch version
+   */
+  public static final String SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", 1245766034000L);
+  /**
+   * The merge branch version
+   */
+  public static final String SUBMODULE_TXT_ADDED_VERSION = GitUtils.makeVersion("d1a88fd33c516c1b607db75eb62244b2ea495c42", 1246534153000L);
+  /**
+   * The merge branch version
+   */
+  public static final String BEFORE_SUBMODULE_ADDED_VERSION =
+    GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L);
+  /**
    * The source directory
    */
   protected File mySourceRep;
   /**
-   * The source directory
+   * The caches directory
    */
-  protected File myCloneRep;
+  private File myCachesDir;
   /**
    * Temporary files
    */
@@ -82,20 +101,6 @@ public class GitVcsSupportTest extends PatchTestCase {
 
 
   /**
-   * Test data file
-   *
-   * @param path the file path relatively to data directory
-   * @return the IO file object (the file is absolute)
-   */
-  protected File dataFile(String... path) {
-    File f = new File("git-tests", "data");
-    for (String p : path) {
-      f = new File(f, p);
-    }
-    return f.getAbsoluteFile();
-  }
-
-  /**
    * Create a VCS root for the current parameters and specified branch
    *
    * @param branchName the branch name
@@ -103,11 +108,26 @@ public class GitVcsSupportTest extends PatchTestCase {
    * @throws IOException if the root could not be created
    */
   protected VcsRoot getRoot(String branchName) throws IOException {
+    return getRoot(branchName, false);
+  }
+
+  /**
+   * Create a VCS root for the current parameters and specified branch
+   *
+   * @param branchName       the branch name
+   * @param enableSubmodules if true, submodules are enabled
+   * @return a created vcs root object
+   * @throws IOException if the root could not be created
+   */
+  protected VcsRoot getRoot(String branchName, boolean enableSubmodules) throws IOException {
     VcsRootImpl myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
     myRoot.addProperty(Constants.URL, GitUtils.toURL(mySourceRep));
-    myRoot.addProperty(Constants.PATH, myCloneRep.getPath());
     if (branchName != null) {
       myRoot.addProperty(Constants.BRANCH_NAME, branchName);
+      myRoot.addProperty(Constants.SUBMODULE_URLS, "submodule\n" + GitUtils.toURL(dataFile("submodule.git")));
+    }
+    if (enableSubmodules) {
+      myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, Settings.SubmodulesCheckoutPolicy.CHECKOUT.name());
     }
     return myRoot;
   }
@@ -116,7 +136,14 @@ public class GitVcsSupportTest extends PatchTestCase {
    * @return a created vcs support object
    */
   protected GitVcsSupport getSupport() {
-    return new GitVcsSupport(null);
+    return new GitVcsSupport(null) {
+      @Override
+      protected Settings createSettings(VcsRoot vcsRoot) throws VcsException {
+        final Settings s = super.createSettings(vcsRoot);
+        s.setCachesDirectory(myCachesDir.getPath());
+        return s;
+      }
+    };
   }
 
   /**
@@ -129,7 +156,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     File masterRep = dataFile("repo.git");
     mySourceRep = myTempFiles.createTempDir();
     FileUtil.copyDir(masterRep, mySourceRep);
-    myCloneRep = myTempFiles.createTempDir();
+    myCachesDir = myTempFiles.createTempDir();
   }
 
   /**
@@ -195,6 +222,22 @@ public class GitVcsSupportTest extends PatchTestCase {
     byte[] data2 = FileUtil.loadFileBytes(dataFile("content", "readme.txt"));
     Assert.assertEquals(data1, data2);
   }
+
+  /**
+   * Test get content for the file
+   *
+   * @throws Exception in case of bug
+   */
+  @Test
+  public void testGetContentSubmodules() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("patch-tests", true);
+    String version = support.getCurrentVersion(root);
+    byte[] data1 = support.getContent("submodule/file.txt", root, version);
+    byte[] data2 = FileUtil.loadFileBytes(dataFile("content", "submodule file.txt"));
+    Assert.assertEquals(data1, data2);
+  }
+
 
   /**
    * Test getting changes for the build
@@ -266,6 +309,71 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   /**
+   * Test getting changes for the build with submodules ignored
+   *
+   * @throws Exception in case of IO problem
+   */
+  @Test
+  public void testCollectBuildChangesSubmodulesIgnored() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("patch-tests");
+    final List<ModificationData> ms =
+      support.collectChanges(root, BEFORE_SUBMODULE_ADDED_VERSION, SUBMODULE_ADDED_VERSION, new CheckoutRules(""));
+    assertEquals(1, ms.size());
+    ModificationData m1 = ms.get(0);
+    assertEquals("added submodule\n", m1.getDescription());
+    assertEquals(2, m1.getChanges().size());
+    VcsChange ch11 = m1.getChanges().get(0);
+    assertEquals(VcsChange.Type.ADDED, ch11.getType());
+    assertEquals(".gitmodules", ch11.getFileName());
+    VcsChange ch12 = m1.getChanges().get(1);
+    assertEquals("submodule", ch12.getFileName());
+    assertEquals(VcsChange.Type.ADDED, ch12.getType());
+    final List<ModificationData> ms2 =
+      support.collectChanges(root, SUBMODULE_ADDED_VERSION, SUBMODULE_MODIFIED_VERSION, new CheckoutRules(""));
+    assertEquals(1, ms.size());
+    ModificationData m2 = ms2.get(0);
+    assertEquals("submodule updated\n", m2.getDescription());
+    assertEquals(1, m2.getChanges().size());
+    VcsChange ch21 = m2.getChanges().get(0);
+    assertEquals("submodule", ch21.getFileName());
+    assertEquals(VcsChange.Type.CHANGED, ch21.getType());
+  }
+
+  /**
+   * Test getting changes for the build
+   *
+   * @throws Exception in case of IO problem
+   */
+  @Test
+  public void testCollectBuildChangesSubmodules() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("patch-tests", true);
+    final List<ModificationData> ms =
+      support.collectChanges(root, BEFORE_SUBMODULE_ADDED_VERSION, SUBMODULE_ADDED_VERSION, new CheckoutRules(""));
+    assertEquals(1, ms.size());
+    ModificationData m1 = ms.get(0);
+    assertEquals("added submodule\n", m1.getDescription());
+    assertEquals(2, m1.getChanges().size());
+    VcsChange ch11 = m1.getChanges().get(0);
+    assertEquals(VcsChange.Type.ADDED, ch11.getType());
+    assertEquals(".gitmodules", ch11.getFileName());
+    VcsChange ch12 = m1.getChanges().get(1);
+    assertEquals("submodule/file.txt", ch12.getFileName());
+    assertEquals(VcsChange.Type.ADDED, ch12.getType());
+    final List<ModificationData> ms2 =
+      support.collectChanges(root, SUBMODULE_ADDED_VERSION, SUBMODULE_MODIFIED_VERSION, new CheckoutRules(""));
+    assertEquals(1, ms.size());
+    ModificationData m2 = ms2.get(0);
+    assertEquals("submodule updated\n", m2.getDescription());
+    assertEquals(1, m2.getChanges().size());
+    VcsChange ch21 = m2.getChanges().get(0);
+    assertEquals("submodule/new file.txt", ch21.getFileName());
+    assertEquals(VcsChange.Type.ADDED, ch21.getType());
+  }
+
+
+  /**
    * Test patches
    *
    * @throws IOException  in case of test failure
@@ -281,6 +389,24 @@ public class GitVcsSupportTest extends PatchTestCase {
     checkPatch("patch3", null, GitUtils.makeVersion("1837cf38309496165054af8bf7d62a9fe8997202", 1238421349000L));
     checkPatch("patch4", GitUtils.makeVersion("1837cf38309496165054af8bf7d62a9fe8997202", 1238421349000L),
                GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L));
+    checkPatch("patch-case", "rename-test", GitUtils.makeVersion("cbf1073bd3f938e7d7d85718dbc6c3bee10360d9", 1247581634000L),
+               GitUtils.makeVersion("2eed4ae6732536f76a65136a606f635e8ada63b9", 1247581803000L), true);
+  }
+
+  /**
+   * Test patches
+   *
+   * @throws IOException  in case of test failure
+   * @throws VcsException in case of test failure
+   */
+  @Test
+  public void testSubmodulePatches() throws IOException, VcsException {
+    checkPatch("submodule-added-ignore", BEFORE_SUBMODULE_ADDED_VERSION, SUBMODULE_ADDED_VERSION);
+    checkPatch("submodule-removed-ignore", SUBMODULE_ADDED_VERSION, BEFORE_SUBMODULE_ADDED_VERSION);
+    checkPatch("submodule-modified-ignore", SUBMODULE_ADDED_VERSION, SUBMODULE_MODIFIED_VERSION);
+    checkPatch("submodule-added", "patch-tests", BEFORE_SUBMODULE_ADDED_VERSION, SUBMODULE_ADDED_VERSION, true);
+    checkPatch("submodule-removed", "patch-tests", SUBMODULE_ADDED_VERSION, BEFORE_SUBMODULE_ADDED_VERSION, true);
+    checkPatch("submodule-modified", "patch-tests", SUBMODULE_ADDED_VERSION, SUBMODULE_MODIFIED_VERSION, true);
   }
 
 
@@ -294,9 +420,29 @@ public class GitVcsSupportTest extends PatchTestCase {
    * @throws VcsException in case of test failure
    */
   private void checkPatch(final String name, final String fromVersion, final String toVersion) throws IOException, VcsException {
+    checkPatch(name, "patch-tests", fromVersion, toVersion, false);
+  }
+
+  /**
+   * Check single patch
+   *
+   * @param name             the name of patch
+   * @param branchName       the name of branch to use
+   * @param fromVersion      from version
+   * @param toVersion        to version
+   * @param enableSubmodules if true, submodules are enabled
+   * @throws IOException  in case of test failure
+   * @throws VcsException in case of test failure
+   */
+  private void checkPatch(final String name,
+                          final String branchName, final String fromVersion,
+                          final String toVersion,
+                          boolean enableSubmodules
+  )
+    throws IOException, VcsException {
     setName(name);
     GitVcsSupport support = getSupport();
-    VcsRoot root = getRoot("patch-tests");
+    VcsRoot root = getRoot(branchName, enableSubmodules);
     final ByteArrayOutputStream output = new ByteArrayOutputStream();
     final PatchBuilderImpl builder = new PatchBuilderImpl(output);
     support.buildPatch(root, fromVersion, toVersion, builder, new CheckoutRules(""));

@@ -468,6 +468,9 @@
     <option name="GENERATE_IIOP_STUBS" value="false" />
     <option name="ADDITIONAL_OPTIONS_STRING" value="" />
   </component>
+  <component name="SvnBranchConfigurationManager">
+    <option name="mySupportsUserInfoFilter" value="true" />
+  </component>
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
   </component>
@@ -529,11 +532,12 @@
     <library name="JGit">
       <CLASSES>
         <root url="jar://$PROJECT_DIR$/lib/jsch-0.1.37.jar!/" />
-        <root url="jar://$PROJECT_DIR$/lib/jgit-0.4-SNAPSHOT.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/jgit-0.5.0-SNAPSHOT.jar!/" />
       </CLASSES>
       <JAVADOC />
       <SOURCES>
-        <root url="jar://$PROJECT_DIR$/lib/src/jgit-0.4-SNAPSHOT-sources.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/src/jsch-0.1.37.zip!/jsch-0.1.37/src" />
+        <root url="jar://$PROJECT_DIR$/lib/src/jgit-0.5.0-SNAPSHOT-sources.jar!/" />
       </SOURCES>
     </library>
     <library name="TestLibs">
@@ -553,7 +557,7 @@
     </library>
   </component>
   <UsedPathMacros>
-    <macro name="TeamCityDistribution" />
+    <macro name="TeamCityDistribution" description="" />
   </UsedPathMacros>
 </project>
 

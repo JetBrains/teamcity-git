@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -23,11 +24,17 @@ import org.spearce.jgit.transport.URIish;
 
 import java.io.File;
 import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Git Vcs Settings
  */
 public class Settings {
+  /**
+   * logger instance
+   */
+  private static Logger LOG = Logger.getInstance(Settings.class.getName());
   /**
    * The url for the repository
    */
@@ -53,6 +60,10 @@ public class Settings {
    */
   private AuthenticationMethod authenticationMethod;
   /**
+   * Submodule checkout policy
+   */
+  private SubmodulesCheckoutPolicy submodulePolicy;
+  /**
    * The passphrase (used for {@link AuthenticationMethod#PRIVATE_KEY_FILE})
    */
   private String passprase;
@@ -64,6 +75,18 @@ public class Settings {
    * If true, known hosts are ignored
    */
   private boolean ignoreKnownHosts;
+  /**
+   * The directory where internal roots are created
+   */
+  private String cachesDirectory;
+  /**
+   * The submodule URLs
+   */
+  private final Map<String, String> submoduleUrls = new HashMap<String, String>();
+  /**
+   * The submodule paths.
+   */
+  private final Map<String, String> submodulePaths = new HashMap<String, String>();
 
   /**
    * The constructor from the root object
@@ -77,6 +100,9 @@ public class Settings {
     branch = root.getProperty(Constants.BRANCH_NAME);
     final String style = root.getProperty(Constants.USERNAME_STYLE);
     usernameStyle = style == null ? UserNameStyle.USERID : Enum.valueOf(UserNameStyle.class, style);
+    String submoduleCheckout = root.getProperty(Constants.SUBMODULES_CHECKOUT);
+    submodulePolicy =
+      submoduleCheckout != null ? Enum.valueOf(SubmodulesCheckoutPolicy.class, submoduleCheckout) : SubmodulesCheckoutPolicy.IGNORE;
     final String authMethod = root.getProperty(Constants.AUTH_METHOD);
     authenticationMethod = authMethod == null ? AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, authMethod);
     String username = authenticationMethod == AuthenticationMethod.ANONYMOUS ? null : root.getProperty(Constants.USERNAME);
@@ -101,6 +127,67 @@ public class Settings {
     }
     publicURL = uri.toString();
     repositoryURL = uri;
+    String urls = root.getProperty(Constants.SUBMODULE_URLS);
+    if (urls != null) {
+      final String[] pairs = urls.split("\n");
+      final int n = pairs.length / 2;
+      for (int i = 0; i < n; i++) {
+        setSubmoduleUrl(pairs[i * 2], pairs[i * 2 + 1]);
+      }
+    }
+  }
+
+
+  /**
+   * Set submodule path
+   *
+   * @param submodule the local path of submodule within vcs root
+   * @param path      the path to set
+   */
+  public void setSubmodulePath(String submodule, String path) {
+    submodulePaths.put(submodule, path);
+  }
+
+  /**
+   * Get submodule path
+   *
+   * @param submodule the local path of submodule within vcs root
+   * @param url       the url used to construct a default path
+   * @return the path on file system or null if path is not set
+   */
+  public String getSubmodulePath(String submodule, String url) {
+    String path = submodulePaths.get(submodule);
+    if (path == null) {
+      path = getPathForUrl(url).getPath();
+    }
+    return path;
+  }
+
+  /**
+   * Set submodule url
+   *
+   * @param submodule the local path of submodule within vcs root
+   * @param url       the url to set
+   */
+  public void setSubmoduleUrl(String submodule, String url) {
+    submoduleUrls.put(submodule, url);
+  }
+
+  /**
+   * Get submodule url
+   *
+   * @param submodule the local path of submodule within vcs root
+   * @return the url or null if url is not set
+   */
+  public String getSubmoduleUrl(String submodule) {
+    return submoduleUrls.get(submodule);
+  }
+
+  /**
+   * @return true if submodules should be checked out
+   */
+  public boolean areSubmodulesCheckedOut() {
+    return submodulePolicy == SubmodulesCheckoutPolicy.CHECKOUT;
   }
 
   /**
@@ -121,6 +208,12 @@ public class Settings {
    * @return the local repository path
    */
   public File getRepositoryPath() {
+    if (repositoryPath == null) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Using internal directory for " + debugInfo());
+      }
+      repositoryPath = getPathForUrl(getRepositoryURL().toString());
+    }
     return repositoryPath;
   }
 
@@ -186,6 +279,30 @@ public class Settings {
   }
 
   /**
+   * Get server paths for the URL
+   *
+   * @param url the URL to get path for
+   * @return the internal directory name for the URL
+   */
+  public File getPathForUrl(String url) {
+    File dir = new File(cachesDirectory);
+    // TODO the directory needs to be cleaned up
+    // TODO consider using a better hash in order to reduce a chance for conflict
+    String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
+    return new File(dir, "git" + File.separatorChar + name);
+  }
+
+  /**
+   * Set caches directory for the settings
+   *
+   * @param cachesDirectory caches directory
+   */
+  public void setCachesDirectory(String cachesDirectory) {
+    this.cachesDirectory = cachesDirectory;
+  }
+
+
+  /**
    * Authentication method
    */
   enum AuthenticationMethod {
@@ -205,6 +322,20 @@ public class Settings {
      * The password is used
      */
     PASSWORD
+  }
+
+  /**
+   * Submodule checkout policy
+   */
+  public enum SubmodulesCheckoutPolicy {
+    /**
+     * Ignore submodules
+     */
+    IGNORE,
+    /**
+     * Checkout submodules
+     */
+    CHECKOUT,
   }
 
   /**

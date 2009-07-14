@@ -1,0 +1,6 @@
+Last commit:
+
+commit 7b76346b9d2add2ee54249ea6ef1a3f80f4fd354
+Author: Shawn O. Pearce <spearce@spearce.org>
+Date:   Wed Jul 1 15:45:53 2009 -0700
+Subject: Avoid growing WorkingTreeIterator's path multiple times

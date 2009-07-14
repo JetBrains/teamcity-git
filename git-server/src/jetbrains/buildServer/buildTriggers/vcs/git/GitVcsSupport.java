@@ -22,6 +22,8 @@ import com.jcraft.jsch.Session;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.RefreshableSshConfigSessionFactory;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.TeamCitySubmoduleResolver;
 import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -36,8 +38,10 @@ import org.spearce.jgit.revwalk.RevCommit;
 import org.spearce.jgit.revwalk.RevSort;
 import org.spearce.jgit.revwalk.RevWalk;
 import org.spearce.jgit.transport.*;
+import org.spearce.jgit.treewalk.AbstractTreeIterator;
 import org.spearce.jgit.treewalk.EmptyTreeIterator;
 import org.spearce.jgit.treewalk.TreeWalk;
+import org.spearce.jgit.treewalk.filter.PathFilterGroup;
 import org.spearce.jgit.treewalk.filter.TreeFilter;
 
 import java.io.ByteArrayInputStream;
@@ -47,6 +51,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.*;
+import java.util.concurrent.Callable;
 
 
 /**
@@ -149,7 +154,8 @@ public class GitVcsSupport extends ServerVcsSupport
     List<ModificationData> rc = new ArrayList<ModificationData>();
     Settings s = createSettings(root);
     try {
-      Repository r = getRepository(s);
+      Map<String, Repository> repositories = new HashMap<String, Repository>();
+      Repository r = getRepository(s, repositories);
       try {
         LOG.info("Collecting changes " + fromVersion + ".." + currentVersion + " for " + s.debugInfo());
         final String current = GitUtils.versionRevision(currentVersion);
@@ -166,7 +172,7 @@ public class GitVcsSupport extends ServerVcsSupport
           revs.markUninteresting(fromRev);
           RevCommit c;
           while ((c = revs.next()) != null) {
-            addCommit(root, rc, r, s, revs, c);
+            addCommit(root, rc, r, repositories, s, revs, c);
           }
         } else {
           LOG.warn("The from version " + fromVersion + " is not found, collecting changes basing on date and commit time " + s.debugInfo());
@@ -176,7 +182,7 @@ public class GitVcsSupport extends ServerVcsSupport
             if (c.getCommitTime() * 1000L <= limitTime) {
               revs.markUninteresting(c);
             } else {
-              addCommit(root, rc, r, s, revs, c);
+              addCommit(root, rc, r, repositories, s, revs, c);
             }
           }
           // add revision with warning text and randmon number as version
@@ -193,7 +199,7 @@ public class GitVcsSupport extends ServerVcsSupport
                                       GitUtils.displayVersion(version)));
         }
       } finally {
-        r.close();
+        close(repositories);
       }
     } catch (Exception e) {
       throw processException("collecting changes", e);
@@ -204,15 +210,22 @@ public class GitVcsSupport extends ServerVcsSupport
   /**
    * Add commit as a list of modification data
    *
-   * @param root the vcs root
-   * @param rc   list of commits to update
-   * @param r    repository
-   * @param s    the settings object
-   * @param revs revision iterator
-   * @param c    the current commit
+   * @param root         the vcs root
+   * @param rc           list of commits to update
+   * @param r            repository
+   * @param repositories a collection of repositories
+   * @param s            the settings object
+   * @param revs         revision iterator
+   * @param c            the current commit
    * @throws IOException in case of IO problem
    */
-  private static void addCommit(VcsRoot root, List<ModificationData> rc, Repository r, Settings s, RevWalk revs, RevCommit c)
+  private void addCommit(VcsRoot root,
+                         List<ModificationData> rc,
+                         Repository r,
+                         Map<String, Repository> repositories,
+                         Settings s,
+                         RevWalk revs,
+                         RevCommit c)
     throws IOException {
     Commit cc = c.asCommit(revs);
     if (LOG.isDebugEnabled()) {
@@ -224,8 +237,8 @@ public class GitVcsSupport extends ServerVcsSupport
     String cv = GitUtils.makeVersion(cc);
     String pv =
       parentIds.length == 0 ? GitUtils.makeVersion(ObjectId.zeroId().name(), 0) : GitUtils.makeVersion(r.mapCommit(cc.getParentIds()[0]));
-    List<VcsChange> changes = getCommitChanges(s, r, cc, parentIds, cv, pv);
-    ModificationData m = new ModificationData(cc.getCommitter().getWhen(), changes, cc.getMessage(), GitUtils.getUser(s, cc), root, cv,
+    List<VcsChange> changes = getCommitChanges(repositories, s, r, cc, parentIds, cv, pv);
+    ModificationData m = new ModificationData(cc.getAuthor().getWhen(), changes, cc.getMessage(), GitUtils.getUser(s, cc), root, cv,
                                               GitUtils.displayVersion(cc));
     rc.add(m);
   }
@@ -233,16 +246,23 @@ public class GitVcsSupport extends ServerVcsSupport
   /**
    * Get changes for the commit
    *
-   * @param s         the setting object
-   * @param r         the change version
-   * @param cc        the current commit
-   * @param parentIds parent commit identifiers
-   * @param cv        the commit version
-   * @param pv        the parent commit version
+   * @param repositories the collection of repositories
+   * @param s            the setting object
+   * @param r            the change version
+   * @param cc           the current commit
+   * @param parentIds    parent commit identifiers
+   * @param cv           the commit version
+   * @param pv           the parent commit version
    * @return the commit changes
    * @throws IOException if there is a repository access problem
    */
-  private static List<VcsChange> getCommitChanges(Settings s, Repository r, Commit cc, ObjectId[] parentIds, String cv, String pv)
+  private List<VcsChange> getCommitChanges(Map<String, Repository> repositories,
+                                           Settings s,
+                                           Repository r,
+                                           Commit cc,
+                                           ObjectId[] parentIds,
+                                           String cv,
+                                           String pv)
     throws IOException {
     List<VcsChange> changes = new ArrayList<VcsChange>();
     TreeWalk tw = new TreeWalk(r);
@@ -250,11 +270,11 @@ public class GitVcsSupport extends ServerVcsSupport
     tw.setRecursive(true);
     // remove empty tree iterator before adding new tree
     tw.reset();
-    tw.addTree(cc.getTreeId());
+    addTree(tw, cc, s, repositories);
     int nTrees = parentIds.length + 1;
     for (ObjectId pid : parentIds) {
       Commit pc = r.mapCommit(pid);
-      tw.addTree(pc.getTreeId());
+      addTree(tw, pc, s, repositories);
     }
     while (tw.next()) {
       String path = tw.getPathString();
@@ -288,6 +308,43 @@ public class GitVcsSupport extends ServerVcsSupport
       changes.add(change);
     }
     return changes;
+  }
+
+  /**
+   * Add the tree of the commit to the tree walker
+   *
+   * @param tw           tree walker
+   * @param pc           the commit
+   * @param s            the settings object
+   * @param repositories the set of used repositories
+   * @throws IOException in case of IO problem
+   */
+  private void addTree(TreeWalk tw, Commit pc, Settings s, Map<String, Repository> repositories) throws IOException {
+    if (s.areSubmodulesCheckedOut()) {
+      tw.addTree(SubmoduleAwareTreeIterator.create(pc, new TeamCitySubmoduleResolver(repositories, this, s, pc)));
+    } else {
+      tw.addTree(pc.getTreeId());
+    }
+  }
+
+  /**
+   * Close repositories
+   *
+   * @param repositories repositories to close
+   */
+  private void close(Map<String, Repository> repositories) {
+    RuntimeException e = null;
+    for (Repository r : repositories.values()) {
+      try {
+        r.close();
+      } catch (RuntimeException ex) {
+        LOG.error("Exception during closing repository: " + r, ex);
+        e = ex;
+      }
+    }
+    if (e != null) {
+      throw e;
+    }
   }
 
   /**
@@ -359,30 +416,32 @@ public class GitVcsSupport extends ServerVcsSupport
     builder.setWorkingMode_WithCheckoutRules(checkoutRules);
     Settings s = createSettings(root);
     try {
-      Repository r = getRepository(s);
+      Map<String, Repository> repositories = new HashMap<String, Repository>();
+      final Repository r = getRepository(s, repositories);
       try {
         Commit toCommit = ensureCommitLoaded(s, r, GitUtils.versionRevision(toVersion));
         if (toCommit == null) {
           throw new VcsException("Missing commit for version: " + toVersion);
         }
-        TreeWalk tw = new TreeWalk(r);
+        final TreeWalk tw = new TreeWalk(r);
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.setRecursive(true);
         tw.reset();
-        tw.addTree(toCommit.getTreeId());
+        addTree(tw, toCommit, s, repositories);
         if (fromVersion != null) {
           LOG.info("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
           Commit fromCommit = r.mapCommit(GitUtils.versionRevision(fromVersion));
           if (fromCommit == null) {
             throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not availalbe in the repository");
           }
-          tw.addTree(fromCommit.getTreeId());
+          addTree(tw, fromCommit, s, repositories);
         } else {
           LOG.info("Creating clean patch " + toVersion + " for " + s.debugInfo());
           tw.addTree(new EmptyTreeIterator());
         }
+        List<Callable<Void>> actions = new LinkedList<Callable<Void>>();
         while (tw.next()) {
-          String path = tw.getPathString();
+          final String path = tw.getPathString();
           if (debugFlag) {
             LOG.debug("File found " + treeWalkInfo(tw) + " for " + s.debugInfo());
           }
@@ -394,23 +453,33 @@ public class GitVcsSupport extends ServerVcsSupport
             case MODIFIED:
             case ADDED:
             case FILE_MODE_CHANGED:
-              if (isFileIncluded(checkoutRules, file)) {
-                ObjectId blobId = tw.getObjectId(0);
-                ObjectLoader loader = r.openBlob(blobId);
-                byte[] bytes = loader.getCachedBytes();
-                String mode = getModeDiff(tw);
-                builder.changeOrCreateBinaryFile(file, mode, new ByteArrayInputStream(bytes), bytes.length);
+              if (isFileIncluded(checkoutRules, file) && !FileMode.GITLINK.equals(tw.getFileMode(0))) {
+                final String mode = getModeDiff(tw);
+                final ObjectId id = tw.getObjectId(0);
+                final Repository objRep = getRepository(r, tw, 0);
+                actions.add(new Callable<Void>() {
+                  public Void call() throws Exception {
+                    byte[] bytes = loadObject(objRep, path, id);
+                    builder.changeOrCreateBinaryFile(file, mode, new ByteArrayInputStream(bytes), bytes.length);
+                    return null;
+                  }
+                });
               }
               break;
             case DELETED:
-              builder.deleteFile(file, true);
+              if (!FileMode.GITLINK.equals(tw.getFileMode(0))) {
+                builder.deleteFile(file, true);
+              }
               break;
             default:
               throw new IllegalStateException("Unknown change type");
           }
         }
+        for (Callable<Void> a : actions) {
+          a.call();
+        }
       } finally {
-        r.close();
+        close(repositories);
       }
     } catch (Exception e) {
       throw processException("patch building", e);
@@ -506,28 +575,83 @@ public class GitVcsSupport extends ServerVcsSupport
   public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot versionedRoot, @NotNull String version) throws VcsException {
     Settings s = createSettings(versionedRoot);
     try {
-      Repository r = getRepository(s);
+      Map<String, Repository> repositories = new HashMap<String, Repository>();
+      Repository r = getRepository(s, repositories);
       try {
         LOG.info("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
         final String rev = GitUtils.versionRevision(version);
         Commit c = ensureCommitLoaded(s, r, rev);
-        Tree t = c.getTree();
-        TreeEntry e = t.findBlobMember(filePath);
-        if (e == null) {
+        final TreeWalk tw = new TreeWalk(r);
+        tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
+        tw.setRecursive(tw.getFilter().shouldBeRecursive());
+        tw.reset();
+        addTree(tw, c, s, repositories);
+        if (!tw.next()) {
           throw new VcsException("The file " + filePath + " could not be found in " + rev + s.debugInfo());
         }
-        ObjectId id = e.getId();
-        final ObjectLoader loader = r.openBlob(id);
-        final byte[] data = loader.getBytes();
+        final byte[] data = loadObject(r, tw, 0);
         LOG.info(
-          "File retrived " + version + ":" + filePath + " (hash = " + id.name() + ", length = " + data.length + ") for " + s.debugInfo());
+          "File retrived " + version + ":" + filePath + " (hash = " + tw.getObjectId(0) + ", length = " + data.length + ") for " +
+          s.debugInfo());
         return data;
       } finally {
-        r.close();
+        close(repositories);
       }
     } catch (Exception e) {
       throw processException("retriving content", e);
     }
+  }
+
+  /**
+   * Load bytes that correspond to the position in the tree walker
+   *
+   * @param r   the initial repository
+   * @param tw  the tree walker
+   * @param nth the tree in the tree wailer
+   * @return loaded bytes
+   * @throws IOException if there is an IO error
+   */
+  private byte[] loadObject(Repository r, TreeWalk tw, final int nth) throws IOException {
+    ObjectId id = tw.getObjectId(nth);
+    Repository objRep = getRepository(r, tw, nth);
+    final String path = tw.getPathString();
+    return loadObject(objRep, path, id);
+  }
+
+  /**
+   * Load object by blob ID
+   *
+   * @param r    the repository
+   * @param path the path (might be null)
+   * @param id   the object id
+   * @return the object's bytes
+   * @throws IOException in case of IO problem
+   */
+  private byte[] loadObject(Repository r, String path, ObjectId id) throws IOException {
+    final ObjectLoader loader = r.openBlob(id);
+    if (loader == null) {
+      throw new IOException("Unabile to find blob " + id + (path == null ? "" : "(" + path + ")") + " in reposistory " + r);
+    }
+    return loader.getBytes();
+  }
+
+  /**
+   * Get repository from tree walker
+   *
+   * @param r   the initial repositoyr
+   * @param tw  the tree walker
+   * @param nth the position
+   * @return the actual repository
+   */
+  private Repository getRepository(Repository r, TreeWalk tw, int nth) {
+    Repository objRep;
+    AbstractTreeIterator ti = tw.getTree(nth, AbstractTreeIterator.class);
+    if (ti instanceof SubmoduleAwareTreeIterator) {
+      objRep = ((SubmoduleAwareTreeIterator)ti).getRepository();
+    } else {
+      objRep = r;
+    }
+    return objRep;
   }
 
   /**
@@ -666,6 +790,17 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   /**
+   * Get repository using settings
+   *
+   * @param s a repository to get
+   * @return an opened repository
+   * @throws VcsException if there is a problem with openning the repository
+   */
+  private Repository getRepository(Settings s) throws VcsException {
+    return getRepository(s, null);
+  }
+
+  /**
    * {@inheritDoc}
    */
   public boolean sourcesUpdatePossibleIfChangesNotFound(@NotNull VcsRoot root) {
@@ -748,21 +883,14 @@ public class GitVcsSupport extends ServerVcsSupport
    * @return the created object
    * @throws VcsException in case of IO problems
    */
-  private Settings createSettings(VcsRoot vcsRoot) throws VcsException {
+  protected Settings createSettings(VcsRoot vcsRoot) throws VcsException {
     final Settings settings = new Settings(vcsRoot);
-    if (settings.getRepositoryPath() == null) {
-      String url = settings.getRepositoryURL().toString();
-      File dir = new File(myServerPaths.getCachesDir());
-      // TODO the directory needs to be cleaned up
-      // TODO consider using a better hash in order to reduce a chance for conflict
-      String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
-      settings.setRepositoryPath(new File(dir, "git" + File.separatorChar + name));
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Using internal directory for " + settings.debugInfo());
-      }
+    if (myServerPaths != null) {
+      settings.setCachesDirectory(myServerPaths.getCachesDir());
     }
     return settings;
   }
+
 
   /**
    * {@inheritDoc}
@@ -846,12 +974,17 @@ public class GitVcsSupport extends ServerVcsSupport
   /**
    * Get repository using settings objct
    *
-   * @param s settings object
+   * @param s            settings object
+   * @param repositories the repository collection
    * @return the repository instance
    * @throws VcsException if the repository could not be accessed
    */
-  private static Repository getRepository(Settings s) throws VcsException {
-    return GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+  private static Repository getRepository(Settings s, Map<String, Repository> repositories) throws VcsException {
+    final Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+    if (repositories != null) {
+      repositories.put(s.getRepositoryPath().getPath(), r);
+    }
+    return r;
   }
 
   /**
@@ -864,8 +997,24 @@ public class GitVcsSupport extends ServerVcsSupport
    * @throws URISyntaxException    if URI is incorrect syntax
    * @throws VcsException          if there is a problem with configuring the transport
    */
-  private Transport openTransport(Settings s, Repository r) throws NotSupportedException, URISyntaxException, VcsException {
-    final Transport t = Transport.open(r, s.getRepositoryURL());
+  public Transport openTransport(Settings s, Repository r) throws NotSupportedException, URISyntaxException, VcsException {
+    return openTransport(s, r, s.getRepositoryURL());
+  }
+
+  /**
+   * Open transport for the repository
+   *
+   * @param s   the vcs settings
+   * @param r   the repository to open
+   * @param url the URL to open
+   * @return the transport instance
+   * @throws NotSupportedException if transport is not supported
+   * @throws URISyntaxException    if URI is incorrect syntax
+   * @throws VcsException          if there is a problem with configuring the transport
+   */
+  public Transport openTransport(Settings s, Repository r, final URIish url)
+    throws NotSupportedException, URISyntaxException, VcsException {
+    final Transport t = Transport.open(r, url);
     if (t instanceof SshTransport) {
       SshTransport ssh = (SshTransport)t;
       ssh.setSshSessionFactory(getSshSessionFactory(s));
