@@ -83,6 +83,11 @@ public class SubmodulesConfig {
       if (url == null) {
         url = myModulesConfig.getString("submodule", name, "url");
       }
+      if (url == null || path == null) {
+        // if url or path might be missing in the case of leftover sections
+        // in configuration file.
+        continue;
+      }
       myPathToEntry.put(path, new Submodule(name, path, url));
       int p = path.lastIndexOf('/');
       if (p == -1) {
