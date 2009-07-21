@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
+import com.intellij.openapi.diagnostic.Logger;
 import org.spearce.jgit.lib.Config;
 import org.spearce.jgit.lib.RepositoryConfig;
 
@@ -27,6 +28,10 @@ import java.util.Map;
  * Utility that allows working with submodules configuration file
  */
 public class SubmodulesConfig {
+  /**
+   * logger instance
+   */
+  private static Logger LOG = Logger.getInstance(SubmodulesConfig.class.getName());
   /**
    * Repository configuration
    */
@@ -86,6 +91,7 @@ public class SubmodulesConfig {
       if (url == null || path == null) {
         // if url or path might be missing in the case of leftover sections
         // in configuration file.
+        LOG.warn("Invalid submodule entry: " + name + " path: " + path + " url :" + url);
         continue;
       }
       myPathToEntry.put(path, new Submodule(name, path, url));
