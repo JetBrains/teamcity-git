@@ -56,6 +56,9 @@ public abstract class SubmoduleResolver {
   public Commit getSubmodule(String path, ObjectId commit) throws IOException {
     ensureConfigLoaded();
     final Submodule submodule = myConfig.findEntry(path);
+    if (submodule == null) {
+      throw new IOException("No valid submodule configuration entry is found for the path: " + path + " in commit " + commit.name());
+    }
     Repository r = resolveRepository(path, submodule.getUrl());
     final Commit c = r.mapCommit(commit);
     if (c == null) {
