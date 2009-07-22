@@ -21,6 +21,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.*;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import org.spearce.jgit.lib.BlobBasedConfig;
 import org.spearce.jgit.lib.Commit;
+import org.spearce.jgit.lib.FileBasedConfig;
 import org.spearce.jgit.lib.Repository;
 import org.spearce.jgit.treewalk.TreeWalk;
 import org.spearce.jgit.treewalk.filter.TreeFilter;
@@ -52,6 +53,33 @@ public class SubmoduleTest {
       assertEquals(m.getName(), "submodule");
       assertEquals(m.getPath(), "submodule");
       assertEquals(m.getUrl(), "../submodule.git");
+    } finally {
+      r.close();
+    }
+  }
+
+  /**
+   * Test loading mapping for submodules
+   *
+   * @throws IOException if there is IO problem
+   */
+  @Test
+  public void testSubmoduleMultientryMapping() throws IOException {
+    File masterRep = dataFile("repo.git");
+    File submodulesFile = dataFile("content", "dotgitmodules");
+    Repository r = new Repository(masterRep);
+    try {
+      SubmodulesConfig s = new SubmodulesConfig(r.getConfig(), new FileBasedConfig(null, submodulesFile));
+      assertTrue(s.isSubmodulePrefix(""));
+      assertFalse(s.isSubmodulePrefix("c/"));
+      Submodule m = s.findEntry("b");
+      assertEquals(m.getName(), "b");
+      assertEquals(m.getPath(), "b");
+      assertEquals(m.getUrl(), "git@gitrep:/git/b.git");
+      m = s.findEntry("c/D");
+      assertEquals(m.getName(), "c/D");
+      assertEquals(m.getPath(), "c/D");
+      assertEquals(m.getUrl(), "git@gitrep:/git/d.git");
     } finally {
       r.close();
     }

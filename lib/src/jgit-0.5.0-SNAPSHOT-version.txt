@@ -1,6 +1,10 @@
 Last commit:
 
-commit 7b76346b9d2add2ee54249ea6ef1a3f80f4fd354
+commit aaf16915b4ed0481e7fe438d8863d787efbbbcf8
 Author: Shawn O. Pearce <spearce@spearce.org>
-Date:   Wed Jul 1 15:45:53 2009 -0700
-Subject: Avoid growing WorkingTreeIterator's path multiple times
+Date:   Mon Jul 13 07:53:08 2009 -0700
+Subject: FindBugs: don't use new String(String) in RefDatabase
+
+With patch:
+
+Removed conversion of subsection to the lowecase when accessing subsection names in config files

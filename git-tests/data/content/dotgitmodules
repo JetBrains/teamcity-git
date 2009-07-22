@@ -1,0 +1,6 @@
+[submodule "b"]
+	path = b
+	url = git@gitrep:/git/b.git
+[submodule "c/D"]
+	path = c/D
+	url = git@gitrep:/git/d.git
