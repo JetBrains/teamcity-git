@@ -23,7 +23,7 @@
       </additional-files>
     </package.teamcity.plugin>
 
-    <zip basedir="${basedir}" destfile="dist/${plugin.name}-src.zip">
+    <zip basedir="${basedir}" destfile="dist/src/${plugin.name}-src.zip">
       <include name="git-server/**"/>
       <include name="git-tests/**"/>
       <include name="lib/**"/>
