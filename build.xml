@@ -23,7 +23,9 @@
       </additional-files>
     </package.teamcity.plugin>
 
-    <zip basedir="${basedir}" destfile="dist/src/${plugin.name}-src.zip">
+    <mkdir dir="${basedir}/dist/src"/>
+
+    <zip basedir="${basedir}" destfile="${basedir}/dist/src/${plugin.name}-src.zip">
       <include name="git-server/**"/>
       <include name="git-tests/**"/>
       <include name="lib/**"/>
