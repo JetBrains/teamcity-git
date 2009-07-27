@@ -41,7 +41,7 @@ public class SubmoduleTest {
    * @throws IOException if there is IO problem
    */
   @Test
-  public void testSubmoduleMapping() throws IOException {
+  public void testSubmoduleMapping() throws Exception {
     File masterRep = dataFile("repo.git");
     Repository r = new Repository(masterRep);
     try {
@@ -64,12 +64,14 @@ public class SubmoduleTest {
    * @throws IOException if there is IO problem
    */
   @Test
-  public void testSubmoduleMultientryMapping() throws IOException {
+  public void testSubmoduleMultientryMapping() throws Exception {
     File masterRep = dataFile("repo.git");
     File submodulesFile = dataFile("content", "dotgitmodules");
     Repository r = new Repository(masterRep);
     try {
-      SubmodulesConfig s = new SubmodulesConfig(r.getConfig(), new FileBasedConfig(null, submodulesFile));
+      FileBasedConfig config = new FileBasedConfig(null, submodulesFile);
+      config.load();
+      SubmodulesConfig s = new SubmodulesConfig(r.getConfig(), config);
       assertTrue(s.isSubmodulePrefix(""));
       assertFalse(s.isSubmodulePrefix("c/"));
       Submodule m = s.findEntry("b");

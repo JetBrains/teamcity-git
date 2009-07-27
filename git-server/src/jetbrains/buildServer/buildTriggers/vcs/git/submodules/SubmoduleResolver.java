@@ -16,17 +16,23 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
+import com.intellij.openapi.diagnostic.Logger;
 import org.spearce.jgit.lib.BlobBasedConfig;
 import org.spearce.jgit.lib.Commit;
 import org.spearce.jgit.lib.ObjectId;
 import org.spearce.jgit.lib.Repository;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 /**
  * The resolver for submodules
  */
 public abstract class SubmoduleResolver {
+  /**
+   * logger instance
+   */
+  private static Logger LOG = Logger.getInstance(SubmoduleResolver.class.getName());
   /**
    * The base for submodule configuration
    */
@@ -55,6 +61,9 @@ public abstract class SubmoduleResolver {
    */
   public Commit getSubmodule(String path, ObjectId commit) throws IOException {
     ensureConfigLoaded();
+    if (myConfig == null) {
+      throw new IOException("No submodule configuration for commit: " + myCommit.getCommitId().name());
+    }
     final Submodule submodule = myConfig.findEntry(path);
     if (submodule == null) {
       throw new IOException("No valid submodule configuration entry is found for the path: " + path + " in commit " + commit.name());
@@ -72,7 +81,13 @@ public abstract class SubmoduleResolver {
    */
   private void ensureConfigLoaded() {
     if (myConfig == null) {
-      myConfig = new SubmodulesConfig(myCommit.getRepository().getConfig(), new BlobBasedConfig(null, myCommit, ".gitmodules"));
+      try {
+        myConfig = new SubmodulesConfig(myCommit.getRepository().getConfig(), new BlobBasedConfig(null, myCommit, ".gitmodules"));
+      } catch (FileNotFoundException e) {
+        // do nothing
+      } catch (Exception e) {
+        LOG.error("Unable to load or parse submodule configuration at: " + myCommit.getCommitId().name(), e);
+      }
     }
   }
 
@@ -103,7 +118,7 @@ public abstract class SubmoduleResolver {
    */
   public boolean containsSubmodule(String path) {
     ensureConfigLoaded();
-    return myConfig.isSubmodulePrefix(path);
+    return myConfig != null && myConfig.isSubmodulePrefix(path);
   }
 
   /**

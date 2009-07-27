@@ -1,10 +1,6 @@
 Last commit:
 
-commit aaf16915b4ed0481e7fe438d8863d787efbbbcf8
+commit 4c5eb17416997480a6aa012c22a8fe0e833f15e4
 Author: Shawn O. Pearce <spearce@spearce.org>
-Date:   Mon Jul 13 07:53:08 2009 -0700
-Subject: FindBugs: don't use new String(String) in RefDatabase
-
-With patch:
-
-Removed conversion of subsection to the lowecase when accessing subsection names in config files
+Date:   Sat Jul 25 11:53:02 2009 -0700
+Subject: Use Config cache for fetch and receive configuration parsing
