@@ -210,7 +210,7 @@ public class Settings {
   public File getRepositoryPath() {
     if (repositoryPath == null) {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Using internal directory for " + debugInfo());
+        LOG.debug("Using internal directory for (" + getPublicURL() + "#" + getBranch() + ")");
       }
       repositoryPath = getPathForUrl(getRepositoryURL().toString());
     }
