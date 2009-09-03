@@ -48,6 +48,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.*;
@@ -64,7 +65,7 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   private static Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   /**
-   * Random number generator used to generate artifitial versions
+   * Random number generator used to generate artificial versions
    */
   private static final Random ourRandom = new Random();
   /**
@@ -80,6 +81,20 @@ public class GitVcsSupport extends ServerVcsSupport
    * This factory is used when known host database is specified to be ignored
    */
   final SshSessionFactory mySshSessionFactoryKnownHostsIgnored;
+  /**
+   * The method that allows to set non-ignorable attribute on modification data
+   */
+  final static Method MD_SET_CAN_BE_IGNORED;
+
+  static {
+    Method m = null;
+    try {
+      m = ModificationData.class.getMethod("setCanBeIgnored", boolean.class);
+    } catch (Exception ex) {
+      // ignore exception
+    }
+    MD_SET_CAN_BE_IGNORED = m;
+  }
 
   /**
    * The constructor
@@ -240,6 +255,13 @@ public class GitVcsSupport extends ServerVcsSupport
     List<VcsChange> changes = getCommitChanges(repositories, s, r, cc, parentIds, cv, pv);
     ModificationData m = new ModificationData(cc.getAuthor().getWhen(), changes, cc.getMessage(), GitUtils.getUser(s, cc), root, cv,
                                               GitUtils.displayVersion(cc));
+    if (parentIds.length > 1 && MD_SET_CAN_BE_IGNORED != null) {
+      try {
+        MD_SET_CAN_BE_IGNORED.invoke(m, false);
+      } catch (Exception e) {
+        // ignore exception
+      }
+    }
     rc.add(m);
   }
 
