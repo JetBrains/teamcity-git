@@ -34,7 +34,7 @@ import java.util.Comparator;
  */
 public class GitUtils {
   /**
-   * Amount of characters disiplayed for in the display version of revision number
+   * Amount of characters displayed for in the display version of revision number
    */
   public static final int DISPLAY_VERSION_AMOUNT = 40;
   /**
@@ -50,7 +50,7 @@ public class GitUtils {
    * Convert remote URL to JGIT form
    *
    * @param file the file to convert
-   * @return the file URL recongnized by JGit
+   * @return the file URL recognized by JGit
    */
   public static String toURL(File file) {
     return "file:///" + file.getAbsolutePath().replace(File.separatorChar, '/');
@@ -138,7 +138,7 @@ public class GitUtils {
       }
       return r;
     } catch (Exception ex) {
-      throw new VcsException("The repository at " + dir + " cannot be openned or created: " + ex, ex);
+      throw new VcsException("The repository at " + dir + " cannot be opened or created: " + ex, ex);
     }
   }
 

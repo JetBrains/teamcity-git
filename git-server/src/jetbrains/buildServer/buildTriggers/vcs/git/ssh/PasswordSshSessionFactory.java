@@ -22,7 +22,7 @@ import com.jcraft.jsch.Session;
 import org.spearce.jgit.transport.SshSessionFactory;
 
 /**
- * A simple session factory used for passowrd authentication.
+ * A simple session factory used for password authentication.
  * It assume that password was passed in URL to ssh.
  */
 public class PasswordSshSessionFactory extends SshSessionFactory {

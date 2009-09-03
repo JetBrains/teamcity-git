@@ -61,7 +61,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
   private final Map<String, Repository> mySubmoduleRepositories;
 
   /**
-   * The resolver consturctor
+   * The resolver constructor
    *
    * @param submoduleRepositories the collection to accumulate submodule repositories
    * @param vcs                   the Git vcs service
@@ -73,7 +73,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
   }
 
   /**
-   * The resolver consturctor
+   * The resolver constructor
    *
    * @param submoduleRepositories the collection to accumulate submodule repositories
    * @param vcs                   the Git vcs service

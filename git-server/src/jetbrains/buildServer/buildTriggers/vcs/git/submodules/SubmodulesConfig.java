@@ -108,7 +108,7 @@ public class SubmodulesConfig {
    * Check if the specified prefix is a direct submodule parent. This check is used to detect
    * situation when the directory might be reordered due to the submodules.
    *
-   * @param path the path to be checked if it is a submoulde parent.
+   * @param path the path to be checked if it is a submodule parent.
    * @return true if the path can directly contain submodules
    */
   public boolean isSubmodulePrefix(String path) {

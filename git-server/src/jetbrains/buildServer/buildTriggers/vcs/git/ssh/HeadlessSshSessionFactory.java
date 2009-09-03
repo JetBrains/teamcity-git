@@ -30,6 +30,6 @@ public class HeadlessSshSessionFactory extends SshConfigSessionFactory {
    * {@inheritDoc}
    */
   protected void configure(OpenSshConfig.Host hc, Session session) {
-    // do nothing, UserInfo will not be set and openning connection will fail
+    // do nothing, UserInfo will not be set and opening connection will fail
   }
 }

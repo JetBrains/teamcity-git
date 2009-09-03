@@ -110,7 +110,7 @@ public class GitVcsSupport extends ServerVcsSupport
     } else {
       this.mySshSessionFactory = new RefreshableSshConfigSessionFactory();
       this.mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory() {
-        // note that different instance is used because JSch cannot be shared with strick host checking
+        // note that different instance is used because JSch cannot be shared with strict host checking
         public Session getSession(String user, String pass, String host, int port) throws JSchException {
           final Session session = super.getSession(user, pass, host, port);
           session.setConfig("StrictHostKeyChecking", "no");
@@ -200,7 +200,7 @@ public class GitVcsSupport extends ServerVcsSupport
               addCommit(root, rc, r, repositories, s, revs, c);
             }
           }
-          // add revision with warning text and randmon number as version
+          // add revision with warning text and random number as version
           byte[] idBytes = new byte[20];
           ourRandom.nextBytes(idBytes);
           String version = GitUtils.makeVersion(ObjectId.fromRaw(idBytes).name(), limitTime);
@@ -413,8 +413,8 @@ public class GitVcsSupport extends ServerVcsSupport
     int modeBits0 = mode0.getBits();
     boolean fileModeModified = true;
     for (int i = 1; i < nTrees; i++) {
-      int modebits = tw.getFileMode(i).getBits();
-      if (modebits == modeBits0) {
+      int modeBits = tw.getFileMode(i).getBits();
+      if (modeBits == modeBits0) {
         fileModeModified = false;
         break;
       }
@@ -454,7 +454,7 @@ public class GitVcsSupport extends ServerVcsSupport
           LOG.info("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
           Commit fromCommit = r.mapCommit(GitUtils.versionRevision(fromVersion));
           if (fromCommit == null) {
-            throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not availalbe in the repository");
+            throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not available in the repository");
           }
           addTree(tw, fromCommit, s, repositories);
         } else {
@@ -613,14 +613,14 @@ public class GitVcsSupport extends ServerVcsSupport
         }
         final byte[] data = loadObject(r, tw, 0);
         LOG.info(
-          "File retrived " + version + ":" + filePath + " (hash = " + tw.getObjectId(0) + ", length = " + data.length + ") for " +
+          "File retrieved " + version + ":" + filePath + " (hash = " + tw.getObjectId(0) + ", length = " + data.length + ") for " +
           s.debugInfo());
         return data;
       } finally {
         close(repositories);
       }
     } catch (Exception e) {
-      throw processException("retriving content", e);
+      throw processException("retrieving content", e);
     }
   }
 
@@ -652,7 +652,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private byte[] loadObject(Repository r, String path, ObjectId id) throws IOException {
     final ObjectLoader loader = r.openBlob(id);
     if (loader == null) {
-      throw new IOException("Unabile to find blob " + id + (path == null ? "" : "(" + path + ")") + " in reposistory " + r);
+      throw new IOException("Unable to find blob " + id + (path == null ? "" : "(" + path + ")") + " in repository " + r);
     }
     return loader.getBytes();
   }
@@ -660,7 +660,7 @@ public class GitVcsSupport extends ServerVcsSupport
   /**
    * Get repository from tree walker
    *
-   * @param r   the initial repositoyr
+   * @param r   the initial repository
    * @param tw  the tree walker
    * @param nth the position
    * @return the actual repository
@@ -807,7 +807,7 @@ public class GitVcsSupport extends ServerVcsSupport
         r.close();
       }
     } catch (Exception e) {
-      throw processException("retriving current version", e);
+      throw processException("retrieving current version", e);
     }
   }
 
@@ -816,7 +816,7 @@ public class GitVcsSupport extends ServerVcsSupport
    *
    * @param s a repository to get
    * @return an opened repository
-   * @throws VcsException if there is a problem with openning the repository
+   * @throws VcsException if there is a problem with opening the repository
    */
   private Repository getRepository(Settings s) throws VcsException {
     return getRepository(s, null);
@@ -859,7 +859,7 @@ public class GitVcsSupport extends ServerVcsSupport
       Repository r = getRepository(s);
       try {
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Openning connection for " + s.debugInfo());
+          LOG.debug("Opening connection for " + s.debugInfo());
         }
         final Transport tn = openTransport(s, r);
         try {
@@ -994,7 +994,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   /**
-   * Get repository using settings objct
+   * Get repository using settings object
    *
    * @param s            settings object
    * @param repositories the repository collection

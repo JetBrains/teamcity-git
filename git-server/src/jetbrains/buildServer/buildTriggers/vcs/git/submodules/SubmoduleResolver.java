@@ -43,7 +43,7 @@ public abstract class SubmoduleResolver {
   SubmodulesConfig myConfig;
 
   /**
-   * The comimt for that contains submodule reference
+   * The commit for that contains submodule reference
    *
    * @param commit the submodule commit
    */
@@ -57,7 +57,7 @@ public abstract class SubmoduleResolver {
    * @param path   the within repository path
    * @param commit the commit identifier
    * @return the the resoled commit in other repository
-   * @throws IOException if there is an IO problem during resolving repositoyr or mapping commit
+   * @throws IOException if there is an IO problem during resolving repository or mapping commit
    */
   public Commit getSubmodule(String path, ObjectId commit) throws IOException {
     ensureConfigLoaded();
@@ -92,7 +92,7 @@ public abstract class SubmoduleResolver {
   }
 
   /**
-   * Get repository by the URL. Note that the repository is retrived but not cleaned up. This should be done by implementer of this component at later time.
+   * Get repository by the URL. Note that the repository is retrieved but not cleaned up. This should be done by implementer of this component at later time.
    *
    * @param path the local path within repository
    * @param url  the URL to resolve  @return the resolved repository

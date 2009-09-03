@@ -31,7 +31,7 @@ import java.util.LinkedList;
  */
 public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   /**
-   * The iterator wrapped by this interator
+   * The iterator wrapped by this iterator
    */
   protected final AbstractTreeIterator myWrappedIterator;
   /**
@@ -80,7 +80,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   /**
    * The constructor
    *
-   * @param commit            the commit that is starign point for iteration
+   * @param commit            the commit that is starting point for iteration
    * @param submoduleResolver the resolver for submodules
    * @throws IOException in case of IO problem
    */
@@ -111,7 +111,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    * The constructor
    *
    * @param parent            the parent iterator
-   * @param commit            the commit that is starign point for iteration
+   * @param commit            the commit that is starting point for iteration
    * @param submoduleResolver the resolver for submodules
    * @throws IOException in case of IO problem
    */
@@ -217,7 +217,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   /**
    * Create a tree iterator from commit
    *
-   * @param parent      the parent interator (or null)
+   * @param parent      the parent iterator (or null)
    * @param wrapped     the wrapped iterator
    * @param subResolver a submodule resolver
    * @param path        the path the submodule is referenced in the local repository
@@ -283,7 +283,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    * Create tree parser
    *
    * @param commit the commit that contains point ot the tree
-   * @return the tree paser
+   * @return the tree parser
    * @throws IOException in case of IO problem
    */
   public static CanonicalTreeParser createTreeParser(final Commit commit) throws IOException {
@@ -323,8 +323,8 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     if (w.eof()) {
       return null;
     }
-    final int INITAL_NAME_SIZE = 32;
-    byte[] name = new byte[INITAL_NAME_SIZE];
+    final int INITIAL_NAME_SIZE = 32;
+    byte[] name = new byte[INITIAL_NAME_SIZE];
     while (!w.eof()) {
       if (!stack.isEmpty()) {
         int l = w.getNameLength();

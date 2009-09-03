@@ -42,7 +42,7 @@ import java.net.URISyntaxException;
 import java.util.List;
 
 /**
- * The tests for version detection funcitonality
+ * The tests for version detection functionality
  */
 public class GitVcsSupportTest extends PatchTestCase {
   /**
@@ -50,7 +50,7 @@ public class GitVcsSupportTest extends PatchTestCase {
    */
   private static final String VERSION_TEST_HEAD = GitUtils.makeVersion("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", 1237391915000L);
   /**
-   * The versio that contains add/remove/update changes
+   * The version that contains add/remove/update changes
    */
   private static final String CUD1_VERSION = GitUtils.makeVersion("ad4528ed5c84092fdbe9e0502163cf8d6e6141e7", 1238072086000L);
   /**

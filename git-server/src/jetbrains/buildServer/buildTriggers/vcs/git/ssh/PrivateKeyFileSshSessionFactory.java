@@ -29,7 +29,7 @@ import org.spearce.jgit.transport.SshSessionFactory;
  */
 public class PrivateKeyFileSshSessionFactory extends SshSessionFactory {
   /**
-   * SSH instance with registered indentity
+   * SSH instance with registered identity
    */
   private final JSch sch;
 
@@ -53,9 +53,10 @@ public class PrivateKeyFileSshSessionFactory extends SshSessionFactory {
    * A constructor from vcs root settings
    *
    * @param s a settings object
+   * @throws VcsException if private key could not be read
    */
   public PrivateKeyFileSshSessionFactory(Settings s) throws VcsException {
-    this(s.getPrivateKeyFile(), s.getPassprase());
+    this(s.getPrivateKeyFile(), s.getPassphrase());
   }
 
   /**

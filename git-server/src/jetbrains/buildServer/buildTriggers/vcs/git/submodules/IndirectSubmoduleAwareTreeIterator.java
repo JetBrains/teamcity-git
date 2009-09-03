@@ -36,11 +36,11 @@ import java.io.IOException;
  * <li>a/c</li>
  * <li>a0c</li>
  * </ul>
- * Because of this, when iterpreting submodules are directories an reordering is needed.
+ * Because of this, when interpreting submodules are directories an reordering is needed.
  */
 public class IndirectSubmoduleAwareTreeIterator extends SubmoduleAwareTreeIterator {
   /**
-   * The current poistion
+   * The current position
    */
   private int myPosition = 0;
   /**
@@ -54,7 +54,7 @@ public class IndirectSubmoduleAwareTreeIterator extends SubmoduleAwareTreeIterat
    *
    * @param wrappedIterator   the wrapped iterator
    * @param submoduleResolver the resolver for submodules
-   * @param mapping           the mapping of poistions
+   * @param mapping           the mapping of positions
    * @throws IOException in case of IO problem
    */
   public IndirectSubmoduleAwareTreeIterator(AbstractTreeIterator wrappedIterator, SubmoduleResolver submoduleResolver, int[] mapping)
@@ -71,7 +71,7 @@ public class IndirectSubmoduleAwareTreeIterator extends SubmoduleAwareTreeIterat
    * @param parent            the parent iterator
    * @param wrappedIterator   the wrapped iterator
    * @param submoduleResolver the resolver for submodules
-   * @param mapping           the mapping of poistions
+   * @param mapping           the mapping of positions
    * @throws CorruptObjectException in case of navigation error
    */
   public IndirectSubmoduleAwareTreeIterator(SubmoduleAwareTreeIterator parent,
@@ -135,7 +135,7 @@ public class IndirectSubmoduleAwareTreeIterator extends SubmoduleAwareTreeIterat
    * Move to the position specified by the offset in array
    *
    * @param offset the positive or negative offset to move by
-   * @throws CorruptObjectException in case of naviagation problems
+   * @throws CorruptObjectException in case of navigation problems
    */
   private void move(int offset) throws CorruptObjectException {
     int newPosition = myPosition + offset;

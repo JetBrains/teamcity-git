@@ -66,7 +66,7 @@ public class Settings {
   /**
    * The passphrase (used for {@link AuthenticationMethod#PRIVATE_KEY_FILE})
    */
-  private String passprase;
+  private String passphrase;
   /**
    * The private key file (used for {@link AuthenticationMethod#PRIVATE_KEY_FILE})
    */
@@ -122,7 +122,7 @@ public class Settings {
       uri = uri.setPass(password);
     }
     if (authenticationMethod == AuthenticationMethod.PRIVATE_KEY_FILE) {
-      passprase = root.getProperty(Constants.PASSPHRASE);
+      passphrase = root.getProperty(Constants.PASSPHRASE);
       privateKeyFile = root.getProperty(Constants.PRIVATE_KEY_PATH);
     }
     publicURL = uri.toString();
@@ -191,14 +191,14 @@ public class Settings {
   }
 
   /**
-   * @return username sytle
+   * @return username style
    */
   public UserNameStyle getUsernameStyle() {
     return usernameStyle;
   }
 
   /**
-   * @return the URL with pasword removed
+   * @return the URL with password removed
    */
   public String getPublicURL() {
     return publicURL;
@@ -260,8 +260,8 @@ public class Settings {
   /**
    * @return the passphrase for private key
    */
-  public String getPassprase() {
-    return passprase;
+  public String getPassphrase() {
+    return passphrase;
   }
 
   /**
@@ -339,7 +339,7 @@ public class Settings {
   }
 
   /**
-   * The stype for user names
+   * The style for user names
    */
   enum UserNameStyle {
     /**

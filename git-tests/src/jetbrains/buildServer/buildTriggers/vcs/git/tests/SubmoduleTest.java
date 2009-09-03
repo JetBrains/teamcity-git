@@ -64,7 +64,7 @@ public class SubmoduleTest {
    * @throws IOException if there is IO problem
    */
   @Test
-  public void testSubmoduleMultientryMapping() throws Exception {
+  public void testSubmoduleMultiEntryMapping() throws Exception {
     File masterRep = dataFile("repo.git");
     File submodulesFile = dataFile("content", "dotgitmodules");
     Repository r = new Repository(masterRep);
