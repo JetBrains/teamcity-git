@@ -59,7 +59,7 @@ import java.util.concurrent.Callable;
  * Git VCS support
  */
 public class GitVcsSupport extends ServerVcsSupport
-  implements LabelingSupport, VcsFileContentProvider, CollectChangesByCheckoutRules, BuildPatchByCheckoutRules, TestConnectionSupport {
+  implements VcsPersonalSupport, LabelingSupport, VcsFileContentProvider, CollectChangesByCheckoutRules, BuildPatchByCheckoutRules, TestConnectionSupport {
   /**
    * logger instance
    */
@@ -1072,6 +1072,23 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   private static ObjectId versionObjectId(String version) {
     return ObjectId.fromString(GitUtils.versionRevision(version));
+  }
+
+  @Override
+  public VcsPersonalSupport getPersonalSupport() {
+    return this;
+  }
+                      
+  @NotNull
+  public Collection<String> mapFullPath(@NotNull final VcsRootEntry rootEntry, @NotNull final String fullPath) {
+    final int sep = fullPath.indexOf("|");
+    if (sep < 0) return Collections.emptySet();
+
+    final String repositoryId = fullPath.substring(0, sep);
+    //todo use repositoryId. Currently we consider only one git repository is attached to a buildType
+    final String path = fullPath.substring(sep + 1);
+
+    return Collections.singleton(path);
   }
 
   /**
