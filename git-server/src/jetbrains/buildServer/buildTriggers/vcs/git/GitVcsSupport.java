@@ -1079,15 +1079,48 @@ public class GitVcsSupport extends ServerVcsSupport
     return this;
   }
                       
+  /**         
+   * Expected fullPath format:
+   *
+   * "<git revision hash>|<repository url>|<file relative path>"
+   *
+   * @param rootEntry indicates the association between VCS root and build configuration
+   * @param fullPath change path from IDE patch
+   * @return
+   */
   @NotNull
   public Collection<String> mapFullPath(@NotNull final VcsRootEntry rootEntry, @NotNull final String fullPath) {
-    final int sep = fullPath.indexOf("|");
-    if (sep < 0) return Collections.emptySet();
+    final int firstSep = fullPath.indexOf("|");
+    final int lastSep = fullPath.lastIndexOf("|");
+    if (firstSep < 0 || lastSep < 0) return Collections.emptySet();
 
-    final String repositoryId = fullPath.substring(0, sep);
-    //todo use repositoryId. Currently we consider only one git repository is attached to a buildType
-    final String path = fullPath.substring(sep + 1);
+    final String vcsRevisionNumber = fullPath.substring(0, firstSep);
 
+    try {
+      final Settings settings = createSettings(rootEntry.getVcsRoot());
+      if (vcsRevisionNumber.length() == 0) {
+        final String repositoryUrl = fullPath.substring(firstSep + 1, lastSep);
+        try {
+          final URIish uri = new URIish(repositoryUrl);
+          if (!settings.getRepositoryURL().equals(uri)) return Collections.emptySet();
+        } catch (final URISyntaxException e) {
+          LOG.error(e);
+          return Collections.emptySet();
+        }
+      }
+      else {
+        final Repository repository = getRepository(settings, null);
+        if (repository.mapCommit(vcsRevisionNumber) == null) return Collections.emptySet();
+      }
+    } catch (final VcsException e) {
+      LOG.error(e);
+      return Collections.emptySet();
+    } catch (final IOException e) {
+      LOG.error(e);
+      return Collections.emptySet();
+    }
+
+    final String path = fullPath.substring(lastSep + 1);
     return Collections.singleton(path);
   }
 
