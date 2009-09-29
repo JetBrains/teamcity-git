@@ -59,7 +59,8 @@ import java.util.concurrent.Callable;
  * Git VCS support
  */
 public class GitVcsSupport extends ServerVcsSupport
-  implements VcsPersonalSupport, LabelingSupport, VcsFileContentProvider, CollectChangesByCheckoutRules, BuildPatchByCheckoutRules, TestConnectionSupport {
+  implements VcsPersonalSupport, LabelingSupport, VcsFileContentProvider, CollectChangesByCheckoutRules, BuildPatchByCheckoutRules,
+             TestConnectionSupport {
   /**
    * logger instance
    */
@@ -479,13 +480,19 @@ public class GitVcsSupport extends ServerVcsSupport
                 final String mode = getModeDiff(tw);
                 final ObjectId id = tw.getObjectId(0);
                 final Repository objRep = getRepository(r, tw, 0);
-                actions.add(new Callable<Void>() {
+                Callable<Void> action = new Callable<Void>() {
                   public Void call() throws Exception {
                     byte[] bytes = loadObject(objRep, path, id);
                     builder.changeOrCreateBinaryFile(file, mode, new ByteArrayInputStream(bytes), bytes.length);
                     return null;
                   }
-                });
+                };
+                if (fromVersion == null) {
+                  // clean patch, we aren't going to see any deletes
+                  action.call();
+                } else {
+                  actions.add(action);
+                }
               }
               break;
             case DELETED:
@@ -1078,14 +1085,14 @@ public class GitVcsSupport extends ServerVcsSupport
   public VcsPersonalSupport getPersonalSupport() {
     return this;
   }
-                      
-  /**         
+
+  /**
    * Expected fullPath format:
-   *
+   * <p/>
    * "<git revision hash>|<repository url>|<file relative path>"
    *
    * @param rootEntry indicates the association between VCS root and build configuration
-   * @param fullPath change path from IDE patch
+   * @param fullPath  change path from IDE patch
    * @return
    */
   @NotNull
@@ -1107,8 +1114,7 @@ public class GitVcsSupport extends ServerVcsSupport
           LOG.error(e);
           return Collections.emptySet();
         }
-      }
-      else {
+      } else {
         final Repository repository = getRepository(settings, null);
         if (repository.mapCommit(vcsRevisionNumber) == null) return Collections.emptySet();
       }
