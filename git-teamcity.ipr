@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project relativePaths="false" version="4">
+<project version="4">
   <component name="AntConfiguration">
     <defaultAnt bundledAnt="true" />
     <buildFile url="file://$PROJECT_DIR$/build.xml">
@@ -273,9 +273,6 @@
   </component>
   <component name="IdProvider" IDEtalkID="5D3DF039F2986C172BD95D6A6F8754EF" />
   <component name="InspectionProjectProfileManager">
-    <option name="PROJECT_PROFILE" value="Project Default" />
-    <option name="USE_PROJECT_PROFILE" value="true" />
-    <version value="1.0" />
     <profiles>
       <profile version="1.0" is_locked="false">
         <option name="myName" value="Project Default" />
@@ -285,6 +282,9 @@
         </inspection_tool>
       </profile>
     </profiles>
+    <option name="PROJECT_PROFILE" value="Project Default" />
+    <option name="USE_PROJECT_PROFILE" value="true" />
+    <version value="1.0" />
     <list size="5">
       <item index="0" class="java.lang.String" itemvalue="INFO" />
       <item index="1" class="java.lang.String" itemvalue="WARNING" />
@@ -449,7 +449,9 @@
   <component name="ProjectDetails">
     <option name="projectName" value="git-teamcity" />
   </component>
-  <component name="ProjectFileVersion" converted="true" />
+  <component name="ProjectDictionaryState">
+    <dictionary name="Constantin.Plotnikov" />
+  </component>
   <component name="ProjectKey">
     <option name="state" value="project://60c230e5-1bc8-46d2-9235-d195b9ba9c04" />
   </component>
@@ -565,8 +567,5 @@
       <SOURCES />
     </library>
   </component>
-  <UsedPathMacros>
-    <macro name="TeamCityDistribution" />
-  </UsedPathMacros>
 </project>
 
