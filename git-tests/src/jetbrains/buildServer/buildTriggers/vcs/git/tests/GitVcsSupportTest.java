@@ -221,6 +221,12 @@ public class GitVcsSupportTest extends PatchTestCase {
     byte[] data1 = support.getContent("readme.txt", root, version);
     byte[] data2 = FileUtil.loadFileBytes(dataFile("content", "readme.txt"));
     Assert.assertEquals(data1, data2);
+    try {
+      support.getContent("non-existing file.txt", root, version);
+      Assert.fail("The file must not be loaded");
+    } catch(VcsFileNotFoundException ex) {
+      // ignore exception
+    }
   }
 
   /**

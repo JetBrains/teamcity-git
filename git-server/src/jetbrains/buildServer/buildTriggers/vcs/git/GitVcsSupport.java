@@ -616,7 +616,7 @@ public class GitVcsSupport extends ServerVcsSupport
         tw.reset();
         addTree(tw, c, s, repositories);
         if (!tw.next()) {
-          throw new VcsException("The file " + filePath + " could not be found in " + rev + s.debugInfo());
+          throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + s.debugInfo());
         }
         final byte[] data = loadObject(r, tw, 0);
         LOG.info(
