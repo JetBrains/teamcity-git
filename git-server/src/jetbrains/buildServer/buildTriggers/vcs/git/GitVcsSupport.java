@@ -747,6 +747,16 @@ public class GitVcsSupport extends ServerVcsSupport
             rc.add(new InvalidProperty(Constants.URL, "Invalid URL syntax: " + url));
           }
         }
+        String authMethod = properties.get(Constants.AUTH_METHOD);
+        Settings.AuthenticationMethod authenticationMethod = authMethod == null ? Settings.AuthenticationMethod.ANONYMOUS : Enum.valueOf(Settings.AuthenticationMethod.class, authMethod);
+        switch(authenticationMethod) {
+          case PRIVATE_KEY_FILE:
+            String pkFile = properties.get(Constants.PRIVATE_KEY_PATH);
+            if(pkFile == null || pkFile.length() == 0) {
+              rc.add(new InvalidProperty(Constants.PRIVATE_KEY_PATH, "The private key path must be specified."));
+            }
+            break;
+        }
         return rc;
       }
     };

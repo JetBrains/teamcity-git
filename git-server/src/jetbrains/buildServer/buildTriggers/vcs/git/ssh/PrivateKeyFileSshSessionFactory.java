@@ -41,6 +41,9 @@ public class PrivateKeyFileSshSessionFactory extends SshSessionFactory {
    * @throws VcsException if private key could not be read
    */
   public PrivateKeyFileSshSessionFactory(String privateKeyPath, String passphrase) throws VcsException {
+    if(privateKeyPath == null || privateKeyPath.length() == 0) {
+      throw new VcsException("The private key path is not specified");
+    }
     this.sch = new JSch();
     try {
       sch.addIdentity(privateKeyPath, passphrase);
