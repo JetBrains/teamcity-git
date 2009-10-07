@@ -17,10 +17,10 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.util.containers.IntArrayList;
-import org.spearce.jgit.errors.CorruptObjectException;
-import org.spearce.jgit.lib.*;
-import org.spearce.jgit.treewalk.AbstractTreeIterator;
-import org.spearce.jgit.treewalk.CanonicalTreeParser;
+import org.eclipse.jgit.errors.CorruptObjectException;
+import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.treewalk.AbstractTreeIterator;
+import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 
 import java.io.IOException;
 import java.util.LinkedList;

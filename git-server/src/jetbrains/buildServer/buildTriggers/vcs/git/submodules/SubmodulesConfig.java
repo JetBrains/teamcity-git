@@ -17,8 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
-import org.spearce.jgit.lib.Config;
-import org.spearce.jgit.lib.RepositoryConfig;
+import org.eclipse.jgit.lib.Config;
+import org.eclipse.jgit.lib.RepositoryConfig;
 
 import java.util.HashMap;
 import java.util.HashSet;

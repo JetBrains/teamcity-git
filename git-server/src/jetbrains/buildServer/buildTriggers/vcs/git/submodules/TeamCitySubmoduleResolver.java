@@ -21,12 +21,12 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.vcs.VcsException;
-import org.spearce.jgit.lib.Commit;
-import org.spearce.jgit.lib.NullProgressMonitor;
-import org.spearce.jgit.lib.Repository;
-import org.spearce.jgit.transport.RefSpec;
-import org.spearce.jgit.transport.Transport;
-import org.spearce.jgit.transport.URIish;
+import org.eclipse.jgit.lib.Commit;
+import org.eclipse.jgit.lib.NullProgressMonitor;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.Transport;
+import org.eclipse.jgit.transport.URIish;
 
 import java.io.File;
 import java.io.IOException;

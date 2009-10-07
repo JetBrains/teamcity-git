@@ -17,8 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.ssh;
 
 import com.jcraft.jsch.Session;
-import org.spearce.jgit.transport.OpenSshConfig;
-import org.spearce.jgit.transport.SshConfigSessionFactory;
+import org.eclipse.jgit.transport.OpenSshConfig;
+import org.eclipse.jgit.transport.SshConfigSessionFactory;
 
 /**
  * A headless SSH session factory that is based on ~/.ssh/config settings.

@@ -19,12 +19,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.*;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
-import org.spearce.jgit.lib.BlobBasedConfig;
-import org.spearce.jgit.lib.Commit;
-import org.spearce.jgit.lib.FileBasedConfig;
-import org.spearce.jgit.lib.Repository;
-import org.spearce.jgit.treewalk.TreeWalk;
-import org.spearce.jgit.treewalk.filter.TreeFilter;
+import org.eclipse.jgit.lib.BlobBasedConfig;
+import org.eclipse.jgit.lib.Commit;
+import org.eclipse.jgit.lib.FileBasedConfig;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import static org.testng.Assert.*;
 import org.testng.annotations.Test;
 

@@ -1,6 +1,12 @@
+Custom patch:
+
+Author: Constantine Plotnikov <constantine.plotnikov@gmail.com>
+Date:   Wed Oct 7 20:24:14 2009 +0400
+Subject: The default encoding for reading commits is UTF-8 rather than system default
+
 Last commit:
 
-commit 4c5eb17416997480a6aa012c22a8fe0e833f15e4
-Author: Shawn O. Pearce <spearce@spearce.org>
-Date:   Sat Jul 25 11:53:02 2009 -0700
-Subject: Use Config cache for fetch and receive configuration parsing
+commit a0a0ce8e5d8231a98b00b9b431049034dcf59d2e
+Author: Jonas Fonseca <fonseca@diku.dk>
+Date:   Sun Sep 20 09:34:37 2009 -0400
+Subject: Make it possible to clear a PlotCommitList

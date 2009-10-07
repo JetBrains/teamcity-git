@@ -17,10 +17,10 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
-import org.spearce.jgit.lib.BlobBasedConfig;
-import org.spearce.jgit.lib.Commit;
-import org.spearce.jgit.lib.ObjectId;
-import org.spearce.jgit.lib.Repository;
+import org.eclipse.jgit.lib.BlobBasedConfig;
+import org.eclipse.jgit.lib.Commit;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Repository;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;

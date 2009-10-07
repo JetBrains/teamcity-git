@@ -22,7 +22,7 @@ import com.jcraft.jsch.Session;
 import jetbrains.buildServer.configuration.ChangeListener;
 import jetbrains.buildServer.configuration.FilesWatcher;
 import org.jetbrains.annotations.NotNull;
-import org.spearce.jgit.transport.SshSessionFactory;
+import org.eclipse.jgit.transport.SshSessionFactory;
 
 import java.io.File;
 

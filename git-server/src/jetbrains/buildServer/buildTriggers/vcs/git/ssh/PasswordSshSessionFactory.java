@@ -19,7 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.ssh;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
-import org.spearce.jgit.transport.SshSessionFactory;
+import org.eclipse.jgit.transport.SshSessionFactory;
 
 /**
  * A simple session factory used for password authentication.

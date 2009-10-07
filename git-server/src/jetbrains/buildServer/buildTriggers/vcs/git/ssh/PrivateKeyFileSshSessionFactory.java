@@ -21,7 +21,7 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.vcs.VcsException;
-import org.spearce.jgit.transport.SshSessionFactory;
+import org.eclipse.jgit.transport.SshSessionFactory;
 
 /**
  * The SSH session factory that uses explicitly specified private key file

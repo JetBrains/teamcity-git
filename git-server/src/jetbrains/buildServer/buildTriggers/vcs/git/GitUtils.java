@@ -18,11 +18,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-import org.spearce.jgit.lib.Commit;
-import org.spearce.jgit.lib.PersonIdent;
-import org.spearce.jgit.lib.Repository;
-import org.spearce.jgit.lib.RepositoryConfig;
-import org.spearce.jgit.transport.URIish;
+import org.eclipse.jgit.lib.Commit;
+import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.RepositoryConfig;
+import org.eclipse.jgit.transport.URIish;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;

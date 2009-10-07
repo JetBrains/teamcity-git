@@ -16,8 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
-import org.spearce.jgit.errors.CorruptObjectException;
-import org.spearce.jgit.treewalk.AbstractTreeIterator;
+import org.eclipse.jgit.errors.CorruptObjectException;
+import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 
 import java.io.IOException;
 

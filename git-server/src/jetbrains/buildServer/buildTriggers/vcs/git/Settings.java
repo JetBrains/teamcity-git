@@ -20,7 +20,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
-import org.spearce.jgit.transport.URIish;
+import org.eclipse.jgit.transport.URIish;
 
 import java.io.File;
 import java.net.URISyntaxException;
