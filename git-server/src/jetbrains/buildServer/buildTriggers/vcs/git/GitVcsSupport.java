@@ -1048,6 +1048,17 @@ public class GitVcsSupport extends ServerVcsSupport
       SshTransport ssh = (SshTransport)t;
       ssh.setSshSessionFactory(getSshSessionFactory(s));
     }
+    boolean clone = true;
+    try {
+      if (r.resolve(s.getBranch()) != null) {
+        clone = false;
+      }
+    } catch (IOException e) {
+      // ignore result
+    }
+    int timeout =
+      Integer.parseInt(System.getProperty(clone ? "teamcity.git.clone.timeout" : "teamcity.git.fetch.timeout", clone ? "18000" : "1800"));
+    t.setTimeout(timeout);
     return t;
   }
 
