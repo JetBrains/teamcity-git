@@ -1189,11 +1189,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return trimmedString.length() > 0 ? trimmedString : null;
   }
   
-  public Collection<VcsUrlInfo2TargetPath> getPossiblePathPrefixes(@NotNull VcsRoot vcsRoot, @NotNull IncludeRule includeRule)
-    throws VcsException {
-    return Collections.emptyList();
-  }
-
   /**
    * Git change type
    */
