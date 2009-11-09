@@ -1018,7 +1018,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * @return the repository instance
    * @throws VcsException if the repository could not be accessed
    */
-  private static Repository getRepository(Settings s, Map<String, Repository> repositories) throws VcsException {
+  static Repository getRepository(Settings s, Map<String, Repository> repositories) throws VcsException {
     final Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
     if (repositories != null) {
       repositories.put(s.getRepositoryPath().getPath(), r);
@@ -1118,73 +1118,16 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   @NotNull
   public Collection<String> mapFullPath(@NotNull final VcsRootEntry rootEntry, @NotNull final String fullPath) {
-    final int firstSep = fullPath.indexOf("|");
-    final int lastSep = fullPath.lastIndexOf("|");
-    if (firstSep < 0 || lastSep < 0) return Collections.emptySet();
-
-    final String vcsRevisionNumber = fullPath.substring(0, firstSep).trim();
-
     try {
-      final Settings settings = createSettings(rootEntry.getVcsRoot());
-      if (vcsRevisionNumber.length() == 0) {
-        final String repositoryUrlWithBranch = fullPath.substring(firstSep + 1, lastSep).trim();
-        if (!matchRepositoryByUrl(settings, repositoryUrlWithBranch)) return Collections.emptySet();
-      }
-      else {
-        final Repository repository = getRepository(settings, null);
-        if (repository.mapCommit(vcsRevisionNumber) == null) return Collections.emptySet();
-      }
-    } catch (final VcsException e) {
-      LOG.error(e);
-      return Collections.emptySet();
-    } catch (final IOException e) {
+      return new GitMapFullPath(rootEntry, fullPath, createSettings(rootEntry.getVcsRoot())).mapFullPath();
+    } catch (VcsException e) {
       LOG.error(e);
       return Collections.emptySet();
     }
-
-    final String path = fullPath.substring(lastSep + 1).trim();
-    return Collections.singleton(path);
-  }
-
-  private boolean matchRepositoryByUrl(@NotNull final Settings settings, @NotNull final String repositoryUrlWithBranch) {
-    final int branchSep = repositoryUrlWithBranch.indexOf("#");
-
-    final URIish url;
-    final String branch;
-
-    if (branchSep < 0) {
-      try {
-        url = new URIish(repositoryUrlWithBranch);
-      } catch (final URISyntaxException e) {
-        LOG.error(e);
-        return false;
-      }
-      branch = null;
-    }
-    else {
-      try {
-        url = new URIish(repositoryUrlWithBranch.substring(0, branchSep).trim());
-      } catch (final URISyntaxException e) {
-        LOG.error(e);
-        return false;
-      }
-      branch = getNullIfEmpty(repositoryUrlWithBranch.substring(branchSep + 1));
-    }
-
-    final URIish settingsUrl = settings.getRepositoryURL();
-    if (settingsUrl == null) return false;
-    if (!url.getHost().equals(settingsUrl.getHost())) return false;
-    if (url.getPort() != settingsUrl.getPort()) return false;
-    if (!url.getPath().equals(settingsUrl.getPath())) return false;
-
-    final String settingsBranch = getNullIfEmpty(settings.getBranch());
-    if (branch != null && settingsBranch != null && !branch.equals(settingsBranch)) return false;
-
-    return true;
   }
 
   @Nullable
-  private String getNullIfEmpty(@NotNull final String string) {
+  static String getNullIfEmpty(@NotNull final String string) {
     final String trimmedString = string.trim();
     return trimmedString.length() > 0 ? trimmedString : null;
   }
@@ -1214,4 +1157,6 @@ public class GitVcsSupport extends ServerVcsSupport
      */
     UNCHANGED,
   }
+
+
 }
