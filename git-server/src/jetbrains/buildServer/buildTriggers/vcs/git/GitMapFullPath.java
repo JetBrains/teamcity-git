@@ -1,11 +1,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.util.containers.SoftHashMap;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRootEntry;
@@ -20,7 +20,8 @@ import org.jetbrains.annotations.NotNull;
 class GitMapFullPath {
 
   private static final Logger LOG = Logger.getInstance(GitMapFullPath.class.getName());
-  private static final Map<String, Boolean> ourCacheOfGoodRevisions = Collections.synchronizedMap(new SoftHashMap<String, Boolean>());
+
+  private static final Map<String, Boolean> ourCacheOfGoodRevisions = createCacheMap(5000);
 
   private final VcsRootEntry myRootEntry;
   private final String myFullPath;
@@ -132,4 +133,14 @@ class GitMapFullPath {
 
     return true;
   }
+
+  private static Map<String, Boolean> createCacheMap(final int items) {
+    return Collections.synchronizedMap(new LinkedHashMap<String, Boolean>(items, 0.8f, true) {
+        @Override
+        protected boolean removeEldestEntry(final Map.Entry<String, Boolean> eldest) {
+          return size() > items;
+        }
+      });
+  }
+
 }
