@@ -21,7 +21,7 @@ class GitMapFullPath {
 
   private static final Logger LOG = Logger.getInstance(GitMapFullPath.class.getName());
 
-  private static final Map<String, Boolean> ourHasRevisionsCache = createCacheMap(5000);
+  private static final Map<String, Boolean> ourHasRevisionsCache = createCacheMap(5);
 
   private final VcsRootEntry myRootEntry;
   private final String myFullPath;
