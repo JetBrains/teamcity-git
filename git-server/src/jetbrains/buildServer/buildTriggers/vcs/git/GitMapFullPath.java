@@ -21,7 +21,7 @@ class GitMapFullPath {
 
   private static final Logger LOG = Logger.getInstance(GitMapFullPath.class.getName());
 
-  private static final Map<String, Boolean> ourCacheOfGoodRevisions = createCacheMap(5000);
+  private static final Map<String, Boolean> ourHasRevisionsCache = createCacheMap(5000);
 
   private final VcsRootEntry myRootEntry;
   private final String myFullPath;
@@ -71,14 +71,17 @@ class GitMapFullPath {
   }
 
   private boolean noSuchRevisionInRepository() throws IOException, VcsException {
-    if (ourCacheOfGoodRevisions.containsKey(revisionAndRootKey())) return false;
+    final Boolean hasRevision = ourHasRevisionsCache.get(revisionAndRootKey());
+    if (hasRevision != null) return !hasRevision;
 
+    Commit existingCommit = findCommit();
+    ourHasRevisionsCache.put(revisionAndRootKey(), existingCommit != null);
+    return existingCommit == null;
+  }
+
+  private Commit findCommit() throws VcsException, IOException {
     final Repository repository = GitVcsSupport.getRepository(mySettings, null);
-    Commit existingRevision = repository.mapCommit(myGitRevision);
-    if (existingRevision != null) {
-      ourCacheOfGoodRevisions.put(revisionAndRootKey(), Boolean.TRUE);
-    }
-    return existingRevision == null;
+    return repository.mapCommit(myGitRevision);
   }
 
   private String revisionAndRootKey() {
