@@ -17,12 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.vcs.VcsException;
-import org.jetbrains.annotations.NotNull;
 import org.eclipse.jgit.lib.Commit;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryConfig;
 import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
@@ -240,5 +240,51 @@ public class GitUtils {
     } catch (UnsupportedEncodingException e) {
       throw new RuntimeException("UTF-8 encoding not found", e);
     }
+  }
+
+  /**
+   * Normalize path removing ".." and "." elements assuming "/" as separator
+   *
+   * @param path the path to normalize
+   * @return the normalized path
+   */
+  public static String normalizePath(String path) {
+    if (path.length() == 0 || path.equals("/")) {
+      return path;
+    }
+    StringBuilder rc = new StringBuilder();
+    String[] pc = path.split("/");
+    int count = 0;
+    int startBacks = 0;
+    int[] pci = new int[pc.length];
+    boolean startsWithSlash = path.charAt(0) == '/';
+    for (int i = 0; i < pc.length; i++) {
+      String f = pc[i];
+      if (f.length() == 0 || ".".equals(f)) {
+        // do nothing
+      } else if ("..".equals(f)) {
+        if (count == 0) {
+          startBacks++;
+        } else {
+          count--;
+        }
+      } else {
+        pci[count++] = i;
+      }
+    }
+    for (int i = 0; i < startBacks; i++) {
+      if (rc.length() != 0 || startsWithSlash) {
+        rc.append('/');
+      }
+      rc.append("..");
+    }
+    for (int i = 0; i < count; i++) {
+      int fi = pci[i];
+      if (rc.length() != 0 || startsWithSlash) {
+        rc.append('/');
+      }
+      rc.append(pc[fi]);
+    }
+    return rc.toString();
   }
 }

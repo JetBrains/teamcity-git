@@ -21,7 +21,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -40,6 +39,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 
 /**
  * The tests for version detection functionality
@@ -224,7 +225,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     try {
       support.getContent("non-existing file.txt", root, version);
       Assert.fail("The file must not be loaded");
-    } catch(VcsFileNotFoundException ex) {
+    } catch (VcsFileNotFoundException ex) {
       // ignore exception
     }
   }
@@ -477,6 +478,23 @@ public class GitVcsSupportTest extends PatchTestCase {
       assertEquals(t.getObjId().name(), GitUtils.versionRevision(VERSION_TEST_HEAD));
     } finally {
       r.close();
+    }
+  }
+
+  /**
+   * Test path normalization
+   */
+  @Test
+  public void testNormalizedPaths() {
+    String[][] data = {
+      {"/../aa/../b", "/../b"},
+      {"..", ".."},
+      {".", ""},
+      {"../aa/../b", "../b"},
+      {"/////../aa///..//.//q", "/../q"},
+    };
+    for (String[] d : data) {
+      assertEquals(GitUtils.normalizePath(d[0]), d[1]);
     }
   }
 }
