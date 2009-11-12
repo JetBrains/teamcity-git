@@ -81,7 +81,11 @@ class GitMapFullPath {
 
   private Commit findCommit() throws VcsException, IOException {
     final Repository repository = GitVcsSupport.getRepository(mySettings, null);
-    return repository.mapCommit(myGitRevision);
+    try {
+      return repository.mapCommit(myGitRevision);
+    } finally {
+      repository.close();
+    }
   }
 
   private String revisionAndRootKey() {
