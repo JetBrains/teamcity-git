@@ -101,16 +101,22 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
     if (overrideUrl != null) {
       url = overrideUrl;
     }
-    if (url.startsWith(".")) {
-      String baseUrl = myCommit.getRepository().getConfig().getString("teamcity", null, "remote");
-      URL u = new URL(new URL(baseUrl), url);
-      url = u.toString();
-    }
-    String dir = mySettings.getSubmodulePath(path, url);
-    if (mySubmoduleRepositories.containsKey(dir)) {
-      return mySubmoduleRepositories.get(dir);
-    }
     try {
+      if (url.startsWith(".")) {
+        String baseUrl = myCommit.getRepository().getConfig().getString("teamcity", null, "remote");
+        URIish u = new URIish(baseUrl);
+        String newPath = u.getPath();
+        if(newPath.length() == 0) {
+          newPath = url;
+        } else {
+          newPath = GitUtils.normalizePath(newPath + '/'+url);
+        }
+        url = u.setPass(newPath).toPrivateString();
+      }
+      String dir = mySettings.getSubmodulePath(path, url);
+      if (mySubmoduleRepositories.containsKey(dir)) {
+        return mySubmoduleRepositories.get(dir);
+      }
       final URIish uri = new URIish(url);
       final Repository r = GitUtils.getRepository(new File(dir), uri);
       mySubmoduleRepositories.put(dir, r);
