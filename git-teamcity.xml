@@ -30,16 +30,16 @@
     <exclude name="**/rcs/**"/>
     <exclude name="**/.DS_Store/**"/>
     <exclude name="**/.svn/**"/>
-    <exclude name="**/.sbas/**"/>
-    <exclude name="**/.IJI.*/**"/>
-    <exclude name="**/vssver.scc/**"/>
-    <exclude name="**/vssver2.scc/**"/>
     <exclude name="**/.pyc/**"/>
     <exclude name="**/.pyo/**"/>
     <exclude name="**/*.pyc/**"/>
     <exclude name="**/*.pyo/**"/>
     <exclude name="**/.git/**"/>
     <exclude name="**/*.hprof/**"/>
+    <exclude name="**/.sbas/**"/>
+    <exclude name="**/.IJI.*/**"/>
+    <exclude name="**/vssver.scc/**"/>
+    <exclude name="**/vssver2.scc/**"/>
     <exclude name="**/_svn/**"/>
   </patternset>
   <patternset id="library.patterns">
@@ -91,8 +91,8 @@
   <!-- Project Libraries -->
   
   <path id="library.jgit.classpath">
-    <pathelement location="${basedir}/lib/jgit-0.5.0-SNAPSHOT.jar"/>
-    <pathelement location="${basedir}/lib/jsch-0.1.37.jar"/>
+    <pathelement location="${basedir}/lib/jsch-0.1.41.jar"/>
+    <pathelement location="${basedir}/lib/org.eclipse.jgit-0.6.0-SNAPSHOT.jar"/>
   </path>
   
   <path id="library.teamcity_open_api_agent.classpath">
@@ -133,7 +133,7 @@
   </path>
   
   
-  <!-- Application Server Libraries -->
+  <!-- Global Libraries -->
   
   <!-- Modules -->
   
@@ -368,5 +368,7 @@
   
   <target name="clean" depends="clean.module.git-server, clean.module.root, clean.module.git-tests" description="cleanup all"/>
   
-  <target name="all" depends="init, clean, compile.module.git-server, compile.module.root, compile.module.git-tests" description="build all"/>
+  <target name="build.modules" depends="init, clean, compile.module.git-server, compile.module.root, compile.module.git-tests" description="build all modules"/>
+  
+  <target name="all" depends="build.modules" description="build all"/>
 </project>

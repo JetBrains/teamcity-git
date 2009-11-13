@@ -543,13 +543,13 @@
     </library>
     <library name="JGit">
       <CLASSES>
-        <root url="jar://$PROJECT_DIR$/lib/jsch-0.1.37.jar!/" />
-        <root url="jar://$PROJECT_DIR$/lib/jgit-0.5.0-SNAPSHOT.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/org.eclipse.jgit-0.6.0-SNAPSHOT.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/jsch-0.1.41.jar!/" />
       </CLASSES>
       <JAVADOC />
       <SOURCES>
-        <root url="jar://$PROJECT_DIR$/lib/src/jsch-0.1.37.zip!/jsch-0.1.37/src" />
-        <root url="jar://$PROJECT_DIR$/lib/src/jgit-0.5.0-SNAPSHOT-sources.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/src/org.eclipse.jgit-0.6.0-SNAPSHOT-sources.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/src/jsch-0.1.41.zip!/jsch-0.1.41-src/src" />
       </SOURCES>
     </library>
     <library name="TestLibs">
