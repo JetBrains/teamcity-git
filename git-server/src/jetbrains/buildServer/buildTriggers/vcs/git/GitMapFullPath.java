@@ -3,10 +3,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import jetbrains.buildServer.util.UptodateValue;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.eclipse.jgit.lib.Commit;
@@ -21,7 +20,11 @@ class GitMapFullPath {
 
   private static final Logger LOG = Logger.getInstance(GitMapFullPath.class.getName());
 
-  private static final Map<String, Boolean> ourHasRevisionsCache = createCacheMap(5);
+  private static final UptodateValue<Map<String, Boolean>> ourRevistionsCache = new UptodateValue<Map<String, Boolean>>(new UptodateValue.ValueProvider<Map<String, Boolean>>() {
+      public Map<String, Boolean> getNewValue() {
+        return new ConcurrentHashMap<String, Boolean>();
+      }
+    }, 10000);
 
   private final VcsRootEntry myRootEntry;
   private final String myFullPath;
@@ -71,11 +74,11 @@ class GitMapFullPath {
   }
 
   private boolean noSuchRevisionInRepository() throws IOException, VcsException {
-    final Boolean hasRevision = ourHasRevisionsCache.get(revisionAndRootKey());
+    final Boolean hasRevision = ourRevistionsCache.getValue().get(revisionAndRootKey());
     if (hasRevision != null) return !hasRevision;
 
     Commit existingCommit = findCommit();
-    ourHasRevisionsCache.put(revisionAndRootKey(), existingCommit != null);
+    ourRevistionsCache.getValue().put(revisionAndRootKey(), existingCommit != null);
     return existingCommit == null;
   }
 
