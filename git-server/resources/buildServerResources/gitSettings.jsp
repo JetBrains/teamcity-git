@@ -85,7 +85,7 @@
     <tr id="gitUsername">
       <th><label for="username">User name:</label></th>
       <td><props:textProperty name="username"/>
-        <div class="smallNote" style="margin: 0">Username must be specified is there is no username in the clone URL.
+        <div class="smallNote" style="margin: 0">Username must be specified if there is no username in the clone URL.
           The user name specified here overrides username from URL.
         </div>
       </td>
