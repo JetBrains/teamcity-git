@@ -144,13 +144,4 @@ class GitMapFullPath {
     return true;
   }
 
-  private static Map<String, Boolean> createCacheMap(final int items) {
-    return Collections.synchronizedMap(new LinkedHashMap<String, Boolean>(items, 0.8f, true) {
-        @Override
-        protected boolean removeEldestEntry(final Map.Entry<String, Boolean> eldest) {
-          return size() > items;
-        }
-      });
-  }
-
 }
