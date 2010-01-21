@@ -1,8 +1,8 @@
-Experimental patch that disables some buffering for SSH.
+Patch that adds caching for directory lookups during indexing.
 
 Base version:
 
-commit e16af839e8a0cc01c52d3648d2d28e4cb915f80f
-Author: Shawn O. Pearce <spearce@spearce.org>
-Date:   Wed Nov 4 08:57:29 2009 -0800
-Subject: Use a more specific Bugzilla URL
+commit 823773ddfc10c97125d5d1e1d877dfe45e7f76cf
+Author: Robin Rosenberg <robin.rosenberg@dewire.com>
+Date:   Sun Jan 17 10:30:52 2010 -0500
+Subject: Merge "Adding PDE API Tools nature to JGit"
