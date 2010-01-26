@@ -36,9 +36,13 @@ public class Settings {
    */
   private static Logger LOG = Logger.getInstance(Settings.class.getName());
   /**
-   * The url for the repository
+   * The fetch url for the repository
    */
-  private URIish repositoryURL;
+  private URIish repositoryFetchURL;
+  /**
+   * The fetch url for the repository
+   */
+  private URIish repositoryPushURL;
   /**
    * The public URL
    */
@@ -105,28 +109,23 @@ public class Settings {
       submoduleCheckout != null ? Enum.valueOf(SubmodulesCheckoutPolicy.class, submoduleCheckout) : SubmodulesCheckoutPolicy.IGNORE;
     final String authMethod = root.getProperty(Constants.AUTH_METHOD);
     authenticationMethod = authMethod == null ? AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, authMethod);
-    String username = authenticationMethod == AuthenticationMethod.ANONYMOUS ? null : root.getProperty(Constants.USERNAME);
+    String userName = authenticationMethod == AuthenticationMethod.ANONYMOUS ? null : root.getProperty(Constants.USERNAME);
     String password = authenticationMethod != AuthenticationMethod.PASSWORD ? null : root.getProperty(Constants.PASSWORD);
     ignoreKnownHosts = "true".equals(root.getProperty(Constants.IGNORE_KNOWN_HOSTS));
-    final String remote = root.getProperty(Constants.URL);
-    URIish uri;
-    try {
-      uri = new URIish(remote);
-    } catch (URISyntaxException e) {
-      throw new VcsException("Invalid URI: " + remote);
-    }
-    if (!StringUtil.isEmptyOrSpaces(username)) {
-      uri = uri.setUser(username);
-    }
-    if (!StringUtil.isEmpty(password)) {
-      uri = uri.setPass(password);
+    final String fetchUrl = root.getProperty(Constants.FETCH_URL);
+    URIish uri = parseUri(userName, password, fetchUrl);
+    publicURL = uri.toString();
+    repositoryFetchURL = uri;
+    final String pushUrl = root.getProperty(Constants.PUSH_URL);
+    if (StringUtil.isEmpty(pushUrl)) {
+      repositoryPushURL = repositoryFetchURL;
+    } else {
+      repositoryPushURL = parseUri(userName, password, pushUrl);
     }
     if (authenticationMethod == AuthenticationMethod.PRIVATE_KEY_FILE) {
       passphrase = root.getProperty(Constants.PASSPHRASE);
       privateKeyFile = root.getProperty(Constants.PRIVATE_KEY_PATH);
     }
-    publicURL = uri.toString();
-    repositoryURL = uri;
     String urls = root.getProperty(Constants.SUBMODULE_URLS);
     if (urls != null) {
       final String[] pairs = urls.split("\n");
@@ -135,6 +134,33 @@ public class Settings {
         setSubmoduleUrl(pairs[i * 2], pairs[i * 2 + 1]);
       }
     }
+  }
+
+  /**
+   * Parse URL using user name and password
+   *
+   * @param userName the name of user
+   * @param password the password to use
+   * @param url      the url to parse
+   * @return the parsed {@link URIish}
+   * @throws VcsException if the URL could not be parsed
+   */
+  private static URIish parseUri(String userName, String password, String url) throws VcsException {
+    URIish uri;
+    try {
+      uri = new URIish(url);
+    } catch (URISyntaxException e) {
+      throw new VcsException("Invalid URI: " + url);
+    }
+    if (!"git".equals(uri.getScheme())) {
+      if (!StringUtil.isEmptyOrSpaces(userName)) {
+        uri = uri.setUser(userName);
+      }
+      if (!StringUtil.isEmpty(password)) {
+        uri = uri.setPass(password);
+      }
+    }
+    return uri;
   }
 
 
@@ -212,7 +238,7 @@ public class Settings {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Using internal directory for (" + getPublicURL() + "#" + getBranch() + ")");
       }
-      repositoryPath = getPathForUrl(getRepositoryURL().toString());
+      repositoryPath = getPathForUrl(getRepositoryFetchURL().toString());
     }
     return repositoryPath;
   }
@@ -229,8 +255,8 @@ public class Settings {
   /**
    * @return the URL for the repository
    */
-  public URIish getRepositoryURL() {
-    return repositoryURL;
+  public URIish getRepositoryFetchURL() {
+    return repositoryFetchURL;
   }
 
   /**
@@ -299,6 +325,13 @@ public class Settings {
    */
   public void setCachesDirectory(String cachesDirectory) {
     this.cachesDirectory = cachesDirectory;
+  }
+
+  /**
+   * @return the push URL for the repository
+   */
+  public URIish getRepositoryPushURL() {
+    return repositoryPushURL;
   }
 
 

@@ -132,7 +132,7 @@ class GitMapFullPath {
       branch = GitVcsSupport.getNullIfEmpty(repositoryUrlWithBranch.substring(branchSep + 1));
     }
 
-    final URIish settingsUrl = mySettings.getRepositoryURL();
+    final URIish settingsUrl = mySettings.getRepositoryFetchURL();
     if (settingsUrl == null) return false;
     if (!url.getHost().equals(settingsUrl.getHost())) return false;
     if (url.getPort() != settingsUrl.getPort()) return false;

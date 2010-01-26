@@ -122,7 +122,7 @@ public class GitVcsSupportTest extends PatchTestCase {
    */
   protected VcsRoot getRoot(String branchName, boolean enableSubmodules) throws IOException {
     VcsRootImpl myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
-    myRoot.addProperty(Constants.URL, GitUtils.toURL(mySourceRep));
+    myRoot.addProperty(Constants.FETCH_URL, GitUtils.toURL(mySourceRep));
     if (branchName != null) {
       myRoot.addProperty(Constants.BRANCH_NAME, branchName);
       myRoot.addProperty(Constants.SUBMODULE_URLS, "submodule\n" + GitUtils.toURL(dataFile("submodule.git")));
@@ -472,7 +472,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     VcsRoot root = getRoot("master");
     // ensure that all revisions reachable from master are fetched
     support.label("test_label", VERSION_TEST_HEAD, root, new CheckoutRules(""));
-    Repository r = new Repository(new File(new URIish(root.getProperty(Constants.URL)).getPath()));
+    Repository r = new Repository(new File(new URIish(root.getProperty(Constants.FETCH_URL)).getPath()));
     try {
       Tag t = r.mapTag("test_label");
       assertEquals(t.getObjId().name(), GitUtils.versionRevision(VERSION_TEST_HEAD));

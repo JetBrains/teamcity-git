@@ -444,7 +444,11 @@
     <option name="projectName" value="git-teamcity" />
   </component>
   <component name="ProjectDictionaryState">
-    <dictionary name="Constantin.Plotnikov" />
+    <dictionary name="Constantin.Plotnikov">
+      <words>
+        <w>userid</w>
+      </words>
+    </dictionary>
   </component>
   <component name="ProjectKey">
     <option name="state" value="project://60c230e5-1bc8-46d2-9235-d195b9ba9c04" />

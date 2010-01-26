@@ -29,8 +29,6 @@ import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
@@ -43,6 +41,8 @@ import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilterGroup;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -737,22 +737,32 @@ public class GitVcsSupport extends ServerVcsSupport
     return new PropertiesProcessor() {
       public Collection<InvalidProperty> process(Map<String, String> properties) {
         Collection<InvalidProperty> rc = new LinkedList<InvalidProperty>();
-        String url = properties.get(Constants.URL);
+        String url = properties.get(Constants.FETCH_URL);
         if (url == null || url.trim().length() == 0) {
-          rc.add(new InvalidProperty(Constants.URL, "The URL must be specified"));
+          rc.add(new InvalidProperty(Constants.FETCH_URL, "The URL must be specified"));
         } else {
           try {
             new URIish(url);
           } catch (URISyntaxException e) {
-            rc.add(new InvalidProperty(Constants.URL, "Invalid URL syntax: " + url));
+            rc.add(new InvalidProperty(Constants.FETCH_URL, "Invalid URL syntax: " + url));
           }
         }
+        String pushUrl = properties.get(Constants.PUSH_URL);
+        if (pushUrl != null && pushUrl.trim().length() != 0) {
+          try {
+            new URIish(pushUrl);
+          } catch (URISyntaxException e) {
+            rc.add(new InvalidProperty(Constants.PUSH_URL, "Invalid URL syntax: " + pushUrl));
+          }
+
+        }
         String authMethod = properties.get(Constants.AUTH_METHOD);
-        Settings.AuthenticationMethod authenticationMethod = authMethod == null ? Settings.AuthenticationMethod.ANONYMOUS : Enum.valueOf(Settings.AuthenticationMethod.class, authMethod);
-        switch(authenticationMethod) {
+        Settings.AuthenticationMethod authenticationMethod =
+          authMethod == null ? Settings.AuthenticationMethod.ANONYMOUS : Enum.valueOf(Settings.AuthenticationMethod.class, authMethod);
+        switch (authenticationMethod) {
           case PRIVATE_KEY_FILE:
             String pkFile = properties.get(Constants.PRIVATE_KEY_PATH);
-            if(pkFile == null || pkFile.length() == 0) {
+            if (pkFile == null || pkFile.length() == 0) {
               rc.add(new InvalidProperty(Constants.PRIVATE_KEY_PATH, "The private key path must be specified."));
             }
             break;
@@ -776,7 +786,7 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public String describeVcsRoot(VcsRoot root) {
     final String branch = root.getProperty(Constants.BRANCH_NAME);
-    return root.getProperty(Constants.URL) + "#" + (branch == null ? "master" : branch);
+    return root.getProperty(Constants.FETCH_URL) + "#" + (branch == null ? "master" : branch);
   }
 
   /**
@@ -886,19 +896,37 @@ public class GitVcsSupport extends ServerVcsSupport
               LOG.debug("Checking references... " + s.debugInfo());
             }
             String refName = GitUtils.branchRef(s.getBranch());
+            boolean refFound = true;
             for (final Ref ref : c.getRefs()) {
               if (refName.equals(ref.getName())) {
                 LOG.info("The branch reference found " + refName + "=" + ref.getObjectId() + " for " + s.debugInfo());
-                return null;
+                refFound = true;
+                break;
               }
             }
-            throw new VcsException("The branch " + refName + " was not found in the repository " + s.getPublicURL());
+            if (!refFound) {
+              throw new VcsException("The branch " + refName + " was not found in the repository " + s.getPublicURL());
+            }
           } finally {
             c.close();
           }
         } finally {
           tn.close();
         }
+        if (!s.getRepositoryFetchURL().equals(s.getRepositoryPushURL())) {
+          final Transport push = openTransport(s, r, s.getRepositoryPushURL());
+          try {
+            final PushConnection c = push.openPush();
+            try {
+              c.getRefs();
+            } finally {
+              c.close();
+            }
+          } finally {
+            tn.close();
+          }
+        }
+        return null;
       } finally {
         r.close();
       }
@@ -981,7 +1009,7 @@ public class GitVcsSupport extends ServerVcsSupport
         if (LOG.isDebugEnabled()) {
           LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
         }
-        final Transport tn = openTransport(s, r);
+        final Transport tn = openTransport(s, r, s.getRepositoryPushURL());
         try {
           final PushConnection c = tn.openPush();
           try {
@@ -1019,7 +1047,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * @throws VcsException if the repository could not be accessed
    */
   static Repository getRepository(Settings s, Map<String, Repository> repositories) throws VcsException {
-    final Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryURL());
+    final Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryFetchURL());
     if (repositories != null) {
       repositories.put(s.getRepositoryPath().getPath(), r);
     }
@@ -1037,7 +1065,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * @throws VcsException          if there is a problem with configuring the transport
    */
   public Transport openTransport(Settings s, Repository r) throws NotSupportedException, URISyntaxException, VcsException {
-    return openTransport(s, r, s.getRepositoryURL());
+    return openTransport(s, r, s.getRepositoryFetchURL());
   }
 
   /**
@@ -1113,8 +1141,8 @@ public class GitVcsSupport extends ServerVcsSupport
    * "<git revision hash>|<repository url>|<file relative path>"
    *
    * @param rootEntry indicates the association between VCS root and build configuration
-   * @param fullPath change path from IDE patch
-   * @return
+   * @param fullPath  change path from IDE patch
+   * @return the mapped path
    */
   @NotNull
   public Collection<String> mapFullPath(@NotNull final VcsRootEntry rootEntry, @NotNull final String fullPath) {
@@ -1131,7 +1159,7 @@ public class GitVcsSupport extends ServerVcsSupport
     final String trimmedString = string.trim();
     return trimmedString.length() > 0 ? trimmedString : null;
   }
-  
+
   /**
    * Git change type
    */

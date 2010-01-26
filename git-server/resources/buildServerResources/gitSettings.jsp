@@ -23,13 +23,25 @@
          value='<%=new File(System.getProperty("user.home"), ".ssh"+File.separator+"config").getAbsolutePath() %>'/>
   <l:settingsGroup title="General Settings">
     <tr>
-      <th><label for="url">Clone URL: <l:star/></label></th>
+      <th><label for="url">Fetch URL: <l:star/></label></th>
       <td><props:textProperty name="url" className="longField"/>
+        <div class="smallNote" style="margin: 0;">It is used for fetching data from repository.</div>
         <span class="error" id="error_url"></span></td>
     </tr>
     <tr>
+      <th><label for="url">Push URL:</label></th>
+      <td><props:textProperty name="push_url" className="longField"/>
+        <div class="smallNote" style="margin: 0;">It is used for pushing tags to the remote repository.
+          If blank, the fetch url is used.
+        </div>
+        <span class="error" id="error_push_url"></span>
+      </td>
+    </tr>
+    <tr>
       <th><label for="branch">Branch name: </label></th>
-      <td><props:textProperty name="branch"/></td>
+      <td><props:textProperty name="branch"/>
+      <div class="smallNote" style="margin: 0;">If blank, the branch "master" is used.</div>
+      </td>
     </tr>
     <tr>
       <th><label for="path">Clone repository to: </label></th>
@@ -76,7 +88,9 @@
         <props:option value="PASSWORD">Password</props:option>
         <props:option value="PRIVATE_KEY_FILE">Private Key</props:option>
       </props:selectProperty>
-        <div id="sshPrivateKeyNote" class="smallNote" style="margin: 0">Valid only for SSH protocol.</div>
+        <div id="sshPrivateKeyNote" class="smallNote" style="margin: 0">Valid only for SSH protocol and
+          applicable to both fetch and push urls.
+        </div>
         <div id="defaultPrivateKeyNote" class="smallNote" style="margin: 0">Uses mapping specified in the file
           ${userHome} if that that file exists.
         </div>

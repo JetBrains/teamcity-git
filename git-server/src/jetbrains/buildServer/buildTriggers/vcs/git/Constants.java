@@ -23,9 +23,13 @@ import jetbrains.buildServer.vcs.VcsRoot;
  */
 public interface Constants {
   /**
-   * The URL property
+   * The fetch URL property
    */
-  public static String URL = "url";
+  public static String FETCH_URL = "url";
+  /**
+   * The push URL property
+   */
+  public static String PUSH_URL = "push_url";
   /**
    * The path property
    */
