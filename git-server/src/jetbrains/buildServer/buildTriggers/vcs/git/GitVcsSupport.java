@@ -896,7 +896,7 @@ public class GitVcsSupport extends ServerVcsSupport
               LOG.debug("Checking references... " + s.debugInfo());
             }
             String refName = GitUtils.branchRef(s.getBranch());
-            boolean refFound = true;
+            boolean refFound = false;
             for (final Ref ref : c.getRefs()) {
               if (refName.equals(ref.getName())) {
                 LOG.info("The branch reference found " + refName + "=" + ref.getObjectId() + " for " + s.debugInfo());
