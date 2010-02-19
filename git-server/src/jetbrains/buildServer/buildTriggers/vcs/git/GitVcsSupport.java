@@ -432,11 +432,9 @@ public class GitVcsSupport extends ServerVcsSupport
   public void buildPatch(@NotNull VcsRoot root,
                          @Nullable String fromVersion,
                          @NotNull String toVersion,
-                         @NotNull PatchBuilder builderOrig,
+                         @NotNull final PatchBuilder builder,
                          @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
     final boolean debugFlag = LOG.isDebugEnabled();
-    final PatchBuilderFileNamesCorrector builder = new PatchBuilderFileNamesCorrector(builderOrig);
-    builder.setWorkingMode_WithCheckoutRules(checkoutRules);
     Settings s = createSettings(root);
     try {
       Map<String, Repository> repositories = new HashMap<String, Repository>();
@@ -465,10 +463,13 @@ public class GitVcsSupport extends ServerVcsSupport
         List<Callable<Void>> actions = new LinkedList<Callable<Void>>();
         while (tw.next()) {
           final String path = tw.getPathString();
+          final String mapped = checkoutRules.map(path);
+          if(mapped == null) {
+            continue;
+          }
           if (debugFlag) {
             LOG.debug("File found " + treeWalkInfo(tw) + " for " + s.debugInfo());
           }
-          final File file = GitUtils.toFile(path);
           switch (classifyChange(2, tw)) {
             case UNCHANGED:
               // change is ignored
@@ -476,14 +477,14 @@ public class GitVcsSupport extends ServerVcsSupport
             case MODIFIED:
             case ADDED:
             case FILE_MODE_CHANGED:
-              if (isFileIncluded(checkoutRules, file) && !FileMode.GITLINK.equals(tw.getFileMode(0))) {
+              if (!FileMode.GITLINK.equals(tw.getFileMode(0))) {
                 final String mode = getModeDiff(tw);
                 final ObjectId id = tw.getObjectId(0);
                 final Repository objRep = getRepository(r, tw, 0);
                 Callable<Void> action = new Callable<Void>() {
                   public Void call() throws Exception {
                     byte[] bytes = loadObject(objRep, path, id);
-                    builder.changeOrCreateBinaryFile(file, mode, new ByteArrayInputStream(bytes), bytes.length);
+                    builder.changeOrCreateBinaryFile(GitUtils.toFile(mapped), mode, new ByteArrayInputStream(bytes), bytes.length);
                     return null;
                   }
                 };
@@ -497,7 +498,7 @@ public class GitVcsSupport extends ServerVcsSupport
               break;
             case DELETED:
               if (!FileMode.GITLINK.equals(tw.getFileMode(0))) {
-                builder.deleteFile(file, true);
+                builder.deleteFile(GitUtils.toFile(mapped), true);
               }
               break;
             default:
@@ -535,17 +536,6 @@ public class GitVcsSupport extends ServerVcsSupport
     }
     b.append(')');
     return b.toString();
-  }
-
-  /**
-   * Check if the file is included
-   *
-   * @param checkoutRules checkout rules to check
-   * @param path          the path to check
-   * @return true if the file is included
-   */
-  private static boolean isFileIncluded(CheckoutRules checkoutRules, File path) {
-    return checkoutRules.getIncludeRuleFor(path.getPath()) != null;
   }
 
   /**
@@ -661,7 +651,7 @@ public class GitVcsSupport extends ServerVcsSupport
     if (loader == null) {
       throw new IOException("Unable to find blob " + id + (path == null ? "" : "(" + path + ")") + " in repository " + r);
     }
-    return loader.getBytes();
+    return loader.getCachedBytes();
   }
 
   /**
