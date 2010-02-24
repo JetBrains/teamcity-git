@@ -17,10 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.lib.Commit;
-import org.eclipse.jgit.lib.PersonIdent;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.RepositoryConfig;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
@@ -45,6 +42,10 @@ public class GitUtils {
    * The UTF8 character set
    */
   public static final Charset UTF8 = Charset.forName("UTF-8");
+  /**
+   * Max size of cached file
+   */
+  public static final int MAX_CACHED_FILE = 16 * 1024;
 
   /**
    * Convert remote URL to JGIT form
@@ -117,6 +118,9 @@ public class GitUtils {
    * @throws VcsException if the there is a problem with accessing VCS
    */
   public static Repository getRepository(File dir, URIish remote) throws VcsException {
+    WindowCacheConfig cfg = new WindowCacheConfig();
+    cfg.setDeltaBaseCacheLimit(MAX_CACHED_FILE);
+    WindowCache.reconfigure(cfg);
     if (dir.exists() && !dir.isDirectory()) {
       throw new VcsException("The specified path is not a directory: " + dir);
     }
