@@ -45,7 +45,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -430,12 +429,12 @@ public class GitVcsSupport extends ServerVcsSupport
    * {@inheritDoc}
    */
   public void buildPatch(@NotNull VcsRoot root,
-                         @Nullable String fromVersion,
+                         @Nullable final String fromVersion,
                          @NotNull String toVersion,
                          @NotNull final PatchBuilder builder,
                          @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
     final boolean debugFlag = LOG.isDebugEnabled();
-    Settings s = createSettings(root);
+    final Settings s = createSettings(root);
     try {
       Map<String, Repository> repositories = new HashMap<String, Repository>();
       final Repository r = getRepository(s, repositories);
@@ -460,11 +459,11 @@ public class GitVcsSupport extends ServerVcsSupport
           LOG.info("Creating clean patch " + toVersion + " for " + s.debugInfo());
           tw.addTree(new EmptyTreeIterator());
         }
-        List<Callable<Void>> actions = new LinkedList<Callable<Void>>();
+        final List<Callable<Void>> actions = new LinkedList<Callable<Void>>();
         while (tw.next()) {
           final String path = tw.getPathString();
           final String mapped = checkoutRules.map(path);
-          if(mapped == null) {
+          if (mapped == null) {
             continue;
           }
           if (debugFlag) {
@@ -481,10 +480,18 @@ public class GitVcsSupport extends ServerVcsSupport
                 final String mode = getModeDiff(tw);
                 final ObjectId id = tw.getObjectId(0);
                 final Repository objRep = getRepository(r, tw, 0);
-                Callable<Void> action = new Callable<Void>() {
+                final Callable<Void> action = new Callable<Void>() {
                   public Void call() throws Exception {
-                    byte[] bytes = loadObject(objRep, path, id);
-                    builder.changeOrCreateBinaryFile(GitUtils.toFile(mapped), mode, new ByteArrayInputStream(bytes), bytes.length);
+                    try {
+                      byte[] bytes = loadObject(objRep, path, id);
+                      builder.changeOrCreateBinaryFile(GitUtils.toFile(mapped), mode, new ByteArrayInputStream(bytes), bytes.length);
+                    } catch (Error e) {
+                      LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + s.debugInfo());
+                      throw e;
+                    } catch (Exception e) {
+                      LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + s.debugInfo());
+                      throw e;
+                    }
                     return null;
                   }
                 };
