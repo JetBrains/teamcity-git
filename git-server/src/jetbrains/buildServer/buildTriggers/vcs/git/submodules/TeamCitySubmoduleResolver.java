@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
@@ -31,7 +32,6 @@ import org.eclipse.jgit.transport.URIish;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.Collections;
 import java.util.Map;
 
@@ -106,10 +106,10 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
         String baseUrl = myCommit.getRepository().getConfig().getString("teamcity", null, "remote");
         URIish u = new URIish(baseUrl);
         String newPath = u.getPath();
-        if(newPath.length() == 0) {
+        if (newPath.length() == 0) {
           newPath = url;
         } else {
-          newPath = GitUtils.normalizePath(newPath + '/'+url);
+          newPath = GitUtils.normalizePath(newPath + '/' + url);
         }
         url = u.setPass(newPath).toPrivateString();
       }
@@ -118,7 +118,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
         return mySubmoduleRepositories.get(dir);
       }
       final URIish uri = new URIish(url);
-      final Repository r = GitUtils.getRepository(new File(dir), uri);
+      final Repository r = GitServerUtil.getRepository(new File(dir), uri);
       mySubmoduleRepositories.put(dir, r);
       final Transport tn = myVcs.openTransport(mySettings, r, uri);
       if (LOG.isDebugEnabled()) {

@@ -40,7 +40,7 @@
     <tr>
       <th><label for="branch">Branch name: </label></th>
       <td><props:textProperty name="branch"/>
-      <div class="smallNote" style="margin: 0;">If blank, the branch "master" is used.</div>
+        <div class="smallNote" style="margin: 0;">If blank, the branch "master" is used.</div>
       </td>
     </tr>
     <tr>
@@ -124,6 +124,34 @@
     <tr id="gitPassphraseRow">
       <th><label for="secure:passphrase">Passphrase:</label></th>
       <td><props:passwordProperty name="secure:passphrase"/></td>
+    </tr>
+  </l:settingsGroup>
+  <l:settingsGroup title="Agent Settings">
+    <tr>
+      <td colspan="2">Agent-specific settings that are used in case of agent checkout.</td>
+    </tr>
+    <tr>
+      <th><label for="agentCleanPolicy">Clean Policy:</label></th>
+      <td><props:selectProperty name="agentCleanPolicy">
+        <props:option value="ON_BRANCH_CHANGE">On Branch Change</props:option>
+        <props:option value="ALWAYS">Always</props:option>
+        <props:option value="NEVER">Never</props:option>
+      </props:selectProperty>
+        <div class="smallNote" style="margin: 0">This option specifies when "git clean" command is run on agent.
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <th><label for="agentCleanFilesPolicy">Clean Policy:</label></th>
+      <td><props:selectProperty name="agentCleanFilesPolicy">
+        <props:option value="ALL_UNTRACKED">All untracked files</props:option>
+        <props:option value="IGNORED_ONLY">All ignored untracked files</props:option>
+        <props:option value="NON_IGNORED_ONLY">All non-ignored untracked files</props:option>
+      </props:selectProperty>
+        <div class="smallNote" style="margin: 0">This option specifies which files will be removed when "git
+          clean" command is run on agent.
+        </div>
+      </td>
     </tr>
   </l:settingsGroup>
 </table>

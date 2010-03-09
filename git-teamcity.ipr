@@ -277,11 +277,11 @@
     <option name="USE_PROJECT_PROFILE" value="true" />
     <version value="1.0" />
     <list size="5">
-      <item index="0" class="java.lang.String" itemvalue="INFO" />
-      <item index="1" class="java.lang.String" itemvalue="WARNING" />
-      <item index="2" class="java.lang.String" itemvalue="ERROR" />
-      <item index="3" class="java.lang.String" itemvalue="TYPO" />
-      <item index="4" class="java.lang.String" itemvalue="SERVER PROBLEM" />
+      <item index="0" class="java.lang.String" itemvalue="TYPO" />
+      <item index="1" class="java.lang.String" itemvalue="SERVER PROBLEM" />
+      <item index="2" class="java.lang.String" itemvalue="INFO" />
+      <item index="3" class="java.lang.String" itemvalue="WARNING" />
+      <item index="4" class="java.lang.String" itemvalue="ERROR" />
     </list>
   </component>
   <component name="JavadocGenerationManager">
@@ -428,7 +428,14 @@
   <component name="ProjectDictionaryState">
     <dictionary name="Constantin.Plotnikov">
       <words>
+        <w>dddddddddddddddlfdfd</w>
+        <w>passphrase</w>
+        <w>submodule</w>
+        <w>submodules</w>
+        <w>untracked</w>
+        <w>unversioned</w>
         <w>userid</w>
+        <w>username</w>
       </words>
     </dictionary>
   </component>
@@ -437,6 +444,8 @@
   </component>
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/git-agent/git-agent.iml" filepath="$PROJECT_DIR$/git-agent/git-agent.iml" />
+      <module fileurl="file://$PROJECT_DIR$/git-common/git-common.iml" filepath="$PROJECT_DIR$/git-common/git-common.iml" />
       <module fileurl="file://$PROJECT_DIR$/git-server/git-server.iml" filepath="$PROJECT_DIR$/git-server/git-server.iml" />
       <module fileurl="file://$PROJECT_DIR$/git-tests/git-tests.iml" filepath="$PROJECT_DIR$/git-tests/git-tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/root.iml" filepath="$PROJECT_DIR$/root.iml" />

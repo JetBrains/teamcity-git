@@ -17,10 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -128,7 +125,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       myRoot.addProperty(Constants.SUBMODULE_URLS, "submodule\n" + GitUtils.toURL(dataFile("submodule.git")));
     }
     if (enableSubmodules) {
-      myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, Settings.SubmodulesCheckoutPolicy.CHECKOUT.name());
+      myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
     }
     return myRoot;
   }
@@ -313,7 +310,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     final List<ModificationData> mms2 = support.collectChanges(root, missing, MERGE_VERSION, new CheckoutRules(""));
     assertEquals(4, mms2.size());
     ModificationData mb3 = mms2.get(3);
-    assertEquals(GitUtils.SYSTEM_USER, mb3.getUserName());
+    assertEquals(GitServerUtil.SYSTEM_USER, mb3.getUserName());
     assertEquals(0, mb3.getChanges().size());
   }
 

@@ -14,8 +14,12 @@
   <import file="git-teamcity.xml"/>
 
   <target name="package">
-    <package.teamcity.plugin name="${plugin.name}" server.output="${git-server.output.dir}"
-                             server.lib.dir="lib" server.lib.includes="*.jar"
+    <package.teamcity.plugin name="${plugin.name}"
+                             agent.output="${git-agent.output.dir}"
+                             common.output="${git-common.output.dir}"
+                             server.output="${git-server.output.dir}"
+                             server.lib.dir="lib"
+                             server.lib.includes="*.jar"
                              plugin.descriptor.file="teamcity-plugin.dist.xml"
                              plugin.version="${plugin.version}">
       <additional-files>
@@ -26,6 +30,8 @@
     <mkdir dir="${basedir}/dist/src"/>
 
     <zip basedir="${basedir}" destfile="${basedir}/dist/src/${plugin.name}-src.zip">
+      <include name="git-common/**"/>
+      <include name="git-agent/**"/>
       <include name="git-server/**"/>
       <include name="git-tests/**"/>
       <include name="lib/**"/>

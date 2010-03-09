@@ -41,6 +41,13 @@
     <exclude name="**/vssver.scc/**"/>
     <exclude name="**/vssver2.scc/**"/>
     <exclude name="**/_svn/**"/>
+    <exclude name="**/*.keep/**"/>
+    <exclude name="**/*.keep.*/**"/>
+    <exclude name="**/*.contrib/**"/>
+    <exclude name="**/*.contrib.*/**"/>
+    <exclude name="**/findmerge.log.*/**"/>
+    <exclude name="**/*.updt/**"/>
+    <exclude name="**/.hg/**"/>
   </patternset>
   <patternset id="library.patterns">
     <include name="*.zip"/>
@@ -138,89 +145,78 @@
   <!-- Modules -->
   
   
-  <!-- Module git-server -->
+  <!-- Module git-common -->
   
-  <dirname property="module.git-server.basedir" file="${ant.file}"/>
+  <dirname property="module.git-common.basedir" file="${ant.file}"/>
   
   
-  <property name="module.jdk.home.git-server" value="${project.jdk.home}"/>
-  <property name="module.jdk.bin.git-server" value="${project.jdk.bin}"/>
-  <property name="module.jdk.classpath.git-server" value="${project.jdk.classpath}"/>
+  <property name="module.jdk.home.git-common" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.git-common" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.git-common" value="${project.jdk.classpath}"/>
   
-  <property name="compiler.args.git-server" value="${compiler.args}"/>
+  <property name="compiler.args.git-common" value="${compiler.args}"/>
   
-  <property name="git-server.output.dir" value="${module.git-server.basedir}/out/production/git-server"/>
-  <property name="git-server.testoutput.dir" value="${module.git-server.basedir}/out/test/git-server"/>
+  <property name="git-common.output.dir" value="${module.git-common.basedir}/out/production/git-common"/>
+  <property name="git-common.testoutput.dir" value="${module.git-common.basedir}/out/test/git-common"/>
   
-  <path id="git-server.module.bootclasspath">
+  <path id="git-common.module.bootclasspath">
     <!-- Paths to be included in compilation bootclasspath -->
   </path>
   
-  <path id="git-server.module.classpath">
-    <path refid="${module.jdk.classpath.git-server}"/>
+  <path id="git-common.module.classpath">
+    <path refid="${module.jdk.classpath.git-common}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
-    <path refid="library.teamcity_open_api_server.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.tomcat.classpath"/>
-    <path refid="library.jgit.classpath"/>
   </path>
   
-  <path id="git-server.runtime.module.classpath">
-    <pathelement location="${git-server.output.dir}"/>
-    <pathelement location="${git-server.testoutput.dir}"/>
+  <path id="git-common.runtime.module.classpath">
+    <pathelement location="${git-common.output.dir}"/>
+    <pathelement location="${git-common.testoutput.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
-    <path refid="library.teamcity_open_api_server.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.tomcat.classpath"/>
-    <path refid="library.jgit.classpath"/>
   </path>
   
   
-  <patternset id="excluded.from.module.git-server">
+  <patternset id="excluded.from.module.git-common">
     <patternset refid="ignored.files"/>
   </patternset>
   
-  <patternset id="excluded.from.compilation.git-server">
-    <patternset refid="excluded.from.module.git-server"/>
+  <patternset id="excluded.from.compilation.git-common">
+    <patternset refid="excluded.from.module.git-common"/>
   </patternset>
   
-  <path id="git-server.module.sourcepath">
-    <dirset dir="${module.git-server.basedir}/git-server">
-      <include name="resources"/>
+  <path id="git-common.module.sourcepath">
+    <dirset dir="${module.git-common.basedir}/git-common">
       <include name="src"/>
     </dirset>
   </path>
   
   
-  <target name="compile.module.git-server" depends="compile.module.git-server.production,compile.module.git-server.tests" description="Compile module git-server"/>
+  <target name="compile.module.git-common" depends="compile.module.git-common.production,compile.module.git-common.tests" description="Compile module git-common"/>
   
-  <target name="compile.module.git-server.production" description="Compile module git-server; production classes">
-    <mkdir dir="${git-server.output.dir}"/>
-    <javac2 destdir="${git-server.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-server}/javac">
-      <compilerarg line="${compiler.args.git-server}"/>
-      <bootclasspath refid="git-server.module.bootclasspath"/>
-      <classpath refid="git-server.module.classpath"/>
-      <src refid="git-server.module.sourcepath"/>
-      <patternset refid="excluded.from.compilation.git-server"/>
+  <target name="compile.module.git-common.production" description="Compile module git-common; production classes">
+    <mkdir dir="${git-common.output.dir}"/>
+    <javac2 destdir="${git-common.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-common}/javac">
+      <compilerarg line="${compiler.args.git-common}"/>
+      <bootclasspath refid="git-common.module.bootclasspath"/>
+      <classpath refid="git-common.module.classpath"/>
+      <src refid="git-common.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.git-common"/>
     </javac2>
     
-    <copy todir="${git-server.output.dir}">
-      <fileset dir="${module.git-server.basedir}/git-server/resources">
-        <patternset refid="compiler.resources"/>
-        <type type="file"/>
-      </fileset>
-      <fileset dir="${module.git-server.basedir}/git-server/src">
+    <copy todir="${git-common.output.dir}">
+      <fileset dir="${module.git-common.basedir}/git-common/src">
         <patternset refid="compiler.resources"/>
         <type type="file"/>
       </fileset>
     </copy>
   </target>
   
-  <target name="compile.module.git-server.tests" depends="compile.module.git-server.production" description="compile module git-server; test classes" unless="skip.tests"/>
+  <target name="compile.module.git-common.tests" depends="compile.module.git-common.production" description="compile module git-common; test classes" unless="skip.tests"/>
   
-  <target name="clean.module.git-server" description="cleanup module">
-    <delete dir="${git-server.output.dir}"/>
-    <delete dir="${git-server.testoutput.dir}"/>
+  <target name="clean.module.git-common" description="cleanup module">
+    <delete dir="${git-common.output.dir}"/>
+    <delete dir="${git-common.testoutput.dir}"/>
   </target>
   
   
@@ -273,6 +269,175 @@
   </target>
   
   
+  <!-- Module git-agent -->
+  
+  <dirname property="module.git-agent.basedir" file="${ant.file}"/>
+  
+  
+  <property name="module.jdk.home.git-agent" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.git-agent" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.git-agent" value="${project.jdk.classpath}"/>
+  
+  <property name="compiler.args.git-agent" value="${compiler.args}"/>
+  
+  <property name="git-agent.output.dir" value="${module.git-agent.basedir}/out/production/git-agent"/>
+  <property name="git-agent.testoutput.dir" value="${module.git-agent.basedir}/out/test/git-agent"/>
+  
+  <path id="git-agent.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="git-agent.module.classpath">
+    <path refid="${module.jdk.classpath.git-agent}"/>
+    <pathelement location="${git-common.output.dir}"/>
+    <pathelement location="${git-common.testoutput.dir}"/>
+    <path refid="library.teamcity_open_api_agent.classpath"/>
+    <path refid="library.teamcity_open_api_common.classpath"/>
+    <path refid="library.teamcity_third-party.classpath"/>
+  </path>
+  
+  <path id="git-agent.runtime.module.classpath">
+    <pathelement location="${git-agent.output.dir}"/>
+    <pathelement location="${git-agent.testoutput.dir}"/>
+    <path refid="git-common.runtime.module.classpath"/>
+    <path refid="library.teamcity_open_api_agent.classpath"/>
+    <path refid="library.teamcity_open_api_common.classpath"/>
+    <path refid="library.teamcity_third-party.classpath"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.git-agent">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.git-agent">
+    <patternset refid="excluded.from.module.git-agent"/>
+  </patternset>
+  
+  <path id="git-agent.module.sourcepath">
+    <dirset dir="${module.git-agent.basedir}/git-agent">
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.git-agent" depends="compile.module.git-agent.production,compile.module.git-agent.tests" description="Compile module git-agent"/>
+  
+  <target name="compile.module.git-agent.production" depends="compile.module.git-common" description="Compile module git-agent; production classes">
+    <mkdir dir="${git-agent.output.dir}"/>
+    <javac2 destdir="${git-agent.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-agent}/javac">
+      <compilerarg line="${compiler.args.git-agent}"/>
+      <bootclasspath refid="git-agent.module.bootclasspath"/>
+      <classpath refid="git-agent.module.classpath"/>
+      <src refid="git-agent.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.git-agent"/>
+    </javac2>
+    
+    <copy todir="${git-agent.output.dir}">
+      <fileset dir="${module.git-agent.basedir}/git-agent/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.git-agent.tests" depends="compile.module.git-agent.production" description="compile module git-agent; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.git-agent" description="cleanup module">
+    <delete dir="${git-agent.output.dir}"/>
+    <delete dir="${git-agent.testoutput.dir}"/>
+  </target>
+  
+  
+  <!-- Module git-server -->
+  
+  <dirname property="module.git-server.basedir" file="${ant.file}"/>
+  
+  
+  <property name="module.jdk.home.git-server" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.git-server" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.git-server" value="${project.jdk.classpath}"/>
+  
+  <property name="compiler.args.git-server" value="${compiler.args}"/>
+  
+  <property name="git-server.output.dir" value="${module.git-server.basedir}/out/production/git-server"/>
+  <property name="git-server.testoutput.dir" value="${module.git-server.basedir}/out/test/git-server"/>
+  
+  <path id="git-server.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="git-server.module.classpath">
+    <path refid="${module.jdk.classpath.git-server}"/>
+    <path refid="library.teamcity_open_api_common.classpath"/>
+    <path refid="library.teamcity_open_api_server.classpath"/>
+    <path refid="library.teamcity_third-party.classpath"/>
+    <path refid="library.tomcat.classpath"/>
+    <path refid="library.jgit.classpath"/>
+    <pathelement location="${git-common.output.dir}"/>
+    <pathelement location="${git-common.testoutput.dir}"/>
+  </path>
+  
+  <path id="git-server.runtime.module.classpath">
+    <pathelement location="${git-server.output.dir}"/>
+    <pathelement location="${git-server.testoutput.dir}"/>
+    <path refid="library.teamcity_open_api_common.classpath"/>
+    <path refid="library.teamcity_open_api_server.classpath"/>
+    <path refid="library.teamcity_third-party.classpath"/>
+    <path refid="library.tomcat.classpath"/>
+    <path refid="library.jgit.classpath"/>
+    <path refid="git-common.runtime.module.classpath"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.git-server">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.git-server">
+    <patternset refid="excluded.from.module.git-server"/>
+  </patternset>
+  
+  <path id="git-server.module.sourcepath">
+    <dirset dir="${module.git-server.basedir}/git-server">
+      <include name="resources"/>
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.git-server" depends="compile.module.git-server.production,compile.module.git-server.tests" description="Compile module git-server"/>
+  
+  <target name="compile.module.git-server.production" depends="compile.module.git-common" description="Compile module git-server; production classes">
+    <mkdir dir="${git-server.output.dir}"/>
+    <javac2 destdir="${git-server.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-server}/javac">
+      <compilerarg line="${compiler.args.git-server}"/>
+      <bootclasspath refid="git-server.module.bootclasspath"/>
+      <classpath refid="git-server.module.classpath"/>
+      <src refid="git-server.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.git-server"/>
+    </javac2>
+    
+    <copy todir="${git-server.output.dir}">
+      <fileset dir="${module.git-server.basedir}/git-server/resources">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+      <fileset dir="${module.git-server.basedir}/git-server/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.git-server.tests" depends="compile.module.git-server.production" description="compile module git-server; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.git-server" description="cleanup module">
+    <delete dir="${git-server.output.dir}"/>
+    <delete dir="${git-server.testoutput.dir}"/>
+  </target>
+  
+  
   <!-- Module git-tests -->
   
   <dirname property="module.git-tests.basedir" file="${ant.file}"/>
@@ -303,6 +468,8 @@
     <path refid="library.teamcity_third-party.classpath"/>
     <path refid="library.tomcat.classpath"/>
     <path refid="library.teamcity_tests.classpath"/>
+    <pathelement location="${git-common.output.dir}"/>
+    <pathelement location="${git-common.testoutput.dir}"/>
   </path>
   
   <path id="git-tests.runtime.module.classpath">
@@ -317,6 +484,7 @@
     <path refid="library.teamcity_third-party.classpath"/>
     <path refid="library.tomcat.classpath"/>
     <path refid="library.teamcity_tests.classpath"/>
+    <path refid="git-common.runtime.module.classpath"/>
   </path>
   
   
@@ -337,7 +505,7 @@
   
   <target name="compile.module.git-tests" depends="compile.module.git-tests.production,compile.module.git-tests.tests" description="Compile module git-tests"/>
   
-  <target name="compile.module.git-tests.production" depends="compile.module.git-server" description="Compile module git-tests; production classes">
+  <target name="compile.module.git-tests.production" depends="compile.module.git-server,compile.module.git-common" description="Compile module git-tests; production classes">
     <mkdir dir="${git-tests.output.dir}"/>
     <javac2 destdir="${git-tests.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-tests}/javac">
       <compilerarg line="${compiler.args.git-tests}"/>
@@ -366,9 +534,9 @@
     <!-- Perform any build initialization in this target -->
   </target>
   
-  <target name="clean" depends="clean.module.git-server, clean.module.root, clean.module.git-tests" description="cleanup all"/>
+  <target name="clean" depends="clean.module.git-common, clean.module.root, clean.module.git-agent, clean.module.git-server, clean.module.git-tests" description="cleanup all"/>
   
-  <target name="build.modules" depends="init, clean, compile.module.git-server, compile.module.root, compile.module.git-tests" description="build all modules"/>
+  <target name="build.modules" depends="init, clean, compile.module.git-common, compile.module.root, compile.module.git-agent, compile.module.git-server, compile.module.git-tests" description="build all modules"/>
   
   <target name="all" depends="build.modules" description="build all"/>
 </project>

@@ -34,7 +34,7 @@ public class Settings {
   /**
    * logger instance
    */
-  private static Logger LOG = Logger.getInstance(Settings.class.getName());
+  private static final Logger LOG = Logger.getInstance(Settings.class.getName());
   /**
    * The fetch url for the repository
    */
@@ -334,42 +334,6 @@ public class Settings {
     return repositoryPushURL;
   }
 
-
-  /**
-   * Authentication method
-   */
-  enum AuthenticationMethod {
-    /**
-     * Anonymous access (or password is a part of URL)
-     */
-    ANONYMOUS,
-    /**
-     * The default SSH private key
-     */
-    PRIVATE_KEY_DEFAULT,
-    /**
-     * The private key is specified in the file
-     */
-    PRIVATE_KEY_FILE,
-    /**
-     * The password is used
-     */
-    PASSWORD
-  }
-
-  /**
-   * Submodule checkout policy
-   */
-  public enum SubmodulesCheckoutPolicy {
-    /**
-     * Ignore submodules
-     */
-    IGNORE,
-    /**
-     * Checkout submodules
-     */
-    CHECKOUT,
-  }
 
   /**
    * The style for user names

@@ -78,4 +78,20 @@ public interface Constants {
    * The ignore known hosts property
    */
   public static String SUBMODULE_URLS = "submoduleUrls_TEST_ONLY";
+  /**
+   * The property that specifies when working tree should be cleaned on agent
+   */
+  public static String AGENT_CLEAN_POLICY = "agentCleanPolicy";
+  /**
+   * The property that specifies what part of working tree should be cleaned
+   */
+  public static String AGENT_CLEAN_FILES_POLICY = "agentCleanFilesPolicy";
+  /**
+   * The property that specifies that depth clone should be initially
+   */
+  public static String AGENT_CLONE_DEPTH = "agentHistoryDepth";
+  /**
+   * The boolean property that specifies that shallow clone should be initially
+   */
+  public static String AGENT_CLONE_DEPTH_FULL = "FULL";
 }

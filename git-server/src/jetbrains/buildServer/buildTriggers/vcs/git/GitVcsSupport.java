@@ -208,10 +208,10 @@ public class GitVcsSupport extends ServerVcsSupport
                                       new ArrayList<VcsChange>(),
                                       "The previous version was removed from repository, " +
                                       "getting changes using date. The changes reported might be not accurate.",
-                                      GitUtils.SYSTEM_USER,
+                                      GitServerUtil.SYSTEM_USER,
                                       root,
                                       version,
-                                      GitUtils.displayVersion(version)));
+                                      GitServerUtil.displayVersion(version)));
         }
       } finally {
         close(repositories);
@@ -249,12 +249,14 @@ public class GitVcsSupport extends ServerVcsSupport
         s.debugInfo());
     }
     final ObjectId[] parentIds = cc.getParentIds();
-    String cv = GitUtils.makeVersion(cc);
+    String cv = GitServerUtil.makeVersion(cc);
     String pv =
-      parentIds.length == 0 ? GitUtils.makeVersion(ObjectId.zeroId().name(), 0) : GitUtils.makeVersion(r.mapCommit(cc.getParentIds()[0]));
+      parentIds.length == 0
+      ? GitUtils.makeVersion(ObjectId.zeroId().name(), 0)
+      : GitServerUtil.makeVersion(r.mapCommit(cc.getParentIds()[0]));
     List<VcsChange> changes = getCommitChanges(repositories, s, r, cc, parentIds, cv, pv);
-    ModificationData m = new ModificationData(cc.getAuthor().getWhen(), changes, cc.getMessage(), GitUtils.getUser(s, cc), root, cv,
-                                              GitUtils.displayVersion(cc));
+    ModificationData m = new ModificationData(cc.getAuthor().getWhen(), changes, cc.getMessage(), GitServerUtil.getUser(s, cc), root, cv,
+                                              GitServerUtil.displayVersion(cc));
     if (parentIds.length > 1 && MD_SET_CAN_BE_IGNORED != null) {
       try {
         MD_SET_CAN_BE_IGNORED.invoke(m, false);
@@ -754,8 +756,8 @@ public class GitVcsSupport extends ServerVcsSupport
 
         }
         String authMethod = properties.get(Constants.AUTH_METHOD);
-        Settings.AuthenticationMethod authenticationMethod =
-          authMethod == null ? Settings.AuthenticationMethod.ANONYMOUS : Enum.valueOf(Settings.AuthenticationMethod.class, authMethod);
+        AuthenticationMethod authenticationMethod =
+          authMethod == null ? AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, authMethod);
         switch (authenticationMethod) {
           case PRIVATE_KEY_FILE:
             String pkFile = properties.get(Constants.PRIVATE_KEY_PATH);
@@ -799,7 +801,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * {@inheritDoc}
    */
   public String getVersionDisplayName(@NotNull String version, @NotNull VcsRoot root) throws VcsException {
-    return GitUtils.displayVersion(version);
+    return GitServerUtil.displayVersion(version);
   }
 
   /**
@@ -826,7 +828,7 @@ public class GitVcsSupport extends ServerVcsSupport
           throw new VcsException("The branch name could not be resolved " + refName);
         }
         LOG.info("The current version is " + c.getCommitId().name() + " " + s.debugInfo());
-        return GitUtils.makeVersion(c);
+        return GitServerUtil.makeVersion(c);
       } finally {
         r.close();
       }
@@ -1044,7 +1046,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * @throws VcsException if the repository could not be accessed
    */
   static Repository getRepository(Settings s, Map<String, Repository> repositories) throws VcsException {
-    final Repository r = GitUtils.getRepository(s.getRepositoryPath(), s.getRepositoryFetchURL());
+    final Repository r = GitServerUtil.getRepository(s.getRepositoryPath(), s.getRepositoryFetchURL());
     if (repositories != null) {
       repositories.put(s.getRepositoryPath().getPath(), r);
     }
@@ -1149,6 +1151,11 @@ public class GitVcsSupport extends ServerVcsSupport
       LOG.error(e);
       return Collections.emptySet();
     }
+  }
+
+  @Override
+  public boolean isAgentSideCheckoutAvailable() {
+    return true;
   }
 
   @Nullable
