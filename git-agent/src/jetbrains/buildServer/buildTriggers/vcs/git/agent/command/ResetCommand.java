@@ -43,7 +43,6 @@ public class ResetCommand extends BaseCommand {
   public void hardReset(String revision) throws VcsException {
     GeneralCommandLine cmd = createCommandLine();
     cmd.addParameters("reset", "--hard", revision);
-    ExecResult r = runCommand(cmd);
-    failIfNotEmptyStdErr(cmd, r);
+    runCommand(cmd);
   }
 }
