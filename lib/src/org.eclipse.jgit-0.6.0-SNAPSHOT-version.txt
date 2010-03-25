@@ -1,8 +1,0 @@
-Patch that adds caching for directory lookups during indexing.
-
-Base version:
-
-commit 823773ddfc10c97125d5d1e1d877dfe45e7f76cf
-Author: Robin Rosenberg <robin.rosenberg@dewire.com>
-Date:   Sun Jan 17 10:30:52 2010 -0500
-Subject: Merge "Adding PDE API Tools nature to JGit"
