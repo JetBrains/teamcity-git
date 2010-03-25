@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent;
+package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
@@ -48,7 +48,7 @@ public class LogCommand extends BaseCommand {
    * @param revision the revision to check
    * @return A string describing revision, or null if revision is not found
    */
-  String checkRevision(String revision) {
+  public String checkRevision(String revision) {
     try {
       GeneralCommandLine cmd = createCommandLine();
       cmd.addParameters("log", "-n1", "--pretty=format:%H%x20%s", revision, "--");
