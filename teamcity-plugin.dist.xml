@@ -3,9 +3,13 @@
                  xsi:noNamespaceSchemaLocation="urn:shemas-jetbrains-com:teamcity-plugin-v1-xml">
   <info>
     <name>jetbrains.git</name>
-    <display-name>Git plugin by JetBrains</display-name>
+    <display-name>VCS support: Git</display-name>
     <version>@version@</version>
-    <description>TeamCity Git integration plugin</description>
+    <description></description>
+    <vendor>
+      <name>JetBrains, s.r.o.</name>
+      <url>http://www.jetbrains.com/teamcity</url>
+    </vendor>
   </info>
   <deployment use-separate-classloader="false"/>
 </teamcity-plugin>
