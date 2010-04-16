@@ -111,7 +111,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
         } else {
           newPath = GitUtils.normalizePath(newPath + '/'+url);
         }
-        url = u.setPass(newPath).toPrivateString();
+        url = u.setPath(newPath).toPrivateString();
       }
       String dir = mySettings.getSubmodulePath(path, url);
       if (mySubmoduleRepositories.containsKey(dir)) {
