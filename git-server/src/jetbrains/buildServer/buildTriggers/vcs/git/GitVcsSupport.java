@@ -172,7 +172,9 @@ public class GitVcsSupport extends ServerVcsSupport
       Map<String, Repository> repositories = new HashMap<String, Repository>();
       Repository r = getRepository(s, repositories);
       try {
-        LOG.info("Collecting changes " + fromVersion + ".." + currentVersion + " for " + s.debugInfo());
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + s.debugInfo());
+        }
         final String current = GitUtils.versionRevision(currentVersion);
         ensureCommitLoaded(s, r, current);
         final String from = GitUtils.versionRevision(fromVersion);
@@ -190,7 +192,7 @@ public class GitVcsSupport extends ServerVcsSupport
             addCommit(root, rc, r, repositories, s, revs, c);
           }
         } else {
-          LOG.warn("The from version " + fromVersion + " is not found, collecting changes basing on date and commit time " + s.debugInfo());
+          LOG.warn("The from version " + fromVersion + " is not found, collecting changes based on commit date and time " + s.debugInfo());
           RevCommit c;
           long limitTime = GitUtils.versionTime(fromVersion);
           while ((c = revs.next()) != null) {
@@ -449,14 +451,18 @@ public class GitVcsSupport extends ServerVcsSupport
         tw.reset();
         addTree(tw, toCommit, s, repositories);
         if (fromVersion != null) {
-          LOG.info("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
+          }
           Commit fromCommit = r.mapCommit(GitUtils.versionRevision(fromVersion));
           if (fromCommit == null) {
             throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not available in the repository");
           }
           addTree(tw, fromCommit, s, repositories);
         } else {
-          LOG.info("Creating clean patch " + toVersion + " for " + s.debugInfo());
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Creating clean patch " + toVersion + " for " + s.debugInfo());
+          }
           tw.addTree(new EmptyTreeIterator());
         }
         final List<Callable<Void>> actions = new LinkedList<Callable<Void>>();
@@ -604,7 +610,9 @@ public class GitVcsSupport extends ServerVcsSupport
       Map<String, Repository> repositories = new HashMap<String, Repository>();
       Repository r = getRepository(s, repositories);
       try {
-        LOG.info("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
+        }
         final String rev = GitUtils.versionRevision(version);
         Commit c = ensureCommitLoaded(s, r, rev);
         final TreeWalk tw = new TreeWalk(r);
@@ -616,9 +624,11 @@ public class GitVcsSupport extends ServerVcsSupport
           throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + s.debugInfo());
         }
         final byte[] data = loadObject(r, tw, 0);
-        LOG.info(
-          "File retrieved " + version + ":" + filePath + " (hash = " + tw.getObjectId(0) + ", length = " + data.length + ") for " +
-          s.debugInfo());
+        if (LOG.isDebugEnabled()) {
+          LOG.debug(
+            "File retrieved " + version + ":" + filePath + " (hash = " + tw.getObjectId(0) + ", length = " + data.length + ") for " +
+            s.debugInfo());
+        }
         return data;
       } finally {
         close(repositories);
@@ -825,7 +835,9 @@ public class GitVcsSupport extends ServerVcsSupport
         if (c == null) {
           throw new VcsException("The branch name could not be resolved " + refName);
         }
-        LOG.info("The current version is " + c.getCommitId().name() + " " + s.debugInfo());
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Current version: " + c.getCommitId().name() + " " + s.debugInfo());
+        }
         return GitUtils.makeVersion(c);
       } finally {
         r.close();
