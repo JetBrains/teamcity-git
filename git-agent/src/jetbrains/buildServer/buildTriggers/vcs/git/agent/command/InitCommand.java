@@ -29,7 +29,7 @@ public class InitCommand extends BaseCommand {
    *
    * @param s the settings object
    */
-  public InitCommand(Settings s) {
+  public InitCommand(AgentSettings s) {
     super(s);
   }
 

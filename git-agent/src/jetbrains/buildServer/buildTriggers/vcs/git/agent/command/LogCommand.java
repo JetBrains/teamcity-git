@@ -18,8 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.BaseCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Settings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -38,7 +36,7 @@ public class LogCommand extends BaseCommand {
    *
    * @param settings the git settings
    */
-  public LogCommand(@NotNull final Settings settings) {
+  public LogCommand(@NotNull final AgentSettings settings) {
     super(settings);
   }
 

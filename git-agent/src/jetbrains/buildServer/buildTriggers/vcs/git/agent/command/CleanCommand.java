@@ -30,7 +30,7 @@ public class CleanCommand extends BaseCommand {
    *
    * @param settings the settings object
    */
-  public CleanCommand(@NotNull final Settings settings) {
+  public CleanCommand(@NotNull final AgentSettings settings) {
     super(settings);
   }
 

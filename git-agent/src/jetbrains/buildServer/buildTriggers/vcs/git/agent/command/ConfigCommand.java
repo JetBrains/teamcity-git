@@ -30,7 +30,7 @@ public class ConfigCommand extends BaseCommand {
    *
    * @param settings the settings object
    */
-  public ConfigCommand(@NotNull final Settings settings) {
+  public ConfigCommand(@NotNull final AgentSettings settings) {
     super(settings);
   }
 

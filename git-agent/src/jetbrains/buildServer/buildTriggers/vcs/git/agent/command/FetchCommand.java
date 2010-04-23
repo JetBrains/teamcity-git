@@ -21,13 +21,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.git4idea.ssh.GitSSHHandler;
-import org.jetbrains.git4idea.ssh.GitSSHService;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Vector;
 
 /**
  * The "git fetch" command
@@ -47,7 +40,7 @@ public class FetchCommand extends BaseCommand {
    *
    * @param settings the settings object
    */
-  public FetchCommand(@NotNull final Settings settings, @NotNull final GitAgentSSHService ssh) {
+  public FetchCommand(@NotNull final AgentSettings settings, @NotNull final GitAgentSSHService ssh) {
     super(settings);
     mySsh = ssh;
   }
@@ -61,7 +54,7 @@ public class FetchCommand extends BaseCommand {
   public void fetch(boolean firstFetch) throws VcsException {
     GeneralCommandLine cmd = createCommandLine();
     cmd.addParameter("fetch");
-    Settings s = getSettings();
+    AgentSettings s = getSettings();
     Integer depth = s.getAgentHistoryDepth();
     if (depth != null && firstFetch) {
       cmd.addParameter("--depth=" + depth);

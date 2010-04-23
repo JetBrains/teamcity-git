@@ -35,20 +35,20 @@ import java.util.Vector;
  * @author pavel
  */
 public class BaseCommand {
-  private final Settings mySettings;
+  private final AgentSettings mySettings;
   private String myWorkDirectory;
 
-  public BaseCommand(@NotNull final Settings settings) {
+  public BaseCommand(@NotNull final AgentSettings settings) {
     mySettings = settings;
     myWorkDirectory = settings.getLocalRepositoryDir().getAbsolutePath();
   }
 
-  public Settings getSettings() {
+  public AgentSettings getSettings() {
     return mySettings;
   }
 
   /**
-   * Sets new working directory, by default working directory is taken from the Settings#getLocalRepositoryDir
+   * Sets new working directory, by default working directory is taken from the AgentSettings#getLocalRepositoryDir
    *
    * @param workDirectory work dir
    */

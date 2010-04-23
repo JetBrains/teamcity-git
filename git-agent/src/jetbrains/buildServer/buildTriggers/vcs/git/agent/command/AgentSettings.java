@@ -25,7 +25,7 @@ import java.io.File;
 /**
  * Agent Git plugin settings class
  */
-public class Settings {
+public class AgentSettings {
   /**
    * The path to the git command
    */
@@ -99,7 +99,7 @@ public class Settings {
    * @param root               the VCS root to get settings from
    * @throws VcsException if there is a configuration problem
    */
-  public Settings(String gitCommandPath, File localRepositoryDir, VcsRoot root) throws VcsException {
+  public AgentSettings(String gitCommandPath, File localRepositoryDir, VcsRoot root) throws VcsException {
     this.gitCommandPath = gitCommandPath;
     this.localRepositoryDir = localRepositoryDir;
     if (root != null) {

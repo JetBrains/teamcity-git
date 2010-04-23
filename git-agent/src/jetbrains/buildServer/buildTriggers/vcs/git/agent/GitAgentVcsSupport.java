@@ -137,8 +137,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @return get settings object that use current directory as a work directory (for commands that directory-independent)
    * @throws VcsException if invalid settings are detected
    */
-  private Settings getSetting() throws VcsException {
-    return getSetting(new File("."));  //To change body of created methods use File | Settings | File Templates.
+  private AgentSettings getSetting() throws VcsException {
+    return getSetting(new File("."));
   }
 
   /**
@@ -148,8 +148,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @return created settings object
    * @throws VcsException if invalid settings are detected
    */
-  private Settings getSetting(File workingDirectory) throws VcsException {
-    return new Settings(getGitPath(), workingDirectory, null);
+  private AgentSettings getSetting(File workingDirectory) throws VcsException {
+    return new AgentSettings(getGitPath(), workingDirectory, null);
   }
 
   /**
@@ -160,8 +160,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @return created settings object
    * @throws VcsException if invalid settings are detected in vcs root
    */
-  private Settings getSettings(VcsRoot root, File directory) throws VcsException {
-    return new Settings(getGitPath(), directory, root);
+  private AgentSettings getSettings(VcsRoot root, File directory) throws VcsException {
+    return new AgentSettings(getGitPath(), directory, root);
   }
 
 
@@ -184,7 +184,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull BuildProgressLogger logger) throws VcsException {
     LOG.info("Starting update of root " + root.getName() + " in " + checkoutDirectory + " to revision " + toVersion);
     File directory = getDirectory(root, checkoutRules, checkoutDirectory, logger);
-    Settings s = getSettings(root, directory);
+    AgentSettings s = getSettings(root, directory);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Updating " + s.debugInfo());
     }
@@ -251,7 +251,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @param s settings to use
    * @throws VcsException if there problem with running git
    */
-  private void forceTrackingBranch(Settings s) throws VcsException {
+  private void forceTrackingBranch(AgentSettings s) throws VcsException {
     new ConfigCommand(s).set("branch." + s.getBranch() + ".remote", "origin");
     new ConfigCommand(s).set("branch." + s.getBranch() + ".merge", GitUtils.branchRef(s.getBranch()));
   }
@@ -267,7 +267,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @return a revision information string
    * @throws VcsException if there is a problem with fetching revision
    */
-  private String doFetch(VcsRoot root, BuildProgressLogger logger, Settings s, boolean firstFetch, String revision) throws VcsException {
+  private String doFetch(VcsRoot root, BuildProgressLogger logger, AgentSettings s, boolean firstFetch, String revision) throws VcsException {
     String revInfo = firstFetch ? null : new LogCommand(s).checkRevision(revision);
     if (revInfo != null) {
       LOG.info("No fetch needed for revision '" + revision + "' in " + s.getLocalRepositoryDir());
@@ -304,7 +304,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @param logger   the logger
    * @throws VcsException if there are problems with initializing the directory
    */
-  void initDirectory(@NotNull VcsRoot root, @NotNull Settings settings, @NotNull File dir, @NotNull BuildProgressLogger logger)
+  void initDirectory(@NotNull VcsRoot root, @NotNull AgentSettings settings, @NotNull File dir, @NotNull BuildProgressLogger logger)
     throws VcsException {
     BuildDirectoryCleanerCallback c = new BuildDirectoryCleanerCallback(logger, LOG);
     myDirectoryCleaner.cleanFolder(dir, c);

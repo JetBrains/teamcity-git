@@ -31,7 +31,7 @@ public class RemoteCommand extends BaseCommand {
    *
    * @param settings the settings object
    */
-  public RemoteCommand(@NotNull final Settings settings) {
+  public RemoteCommand(@NotNull final AgentSettings settings) {
     super(settings);
   }
 

@@ -17,8 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
-import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -31,7 +29,7 @@ public class ResetCommand extends BaseCommand {
    *
    * @param settings the settings object
    */
-  public ResetCommand(@NotNull final Settings settings) {
+  public ResetCommand(@NotNull final AgentSettings settings) {
     super(settings);
   }
 

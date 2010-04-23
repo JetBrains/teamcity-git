@@ -19,7 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -31,7 +30,7 @@ public class BranchCommand extends BaseCommand {
    * The branch command
    * @param settings the command settings
    */
-  public BranchCommand(@NotNull final Settings settings) {
+  public BranchCommand(@NotNull final AgentSettings settings) {
     super(settings);
   }
 
