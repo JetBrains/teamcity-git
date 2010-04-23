@@ -76,6 +76,9 @@ public class RepositoryCommand extends BaseCommand {
       mySsh = ssh;
       Map<String, String> env = new HashMap<String, String>(System.getenv());
       env.put(GitSSHHandler.SSH_PORT_ENV, Integer.toString(mySsh.getXmlRcpPort()));
+      if(mySettings.isKnownHostsIgnored()) {
+        env.put(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV, "true");
+      }
       try {
         env.put(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath().toString());
       } catch (IOException e) {
@@ -98,7 +101,7 @@ public class RepositoryCommand extends BaseCommand {
                                        String serverHostKeyAlgorithm,
                                        String serverHostKey,
                                        boolean isNew) {
-      return !mySettings.isKnownHostsIgnored();
+      return false;
     }
 
     /**

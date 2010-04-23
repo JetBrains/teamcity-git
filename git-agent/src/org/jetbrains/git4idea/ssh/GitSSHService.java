@@ -175,9 +175,8 @@ public abstract class GitSSHService {
      *
      * @param username      a user name
      * @param keyPath       a key path
-     * @param resetPassword true if the previous password supplied to the service was incorrect
-     * @param lastError     the last error for the handler
-     * @return a passphrase or null if dialog was cancelled.
+     * @param resetPassword
+     * @param lastError     the last error for the handler  @return a passphrase or null if dialog was cancelled.
      */
     String askPassphrase(final String username, final String keyPath, boolean resetPassword, final String lastError);
 
@@ -207,8 +206,7 @@ public abstract class GitSSHService {
      *
      * @param username      a user name
      * @param resetPassword true if the previous password supplied to the service was incorrect
-     * @param lastError     the previous error
-     * @return a password or null if dialog was cancelled.
+     * @param lastError     the previous error  @return a password or null if dialog was cancelled.
      */
     String askPassword(final String username, boolean resetPassword, final String lastError);
 
