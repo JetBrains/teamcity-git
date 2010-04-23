@@ -100,6 +100,24 @@
           <option name="LABEL_INDENT_SIZE" value="0" />
           <option name="LABEL_INDENT_ABSOLUTE" value="false" />
         </ADDITIONAL_INDENT_OPTIONS>
+        <ADDITIONAL_INDENT_OPTIONS fileType="php">
+          <option name="INDENT_SIZE" value="4" />
+          <option name="CONTINUATION_INDENT_SIZE" value="8" />
+          <option name="TAB_SIZE" value="4" />
+          <option name="USE_TAB_CHARACTER" value="false" />
+          <option name="SMART_TABS" value="false" />
+          <option name="LABEL_INDENT_SIZE" value="0" />
+          <option name="LABEL_INDENT_ABSOLUTE" value="false" />
+        </ADDITIONAL_INDENT_OPTIONS>
+        <ADDITIONAL_INDENT_OPTIONS fileType="scala">
+          <option name="INDENT_SIZE" value="2" />
+          <option name="CONTINUATION_INDENT_SIZE" value="8" />
+          <option name="TAB_SIZE" value="2" />
+          <option name="USE_TAB_CHARACTER" value="false" />
+          <option name="SMART_TABS" value="false" />
+          <option name="LABEL_INDENT_SIZE" value="0" />
+          <option name="LABEL_INDENT_ABSOLUTE" value="false" />
+        </ADDITIONAL_INDENT_OPTIONS>
         <ADDITIONAL_INDENT_OPTIONS fileType="sql">
           <option name="INDENT_SIZE" value="2" />
           <option name="CONTINUATION_INDENT_SIZE" value="8" />
@@ -496,6 +514,9 @@
         <root url="jar://$TeamCityDistribution$/devPackage/runtime-util.jar!/" />
         <root url="jar://$TeamCityDistribution$/devPackage/common-api.jar!/" />
         <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/log4j-1.2.12.jar!/" />
+        <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/commons-codec-1.3.jar!/" />
+        <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/xmlrpc-2.0.1.jar!/" />
+        <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/trove4j.jar!/" />
       </CLASSES>
       <JAVADOC>
         <root url="jar://$TeamCityDistribution$/devPackage/javadoc/openApi-help.jar!/" />
@@ -524,13 +545,13 @@
     </library>
     <library name="JGit">
       <CLASSES>
-        <root url="jar://$PROJECT_DIR$/lib/org.eclipse.jgit-0.6.0-SNAPSHOT.jar!/" />
-        <root url="jar://$PROJECT_DIR$/lib/jsch-0.1.41.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/common/jsch-0.1.41.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-0.6.0-SNAPSHOT.jar!/" />
       </CLASSES>
       <JAVADOC />
       <SOURCES>
-        <root url="jar://$PROJECT_DIR$/lib/src/org.eclipse.jgit-0.6.0-SNAPSHOT-sources.jar!/" />
-        <root url="jar://$PROJECT_DIR$/lib/src/jsch-0.1.41.zip!/jsch-0.1.41-src/src" />
+        <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit-0.6.0-SNAPSHOT-sources.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.41.zip!/jsch-0.1.41-src/src" />
       </SOURCES>
     </library>
     <library name="TestLibs">
@@ -548,6 +569,15 @@
       </CLASSES>
       <JAVADOC />
       <SOURCES />
+    </library>
+    <library name="Trilead SSH">
+      <CLASSES>
+        <root url="jar://$PROJECT_DIR$/lib/agent/trilead-ssh2.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES>
+        <root url="jar://$PROJECT_DIR$/lib/agent/src/trilead-ssh2-src.zip!/" />
+      </SOURCES>
     </library>
   </component>
 </project>

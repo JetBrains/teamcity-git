@@ -18,10 +18,16 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.BaseCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.git4idea.ssh.GitSSHHandler;
+import org.jetbrains.git4idea.ssh.GitSSHService;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Vector;
 
 /**
  * The "git fetch" command
@@ -32,29 +38,42 @@ public class FetchCommand extends BaseCommand {
    */
   static final int TIMEOUT = 24 * 60 * 60;
   /**
+   * Agent's SSH service
+   */
+  private final GitAgentSSHService mySsh;
+
+  /**
    * The constructor
    *
    * @param settings the settings object
    */
-  public FetchCommand(@NotNull final Settings settings) {
+  public FetchCommand(@NotNull final Settings settings, @NotNull final GitAgentSSHService ssh) {
     super(settings);
+    mySsh = ssh;
   }
 
   /**
    * Perform fetch operation according to settings
    *
-   * @throws VcsException the VCS exception
    * @param firstFetch true, if the fetch is known to be a first fetch
+   * @throws VcsException the VCS exception
    */
   public void fetch(boolean firstFetch) throws VcsException {
     GeneralCommandLine cmd = createCommandLine();
     cmd.addParameter("fetch");
     Settings s = getSettings();
     Integer depth = s.getAgentHistoryDepth();
-    if(depth != null && firstFetch) {
-      cmd.addParameter("--depth="+depth);
+    if (depth != null && firstFetch) {
+      cmd.addParameter("--depth=" + depth);
     }
-    cmd.addParameters("--no-tags", "-q", "origin", "+"+ GitUtils.branchRef(s.getBranch())+":"+GitUtils.remotesBranchRef(s.getBranch()));
-    runCommand  (cmd, TIMEOUT);
+    cmd.addParameters("--no-tags", "-q", "origin",
+                      "+" + GitUtils.branchRef(s.getBranch()) + ":" + GitUtils.remotesBranchRef(s.getBranch()));
+    SshHandler h = new SshHandler(mySsh, cmd);
+    try {
+      runCommand(cmd, TIMEOUT);
+    } finally {
+      h.unregister();
+    }
   }
+
 }

@@ -12,7 +12,7 @@
                 check.teamcitydistribution
   -->
 
-  <property name="path.variable.teamcitydistribution" value="${teamcity.distribution}" />
+  <property name="path.variable.teamcitydistribution" value="${teamcity.distribution}"/>
 
   <property name="teamcity.internal.default.out" value="dist"/>
 
@@ -28,11 +28,17 @@
     <attribute name="out.unpacked" default="@{out}/unpacked"
                description="name of the directory to store unpacked plugin (not packed into zip)"/>
 
+    <attribute name="common.lib.dir" default="" description="directory to get libs for the common part"/>
+    <attribute name="common.lib.includes" default="none should match" description="includes pattern of the files in the directory"/>
+    <attribute name="agent.lib.dir" default="" description="directory to get libs for the agent part"/>
+    <attribute name="agent.lib.includes" default="none should match" description="includes pattern of the files in the directory"/>
     <attribute name="server.lib.dir" default="" description="directory to get libs for the server part"/>
     <attribute name="server.lib.includes" default="none should match" description="includes pattern of the files in the directory"/>
-    <attribute name="plugin.version" default="SNAPSHOT" description="the version of the plugin to put into teamcity-plugin.xml"/>
+    <attribute name="plugin.version" default="SNAPSHOT"
+               description="the version of the plugin to put into teamcity-plugin.xml instead of '@version@'"/>
 
-    <element name="additional-files" optional="yes"/>
+    <element name="server-additional-files" optional="yes" description="fileset of the files to pack into root of the server plugin part"/>
+    <element name="agent-additional-files" optional="yes" description="fileset of the files to pack into root of the agent plugin part"/>
 
     <sequential>
 
@@ -61,6 +67,12 @@
         <length string="@{agent.output}" when="greater" length="0"/>
       </condition>
 
+      <condition property="plugin.descriptor.file.needed">
+        <and>
+          <available file="@{plugin.descriptor.file}"/>
+          <length string="@{plugin.descriptor.file}" when="greater" length="0"/>
+        </and>
+      </condition>
 
       <mkdir dir="${teamcity.internal.distrib.prep.common}"/>
       <antcall target="prepare.common.part">
@@ -75,6 +87,8 @@
         <param name="common.jar.path" value="${teamcity.internal.distrib.prep.common}/@{common.jar.name}"/>
         <param name="lib.dir" value="@{server.lib.dir}"/>
         <param name="lib.includes" value="@{server.lib.includes}"/>
+        <param name="common.lib.dir" value="@{common.lib.dir}"/>
+        <param name="common.lib.includes" value="@{common.lib.includes}"/>
       </antcall>
 
       <antcall target="prepare.agent.part">
@@ -82,23 +96,43 @@
         <param name="name" value="@{name}"/>
         <param name="agent.output" value="@{agent.output}"/>
         <param name="common.jar.path" value="${teamcity.internal.distrib.prep.common}/@{common.jar.name}"/>
+        <param name="lib.dir" value="@{agent.lib.dir}"/>
+        <param name="lib.includes" value="@{agent.lib.includes}"/>
+        <param name="common.lib.dir" value="@{common.lib.dir}"/>
+        <param name="common.lib.includes" value="@{common.lib.includes}"/>
+      </antcall>
+
+      <!-- copy additional agent files -->
+      <mkdir dir="${teamcity.internal.distrib.prep.agent.jars}/@{name}" />
+      <copy todir="${teamcity.internal.distrib.prep.agent.jars}/@{name}">
+        <fileset dir="${basedir}" excludes="**"/>
+        <agent-additional-files/>
+      </copy>
+
+      <antcall target="pack.agent.part">
+        <param name="out.unpacked" value="@{out.unpacked}"/>
+        <param name="name" value="@{name}"/>
       </antcall>
 
       <!-- copy teamcity-plugin.xml -->
-      <copy file="@{plugin.descriptor.file}" tofile="@{out.unpacked}/teamcity-plugin.xml" failonerror="false"/>
+      <antcall target="prepare.plugin.descriptor.file">
+        <param name="source" value="@{plugin.descriptor.file}"/>
+        <param name="dest" value="@{out.unpacked}/teamcity-plugin.xml"/>
+        <param name="plugin.version" value="@{plugin.version}"/>
+      </antcall>
 
-      <replace file="@{out.unpacked}/teamcity-plugin.xml" value="@{plugin.version}">
-        <replacetoken><![CDATA[@version@]]></replacetoken>
-      </replace>
-
-      <!-- copy additional files -->
+      <!-- copy additional server plugin files -->
       <copy todir="@{out.unpacked}">
-        <additional-files/>
+        <fileset dir="${basedir}" excludes="**"/>
+        <server-additional-files/>
       </copy>
+
       <!-- clean -->
+      <echo message="Cleaning..."/>
       <delete dir="${teamcity.internal.distrib.prep}" quiet="true"/>
 
       <!-- package in zip -->
+      <echo message="Packaging zip..."/>
       <delete file="@{out}/@{name}.zip" quiet="true"/>
       <zip destfile="@{out}/@{name}.zip">
         <fileset dir="@{out.unpacked}"/>
@@ -110,18 +144,19 @@
 
   <target name="check.teamcitydistribution" description="checks whether TeamCity distribution ready to be used by IDEA-generated build">
     <check.property name="path.variable.teamcitydistribution"
-                    fail-message="Please define 'teamcity.distribution' or 'path.variable.teamcitydistribution' property in build.properties file (see build.properties.dist). The property should point to unpacked TeamCity .tar.gz or .exe distribution."
+                    fail-message="Please define 'teamcity.distribution' or 'path.variable.teamcitydistribution' property (e.g. in build.properties file). The property should point to unpacked TeamCity .tar.gz or .exe distribution."
         />
 
-      <condition property="teamcity.distribution.not.present">
-        <not>
-          <and>
-              <available file="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib"/>
-          </and>
-        </not>
-      </condition>
-      <fail if="teamcity.distribution.not.present"
-            message="Cannot find TeamCity distribution at path '${path.variable.teamcitydistribution}'. The property 'teamcity.distribution' or 'path.variable.teamcitydistribution' should point to unpacked TeamCity .tar.gz or .exe distribution."/>
+    <condition property="teamcity.distribution.not.present">
+      <not>
+        <and>
+          <available file="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib"/>
+        </and>
+      </not>
+    </condition>
+    <fail if="teamcity.distribution.not.present"
+          message="Cannot find TeamCity distribution at path '${path.variable.teamcitydistribution}'. The property 'teamcity.distribution' or 'path.variable.teamcitydistribution' should point to unpacked TeamCity .tar.gz or .exe distribution."/>
+    <echo message="Using ${path.variable.teamcitydistribution} as TeamCity distribution" />
   </target>
 
   <macrodef name="deploy.teamcity.plugin">
@@ -192,9 +227,6 @@
   </macrodef>
 
 
-
-
-
   <target name="prepare.common.part" if="common.needed">
     <jar destfile="${common.jar.path}">
       <fileset dir="${common.output}"/>
@@ -212,9 +244,15 @@
     <copy todir="${out.unpacked}/server" failonerror="false">
       <fileset file="${common.jar.path}"/>
       <fileset dir="${lib.dir}" includes="${lib.includes}"/>
+      <fileset dir="${common.lib.dir}" includes="${common.lib.includes}"/>
     </copy>
   </target>
 
+  <target name="pack.agent.part" if="agent.needed">
+    <zip destfile="${out.unpacked}/agent/${name}.zip">
+      <fileset dir="${teamcity.internal.distrib.prep.agent.jars}"/>
+    </zip>
+  </target>
 
   <target name="prepare.agent.part" if="agent.needed">
     <!-- prepare.agent.part -->
@@ -228,16 +266,24 @@
 
     <copy todir="${teamcity.internal.distrib.prep.agent.jars}/${name}/lib" failonerror="false">
       <fileset file="${common.jar.path}"/>
+      <fileset dir="${lib.dir}" includes="${lib.includes}"/>
+      <fileset dir="${common.lib.dir}" includes="${common.lib.includes}"/>
     </copy>
+  </target>
 
-    <zip destfile="${out.unpacked}/agent/${name}.zip">
-      <fileset dir="${teamcity.internal.distrib.prep.agent.jars}"/>
-    </zip>
+  <target name="prepare.plugin.descriptor.file" if="plugin.descriptor.file.needed">
+    <echo message="Copying plugin descriptor file '${source}' to '${dest}'."/>
+    <copy file="${source}" tofile="${dest}" failonerror="false"/>
+
+    <echo message="Replacing '@version@' on '${plugin.version}' in the copied plugin descriptor file."/>
+    <replace file="${dest}" value="${plugin.version}">
+      <replacetoken><![CDATA[@version@]]></replacetoken>
+    </replace>
   </target>
 
   <target name="check.already.defined">
     <condition property="already.defined">
-          <isset property="teamcity.internal.distrib.prep"/>
+      <isset property="teamcity.internal.distrib.prep"/>
     </condition>
     <fail if="already.defined"
           message="It seems you are trying to use the script several times in the same context. This script does not support such use. Please call this script as a separate Ant process, via 'ant' task."/>

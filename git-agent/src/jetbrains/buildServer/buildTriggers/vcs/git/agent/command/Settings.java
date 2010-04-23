@@ -254,4 +254,15 @@ public class Settings {
   public boolean areSubmodulesCheckedOut() {
     return submodulePolicy == SubmodulesCheckoutPolicy.CHECKOUT;
   }
+
+  /**
+   * @return true, if known host check should be skipped
+   */
+  public boolean isIgnoreKnownHosts() {
+    return ignoreKnownHosts;
+  }
+
+  public String getPrivateKeyFile() {
+    return privateKeyFile;
+  }
 }

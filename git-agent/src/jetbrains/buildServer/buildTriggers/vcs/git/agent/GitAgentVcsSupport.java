@@ -73,21 +73,29 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   /**
    * The configuration for the agent
    */
-  final BuildAgentConfiguration agentConfiguration;
+  final BuildAgentConfiguration myAgentConfiguration;
   /**
    * The directory cleaner instance
    */
-  final SmartDirectoryCleaner directoryCleaner;
+  final SmartDirectoryCleaner myDirectoryCleaner;
+  /**
+   * The ssh service to use
+   */
+  final GitAgentSSHService mySshService;
 
   /**
    * The constructor
    *
    * @param agentConfiguration the configuration for this agent
    * @param directoryCleaner   the directory cleaner
+   * @param sshService      the used ssh service
    */
-  public GitAgentVcsSupport(BuildAgentConfiguration agentConfiguration, SmartDirectoryCleaner directoryCleaner) {
-    this.agentConfiguration = agentConfiguration;
-    this.directoryCleaner = directoryCleaner;
+  public GitAgentVcsSupport(BuildAgentConfiguration agentConfiguration,
+                            SmartDirectoryCleaner directoryCleaner,
+                            GitAgentSSHService sshService) {
+    myAgentConfiguration = agentConfiguration;
+    myDirectoryCleaner = directoryCleaner;
+    mySshService = sshService;
   }
 
   @Override
@@ -121,7 +129,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @return the path to the git executable or null if neither configured nor found
    */
   private String getGitPath() {
-    String path = agentConfiguration.getCustomProperties().get(GIT_PATH_PROPERTY);
+    String path = myAgentConfiguration.getCustomProperties().get(GIT_PATH_PROPERTY);
     return path == null ? defaultGit() : path;
   }
 
@@ -273,7 +281,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       logger.message("Fetching data for '" + root.getName() + "'...");
       String previousHead = new LogCommand(s).checkRevision(GitUtils.remotesBranchRef(s.getBranch()));
       firstFetch |= previousHead == null;
-      new FetchCommand(s).fetch(firstFetch);
+      new FetchCommand(s, mySshService).fetch(firstFetch);
       String newHead = new LogCommand(s).checkRevision(GitUtils.remotesBranchRef(s.getBranch()));
       if (newHead == null) {
         throw new VcsException("Failed to fetch data for " + s.debugInfo());
@@ -299,7 +307,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   void initDirectory(@NotNull VcsRoot root, @NotNull Settings settings, @NotNull File dir, @NotNull BuildProgressLogger logger)
     throws VcsException {
     BuildDirectoryCleanerCallback c = new BuildDirectoryCleanerCallback(logger, LOG);
-    directoryCleaner.cleanFolder(dir, c);
+    myDirectoryCleaner.cleanFolder(dir, c);
     //noinspection ResultOfMethodCallIgnored
     dir.mkdirs();
     if (c.isHasErrors()) {
