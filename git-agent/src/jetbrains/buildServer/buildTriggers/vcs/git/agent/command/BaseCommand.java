@@ -35,16 +35,16 @@ import java.util.Vector;
  * @author pavel
  */
 public class BaseCommand {
-  private final AgentSettings mySettings;
+  private final CommandSettings myCommandSettings ;
   private String myWorkDirectory;
 
-  public BaseCommand(@NotNull final AgentSettings settings) {
-    mySettings = settings;
+  public BaseCommand(@NotNull final CommandSettings settings) {
+    myCommandSettings = settings;
     myWorkDirectory = settings.getLocalRepositoryDir().getAbsolutePath();
   }
 
-  public AgentSettings getSettings() {
-    return mySettings;
+  public CommandSettings getCommandSettings() {
+    return myCommandSettings;
   }
 
   /**
@@ -58,7 +58,7 @@ public class BaseCommand {
 
   protected GeneralCommandLine createCommandLine() {
     GeneralCommandLine cli = new GeneralCommandLine();
-    cli.setExePath(getSettings().getGitCommandPath());
+    cli.setExePath(getCommandSettings().getGitCommandPath());
     cli.setWorkDirectory(myWorkDirectory);
     return cli;
   }
@@ -77,74 +77,4 @@ public class BaseCommand {
     }
   }
 
-  /**
-   * SSH handler implementation
-   */
-  class SshHandler implements GitSSHService.Handler {
-    /**
-     * The handler number
-     */
-    private final int myHandlerNo;
-    /**
-     * SSH service
-     */
-    private final GitSSHService mySsh;
-
-    /**
-     * The constructor that registers the handler in the SSH service and command line
-     *
-     * @param ssh the SSH service
-     * @param cmd the command line to register with
-     * @throws VcsException if there is a problem with registering the handler
-     */
-    public SshHandler(GitSSHService ssh, GeneralCommandLine cmd) throws VcsException {
-      mySsh = ssh;
-      Map<String, String> env = new HashMap<String, String>(System.getenv());
-      env.put(GitSSHHandler.SSH_PORT_ENV, Integer.toString(mySsh.getXmlRcpPort()));
-      try {
-        env.put(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath().toString());
-      } catch (IOException e) {
-        throw new VcsException("SSH script cannot be generated", e);
-      }
-      myHandlerNo = ssh.registerHandler(this);
-      env.put(GitSSHHandler.SSH_HANDLER_ENV, Integer.toString(myHandlerNo));
-      cmd.setEnvParams(env);
-    }
-
-    /**
-     * Unregister the handler
-     */
-    public void unregister() {
-      mySsh.unregisterHandler(myHandlerNo);
-    }
-
-    public boolean verifyServerHostKey(String hostname,
-                                       int port,
-                                       String serverHostKeyAlgorithm,
-                                       String serverHostKey,
-                                       boolean isNew) {
-      return !mySettings.isIgnoreKnownHosts();
-    }
-
-    public String askPassphrase(String username, String keyPath, boolean resetPassword, String lastError) {
-      if (resetPassword) {
-        return null;
-      }
-      return mySettings.getPassphrase();
-    }
-
-    public Vector<String> replyToChallenge(String username,
-                                           String name,
-                                           String instruction,
-                                           int numPrompts,
-                                           Vector<String> prompt,
-                                           Vector<Boolean> echo,
-                                           String lastError) {
-      return null;
-    }
-
-    public String askPassword(String username, boolean resetPassword, String lastError) {
-      return mySettings.getPassword();
-    }
-  }
 }

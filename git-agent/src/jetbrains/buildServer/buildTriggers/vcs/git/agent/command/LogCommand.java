@@ -25,7 +25,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * The "git log" command
  */
-public class LogCommand extends BaseCommand {
+public class LogCommand extends RepositoryCommand {
   /**
    * The logger class
    */

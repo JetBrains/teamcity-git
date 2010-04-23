@@ -25,7 +25,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * The "git fetch" command
  */
-public class FetchCommand extends BaseCommand {
+public class FetchCommand extends RepositoryCommand {
   /**
    * The fetch timeout (24 hours)
    */
@@ -39,6 +39,7 @@ public class FetchCommand extends BaseCommand {
    * The constructor
    *
    * @param settings the settings object
+   * @param ssh the SSH service
    */
   public FetchCommand(@NotNull final AgentSettings settings, @NotNull final GitAgentSSHService ssh) {
     super(settings);
@@ -48,17 +49,12 @@ public class FetchCommand extends BaseCommand {
   /**
    * Perform fetch operation according to settings
    *
-   * @param firstFetch true, if the fetch is known to be a first fetch
    * @throws VcsException the VCS exception
    */
-  public void fetch(boolean firstFetch) throws VcsException {
+  public void fetch() throws VcsException {
     GeneralCommandLine cmd = createCommandLine();
     cmd.addParameter("fetch");
     AgentSettings s = getSettings();
-    Integer depth = s.getAgentHistoryDepth();
-    if (depth != null && firstFetch) {
-      cmd.addParameter("--depth=" + depth);
-    }
     cmd.addParameters("--no-tags", "-q", "origin",
                       "+" + GitUtils.branchRef(s.getBranch()) + ":" + GitUtils.remotesBranchRef(s.getBranch()));
     SshHandler h = new SshHandler(mySsh, cmd);

@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * The "git remote" command
  */
-public class RemoteCommand extends BaseCommand {
+public class RemoteCommand extends RepositoryCommand {
 
   /**
    * The constructor

@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * The 'git clean' command
  */
-public class CleanCommand extends BaseCommand {
+public class CleanCommand extends RepositoryCommand {
   /**
    * The constructor
    *

@@ -16,32 +16,37 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
-import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.vcs.VcsException;
+import java.io.File;
 
 /**
- * The "git init" command
+ * The basic command settings
  */
-public class InitCommand extends BaseCommand {
+public class CommandSettings {
   /**
-   * The constructor
-   *
-   * @param s the settings object
+   * The path to the git command
    */
-  public InitCommand(CommandSettings s) {
-    super(s);
+  private final String gitCommandPath;
+  /**
+   * Local repository directory
+   */
+  private final File localRepositoryDir;
+
+  public CommandSettings(String gitCommandPath, File localRepositoryDir) {
+    this.gitCommandPath = gitCommandPath;
+    this.localRepositoryDir = localRepositoryDir;
   }
 
   /**
-   * Initialize git directory
-   *
-   * @throws VcsException if initializing fails
+   * @return the local repository directory
    */
-  public void init() throws VcsException {
-    GeneralCommandLine cmd = createCommandLine();
-    cmd.addParameter("init");
-    ExecResult r = runCommand(cmd);
-    failIfNotEmptyStdErr(cmd, r);
+  public File getLocalRepositoryDir() {
+    return localRepositoryDir;
+  }
+
+  /**
+   * @return the path to the command line git
+   */
+  public String getGitCommandPath() {
+    return gitCommandPath;
   }
 }

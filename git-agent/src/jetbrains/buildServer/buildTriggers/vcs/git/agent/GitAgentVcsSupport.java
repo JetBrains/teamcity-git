@@ -35,6 +35,7 @@ import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
+import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 
@@ -137,7 +138,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @return get settings object that use current directory as a work directory (for commands that directory-independent)
    * @throws VcsException if invalid settings are detected
    */
-  private AgentSettings getSetting() throws VcsException {
+  private CommandSettings getSetting() throws VcsException {
     return getSetting(new File("."));
   }
 
@@ -148,8 +149,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @return created settings object
    * @throws VcsException if invalid settings are detected
    */
-  private AgentSettings getSetting(File workingDirectory) throws VcsException {
-    return new AgentSettings(getGitPath(), workingDirectory, null);
+  private CommandSettings getSetting(File workingDirectory) throws VcsException {
+    return new CommandSettings(getGitPath(), workingDirectory);
   }
 
   /**
@@ -188,7 +189,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     if (LOG.isDebugEnabled()) {
       LOG.debug("Updating " + s.debugInfo());
     }
-    String url = s.getFetchUrl();
+    String url = s.getRepositoryFetchURL().toString();
     // clean directory if origin does not matches fetch URL or it is non-git directory
     boolean firstFetch = false;
     if (!new File(directory, ".git").exists()) {
@@ -270,9 +271,9 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private String doFetch(VcsRoot root, BuildProgressLogger logger, AgentSettings s, boolean firstFetch, String revision) throws VcsException {
     String revInfo = firstFetch ? null : new LogCommand(s).checkRevision(revision);
     if (revInfo != null) {
-      LOG.info("No fetch needed for revision '" + revision + "' in " + s.getLocalRepositoryDir());
+      LOG.info("No fetch needed for revision '" + revision + "' in " + s.getCommandSettings().getLocalRepositoryDir());
     } else {
-      if (!s.getFetchUrl().startsWith("git:") &&
+      if (!"git".equals(s.getRepositoryFetchURL().getScheme()) &&
           (s.getAuthenticationMethod() == AuthenticationMethod.PASSWORD ||
            s.getAuthenticationMethod() == AuthenticationMethod.PRIVATE_KEY_FILE)) {
         throw new VcsException("The authentication method is not supported for agent checkout: " + s.getAuthenticationMethod());
@@ -281,7 +282,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       logger.message("Fetching data for '" + root.getName() + "'...");
       String previousHead = new LogCommand(s).checkRevision(GitUtils.remotesBranchRef(s.getBranch()));
       firstFetch |= previousHead == null;
-      new FetchCommand(s, mySshService).fetch(firstFetch);
+      new FetchCommand(s, mySshService).fetch();
       String newHead = new LogCommand(s).checkRevision(GitUtils.remotesBranchRef(s.getBranch()));
       if (newHead == null) {
         throw new VcsException("Failed to fetch data for " + s.debugInfo());
@@ -314,10 +315,11 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       throw new VcsException("Unable to clean directory " + dir + " for VCS root " + root.getName());
     }
     logger.message("The .git directory is missing in '" + dir + "'. Running 'git init'...");
-    new InitCommand(settings).init();
-    new RemoteCommand(settings).add("origin", settings.getFetchUrl());
-    String pushUrl = settings.getPushUrl();
-    if (pushUrl != null && !pushUrl.equals(settings.getFetchUrl())) {
+    new InitCommand(settings.getCommandSettings()).init();
+    new RemoteCommand(settings).add("origin", settings.getRepositoryFetchURL().toString());
+    URIish url = settings.getRepositoryPushURL();
+    String pushUrl = url == null ? null : url.toString();
+    if (pushUrl != null && !pushUrl.equals(settings.getRepositoryFetchURL().toString())) {
       new ConfigCommand(settings).set("remote.origin.pushurl", pushUrl);
     }
   }

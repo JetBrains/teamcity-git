@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * The wrapper for "git config" command.
  */
-public class ConfigCommand extends BaseCommand {
+public class ConfigCommand extends RepositoryCommand {
   /**
    * The git config command
    *

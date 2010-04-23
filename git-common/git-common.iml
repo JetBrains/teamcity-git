@@ -9,6 +9,7 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="TeamCity Open API common" level="project" />
     <orderEntry type="library" name="TeamCity Third-Party" level="project" />
+    <orderEntry type="library" exported="" name="JGit" level="project" />
   </component>
 </module>
 

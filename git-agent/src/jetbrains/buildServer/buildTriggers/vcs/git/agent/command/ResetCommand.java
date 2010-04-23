@@ -23,7 +23,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * The 'git reset' command
  */
-public class ResetCommand extends BaseCommand {
+public class ResetCommand extends RepositoryCommand {
   /**
    * The constructor
    *

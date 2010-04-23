@@ -31,7 +31,7 @@ public class VersionCommand extends BaseCommand {
    *
    * @param settings the settings object
    */
-  public VersionCommand(@NotNull final AgentSettings settings) {
+  public VersionCommand(@NotNull final CommandSettings settings) {
     super(settings);
   }
 

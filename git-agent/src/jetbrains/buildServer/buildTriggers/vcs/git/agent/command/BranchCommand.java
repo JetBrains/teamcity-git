@@ -25,7 +25,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * The "git branch" command
  */
-public class BranchCommand extends BaseCommand {
+public class BranchCommand extends RepositoryCommand {
   /**
    * The branch command
    * @param settings the command settings
