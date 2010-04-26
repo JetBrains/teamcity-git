@@ -44,7 +44,7 @@ import java.io.File;
 /**
  * The agent support for VCS.
  */
-public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheckoutRules {
+public class GitCommandUpdateProcess extends AgentVcsSupport implements UpdateByCheckoutRules {
   /**
    * the default windows git executable paths
    */
@@ -66,7 +66,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   /**
    * The logger class
    */
-  private final static Logger LOG = Logger.getLogger(GitAgentVcsSupport.class);
+  private final static Logger LOG = Logger.getLogger(GitCommandUpdateProcess.class);
   /**
    * The property that points to git path
    */
@@ -91,7 +91,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @param directoryCleaner   the directory cleaner
    * @param sshService      the used ssh service
    */
-  public GitAgentVcsSupport(BuildAgentConfiguration agentConfiguration,
+  public GitCommandUpdateProcess(BuildAgentConfiguration agentConfiguration,
                             SmartDirectoryCleaner directoryCleaner,
                             GitAgentSSHService sshService) {
     myAgentConfiguration = agentConfiguration;
