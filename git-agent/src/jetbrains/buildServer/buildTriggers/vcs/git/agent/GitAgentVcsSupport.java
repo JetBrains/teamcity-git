@@ -63,25 +63,34 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   }
 
 
+  /**
+   * {@inheritDoc}
+   */
   @NotNull
   @Override
   public UpdatePolicy getUpdatePolicy() {
     return this;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @NotNull
   @Override
   public String getName() {
     return Constants.VCS_NAME;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   public void updateSources(@NotNull VcsRoot root,
                             @NotNull CheckoutRules checkoutRules,
                             @NotNull String toVersion,
                             @NotNull File checkoutDirectory,
                             @NotNull BuildProgressLogger logger) throws VcsException {
-    new GitCommandUpdateProcess(myAgentConfiguration, myDirectoryCleaner, mySshService, root, checkoutRules, toVersion, checkoutDirectory,
-                                logger).updateSources();
+    new GitUpdateProcess(myAgentConfiguration, myDirectoryCleaner, mySshService, root, checkoutRules, toVersion, checkoutDirectory,
+                         logger).updateSources();
   }
 
 }

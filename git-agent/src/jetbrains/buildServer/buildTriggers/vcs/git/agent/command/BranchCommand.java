@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitUpdateProcess.BranchInfo;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -28,6 +29,7 @@ import org.jetbrains.annotations.NotNull;
 public class BranchCommand extends RepositoryCommand {
   /**
    * The branch command
+   *
    * @param settings the command settings
    */
   public BranchCommand(@NotNull final AgentSettings settings) {
@@ -36,6 +38,7 @@ public class BranchCommand extends RepositoryCommand {
 
   /**
    * Get local branch information
+   *
    * @param branchName the branch name (short variant)
    * @return the information about that branch
    * @throws VcsException if there is problem with running git
@@ -45,12 +48,12 @@ public class BranchCommand extends RepositoryCommand {
     cmd.addParameter("branch");
     ExecResult r = runCommand(cmd);
     failIfNotEmptyStdErr(cmd, r);
-    for(String l : r.getStdout().split("\n")) {
-      if(l.length() < 2) {
+    for (String l : r.getStdout().split("\n")) {
+      if (l.length() < 2) {
         continue;
       }
       String b = l.substring(2).trim();
-      if(b.equals(branchName)) {
+      if (b.equals(branchName)) {
         return new BranchInfo(true, l.charAt(0) == '*');
       }
     }
@@ -60,7 +63,8 @@ public class BranchCommand extends RepositoryCommand {
 
   /**
    * Reset non-curret branch to the specified revision
-   * @param branch the branch name (short)
+   *
+   * @param branch   the branch name (short)
    * @param revision the revision to reset to
    * @throws VcsException if there is a problem with running git
    */
@@ -73,6 +77,7 @@ public class BranchCommand extends RepositoryCommand {
 
   /**
    * Force checkout the current branch
+   *
    * @param branch the branch name (short)
    * @throws VcsException if there is a problem with running git
    */
@@ -81,11 +86,12 @@ public class BranchCommand extends RepositoryCommand {
     cmd.addParameters("checkout", "-f", branch);
     runCommand(cmd);
   }
-  
+
 
   /**
    * Create branch tracking other branch
-   * @param branch the branch to create
+   *
+   * @param branch  the branch to create
    * @param tracked the tracked branch
    * @throws VcsException if there is a problem with running git
    */
@@ -94,29 +100,5 @@ public class BranchCommand extends RepositoryCommand {
     cmd.addParameters("branch", "-l", "--track", branch, tracked);
     ExecResult r = runCommand(cmd);
     failIfNotEmptyStdErr(cmd, r);
-  }
-
-  /**
-   * The branch information class
-   */
-  public class BranchInfo {
-    /**
-     * True if the branch exists
-     */
-    public final boolean isExists;
-    /**
-     * True if the branch is the current branch
-     */
-    public final boolean isCurrent;
-
-    /**
-     * The constructor
-     * @param exists if true, the branch exists
-     * @param current if true the branch is the current branch
-     */
-    BranchInfo(boolean exists, boolean current) {
-      isExists = exists;
-      isCurrent = current;
-    }
   }
 }

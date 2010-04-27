@@ -39,7 +39,7 @@ import java.io.File;
 /**
  * The agent support for VCS.
  */
-public class GitCommandUpdateProcess {
+public class GitUpdateProcess {
   /**
    * the default windows git executable paths
    */
@@ -61,7 +61,7 @@ public class GitCommandUpdateProcess {
   /**
    * The logger class
    */
-  private final static Logger LOG = Logger.getLogger(GitCommandUpdateProcess.class);
+  private final static Logger LOG = Logger.getLogger(GitUpdateProcess.class);
   /**
    * The property that points to git path
    */
@@ -81,35 +81,35 @@ public class GitCommandUpdateProcess {
   /**
    * Vcs root
    */
-  private VcsRoot myRoot;
+  protected final VcsRoot myRoot;
   /**
    * Checkout rules
    */
-  private CheckoutRules myCheckoutRules;
+  protected final CheckoutRules myCheckoutRules;
   /**
    * The version to update to
    */
-  private String myToVersion;
+  protected final String myToVersion;
   /**
    * The directory where sources should be checked out
    */
-  private File myCheckoutDirectory;
+  protected final File myCheckoutDirectory;
   /**
    * The logger for update process
    */
-  private BuildProgressLogger mLogger;
+  protected final BuildProgressLogger mLogger;
   /**
    * The vcs settings
    */
-  private AgentSettings mySettings;
+  protected final AgentSettings mySettings;
   /**
    * The actual directory
    */
-  private File myDirectory;
+  protected final File myDirectory;
   /**
    * The git revision
    */
-  String revision;
+  protected final String revision;
 
   /**
    * The constructor
@@ -124,14 +124,14 @@ public class GitCommandUpdateProcess {
    * @param logger             the logger
    * @throws VcsException if there is problem with starting the process
    */
-  public GitCommandUpdateProcess(@NotNull BuildAgentConfiguration agentConfiguration,
-                                 @NotNull SmartDirectoryCleaner directoryCleaner,
-                                 @NotNull GitAgentSSHService sshService,
-                                 @NotNull VcsRoot root,
-                                 @NotNull CheckoutRules checkoutRules,
-                                 @NotNull String toVersion,
-                                 @NotNull File checkoutDirectory,
-                                 @NotNull BuildProgressLogger logger) throws VcsException {
+  public GitUpdateProcess(@NotNull BuildAgentConfiguration agentConfiguration,
+                          @NotNull SmartDirectoryCleaner directoryCleaner,
+                          @NotNull GitAgentSSHService sshService,
+                          @NotNull VcsRoot root,
+                          @NotNull CheckoutRules checkoutRules,
+                          @NotNull String toVersion,
+                          @NotNull File checkoutDirectory,
+                          @NotNull BuildProgressLogger logger) throws VcsException {
     myAgentConfiguration = agentConfiguration;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
@@ -145,6 +145,11 @@ public class GitCommandUpdateProcess {
     mySettings = new AgentSettings(getGitPath(), myDirectory, root);
   }
 
+  /**
+   * Check if the update could be run.
+   *
+   * @throws VcsException if there is a problem with update
+   */
   public void canRun() throws VcsException {
     String path = getGitPath();
     if (path == null) {
@@ -189,7 +194,7 @@ public class GitCommandUpdateProcess {
     } else {
       String dirUrl;
       try {
-        dirUrl = new ConfigCommand(mySettings).get("remote.origin.url");
+        dirUrl = getConfigProperty("remote.origin.url");
       } catch (VcsException e) {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Failed to read property", e);
@@ -204,34 +209,30 @@ public class GitCommandUpdateProcess {
     // fetch data from the repository
     String revInfo = doFetch(firstFetch);
     // check what is the current branch
-    BranchCommand.BranchInfo branchInfo = new BranchCommand(mySettings).branchInfo(mySettings.getBranch());
+    BranchInfo branchInfo = getBranchInfo(mySettings.getBranch());
     if (branchInfo.isCurrent) {
       // Force tracking of origin/branch
       forceTrackingBranch();
       // Hard reset to the required revision.
       mLogger.message("Resetting " + myRoot.getName() + " in " + myDirectory + " to revision " + revInfo);
-      new ResetCommand(mySettings).hardReset(revision);
+      hardReset();
     } else {
       // create branch if missing to track remote
       if (!branchInfo.isExists) {
-        new BranchCommand(mySettings).createBranch(mySettings.getBranch(), GitUtils.remotesBranchRef(mySettings.getBranch()));
+        createBranch();
       } else {
         // Force tracking of origin/branch
         forceTrackingBranch();
       }
       // update-ref to specified revision
-      new BranchCommand(mySettings).setBranchCommit(mySettings.getBranch(), revision);
+      setBranchCommit();
       // checkout branch
       mLogger.message(
         "Checking out branch " + mySettings.getBranch() + " in " + myRoot.getName() + " in " + myDirectory + " with revision " + revInfo);
-      new BranchCommand(mySettings).forceCheckout(mySettings.getBranch());
+      forceCheckout();
     }
     // do clean if requested
-    if (mySettings.getCleanPolicy() == AgentCleanPolicy.ALWAYS ||
-        (!branchInfo.isCurrent && mySettings.getCleanPolicy() == AgentCleanPolicy.ON_BRANCH_CHANGE)) {
-      mLogger.message("Cleaning " + myRoot.getName() + " in " + myDirectory + " the file set " + mySettings.getCleanFilesPolicy());
-      new CleanCommand(mySettings).clean();
-    }
+    doClean(branchInfo);
     if (new File(myDirectory, ".gitmodules").exists() && mySettings.areSubmodulesCheckedOut()) {
       throw new VcsException("Submodule checkout is not supported on agent " + myRoot.getName());
     }
@@ -243,8 +244,8 @@ public class GitCommandUpdateProcess {
    * @throws VcsException if there problem with running git
    */
   private void forceTrackingBranch() throws VcsException {
-    new ConfigCommand(mySettings).set("branch." + mySettings.getBranch() + ".remote", "origin");
-    new ConfigCommand(mySettings).set("branch." + mySettings.getBranch() + ".merge", GitUtils.branchRef(mySettings.getBranch()));
+    setConfigProperty("branch." + mySettings.getBranch() + ".remote", "origin");
+    setConfigProperty("branch." + mySettings.getBranch() + ".merge", GitUtils.branchRef(mySettings.getBranch()));
   }
 
   /**
@@ -255,7 +256,7 @@ public class GitCommandUpdateProcess {
    * @throws VcsException if there is a problem with fetching revision
    */
   private String doFetch(boolean firstFetch) throws VcsException {
-    String revInfo = firstFetch ? null : new LogCommand(mySettings).checkRevision(revision);
+    String revInfo = firstFetch ? null : checkRevision(revision);
     if (revInfo != null) {
       LOG.info("No fetch needed for revision '" + revision + "' in " + mySettings.getCommandSettings().getLocalRepositoryDir());
     } else {
@@ -266,15 +267,15 @@ public class GitCommandUpdateProcess {
       }
       LOG.info("Fetching in repository " + mySettings.debugInfo());
       mLogger.message("Fetching data for '" + myRoot.getName() + "'...");
-      String previousHead = new LogCommand(mySettings).checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
+      String previousHead = checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
       firstFetch |= previousHead == null;
-      new FetchCommand(mySettings, mySshService).fetch();
-      String newHead = new LogCommand(mySettings).checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
+      fetch();
+      String newHead = checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
       if (newHead == null) {
         throw new VcsException("Failed to fetch data for " + mySettings.debugInfo());
       }
       mLogger.message("Fetched revisions " + (previousHead == null ? "up to " : previousHead + "..") + newHead);
-      revInfo = new LogCommand(mySettings).checkRevision(revision);
+      revInfo = checkRevision(revision);
     }
     if (revInfo == null) {
       throw new VcsException("The revision " + revision + " is not found in the repository after fetch " + mySettings.debugInfo());
@@ -302,7 +303,7 @@ public class GitCommandUpdateProcess {
     URIish url = mySettings.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();
     if (pushUrl != null && !pushUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
-      new ConfigCommand(mySettings).set("remote.origin.pushurl", pushUrl);
+      setConfigProperty("remote.origin.pushurl", pushUrl);
     }
   }
 
@@ -375,5 +376,132 @@ public class GitCommandUpdateProcess {
       }
     }
     return null;
+  }
+
+  /**
+   * Create branch
+   *
+   * @param branch the branch name
+   * @return information about the branch
+   * @throws VcsException if branch information could not be retrieved
+   */
+  protected BranchInfo getBranchInfo(final String branch) throws VcsException {
+    return new BranchCommand(mySettings).branchInfo(branch);
+  }
+
+  /**
+   * Get configuration property
+   *
+   * @param propertyName the property name
+   * @return the property value
+   * @throws VcsException if there is problem with getting property
+   */
+  protected String getConfigProperty(final String propertyName) throws VcsException {
+    return new ConfigCommand(mySettings).get(propertyName);
+  }
+
+  /**
+   * Set configuration property value
+   *
+   * @param propertyName the property name
+   * @param value        the property value
+   * @throws VcsException if the property could not be set
+   */
+  protected void setConfigProperty(final String propertyName, final String value) throws VcsException {
+    new ConfigCommand(mySettings).set(propertyName, value);
+  }
+
+  /**
+   * Hard reset to the specified revision
+   *
+   * @throws VcsException if there is a prolem with accessing repository
+   */
+  protected void hardReset() throws VcsException {
+    new ResetCommand(mySettings).hardReset(revision);
+  }
+
+  /**
+   * Perform clean according to the settings
+   *
+   * @param branchInfo the branch information to use
+   * @throws VcsException if there is a problem with accessing repository
+   */
+  protected void doClean(BranchInfo branchInfo) throws VcsException {
+    if (mySettings.getCleanPolicy() == AgentCleanPolicy.ALWAYS ||
+        (!branchInfo.isCurrent && mySettings.getCleanPolicy() == AgentCleanPolicy.ON_BRANCH_CHANGE)) {
+      mLogger.message("Cleaning " + myRoot.getName() + " in " + myDirectory + " the file set " + mySettings.getCleanFilesPolicy());
+      new CleanCommand(mySettings).clean();
+    }
+  }
+
+  /**
+   * Force checkout of the branch removing files that are no more versioned
+   *
+   * @throws VcsException if there is a problem with accessing repository
+   */
+  protected void forceCheckout() throws VcsException {
+    new BranchCommand(mySettings).forceCheckout(mySettings.getBranch());
+  }
+
+  /**
+   * Set commit on non-active branch
+   *
+   * @throws VcsException if there is a problem with accessing repository
+   */
+  protected void setBranchCommit() throws VcsException {
+    new BranchCommand(mySettings).setBranchCommit(mySettings.getBranch(), revision);
+  }
+
+  /**
+   * Create branch
+   *
+   * @throws VcsException if there is a problem with accessing repository
+   */
+  protected void createBranch() throws VcsException {
+    new BranchCommand(mySettings).createBranch(mySettings.getBranch(), GitUtils.remotesBranchRef(mySettings.getBranch()));
+  }
+
+  /**
+   * Perform fetch operation
+   *
+   * @throws VcsException if there is a problem with accessing repository
+   */
+  protected void fetch() throws VcsException {
+    new FetchCommand(mySettings, mySshService).fetch();
+  }
+
+  /**
+   * Check the specified revision
+   *
+   * @param revision the revision expression to check
+   * @return a short revision information or null if revision is not found
+   */
+  protected String checkRevision(final String revision) {
+    return new LogCommand(mySettings).checkRevision(revision);
+  }
+
+  /**
+   * The branch information class
+   */
+  public static class BranchInfo {
+    /**
+     * True if the branch exists
+     */
+    public final boolean isExists;
+    /**
+     * True if the branch is the current branch
+     */
+    public final boolean isCurrent;
+
+    /**
+     * The constructor
+     *
+     * @param exists  if true, the branch exists
+     * @param current if true the branch is the current branch
+     */
+    public BranchInfo(boolean exists, boolean current) {
+      isExists = exists;
+      isCurrent = current;
+    }
   }
 }
