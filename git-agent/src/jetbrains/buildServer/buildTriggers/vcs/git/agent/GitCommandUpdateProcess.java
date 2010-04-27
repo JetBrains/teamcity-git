@@ -17,17 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.SystemInfo;
-import jetbrains.buildServer.TextLogger;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
-import jetbrains.buildServer.agent.vcs.AgentVcsSupport;
-import jetbrains.buildServer.agent.vcs.UpdateByCheckoutRules;
-import jetbrains.buildServer.agent.vcs.UpdatePolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -44,7 +39,7 @@ import java.io.File;
 /**
  * The agent support for VCS.
  */
-public class GitCommandUpdateProcess extends AgentVcsSupport implements UpdateByCheckoutRules {
+public class GitCommandUpdateProcess {
   /**
    * the default windows git executable paths
    */
@@ -83,47 +78,87 @@ public class GitCommandUpdateProcess extends AgentVcsSupport implements UpdateBy
    * The ssh service to use
    */
   final GitAgentSSHService mySshService;
+  /**
+   * Vcs root
+   */
+  private VcsRoot myRoot;
+  /**
+   * Checkout rules
+   */
+  private CheckoutRules myCheckoutRules;
+  /**
+   * The version to update to
+   */
+  private String myToVersion;
+  /**
+   * The directory where sources should be checked out
+   */
+  private File myCheckoutDirectory;
+  /**
+   * The logger for update process
+   */
+  private BuildProgressLogger mLogger;
+  /**
+   * The vcs settings
+   */
+  private AgentSettings mySettings;
+  /**
+   * The actual directory
+   */
+  private File myDirectory;
+  /**
+   * The git revision
+   */
+  String revision;
 
   /**
    * The constructor
    *
    * @param agentConfiguration the configuration for this agent
    * @param directoryCleaner   the directory cleaner
-   * @param sshService      the used ssh service
+   * @param sshService         the used ssh service
+   * @param root               the vcs root
+   * @param checkoutRules      the checkout rules
+   * @param toVersion          the version to update to
+   * @param checkoutDirectory  the checkout directory
+   * @param logger             the logger
+   * @throws VcsException if there is problem with starting the process
    */
-  public GitCommandUpdateProcess(BuildAgentConfiguration agentConfiguration,
-                            SmartDirectoryCleaner directoryCleaner,
-                            GitAgentSSHService sshService) {
+  public GitCommandUpdateProcess(@NotNull BuildAgentConfiguration agentConfiguration,
+                                 @NotNull SmartDirectoryCleaner directoryCleaner,
+                                 @NotNull GitAgentSSHService sshService,
+                                 @NotNull VcsRoot root,
+                                 @NotNull CheckoutRules checkoutRules,
+                                 @NotNull String toVersion,
+                                 @NotNull File checkoutDirectory,
+                                 @NotNull BuildProgressLogger logger) throws VcsException {
     myAgentConfiguration = agentConfiguration;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
+    myRoot = root;
+    myCheckoutRules = checkoutRules;
+    myToVersion = toVersion;
+    myCheckoutDirectory = checkoutDirectory;
+    mLogger = logger;
+    revision = GitUtils.versionRevision(toVersion);
+    myDirectory = findDirectory();
+    mySettings = new AgentSettings(getGitPath(), myDirectory, root);
   }
 
-  @Override
-  public boolean canRun(@NotNull BuildAgentConfiguration agentConfiguration, @NotNull TextLogger messageLog) {
+  public void canRun() throws VcsException {
     String path = getGitPath();
     if (path == null) {
-      String msg = "The path to git executable is not configured (the property name is system.git.excecutable.path)";
-      messageLog.error(msg);
-      LOG.error(msg);
-      return false;
+      throw new VcsException("The path to git executable is not configured (the property name is system.git.excecutable.path)");
     }
     GitVersion v;
     try {
-      v = new VersionCommand(getSetting()).version();
+      v = new VersionCommand(mySettings.getCommandSettings()).version();
     } catch (VcsException e) {
-      messageLog.error("Unable to run git: " + e);
-      LOG.error("Unable to run git at path " + path, e);
-      return false;
+      throw new VcsException("Unable to run git at path " + path, e);
     }
     if (!GitVersion.MIN.isLessOrEqual(v)) {
-      String msg = "Unsupported version of Git is detected at (" + path + "): " + v;
-      messageLog.error(msg);
-      LOG.error(msg);
-      return false;
+      throw new VcsException("Unsupported version of Git is detected at (" + path + "): " + v);
     }
-    LOG.info("The Git version " + v + " is detected.");
-    return true;
   }
 
   /**
@@ -135,70 +170,26 @@ public class GitCommandUpdateProcess extends AgentVcsSupport implements UpdateBy
   }
 
   /**
-   * @return get settings object that use current directory as a work directory (for commands that directory-independent)
-   * @throws VcsException if invalid settings are detected
-   */
-  private CommandSettings getSetting() throws VcsException {
-    return getSetting(new File("."));
-  }
-
-  /**
-   * Get settings object for the specific directory
+   * Update sources
    *
-   * @param workingDirectory the working directory
-   * @return created settings object
-   * @throws VcsException if invalid settings are detected
+   * @throws VcsException the exception to use
    */
-  private CommandSettings getSetting(File workingDirectory) throws VcsException {
-    return new CommandSettings(getGitPath(), workingDirectory);
-  }
-
-  /**
-   * Get settings object for the specific directory and root properties
-   *
-   * @param root      the vcs root to take settings from
-   * @param directory the working directory
-   * @return created settings object
-   * @throws VcsException if invalid settings are detected in vcs root
-   */
-  private AgentSettings getSettings(VcsRoot root, File directory) throws VcsException {
-    return new AgentSettings(getGitPath(), directory, root);
-  }
-
-
-  @NotNull
-  @Override
-  public UpdatePolicy getUpdatePolicy() {
-    return this;
-  }
-
-  @NotNull
-  @Override
-  public String getName() {
-    return Constants.VCS_NAME;
-  }
-
-  public void updateSources(@NotNull VcsRoot root,
-                            @NotNull CheckoutRules checkoutRules,
-                            @NotNull String toVersion,
-                            @NotNull File checkoutDirectory,
-                            @NotNull BuildProgressLogger logger) throws VcsException {
-    LOG.info("Starting update of root " + root.getName() + " in " + checkoutDirectory + " to revision " + toVersion);
-    File directory = getDirectory(root, checkoutRules, checkoutDirectory, logger);
-    AgentSettings s = getSettings(root, directory);
+  public void updateSources() throws VcsException {
+    LOG.info("Starting update of root " + myRoot.getName() + " in " + myCheckoutDirectory + " to revision " + myToVersion);
+    canRun();
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Updating " + s.debugInfo());
+      LOG.debug("Updating " + mySettings.debugInfo());
     }
-    String url = s.getRepositoryFetchURL().toString();
+    String url = mySettings.getRepositoryFetchURL().toString();
     // clean directory if origin does not matches fetch URL or it is non-git directory
     boolean firstFetch = false;
-    if (!new File(directory, ".git").exists()) {
-      initDirectory(root, s, directory, logger);
+    if (!new File(myDirectory, ".git").exists()) {
+      initDirectory();
       firstFetch = true;
     } else {
       String dirUrl;
       try {
-        dirUrl = new ConfigCommand(s).get("remote.origin.url");
+        dirUrl = new ConfigCommand(mySettings).get("remote.origin.url");
       } catch (VcsException e) {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Failed to read property", e);
@@ -206,92 +197,87 @@ public class GitCommandUpdateProcess extends AgentVcsSupport implements UpdateBy
         dirUrl = "";
       }
       if (!dirUrl.equals(url)) {
-        initDirectory(root, s, directory, logger);
+        initDirectory();
         firstFetch = true;
       }
     }
     // fetch data from the repository
-    String revision = GitUtils.versionRevision(toVersion);
-    String revInfo = doFetch(root, logger, s, firstFetch, revision);
+    String revInfo = doFetch(firstFetch);
     // check what is the current branch
-    BranchCommand.BranchInfo branchInfo = new BranchCommand(s).branchInfo(s.getBranch());
+    BranchCommand.BranchInfo branchInfo = new BranchCommand(mySettings).branchInfo(mySettings.getBranch());
     if (branchInfo.isCurrent) {
       // Force tracking of origin/branch
-      forceTrackingBranch(s);
+      forceTrackingBranch();
       // Hard reset to the required revision.
-      logger.message("Resetting " + root.getName() + " in " + directory + " to revision " + revInfo);
-      new ResetCommand(s).hardReset(revision);
+      mLogger.message("Resetting " + myRoot.getName() + " in " + myDirectory + " to revision " + revInfo);
+      new ResetCommand(mySettings).hardReset(revision);
     } else {
       // create branch if missing to track remote
       if (!branchInfo.isExists) {
-        new BranchCommand(s).createBranch(s.getBranch(), GitUtils.remotesBranchRef(s.getBranch()));
+        new BranchCommand(mySettings).createBranch(mySettings.getBranch(), GitUtils.remotesBranchRef(mySettings.getBranch()));
       } else {
         // Force tracking of origin/branch
-        forceTrackingBranch(s);
+        forceTrackingBranch();
       }
       // update-ref to specified revision
-      new BranchCommand(s).setBranchCommit(s.getBranch(), revision);
+      new BranchCommand(mySettings).setBranchCommit(mySettings.getBranch(), revision);
       // checkout branch
-      logger.message("Checking out branch " + s.getBranch() + " in " + root.getName() + " in " + directory + " with revision " + revInfo);
-      new BranchCommand(s).forceCheckout(s.getBranch());
+      mLogger.message(
+        "Checking out branch " + mySettings.getBranch() + " in " + myRoot.getName() + " in " + myDirectory + " with revision " + revInfo);
+      new BranchCommand(mySettings).forceCheckout(mySettings.getBranch());
     }
     // do clean if requested
-    if (s.getCleanPolicy() == AgentCleanPolicy.ALWAYS ||
-        (!branchInfo.isCurrent && s.getCleanPolicy() == AgentCleanPolicy.ON_BRANCH_CHANGE)) {
-      logger.message("Cleaning " + root.getName() + " in " + directory + " the file set " + s.getCleanFilesPolicy());
-      new CleanCommand(s).clean();
+    if (mySettings.getCleanPolicy() == AgentCleanPolicy.ALWAYS ||
+        (!branchInfo.isCurrent && mySettings.getCleanPolicy() == AgentCleanPolicy.ON_BRANCH_CHANGE)) {
+      mLogger.message("Cleaning " + myRoot.getName() + " in " + myDirectory + " the file set " + mySettings.getCleanFilesPolicy());
+      new CleanCommand(mySettings).clean();
     }
-    if (new File(directory, ".gitmodules").exists() && s.areSubmodulesCheckedOut()) {
-      throw new VcsException("Submodule checkout is not supported on agent " + root.getName());
+    if (new File(myDirectory, ".gitmodules").exists() && mySettings.areSubmodulesCheckedOut()) {
+      throw new VcsException("Submodule checkout is not supported on agent " + myRoot.getName());
     }
   }
 
   /**
    * Force tracking branch to origin's branch
    *
-   * @param s settings to use
    * @throws VcsException if there problem with running git
    */
-  private void forceTrackingBranch(AgentSettings s) throws VcsException {
-    new ConfigCommand(s).set("branch." + s.getBranch() + ".remote", "origin");
-    new ConfigCommand(s).set("branch." + s.getBranch() + ".merge", GitUtils.branchRef(s.getBranch()));
+  private void forceTrackingBranch() throws VcsException {
+    new ConfigCommand(mySettings).set("branch." + mySettings.getBranch() + ".remote", "origin");
+    new ConfigCommand(mySettings).set("branch." + mySettings.getBranch() + ".merge", GitUtils.branchRef(mySettings.getBranch()));
   }
 
   /**
    * Do fetch operation if needed
    *
-   * @param root       the VCS root
-   * @param logger     the build logger
-   * @param s          the settings object
    * @param firstFetch true if the directory was just initialized
-   * @param revision   the revision to fetch
-   * @return a revision information string
+   * @return the revision information string
    * @throws VcsException if there is a problem with fetching revision
    */
-  private String doFetch(VcsRoot root, BuildProgressLogger logger, AgentSettings s, boolean firstFetch, String revision) throws VcsException {
-    String revInfo = firstFetch ? null : new LogCommand(s).checkRevision(revision);
+  private String doFetch(boolean firstFetch) throws VcsException {
+    String revInfo = firstFetch ? null : new LogCommand(mySettings).checkRevision(revision);
     if (revInfo != null) {
-      LOG.info("No fetch needed for revision '" + revision + "' in " + s.getCommandSettings().getLocalRepositoryDir());
+      LOG.info("No fetch needed for revision '" + revision + "' in " + mySettings.getCommandSettings().getLocalRepositoryDir());
     } else {
-      if (!"git".equals(s.getRepositoryFetchURL().getScheme()) &&
-          (s.getAuthenticationMethod() == AuthenticationMethod.PASSWORD ||
-           s.getAuthenticationMethod() == AuthenticationMethod.PRIVATE_KEY_FILE)) {
-        throw new VcsException("The authentication method is not supported for agent checkout: " + s.getAuthenticationMethod());
+      if (!"git".equals(mySettings.getRepositoryFetchURL().getScheme()) &&
+          (mySettings.getAuthenticationMethod() == AuthenticationMethod.PASSWORD ||
+           mySettings.getAuthenticationMethod() == AuthenticationMethod.PRIVATE_KEY_FILE)) {
+        throw new VcsException("The authentication method is not supported for agent checkout: " + mySettings.getAuthenticationMethod());
       }
-      LOG.info("Fetching in repository " + s.debugInfo());
-      logger.message("Fetching data for '" + root.getName() + "'...");
-      String previousHead = new LogCommand(s).checkRevision(GitUtils.remotesBranchRef(s.getBranch()));
+      LOG.info("Fetching in repository " + mySettings.debugInfo());
+      mLogger.message("Fetching data for '" + myRoot.getName() + "'...");
+      String previousHead = new LogCommand(mySettings).checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
       firstFetch |= previousHead == null;
-      new FetchCommand(s, mySshService).fetch();
-      String newHead = new LogCommand(s).checkRevision(GitUtils.remotesBranchRef(s.getBranch()));
+      new FetchCommand(mySettings, mySshService).fetch();
+      String newHead = new LogCommand(mySettings).checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
       if (newHead == null) {
-        throw new VcsException("Failed to fetch data for " + s.debugInfo());
+        throw new VcsException("Failed to fetch data for " + mySettings.debugInfo());
       }
-      logger.message("Fetched revisions " + (previousHead == null ? "up to " : previousHead + "..") + newHead);
-      revInfo = new LogCommand(s).checkRevision(revision);
+      mLogger.message("Fetched revisions " + (previousHead == null ? "up to " : previousHead + "..") + newHead);
+      revInfo = new LogCommand(mySettings).checkRevision(revision);
     }
     if (revInfo == null) {
-      throw new VcsException("The revision " + revision + " is not found in the repository after fetch " + s.debugInfo());
+      throw new VcsException("The revision " + revision + " is not found in the repository after fetch " + mySettings.debugInfo());
     }
     return revInfo;
   }
@@ -299,53 +285,42 @@ public class GitCommandUpdateProcess extends AgentVcsSupport implements UpdateBy
   /**
    * Clean and init directory and configure remote origin
    *
-   * @param root     the VCS root
-   * @param settings the VCS settings
-   * @param dir      the directory to clean
-   * @param logger   the logger
    * @throws VcsException if there are problems with initializing the directory
    */
-  void initDirectory(@NotNull VcsRoot root, @NotNull AgentSettings settings, @NotNull File dir, @NotNull BuildProgressLogger logger)
+  void initDirectory()
     throws VcsException {
-    BuildDirectoryCleanerCallback c = new BuildDirectoryCleanerCallback(logger, LOG);
-    myDirectoryCleaner.cleanFolder(dir, c);
+    BuildDirectoryCleanerCallback c = new BuildDirectoryCleanerCallback(mLogger, LOG);
+    myDirectoryCleaner.cleanFolder(myDirectory, c);
     //noinspection ResultOfMethodCallIgnored
-    dir.mkdirs();
+    myDirectory.mkdirs();
     if (c.isHasErrors()) {
-      throw new VcsException("Unable to clean directory " + dir + " for VCS root " + root.getName());
+      throw new VcsException("Unable to clean directory " + myDirectory + " for VCS root " + myRoot.getName());
     }
-    logger.message("The .git directory is missing in '" + dir + "'. Running 'git init'...");
-    new InitCommand(settings.getCommandSettings()).init();
-    new RemoteCommand(settings).add("origin", settings.getRepositoryFetchURL().toString());
-    URIish url = settings.getRepositoryPushURL();
+    mLogger.message("The .git directory is missing in '" + myDirectory + "'. Running 'git init'...");
+    new InitCommand(mySettings.getCommandSettings()).init();
+    new RemoteCommand(mySettings).add("origin", mySettings.getRepositoryFetchURL().toString());
+    URIish url = mySettings.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();
-    if (pushUrl != null && !pushUrl.equals(settings.getRepositoryFetchURL().toString())) {
-      new ConfigCommand(settings).set("remote.origin.pushurl", pushUrl);
+    if (pushUrl != null && !pushUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
+      new ConfigCommand(mySettings).set("remote.origin.pushurl", pushUrl);
     }
   }
 
   /**
    * Get the destination directory creating it if it is missing
    *
-   * @param root              the VCS root
-   * @param checkoutRules     the checkout rules for this root
-   * @param checkoutDirectory the root checkout directory for the project
-   * @param logger            the progress logger
    * @return the directory where vcs root should be checked out according to checkout rules
    * @throws VcsException if the directory could not be located or created
    */
-  private File getDirectory(@NotNull VcsRoot root,
-                            @NotNull CheckoutRules checkoutRules,
-                            @NotNull File checkoutDirectory,
-                            @NotNull BuildProgressLogger logger) throws VcsException {
-    validateCheckoutRules(root, checkoutRules);
-    String path = checkoutRules.map("");
+  private File findDirectory() throws VcsException {
+    validateCheckoutRules();
+    String path = myCheckoutRules.map("");
     if (path == null) {
-      throw new VcsException("The root path could not be mapped for " + root.getName());
+      throw new VcsException("The root path could not be mapped for " + myRoot.getName());
     }
-    File directory = path.length() == 0 ? checkoutDirectory : new File(checkoutDirectory, path.replace('/', File.separatorChar));
+    File directory = path.length() == 0 ? myCheckoutDirectory : new File(myCheckoutDirectory, path.replace('/', File.separatorChar));
     if (!directory.exists()) {
-      logger.message("The destination directory'" + directory + "' is missing. creating it...");
+      mLogger.message("The destination directory'" + directory + "' is missing. creating it...");
       //noinspection ResultOfMethodCallIgnored
       directory.mkdirs();
       if (!directory.exists()) {
@@ -358,26 +333,24 @@ public class GitCommandUpdateProcess extends AgentVcsSupport implements UpdateBy
   /**
    * Validate checkout rules for update request
    *
-   * @param root          the VCS root
-   * @param checkoutRules the checkout rules to validate
    * @throws VcsException if invalid checkout rules are encountered
    */
-  private void validateCheckoutRules(VcsRoot root, CheckoutRules checkoutRules) throws VcsException {
-    if (checkoutRules.getExcludeRules().size() != 0) {
+  private void validateCheckoutRules() throws VcsException {
+    if (myCheckoutRules.getExcludeRules().size() != 0) {
       throw new VcsException(
-        "The exclude rules are not supported for agent checkout for the git (" + checkoutRules.getExcludeRules().size() +
-        " rule(s) detected) for VCS Root " + root.getName());
+        "The exclude rules are not supported for agent checkout for the git (" + myCheckoutRules.getExcludeRules().size() +
+        " rule(s) detected) for VCS Root " + myRoot.getName());
     }
-    if (checkoutRules.getIncludeRules().size() > 1) {
+    if (myCheckoutRules.getIncludeRules().size() > 1) {
       throw new VcsException(
-        "At most one include rule is supported for agent checkout for the git (" + checkoutRules.getIncludeRules().size() +
-        " rule(s) detected) for VCS Root " + root.getName());
+        "At most one include rule is supported for agent checkout for the git (" + myCheckoutRules.getIncludeRules().size() +
+        " rule(s) detected) for VCS Root " + myRoot.getName());
     }
-    if (checkoutRules.getIncludeRules().size() == 1) {
-      IncludeRule ir = checkoutRules.getIncludeRules().get(0);
+    if (myCheckoutRules.getIncludeRules().size() == 1) {
+      IncludeRule ir = myCheckoutRules.getIncludeRules().get(0);
       if (!".".equals(ir.getFrom()) && ir.getFrom().length() != 0) {
         throw new VcsException("The include rule must have a form '. => subdir' (" + ir.toDescriptiveString() +
-                               ") for VCS Root " + root.getName());
+                               ") for VCS Root " + myRoot.getName());
       }
     }
   }
