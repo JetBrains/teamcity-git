@@ -16,56 +16,32 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.intellij.openapi.util.SystemInfo;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
-import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
 import org.eclipse.jgit.transport.URIish;
-import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 
 /**
  * The agent support for VCS.
  */
-public class GitUpdateProcess {
-  /**
-   * the default windows git executable paths
-   */
-  @NonNls private static final String[] DEFAULT_WINDOWS_PATHS =
-    {"C:\\Program Files\\Git\\bin", "C:\\Program Files (x86)\\Git\\bin", "C:\\cygwin\\bin"};
-  /**
-   * Windows executable name
-   */
-  @NonNls private static final String DEFAULT_WINDOWS_GIT = "git.exe";
-  /**
-   * Default UNIX paths
-   */
-  @NonNls private static final String[] DEFAULT_UNIX_PATHS = {"/usr/local/bin", "/usr/bin", "/opt/local/bin", "/opt/bin"};
-  /**
-   * UNIX executable name
-   */
-  @NonNls private static final String DEFAULT_UNIX_GIT = "git";
+public abstract class GitUpdateProcess {
 
   /**
    * The logger class
    */
   private final static Logger LOG = Logger.getLogger(GitUpdateProcess.class);
-  /**
-   * The property that points to git path
-   */
-  static final String GIT_PATH_PROPERTY = "system.git.executable.path";
   /**
    * The configuration for the agent
    */
@@ -122,6 +98,7 @@ public class GitUpdateProcess {
    * @param toVersion          the version to update to
    * @param checkoutDirectory  the checkout directory
    * @param logger             the logger
+   * @param gitPath            the path to git
    * @throws VcsException if there is problem with starting the process
    */
   public GitUpdateProcess(@NotNull BuildAgentConfiguration agentConfiguration,
@@ -131,7 +108,8 @@ public class GitUpdateProcess {
                           @NotNull CheckoutRules checkoutRules,
                           @NotNull String toVersion,
                           @NotNull File checkoutDirectory,
-                          @NotNull BuildProgressLogger logger) throws VcsException {
+                          @NotNull BuildProgressLogger logger,
+                          @Nullable String gitPath) throws VcsException {
     myAgentConfiguration = agentConfiguration;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
@@ -142,7 +120,7 @@ public class GitUpdateProcess {
     mLogger = logger;
     revision = GitUtils.versionRevision(toVersion);
     myDirectory = findDirectory();
-    mySettings = new AgentSettings(getGitPath(), myDirectory, root);
+    mySettings = new AgentSettings(gitPath, myDirectory, root);
   }
 
   /**
@@ -150,29 +128,7 @@ public class GitUpdateProcess {
    *
    * @throws VcsException if there is a problem with update
    */
-  public void canRun() throws VcsException {
-    String path = getGitPath();
-    if (path == null) {
-      throw new VcsException("The path to git executable is not configured (the property name is system.git.excecutable.path)");
-    }
-    GitVersion v;
-    try {
-      v = new VersionCommand(mySettings.getGitCommandPath()).version();
-    } catch (VcsException e) {
-      throw new VcsException("Unable to run git at path " + path, e);
-    }
-    if (!GitVersion.MIN.isLessOrEqual(v)) {
-      throw new VcsException("Unsupported version of Git is detected at (" + path + "): " + v);
-    }
-  }
-
-  /**
-   * @return the path to the git executable or null if neither configured nor found
-   */
-  private String getGitPath() {
-    String path = myAgentConfiguration.getCustomProperties().get(GIT_PATH_PROPERTY);
-    return path == null ? defaultGit() : path;
-  }
+  public abstract void canRun() throws VcsException;
 
   /**
    * Update sources
@@ -298,8 +254,8 @@ public class GitUpdateProcess {
       throw new VcsException("Unable to clean directory " + myDirectory + " for VCS root " + myRoot.getName());
     }
     mLogger.message("The .git directory is missing in '" + myDirectory + "'. Running 'git init'...");
-    new InitCommand(mySettings).init();
-    new RemoteCommand(mySettings).add("origin", mySettings.getRepositoryFetchURL().toString());
+    init();
+    addRemote("origin", mySettings.getRepositoryFetchURL());
     URIish url = mySettings.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();
     if (pushUrl != null && !pushUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
@@ -357,26 +313,21 @@ public class GitUpdateProcess {
   }
 
   /**
-   * @return the default executable name depending on the platform
+   * Add remote to the repository
+   *
+   * @param name     the remote name
+   * @param fetchUrl the fetch URL
+   * @throws VcsException if repository cannot be accessed
    */
-  private static String defaultGit() {
-    String[] paths;
-    String program;
-    if (SystemInfo.isWindows) {
-      program = DEFAULT_WINDOWS_GIT;
-      paths = DEFAULT_WINDOWS_PATHS;
-    } else {
-      program = DEFAULT_UNIX_GIT;
-      paths = DEFAULT_UNIX_PATHS;
-    }
-    for (String p : paths) {
-      File f = new File(p, program);
-      if (f.exists()) {
-        return f.getAbsolutePath();
-      }
-    }
-    return null;
-  }
+  protected abstract void addRemote(String name, URIish fetchUrl) throws VcsException;
+
+  /**
+   * Init repository
+   *
+   * @throws VcsException if repository cannot be accessed
+   */
+  protected abstract void init() throws VcsException;
+
 
   /**
    * Create branch
@@ -385,9 +336,7 @@ public class GitUpdateProcess {
    * @return information about the branch
    * @throws VcsException if branch information could not be retrieved
    */
-  protected BranchInfo getBranchInfo(final String branch) throws VcsException {
-    return new BranchCommand(mySettings).branchInfo(branch);
-  }
+  protected abstract BranchInfo getBranchInfo(String branch) throws VcsException;
 
   /**
    * Get configuration property
@@ -396,9 +345,7 @@ public class GitUpdateProcess {
    * @return the property value
    * @throws VcsException if there is problem with getting property
    */
-  protected String getConfigProperty(final String propertyName) throws VcsException {
-    return new ConfigCommand(mySettings).get(propertyName);
-  }
+  protected abstract String getConfigProperty(String propertyName) throws VcsException;
 
   /**
    * Set configuration property value
@@ -407,18 +354,14 @@ public class GitUpdateProcess {
    * @param value        the property value
    * @throws VcsException if the property could not be set
    */
-  protected void setConfigProperty(final String propertyName, final String value) throws VcsException {
-    new ConfigCommand(mySettings).set(propertyName, value);
-  }
+  protected abstract void setConfigProperty(String propertyName, String value) throws VcsException;
 
   /**
    * Hard reset to the specified revision
    *
    * @throws VcsException if there is a prolem with accessing repository
    */
-  protected void hardReset() throws VcsException {
-    new ResetCommand(mySettings).hardReset(revision);
-  }
+  protected abstract void hardReset() throws VcsException;
 
   /**
    * Perform clean according to the settings
@@ -426,49 +369,35 @@ public class GitUpdateProcess {
    * @param branchInfo the branch information to use
    * @throws VcsException if there is a problem with accessing repository
    */
-  protected void doClean(BranchInfo branchInfo) throws VcsException {
-    if (mySettings.getCleanPolicy() == AgentCleanPolicy.ALWAYS ||
-        (!branchInfo.isCurrent && mySettings.getCleanPolicy() == AgentCleanPolicy.ON_BRANCH_CHANGE)) {
-      mLogger.message("Cleaning " + myRoot.getName() + " in " + myDirectory + " the file set " + mySettings.getCleanFilesPolicy());
-      new CleanCommand(mySettings).clean();
-    }
-  }
+  protected abstract void doClean(BranchInfo branchInfo) throws VcsException;
 
   /**
-   * Force checkout of the branch removing files that are no more versioned
+   * Force checkout of the branch removing files that are no more under VCS
    *
    * @throws VcsException if there is a problem with accessing repository
    */
-  protected void forceCheckout() throws VcsException {
-    new BranchCommand(mySettings).forceCheckout(mySettings.getBranch());
-  }
+  protected abstract void forceCheckout() throws VcsException;
 
   /**
    * Set commit on non-active branch
    *
    * @throws VcsException if there is a problem with accessing repository
    */
-  protected void setBranchCommit() throws VcsException {
-    new BranchCommand(mySettings).setBranchCommit(mySettings.getBranch(), revision);
-  }
+  protected abstract void setBranchCommit() throws VcsException;
 
   /**
    * Create branch
    *
    * @throws VcsException if there is a problem with accessing repository
    */
-  protected void createBranch() throws VcsException {
-    new BranchCommand(mySettings).createBranch(mySettings.getBranch(), GitUtils.remotesBranchRef(mySettings.getBranch()));
-  }
+  protected abstract void createBranch() throws VcsException;
 
   /**
    * Perform fetch operation
    *
    * @throws VcsException if there is a problem with accessing repository
    */
-  protected void fetch() throws VcsException {
-    new FetchCommand(mySettings, mySshService).fetch();
-  }
+  protected abstract void fetch() throws VcsException;
 
   /**
    * Check the specified revision
@@ -476,9 +405,7 @@ public class GitUpdateProcess {
    * @param revision the revision expression to check
    * @return a short revision information or null if revision is not found
    */
-  protected String checkRevision(final String revision) {
-    return new LogCommand(mySettings).checkRevision(revision);
-  }
+  protected abstract String checkRevision(final String revision);
 
   /**
    * The branch information class

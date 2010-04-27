@@ -89,8 +89,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull String toVersion,
                             @NotNull File checkoutDirectory,
                             @NotNull BuildProgressLogger logger) throws VcsException {
-    new GitUpdateProcess(myAgentConfiguration, myDirectoryCleaner, mySshService, root, checkoutRules, toVersion, checkoutDirectory,
-                         logger).updateSources();
+    new GitCommandUpdateProcess(myAgentConfiguration, myDirectoryCleaner, mySshService, root, checkoutRules, toVersion, checkoutDirectory,
+                                logger).updateSources();
   }
 
 }
