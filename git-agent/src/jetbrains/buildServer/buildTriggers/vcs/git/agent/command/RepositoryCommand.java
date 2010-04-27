@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.git4idea.ssh.GitSSHHandler;
 import org.jetbrains.git4idea.ssh.GitSSHService;
@@ -38,10 +39,11 @@ public class RepositoryCommand extends BaseCommand {
 
   /**
    * The constructor
+   *
    * @param mySettings the settings object
    */
   public RepositoryCommand(AgentSettings mySettings) {
-    super(mySettings.getCommandSettings());
+    super(mySettings.getGitCommandPath(), mySettings.getLocalRepositoryDir().getPath());
     this.mySettings = mySettings;
   }
 
@@ -76,7 +78,7 @@ public class RepositoryCommand extends BaseCommand {
       mySsh = ssh;
       Map<String, String> env = new HashMap<String, String>(System.getenv());
       env.put(GitSSHHandler.SSH_PORT_ENV, Integer.toString(mySsh.getXmlRcpPort()));
-      if(mySettings.isKnownHostsIgnored()) {
+      if (mySettings.isKnownHostsIgnored()) {
         env.put(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV, "true");
       }
       try {

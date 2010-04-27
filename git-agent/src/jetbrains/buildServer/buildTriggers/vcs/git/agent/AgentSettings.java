@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
+package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanPolicy;
@@ -30,10 +30,6 @@ import java.io.File;
  */
 public class AgentSettings extends Settings {
   /**
-   * Command settings
-   */
-  private final CommandSettings myCommandSettings;
-  /**
    * The name of the root
    */
   private final String rootName;
@@ -45,6 +41,14 @@ public class AgentSettings extends Settings {
    * The policy for cleaning files
    */
   private final AgentCleanFilesPolicy cleanFilesPolicy;
+  /**
+   * The path to the git command
+   */
+  private final String gitCommandPath;
+  /**
+   * Local repository directory
+   */
+  private final File localRepositoryDir;
 
   /**
    * The constructor
@@ -56,19 +60,13 @@ public class AgentSettings extends Settings {
    */
   public AgentSettings(String gitCommandPath, File localRepositoryDir, VcsRoot root) throws VcsException {
     super(root);
-    myCommandSettings = new CommandSettings(gitCommandPath, localRepositoryDir);
+    this.gitCommandPath = gitCommandPath;
+    this.localRepositoryDir = localRepositoryDir;
     this.rootName = root.getName();
     String clean = root.getProperty(Constants.AGENT_CLEAN_POLICY);
     this.cleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);
     String cleanFiles = root.getProperty(Constants.AGENT_CLEAN_FILES_POLICY);
     this.cleanFilesPolicy = cleanFiles == null ? AgentCleanFilesPolicy.ALL_UNTRACKED : AgentCleanFilesPolicy.valueOf(cleanFiles);
-  }
-
-  /**
-   * @return command settigns for this root
-   */
-  public CommandSettings getCommandSettings() {
-    return myCommandSettings;
   }
 
   /**
@@ -86,9 +84,23 @@ public class AgentSettings extends Settings {
   }
 
   /**
+   * @return the local repository directory
+   */
+  public File getLocalRepositoryDir() {
+    return localRepositoryDir;
+  }
+
+  /**
+   * @return the path to the command line git
+   */
+  public String getGitCommandPath() {
+    return gitCommandPath;
+  }
+
+  /**
    * @return debug information
    */
   public String debugInfo() {
-    return "(" + rootName + ", " + myCommandSettings.getLocalRepositoryDir() + "," + getPublicURL() + ")";
+    return "(" + rootName + ", " + getLocalRepositoryDir() + "," + getPublicURL() + ")";
   }
 }

@@ -157,7 +157,7 @@ public class GitUpdateProcess {
     }
     GitVersion v;
     try {
-      v = new VersionCommand(mySettings.getCommandSettings()).version();
+      v = new VersionCommand(mySettings.getGitCommandPath()).version();
     } catch (VcsException e) {
       throw new VcsException("Unable to run git at path " + path, e);
     }
@@ -258,7 +258,7 @@ public class GitUpdateProcess {
   private String doFetch(boolean firstFetch) throws VcsException {
     String revInfo = firstFetch ? null : checkRevision(revision);
     if (revInfo != null) {
-      LOG.info("No fetch needed for revision '" + revision + "' in " + mySettings.getCommandSettings().getLocalRepositoryDir());
+      LOG.info("No fetch needed for revision '" + revision + "' in " + mySettings.getLocalRepositoryDir());
     } else {
       if (!"git".equals(mySettings.getRepositoryFetchURL().getScheme()) &&
           (mySettings.getAuthenticationMethod() == AuthenticationMethod.PASSWORD ||
@@ -298,7 +298,7 @@ public class GitUpdateProcess {
       throw new VcsException("Unable to clean directory " + myDirectory + " for VCS root " + myRoot.getName());
     }
     mLogger.message("The .git directory is missing in '" + myDirectory + "'. Running 'git init'...");
-    new InitCommand(mySettings.getCommandSettings()).init();
+    new InitCommand(mySettings).init();
     new RemoteCommand(mySettings).add("origin", mySettings.getRepositoryFetchURL().toString());
     URIish url = mySettings.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();

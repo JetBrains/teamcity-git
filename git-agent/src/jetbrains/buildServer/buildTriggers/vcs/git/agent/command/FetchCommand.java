@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -39,7 +40,7 @@ public class FetchCommand extends RepositoryCommand {
    * The constructor
    *
    * @param settings the settings object
-   * @param ssh the SSH service
+   * @param ssh      the SSH service
    */
   public FetchCommand(@NotNull final AgentSettings settings, @NotNull final GitAgentSSHService ssh) {
     super(settings);

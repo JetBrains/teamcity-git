@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -37,8 +38,9 @@ public class RemoteCommand extends RepositoryCommand {
 
   /**
    * Configure remote
+   *
    * @param name the remote name
-   * @param url the remote URL
+   * @param url  the remote URL
    * @throws VcsException if there is a problem with running git
    */
   public void add(String name, String url) throws VcsException {

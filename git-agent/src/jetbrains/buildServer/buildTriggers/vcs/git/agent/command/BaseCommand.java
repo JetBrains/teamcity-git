@@ -21,13 +21,6 @@ import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.git4idea.ssh.GitSSHHandler;
-import org.jetbrains.git4idea.ssh.GitSSHService;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Vector;
 
 /**
  * The base class for git commands.
@@ -35,30 +28,23 @@ import java.util.Vector;
  * @author pavel
  */
 public class BaseCommand {
-  private final CommandSettings myCommandSettings ;
-  private String myWorkDirectory;
-
-  public BaseCommand(@NotNull final CommandSettings settings) {
-    myCommandSettings = settings;
-    myWorkDirectory = settings.getLocalRepositoryDir().getAbsolutePath();
-  }
-
-  public CommandSettings getCommandSettings() {
-    return myCommandSettings;
-  }
-
   /**
-   * Sets new working directory, by default working directory is taken from the AgentSettings#getLocalRepositoryDir
-   *
-   * @param workDirectory work dir
+   * The path to git
    */
-  public void setWorkDirectory(final String workDirectory) {
+  private final String myGitPath;
+  /**
+   * The work directory
+   */
+  private final String myWorkDirectory;
+
+  public BaseCommand(String gitPath, String workDirectory) {
+    myGitPath = gitPath;
     myWorkDirectory = workDirectory;
   }
 
   protected GeneralCommandLine createCommandLine() {
     GeneralCommandLine cli = new GeneralCommandLine();
-    cli.setExePath(getCommandSettings().getGitCommandPath());
+    cli.setExePath(myGitPath);
     cli.setWorkDirectory(myWorkDirectory);
     return cli;
   }

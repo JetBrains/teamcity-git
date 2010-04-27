@@ -18,18 +18,19 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentSettings;
 import jetbrains.buildServer.vcs.VcsException;
 
 /**
  * The "git init" command
  */
-public class InitCommand extends BaseCommand {
+public class InitCommand extends RepositoryCommand {
   /**
    * The constructor
    *
    * @param s the settings object
    */
-  public InitCommand(CommandSettings s) {
+  public InitCommand(AgentSettings s) {
     super(s);
   }
 

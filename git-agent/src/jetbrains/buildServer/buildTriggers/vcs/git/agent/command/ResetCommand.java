@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -35,6 +36,7 @@ public class ResetCommand extends RepositoryCommand {
 
   /**
    * Hard reset to the specified revision
+   *
    * @param revision the revision to reset to
    * @throws VcsException if there is a problem with running git
    */

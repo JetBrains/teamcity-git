@@ -29,10 +29,10 @@ public class VersionCommand extends BaseCommand {
   /**
    * The constructor
    *
-   * @param settings the settings object
+   * @param gitPath the path to git
    */
-  public VersionCommand(@NotNull final CommandSettings settings) {
-    super(settings);
+  public VersionCommand(@NotNull String gitPath) {
+    super(gitPath, ".");
   }
 
   /**

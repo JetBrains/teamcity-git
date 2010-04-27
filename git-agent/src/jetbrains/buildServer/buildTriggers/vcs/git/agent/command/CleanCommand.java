@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -36,12 +37,13 @@ public class CleanCommand extends RepositoryCommand {
 
   /**
    * Clean the working tree
+   *
    * @throws VcsException if git could not be launched
    */
   public void clean() throws VcsException {
     GeneralCommandLine cmd = createCommandLine();
     cmd.addParameters("clean", "-f", "-d");
-    switch(getSettings().getCleanFilesPolicy()) {
+    switch (getSettings().getCleanFilesPolicy()) {
       case ALL_UNTRACKED:
         cmd.addParameter("-x");
         break;
@@ -51,7 +53,7 @@ public class CleanCommand extends RepositoryCommand {
       case NON_IGNORED_ONLY:
         break;
       default:
-        throw new IllegalStateException("Unsupported policy: "+getSettings().getCleanFilesPolicy());
+        throw new IllegalStateException("Unsupported policy: " + getSettings().getCleanFilesPolicy());
     }
     ExecResult r = runCommand(cmd);
     failIfNotEmptyStdErr(cmd, r);

@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -48,11 +49,12 @@ public class ConfigCommand extends RepositoryCommand {
     failIfNotEmptyStdErr(cmd, r);
     return r.getStdout().trim();
   }
+
   /**
    * Set configuration property value
    *
    * @param propertyName the property name
-   * @param value the property value
+   * @param value        the property value
    * @throws VcsException if the property could not be found
    */
   public void set(String propertyName, String value) throws VcsException {
