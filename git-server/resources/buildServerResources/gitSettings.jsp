@@ -1,3 +1,4 @@
+<%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.Constants" %>
 <%@ page import="java.io.File" %>
 <%@include file="/include.jsp" %>
 <%@ taglib prefix="props" tagdir="/WEB-INF/tags/props" %>
@@ -18,6 +19,7 @@
   --%>
 
 <jsp:useBean id="propertiesBean" scope="request" type="jetbrains.buildServer.controllers.BasePropertiesBean"/>
+<c:set var="gitPathEnv" value="<%= Constants.GIT_PATH_ENV %>"/>
 <table class="runnerFormTable">
   <c:set var="userHome"
          value='<%=new File(System.getProperty("user.home"), ".ssh"+File.separator+"config").getAbsolutePath() %>'/>
@@ -129,6 +131,16 @@
   <l:settingsGroup title="Agent Settings">
     <tr>
       <td colspan="2">Agent-specific settings that are used in case of agent checkout.</td>
+    </tr>
+    <tr>
+      <th><label for="agentGitPath">Path to git: </label></th>
+      <td><props:textProperty name="agentGitPath" className="longField"/>
+        <div class="smallNote" style="margin: 0;">Provide path to a git executable to be used on agent.
+          If path is not specified, a git executable is looked at location
+          provided by environment variable ${gitPathEnv}. If the variable is not specified,
+          a heuristic is used to detect git at the default locations.
+        </div>
+      </td>
     </tr>
     <tr>
       <th><label for="agentCleanPolicy">Clean Policy:</label></th>

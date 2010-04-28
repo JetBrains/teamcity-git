@@ -18,7 +18,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.BuildProgressLogger;
+import jetbrains.buildServer.agent.CurrentBuildTracker;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
+import jetbrains.buildServer.agent.parameters.AgentParameterResolverFactory;
 import jetbrains.buildServer.agent.vcs.AgentVcsSupport;
 import jetbrains.buildServer.agent.vcs.UpdateByCheckoutRules;
 import jetbrains.buildServer.agent.vcs.UpdatePolicy;
@@ -46,6 +48,14 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * The ssh service to use
    */
   final GitAgentSSHService mySshService;
+  /**
+   * The resolver service
+   */
+  final AgentParameterResolverFactory myResolverFactory;
+  /**
+   * The tracker for the builds
+   */
+  final CurrentBuildTracker myBuildTracker;
 
   /**
    * The constructor
@@ -53,13 +63,19 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @param agentConfiguration the configuration for this agent
    * @param directoryCleaner   the directory cleaner
    * @param sshService         the used ssh service
+   * @param resolverFactory    the resolver factory
+   * @param buildTracker       the tracker for builds
    */
   public GitAgentVcsSupport(BuildAgentConfiguration agentConfiguration,
                             SmartDirectoryCleaner directoryCleaner,
-                            GitAgentSSHService sshService) {
+                            GitAgentSSHService sshService,
+                            AgentParameterResolverFactory resolverFactory,
+                            CurrentBuildTracker buildTracker) {
     myAgentConfiguration = agentConfiguration;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
+    myResolverFactory = resolverFactory;
+    myBuildTracker = buildTracker;
   }
 
 
@@ -89,7 +105,15 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull String toVersion,
                             @NotNull File checkoutDirectory,
                             @NotNull BuildProgressLogger logger) throws VcsException {
-    new GitCommandUpdateProcess(myAgentConfiguration, myDirectoryCleaner, mySshService, root, checkoutRules, toVersion, checkoutDirectory,
+    new GitCommandUpdateProcess(myAgentConfiguration,
+                                myDirectoryCleaner,
+                                mySshService,
+                                myResolverFactory,
+                                myBuildTracker,
+                                root,
+                                checkoutRules,
+                                toVersion,
+                                checkoutDirectory,
                                 logger).updateSources();
   }
 

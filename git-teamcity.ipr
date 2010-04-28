@@ -450,6 +450,7 @@
         <w>passphrase</w>
         <w>submodule</w>
         <w>submodules</w>
+        <w>teamcity</w>
         <w>untracked</w>
         <w>unversioned</w>
         <w>userid</w>
@@ -578,6 +579,13 @@
       <SOURCES>
         <root url="jar://$PROJECT_DIR$/lib/agent/src/trilead-ssh2-src.zip!/" />
       </SOURCES>
+    </library>
+    <library name="TeamCity Agent">
+      <CLASSES>
+        <root url="jar://$TeamCityDistribution$/buildAgent/lib/agent.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES />
     </library>
   </component>
 </project>

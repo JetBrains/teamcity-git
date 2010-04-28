@@ -87,11 +87,11 @@ public interface Constants {
    */
   public static String AGENT_CLEAN_FILES_POLICY = "agentCleanFilesPolicy";
   /**
-   * The property that specifies that depth clone should be initially
+   * The branch name property
    */
-  public static String AGENT_CLONE_DEPTH = "agentHistoryDepth";
+  public static String AGENT_GIT_PATH = "agentGitPath";
   /**
-   * The boolean property that specifies that shallow clone should be initially
+   * The property that points to git path
    */
-  public static String AGENT_CLONE_DEPTH_FULL = "FULL";
+  public static String GIT_PATH_ENV = "TEAMCITY_GIT_PATH";
 }

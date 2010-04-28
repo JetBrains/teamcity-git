@@ -19,10 +19,20 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import com.intellij.openapi.util.SystemInfo;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.BuildProgressLogger;
+import jetbrains.buildServer.agent.CurrentBuildTracker;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
+import jetbrains.buildServer.agent.parameters.AgentParameterResolverFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanPolicy;
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
+import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.parameters.CompositeParametersProvider;
+import jetbrains.buildServer.parameters.ProcessingResult;
+import jetbrains.buildServer.parameters.ValueResolver;
+import jetbrains.buildServer.parameters.impl.CompositeParametersProviderImpl;
+import jetbrains.buildServer.parameters.impl.DynamicContextVariables;
+import jetbrains.buildServer.parameters.impl.MapParametersProviderImpl;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -36,6 +46,10 @@ import java.io.File;
  * The update process that uses C git.
  */
 public class GitCommandUpdateProcess extends GitUpdateProcess {
+  /**
+   * The ssh service to use
+   */
+  final GitAgentSSHService mySshService;
   /**
    * the default windows git executable paths
    */
@@ -53,10 +67,6 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
    * UNIX executable name
    */
   @NonNls private static final String DEFAULT_UNIX_GIT = "git";
-  /**
-   * The property that points to git path
-   */
-  static final String GIT_PATH_PROPERTY = "system.git.executable.path";
 
   /**
    * The constructor
@@ -64,6 +74,8 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
    * @param agentConfiguration the configuration for this agent
    * @param directoryCleaner   the directory cleaner
    * @param sshService         the used ssh service
+   * @param resolverFactory    the resolver used to resolve path to git
+   * @param buildTracker       the build tracker
    * @param root               the vcs root
    * @param checkoutRules      the checkout rules
    * @param toVersion          the version to update to
@@ -74,24 +86,29 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   public GitCommandUpdateProcess(@NotNull BuildAgentConfiguration agentConfiguration,
                                  @NotNull SmartDirectoryCleaner directoryCleaner,
                                  @NotNull GitAgentSSHService sshService,
+                                 @NotNull AgentParameterResolverFactory resolverFactory,
+                                 @NotNull CurrentBuildTracker buildTracker,
                                  @NotNull VcsRoot root,
                                  @NotNull CheckoutRules checkoutRules,
                                  @NotNull String toVersion,
                                  @NotNull File checkoutDirectory,
                                  @NotNull BuildProgressLogger logger)
     throws VcsException {
-    super(agentConfiguration, directoryCleaner, sshService, root, checkoutRules, toVersion, checkoutDirectory, logger, getGitPath(
-      agentConfiguration));
+    super(agentConfiguration, directoryCleaner, root, checkoutRules, toVersion, checkoutDirectory, logger,
+          getGitPath(root, agentConfiguration, resolverFactory, buildTracker));
+    mySshService = sshService;
   }
 
-  public void canRun() throws VcsException {
-    String path = getGitPath(myAgentConfiguration);
-    if (path == null) {
-      throw new VcsException("The path to git executable is not configured (the property name is system.git.excecutable.path)");
-    }
+  /**
+   * Check if the git could be run
+   *
+   * @param path the path to use
+   * @throws VcsException if there is a problem with running git or git has invalid version
+   */
+  private static void canRun(@NotNull String path) throws VcsException {
     GitVersion v;
     try {
-      v = new VersionCommand(mySettings.getGitCommandPath()).version();
+      v = new VersionCommand(path).version();
     } catch (VcsException e) {
       throw new VcsException("Unable to run git at path " + path, e);
     }
@@ -101,12 +118,43 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   }
 
   /**
+   * Get git path from root
+   *
+   * @param root               the vcs root
    * @param agentConfiguration the agent configuration
+   * @param resolverFactory    the resolver factory
+   * @param buildTracker       the build tracker
    * @return the path to the git executable or null if neither configured nor found
+   * @throws VcsException if git could not be found or has invalid version
    */
-  private static String getGitPath(final BuildAgentConfiguration agentConfiguration) {
-    String path = agentConfiguration.getCustomProperties().get(GIT_PATH_PROPERTY);
-    return path == null ? defaultGit() : path;
+  private static String getGitPath(VcsRoot root,
+                                   final BuildAgentConfiguration agentConfiguration,
+                                   AgentParameterResolverFactory resolverFactory,
+                                   CurrentBuildTracker buildTracker) throws VcsException {
+    String path = root.getProperty(Constants.AGENT_GIT_PATH);
+    if (path != null) {
+      ValueResolver valueResolver = getValueResolver(agentConfiguration, resolverFactory);
+      ProcessingResult result = valueResolver.resolve(path);
+      if (!result.isFullyResolved()) {
+        throw new VcsException("The value is not fully resolved: " + result.getResult());
+      }
+      path = result.getResult();
+      Loggers.VCS.info("Using vcs root's git: " + path);
+    } else {
+      path = buildTracker.getCurrentBuild().getBuildParameters().getEnvironmentVariables().get(Constants.GIT_PATH_ENV);
+      if (path != null) {
+        Loggers.VCS.info("Using git specified by " + Constants.GIT_PATH_ENV + ": " + path);
+      } else {
+        path = defaultGit();
+        if (path == null) {
+          throw new VcsException("The git has not been found.");
+        } else {
+          Loggers.VCS.info("Using default git: " + path);
+        }
+      }
+    }
+    canRun(path);
+    return path;
   }
 
   /**
@@ -124,6 +172,7 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     }
     for (String p : paths) {
       File f = new File(p, program);
+      Loggers.VCS.info("Trying default git location: " + f.getPath());
       if (f.exists()) {
         return f.getAbsolutePath();
       }
@@ -214,5 +263,25 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
    */
   protected String checkRevision(final String revision) {
     return new LogCommand(mySettings).checkRevision(revision);
+  }
+
+  /**
+   * Create a value resolver
+   *
+   * @param agentConfiguration the build agent configuration
+   * @param resolverFactory    the resolver factory
+   * @return a created value resolver
+   */
+  private static ValueResolver getValueResolver(final BuildAgentConfiguration agentConfiguration,
+                                                final AgentParameterResolverFactory resolverFactory) {
+    final CompositeParametersProvider parametersProvider = new CompositeParametersProviderImpl();
+    parametersProvider
+      .appendParametersProvider(new MapParametersProviderImpl("agent parameters", agentConfiguration.getAgentParameters()));
+    parametersProvider
+      .appendParametersProvider(new MapParametersProviderImpl("agent custom parameters", agentConfiguration.getCustomProperties()));
+
+    final DynamicContextVariables variables = new DynamicContextVariables();
+
+    return resolverFactory.createValueResolver(variables, parametersProvider);
   }
 }

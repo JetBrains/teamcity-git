@@ -51,10 +51,6 @@ public abstract class GitUpdateProcess {
    */
   final SmartDirectoryCleaner myDirectoryCleaner;
   /**
-   * The ssh service to use
-   */
-  final GitAgentSSHService mySshService;
-  /**
    * Vcs root
    */
   protected final VcsRoot myRoot;
@@ -92,7 +88,6 @@ public abstract class GitUpdateProcess {
    *
    * @param agentConfiguration the configuration for this agent
    * @param directoryCleaner   the directory cleaner
-   * @param sshService         the used ssh service
    * @param root               the vcs root
    * @param checkoutRules      the checkout rules
    * @param toVersion          the version to update to
@@ -103,7 +98,6 @@ public abstract class GitUpdateProcess {
    */
   public GitUpdateProcess(@NotNull BuildAgentConfiguration agentConfiguration,
                           @NotNull SmartDirectoryCleaner directoryCleaner,
-                          @NotNull GitAgentSSHService sshService,
                           @NotNull VcsRoot root,
                           @NotNull CheckoutRules checkoutRules,
                           @NotNull String toVersion,
@@ -112,7 +106,6 @@ public abstract class GitUpdateProcess {
                           @Nullable String gitPath) throws VcsException {
     myAgentConfiguration = agentConfiguration;
     myDirectoryCleaner = directoryCleaner;
-    mySshService = sshService;
     myRoot = root;
     myCheckoutRules = checkoutRules;
     myToVersion = toVersion;
@@ -124,20 +117,12 @@ public abstract class GitUpdateProcess {
   }
 
   /**
-   * Check if the update could be run.
-   *
-   * @throws VcsException if there is a problem with update
-   */
-  public abstract void canRun() throws VcsException;
-
-  /**
    * Update sources
    *
    * @throws VcsException the exception to use
    */
   public void updateSources() throws VcsException {
     LOG.info("Starting update of root " + myRoot.getName() + " in " + myCheckoutDirectory + " to revision " + myToVersion);
-    canRun();
     if (LOG.isDebugEnabled()) {
       LOG.debug("Updating " + mySettings.debugInfo());
     }
