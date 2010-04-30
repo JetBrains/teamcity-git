@@ -135,10 +135,11 @@
     <tr>
       <th><label for="agentGitPath">Path to git: </label></th>
       <td><props:textProperty name="agentGitPath" className="longField"/>
-        <div class="smallNote" style="margin: 0;">Provide path to a git executable to be used on agent.
-          If path is not specified, a git executable is looked at location
-          provided by environment variable ${gitPathEnv}. If the variable is not specified,
-          a heuristic is used to detect git at the default locations.
+        <div class="smallNote" style="margin: 0;">Provide path to a git executable
+        to be used on agent. If the path is not specified, TeamCity will use
+        the location set up in ${gitPathEnv} environment  variable. If this
+        variable is  not specified, a heuristic is used to detect git at
+        the default locations.
         </div>
       </td>
     </tr>
