@@ -544,17 +544,6 @@
       <JAVADOC />
       <SOURCES />
     </library>
-    <library name="JGit">
-      <CLASSES>
-        <root url="jar://$PROJECT_DIR$/lib/common/jsch-0.1.41.jar!/" />
-        <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-0.6.0-SNAPSHOT.jar!/" />
-      </CLASSES>
-      <JAVADOC />
-      <SOURCES>
-        <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit-0.6.0-SNAPSHOT-sources.jar!/" />
-        <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.41.zip!/jsch-0.1.41-src/src" />
-      </SOURCES>
-    </library>
     <library name="TestLibs">
       <CLASSES>
         <root url="file://$PROJECT_DIR$/git-tests/lib" />
@@ -586,6 +575,17 @@
       </CLASSES>
       <JAVADOC />
       <SOURCES />
+    </library>
+    <library name="JGit">
+      <CLASSES>
+        <root url="jar://$PROJECT_DIR$/lib/common/jsch-0.1.41.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-0.7.1-SNAPSHOT.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES>
+        <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.41.zip!/jsch-0.1.41-src/src" />
+        <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit-0.7.1-SNAPSHOT-sources.jar!/" />
+      </SOURCES>
     </library>
   </component>
 </project>
