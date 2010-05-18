@@ -16,9 +16,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.SimpleCommandLineProcessRunner;
+import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.RefreshableSshConfigSessionFactory;
@@ -27,8 +31,12 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.TeamCitySubmoduleR
 import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
+import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
+import org.apache.commons.codec.Decoder;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
@@ -44,9 +52,7 @@ import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.ByteArrayInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
@@ -68,6 +74,14 @@ public class GitVcsSupport extends ServerVcsSupport
    * Random number generator used to generate artificial versions
    */
   private static final Random ourRandom = new Random();
+  /**
+   * Name of property for repository directory path for fetch process
+   */
+  static final String REPOSITORY_DIR_PROPERTY_NAME = "REPOSITORY_DIR";
+  /**
+   * Name of property for cache directory path for fetch process
+   */
+  static final String CACHE_DIR_PROPERTY_NAME = "CACHE_DIR";
   /**
    * Paths to the server
    */
@@ -176,7 +190,7 @@ public class GitVcsSupport extends ServerVcsSupport
           LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + s.debugInfo());
         }
         final String current = GitUtils.versionRevision(currentVersion);
-        ensureCommitLoaded(s, r, current);
+        ensureCommitLoaded(s, r, current, root);
         final String from = GitUtils.versionRevision(fromVersion);
         RevWalk revs = new RevWalk(r);
         final RevCommit currentRev = revs.parseCommit(ObjectId.fromString(current));
@@ -443,7 +457,7 @@ public class GitVcsSupport extends ServerVcsSupport
       Map<String, Repository> repositories = new HashMap<String, Repository>();
       final Repository r = getRepository(s, repositories);
       try {
-        Commit toCommit = ensureCommitLoaded(s, r, GitUtils.versionRevision(toVersion));
+        Commit toCommit = ensureCommitLoaded(s, r, GitUtils.versionRevision(toVersion), root);
         if (toCommit == null) {
           throw new VcsException("Missing commit for version: " + toVersion);
         }
@@ -616,7 +630,7 @@ public class GitVcsSupport extends ServerVcsSupport
           LOG.debug("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
         }
         final String rev = GitUtils.versionRevision(version);
-        Commit c = ensureCommitLoaded(s, r, rev);
+        Commit c = ensureCommitLoaded(s, r, rev, versionedRoot);
         final TreeWalk tw = new TreeWalk(r);
         tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
         tw.setRecursive(tw.getFilter().shouldBeRecursive());
@@ -701,7 +715,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * @return the mapped commit
    * @throws Exception in case of IO problem
    */
-  private Commit ensureCommitLoaded(Settings s, Repository r, String rev) throws Exception {
+  private Commit ensureCommitLoaded(Settings s, Repository r, String rev, VcsRoot root) throws Exception {
     Commit c = null;
     try {
       c = r.mapCommit(rev);
@@ -714,7 +728,7 @@ public class GitVcsSupport extends ServerVcsSupport
       if (LOG.isDebugEnabled()) {
         LOG.debug("Commit " + rev + " is not in the repository for " + s.debugInfo() + ", fetching data... ");
       }
-      fetchBranchData(s, r);
+      fetchBranchData(s, r, root);
       c = r.mapCommit(rev);
       if (c == null) {
         throw new VcsException("The version name could not be resolved " + rev + "(" + s.getPublicURL() + "#" + s.getBranch() + ")");
@@ -831,7 +845,7 @@ public class GitVcsSupport extends ServerVcsSupport
     try {
       Repository r = getRepository(s);
       try {
-        fetchBranchData(s, r);
+        fetchBranchData(s, r, root);
         String refName = GitUtils.branchRef(s.getBranch());
         Commit c = r.mapCommit(refName);
         if (c == null) {
@@ -874,19 +888,157 @@ public class GitVcsSupport extends ServerVcsSupport
    * @param repository the repository
    * @throws Exception if there is a problem with fetching data
    */
-  private void fetchBranchData(Settings settings, Repository repository) throws Exception {
-    final String refName = GitUtils.branchRef(settings.getBranch());
-    final Transport tn = openTransport(settings, repository);
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Fetching data for " + refName + "... " + settings.debugInfo());
-    }
-    try {
-      RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
-      tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
-    } finally {
-      tn.close();
+  private void fetchBranchData(Settings settings, Repository repository, VcsRoot root) throws Exception {
+    if (separateProcessForFetch()) {
+      fetchBranchDataInSeparateProcess(settings, repository, root);
+    } else {
+      final String refName = GitUtils.branchRef(settings.getBranch());
+      final Transport tn = openTransport(settings, repository);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Fetching data for " + refName + "... " + settings.debugInfo());
+      }
+      try {
+        RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
+        tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
+      } finally {
+        tn.close();
+      }
     }
   }
+
+  /**
+   * Fetch data for the branch in separate process
+   *
+   * @param settings   settings for the root
+   * @param repository the repository
+   * @param root       vcs root, used to pass properties to forked process
+   * @throws Exception if there is a problem with fetching data
+   */
+  private void fetchBranchDataInSeparateProcess(final Settings settings, final Repository repository, final VcsRoot root) throws Exception {
+    GeneralCommandLine cl = new GeneralCommandLine();
+    cl.setWorkingDirectory(repository.getDirectory());
+    cl.setExePath(getFetchProcessJavaPath());
+    cl.addParameters("-Xmx" + getFetchProcessMaxMemory(), "-cp", getFetchClasspath(), Fetcher.class.getName(),
+                     settings.getRepositoryFetchURL().toString());//last parameter is not used in Fetcher, but useful to distinguish fetch processes
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Start fetch process for " + settings.debugInfo());
+    }
+    final List<Exception> errors = new ArrayList<Exception>();
+    ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.RunCommandEvents() {
+      public void onProcessStarted(Process ps) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Fetch process for " + settings.debugInfo() + " started");
+        }
+        OutputStream processInput = ps.getOutputStream();
+        try {
+          Map<String, String> properties = new HashMap<String, String>(root.getProperties());
+          properties.put(REPOSITORY_DIR_PROPERTY_NAME, repository.getDirectory().getCanonicalPath());
+          if (myServerPaths != null) {
+            properties.put(CACHE_DIR_PROPERTY_NAME, myServerPaths.getCachesDir());
+          }
+          processInput.write(VcsRootImpl.propertiesToString(properties).getBytes());
+          processInput.flush();
+        } catch (IOException e) {
+          errors.add(e);
+        } finally {
+          try {
+            processInput.close();
+          } catch (IOException e) {
+            //ignore
+          }
+        }
+      }
+
+      public void onProcessFinished(Process ps) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Fetch process for " + settings.debugInfo() + " finished");
+        }
+      }
+
+      public Integer getOutputIdleSecondsTimeout() {
+        return getFetchTimeout();
+      }
+    });
+
+    if (!errors.isEmpty()) {
+      throw errors.get(0);
+    }
+    checkCommandFailed("git fetch", result);
+  }
+
+  /**
+   * Get classpath for fetch process
+   *
+   * @return classpath for fetch process
+   */
+  private String getFetchClasspath() {
+    return ClasspathUtil.composeClasspath(new Class[] {
+      Fetcher.class,
+      VcsRoot.class,
+      ProgressMonitor.class,
+      VcsPersonalSupport.class,
+      Logger.class,
+      Settings.class,
+      com.jcraft.jsch.JSch.class,
+      Decoder.class
+    }, null, null);
+  }
+
+  /**
+   * Get path to java executable for fetch process, "java" by default
+   *
+   * @return path to java executable
+   */
+  private String getFetchProcessJavaPath() {
+    final String jdkHome = System.getProperty("java.home");
+    File defaultJavaExec = new File(jdkHome.replace('/', File.separatorChar) + File.separator + "bin" + File.separator + "java");
+    return TeamCityProperties.getProperty("teamcity.git.fetch.process.java.exec", defaultJavaExec.getAbsolutePath());
+  }
+
+  /**
+   * Get maximum amount of memory for fetch process, 200M by default
+   *
+   * @return maximum amount of memory for fetch process
+   */
+  private String getFetchProcessMaxMemory() {
+    return TeamCityProperties.getProperty("teamcity.git.fetch.process.max.memory", "500M");
+  }
+
+  /**
+   * Check if fetch should be run in separate process, false by default
+   *
+   * @return true if fetch should be run in separate process
+   */
+  private boolean separateProcessForFetch() {
+    return TeamCityProperties.getBoolean("teamcity.git.fetch.separate.process");
+  }
+
+  // 2 methods below are copied from git-plugin agent code and probably should be moved to common:
+
+  @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
+  public static void checkCommandFailed(@NotNull String cmdName, @NotNull ExecResult res) throws VcsException {
+    if (res.getExitCode() != 0 || res.getException() != null) {
+      commandFailed(cmdName, res);
+    }
+    if (res.getStderr().length() > 0) {
+      LOG.warn("Error output produced by: " + cmdName);
+      LOG.warn(res.getStderr());
+    }
+  }
+
+  @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
+  public static void commandFailed(final String cmdName, final ExecResult res) throws VcsException {
+    Throwable exception = res.getException();
+    String stderr = res.getStderr();
+    String stdout = res.getStdout();
+    final String message = "'" + cmdName + "' command failed.\n" +
+            (!StringUtil.isEmpty(stderr) ? "stderr: " + stderr + "\n" : "") +
+            (!StringUtil.isEmpty(stdout) ? "stdout: " + stdout + "\n" : "") +
+            (exception != null ? "exception: " + exception.getLocalizedMessage() : "");
+    LOG.warn(message);
+    throw new VcsException(message);
+  }
+
 
   /**
    * {@inheritDoc}
@@ -1011,7 +1163,7 @@ public class GitVcsSupport extends ServerVcsSupport
       Repository r = getRepository(s);
       try {
         final ObjectId rev = versionObjectId(version);
-        ensureCommitLoaded(s, r, rev.name());
+        ensureCommitLoaded(s, r, rev.name(), root);
         Tag t = new Tag(r);
         t.setTag(label);
         t.setObjId(rev);
@@ -1105,10 +1257,16 @@ public class GitVcsSupport extends ServerVcsSupport
     } catch (IOException e) {
       // ignore result
     }
-    int timeout =
-      Integer.parseInt(System.getProperty(clone ? "teamcity.git.clone.timeout" : "teamcity.git.fetch.timeout", clone ? "18000" : "1800"));
-    t.setTimeout(timeout);
+    t.setTimeout(clone ? getCloneTimeout() : getFetchTimeout());
     return t;
+  }
+
+  private int getFetchTimeout() {
+    return TeamCityProperties.getInteger("teamcity.git.fetch.timeout", 1800);
+  }
+
+  private int getCloneTimeout() {
+    return TeamCityProperties.getInteger("teamcity.git.clone.timeout", 18000);
   }
 
   /**

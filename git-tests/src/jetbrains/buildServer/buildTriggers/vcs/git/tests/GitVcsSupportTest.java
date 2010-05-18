@@ -198,8 +198,9 @@ public class GitVcsSupportTest extends PatchTestCase {
    *
    * @throws Exception in case of IO problem
    */
-  @Test
-  public void testCurrentVersion() throws Exception {
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testCurrentVersion(boolean fetchInSeparateProcess) throws Exception {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("version-test");
     String version = support.getCurrentVersion(root);
@@ -211,8 +212,9 @@ public class GitVcsSupportTest extends PatchTestCase {
    *
    * @throws Exception in case of bug
    */
-  @Test
-  public void testGetContent() throws Exception {
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testGetContent(boolean fetchInSeparateProcess) throws Exception {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("version-test");
     String version = support.getCurrentVersion(root);
@@ -232,8 +234,9 @@ public class GitVcsSupportTest extends PatchTestCase {
    *
    * @throws Exception in case of bug
    */
-  @Test
-  public void testGetContentSubmodules() throws Exception {
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testGetContentSubmodules(boolean fetchInSeparateProcess) throws Exception {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("patch-tests", true);
     String version = support.getCurrentVersion(root);
@@ -248,8 +251,9 @@ public class GitVcsSupportTest extends PatchTestCase {
    *
    * @throws Exception in case of IO problem
    */
-  @Test
-  public void testCollectBuildChanges() throws Exception {
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testCollectBuildChanges(boolean fetchInSeparateProcess) throws Exception {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master");
     // ensure that all revisions reachable from master are fetched
@@ -319,8 +323,9 @@ public class GitVcsSupportTest extends PatchTestCase {
    *
    * @throws Exception in case of IO problem
    */
-  @Test
-  public void testCollectBuildChangesSubmodulesIgnored() throws Exception {
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testCollectBuildChangesSubmodulesIgnored(boolean fetchInSeparateProcess) throws Exception {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("patch-tests");
     final List<ModificationData> ms =
@@ -351,8 +356,9 @@ public class GitVcsSupportTest extends PatchTestCase {
    *
    * @throws Exception in case of IO problem
    */
-  @Test
-  public void testCollectBuildChangesSubmodules() throws Exception {
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testCollectBuildChangesSubmodules(boolean fetchInSeparateProcess) throws Exception {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("patch-tests", true);
     final List<ModificationData> ms =
@@ -385,8 +391,9 @@ public class GitVcsSupportTest extends PatchTestCase {
    * @throws IOException  in case of test failure
    * @throws VcsException in case of test failure
    */
-  @Test
-  public void testPatches() throws IOException, VcsException {
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testPatches(boolean fetchInSeparateProcess) throws IOException, VcsException {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     checkPatch("cleanPatch1", null, GitUtils.makeVersion("a894d7d58ffde625019a9ecf8267f5f1d1e5c341", 1237391915000L));
     checkPatch("patch1", GitUtils.makeVersion("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", 1238420977000L),
                GitUtils.makeVersion("0dd03338d20d2e8068fbac9f24899d45d443df38", 1238421020000L));
@@ -405,8 +412,9 @@ public class GitVcsSupportTest extends PatchTestCase {
    * @throws IOException  in case of test failure
    * @throws VcsException in case of test failure
    */
-  @Test
-  public void testSubmodulePatches() throws IOException, VcsException {
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testSubmodulePatches(boolean fetchInSeparateProcess) throws IOException, VcsException {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     checkPatch("submodule-added-ignore", BEFORE_SUBMODULE_ADDED_VERSION, SUBMODULE_ADDED_VERSION);
     checkPatch("submodule-removed-ignore", SUBMODULE_ADDED_VERSION, BEFORE_SUBMODULE_ADDED_VERSION);
     checkPatch("submodule-modified-ignore", SUBMODULE_ADDED_VERSION, SUBMODULE_MODIFIED_VERSION);
@@ -463,8 +471,9 @@ public class GitVcsSupportTest extends PatchTestCase {
    * @throws VcsException       in case of test failure
    * @throws URISyntaxException in case of test failure
    */
-  @Test
-  public void testLabels() throws IOException, VcsException, URISyntaxException {
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testLabels(boolean fetchInSeparateProcess) throws IOException, VcsException, URISyntaxException {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master");
     // ensure that all revisions reachable from master are fetched
