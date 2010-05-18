@@ -1,3 +1,4 @@
+<%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.Constants" %>
 <%@ page import="java.io.File" %>
 <%@include file="/include.jsp" %>
 <%@ taglib prefix="props" tagdir="/WEB-INF/tags/props" %>
@@ -18,6 +19,7 @@
   --%>
 
 <jsp:useBean id="propertiesBean" scope="request" type="jetbrains.buildServer.controllers.BasePropertiesBean"/>
+<c:set var="gitPathEnv" value="<%= Constants.GIT_PATH_ENV %>"/>
 <table class="runnerFormTable">
   <c:set var="userHome"
          value='<%=new File(System.getProperty("user.home"), ".ssh"+File.separator+"config").getAbsolutePath() %>'/>
@@ -40,7 +42,7 @@
     <tr>
       <th><label for="branch">Branch name: </label></th>
       <td><props:textProperty name="branch"/>
-      <div class="smallNote" style="margin: 0;">If blank, the branch "master" is used.</div>
+        <div class="smallNote" style="margin: 0;">If blank, the branch "master" is used.</div>
       </td>
     </tr>
     <tr>
@@ -124,6 +126,45 @@
     <tr id="gitPassphraseRow">
       <th><label for="secure:passphrase">Passphrase:</label></th>
       <td><props:passwordProperty name="secure:passphrase"/></td>
+    </tr>
+  </l:settingsGroup>
+  <l:settingsGroup title="Agent Settings">
+    <tr>
+      <td colspan="2">Agent-specific settings that are used in case of agent checkout.</td>
+    </tr>
+    <tr>
+      <th><label for="agentGitPath">Path to git: </label></th>
+      <td><props:textProperty name="agentGitPath" className="longField"/>
+        <div class="smallNote" style="margin: 0;">Provide path to a git executable
+        to be used on agent. If the path is not specified, TeamCity will use
+        the location set up in ${gitPathEnv} environment  variable. If this
+        variable is  not specified, a heuristic is used to detect git at
+        the default locations.
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <th><label for="agentCleanPolicy">Clean Policy:</label></th>
+      <td><props:selectProperty name="agentCleanPolicy">
+        <props:option value="ON_BRANCH_CHANGE">On Branch Change</props:option>
+        <props:option value="ALWAYS">Always</props:option>
+        <props:option value="NEVER">Never</props:option>
+      </props:selectProperty>
+        <div class="smallNote" style="margin: 0">This option specifies when "git clean" command is run on agent.
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <th><label for="agentCleanFilesPolicy">Clean Policy:</label></th>
+      <td><props:selectProperty name="agentCleanFilesPolicy">
+        <props:option value="ALL_UNTRACKED">All untracked files</props:option>
+        <props:option value="IGNORED_ONLY">All ignored untracked files</props:option>
+        <props:option value="NON_IGNORED_ONLY">All non-ignored untracked files</props:option>
+      </props:selectProperty>
+        <div class="smallNote" style="margin: 0">This option specifies which files will be removed when "git
+          clean" command is run on agent.
+        </div>
+      </td>
     </tr>
   </l:settingsGroup>
 </table>
