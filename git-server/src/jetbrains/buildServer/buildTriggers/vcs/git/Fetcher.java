@@ -55,10 +55,10 @@ public class Fetcher {
     VcsRootImpl myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
     myRoot.addAllProperties(vcsRootProperties);
     GitVcsSupport gitSupport = new GitVcsSupport(null);
-    Repository repository = new Repository(repositoryDir);
     Settings settings = new Settings(myRoot);
     if (cacheDirPath != null)
       settings.setCachesDirectory(cacheDirPath);
+    Repository repository = GitServerUtil.getRepository(repositoryDir, settings.getRepositoryFetchURL());
 
     final String refName = GitUtils.branchRef(settings.getBranch());
     final Transport tn = gitSupport.openTransport(settings, repository);
