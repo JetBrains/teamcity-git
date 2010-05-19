@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.util.FileUtil;
@@ -35,6 +36,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
@@ -317,6 +320,128 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(GitServerUtil.SYSTEM_USER, mb3.getUserName());
     assertEquals(0, mb3.getChanges().size());
   }
+
+  /**
+   * Test getting changes for the build concurrently. Copy of previous test but with several threads collecting changes
+   *
+   * @throws Exception in case of IO problem
+   */
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testConcurrentCollectBuildChanges(boolean fetchInSeparateProcess) throws Exception {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
+
+    final GitVcsSupport support = getSupport();
+    final List<Exception> errors = Collections.synchronizedList(new ArrayList<Exception>());
+
+    Runnable r1 = new Runnable() {
+      public void run() {
+        try {
+          // ensure that all revisions reachable from master are fetched
+          final VcsRoot root = getRoot("master");
+          final List<ModificationData> ms = support.collectChanges(root, VERSION_TEST_HEAD, CUD1_VERSION, new CheckoutRules(""));
+          assertEquals(2, ms.size());
+          ModificationData m2 = ms.get(1);
+          assertEquals("The second commit\n", m2.getDescription());
+          assertEquals(3, m2.getChanges().size());
+          for (VcsChange ch : m2.getChanges()) {
+            assertEquals(VcsChange.Type.ADDED, ch.getType());
+            assertEquals("dir/", ch.getFileName().substring(0, 4));
+          }
+          ModificationData m1 = ms.get(0);
+          assertEquals("more changes\n", m1.getDescription());
+          assertEquals(CUD1_VERSION, m1.getVersion());
+          assertEquals(3, m1.getChanges().size());
+          VcsChange ch10 = m1.getChanges().get(0);
+          assertEquals("dir/a.txt", ch10.getFileName());
+          assertEquals(CUD1_VERSION, ch10.getAfterChangeRevisionNumber());
+          assertEquals(m2.getVersion(), ch10.getBeforeChangeRevisionNumber());
+          assertEquals(VcsChange.Type.CHANGED, ch10.getType());
+          VcsChange ch11 = m1.getChanges().get(1);
+          assertEquals("dir/c.txt", ch11.getFileName());
+          assertEquals(VcsChange.Type.ADDED, ch11.getType());
+          VcsChange ch12 = m1.getChanges().get(2);
+          assertEquals("dir/tr.txt", ch12.getFileName());
+          assertEquals(VcsChange.Type.REMOVED, ch12.getType());
+        } catch (Exception e) {
+          errors.add(e);
+        }
+      }
+    };
+
+    Runnable r2 = new Runnable() {
+      public void run() {
+        try {
+          // now check merge commit relatively to the branch
+          final VcsRoot root = getRoot("master");
+          final List<ModificationData> mms0 = support.collectChanges(root, MERGE_BRANCH_VERSION, MERGE_VERSION, new CheckoutRules(""));
+          assertEquals(2, mms0.size());
+        } catch (Exception e) {
+          errors.add(e);
+        }
+      }
+    };
+
+    Runnable r3 = new Runnable() {
+      public void run() {
+        try {
+          // no check the merge commit relatively to the fork
+          final VcsRoot root = getRoot("master");
+          final List<ModificationData> mms1 = support.collectChanges(root, CUD1_VERSION, MERGE_VERSION, new CheckoutRules(""));
+          assertEquals(3, mms1.size());
+          ModificationData md1 = mms1.get(0);
+          assertFalse(md1.isCanBeIgnored());
+          assertEquals("merge commit\n", md1.getDescription());
+          assertEquals(MERGE_VERSION, md1.getVersion());
+          assertEquals(3, md1.getChanges().size());
+          VcsChange ch20 = md1.getChanges().get(0);
+          assertEquals("dir/a.txt", ch20.getFileName());
+          assertEquals(VcsChange.Type.REMOVED, ch20.getType());
+          VcsChange ch21 = md1.getChanges().get(1);
+          assertEquals("dir/b.txt", ch21.getFileName());
+          assertEquals(VcsChange.Type.CHANGED, ch21.getType());
+          VcsChange ch22 = md1.getChanges().get(2);
+          assertEquals("dir/q.txt", ch22.getFileName());
+          assertEquals(VcsChange.Type.ADDED, ch22.getType());
+          ModificationData md2 = mms1.get(1);
+          assertTrue(md2.isCanBeIgnored());
+          assertEquals("b-mod, d-add\n", md2.getDescription());
+          assertEquals(MERGE_BRANCH_VERSION, md2.getVersion());
+          assertEquals(2, md2.getChanges().size());
+          ModificationData md3 = mms1.get(2);
+          assertEquals("a-mod, c-rm\n", md3.getDescription());
+          assertEquals(2, md3.getChanges().size());
+        } catch (Exception e) {
+          errors.add(e);
+        }
+      }
+    };
+
+    Runnable r4 = new Runnable() {
+      public void run() {
+        try {
+          // check the case with broken commit
+          final VcsRoot root = getRoot("master");
+          String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), GitUtils.versionTime(CUD1_VERSION));
+          final List<ModificationData> mms2 = support.collectChanges(root, missing, MERGE_VERSION, new CheckoutRules(""));
+          assertEquals(4, mms2.size());
+          ModificationData mb3 = mms2.get(3);
+          assertEquals(GitServerUtil.SYSTEM_USER, mb3.getUserName());
+          assertEquals(0, mb3.getChanges().size());
+        } catch (Exception e) {
+          errors.add(e);
+        }
+      }
+    };
+
+    for (int i = 0; i < 50; i++) {
+      BaseTestCase.runAsync(4, r1, r2, r3, r4);
+    }
+
+    if (!errors.isEmpty()) {
+      throw errors.get(0);
+    }
+  }
+
 
   /**
    * Test getting changes for the build with submodules ignored
