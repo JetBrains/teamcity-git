@@ -40,8 +40,9 @@ public class SubmoduleTest {
    *
    * @throws IOException if there is IO problem
    */
-  @Test
-  public void testSubmoduleMapping() throws Exception {
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)  
+  public void testSubmoduleMapping(boolean fetchInSeparateProcess) throws Exception {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     File masterRep = dataFile("repo.git");
     Repository r = new Repository(masterRep);
     try {
@@ -63,8 +64,9 @@ public class SubmoduleTest {
    *
    * @throws IOException if there is IO problem
    */
-  @Test
-  public void testSubmoduleMultiEntryMapping() throws Exception {
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testSubmoduleMultiEntryMapping(boolean fetchInSeparateProcess) throws Exception {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     File masterRep = dataFile("repo.git");
     File submodulesFile = dataFile("content", "dotgitmodules");
     Repository r = new Repository(masterRep);
@@ -92,8 +94,9 @@ public class SubmoduleTest {
    *
    * @throws IOException in case of test failure
    */
-  @Test
-  public void testSubmoduleTreeWalk() throws IOException {
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testSubmoduleTreeWalk(boolean fetchInSeparateProcess) throws IOException {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     File masterRep = dataFile("repo.git");
     Repository rm = new Repository(masterRep);
     try {
