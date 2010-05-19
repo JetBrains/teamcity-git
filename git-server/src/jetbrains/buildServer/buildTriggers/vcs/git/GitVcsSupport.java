@@ -58,8 +58,6 @@ import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 
 /**
@@ -77,9 +75,13 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   private static final Random ourRandom = new Random();
   /**
-   * Fetch operation permission map (repository dir -> permission)
+   * JGit operations locks (repository dir -> lock)
+   *
+   * Due to problems with concurrent fetch using jgit all API operations that use jgit are synchronized by locks from this map.
+   * Sinse these operations are synchronized in server by VcsRoot,
+   * additional synchronization by repository dirs should not create problems.
    */
-  private static ConcurrentMap<File, ReentrantReadWriteLock> myFetchPermissions = new ConcurrentHashMap<File, ReentrantReadWriteLock>();
+  private static ConcurrentMap<File, Object> myRepositoryLocks = new ConcurrentHashMap<File, Object>();
   /**
    * Name of property for repository directory path for fetch process
    */
@@ -188,58 +190,60 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     List<ModificationData> rc = new ArrayList<ModificationData>();
     Settings s = createSettings(root);
-    try {
-      Map<String, Repository> repositories = new HashMap<String, Repository>();
-      Repository r = getRepository(s, repositories);
+    synchronized (getRepositoryLock(s.getRepositoryPath())) {
       try {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + s.debugInfo());
-        }
-        final String current = GitUtils.versionRevision(currentVersion);
-        ensureCommitLoaded(s, r, current, root);
-        final String from = GitUtils.versionRevision(fromVersion);
-        RevWalk revs = new RevWalk(r);
-        final RevCommit currentRev = revs.parseCommit(ObjectId.fromString(current));
-        revs.markStart(currentRev);
-        revs.sort(RevSort.TOPO);
-        revs.sort(RevSort.COMMIT_TIME_DESC);
-        final ObjectId fromId = ObjectId.fromString(from);
-        if (r.hasObject(fromId)) {
-          final RevCommit fromRev = revs.parseCommit(fromId);
-          revs.markUninteresting(fromRev);
-          RevCommit c;
-          while ((c = revs.next()) != null) {
-            addCommit(root, rc, r, repositories, s, revs, c);
+        Map<String, Repository> repositories = new HashMap<String, Repository>();
+        Repository r = getRepository(s, repositories);
+        try {
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + s.debugInfo());
           }
-        } else {
-          LOG.warn("From version " + fromVersion + " is not found, collecting changes based on commit date and time " + s.debugInfo());
-          RevCommit c;
-          long limitTime = GitUtils.versionTime(fromVersion);
-          while ((c = revs.next()) != null) {
-            if (c.getCommitTime() * 1000L <= limitTime) {
-              revs.markUninteresting(c);
-            } else {
+          final String current = GitUtils.versionRevision(currentVersion);
+          ensureCommitLoaded(s, r, current, root);
+          final String from = GitUtils.versionRevision(fromVersion);
+          RevWalk revs = new RevWalk(r);
+          final RevCommit currentRev = revs.parseCommit(ObjectId.fromString(current));
+          revs.markStart(currentRev);
+          revs.sort(RevSort.TOPO);
+          revs.sort(RevSort.COMMIT_TIME_DESC);
+          final ObjectId fromId = ObjectId.fromString(from);
+          if (r.hasObject(fromId)) {
+            final RevCommit fromRev = revs.parseCommit(fromId);
+            revs.markUninteresting(fromRev);
+            RevCommit c;
+            while ((c = revs.next()) != null) {
               addCommit(root, rc, r, repositories, s, revs, c);
             }
+          } else {
+            LOG.warn("From version " + fromVersion + " is not found, collecting changes based on commit date and time " + s.debugInfo());
+            RevCommit c;
+            long limitTime = GitUtils.versionTime(fromVersion);
+            while ((c = revs.next()) != null) {
+              if (c.getCommitTime() * 1000L <= limitTime) {
+                revs.markUninteresting(c);
+              } else {
+                addCommit(root, rc, r, repositories, s, revs, c);
+              }
+            }
+            // add revision with warning text and random number as version
+            byte[] idBytes = new byte[20];
+            ourRandom.nextBytes(idBytes);
+            String version = GitUtils.makeVersion(ObjectId.fromRaw(idBytes).name(), limitTime);
+            rc.add(new ModificationData(new Date(currentRev.getCommitTime()),
+                                        new ArrayList<VcsChange>(),
+                                        "The previous version was removed from repository, " +
+                                        "getting changes using date. The changes reported might be not accurate.",
+                                        GitServerUtil.SYSTEM_USER,
+                                        root,
+                                        version,
+                                        GitServerUtil.displayVersion(version)));
           }
-          // add revision with warning text and random number as version
-          byte[] idBytes = new byte[20];
-          ourRandom.nextBytes(idBytes);
-          String version = GitUtils.makeVersion(ObjectId.fromRaw(idBytes).name(), limitTime);
-          rc.add(new ModificationData(new Date(currentRev.getCommitTime()),
-                                      new ArrayList<VcsChange>(),
-                                      "The previous version was removed from repository, " +
-                                      "getting changes using date. The changes reported might be not accurate.",
-                                      GitServerUtil.SYSTEM_USER,
-                                      root,
-                                      version,
-                                      GitServerUtil.displayVersion(version)));
+        } finally {
+          close(repositories);
         }
-      } finally {
-        close(repositories);
+      } catch (Exception e) {
+        throw processException("collecting changes", e);
       }
-    } catch (Exception e) {
-      throw processException("collecting changes", e);
     }
     return rc;
   }
@@ -459,95 +463,97 @@ public class GitVcsSupport extends ServerVcsSupport
                          @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
     final boolean debugFlag = LOG.isDebugEnabled();
     final Settings s = createSettings(root);
-    try {
-      Map<String, Repository> repositories = new HashMap<String, Repository>();
-      final Repository r = getRepository(s, repositories);
+    synchronized (getRepositoryLock(s.getRepositoryPath())) {
       try {
-        Commit toCommit = ensureCommitLoaded(s, r, GitUtils.versionRevision(toVersion), root);
-        if (toCommit == null) {
-          throw new VcsException("Missing commit for version: " + toVersion);
-        }
-        final TreeWalk tw = new TreeWalk(r);
-        tw.setFilter(TreeFilter.ANY_DIFF);
-        tw.setRecursive(true);
-        tw.reset();
-        addTree(tw, toCommit, s, repositories);
-        if (fromVersion != null) {
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
+        Map<String, Repository> repositories = new HashMap<String, Repository>();
+        final Repository r = getRepository(s, repositories);
+        try {
+          Commit toCommit = ensureCommitLoaded(s, r, GitUtils.versionRevision(toVersion), root);
+          if (toCommit == null) {
+            throw new VcsException("Missing commit for version: " + toVersion);
           }
-          Commit fromCommit = r.mapCommit(GitUtils.versionRevision(fromVersion));
-          if (fromCommit == null) {
-            throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not available in the repository");
+          final TreeWalk tw = new TreeWalk(r);
+          tw.setFilter(TreeFilter.ANY_DIFF);
+          tw.setRecursive(true);
+          tw.reset();
+          addTree(tw, toCommit, s, repositories);
+          if (fromVersion != null) {
+            if (LOG.isDebugEnabled()) {
+              LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
+            }
+            Commit fromCommit = r.mapCommit(GitUtils.versionRevision(fromVersion));
+            if (fromCommit == null) {
+              throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not available in the repository");
+            }
+            addTree(tw, fromCommit, s, repositories);
+          } else {
+            if (LOG.isDebugEnabled()) {
+              LOG.debug("Creating clean patch " + toVersion + " for " + s.debugInfo());
+            }
+            tw.addTree(new EmptyTreeIterator());
           }
-          addTree(tw, fromCommit, s, repositories);
-        } else {
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("Creating clean patch " + toVersion + " for " + s.debugInfo());
-          }
-          tw.addTree(new EmptyTreeIterator());
-        }
-        final List<Callable<Void>> actions = new LinkedList<Callable<Void>>();
-        while (tw.next()) {
-          final String path = tw.getPathString();
-          final String mapped = checkoutRules.map(path);
-          if (mapped == null) {
-            continue;
-          }
-          if (debugFlag) {
-            LOG.debug("File found " + treeWalkInfo(tw) + " for " + s.debugInfo());
-          }
-          switch (classifyChange(2, tw)) {
-            case UNCHANGED:
-              // change is ignored
+          final List<Callable<Void>> actions = new LinkedList<Callable<Void>>();
+          while (tw.next()) {
+            final String path = tw.getPathString();
+            final String mapped = checkoutRules.map(path);
+            if (mapped == null) {
               continue;
-            case MODIFIED:
-            case ADDED:
-            case FILE_MODE_CHANGED:
-              if (!FileMode.GITLINK.equals(tw.getFileMode(0))) {
-                final String mode = getModeDiff(tw);
-                final ObjectId id = tw.getObjectId(0);
-                final Repository objRep = getRepository(r, tw, 0);
-                final Callable<Void> action = new Callable<Void>() {
-                  public Void call() throws Exception {
-                    try {
-                      byte[] bytes = loadObject(objRep, path, id);
-                      builder.changeOrCreateBinaryFile(GitUtils.toFile(mapped), mode, new ByteArrayInputStream(bytes), bytes.length);
-                    } catch (Error e) {
-                      LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + s.debugInfo());
-                      throw e;
-                    } catch (Exception e) {
-                      LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + s.debugInfo());
-                      throw e;
+            }
+            if (debugFlag) {
+              LOG.debug("File found " + treeWalkInfo(tw) + " for " + s.debugInfo());
+            }
+            switch (classifyChange(2, tw)) {
+              case UNCHANGED:
+                // change is ignored
+                continue;
+              case MODIFIED:
+              case ADDED:
+              case FILE_MODE_CHANGED:
+                if (!FileMode.GITLINK.equals(tw.getFileMode(0))) {
+                  final String mode = getModeDiff(tw);
+                  final ObjectId id = tw.getObjectId(0);
+                  final Repository objRep = getRepository(r, tw, 0);
+                  final Callable<Void> action = new Callable<Void>() {
+                    public Void call() throws Exception {
+                      try {
+                        byte[] bytes = loadObject(objRep, path, id);
+                        builder.changeOrCreateBinaryFile(GitUtils.toFile(mapped), mode, new ByteArrayInputStream(bytes), bytes.length);
+                      } catch (Error e) {
+                        LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + s.debugInfo());
+                        throw e;
+                      } catch (Exception e) {
+                        LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + s.debugInfo());
+                        throw e;
+                      }
+                      return null;
                     }
-                    return null;
+                  };
+                  if (fromVersion == null) {
+                    // clean patch, we aren't going to see any deletes
+                    action.call();
+                  } else {
+                    actions.add(action);
                   }
-                };
-                if (fromVersion == null) {
-                  // clean patch, we aren't going to see any deletes
-                  action.call();
-                } else {
-                  actions.add(action);
                 }
-              }
-              break;
-            case DELETED:
-              if (!FileMode.GITLINK.equals(tw.getFileMode(0))) {
-                builder.deleteFile(GitUtils.toFile(mapped), true);
-              }
-              break;
-            default:
-              throw new IllegalStateException("Unknown change type");
+                break;
+              case DELETED:
+                if (!FileMode.GITLINK.equals(tw.getFileMode(0))) {
+                  builder.deleteFile(GitUtils.toFile(mapped), true);
+                }
+                break;
+              default:
+                throw new IllegalStateException("Unknown change type");
+            }
           }
+          for (Callable<Void> a : actions) {
+            a.call();
+          }
+        } finally {
+          close(repositories);
         }
-        for (Callable<Void> a : actions) {
-          a.call();
-        }
-      } finally {
-        close(repositories);
+      } catch (Exception e) {
+        throw processException("patch building", e);
       }
-    } catch (Exception e) {
-      throw processException("patch building", e);
     }
   }
 
@@ -628,35 +634,37 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot versionedRoot, @NotNull String version) throws VcsException {
     Settings s = createSettings(versionedRoot);
-    try {
-      Map<String, Repository> repositories = new HashMap<String, Repository>();
-      Repository r = getRepository(s, repositories);
+    synchronized (getRepositoryLock(s.getRepositoryPath())) {
       try {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
+        Map<String, Repository> repositories = new HashMap<String, Repository>();
+        Repository r = getRepository(s, repositories);
+        try {
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
+          }
+          final String rev = GitUtils.versionRevision(version);
+          Commit c = ensureCommitLoaded(s, r, rev, versionedRoot);
+          final TreeWalk tw = new TreeWalk(r);
+          tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
+          tw.setRecursive(tw.getFilter().shouldBeRecursive());
+          tw.reset();
+          addTree(tw, c, s, repositories);
+          if (!tw.next()) {
+            throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + s.debugInfo());
+          }
+          final byte[] data = loadObject(r, tw, 0);
+          if (LOG.isDebugEnabled()) {
+            LOG.debug(
+              "File retrieved " + version + ":" + filePath + " (hash = " + tw.getObjectId(0) + ", length = " + data.length + ") for " +
+              s.debugInfo());
+          }
+          return data;
+        } finally {
+          close(repositories);
         }
-        final String rev = GitUtils.versionRevision(version);
-        Commit c = ensureCommitLoaded(s, r, rev, versionedRoot);
-        final TreeWalk tw = new TreeWalk(r);
-        tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
-        tw.setRecursive(tw.getFilter().shouldBeRecursive());
-        tw.reset();
-        addTree(tw, c, s, repositories);
-        if (!tw.next()) {
-          throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + s.debugInfo());
-        }
-        final byte[] data = loadObject(r, tw, 0);
-        if (LOG.isDebugEnabled()) {
-          LOG.debug(
-            "File retrieved " + version + ":" + filePath + " (hash = " + tw.getObjectId(0) + ", length = " + data.length + ") for " +
-            s.debugInfo());
-        }
-        return data;
-      } finally {
-        close(repositories);
+      } catch (Exception e) {
+        throw processException("retrieving content", e);
       }
-    } catch (Exception e) {
-      throw processException("retrieving content", e);
     }
   }
 
@@ -848,24 +856,26 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public String getCurrentVersion(@NotNull VcsRoot root) throws VcsException {
     Settings s = createSettings(root);
-    try {
-      Repository r = getRepository(s);
+    synchronized (getRepositoryLock(s.getRepositoryPath())) {
       try {
-        fetchBranchData(s, r, root);
-        String refName = GitUtils.branchRef(s.getBranch());
-        Commit c = r.mapCommit(refName);
-        if (c == null) {
-          throw new VcsException("The branch name could not be resolved " + refName);
+        Repository r = getRepository(s);
+        try {
+          fetchBranchData(s, r, root);
+          String refName = GitUtils.branchRef(s.getBranch());
+          Commit c = r.mapCommit(refName);
+          if (c == null) {
+            throw new VcsException("The branch name could not be resolved " + refName);
+          }
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Current version: " + c.getCommitId().name() + " " + s.debugInfo());
+          }
+          return GitServerUtil.makeVersion(c);
+        } finally {
+          r.close();
         }
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Current version: " + c.getCommitId().name() + " " + s.debugInfo());
-        }
-        return GitServerUtil.makeVersion(c);
-      } finally {
-        r.close();
+      } catch (Exception e) {
+        throw processException("retrieving current version", e);
       }
-    } catch (Exception e) {
-      throw processException("retrieving current version", e);
     }
   }
 
@@ -895,49 +905,37 @@ public class GitVcsSupport extends ServerVcsSupport
    * @throws Exception if there is a problem with fetching data
    */
   private void fetchBranchData(Settings settings, Repository repository, VcsRoot root) throws Exception {
-    ReadWriteLock fetchPermit = getFetchPermit(repository.getDirectory());
-    if (fetchPermit.writeLock().tryLock()) {
-      try {
-        if (separateProcessForFetch()) {
-          fetchBranchDataInSeparateProcess(settings, repository, root);
-        } else {
-          final String refName = GitUtils.branchRef(settings.getBranch());
-          final Transport tn = openTransport(settings, repository);
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("Fetching data for " + refName + "... " + settings.debugInfo());
-          }
-          try {
-            RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
-            tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
-          } finally {
-            tn.close();
-          }
-        }
-      } finally {
-        fetchPermit.writeLock().unlock();
-      }
+    if (separateProcessForFetch()) {
+      fetchBranchDataInSeparateProcess(settings, repository, root);
     } else {
-      try {                
-        fetchPermit.readLock().lock(); //block until current fetch operation will finish
+      final String refName = GitUtils.branchRef(settings.getBranch());
+      final Transport tn = openTransport(settings, repository);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Fetching data for " + refName + "... " + settings.debugInfo());
+      }
+      try {
+        RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
+        tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
       } finally {
-        fetchPermit.readLock().unlock();
+        tn.close();
       }
     }
   }
 
   /**
-   * Get permit to run fetch operation
+   * Get repository lock for work with jgit
    *
    * @param repositoryDir repository dir where fetch run
-   * @return read-write lock associated with repository dir 
+   * @return lock associated with repository dir 
    */
-  private ReentrantReadWriteLock getFetchPermit(File repositoryDir) {
-    ReentrantReadWriteLock newPermit = new ReentrantReadWriteLock();
-    ReentrantReadWriteLock existingPermit = myFetchPermissions.putIfAbsent(repositoryDir, newPermit);
-    if (existingPermit != null)
-      return existingPermit;
+  @NotNull
+  private Object getRepositoryLock(@NotNull File repositoryDir) {
+    Object newLock = new Object();
+    Object existingLock = myRepositoryLocks.putIfAbsent(repositoryDir, newLock);
+    if (existingLock != null)
+      return existingLock;
     else
-      return newPermit;
+      return newLock;
   }
 
   /**
@@ -1079,56 +1077,58 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
     Settings s = createSettings(vcsRoot);
-    try {
-      Repository r = getRepository(s);
+    synchronized (getRepositoryLock(s.getRepositoryPath())) {
       try {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Opening connection for " + s.debugInfo());
-        }
-        final Transport tn = openTransport(s, r);
+        Repository r = getRepository(s);
         try {
-          final FetchConnection c = tn.openFetch();
-          try {
-            if (LOG.isDebugEnabled()) {
-              LOG.debug("Checking references... " + s.debugInfo());
-            }
-            String refName = GitUtils.branchRef(s.getBranch());
-            boolean refFound = false;
-            for (final Ref ref : c.getRefs()) {
-              if (refName.equals(ref.getName())) {
-                LOG.info("The branch reference found " + refName + "=" + ref.getObjectId() + " for " + s.debugInfo());
-                refFound = true;
-                break;
-              }
-            }
-            if (!refFound) {
-              throw new VcsException("The branch " + refName + " was not found in the repository " + s.getPublicURL());
-            }
-          } finally {
-            c.close();
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Opening connection for " + s.debugInfo());
           }
-        } finally {
-          tn.close();
-        }
-        if (!s.getRepositoryFetchURL().equals(s.getRepositoryPushURL())) {
-          final Transport push = openTransport(s, r, s.getRepositoryPushURL());
+          final Transport tn = openTransport(s, r);
           try {
-            final PushConnection c = push.openPush();
+            final FetchConnection c = tn.openFetch();
             try {
-              c.getRefs();
+              if (LOG.isDebugEnabled()) {
+                LOG.debug("Checking references... " + s.debugInfo());
+              }
+              String refName = GitUtils.branchRef(s.getBranch());
+              boolean refFound = false;
+              for (final Ref ref : c.getRefs()) {
+                if (refName.equals(ref.getName())) {
+                  LOG.info("The branch reference found " + refName + "=" + ref.getObjectId() + " for " + s.debugInfo());
+                  refFound = true;
+                  break;
+                }
+              }
+              if (!refFound) {
+                throw new VcsException("The branch " + refName + " was not found in the repository " + s.getPublicURL());
+              }
             } finally {
               c.close();
             }
           } finally {
             tn.close();
           }
+          if (!s.getRepositoryFetchURL().equals(s.getRepositoryPushURL())) {
+            final Transport push = openTransport(s, r, s.getRepositoryPushURL());
+            try {
+              final PushConnection c = push.openPush();
+              try {
+                c.getRefs();
+              } finally {
+                c.close();
+              }
+            } finally {
+              tn.close();
+            }
+          }
+          return null;
+        } finally {
+          r.close();
         }
-        return null;
-      } finally {
-        r.close();
+      } catch (Exception e) {
+        throw processException("connection test", e);
       }
-    } catch (Exception e) {
-      throw processException("connection test", e);
     }
   }
 
@@ -1193,45 +1193,47 @@ public class GitVcsSupport extends ServerVcsSupport
   public String label(@NotNull String label, @NotNull String version, @NotNull VcsRoot root, @NotNull CheckoutRules checkoutRules)
     throws VcsException {
     Settings s = createSettings(root);
-    try {
-      Repository r = getRepository(s);
+    synchronized (getRepositoryLock(s.getRepositoryPath())) {
       try {
-        final ObjectId rev = versionObjectId(version);
-        ensureCommitLoaded(s, r, rev.name(), root);
-        Tag t = new Tag(r);
-        t.setTag(label);
-        t.setObjId(rev);
-        t.tag();
-        String tagRef = GitUtils.tagName(label);
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
-        }
-        final Transport tn = openTransport(s, r, s.getRepositoryPushURL());
+        Repository r = getRepository(s);
         try {
-          final PushConnection c = tn.openPush();
-          try {
-            RemoteRefUpdate ru = new RemoteRefUpdate(r, tagRef, tagRef, false, null, null);
-            c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(tagRef, ru));
-            LOG.info("Tag  " + label + "=" + version + " pushed with status " + ru.getStatus() + " for " + s.debugInfo());
-            switch (ru.getStatus()) {
-              case UP_TO_DATE:
-              case OK:
-                break;
-              default:
-                throw new VcsException("The remote tag was not created (" + ru.getStatus() + "): " + label);
-            }
-          } finally {
-            c.close();
+          final ObjectId rev = versionObjectId(version);
+          ensureCommitLoaded(s, r, rev.name(), root);
+          Tag t = new Tag(r);
+          t.setTag(label);
+          t.setObjId(rev);
+          t.tag();
+          String tagRef = GitUtils.tagName(label);
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
           }
-          return label;
+          final Transport tn = openTransport(s, r, s.getRepositoryPushURL());
+          try {
+            final PushConnection c = tn.openPush();
+            try {
+              RemoteRefUpdate ru = new RemoteRefUpdate(r, tagRef, tagRef, false, null, null);
+              c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(tagRef, ru));
+              LOG.info("Tag  " + label + "=" + version + " pushed with status " + ru.getStatus() + " for " + s.debugInfo());
+              switch (ru.getStatus()) {
+                case UP_TO_DATE:
+                case OK:
+                  break;
+                default:
+                  throw new VcsException("The remote tag was not created (" + ru.getStatus() + "): " + label);
+              }
+            } finally {
+              c.close();
+            }
+            return label;
+          } finally {
+            tn.close();
+          }
         } finally {
-          tn.close();
+          r.close();
         }
-      } finally {
-        r.close();
+      } catch (Exception e) {
+        throw processException("labelling", e);
       }
-    } catch (Exception e) {
-      throw processException("labelling", e);
     }
   }
 
@@ -1350,7 +1352,10 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public Collection<String> mapFullPath(@NotNull final VcsRootEntry rootEntry, @NotNull final String fullPath) {
     try {
-      return new GitMapFullPath(rootEntry, fullPath, createSettings(rootEntry.getVcsRoot())).mapFullPath();
+      Settings settings = createSettings(rootEntry.getVcsRoot());
+      synchronized (getRepositoryLock(settings.getRepositoryPath())) {
+        return new GitMapFullPath(rootEntry, fullPath, settings).mapFullPath();        
+      }
     } catch (VcsException e) {
       LOG.error(e);
       return Collections.emptySet();
