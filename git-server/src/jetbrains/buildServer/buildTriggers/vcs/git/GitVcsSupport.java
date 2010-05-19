@@ -57,7 +57,9 @@ import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.*;
-import java.util.concurrent.Callable;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 
 /**
@@ -74,6 +76,10 @@ public class GitVcsSupport extends ServerVcsSupport
    * Random number generator used to generate artificial versions
    */
   private static final Random ourRandom = new Random();
+  /**
+   * Fetch operation permission map (repository dir -> permission)
+   */
+  private static ConcurrentMap<File, ReentrantReadWriteLock> myFetchPermissions = new ConcurrentHashMap<File, ReentrantReadWriteLock>();
   /**
    * Name of property for repository directory path for fetch process
    */
@@ -889,21 +895,49 @@ public class GitVcsSupport extends ServerVcsSupport
    * @throws Exception if there is a problem with fetching data
    */
   private void fetchBranchData(Settings settings, Repository repository, VcsRoot root) throws Exception {
-    if (separateProcessForFetch()) {
-      fetchBranchDataInSeparateProcess(settings, repository, root);
-    } else {
-      final String refName = GitUtils.branchRef(settings.getBranch());
-      final Transport tn = openTransport(settings, repository);
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Fetching data for " + refName + "... " + settings.debugInfo());
-      }
+    ReadWriteLock fetchPermit = getFetchPermit(repository.getDirectory());
+    if (fetchPermit.writeLock().tryLock()) {
       try {
-        RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
-        tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
+        if (separateProcessForFetch()) {
+          fetchBranchDataInSeparateProcess(settings, repository, root);
+        } else {
+          final String refName = GitUtils.branchRef(settings.getBranch());
+          final Transport tn = openTransport(settings, repository);
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Fetching data for " + refName + "... " + settings.debugInfo());
+          }
+          try {
+            RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
+            tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
+          } finally {
+            tn.close();
+          }
+        }
       } finally {
-        tn.close();
+        fetchPermit.writeLock().unlock();
+      }
+    } else {
+      try {                
+        fetchPermit.readLock().lock(); //block until current fetch operation will finish
+      } finally {
+        fetchPermit.readLock().unlock();
       }
     }
+  }
+
+  /**
+   * Get permit to run fetch operation
+   *
+   * @param repositoryDir repository dir where fetch run
+   * @return read-write lock associated with repository dir 
+   */
+  private ReentrantReadWriteLock getFetchPermit(File repositoryDir) {
+    ReentrantReadWriteLock newPermit = new ReentrantReadWriteLock();
+    ReentrantReadWriteLock existingPermit = myFetchPermissions.putIfAbsent(repositoryDir, newPermit);
+    if (existingPermit != null)
+      return existingPermit;
+    else
+      return newPermit;
   }
 
   /**
