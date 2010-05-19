@@ -985,7 +985,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   /**
-   * Get path to java executable for fetch process, "java" by default
+   * Get path to java executable for fetch process, "${java.home}/bin/java" by default
    *
    * @return path to java executable
    */
