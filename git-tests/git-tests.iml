@@ -17,6 +17,8 @@
     <orderEntry type="library" name="Tomcat" level="project" />
     <orderEntry type="library" name="TeamCity Tests" level="project" />
     <orderEntry type="module" module-name="git-common" />
+    <orderEntry type="module" module-name="git-agent" />
+    <orderEntry type="library" name="TeamCity Agent" level="project" />
   </component>
 </module>
 
