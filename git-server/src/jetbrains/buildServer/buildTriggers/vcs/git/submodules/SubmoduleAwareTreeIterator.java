@@ -149,14 +149,12 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
       } catch (VcsAuthenticationException e) {
         //in case of VcsAuthenticationException throw CorruptObjectException without object id,
         //because problem is related to whole repository, not to concrete object
-        final CorruptObjectException ex = new CorruptObjectException(String
-          .format("Problem with submodule '%s': %s", myWrappedIterator.getEntryPathString(), e.getMessage()));
+        final SubmoduleFetchException ex = new SubmoduleFetchException(myWrappedIterator.getEntryPathString());
         ex.initCause(e);
         throw ex;
       } catch (TransportException e) {
         //this problem is also related to whole repository
-        final CorruptObjectException ex = new CorruptObjectException(String
-          .format("Problem with submodule '%s': %s", myWrappedIterator.getEntryPathString(), e.getMessage()));
+        final SubmoduleFetchException ex = new SubmoduleFetchException(myWrappedIterator.getEntryPathString());
         ex.initCause(e);
         throw ex;
       } catch (IOException e) {
