@@ -485,6 +485,9 @@
     <path refid="library.teamcity_tests.classpath"/>
     <pathelement location="${git-common.output.dir}"/>
     <pathelement location="${git-common.testoutput.dir}"/>
+    <path refid="library.teamcity_agent.classpath"/>
+    <pathelement location="${git-agent.output.dir}"/>
+    <pathelement location="${git-agent.testoutput.dir}"/>
   </path>
   
   <path id="git-tests.runtime.module.classpath">
@@ -502,6 +505,10 @@
     <path refid="library.jgit.classpath"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
     <path refid="library.teamcity_tests.classpath"/>
+    <path refid="library.teamcity_agent.classpath"/>
+    <pathelement location="${git-agent.output.dir}"/>
+    <pathelement location="${git-agent.testoutput.dir}"/>
+    <path refid="library.trilead_ssh.classpath"/>
   </path>
   
   
@@ -522,7 +529,7 @@
   
   <target name="compile.module.git-tests" depends="compile.module.git-tests.production,compile.module.git-tests.tests" description="Compile module git-tests"/>
   
-  <target name="compile.module.git-tests.production" depends="compile.module.git-server,compile.module.git-common" description="Compile module git-tests; production classes">
+  <target name="compile.module.git-tests.production" depends="compile.module.git-server,compile.module.git-common,compile.module.git-agent" description="Compile module git-tests; production classes">
     <mkdir dir="${git-tests.output.dir}"/>
     <javac2 destdir="${git-tests.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-tests}/javac">
       <compilerarg line="${compiler.args.git-tests}"/>
