@@ -17,7 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.util.containers.IntArrayList;
+import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import org.eclipse.jgit.errors.CorruptObjectException;
+import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
@@ -144,6 +146,19 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     if (myIsOnSubmodule) {
       try {
         mySubmoduleCommit = mySubmoduleResolver.getSubmodule(myWrappedIterator.getEntryPathString(), myWrappedIterator.getEntryObjectId());
+      } catch (VcsAuthenticationException e) {
+        //in case of VcsAuthenticationException throw CorruptObjectException without object id,
+        //because problem is related to whole repository, not to concrete object
+        final CorruptObjectException ex = new CorruptObjectException(String
+          .format("Problem with submodule '%s': %s", myWrappedIterator.getEntryPathString(), e.getMessage()));
+        ex.initCause(e);
+        throw ex;
+      } catch (TransportException e) {
+        //this problem is also related to whole repository
+        final CorruptObjectException ex = new CorruptObjectException(String
+          .format("Problem with submodule '%s': %s", myWrappedIterator.getEntryPathString(), e.getMessage()));
+        ex.initCause(e);
+        throw ex;
       } catch (IOException e) {
         final CorruptObjectException ex = new CorruptObjectException(myWrappedIterator.getEntryObjectId(), "Commit could not be resolved");
         ex.initCause(e);
