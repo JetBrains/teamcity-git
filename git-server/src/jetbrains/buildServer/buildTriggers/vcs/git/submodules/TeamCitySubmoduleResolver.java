@@ -17,10 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Commit;
 import org.eclipse.jgit.lib.NullProgressMonitor;
@@ -96,7 +93,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
   /**
    * {@inheritDoc}
    */
-  protected Repository resolveRepository(String path, String url) throws IOException {
+  protected Repository resolveRepository(String path, String url) throws IOException, VcsAuthenticationException {
     String overrideUrl = mySettings.getSubmoduleUrl(path);
     if (overrideUrl != null) {
       url = overrideUrl;
@@ -132,6 +129,8 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
         tn.close();
       }
       return r;
+    } catch (VcsAuthenticationException ae) {
+      throw ae;
     } catch (VcsException e) {
       if (e.getCause() instanceof IOException) {
         throw (IOException)e.getCause();
