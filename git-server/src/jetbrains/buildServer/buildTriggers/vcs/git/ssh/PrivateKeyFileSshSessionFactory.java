@@ -23,7 +23,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.transport.SshSessionFactory;
-import org.eclipse.jgit.transport.URIish;
 
 /**
  * The SSH session factory that uses explicitly specified private key file
