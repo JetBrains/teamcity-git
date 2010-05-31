@@ -81,6 +81,29 @@
     </testng>
   </target>
 
+  <target name="run-all-tests" depends="clean, init, compile.module.git-tests.production">
+    <property name="suspend" value="n"/>
+
+    <testng haltonfailure="no"
+            failureProperty="failure_found"
+            listener="org.testng.reporters.TestHTMLReporter"
+            outputdir="${basedir}/test-output"
+            classpathref="git-tests.runtime.module.classpath"
+            workingdir="${basedir}"
+            dumpcommand="true">
+
+      <jvmarg value="-ea"/>
+      <!--<jvmarg value="-Xrunjdwp:transport=dt_socket,server=y,suspend=${suspend},address=5555"/>-->
+
+      <sysproperty key="java.awt.headless" value="true"/>
+
+      <xmlfileset dir="${basedir}/git-tests/src">
+        <include name="native-git-testng.xml"/>
+        <include name="testng.xml"/>
+      </xmlfileset>
+    </testng>
+  </target>
+
   <target name="check_for_failures">
     <fail if="failure_found" message="Failures found."/>
   </target>
