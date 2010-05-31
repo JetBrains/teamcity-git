@@ -19,6 +19,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 import org.eclipse.jgit.errors.CorruptObjectException;
 
 /**
+ * Exception is thrown when we cannot fetch some submodule
+ *
  * @author dmitry.neverov
  */
 public class SubmoduleFetchException extends CorruptObjectException {
