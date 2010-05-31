@@ -371,7 +371,8 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   private void addTree(TreeWalk tw, Commit pc, Settings s, Map<String, Repository> repositories) throws IOException {
     if (s.areSubmodulesCheckedOut()) {
-      tw.addTree(SubmoduleAwareTreeIterator.create(pc, new TeamCitySubmoduleResolver(repositories, this, s, pc)));
+      tw.addTree(SubmoduleAwareTreeIterator.create(pc, new TeamCitySubmoduleResolver(repositories, this, s, pc),
+                                                   s.getRepositoryFetchURL().toString()));
     } else {
       tw.addTree(pc.getTreeId());
     }
