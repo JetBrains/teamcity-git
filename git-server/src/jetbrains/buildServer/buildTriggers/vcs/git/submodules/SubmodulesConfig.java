@@ -115,4 +115,26 @@ public class SubmodulesConfig {
     ensureLoaded();
     return mySubmoduleDirectParents.contains(path);
   }
+
+  /**
+   * Get url of submodule repository for specified submodule path
+   *
+   * @param submodulePath submodule path in parent repository
+   * @return url of submodule repository as it defined in .git/config or .gitmodules
+   * or null if no submodule is registered for such path 
+   */
+  public String getSubmoduleUrl(String submodulePath) {
+    ensureLoaded();
+    for (String name : myModulesConfig.getSubsections("submodule")) {
+      final String path = myModulesConfig.getString("submodule", name, "path");
+      if (path.equals(submodulePath)) {
+        String url = myRepositoryConfig.getString("submodule", name, "url");
+        if (url == null) {
+          url = myModulesConfig.getString("submodule", name, "url");
+        }
+        return url;
+      }
+    }
+    return null;
+  }
 }
