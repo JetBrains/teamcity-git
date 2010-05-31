@@ -128,4 +128,14 @@ public abstract class SubmoduleResolver {
   public Repository getRepository() {
     return myCommit.getRepository();
   }
+
+  /**
+   * Get submodule url by it's path in current repository
+   *
+   * @param submodulePath path of submodule in current repository
+   * @return submodule repository url or null if no submodules is registered for specified path 
+   */
+  public String getSubmoduleUrl(String submodulePath) {
+    return myConfig.getSubmoduleUrl(submodulePath);
+  }
 }
