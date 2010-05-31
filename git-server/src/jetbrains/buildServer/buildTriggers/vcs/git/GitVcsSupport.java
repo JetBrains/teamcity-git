@@ -177,7 +177,7 @@ public class GitVcsSupport extends ServerVcsSupport
       }
       message = b.toString();
     }
-    return new VcsException("The " + operation + " failed: " + message, ex);
+    return new VcsException(StringUtil.capitalize(operation) + " failed: " + message, ex);
   }
 
 
