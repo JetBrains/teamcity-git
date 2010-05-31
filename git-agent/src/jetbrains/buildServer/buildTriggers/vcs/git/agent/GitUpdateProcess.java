@@ -175,7 +175,7 @@ public abstract class GitUpdateProcess {
     // do clean if requested
     doClean(branchInfo);
     if (new File(myDirectory, ".gitmodules").exists() && mySettings.areSubmodulesCheckedOut()) {
-      throw new VcsException("Submodule checkout is not supported on agent " + myRoot.getName());
+      doSubmoduleUpdate();
     }
   }
 
@@ -391,6 +391,13 @@ public abstract class GitUpdateProcess {
    * @return a short revision information or null if revision is not found
    */
   protected abstract String checkRevision(final String revision);
+
+  /**
+   * Make submodule init and submodule update
+   *
+   * @throws VcsException
+   */
+  protected abstract void doSubmoduleUpdate() throws VcsException;
 
   /**
    * The branch information class

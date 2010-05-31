@@ -266,6 +266,15 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   }
 
   /**
+   * {@inheritDoc}
+   */
+  protected void doSubmoduleUpdate() throws VcsException {
+    SubmoduleCommand submoduleCommand = new SubmoduleCommand(mySettings, mySshService);
+    submoduleCommand.init();
+    submoduleCommand.update();
+  }
+
+  /**
    * Create a value resolver
    *
    * @param agentConfiguration the build agent configuration
