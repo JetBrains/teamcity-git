@@ -1283,7 +1283,7 @@ public class GitVcsSupport extends ServerVcsSupport
     final Transport t = Transport.open(r, url);
     if (t instanceof SshTransport) {
       SshTransport ssh = (SshTransport)t;
-      ssh.setSshSessionFactory(getSshSessionFactory(s));
+      ssh.setSshSessionFactory(getSshSessionFactory(s, url));
     }
     boolean clone = true;
     try {
@@ -1312,16 +1312,21 @@ public class GitVcsSupport extends ServerVcsSupport
    * @return session factory object
    * @throws VcsException in case of problems with creating object
    */
-  private SshSessionFactory getSshSessionFactory(Settings s) throws VcsException {
+  private SshSessionFactory getSshSessionFactory(Settings s, URIish url) throws VcsException {
     switch (s.getAuthenticationMethod()) {
       case PRIVATE_KEY_DEFAULT:
         return s.isKnownHostsIgnored() ? mySshSessionFactoryKnownHostsIgnored : mySshSessionFactory;
       case PRIVATE_KEY_FILE:
-        return new PrivateKeyFileSshSessionFactory(s);
+        try {
+          return new PrivateKeyFileSshSessionFactory(s);
+        } catch (VcsAuthenticationException e) {
+          //add url to exception
+          throw new VcsAuthenticationException(url.toString(), e.getMessage().toString());
+        }
       case PASSWORD:
         return PasswordSshSessionFactory.INSTANCE;
       default:
-        throw new VcsException("The authentication method " + s.getAuthenticationMethod() + " is not supported for SSH");
+        throw new VcsAuthenticationException(url.toString(), "The authentication method " + s.getAuthenticationMethod() + " is not supported for SSH");
     }
   }
 

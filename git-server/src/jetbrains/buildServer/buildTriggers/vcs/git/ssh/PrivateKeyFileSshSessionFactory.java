@@ -20,8 +20,10 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.transport.SshSessionFactory;
+import org.eclipse.jgit.transport.URIish;
 
 /**
  * The SSH session factory that uses explicitly specified private key file
@@ -42,13 +44,13 @@ public class PrivateKeyFileSshSessionFactory extends SshSessionFactory {
    */
   public PrivateKeyFileSshSessionFactory(String privateKeyPath, String passphrase) throws VcsException {
     if(privateKeyPath == null || privateKeyPath.length() == 0) {
-      throw new VcsException("The private key path is not specified");
+      throw new VcsAuthenticationException("The private key path is not specified");
     }
     this.sch = new JSch();
     try {
       sch.addIdentity(privateKeyPath, passphrase);
     } catch (JSchException e) {
-      throw new VcsException("Unable to load identity file: " + privateKeyPath + (passphrase != null ? " (passphrase protected)" : ""), e);
+      throw new VcsAuthenticationException("Unable to load identity file: " + privateKeyPath + (passphrase != null ? " (passphrase protected)" : ""), e);
     }
   }
 
