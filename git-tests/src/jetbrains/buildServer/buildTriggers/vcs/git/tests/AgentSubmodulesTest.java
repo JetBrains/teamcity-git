@@ -73,6 +73,12 @@ public class AgentSubmodulesTest extends BaseTestCase {
    */
   private File myCheckoutDir;
 
+  /**
+   * Agent temp directory
+   */
+  private File agentConfigurationTempDirectory;
+
+
   static {
     Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
       public void run() {
@@ -97,6 +103,8 @@ public class AgentSubmodulesTest extends BaseTestCase {
     new File(mySubmoduleRepo, "refs" + File.separator + "heads").mkdirs();
 
     myCheckoutDir = myTempFiles.createTempDir();
+
+    agentConfigurationTempDirectory = myTempFiles.createTempDir();
   }
 
   @AfterMethod
@@ -106,6 +114,7 @@ public class AgentSubmodulesTest extends BaseTestCase {
     FileUtil.delete(myMainRepo);
     FileUtil.delete(mySubmoduleRepo);
     FileUtil.delete(myCheckoutDir);
+    FileUtil.delete(agentConfigurationTempDirectory);
   }
 
   /**
@@ -114,25 +123,10 @@ public class AgentSubmodulesTest extends BaseTestCase {
    * @throws IOException
    */
   public void testSubmodulesCheckout() throws VcsException, IOException {
-    File agentConfigurationTempDirectory = myTempFiles.createTempDir();
-    Mock buildAgentConfigurationMock = new Mock(BuildAgentConfiguration.class);
-    buildAgentConfigurationMock.stubs().method("getAgentParameters").will(returnValue(new HashMap<String, String>()));
-    buildAgentConfigurationMock.stubs().method("getCustomProperties").will(returnValue(new HashMap<String, String>()));
-    buildAgentConfigurationMock.stubs().method("getOwnPort").will(returnValue(600));
-    buildAgentConfigurationMock.stubs().method("getTempDirectory").will(returnValue(agentConfigurationTempDirectory));
-
-    Mock extensionHolderMock = new Mock(ExtensionHolder.class);
-    extensionHolderMock.stubs().method("getExtensions").withAnyArguments().will(returnValue(new ArrayList<ParameterResolverAgentProvider>()));
-    Mock currentBuildTrackerMock = new Mock(CurrentBuildTracker.class);
-
-    Mock agentMock = new Mock(BuildAgent.class);
-    Mock xmlRpcHandlerManagerMock = new Mock(XmlRpcHandlerManager.class);
-    xmlRpcHandlerManagerMock.stubs().method("addHandler").withAnyArguments();
-    agentMock.stubs().method("getXmlRpcHandlerManager").will(returnValue(xmlRpcHandlerManagerMock.proxy()));
+    Mock buildAgentConfigurationMock = createBuildAgentConfigurationMock();
 
     VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
     root.addProperty(Constants.FETCH_URL, GitUtils.toURL(myMainRepo));
-
     root.addProperty(Constants.AGENT_GIT_PATH, getGitPath());
     root.addProperty(Constants.BRANCH_NAME, "patch-tests");
     root.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
@@ -143,9 +137,10 @@ public class AgentSubmodulesTest extends BaseTestCase {
                            new SmartDirectoryCleaner() {
                              public void cleanFolder(@NotNull File file, @NotNull SmartDirectoryCleanerCallback callback) {/* do nothing*/}
                            },
-                           new GitAgentSSHService((BuildAgent) agentMock.proxy(), (BuildAgentConfiguration) buildAgentConfigurationMock.proxy()),
-                           new AgentParameterResolverFactory((ExtensionHolder) extensionHolderMock.proxy()),
-                           (CurrentBuildTracker) currentBuildTrackerMock.proxy())
+                           new GitAgentSSHService((BuildAgent) createBuildAgentMock().proxy(),
+                                                  (BuildAgentConfiguration) buildAgentConfigurationMock.proxy()),
+                           new AgentParameterResolverFactory((ExtensionHolder) createExtensionHolderMock().proxy()),
+                           (CurrentBuildTracker) createCurrentBuildTrackerMock().proxy())
       .updateSources(root,
                      new CheckoutRules(""),
                      GitVcsSupportTest.SUBMODULE_ADDED_VERSION,
@@ -153,6 +148,38 @@ public class AgentSubmodulesTest extends BaseTestCase {
                      new MyLogger());
 
     assertTrue(new File (myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
+  }
+
+  
+  private Mock createBuildAgentMock() {
+    Mock agentMock = new Mock(BuildAgent.class);
+    Mock xmlRpcHandlerManagerMock = new Mock(XmlRpcHandlerManager.class);
+    xmlRpcHandlerManagerMock.stubs().method("addHandler").withAnyArguments();
+    agentMock.stubs().method("getXmlRpcHandlerManager").will(returnValue(xmlRpcHandlerManagerMock.proxy()));
+    return agentMock;
+  }
+
+
+  private Mock createCurrentBuildTrackerMock() {
+    Mock currentBuildTrackerMock = new Mock(CurrentBuildTracker.class);
+    return currentBuildTrackerMock;
+  }
+
+
+  private Mock createExtensionHolderMock() {
+    Mock extensionHolderMock = new Mock(ExtensionHolder.class);
+    extensionHolderMock.stubs().method("getExtensions").withAnyArguments().will(returnValue(new ArrayList<ParameterResolverAgentProvider>()));
+    return extensionHolderMock;
+  }
+
+
+  private Mock createBuildAgentConfigurationMock() {
+    Mock buildAgentConfigurationMock = new Mock(BuildAgentConfiguration.class);
+    buildAgentConfigurationMock.stubs().method("getAgentParameters").will(returnValue(new HashMap<String, String>()));
+    buildAgentConfigurationMock.stubs().method("getCustomProperties").will(returnValue(new HashMap<String, String>()));
+    buildAgentConfigurationMock.stubs().method("getOwnPort").will(returnValue(600));
+    buildAgentConfigurationMock.stubs().method("getTempDirectory").will(returnValue(agentConfigurationTempDirectory));
+    return buildAgentConfigurationMock;
   }
 
 
