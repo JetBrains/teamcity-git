@@ -25,6 +25,7 @@ import jetbrains.buildServer.agent.parameters.AgentParameterResolverFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.parameters.CompositeParametersProvider;
@@ -272,6 +273,10 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     SubmoduleCommand submoduleCommand = new SubmoduleCommand(mySettings, mySshService);
     submoduleCommand.init();
     submoduleCommand.update();
+  }
+
+  private boolean recursiveSubmoduleCheckout() {
+    return SubmodulesCheckoutPolicy.CHECKOUT.equals(mySettings.getSubmodulesCheckoutPolicy());
   }
 
   /**
