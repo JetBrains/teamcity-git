@@ -28,4 +28,8 @@ public enum SubmodulesCheckoutPolicy {
    * Checkout submodules
    */
   CHECKOUT,
+  /**
+   * Checkout submodules non-recursively
+   */
+  NON_RECURSIVE_CHECKOUT
 }
