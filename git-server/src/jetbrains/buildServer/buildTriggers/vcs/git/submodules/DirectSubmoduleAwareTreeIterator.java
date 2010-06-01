@@ -33,8 +33,8 @@ public class DirectSubmoduleAwareTreeIterator extends SubmoduleAwareTreeIterator
    * @throws IOException in case of submodule processing problem
    */
   public DirectSubmoduleAwareTreeIterator(AbstractTreeIterator wrappedIterator, SubmoduleResolver submoduleResolver,
-                                          String repositoryUrl) throws IOException {
-    super(wrappedIterator, submoduleResolver, repositoryUrl);
+                                          String repositoryUrl, String pathFromRoot) throws IOException {
+    super(wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot);
   }
 
   /**
@@ -48,8 +48,9 @@ public class DirectSubmoduleAwareTreeIterator extends SubmoduleAwareTreeIterator
   public DirectSubmoduleAwareTreeIterator(SubmoduleAwareTreeIterator parent,
                                           AbstractTreeIterator wrappedIterator,
                                           SubmoduleResolver submoduleResolver,
-                                          String repositoryUrl) throws IOException {
-    super(parent, wrappedIterator, submoduleResolver, repositoryUrl);
+                                          String repositoryUrl,
+                                          String pathFromRoot) throws IOException {
+    super(parent, wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot);
   }
 
   /**

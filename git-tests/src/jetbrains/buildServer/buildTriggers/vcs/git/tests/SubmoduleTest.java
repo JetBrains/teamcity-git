@@ -115,8 +115,8 @@ public class SubmoduleTest {
         TreeWalk tw = new TreeWalk(rm);
         tw.setRecursive(true);
         tw.reset();
-        tw.addTree(SubmoduleAwareTreeIterator.create(beforeSubmoduleAdded, r, ""));
-        tw.addTree(SubmoduleAwareTreeIterator.create(submoduleAdded, r, ""));
+        tw.addTree(SubmoduleAwareTreeIterator.create(beforeSubmoduleAdded, r, "", ""));
+        tw.addTree(SubmoduleAwareTreeIterator.create(submoduleAdded, r, "", ""));
         tw.setFilter(TreeFilter.ANY_DIFF);
         checkElement(tw, ".gitmodules");
         assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rm);
@@ -124,8 +124,8 @@ public class SubmoduleTest {
         assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rs);
         assertFalse(tw.next());
         tw.reset();
-        tw.addTree(SubmoduleAwareTreeIterator.create(submoduleModified, r, ""));
-        tw.addTree(SubmoduleAwareTreeIterator.create(submoduleTxtAdded, r, ""));
+        tw.addTree(SubmoduleAwareTreeIterator.create(submoduleModified, r, "", ""));
+        tw.addTree(SubmoduleAwareTreeIterator.create(submoduleTxtAdded, r, "", ""));
         tw.setFilter(TreeFilter.ANY_DIFF);
         checkElement(tw, "submodule.txt");
         assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rm);

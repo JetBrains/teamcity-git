@@ -25,8 +25,19 @@ import org.eclipse.jgit.errors.CorruptObjectException;
  */
 public class SubmoduleFetchException extends CorruptObjectException {
 
-  public SubmoduleFetchException(String repositoryUrl, String submodulePath) {
-    super(String.format("Cannot fetch submodule. Repository URL: '%s', submodule path: '%s'.", repositoryUrl, submodulePath));
+  public SubmoduleFetchException(String repositoryUrl, String submodulePath, String submodulePathFromTheRoot) {
+    super(getMessage(repositoryUrl, submodulePath, submodulePathFromTheRoot));
+  }
+
+
+  private static String getMessage(String repositoryUrl, String submodulePath, String submodulePathFromRoot) {
+    if (submodulePath.equals(submodulePathFromRoot)) {
+      return String.format("Cannot fetch submodule. Repository URL: '%s', submodule path: '%s'.",
+                          repositoryUrl, submodulePath);
+    } else {
+      return String.format("Cannot fetch submodule. Repository URL: '%s', submodule path: '%s', submodule path from the root: '%s'.",
+                          repositoryUrl, submodulePath, submodulePathFromRoot);
+    }
   }
 
 }
