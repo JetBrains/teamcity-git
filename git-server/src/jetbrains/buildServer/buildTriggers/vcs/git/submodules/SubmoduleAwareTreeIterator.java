@@ -39,13 +39,13 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   /**
    * URL of repository for this iterator, used in error messages
    */
-  private String myUrl;
+  private final String myUrl;
   /**
    * Path from root of the main repository to the entry of repository of this iterator, used in error messages.
    * For main repository it is equals "", for repository of submodule it is equals to submodule path,
    * for sub-submodule path of parent submodule + path of current submodule and so on. 
    */
-  private String myPathFromRoot;
+  private final String myPathFromRoot;
   /**
    * The resolver for submodules
    */
