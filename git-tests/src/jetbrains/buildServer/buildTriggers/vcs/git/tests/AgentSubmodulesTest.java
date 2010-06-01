@@ -46,9 +46,6 @@ import java.util.HashMap;
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertFalse;
-import static org.testng.Assert.assertTrue;
 
 /**
  * @author dmitry.neverov
@@ -68,6 +65,10 @@ public class AgentSubmodulesTest extends BaseTestCase {
    * Submodules repository dir
    */
   private File mySubmoduleRepo;
+  /**
+   * Another submodule repository dir
+   */
+  private File mySubmoduleRepo2;
   /**
    * Directory where we clone main repository
    */
@@ -102,6 +103,12 @@ public class AgentSubmodulesTest extends BaseTestCase {
     copyDir(submoduleRep, mySubmoduleRepo);
     new File(mySubmoduleRepo, "refs" + File.separator + "heads").mkdirs();
 
+    File submoduleRep2 = dataFile("sub-submodule.git");
+    mySubmoduleRepo2 = new File(myMainRepo.getParentFile(), "sub-submodule.git");
+    delete(mySubmoduleRepo2);
+    copyDir(submoduleRep2, mySubmoduleRepo2);
+    new File(mySubmoduleRepo2, "refs" + File.separator + "heads").mkdirs();
+
     myCheckoutDir = myTempFiles.createTempDir();
 
     agentConfigurationTempDirectory = myTempFiles.createTempDir();
@@ -113,6 +120,7 @@ public class AgentSubmodulesTest extends BaseTestCase {
     super.tearDown();
     FileUtil.delete(myMainRepo);
     FileUtil.delete(mySubmoduleRepo);
+    FileUtil.delete(mySubmoduleRepo2);
     FileUtil.delete(myCheckoutDir);
     FileUtil.delete(agentConfigurationTempDirectory);
   }
@@ -150,7 +158,67 @@ public class AgentSubmodulesTest extends BaseTestCase {
     assertTrue(new File (myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
   }
 
-  
+
+  /**
+   * Test non-recursive submodules checkout: submodules of submodules are not retrieved
+   * @throws VcsException
+   * @throws IOException
+   */
+  public void testSubSubmodulesCheckoutNonRecursive() throws VcsException, IOException {
+    testSubSubmoduleCheckout(false);
+  }
+
+
+  /**
+   * Test recursive submodules checkout: submodules of submodules are retrieved
+   * @throws VcsException
+   * @throws IOException
+   */
+  public void testSubSubmodulesCheckoutRecursive() throws VcsException, IOException {
+    testSubSubmoduleCheckout(true);
+  }
+
+
+  private void testSubSubmoduleCheckout(boolean recursiveSubmoduleCheckout) throws IOException, VcsException {
+    Mock buildAgentConfigurationMock = createBuildAgentConfigurationMock();
+
+    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
+    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(myMainRepo));
+    root.addProperty(Constants.AGENT_GIT_PATH, getGitPath());
+    root.addProperty(Constants.BRANCH_NAME, "sub-submodule");
+    if (recursiveSubmoduleCheckout) {
+      root.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+    } else {
+      root.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT.name());          
+    }
+
+    FileUtil.delete(myCheckoutDir);
+
+    new GitAgentVcsSupport((BuildAgentConfiguration) buildAgentConfigurationMock.proxy(),
+                           new SmartDirectoryCleaner() {
+                             public void cleanFolder(@NotNull File file, @NotNull SmartDirectoryCleanerCallback callback) {/* do nothing*/}
+                           },
+                           new GitAgentSSHService((BuildAgent) createBuildAgentMock().proxy(),
+                                                  (BuildAgentConfiguration) buildAgentConfigurationMock.proxy()),
+                           new AgentParameterResolverFactory((ExtensionHolder) createExtensionHolderMock().proxy()),
+                           (CurrentBuildTracker) createCurrentBuildTrackerMock().proxy())
+      .updateSources(root,
+                     new CheckoutRules(""),
+                     GitVcsSupportTest.AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION,
+                     myCheckoutDir,
+                     new MyLogger());
+
+    assertTrue(new File (myCheckoutDir, "first-level-submodule" + File.separator + "submoduleFile.txt").exists());
+    if (recursiveSubmoduleCheckout) {
+      assertTrue(new File (myCheckoutDir, "first-level-submodule" + File.separator + "sub-sub" + File.separator + "file.txt").exists());
+      assertTrue(new File (myCheckoutDir, "first-level-submodule" + File.separator + "sub-sub" + File.separator + "new file.txt").exists());      
+    } else {
+      assertFalse(new File (myCheckoutDir, "first-level-submodule" + File.separator + "sub-sub" + File.separator + "file.txt").exists());
+      assertFalse(new File (myCheckoutDir, "first-level-submodule" + File.separator + "sub-sub" + File.separator + "new file.txt").exists());      
+    }
+  }
+
+
   private Mock createBuildAgentMock() {
     Mock agentMock = new Mock(BuildAgent.class);
     Mock xmlRpcHandlerManagerMock = new Mock(XmlRpcHandlerManager.class);
