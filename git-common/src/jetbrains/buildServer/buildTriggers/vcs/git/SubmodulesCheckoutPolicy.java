@@ -28,4 +28,26 @@ public enum SubmodulesCheckoutPolicy {
    * Checkout submodules
    */
   CHECKOUT,
+  /**
+   * Checkout submodules non-recursively
+   */
+  NON_RECURSIVE_CHECKOUT;
+
+  /**
+   * Get policy for sub-submodules if currently specified policy is used
+   * @param policy submodule checkout policy of interest
+   * @return policy for sub-submodules
+   */
+  public static SubmodulesCheckoutPolicy getSubSubModulePolicyFor(SubmodulesCheckoutPolicy policy) {
+    switch (policy) {
+      case IGNORE:
+        return IGNORE;
+      case CHECKOUT:
+        return CHECKOUT;
+      case NON_RECURSIVE_CHECKOUT:
+        return IGNORE;
+      default:
+        throw new UnsupportedOperationException("Unknown submodules checkout policy: " + policy);
+    }
+  }
 }

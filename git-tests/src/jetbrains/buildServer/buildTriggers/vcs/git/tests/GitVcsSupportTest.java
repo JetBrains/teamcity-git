@@ -36,9 +36,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 
@@ -79,6 +77,16 @@ public class GitVcsSupportTest extends PatchTestCase {
    */
   public static final String BEFORE_SUBMODULE_ADDED_VERSION =
     GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L);
+  /**
+   * Version before submodule which itselft contains submodules added
+   */
+  public static final String BEFORE_FIRST_LEVEL_SUBMODULE_ADDED_VERSION =
+    GitUtils.makeVersion("f3f826ce85d6dad25156b2d7550cedeb1a422f4c", 1238421437000L);
+  /**
+   * Version after submodule which itself contains submodules added
+   */
+  public static final String AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION =
+    GitUtils.makeVersion("ce6044093939bb47283439d97a1c80f759669ff5", 1238421437000L);
   /**
    * The source directory
    */
@@ -507,6 +515,69 @@ public class GitVcsSupportTest extends PatchTestCase {
     VcsChange ch21 = m2.getChanges().get(0);
     assertEquals("submodule/new file.txt", ch21.getFileName());
     assertEquals(VcsChange.Type.ADDED, ch21.getType());
+  }
+
+
+  /**
+   * Test collecting changes with non-recursive submodule checkout: only first level submodule files are checked out
+   *
+   * @param fetchInSeparateProcess
+   * @throws Exception
+   */
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testCollectBuildChangesSubSubmodulesNonRecursive(boolean fetchInSeparateProcess) throws Exception {
+    checkCollectBuildChangesSubSubmodules(fetchInSeparateProcess, false);
+  }
+
+
+  /**
+   * Test collecting changes with recursive submodule checkout: submodules of submodules are checked out 
+   *
+   * @param fetchInSeparateProcess
+   * @throws Exception
+   */
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testCollectBuildChangesSubSubmodulesRecursive(boolean fetchInSeparateProcess) throws Exception {
+    checkCollectBuildChangesSubSubmodules(fetchInSeparateProcess, true);
+  }
+
+
+  private void checkCollectBuildChangesSubSubmodules(boolean fetchInSeparateProcess, boolean recursiveSubmoduleCheckout)
+    throws IOException, VcsException {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
+
+    Set<String> subSubmoduleFileNames = new HashSet<String>();
+    subSubmoduleFileNames.add("first-level-submodule/sub-sub/file.txt");
+    subSubmoduleFileNames.add("first-level-submodule/sub-sub/new file.txt");
+    
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("sub-submodule", true);
+    ((VcsRootImpl) root).addProperty(Constants.SUBMODULE_URLS, "first-level-submodule\n" + GitUtils.toURL(dataFile("sub-submodule.git")));
+    if (!recursiveSubmoduleCheckout) {
+      ((VcsRootImpl) root).addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT.name());
+    }
+    final List<ModificationData> ms = support.collectChanges(root,
+                                                             BEFORE_FIRST_LEVEL_SUBMODULE_ADDED_VERSION,
+                                                             AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION,
+                                                             new CheckoutRules(""));
+    boolean subSubmoduleFilesRetrieved = false;
+    boolean firstLevelSubmoduleFilesRetrieved = false;
+    assertEquals(1, ms.size());
+    ModificationData m1 = ms.get(0);
+    for (VcsChange change : m1.getChanges()) {
+      if (subSubmoduleFileNames.contains(change.getFileName())) {
+        subSubmoduleFilesRetrieved = true;
+      }
+      if ("first-level-submodule/submoduleFile.txt".equals(change.getFileName())) {
+        firstLevelSubmoduleFilesRetrieved = true;
+      }
+    }
+    assertTrue(firstLevelSubmoduleFilesRetrieved);
+    if (recursiveSubmoduleCheckout) {
+      assertTrue(subSubmoduleFilesRetrieved);
+    } else {
+      assertFalse(subSubmoduleFilesRetrieved);
+    }      
   }
 
 
