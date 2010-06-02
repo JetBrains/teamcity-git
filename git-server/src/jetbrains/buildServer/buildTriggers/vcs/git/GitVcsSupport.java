@@ -373,7 +373,8 @@ public class GitVcsSupport extends ServerVcsSupport
     if (s.areSubmodulesCheckedOut()) {
       tw.addTree(SubmoduleAwareTreeIterator.create(pc, new TeamCitySubmoduleResolver(repositories, this, s, pc),
                                                    s.getRepositoryFetchURL().toString(),
-                                                   ""));
+                                                   "",
+                                                   s.getSubmodulesCheckoutPolicy()));
     } else {
       tw.addTree(pc.getTreeId());
     }
