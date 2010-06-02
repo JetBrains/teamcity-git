@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
+import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
 import org.eclipse.jgit.lib.Commit;
 import org.eclipse.jgit.lib.ObjectId;
@@ -59,7 +60,7 @@ public abstract class SubmoduleResolver {
    * @return the the resoled commit in other repository
    * @throws IOException if there is an IO problem during resolving repository or mapping commit
    */
-  public Commit getSubmodule(String path, ObjectId commit) throws IOException {
+  public Commit getSubmodule(String path, ObjectId commit) throws IOException, VcsAuthenticationException {
     ensureConfigLoaded();
     if (myConfig == null) {
       throw new IOException("No submodule configuration for commit: " + myCommit.getCommitId().name());
@@ -99,7 +100,7 @@ public abstract class SubmoduleResolver {
    * @return the resolved repository
    * @throws IOException if repository could not be resolved
    */
-  protected abstract Repository resolveRepository(String path, String url) throws IOException;
+  protected abstract Repository resolveRepository(String path, String url) throws IOException, VcsAuthenticationException;
 
   /**
    * Get submodule resolver for the path
@@ -126,5 +127,15 @@ public abstract class SubmoduleResolver {
    */
   public Repository getRepository() {
     return myCommit.getRepository();
+  }
+
+  /**
+   * Get submodule url by it's path in current repository
+   *
+   * @param submodulePath path of submodule in current repository
+   * @return submodule repository url or null if no submodules is registered for specified path 
+   */
+  public String getSubmoduleUrl(String submodulePath) {
+    return myConfig.getSubmoduleUrl(submodulePath);
   }
 }
