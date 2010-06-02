@@ -280,6 +280,7 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   protected void doSubmoduleUpdate(File directory) throws VcsException {
     File gitmodules = new File(directory, ".gitmodules");
     if (gitmodules.exists()) {
+      mLogger.message("Checkout submodules in " + directory);
       SubmoduleCommand submoduleCommand = new SubmoduleCommand(mySettings, mySshService, directory.getAbsolutePath());
       submoduleCommand.init();
       submoduleCommand.update();
