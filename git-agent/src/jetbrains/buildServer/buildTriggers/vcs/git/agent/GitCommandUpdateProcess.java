@@ -25,6 +25,7 @@ import jetbrains.buildServer.agent.parameters.AgentParameterResolverFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.parameters.CompositeParametersProvider;
@@ -33,14 +34,22 @@ import jetbrains.buildServer.parameters.ValueResolver;
 import jetbrains.buildServer.parameters.impl.CompositeParametersProviderImpl;
 import jetbrains.buildServer.parameters.impl.DynamicContextVariables;
 import jetbrains.buildServer.parameters.impl.MapParametersProviderImpl;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import org.eclipse.jgit.errors.ConfigInvalidException;
+import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 /**
  * The update process that uses C git.
@@ -268,10 +277,35 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   /**
    * {@inheritDoc}
    */
-  protected void doSubmoduleUpdate() throws VcsException {
-    SubmoduleCommand submoduleCommand = new SubmoduleCommand(mySettings, mySshService);
-    submoduleCommand.init();
-    submoduleCommand.update();
+  protected void doSubmoduleUpdate(File directory) throws VcsException {
+    File gitmodules = new File(directory, ".gitmodules");
+    if (gitmodules.exists()) {
+      SubmoduleCommand submoduleCommand = new SubmoduleCommand(mySettings, mySshService, directory.getAbsolutePath());
+      submoduleCommand.init();
+      submoduleCommand.update();
+
+      if (recursiveSubmoduleCheckout()) {
+        try {
+          String gitmodulesContents = FileUtil.readText(gitmodules);
+          Config config = new Config();
+          config.fromText(gitmodulesContents);
+
+          Set<String> submodules = config.getSubsections("submodule");
+          for (String submoduleName : submodules) {
+            String submodulePath = config.getString("submodule", submoduleName, "path");
+            doSubmoduleUpdate(new File(directory, submodulePath.replaceAll("/", File.separator)));
+          }
+        } catch (IOException e) {
+          throw new VcsException("Error while reading " + gitmodules, e);
+        } catch (ConfigInvalidException e) {
+          throw new VcsException("Error while parsing " + gitmodules, e);
+        }
+      }
+    }
+  }
+
+  private boolean recursiveSubmoduleCheckout() {
+    return SubmodulesCheckoutPolicy.CHECKOUT.equals(mySettings.getSubmodulesCheckoutPolicy());
   }
 
   /**

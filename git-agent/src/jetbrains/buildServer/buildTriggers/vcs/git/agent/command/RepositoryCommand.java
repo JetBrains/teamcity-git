@@ -47,6 +47,11 @@ public class RepositoryCommand extends BaseCommand {
     this.mySettings = mySettings;
   }
 
+  public RepositoryCommand(AgentSettings mySettings, String workDirectory) {
+    super(mySettings.getGitCommandPath(), workDirectory);
+    this.mySettings = mySettings;
+  }
+
   /**
    * @return get settings object
    */

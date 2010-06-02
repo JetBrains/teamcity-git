@@ -84,7 +84,7 @@ public class BranchCommand extends RepositoryCommand {
    */
   public void forceCheckout(String branch) throws VcsException {
     GeneralCommandLine cmd = createCommandLine();
-    cmd.addParameters("checkout", "-f", branch);
+    cmd.addParameters("checkout", "-q", "-f", branch);
     runCommand(cmd);
   }
 

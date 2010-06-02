@@ -22,6 +22,7 @@ import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
@@ -174,10 +175,11 @@ public abstract class GitUpdateProcess {
     }
     // do clean if requested
     doClean(branchInfo);
-    if (new File(myDirectory, ".gitmodules").exists() && mySettings.areSubmodulesCheckedOut()) {
-      doSubmoduleUpdate();
+    if (mySettings.areSubmodulesCheckedOut()) {
+      doSubmoduleUpdate(myDirectory);
     }
   }
+
 
   /**
    * Force tracking branch to origin's branch
@@ -397,7 +399,7 @@ public abstract class GitUpdateProcess {
    *
    * @throws VcsException
    */
-  protected abstract void doSubmoduleUpdate() throws VcsException;
+  protected abstract void doSubmoduleUpdate(File dir) throws VcsException;
 
   /**
    * The branch information class

@@ -39,6 +39,11 @@ public class SubmoduleCommand extends RepositoryCommand {
     mySsh = ssh;
   }
 
+  public SubmoduleCommand(@NotNull final AgentSettings mySettings, @NotNull final GitAgentSSHService ssh, String workingDirectory) {
+    super(mySettings, workingDirectory);
+    mySsh = ssh;
+  }
+
   /**
    * Initialize git submodules
    *
