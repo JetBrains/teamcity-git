@@ -155,11 +155,7 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
         Loggers.VCS.info("Using git specified by " + Constants.GIT_PATH_ENV + ": " + path);
       } else {
         path = defaultGit();
-        if (path == null) {
-          throw new VcsException("The git has not been found.");
-        } else {
-          Loggers.VCS.info("Using default git: " + path);
-        }
+        Loggers.VCS.info("Using default git: " + path);
       }
     }
     canRun(path);
@@ -186,7 +182,9 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
         return f.getAbsolutePath();
       }
     }
-    return null;
+    Loggers.VCS.info(String.format("The git has not been found in default locations. Will use '%s' command without specified path.", 
+                                   SystemInfo.isWindows ? DEFAULT_WINDOWS_GIT : DEFAULT_UNIX_GIT));
+    return SystemInfo.isWindows ? DEFAULT_WINDOWS_GIT : DEFAULT_UNIX_GIT;
   }
 
   /**
