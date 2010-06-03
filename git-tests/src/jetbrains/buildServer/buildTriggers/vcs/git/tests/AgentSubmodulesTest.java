@@ -147,7 +147,8 @@ public class AgentSubmodulesTest extends BaseTestCase {
                            },
                            new GitAgentSSHService((BuildAgent) createBuildAgentMock().proxy(),
                                                   (BuildAgentConfiguration) buildAgentConfigurationMock.proxy()),
-                           new AgentParameterResolverFactory((ExtensionHolder) createExtensionHolderMock().proxy()),
+                           new AgentParameterResolverFactory((ExtensionHolder) createExtensionHolderMock().proxy(),
+                                                             (BuildAgentConfiguration) buildAgentConfigurationMock.proxy()),
                            (CurrentBuildTracker) createCurrentBuildTrackerMock().proxy())
       .updateSources(root,
                      new CheckoutRules(""),
