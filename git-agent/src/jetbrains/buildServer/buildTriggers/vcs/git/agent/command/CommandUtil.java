@@ -33,19 +33,19 @@ public class CommandUtil {
     }
     if (res.getStderr().length() > 0) {
       Loggers.VCS.warn("Error output produced by: " + cmdName);
-      Loggers.VCS.warn(res.getStderr());
+      Loggers.VCS.warn(res.getStderr().trim());
     }
   }
 
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
   public static void commandFailed(final String cmdName, final ExecResult res) throws VcsException {
     Throwable exception = res.getException();
-    String stderr = res.getStderr();
-    String stdout = res.getStdout();
-    final String message = "'" + cmdName + "' command failed.\n" +
-            (!StringUtil.isEmpty(stderr) ? "stderr: " + stderr + "\n" : "") +
-            (!StringUtil.isEmpty(stdout) ? "stdout: " + stdout + "\n" : "") +
-            (exception != null ? "exception: " + exception.getLocalizedMessage() : "");
+    String stderr = res.getStderr().trim();
+    String stdout = res.getStdout().trim();
+    final String message = "'" + cmdName + "' command failed." +
+            (!StringUtil.isEmpty(stderr) ? "\n" + "stderr: " + stderr : "") +
+            (!StringUtil.isEmpty(stdout) ? "\n" + "stdout: " + stdout : "") +
+            (exception != null ?  "\n" + "exception: " + exception.getLocalizedMessage() : "");
     Loggers.VCS.warn(message);
     throw new VcsException(message);
   }
@@ -64,7 +64,7 @@ public class CommandUtil {
       }
     });
     CommandUtil.checkCommandFailed(cmdStr, res);
-    Loggers.VCS.debug(res.getStdout());
+    Loggers.VCS.debug(res.getStdout().trim());
     return res;
   }
 }
