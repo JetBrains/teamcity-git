@@ -210,8 +210,10 @@ public abstract class GitUpdateProcess {
       }
       LOG.info("Fetching in repository " + mySettings.debugInfo());
       mLogger.message("Fetching data for '" + myRoot.getName() + "'...");
-      String previousHead = checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
-      firstFetch |= previousHead == null;
+      String previousHead = null;
+      if (!firstFetch) {
+        previousHead = checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
+      }
       fetch();
       String newHead = checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
       if (newHead == null) {
