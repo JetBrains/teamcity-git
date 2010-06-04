@@ -17,9 +17,16 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.io.FileUtil;
-import jetbrains.buildServer.*;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import jetbrains.buildServer.BaseTestCase;
+import jetbrains.buildServer.ExtensionHolder;
+import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.XmlRpcHandlerManager;
 import jetbrains.buildServer.agent.*;
-import jetbrains.buildServer.agent.BuildAgent;
 import jetbrains.buildServer.agent.parameters.AgentParameterResolverFactory;
 import jetbrains.buildServer.agent.parameters.ParameterResolverAgentProvider;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
@@ -36,12 +43,6 @@ import org.jmock.Mock;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
@@ -273,6 +274,7 @@ public class AgentSubmodulesTest extends BaseTestCase {
     public void targetStarted(String targetName) {}
     public void targetFinished(String targetName) {}
     public void buildFailureDescription(String message) {}
+    public void preparationEndMessage() {}
     public void progressStarted(String message) {}
     public void progressFinished() {}
     public void logMessage(BuildMessage1 message) {}
