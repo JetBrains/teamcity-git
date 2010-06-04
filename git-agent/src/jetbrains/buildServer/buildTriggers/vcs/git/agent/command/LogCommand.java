@@ -45,13 +45,14 @@ public class LogCommand extends RepositoryCommand {
    * Check if the revision is already available
    *
    * @param revision the revision to check
+   * @param errorsLogLevel log level to use for reporting errors of native git command
    * @return A string describing revision, or null if revision is not found
    */
-  public String checkRevision(String revision) {
+  public String checkRevision(String revision, String... errorsLogLevel) {
     try {
       GeneralCommandLine cmd = createCommandLine();
       cmd.addParameters("log", "-n1", "--pretty=format:%H%x20%s", revision, "--");
-      ExecResult r = runCommand(cmd);
+      ExecResult r = runCommand(cmd, errorsLogLevel);
       failIfNotEmptyStdErr(cmd, r);
       return r.getStdout();
     } catch (VcsException e) {

@@ -199,7 +199,11 @@ public abstract class GitUpdateProcess {
    * @throws VcsException if there is a problem with fetching revision
    */
   private String doFetch(boolean firstFetch) throws VcsException {
-    String revInfo = firstFetch ? null : checkRevision(revision);
+    String revInfo = null;
+    if (!firstFetch) {
+      LOG.debug("Try to find revision " + revision);
+      revInfo = checkRevision(revision, "debug");
+    }
     if (revInfo != null) {
       LOG.info("No fetch needed for revision '" + revision + "' in " + mySettings.getLocalRepositoryDir());
     } else {
@@ -210,8 +214,10 @@ public abstract class GitUpdateProcess {
       }
       LOG.info("Fetching in repository " + mySettings.debugInfo());
       mLogger.message("Fetching data for '" + myRoot.getName() + "'...");
-      String previousHead = checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
-      firstFetch |= previousHead == null;
+      String previousHead = null;
+      if (!firstFetch) {
+        previousHead = checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
+      }
       fetch();
       String newHead = checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
       if (newHead == null) {
@@ -389,10 +395,11 @@ public abstract class GitUpdateProcess {
   /**
    * Check the specified revision
    *
-   * @param revision the revision expression to check
+   * @param revision       the revision expression to check
+   * @param errorsLogLevel log level to use for reporting errors of native git command
    * @return a short revision information or null if revision is not found
    */
-  protected abstract String checkRevision(final String revision);
+  protected abstract String checkRevision(final String revision, final String... errorsLogLevel);
 
   /**
    * Make submodule init and submodule update
