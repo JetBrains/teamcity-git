@@ -49,17 +49,17 @@ public class BaseCommand {
     return cli;
   }
 
-  protected ExecResult runCommand(@NotNull GeneralCommandLine cli) throws VcsException {
-    return CommandUtil.runCommand(cli);
+  protected ExecResult runCommand(@NotNull GeneralCommandLine cli, String... errorsLogLevel) throws VcsException {
+    return CommandUtil.runCommand(cli, errorsLogLevel);
   }
 
-  protected ExecResult runCommand(@NotNull GeneralCommandLine cli, int executionTimeout) throws VcsException {
-    return CommandUtil.runCommand(cli, executionTimeout);
+  protected ExecResult runCommand(@NotNull GeneralCommandLine cli, int executionTimeout, String... errorsLogLevel) throws VcsException {
+    return CommandUtil.runCommand(cli, executionTimeout, errorsLogLevel);
   }
 
-  protected void failIfNotEmptyStdErr(@NotNull GeneralCommandLine cli, @NotNull ExecResult res) throws VcsException {
+  protected void failIfNotEmptyStdErr(@NotNull GeneralCommandLine cli, @NotNull ExecResult res, String... errorsLogLevel) throws VcsException {
     if (!StringUtil.isEmpty(res.getStderr())) {
-      CommandUtil.commandFailed(cli.getCommandLineString(), res);
+      CommandUtil.commandFailed(cli.getCommandLineString(), res, errorsLogLevel);
     }
   }
 
