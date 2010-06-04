@@ -27,18 +27,18 @@ public class CommandUtil {
   private static final int DEFAULT_COMMAND_TIMEOUT_SEC = 3600;
 
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
-  public static void checkCommandFailed(@NotNull String cmdName, @NotNull ExecResult res) throws VcsException {
+  public static void checkCommandFailed(@NotNull String cmdName, @NotNull ExecResult res, String... errorsLogLevel) throws VcsException {
     if (res.getExitCode() != 0 || res.getException() != null) {
       commandFailed(cmdName, res);
     }
     if (res.getStderr().length() > 0) {
-      Loggers.VCS.warn("Error output produced by: " + cmdName);
-      Loggers.VCS.warn(res.getStderr().trim());
+      logMessage("Error output produced by: " + cmdName, errorsLogLevel);
+      logMessage(res.getStderr().trim(), errorsLogLevel);
     }
   }
 
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
-  public static void commandFailed(final String cmdName, final ExecResult res) throws VcsException {
+  public static void commandFailed(final String cmdName, final ExecResult res, String... errorsLogLevel) throws VcsException {
     Throwable exception = res.getException();
     String stderr = res.getStderr().trim();
     String stdout = res.getStdout().trim();
@@ -46,15 +46,36 @@ public class CommandUtil {
             (!StringUtil.isEmpty(stderr) ? "\n" + "stderr: " + stderr : "") +
             (!StringUtil.isEmpty(stdout) ? "\n" + "stdout: " + stdout : "") +
             (exception != null ?  "\n" + "exception: " + exception.getLocalizedMessage() : "");
-    Loggers.VCS.warn(message);
+    logMessage(message, errorsLogLevel);
     throw new VcsException(message);
   }
 
-  public static ExecResult runCommand(@NotNull GeneralCommandLine cli) throws VcsException {
-    return runCommand(cli, DEFAULT_COMMAND_TIMEOUT_SEC);
+  /**
+   * Log message using level, if level is not set - use WARN
+   * 
+   * @param message message to log
+   * @param level   level to use
+   */
+  private static void logMessage(String message, String... level) {
+    String theLevel;
+    if (level.length > 0) {
+      theLevel = level[0];
+    } else {
+      theLevel = "warn";
+    }
+    if (theLevel.equals("warn")) {
+      Loggers.VCS.warn(message);
+    } else if (theLevel.equals("debug")) {
+      Loggers.VCS.debug(message);
+    }
   }
 
-  public static ExecResult runCommand(@NotNull GeneralCommandLine cli, final int executionTimeout) throws VcsException {
+  public static ExecResult runCommand(@NotNull GeneralCommandLine cli, final String... errorsLogLevel) throws VcsException {
+    return runCommand(cli, DEFAULT_COMMAND_TIMEOUT_SEC, errorsLogLevel);
+  }
+
+  public static ExecResult runCommand(@NotNull GeneralCommandLine cli, final int executionTimeout,
+                                      final String... errorsLogLevel) throws VcsException {
     String cmdStr = cli.getCommandLineString();
     Loggers.VCS.debug("Run command: " + cmdStr);
     ExecResult res = SimpleCommandLineProcessRunner.runCommand(cli, null, new SimpleCommandLineProcessRunner.RunCommandEventsAdapter() {
@@ -63,7 +84,7 @@ public class CommandUtil {
         return executionTimeout;
       }
     });
-    CommandUtil.checkCommandFailed(cmdStr, res);
+    CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
     Loggers.VCS.debug(res.getStdout().trim());
     return res;
   }
