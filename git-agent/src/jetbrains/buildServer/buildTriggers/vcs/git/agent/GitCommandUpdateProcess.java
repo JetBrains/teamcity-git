@@ -34,7 +34,6 @@ import jetbrains.buildServer.parameters.ValueResolver;
 import jetbrains.buildServer.parameters.impl.CompositeParametersProviderImpl;
 import jetbrains.buildServer.parameters.impl.DynamicContextVariables;
 import jetbrains.buildServer.parameters.impl.MapParametersProviderImpl;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
@@ -47,8 +46,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -268,8 +265,8 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   /**
    * {@inheritDoc}
    */
-  protected String checkRevision(final String revision) {
-    return new LogCommand(mySettings).checkRevision(revision);
+  protected String checkRevision(final String revision, String... errorsLogLevel) {
+    return new LogCommand(mySettings).checkRevision(revision, errorsLogLevel);
   }
 
   /**
