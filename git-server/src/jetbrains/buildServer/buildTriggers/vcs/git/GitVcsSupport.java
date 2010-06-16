@@ -22,6 +22,7 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
+import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
@@ -32,6 +33,7 @@ import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -1080,61 +1082,64 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
     Settings s = createSettings(vcsRoot);
-    synchronized (getRepositoryLock(s.getRepositoryPath())) {
+    File repositoryTempDir = null;
+    try {
+      repositoryTempDir = new TempFiles().createTempDir();
+      s.setRepositoryPath(repositoryTempDir);
+      Repository r = getRepository(s);
       try {
-        Repository r = getRepository(s);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Opening connection for " + s.debugInfo());
+        }
+        final Transport tn = openTransport(s, r);
         try {
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("Opening connection for " + s.debugInfo());
-          }
-          final Transport tn = openTransport(s, r);
+          final FetchConnection c = tn.openFetch();
           try {
-            final FetchConnection c = tn.openFetch();
+            if (LOG.isDebugEnabled()) {
+              LOG.debug("Checking references... " + s.debugInfo());
+            }
+            String refName = GitUtils.branchRef(s.getBranch());
+            boolean refFound = false;
+            for (final Ref ref : c.getRefs()) {
+              if (refName.equals(ref.getName())) {
+                LOG.info("The branch reference found " + refName + "=" + ref.getObjectId() + " for " + s.debugInfo());
+                refFound = true;
+                break;
+              }
+            }
+            if (!refFound) {
+              throw new VcsException("The branch " + refName + " was not found in the repository " + s.getPublicURL());
+            }
+          } finally {
+            c.close();
+          }
+        } finally {
+          tn.close();
+        }
+        if (!s.getRepositoryFetchURL().equals(s.getRepositoryPushURL())) {
+          final Transport push = openTransport(s, r, s.getRepositoryPushURL());
+          try {
+            final PushConnection c = push.openPush();
             try {
-              if (LOG.isDebugEnabled()) {
-                LOG.debug("Checking references... " + s.debugInfo());
-              }
-              String refName = GitUtils.branchRef(s.getBranch());
-              boolean refFound = false;
-              for (final Ref ref : c.getRefs()) {
-                if (refName.equals(ref.getName())) {
-                  LOG.info("The branch reference found " + refName + "=" + ref.getObjectId() + " for " + s.debugInfo());
-                  refFound = true;
-                  break;
-                }
-              }
-              if (!refFound) {
-                throw new VcsException("The branch " + refName + " was not found in the repository " + s.getPublicURL());
-              }
+              c.getRefs();
             } finally {
               c.close();
             }
           } finally {
             tn.close();
           }
-          if (!s.getRepositoryFetchURL().equals(s.getRepositoryPushURL())) {
-            final Transport push = openTransport(s, r, s.getRepositoryPushURL());
-            try {
-              final PushConnection c = push.openPush();
-              try {
-                c.getRefs();
-              } finally {
-                c.close();
-              }
-            } finally {
-              tn.close();
-            }
-          }
-          return null;
-        } finally {
-          r.close();
         }
-      } catch (Exception e) {
-        throw processException("connection test", e);
+        return null;
+      } finally {
+        r.close();
       }
+    } catch (Exception e) {
+      throw processException("connection test", e);
+    } finally {
+      if (repositoryTempDir != null) FileUtil.delete(repositoryTempDir);
     }
   }
-
+  
   /**
    * {@inheritDoc}
    */
