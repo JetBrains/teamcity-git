@@ -1017,7 +1017,8 @@ public class GitVcsSupport extends ServerVcsSupport
       Logger.class,
       Settings.class,
       com.jcraft.jsch.JSch.class,
-      Decoder.class
+      Decoder.class,
+      gnu.trove.TObjectHashingStrategy.class
     }, null, null);
   }
 

@@ -16,7 +16,9 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.lib.NullProgressMonitor;
 import org.eclipse.jgit.lib.Repository;
@@ -51,10 +53,16 @@ public class Fetcher {
    * @throws VcsException
    * @throws URISyntaxException
    */
-  private static void fetch(File repositoryDir, String cacheDirPath, Map<String, String> vcsRootProperties) throws IOException, VcsException, URISyntaxException {
+  private static void fetch(File repositoryDir, final String cacheDirPath, Map<String, String> vcsRootProperties) throws IOException, VcsException, URISyntaxException {
     VcsRootImpl myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
     myRoot.addAllProperties(vcsRootProperties);
-    GitVcsSupport gitSupport = new GitVcsSupport(null);
+    GitVcsSupport gitSupport = new GitVcsSupport(new ServerPaths()) {
+      protected Settings createSettings(VcsRoot vcsRoot) throws VcsException {
+        final Settings s = super.createSettings(vcsRoot);
+        s.setCachesDirectory(cacheDirPath);
+        return s;
+      }
+    };
     Settings settings = new Settings(myRoot);
     if (cacheDirPath != null)
       settings.setCachesDirectory(cacheDirPath);
