@@ -107,9 +107,8 @@
       </td>
     </tr>
     <tr id="gitKnownHosts">
-      <th>Known Hosts Database:</th>
-      <td><props:checkboxProperty name="ignoreKnownHosts"/>
-        <label for="ignoreKnownHosts">Do not check</label></td>
+      <th>Ignore Known Hosts Database:</th>
+      <td><props:checkboxProperty name="ignoreKnownHosts"/></td>
     </tr>
     <tr id="gitPasswordRow">
       <th><label for="secure:password">Password:</label></th>
