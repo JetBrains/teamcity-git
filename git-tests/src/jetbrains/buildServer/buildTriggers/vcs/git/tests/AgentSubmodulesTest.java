@@ -302,6 +302,7 @@ public class AgentSubmodulesTest extends BaseTestCase {
     public void logTestFailed(String testName, String message, String stackTrace) {}
     public void ignoreServiceMessages(java.lang.Runnable r) {}
     public void error(String s, String s1) {}
+    public void error(String type, String message, Throwable throwable) {}
   }
 
 }
