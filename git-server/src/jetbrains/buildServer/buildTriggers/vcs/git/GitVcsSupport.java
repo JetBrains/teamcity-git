@@ -1367,9 +1367,7 @@ public class GitVcsSupport extends ServerVcsSupport
   public Collection<String> mapFullPath(@NotNull final VcsRootEntry rootEntry, @NotNull final String fullPath) {
     try {
       Settings settings = createSettings(rootEntry.getVcsRoot());
-      synchronized (getRepositoryLock(settings.getRepositoryPath())) {
-        return new GitMapFullPath(rootEntry, fullPath, settings).mapFullPath();        
-      }
+      return new GitMapFullPath(rootEntry, fullPath, settings).mapFullPath();
     } catch (VcsException e) {
       LOG.error(e);
       return Collections.emptySet();

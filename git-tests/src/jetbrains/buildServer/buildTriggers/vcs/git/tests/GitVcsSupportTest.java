@@ -27,6 +27,7 @@ import jetbrains.buildServer.vcs.patches.PatchTestCase;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.Tag;
 import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -38,6 +39,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
 
+import static com.intellij.openapi.util.io.FileUtil.delete;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 
 /**
@@ -682,6 +684,58 @@ public class GitVcsSupportTest extends PatchTestCase {
       r.close();
     }
   }
+
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testMapFullPath(boolean fetchInSeparateProcess) throws Exception {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
+    final GitVcsSupport support = getSupport();
+    final VcsRoot root = getRoot("master");
+
+    final String repositoryUrl = root.getProperty(Constants.FETCH_URL);
+    final List<Exception> errors = new ArrayList<Exception>();
+
+    Runnable collectChanges = new Runnable() {
+      public void run() {
+        try {
+          support.collectChanges(root, VERSION_TEST_HEAD, CUD1_VERSION, new CheckoutRules(""));
+          Thread.sleep(100);
+          support.collectChanges(root, VERSION_TEST_HEAD, MERGE_BRANCH_VERSION, new CheckoutRules(""));
+          Thread.sleep(100);
+          support.collectChanges(root, VERSION_TEST_HEAD, MERGE_VERSION, new CheckoutRules(""));
+          Thread.sleep(100);
+        } catch (Exception e) {
+          errors.add(e);
+        }
+      }
+    };
+
+    Runnable mapFullPath = new Runnable() {
+      public void run() {
+        try {
+          for (int i = 0; i < 5; i++) {
+            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
+                                GitUtils.versionRevision(VERSION_TEST_HEAD) + "|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
+                                GitUtils.versionRevision(MERGE_VERSION) + "|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
+                                GitUtils.versionRevision(MERGE_BRANCH_VERSION) + "|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
+                                GitUtils.versionRevision(CUD1_VERSION) + "|" + repositoryUrl + "|readme.txt");            
+          }
+        } catch (Exception e) {
+          errors.add(e);
+        }
+      }
+    };
+
+    support.collectChanges(root, VERSION_TEST_HEAD, VERSION_TEST_HEAD, new CheckoutRules(""));
+    BaseTestCase.runAsync(4, collectChanges, mapFullPath);
+
+    if (!errors.isEmpty()) {
+      throw errors.get(0);
+    }
+  }
+
 
   /**
    * Test path normalization
