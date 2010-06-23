@@ -19,27 +19,22 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
-import jetbrains.buildServer.BaseTestCase;
-import jetbrains.buildServer.ExtensionHolder;
-import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.XmlRpcHandlerManager;
+
+import jetbrains.buildServer.*;
 import jetbrains.buildServer.agent.*;
+import jetbrains.buildServer.agent.BuildAgent;
 import jetbrains.buildServer.agent.parameters.AgentParameterResolverFactory;
-import jetbrains.buildServer.agent.parameters.ParameterResolverAgentProvider;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
-import jetbrains.buildServer.messages.BuildMessage1;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
-import org.jetbrains.annotations.NotNull;
-import org.jmock.Mock;
+import org.jmock.Expectations;
+import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -80,6 +75,19 @@ public class AgentSubmodulesTest extends BaseTestCase {
    */
   private File agentConfigurationTempDirectory;
 
+  /**
+   * VcsRoot for tests
+   */
+  private VcsRootImpl myRoot;
+
+  private Mockery myMockery;
+
+  /**
+   * Mocks of objects provided by TeamCity server
+   */
+  private GitAgentVcsSupport myVcsSupport;
+  private BuildProgressLogger myLogger;
+
 
   static {
     Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
@@ -113,6 +121,23 @@ public class AgentSubmodulesTest extends BaseTestCase {
     myCheckoutDir = myTempFiles.createTempDir();
 
     agentConfigurationTempDirectory = myTempFiles.createTempDir();
+
+    myMockery = new Mockery();
+
+    BuildAgentConfiguration configuration = createBuildAgentConfiguration();
+    myVcsSupport = new GitAgentVcsSupport(configuration,
+                                          createSmartDirectoryCleaner(),
+                                          new GitAgentSSHService(createBuildAgent(), configuration),
+                                          new AgentParameterResolverFactory(createExtensionHolder(), configuration),
+                                          createCurrentBuildTracker());
+
+    myLogger = createLogger();
+
+    myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
+    myRoot.addProperty(Constants.FETCH_URL, GitUtils.toURL(myMainRepo));
+    myRoot.addProperty(Constants.AGENT_GIT_PATH, getGitPath());
+
+
   }
 
   @AfterMethod
@@ -132,30 +157,13 @@ public class AgentSubmodulesTest extends BaseTestCase {
    * @throws IOException
    */
   public void testSubmodulesCheckout() throws VcsException, IOException {
-    Mock buildAgentConfigurationMock = createBuildAgentConfigurationMock();
-
-    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
-    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(myMainRepo));
-    root.addProperty(Constants.AGENT_GIT_PATH, getGitPath());
-    root.addProperty(Constants.BRANCH_NAME, "patch-tests");
-    root.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+    myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
+    myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
 
     FileUtil.delete(myCheckoutDir);
 
-    new GitAgentVcsSupport((BuildAgentConfiguration) buildAgentConfigurationMock.proxy(),
-                           new SmartDirectoryCleaner() {
-                             public void cleanFolder(@NotNull File file, @NotNull SmartDirectoryCleanerCallback callback) {/* do nothing*/}
-                           },
-                           new GitAgentSSHService((BuildAgent) createBuildAgentMock().proxy(),
-                                                  (BuildAgentConfiguration) buildAgentConfigurationMock.proxy()),
-                           new AgentParameterResolverFactory((ExtensionHolder) createExtensionHolderMock().proxy(),
-                                                             (BuildAgentConfiguration) buildAgentConfigurationMock.proxy()),
-                           (CurrentBuildTracker) createCurrentBuildTrackerMock().proxy())
-      .updateSources(root,
-                     new CheckoutRules(""),
-                     GitVcsSupportTest.SUBMODULE_ADDED_VERSION,
-                     myCheckoutDir,
-                     new MyLogger());
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.SUBMODULE_ADDED_VERSION,
+                               myCheckoutDir, myLogger);
 
     assertTrue(new File (myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
   }
@@ -182,34 +190,17 @@ public class AgentSubmodulesTest extends BaseTestCase {
 
 
   private void testSubSubmoduleCheckout(boolean recursiveSubmoduleCheckout) throws IOException, VcsException {
-    Mock buildAgentConfigurationMock = createBuildAgentConfigurationMock();
-
-    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
-    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(myMainRepo));
-    root.addProperty(Constants.AGENT_GIT_PATH, getGitPath());
-    root.addProperty(Constants.BRANCH_NAME, "sub-submodule");
+    myRoot.addProperty(Constants.BRANCH_NAME, "sub-submodule");
     if (recursiveSubmoduleCheckout) {
-      root.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+      myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
     } else {
-      root.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT.name());          
+      myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT.name());          
     }
 
     FileUtil.delete(myCheckoutDir);
 
-    new GitAgentVcsSupport((BuildAgentConfiguration) buildAgentConfigurationMock.proxy(),
-                           new SmartDirectoryCleaner() {
-                             public void cleanFolder(@NotNull File file, @NotNull SmartDirectoryCleanerCallback callback) {/* do nothing*/}
-                           },
-                           new GitAgentSSHService((BuildAgent) createBuildAgentMock().proxy(),
-                                                  (BuildAgentConfiguration) buildAgentConfigurationMock.proxy()),
-                           new AgentParameterResolverFactory((ExtensionHolder) createExtensionHolderMock().proxy(),
-                                                             (BuildAgentConfiguration) buildAgentConfigurationMock.proxy()),
-                           (CurrentBuildTracker) createCurrentBuildTrackerMock().proxy())
-      .updateSources(root,
-                     new CheckoutRules(""),
-                     GitVcsSupportTest.AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION,
-                     myCheckoutDir,
-                     new MyLogger());
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION,
+                               myCheckoutDir, myLogger);
 
     assertTrue(new File (myCheckoutDir, "first-level-submodule" + File.separator + "submoduleFile.txt").exists());
     if (recursiveSubmoduleCheckout) {
@@ -222,35 +213,59 @@ public class AgentSubmodulesTest extends BaseTestCase {
   }
 
 
-  private Mock createBuildAgentMock() {
-    Mock agentMock = new Mock(BuildAgent.class);
-    Mock xmlRpcHandlerManagerMock = new Mock(XmlRpcHandlerManager.class);
-    xmlRpcHandlerManagerMock.stubs().method("addHandler").withAnyArguments();
-    agentMock.stubs().method("getXmlRpcHandlerManager").will(returnValue(xmlRpcHandlerManagerMock.proxy()));
-    return agentMock;
+  private BuildAgent createBuildAgent() {
+    final BuildAgent agent = myMockery.mock(BuildAgent.class);
+    final XmlRpcHandlerManager manager = myMockery.mock(XmlRpcHandlerManager.class);
+    myMockery.checking(new Expectations() {{
+      allowing(agent).getXmlRpcHandlerManager(); will(returnValue(manager));
+      allowing(manager).addHandler(with(any(String.class)), with(any(Object.class)));
+    }});
+    return agent;
   }
 
 
-  private Mock createCurrentBuildTrackerMock() {
-    Mock currentBuildTrackerMock = new Mock(CurrentBuildTracker.class);
-    return currentBuildTrackerMock;
+  private CurrentBuildTracker createCurrentBuildTracker() {
+    CurrentBuildTracker tracker = myMockery.mock(CurrentBuildTracker.class);
+    return tracker;
   }
 
 
-  private Mock createExtensionHolderMock() {
-    Mock extensionHolderMock = new Mock(ExtensionHolder.class);
-    extensionHolderMock.stubs().method("getExtensions").withAnyArguments().will(returnValue(new ArrayList<ParameterResolverAgentProvider>()));
-    return extensionHolderMock;
+  private ExtensionHolder createExtensionHolder() {
+    final ExtensionHolder holder = myMockery.mock(ExtensionHolder.class);
+    myMockery.checking(new Expectations(){{
+      allowing(holder).getExtensions(with(Expectations.<Class<TeamCityExtension>>anything()));
+    }});
+    return holder;
   }
 
 
-  private Mock createBuildAgentConfigurationMock() {
-    Mock buildAgentConfigurationMock = new Mock(BuildAgentConfiguration.class);
-    buildAgentConfigurationMock.stubs().method("getAgentParameters").will(returnValue(new HashMap<String, String>()));
-    buildAgentConfigurationMock.stubs().method("getCustomProperties").will(returnValue(new HashMap<String, String>()));
-    buildAgentConfigurationMock.stubs().method("getOwnPort").will(returnValue(600));
-    buildAgentConfigurationMock.stubs().method("getTempDirectory").will(returnValue(agentConfigurationTempDirectory));
-    return buildAgentConfigurationMock;
+  private BuildAgentConfiguration createBuildAgentConfiguration() {
+    final BuildAgentConfiguration configuration = myMockery.mock(BuildAgentConfiguration.class);
+    myMockery.checking(new Expectations() {{
+      allowing(configuration).getAgentParameters(); will(returnValue(new HashMap<String, String>()));
+      allowing(configuration).getCustomProperties(); will(returnValue(new HashMap<String, String>()));
+      allowing(configuration).getOwnPort(); will(returnValue(600));
+      allowing(configuration).getTempDirectory(); will(returnValue(agentConfigurationTempDirectory));
+    }});
+    return configuration;
+  }
+
+
+  private SmartDirectoryCleaner createSmartDirectoryCleaner() {
+    final SmartDirectoryCleaner cleaner = myMockery.mock(SmartDirectoryCleaner.class);
+    myMockery.checking(new Expectations() {{
+      allowing(cleaner).cleanFolder(with(any(File.class)), with(any(SmartDirectoryCleanerCallback.class)));
+    }});
+    return cleaner;
+  }
+
+  
+  private BuildProgressLogger createLogger() {
+    final BuildProgressLogger logger = myMockery.mock(BuildProgressLogger.class);
+    myMockery.checking(new Expectations(){{
+      allowing(logger).message(with(any(String.class)));
+    }});
+    return logger;
   }
 
 
@@ -267,42 +282,4 @@ public class AgentSubmodulesTest extends BaseTestCase {
       return "git";
     }
   }
-
-  private final static class MyLogger implements BuildProgressLogger {
-    public void activityStarted(String activityName, String activityType) {}
-    public void activityFinished(String activityName, String activityType) {}
-    public void targetStarted(String targetName) {}
-    public void targetFinished(String targetName) {}
-    public void buildFailureDescription(String message) {}
-    public void preparationEndMessage() {}
-    public void progressStarted(String message) {}
-    public void progressFinished() {}
-    public void logMessage(BuildMessage1 message) {}
-    public void flush() {}
-    public void flowStarted(String flowId, String parentFlowId) {}
-    public void logTestStarted(String name) {}
-    public void message(String message) {}
-    public void logTestStarted(String name, Date timestamp) {}
-    public void error(String message) {}
-    public void flowFinished(String flowId) {}
-    public void warning(String message) {}
-    public void logTestFinished(String name) {}
-    public void exception(Throwable th) {}
-    public void logTestFinished(String name, Date timestamp) {}
-    public void progressMessage(String message) {}
-    public void logTestIgnored(String name, String reason) {}
-    public void logSuiteStarted(String name) {}
-    public void logSuiteStarted(String name, Date timestamp) {}
-    public void logSuiteFinished(String name) {}
-    public void logSuiteFinished(String name, Date timestamp) {}
-    public void logTestStdOut(String testName, String out) {}
-    public void logTestStdErr(String testName, String out) {}
-    public void logTestFailed(String testName, Throwable e) {}
-    public void logComparisonFailure(String testName, Throwable e, String expected, String actual) {}
-    public void logTestFailed(String testName, String message, String stackTrace) {}
-    public void ignoreServiceMessages(java.lang.Runnable r) {}
-    public void error(String s, String s1) {}
-    public void error(String type, String message, Throwable throwable) {}
-  }
-
 }
