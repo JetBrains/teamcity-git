@@ -22,7 +22,7 @@ import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
@@ -157,6 +157,7 @@ public abstract class GitUpdateProcess {
       forceTrackingBranch();
       // Hard reset to the required revision.
       mLogger.message("Resetting " + myRoot.getName() + " in " + myDirectory + " to revision " + revInfo);
+      removeIndexLock();
       hardReset();
     } else {
       // create branch if missing to track remote
@@ -166,6 +167,7 @@ public abstract class GitUpdateProcess {
         // Force tracking of origin/branch
         forceTrackingBranch();
       }
+      removeRefLock();
       // update-ref to specified revision
       setBranchCommit();
       // checkout branch
@@ -177,6 +179,31 @@ public abstract class GitUpdateProcess {
     doClean(branchInfo);
     if (mySettings.areSubmodulesCheckedOut()) {
       doSubmoduleUpdate(myDirectory);
+    }
+  }
+
+  /**
+   * If some git process crashed in this repository earlier it can leave lock files for ref.
+   * This method delete such lock file if it exists (with warning message), otherwise git operation will fail.
+   */
+  private void removeRefLock() {
+    String branchRef = GitUtils.branchRef(mySettings.getBranch());
+    File refLock = new File(myDirectory, ".git" + File.separator + branchRef + ".lock");
+    if (refLock.exists()) {
+      mLogger.warning("The .git/" + branchRef + ".lock file exists. This probably means a git process crashed in this repository earlier. Deleting lock file");
+      FileUtil.delete(refLock);
+    }
+  }
+
+  /**
+   * If some git process crashed in this repository earlier it can leave lock files for index.
+   * This method delete such lock file if it exists (with warning message), otherwise git operation will fail.
+   */
+  private void removeIndexLock() {
+    File indexLock = new File(myDirectory, ".git" + File.separator + "index.lock");
+    if (indexLock.exists()) {
+      mLogger.warning("The .git/index.lock file exists. This probably means a git process crashed in this repository earlier. Deleting lock file");
+      FileUtil.delete(indexLock);
     }
   }
 

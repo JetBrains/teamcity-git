@@ -63,7 +63,7 @@ public class BranchCommand extends RepositoryCommand {
   }
 
   /**
-   * Reset non-curret branch to the specified revision
+   * Reset non-current branch to the specified revision
    *
    * @param branch   the branch name (short)
    * @param revision the revision to reset to

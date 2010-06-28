@@ -47,7 +47,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.data
  * @author dmitry.neverov
  */
 @Test
-public class AgentSubmodulesTest extends BaseTestCase {
+public class AgentVcsSupportTest extends BaseTestCase {
 
   /**
    * Temporary files
@@ -152,6 +152,53 @@ public class AgentSubmodulesTest extends BaseTestCase {
   }
 
   /**
+   * Test work normally if .git/index.lock file exists
+   * @throws VcsException
+   * @throws IOException
+   */
+  public void testRecoverIndexLock() throws VcsException, IOException {
+    myRoot.addProperty(Constants.BRANCH_NAME, "master");
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD,
+                               myCheckoutDir, myLogger);
+
+    //emulate incorrect git termination (in this it could leave index.lock file)
+    FileUtil.copy(new File(myCheckoutDir, ".git" + File.separator + "index"),
+                  new File(myCheckoutDir, ".git" + File.separator + "index.lock"));
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.CUD1_VERSION, myCheckoutDir, myLogger);
+  }
+
+
+  /**
+   * Test work normally if .git/refs/heads/<branch>.lock file exists
+   * @throws VcsException
+   * @throws IOException
+   */
+  public void testRecoverRefLock() throws VcsException, IOException {
+    myRoot.addProperty(Constants.BRANCH_NAME, "master");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myLogger);
+
+    String firstCommitInPatchTests = GitUtils.makeVersion("a894d7d58ffde625019a9ecf8267f5f1d1e5c341", 1245766034000L);
+    myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), firstCommitInPatchTests, myCheckoutDir, myLogger);
+
+    myRoot.addProperty(Constants.BRANCH_NAME, "master");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myLogger);
+
+    //now we have 2 branches in local repository
+
+    //emulate incorrect git termination (in this it could leave refs/heads/<branch-name>.lock file)
+    FileUtil.createIfDoesntExist(new File(myCheckoutDir, ".git" + File.separator +
+                                                         GitUtils.branchRef("patch-tests") +
+                                                         ".lock"));
+    
+    myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), firstCommitInPatchTests, myCheckoutDir, myLogger);
+  }
+
+
+  /**
    * Test checkout submodules on agent. Machine that runs this test should have git installed. 
    * @throws VcsException
    * @throws IOException
@@ -159,8 +206,6 @@ public class AgentSubmodulesTest extends BaseTestCase {
   public void testSubmodulesCheckout() throws VcsException, IOException {
     myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
     myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
-
-    FileUtil.delete(myCheckoutDir);
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.SUBMODULE_ADDED_VERSION,
                                myCheckoutDir, myLogger);
@@ -196,8 +241,6 @@ public class AgentSubmodulesTest extends BaseTestCase {
     } else {
       myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT.name());          
     }
-
-    FileUtil.delete(myCheckoutDir);
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION,
                                myCheckoutDir, myLogger);
@@ -264,6 +307,7 @@ public class AgentSubmodulesTest extends BaseTestCase {
     final BuildProgressLogger logger = myMockery.mock(BuildProgressLogger.class);
     myMockery.checking(new Expectations(){{
       allowing(logger).message(with(any(String.class)));
+      allowing(logger).warning(with(any(String.class)));
     }});
     return logger;
   }

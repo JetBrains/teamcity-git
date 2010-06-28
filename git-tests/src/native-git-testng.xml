@@ -18,7 +18,7 @@
 <suite name="Native Git Suite">
   <test name="Native Git Tests">
     <classes>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentSubmodulesTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentVcsSupportTest"/>
     </classes>
   </test>
 </suite>
