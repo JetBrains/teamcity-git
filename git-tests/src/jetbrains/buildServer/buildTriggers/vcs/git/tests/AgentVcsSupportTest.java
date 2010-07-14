@@ -24,12 +24,12 @@ import java.util.HashMap;
 import jetbrains.buildServer.*;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.BuildAgent;
-import jetbrains.buildServer.agent.parameters.AgentParameterResolverFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitPathResolver;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -124,20 +124,24 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
     myMockery = new Mockery();
 
+    final GitPathResolver resolver = myMockery.mock(GitPathResolver.class);
+    final String pathToGit = getGitPath();
+
+    myMockery.checking(new Expectations() {{
+      allowing(resolver).resolveGitPath(with(any(BuildAgentConfiguration.class)), with(any(String.class))); will(returnValue(pathToGit));
+    }});
     BuildAgentConfiguration configuration = createBuildAgentConfiguration();
     myVcsSupport = new GitAgentVcsSupport(configuration,
                                           createSmartDirectoryCleaner(),
                                           new GitAgentSSHService(createBuildAgent(), configuration),
-                                          new AgentParameterResolverFactory(createExtensionHolder(), configuration),
+                                          resolver,
                                           createCurrentBuildTracker());
 
     myLogger = createLogger();
 
     myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
     myRoot.addProperty(Constants.FETCH_URL, GitUtils.toURL(myMainRepo));
-    myRoot.addProperty(Constants.AGENT_GIT_PATH, getGitPath());
-
-
+    myRoot.addProperty(Constants.AGENT_GIT_PATH, pathToGit);
   }
 
   @AfterMethod

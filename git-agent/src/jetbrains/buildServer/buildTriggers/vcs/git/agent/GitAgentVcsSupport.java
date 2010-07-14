@@ -20,7 +20,6 @@ import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.CurrentBuildTracker;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
-import jetbrains.buildServer.agent.parameters.AgentParameterResolverFactory;
 import jetbrains.buildServer.agent.vcs.AgentVcsSupport;
 import jetbrains.buildServer.agent.vcs.UpdateByCheckoutRules;
 import jetbrains.buildServer.agent.vcs.UpdatePolicy;
@@ -51,7 +50,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   /**
    * The resolver service
    */
-  final AgentParameterResolverFactory myResolverFactory;
+  final GitPathResolver myGitPathResovler;
   /**
    * The tracker for the builds
    */
@@ -63,18 +62,18 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @param agentConfiguration the configuration for this agent
    * @param directoryCleaner   the directory cleaner
    * @param sshService         the used ssh service
-   * @param resolverFactory    the resolver factory
+   * @param gitPathResolver    the resolver for path to git 
    * @param buildTracker       the tracker for builds
    */
   public GitAgentVcsSupport(BuildAgentConfiguration agentConfiguration,
                             SmartDirectoryCleaner directoryCleaner,
                             GitAgentSSHService sshService,
-                            AgentParameterResolverFactory resolverFactory,
+                            GitPathResolver gitPathResolver,
                             CurrentBuildTracker buildTracker) {
     myAgentConfiguration = agentConfiguration;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
-    myResolverFactory = resolverFactory;
+    myGitPathResovler = gitPathResolver;
     myBuildTracker = buildTracker;
   }
 
@@ -108,7 +107,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     new GitCommandUpdateProcess(myAgentConfiguration,
                                 myDirectoryCleaner,
                                 mySshService,
-                                myResolverFactory,
+                                myGitPathResovler,
                                 myBuildTracker,
                                 root,
                                 checkoutRules,

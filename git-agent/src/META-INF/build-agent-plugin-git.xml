@@ -4,4 +4,5 @@
 <beans default-autowire="constructor">
   <bean id="gitAgentSshService" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService" />
   <bean id="gitAgent" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport" />
+  <bean id="gitPathResolver" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.GitPathResolverImpl"/>  
 </beans>
