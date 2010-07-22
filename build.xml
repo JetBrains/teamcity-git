@@ -3,7 +3,10 @@
   <property file="build.properties"/>
   <property name="plugin.name" value="jetbrains.git"/>
 
-  <property name="build.number" value="SNAPSHOT"/>
+  <tstamp>
+    <format property="timestamp" pattern="yyyyMMddhhmmss"/>
+  </tstamp>
+  <property name="build.number" value="SNAPSHOT-${timestamp}"/>
   <property name="build.vcs.number" value=""/>
 
   <property name="plugin.version" value="${build.number}"/>
