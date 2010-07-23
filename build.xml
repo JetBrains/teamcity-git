@@ -3,13 +3,16 @@
   <property file="build.properties"/>
   <property name="plugin.name" value="jetbrains.git"/>
 
+  <property name="build.number" value=""/>
   <tstamp>
     <format property="timestamp" pattern="yyyyMMddhhmmss"/>
   </tstamp>
-  <property name="build.number" value="SNAPSHOT-${timestamp}"/>
+  <property name="snapshot.build.number" value="SNAPSHOT-${timestamp}"/>    
   <property name="build.vcs.number" value=""/>
 
-  <property name="plugin.version" value="${build.number}"/>
+  <condition property="plugin.version" value="${snapshot.build.number}" else="${build.number}">
+    <matches pattern="snapshot-.*" string="${build.number}" casesensitive="false"/>
+  </condition>
 
   <property name="javac2.home" value="${basedir}/lib/compile/javac2"/>
 
