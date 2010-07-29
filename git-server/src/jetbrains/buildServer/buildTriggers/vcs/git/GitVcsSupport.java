@@ -467,6 +467,7 @@ public class GitVcsSupport extends ServerVcsSupport
                          @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
     final boolean debugFlag = LOG.isDebugEnabled();
     final Settings s = createSettings(root);
+    final boolean debugInfoOnEachCommit = TeamCityProperties.getBoolean("teamcity.git.commit.debug.info");
     synchronized (getRepositoryLock(s.getRepositoryPath())) {
       try {
         Map<String, Repository> repositories = new HashMap<String, Repository>();
@@ -482,7 +483,7 @@ public class GitVcsSupport extends ServerVcsSupport
           tw.reset();
           addTree(tw, toCommit, s, repositories);
           if (fromVersion != null) {
-            if (LOG.isDebugEnabled()) {
+            if (debugFlag) {
               LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
             }
             Commit fromCommit = r.mapCommit(GitUtils.versionRevision(fromVersion));
@@ -491,7 +492,7 @@ public class GitVcsSupport extends ServerVcsSupport
             }
             addTree(tw, fromCommit, s, repositories);
           } else {
-            if (LOG.isDebugEnabled()) {
+            if (debugFlag) {
               LOG.debug("Creating clean patch " + toVersion + " for " + s.debugInfo());
             }
             tw.addTree(new EmptyTreeIterator());
@@ -503,7 +504,7 @@ public class GitVcsSupport extends ServerVcsSupport
             if (mapped == null) {
               continue;
             }
-            if (debugFlag) {
+            if (debugFlag && debugInfoOnEachCommit) {
               LOG.debug("File found " + treeWalkInfo(tw) + " for " + s.debugInfo());
             }
             switch (classifyChange(2, tw)) {
