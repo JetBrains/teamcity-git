@@ -22,7 +22,6 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
-import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
@@ -1085,7 +1084,7 @@ public class GitVcsSupport extends ServerVcsSupport
     Settings s = createSettings(vcsRoot);
     File repositoryTempDir = null;
     try {
-      repositoryTempDir = new TempFiles().createTempDir();
+      repositoryTempDir = FileUtil.createTempDirectory("git-testcon", "");
       s.setRepositoryPath(repositoryTempDir);
       Repository r = getRepository(s);
       try {
