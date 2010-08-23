@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
@@ -176,6 +177,20 @@ public class AgentSubmodulesTest extends BaseTestCase {
    */
   public void testSubSubmodulesCheckoutRecursive() throws VcsException, IOException {
     testSubSubmoduleCheckout(true);
+  }
+
+
+  /**
+   * Test for TW-13009
+   */
+  public void testWindowsSubmodulePath() {
+    final String windowsPathSeparator = "\\";
+    try {
+      "/".replaceAll("/", windowsPathSeparator);
+    } catch (StringIndexOutOfBoundsException e) {
+      //this means we should escape windowsPath
+    }
+    "/".replaceAll("/", Matcher.quoteReplacement(windowsPathSeparator));
   }
 
 
