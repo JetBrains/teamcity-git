@@ -40,6 +40,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.util.Set;
+import java.util.regex.Matcher;
 
 /**
  * The update process that uses C git.
@@ -277,7 +278,7 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
           Set<String> submodules = config.getSubsections("submodule");
           for (String submoduleName : submodules) {
             String submodulePath = config.getString("submodule", submoduleName, "path");
-            doSubmoduleUpdate(new File(directory, submodulePath.replaceAll("/", File.separator)));
+            doSubmoduleUpdate(new File(directory, submodulePath.replaceAll("/", Matcher.quoteReplacement(File.separator))));
           }
         } catch (IOException e) {
           throw new VcsException("Error while reading " + gitmodules, e);

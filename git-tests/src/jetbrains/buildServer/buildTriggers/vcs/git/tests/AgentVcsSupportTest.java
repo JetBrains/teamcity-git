@@ -20,6 +20,7 @@ import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.regex.Matcher;
 
 import jetbrains.buildServer.*;
 import jetbrains.buildServer.agent.*;
@@ -235,6 +236,20 @@ public class AgentVcsSupportTest extends BaseTestCase {
    */
   public void testSubSubmodulesCheckoutRecursive() throws VcsException, IOException {
     testSubSubmoduleCheckout(true);
+  }
+
+
+  /**
+   * Test for TW-13009
+   */
+  public void testWindowsSubmodulePath() {
+    final String windowsPathSeparator = "\\";
+    try {
+      "/".replaceAll("/", windowsPathSeparator);
+    } catch (StringIndexOutOfBoundsException e) {
+      //this means we should escape windowsPath
+    }
+    "/".replaceAll("/", Matcher.quoteReplacement(windowsPathSeparator));
   }
 
 
