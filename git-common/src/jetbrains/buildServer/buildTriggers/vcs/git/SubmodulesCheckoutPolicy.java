@@ -23,15 +23,61 @@ public enum SubmodulesCheckoutPolicy {
   /**
    * Ignore submodules
    */
-  IGNORE,
+  IGNORE(true),
   /**
    * Checkout submodules
    */
-  CHECKOUT,
+  CHECKOUT(false),
+  CHECKOUT_IGNORING_ERRORS(true),
   /**
    * Checkout submodules non-recursively
    */
-  NON_RECURSIVE_CHECKOUT;
+  NON_RECURSIVE_CHECKOUT(false),
+  NON_RECURSIVE_CHECKOUT_IGNORING_ERRORS(true);
+
+  private final boolean myIgnoreSubmodulesErrors;
+
+  SubmodulesCheckoutPolicy() {
+    this(true);
+  }
+
+  SubmodulesCheckoutPolicy(boolean ignoreSubmodulesErrors) {
+    myIgnoreSubmodulesErrors = ignoreSubmodulesErrors;
+  }
+
+  public boolean isIgnoreSubmodulesErrors() {
+    return myIgnoreSubmodulesErrors;
+  }
+
+  public static SubmodulesCheckoutPolicy getPolicyWithErrorsIgnored(SubmodulesCheckoutPolicy originalPolicy, boolean ignoreSubmodulesErrors) {
+    if (ignoreSubmodulesErrors) {
+      switch (originalPolicy) {
+        case IGNORE:
+          return IGNORE;
+        case CHECKOUT:
+        case CHECKOUT_IGNORING_ERRORS:
+          return CHECKOUT_IGNORING_ERRORS;
+        case NON_RECURSIVE_CHECKOUT:
+        case NON_RECURSIVE_CHECKOUT_IGNORING_ERRORS:
+          return NON_RECURSIVE_CHECKOUT_IGNORING_ERRORS;
+        default:
+          throw new UnsupportedOperationException("Unknown submodules checkout policy: " + originalPolicy);
+      }
+    } else {
+      switch (originalPolicy) {
+        case IGNORE:
+          return IGNORE;
+        case CHECKOUT:
+        case CHECKOUT_IGNORING_ERRORS:
+          return CHECKOUT;
+        case NON_RECURSIVE_CHECKOUT:
+        case NON_RECURSIVE_CHECKOUT_IGNORING_ERRORS:
+          return NON_RECURSIVE_CHECKOUT;
+        default:
+          throw new UnsupportedOperationException("Unknown submodules checkout policy: " + originalPolicy);
+      }
+    }
+  }
 
   /**
    * Get policy for sub-submodules if currently specified policy is used
@@ -44,7 +90,10 @@ public enum SubmodulesCheckoutPolicy {
         return IGNORE;
       case CHECKOUT:
         return CHECKOUT;
+      case CHECKOUT_IGNORING_ERRORS:
+        return CHECKOUT_IGNORING_ERRORS;
       case NON_RECURSIVE_CHECKOUT:
+      case NON_RECURSIVE_CHECKOUT_IGNORING_ERRORS:
         return IGNORE;
       default:
         throw new UnsupportedOperationException("Unknown submodules checkout policy: " + policy);

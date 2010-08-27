@@ -62,17 +62,21 @@ public abstract class SubmoduleResolver {
    */
   public Commit getSubmodule(String path, ObjectId commit) throws IOException, VcsAuthenticationException {
     ensureConfigLoaded();
+    String mainRepositoryUrl = myCommit.getRepository().getConfig().getString("teamcity", null, "remote");
     if (myConfig == null) {
-      throw new IOException("No submodule configuration for commit: " + myCommit.getCommitId().name());
+      throw new IOException(String.format("No submodule configuration found. Main repository: '%1$s', main repository commit: '%2$s', path to submodule: '%3$s', submodule commit: '%4$s'.",
+                                          mainRepositoryUrl, myCommit.getCommitId().name(), path, commit.name()));
     }
     final Submodule submodule = myConfig.findEntry(path);
     if (submodule == null) {
-      throw new IOException("No valid submodule configuration entry is found for the path: " + path + " in commit " + commit.name());
+      throw new IOException(String.format("No submodule entry found in .gitmodules. Main repository: '%1$s', main repository commit: '%2$s', path to submodule: '%3$s', submodule commit: '%4$s'.",
+                                          mainRepositoryUrl, myCommit.getCommitId().name(), path, commit.name()));
     }
     Repository r = resolveRepository(path, submodule.getUrl());
     final Commit c = r.mapCommit(commit);
     if (c == null) {
-      throw new IOException("The commit " + commit + " (referenced by " + path + ") is not found in repository: " + r);
+      throw new IOException(String.format("Submodule commit is not found. Main repository: '%1$s', main repository commit: '%2$s', path to submodule: '%3$s', submodule repository: '%4$s', submodule commit: '%5$s'.",
+                                          mainRepositoryUrl, myCommit.getCommitId().name(), path, submodule.getUrl(), commit.name()));
     }
     return c;
   }

@@ -177,7 +177,7 @@ public abstract class GitUpdateProcess {
     }
     // do clean if requested
     doClean(branchInfo);
-    if (mySettings.areSubmodulesCheckedOut()) {
+    if (mySettings.isCheckoutSubmodules()) {
       doSubmoduleUpdate(myDirectory);
     }
   }

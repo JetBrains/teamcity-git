@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.util.containers.IntArrayList;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
@@ -33,6 +34,8 @@ import java.util.LinkedList;
  * is encountered, it is replaced with referenced tree.
  */
 public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
+
+  private static Logger LOG = Logger.getInstance(SubmoduleAwareTreeIterator.class.getName());
   /**
    * The iterator wrapped by this iterator
    */
@@ -71,6 +74,8 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    * The referenced commit for the submodule, the commit is in other repository.
    */
   protected Commit mySubmoduleCommit;
+
+  private boolean mySubmoduleError;
   /**
    * Submodule reference mode bits
    */
@@ -79,6 +84,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    * Tree mode bits
    */
   protected static final int TREE_MODE_BITS = FileMode.TREE.getBits();
+  private SubmoduleAwareTreeIterator myParent;
 
   /**
    * The constructor
@@ -143,6 +149,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                     SubmodulesCheckoutPolicy submodulesPolicy)
     throws CorruptObjectException {
     super(parent);
+    this.myParent = parent;
     myWrappedIterator = wrappedIterator;
     mySubmoduleResolver = submoduleResolver;
     myUrl = repositoryUrl;
@@ -196,27 +203,25 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     if (myIsOnSubmodule) {
       String entryPath = myWrappedIterator.getEntryPathString();
       try {
-        mySubmoduleCommit = mySubmoduleResolver.getSubmodule(entryPath, myWrappedIterator.getEntryObjectId());
-      } catch (VcsAuthenticationException e) {
-        //in case of VcsAuthenticationException throw CorruptObjectException without object id,
-        //because problem is related to whole repository, not to concrete object
-        final SubmoduleFetchException ex = new SubmoduleFetchException(myUrl, entryPath, getPathFromRoot(entryPath));
-        ex.initCause(e);
-        throw ex;
-      } catch (TransportException e) {
-        //this problem is also related to whole repository
-        final SubmoduleFetchException ex = new SubmoduleFetchException(myUrl, entryPath, getPathFromRoot(entryPath));
-        ex.initCause(e);
-        throw ex;
-      } catch (IOException e) {
-        final CorruptObjectException ex = new CorruptObjectException(myWrappedIterator.getEntryObjectId(), "Commit could not be resolved");
-        ex.initCause(e);
-        throw ex;
+        mySubmoduleCommit = getSubmoduleCommit(entryPath, myWrappedIterator.getEntryObjectId());
+      } catch (CorruptObjectException e) {
+        if (mySubmodulesPolicy.isIgnoreSubmodulesErrors()) {
+          //pretend that this is simple directory, not the submodule
+          LOG.warn("Ignore submodule error: \"" + e.getMessage() + "\". It seems to be fixed in one of the later commits.");
+          mySubmoduleCommit = null;
+          myIsOnSubmodule = false;
+          mySubmoduleError = true;
+          mode = wrappedMode;          
+        } else {
+          throw e;
+        }
       }
       if (myIdBuffer == null) {
         myIdBuffer = new byte[Constants.OBJECT_ID_LENGTH];
       }
-      mySubmoduleCommit.getTreeId().copyRawTo(myIdBuffer, 0);
+      if (mySubmoduleCommit != null) {
+        mySubmoduleCommit.getTreeId().copyRawTo(myIdBuffer, 0);        
+      }
     } else {
       mySubmoduleCommit = null;
     }
@@ -228,13 +233,48 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     pathLen = pathLength;
   }
 
+  public boolean isSubmoduleError() {
+    return mySubmoduleError;
+  }
+
+  public SubmoduleAwareTreeIterator getParent() {
+    return myParent;
+  }
+
+  public boolean isOnSubmodule() {
+    return myIsOnSubmodule;
+  }
+
+  private Commit getSubmoduleCommit(String path, ObjectId entryObjectId) throws CorruptObjectException {
+    try {
+      return mySubmoduleResolver.getSubmodule(path, entryObjectId);
+    } catch (VcsAuthenticationException e) {
+      //in case of VcsAuthenticationException throw CorruptObjectException without object id,
+      //because problem is related to whole repository, not to concrete object
+      final SubmoduleFetchException ex = new SubmoduleFetchException(myUrl, path, getPathFromRoot(path));
+      ex.initCause(e);
+      throw ex;
+    } catch (TransportException e) {
+      //this problem is also related to whole repository
+      final SubmoduleFetchException ex = new SubmoduleFetchException(myUrl, path, getPathFromRoot(path));
+      ex.initCause(e);
+      throw ex;
+    } catch (IOException e) {
+      final CorruptObjectException ex = new CorruptObjectException(entryObjectId, "Commit could not be resolved");
+      ex.initCause(e);
+      throw ex;
+    }
+  }
+
   /**
    * Check if this iterator should checkout found submodules
    * @return true if this iterator should checkout found submodules, false otherwise
    */
   private boolean checkoutSubmodules() {
     return mySubmodulesPolicy.equals(SubmodulesCheckoutPolicy.CHECKOUT) ||
-           mySubmodulesPolicy.equals(SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT);
+           mySubmodulesPolicy.equals(SubmodulesCheckoutPolicy.CHECKOUT_IGNORING_ERRORS) ||
+           mySubmodulesPolicy.equals(SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT) ||
+           mySubmodulesPolicy.equals(SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT_IGNORING_ERRORS);
   }
 
   private String getPathFromRoot(String path) {
