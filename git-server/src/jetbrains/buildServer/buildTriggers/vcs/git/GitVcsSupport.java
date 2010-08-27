@@ -212,19 +212,23 @@ public class GitVcsSupport extends ServerVcsSupport
             final RevCommit fromRev = revs.parseCommit(fromId);
             revs.markUninteresting(fromRev);
             RevCommit c;
+            boolean lastCommit = true;
             while ((c = revs.next()) != null) {
-              addCommit(root, rc, r, repositories, s, revs, c);
+              addCommit(root, rc, r, repositories, s, revs, c, !lastCommit);
+              lastCommit = false;
             }
           } else {
             LOG.warn("From version " + fromVersion + " is not found, collecting changes based on commit date and time " + s.debugInfo());
             RevCommit c;
             long limitTime = GitUtils.versionTime(fromVersion);
+            boolean lastCommit = true;
             while ((c = revs.next()) != null) {
               if (c.getCommitTime() * 1000L <= limitTime) {
                 revs.markUninteresting(c);
               } else {
-                addCommit(root, rc, r, repositories, s, revs, c);
+                addCommit(root, rc, r, repositories, s, revs, c, !lastCommit);
               }
+              lastCommit = false;
             }
             // add revision with warning text and random number as version
             byte[] idBytes = new byte[20];
@@ -267,7 +271,8 @@ public class GitVcsSupport extends ServerVcsSupport
                          Map<String, Repository> repositories,
                          Settings s,
                          RevWalk revs,
-                         RevCommit c)
+                         RevCommit c,
+                         boolean ignoreSubmodulesErrors)
     throws IOException {
     Commit cc = c.asCommit(revs);
     if (LOG.isDebugEnabled()) {
@@ -281,7 +286,7 @@ public class GitVcsSupport extends ServerVcsSupport
       parentIds.length == 0
       ? GitUtils.makeVersion(ObjectId.zeroId().name(), 0)
       : GitServerUtil.makeVersion(r.mapCommit(cc.getParentIds()[0]));
-    List<VcsChange> changes = getCommitChanges(repositories, s, r, cc, parentIds, cv, pv);
+    List<VcsChange> changes = getCommitChanges(repositories, s, r, cc, parentIds, cv, pv, ignoreSubmodulesErrors);
     ModificationData m = new ModificationData(cc.getAuthor().getWhen(), changes, cc.getMessage(), GitServerUtil.getUser(s, cc), root, cv,
                                               GitServerUtil.displayVersion(cc));
     if (parentIds.length > 1 && MD_SET_CAN_BE_IGNORED != null) {
@@ -307,58 +312,122 @@ public class GitVcsSupport extends ServerVcsSupport
    * @return the commit changes
    * @throws IOException if there is a repository access problem
    */
-  private List<VcsChange> getCommitChanges(Map<String, Repository> repositories,
-                                           Settings s,
-                                           Repository r,
-                                           Commit cc,
+  private List<VcsChange> getCommitChanges(final Map<String, Repository> repositories,
+                                           final Settings s,
+                                           final Repository r,
+                                           final Commit cc,
                                            ObjectId[] parentIds,
-                                           String cv,
-                                           String pv)
+                                           final String cv,
+                                           String pv,
+                                           final boolean ignoreSubmodulesErrors)
     throws IOException {
     List<VcsChange> changes = new ArrayList<VcsChange>();
     TreeWalk tw = new TreeWalk(r);
-    tw.setFilter(TreeFilter.ANY_DIFF);
+    IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(s);
+    tw.setFilter(filter);
     tw.setRecursive(true);
     // remove empty tree iterator before adding new tree
     tw.reset();
-    addTree(tw, cc, s, repositories);
-    int nTrees = parentIds.length + 1;
+    addTree(tw, cc, s, repositories, ignoreSubmodulesErrors);
     for (ObjectId pid : parentIds) {
       Commit pc = r.mapCommit(pid);
-      addTree(tw, pc, s, repositories);
+      addTree(tw, pc, s, repositories, true);
     }
+    String repositoryDebugInfo = s.debugInfo();
     while (tw.next()) {
       String path = tw.getPathString();
-      VcsChange.Type type;
-      String description = null;
-      final ChangeType changeType = classifyChange(nTrees, tw);
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Processing change " + treeWalkInfo(tw) + " as " + changeType + " " + s.debugInfo());
+      Commit commitWithFix = null;
+      if (s.isCheckoutSubmodules() && filter.isBrokenSubmodulePath(path)
+          && (commitWithFix = getPreviousCommitWithFixedSubmodule(cc, path, repositories, s)) != null) {
+        //report changes between 2 commits where submodules fixed
+        TreeWalk tw2 = new TreeWalk(r);
+        tw2.setFilter(TreeFilter.ANY_DIFF);
+        tw2.setRecursive(true);
+        tw2.reset();
+        addTree(tw2, cc, s, repositories, true);
+        addTree(tw2, commitWithFix, s, repositories, true);
+        while (tw2.next()) {
+          if (tw2.getPathString().equals(path)) {
+            VcsChange change = getVcsChange(tw2, path, cv, commitWithFix.getCommitId().toString(), repositoryDebugInfo);
+            if (change != null) {
+              changes.add(change);
+            }
+          }
+        }
+      } else {
+        VcsChange change = getVcsChange(tw, path, cv, pv, repositoryDebugInfo);
+        if (change != null) {
+          changes.add(change);
+        }
       }
-      switch (changeType) {
-        case UNCHANGED:
-          // change is ignored
-          continue;
-        case ADDED:
-          type = VcsChange.Type.ADDED;
-          break;
-        case DELETED:
-          type = VcsChange.Type.REMOVED;
-          break;
-        case MODIFIED:
-          type = VcsChange.Type.CHANGED;
-          break;
-        case FILE_MODE_CHANGED:
-          type = VcsChange.Type.CHANGED;
-          description = "File mode changed";
-          break;
-        default:
-          throw new IllegalStateException("Unknown change type");
-      }
-      VcsChange change = new VcsChange(type, description, path, path, pv, cv);
-      changes.add(change);
     }
     return changes;
+  }
+
+  private VcsChange getVcsChange(TreeWalk treeWalk, String path, String currentCommitHash, String parentCommitHash, String repositoryDebugInfo) {
+    final ChangeType gitChangeType = classifyChange(treeWalk);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Processing change " + treeWalkInfo(treeWalk) + " as " + gitChangeType + " " + repositoryDebugInfo);
+    }
+    VcsChange.Type type = getChangeType(gitChangeType, treeWalk, path);
+    if (type == VcsChange.Type.NOT_CHANGED) {
+      return null;
+    } else {
+      String description = gitChangeType == ChangeType.FILE_MODE_CHANGED ? "File mode changed" : null;
+      return new VcsChange(type, description, path, path, parentCommitHash, currentCommitHash);
+    }
+  }
+
+  private VcsChange.Type getChangeType(ChangeType gitChangeType, TreeWalk treeWalk, String path) {
+    switch (gitChangeType) {
+      case UNCHANGED:
+        return VcsChange.Type.NOT_CHANGED;
+      case ADDED:
+        return VcsChange.Type.ADDED;
+      case DELETED:
+        if (((IgnoreSubmoduleErrorsTreeFilter) treeWalk.getFilter()).getBrokenSubmodulePathsInRestTrees().contains(path)) {
+          return VcsChange.Type.NOT_CHANGED;
+        } else {
+          return VcsChange.Type.REMOVED;
+        }
+      case MODIFIED:
+        return VcsChange.Type.CHANGED;
+      case FILE_MODE_CHANGED:
+        return VcsChange.Type.CHANGED;
+      default:
+        throw new IllegalStateException("Unknown change type");
+    }
+  }
+
+  private Commit getPreviousCommitWithFixedSubmodule(Commit fromCommit, String submodulePath, final Map<String, Repository> repositories, Settings settings) throws IOException {
+    Repository r = fromCommit.getRepository();
+    RevWalk revWalk = new RevWalk(r);
+    final RevCommit fromRev = revWalk.parseCommit(fromCommit.getCommitId());
+    revWalk.markStart(fromRev);
+    revWalk.sort(RevSort.TOPO);
+    revWalk.sort(RevSort.COMMIT_TIME_DESC);
+
+    Commit result = null;
+    RevCommit prevRev;
+    revWalk.next();
+    while (result == null && (prevRev = revWalk.next()) != null) {
+      TreeWalk prevTreeWalk = new TreeWalk(r);
+      prevTreeWalk.setFilter(TreeFilter.ALL);
+      prevTreeWalk.setRecursive(true);
+      prevTreeWalk.reset();
+      addTree(prevTreeWalk, prevRev.asCommit(revWalk), settings, repositories, true);
+      while(prevTreeWalk.next()) {
+        if (prevTreeWalk.getPathString().startsWith(submodulePath)) {
+          SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
+          if (!iter.isSubmoduleError() && iter.getParent().isOnSubmodule()) {
+            result = prevRev.asCommit(revWalk);
+            break;
+          }
+        }
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -370,12 +439,12 @@ public class GitVcsSupport extends ServerVcsSupport
    * @param repositories the set of used repositories
    * @throws IOException in case of IO problem
    */
-  private void addTree(TreeWalk tw, Commit pc, Settings s, Map<String, Repository> repositories) throws IOException {
-    if (s.areSubmodulesCheckedOut()) {
+  private void addTree(TreeWalk tw, Commit pc, Settings s, Map<String, Repository> repositories, boolean ignoreSubmodulesErrors) throws IOException {
+    if (s.isCheckoutSubmodules()) {
       tw.addTree(SubmoduleAwareTreeIterator.create(pc, new TeamCitySubmoduleResolver(repositories, this, s, pc),
                                                    s.getRepositoryFetchURL().toString(),
                                                    "",
-                                                   s.getSubmodulesCheckoutPolicy()));
+                                                   SubmodulesCheckoutPolicy.getPolicyWithErrorsIgnored(s.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors)));
     } else {
       tw.addTree(pc.getTreeId());
     }
@@ -406,15 +475,14 @@ public class GitVcsSupport extends ServerVcsSupport
    * trees are assumed to be parent commits. In the case of multiple changes, the changes that
    * come from at lease one parent commit are assumed to be reported in the parent commit.
    *
-   * @param nTrees number of trees
    * @param tw     tree walker to examine
    * @return change type
    */
   @NotNull
-  private static ChangeType classifyChange(int nTrees, @NotNull TreeWalk tw) {
+  private static ChangeType classifyChange(@NotNull TreeWalk tw) {
     final FileMode mode0 = tw.getFileMode(0);
     if (FileMode.MISSING.equals(mode0)) {
-      for (int i = 1; i < nTrees; i++) {
+      for (int i = 1; i < tw.getTreeCount(); i++) {
         if (FileMode.MISSING.equals(tw.getFileMode(i))) {
           // the delete merge
           return ChangeType.UNCHANGED;
@@ -423,7 +491,7 @@ public class GitVcsSupport extends ServerVcsSupport
       return ChangeType.DELETED;
     }
     boolean fileAdded = true;
-    for (int i = 1; i < nTrees; i++) {
+    for (int i = 1; i < tw.getTreeCount(); i++) {
       if (!FileMode.MISSING.equals(tw.getFileMode(i))) {
         fileAdded = false;
         break;
@@ -433,7 +501,7 @@ public class GitVcsSupport extends ServerVcsSupport
       return ChangeType.ADDED;
     }
     boolean fileModified = true;
-    for (int i = 1; i < nTrees; i++) {
+    for (int i = 1; i < tw.getTreeCount(); i++) {
       if (tw.idEqual(0, i)) {
         fileModified = false;
         break;
@@ -444,7 +512,7 @@ public class GitVcsSupport extends ServerVcsSupport
     }
     int modeBits0 = mode0.getBits();
     boolean fileModeModified = true;
-    for (int i = 1; i < nTrees; i++) {
+    for (int i = 1; i < tw.getTreeCount(); i++) {
       int modeBits = tw.getFileMode(i).getBits();
       if (modeBits == modeBits0) {
         fileModeModified = false;
@@ -481,7 +549,7 @@ public class GitVcsSupport extends ServerVcsSupport
           tw.setFilter(TreeFilter.ANY_DIFF);
           tw.setRecursive(true);
           tw.reset();
-          addTree(tw, toCommit, s, repositories);
+          addTree(tw, toCommit, s, repositories, false);
           if (fromVersion != null) {
             if (debugFlag) {
               LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
@@ -490,7 +558,7 @@ public class GitVcsSupport extends ServerVcsSupport
             if (fromCommit == null) {
               throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not available in the repository");
             }
-            addTree(tw, fromCommit, s, repositories);
+            addTree(tw, fromCommit, s, repositories, true);
           } else {
             if (debugFlag) {
               LOG.debug("Creating clean patch " + toVersion + " for " + s.debugInfo());
@@ -507,7 +575,7 @@ public class GitVcsSupport extends ServerVcsSupport
             if (debugFlag && debugInfoOnEachCommit) {
               LOG.debug("File found " + treeWalkInfo(tw) + " for " + s.debugInfo());
             }
-            switch (classifyChange(2, tw)) {
+            switch (classifyChange(tw)) {
               case UNCHANGED:
                 // change is ignored
                 continue;
@@ -653,7 +721,7 @@ public class GitVcsSupport extends ServerVcsSupport
           tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
           tw.setRecursive(tw.getFilter().shouldBeRecursive());
           tw.reset();
-          addTree(tw, c, s, repositories);
+          addTree(tw, c, s, repositories, true);
           if (!tw.next()) {
             throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + s.debugInfo());
           }
@@ -1412,4 +1480,69 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
 
+  /**
+   * Tree filter that ignore changes if they arouse because of errors in submodules in the first tree (i.e. in the first commit)
+   */
+  private class IgnoreSubmoduleErrorsTreeFilter extends TreeFilter {
+
+    private final Settings mySettings;
+    private final Set<String> myBrokenSubmodulePathsInFirstTree = new HashSet<String>();
+    private final Set<String> myBrokenSubmodulePathsInRestTrees = new HashSet<String>();
+
+    private IgnoreSubmoduleErrorsTreeFilter(Settings settings) {
+      mySettings = settings;
+    }
+
+    @Override
+    public boolean include(TreeWalk walker) throws IOException {
+      if (mySettings.isCheckoutSubmodules()) {
+        String path = walker.getPathString();
+        if (isFirstTreeHasBrokenSubmodule(walker, path)) {
+          myBrokenSubmodulePathsInFirstTree.add(path);
+          return false;
+        } else if (!myBrokenSubmodulePathsInRestTrees.contains(path)) {
+          for (int i = 1; i < walker.getTreeCount(); i++) {
+            if (FileMode.GITLINK.equals(walker.getRawMode(i))) {
+              myBrokenSubmodulePathsInRestTrees.add(path);
+            }
+          }
+        }
+        return TreeFilter.ANY_DIFF.include(walker);
+      } else {
+        return TreeFilter.ANY_DIFF.include(walker);
+      }
+    }
+
+    private boolean isFirstTreeHasBrokenSubmodule(TreeWalk walker, String path) {
+      return FileMode.GITLINK.equals(walker.getRawMode(0)) || myBrokenSubmodulePathsInFirstTree.contains(path);
+    }
+
+    public Set<String> getBrokenSubmodulePathsInRestTrees() {
+      return myBrokenSubmodulePathsInRestTrees;
+    }
+
+    public boolean isBrokenSubmodulePath(String path) {
+      for (String brokenSubmodulePath : myBrokenSubmodulePathsInRestTrees) {
+        if (path.equals(brokenSubmodulePath) || path.startsWith(brokenSubmodulePath + "/")) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public boolean shouldBeRecursive() {
+      return TreeFilter.ANY_DIFF.shouldBeRecursive();
+    }
+
+    @Override
+    public TreeFilter clone() {
+      return this;
+    }
+
+    @Override
+    public String toString() {
+      return "IGNORE_SUBMODULE_ERRORS";
+    }
+  }
 }

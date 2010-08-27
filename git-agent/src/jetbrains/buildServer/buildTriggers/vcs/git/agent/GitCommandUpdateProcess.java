@@ -305,7 +305,8 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   }
 
   private boolean recursiveSubmoduleCheckout() {
-    return SubmodulesCheckoutPolicy.CHECKOUT.equals(mySettings.getSubmodulesCheckoutPolicy());
+    return SubmodulesCheckoutPolicy.CHECKOUT.equals(mySettings.getSubmodulesCheckoutPolicy()) ||
+           SubmodulesCheckoutPolicy.CHECKOUT_IGNORING_ERRORS.equals(mySettings.getSubmodulesCheckoutPolicy());
   }
 
   /**

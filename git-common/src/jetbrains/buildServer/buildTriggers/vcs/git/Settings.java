@@ -212,9 +212,11 @@ public class Settings {
   /**
    * @return true if submodules should be checked out
    */
-  public boolean areSubmodulesCheckedOut() {
+  public boolean isCheckoutSubmodules() {
     return submodulePolicy == SubmodulesCheckoutPolicy.CHECKOUT ||
-           submodulePolicy == SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT;
+           submodulePolicy == SubmodulesCheckoutPolicy.CHECKOUT_IGNORING_ERRORS ||
+           submodulePolicy == SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT ||
+           submodulePolicy == SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT_IGNORING_ERRORS;
   }
 
   public SubmodulesCheckoutPolicy getSubmodulesCheckoutPolicy() {

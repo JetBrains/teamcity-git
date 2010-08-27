@@ -22,7 +22,6 @@ import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
@@ -175,7 +174,7 @@ public abstract class GitUpdateProcess {
     }
     // do clean if requested
     doClean(branchInfo);
-    if (mySettings.areSubmodulesCheckedOut()) {
+    if (mySettings.isCheckoutSubmodules()) {
       doSubmoduleUpdate(myDirectory);
     }
   }

@@ -27,8 +27,6 @@ import jetbrains.buildServer.vcs.patches.PatchTestCase;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.Tag;
 import org.eclipse.jgit.transport.URIish;
-import org.jetbrains.annotations.NotNull;
-import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -39,7 +37,6 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
 
-import static com.intellij.openapi.util.io.FileUtil.delete;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 
 /**
@@ -200,7 +197,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     try {
       root = getRoot("no-such-branch");
       support.testConnection(root);
-      Assert.fail("The connection should have failed");
+      fail("The connection should have failed");
     } catch (VcsException ex) {
       // test successful
     }
@@ -217,7 +214,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("version-test");
     String version = support.getCurrentVersion(root);
-    Assert.assertEquals(VERSION_TEST_HEAD, version);
+    assertEquals(VERSION_TEST_HEAD, version);
   }
 
   /**
@@ -233,10 +230,10 @@ public class GitVcsSupportTest extends PatchTestCase {
     String version = support.getCurrentVersion(root);
     byte[] data1 = support.getContent("readme.txt", root, version);
     byte[] data2 = FileUtil.loadFileBytes(dataFile("content", "readme.txt"));
-    Assert.assertEquals(data1, data2);
+    assertEquals(data1, data2);
     try {
       support.getContent("non-existing file.txt", root, version);
-      Assert.fail("The file must not be loaded");
+      fail("The file must not be loaded");
     } catch (VcsFileNotFoundException ex) {
       // ignore exception
     }
@@ -255,7 +252,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     String version = support.getCurrentVersion(root);
     byte[] data1 = support.getContent("submodule/file.txt", root, version);
     byte[] data2 = FileUtil.loadFileBytes(dataFile("content", "submodule file.txt"));
-    Assert.assertEquals(data1, data2);
+    assertEquals(data1, data2);
   }
 
 
@@ -519,6 +516,105 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(VcsChange.Type.ADDED, ch21.getType());
   }
 
+
+  /**
+   * TW-13127
+   *
+   * o fix submodule entry again but track newer revision | e6b15b1f4741199857e2fa744eaadfe5a9d9aede
+   * |                                                    |
+   * |                                                    |
+   * v                                                    |
+   * o broke submodule entry again                        | feac610f381e697acf4c1c8ad82b7d76c7643b04
+   * |                                                    |
+   * |                                                    |
+   * v                                                    |
+   * o fix submodule entry again                          | 92112555d9eb3e433eaa91fe32ec001ae8fe3c52
+   * |                                                    |
+   * |                                                    |
+   * v                                                    |
+   * o broke submodule entry again                        | 778cc3d0105ca1b6b2587804ebfe89c2557a7e46
+   * |                                                    |
+   * |                                                    |
+   * v                                                    |
+   * o finally add correct entry                          | f5bdd3819df0358a43d9a8f94eaf96bb306e19fe
+   * |                                                    |
+   * |                                                    |
+   * v                                                    |
+   * o add entry for unrelated submodule                  | 78cbbed3561de3417467ee819b1795ba14c03dfb
+   * |                                                    |
+   * |                                                    |
+   * v                                                    |
+   * o add empty .gitmodules                              | 233daeefb335b60c7b5700afde97f745d86cb40d
+   * |                                                    |
+   * |                                                    |
+   * v                                                    |
+   * o add submodule wihtout entry in .gitmodules         | 6eae9acd29db2dba146929634a4bb1e6e72a31fd
+   * |                                                    |
+   * |                                                    |
+   * v                                                    |   
+   * o no submodules                                      | f3f826ce85d6dad25156b2d7550cedeb1a422f4c (merge_version)
+   *
+   */
+  @Test
+  public void testCollectBuildChangesWithBrokenSubmoduleOnLastCommit() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("wrong-submodule", true);
+    ((VcsRootImpl) root).addProperty(Constants.SUBMODULE_URLS, "submodule-wihtout-entry\n" + GitUtils.toURL(dataFile("submodule.git")));
+
+    String brokenSubmoduleCommit = GitUtils.makeVersion("78cbbed3561de3417467ee819b1795ba14c03dfb", 1282637672000L);
+    try {
+      support.collectChanges(root, MERGE_VERSION, brokenSubmoduleCommit, new CheckoutRules(""));
+      fail("We should throw exception if submodules in the last commit are broken");
+    } catch (Exception e) {
+      assertTrue(true);
+    }
+  }
+  
+
+  @Test
+  public void testCollectBuildChangesWithFixedSubmoduleOnLastCommit() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("wrong-submodule", true);
+    ((VcsRootImpl) root).addProperty(Constants.SUBMODULE_URLS, "submodule-wihtout-entry\n" + GitUtils.toURL(dataFile("submodule.git")));
+
+    String fixedSubmoduleCommit = GitUtils.makeVersion("f5bdd3819df0358a43d9a8f94eaf96bb306e19fe", 1282636308000L);
+    List<ModificationData> mds = support.collectChanges(root, MERGE_VERSION, fixedSubmoduleCommit, new CheckoutRules(""));
+    assertEquals(mds.size(), 4);
+    assertEquals(mds.get(0).getChanges().size(), 2);
+  }
+
+
+  @Test
+  public void testCollectBuildChangesWithFixedBrokenFixedSubmodule() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("wrong-submodule", true);
+    ((VcsRootImpl) root).addProperty(Constants.SUBMODULE_URLS, "submodule-wihtout-entry\n" + GitUtils.toURL(dataFile("submodule.git")));
+    String fixedSubmoduleCommit = GitUtils.makeVersion("f5bdd3819df0358a43d9a8f94eaf96bb306e19fe", 1282636308000L);
+    String submoduleFixedAgainCommit = GitUtils.makeVersion("92112555d9eb3e433eaa91fe32ec001ae8fe3c52", 1282736040000L);
+    List<ModificationData> mds = support.collectChanges(root, fixedSubmoduleCommit, submoduleFixedAgainCommit, new CheckoutRules(""));
+    assertEquals(2, mds.size());
+
+    for (ModificationData md : mds) {
+      assertEquals(md.getChanges().size(), 1); //this means we don't report remove and add of all submodule files
+    }
+  }
+
+
+  @Test
+  public void testCollectBuildChangesWithFixedBrokenFixedSubmodule2() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("wrong-submodule", true);
+    ((VcsRootImpl) root).addProperty(Constants.SUBMODULE_URLS, "submodule-wihtout-entry\n" + GitUtils.toURL(dataFile("submodule.git")));
+    String fixedSubmoduleCommit = GitUtils.makeVersion("92112555d9eb3e433eaa91fe32ec001ae8fe3c52", 1282636308000L);
+    String submoduleFixedAgainCommit = GitUtils.makeVersion("e6b15b1f4741199857e2fa744eaadfe5a9d9aede", 1282813085000L);
+    List<ModificationData> mds = support.collectChanges(root, fixedSubmoduleCommit, submoduleFixedAgainCommit, new CheckoutRules(""));
+    assertEquals(2, mds.size());
+
+    assertEquals(mds.get(1).getChanges().size(), 1);//only .gitmodules
+
+    assertEquals(mds.get(0).getChanges().size(), 2);//.gitmodules and 1 file inside submodule
+  }
+  
 
   /**
    * Test collecting changes with non-recursive submodule checkout: only first level submodule files are checked out
