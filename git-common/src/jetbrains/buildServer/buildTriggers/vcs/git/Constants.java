@@ -65,7 +65,7 @@ public interface Constants {
   /**
    * The vcs name
    */
-  public static String VCS_NAME = "jetbrains.git";
+  public static String VCS_NAME = "git";
   /**
    * The user name property
    */
