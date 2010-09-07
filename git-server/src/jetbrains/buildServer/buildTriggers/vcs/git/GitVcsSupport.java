@@ -837,7 +837,7 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   @NotNull
   public String getDisplayName() {
-    return "Git";
+    return "Git (JetBrains)";
   }
 
   /**
