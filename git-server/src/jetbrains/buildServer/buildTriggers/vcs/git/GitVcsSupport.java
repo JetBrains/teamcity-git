@@ -84,7 +84,10 @@ public class GitVcsSupport extends ServerVcsSupport
    * additional synchronization by repository dirs should not create problems.
    */
   private static ConcurrentMap<File, Object> myRepositoryLocks = new ConcurrentHashMap<File, Object>();
-
+  /**
+   * Current version cache (bare repository dir -> current version).
+   * We should have only one branch per bare repository.
+   */
   private static RecentEntriesCache<File, String> ourCurrentVersionCache;
   /**
    * Name of property for repository directory path for fetch process
