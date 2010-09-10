@@ -33,6 +33,7 @@ import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -83,6 +84,8 @@ public class GitVcsSupport extends ServerVcsSupport
    * additional synchronization by repository dirs should not create problems.
    */
   private static ConcurrentMap<File, Object> myRepositoryLocks = new ConcurrentHashMap<File, Object>();
+
+  private static RecentEntriesCache<File, String> ourCurrentVersionCache;
   /**
    * Name of property for repository directory path for fetch process
    */
@@ -117,6 +120,8 @@ public class GitVcsSupport extends ServerVcsSupport
       // ignore exception
     }
     MD_SET_CAN_BE_IGNORED = m;
+    int currentVersionCacheSize = TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
+    ourCurrentVersionCache = new RecentEntriesCache<File, String>(currentVersionCacheSize);
   }
 
   /**
