@@ -940,14 +940,22 @@ public class GitVcsSupport extends ServerVcsSupport
         try {
           fetchBranchData(s, r, root);
           String refName = GitUtils.branchRef(s.getBranch());
-          Commit c = r.mapCommit(refName);
-          if (c == null) {
-            throw new VcsException("The branch name could not be resolved " + refName);
+          Ref branchRef = r.getRef(refName);
+          String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryPath());
+          if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
+            return cachedCurrentVersion;
+          } else {
+            Commit c = r.mapCommit(refName);
+            if (c == null) {
+              throw new VcsException("The branch name could not be resolved " + refName);
+            }
+            if (LOG.isDebugEnabled()) {
+              LOG.debug("Current version: " + c.getCommitId().name() + " " + s.debugInfo());
+            }
+            final String currentVersion = GitServerUtil.makeVersion(c);
+            ourCurrentVersionCache.put(s.getRepositoryPath(), currentVersion);
+            return currentVersion;
           }
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("Current version: " + c.getCommitId().name() + " " + s.debugInfo());
-          }
-          return GitServerUtil.makeVersion(c);
         } finally {
           r.close();
         }
