@@ -33,6 +33,7 @@ import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -84,6 +85,11 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   private static ConcurrentMap<File, Object> myRepositoryLocks = new ConcurrentHashMap<File, Object>();
   /**
+   * Current version cache (bare repository dir -> current version).
+   * We should have only one branch per bare repository.
+   */
+  private static RecentEntriesCache<File, String> ourCurrentVersionCache;
+  /**
    * Name of property for repository directory path for fetch process
    */
   static final String REPOSITORY_DIR_PROPERTY_NAME = "REPOSITORY_DIR";
@@ -117,6 +123,8 @@ public class GitVcsSupport extends ServerVcsSupport
       // ignore exception
     }
     MD_SET_CAN_BE_IGNORED = m;
+    int currentVersionCacheSize = TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
+    ourCurrentVersionCache = new RecentEntriesCache<File, String>(currentVersionCacheSize);
   }
 
   /**
@@ -935,14 +943,22 @@ public class GitVcsSupport extends ServerVcsSupport
         try {
           fetchBranchData(s, r, root);
           String refName = GitUtils.branchRef(s.getBranch());
-          Commit c = r.mapCommit(refName);
-          if (c == null) {
-            throw new VcsException("The branch name could not be resolved " + refName);
+          Ref branchRef = r.getRef(refName);
+          String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryPath());
+          if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
+            return cachedCurrentVersion;
+          } else {
+            Commit c = r.mapCommit(refName);
+            if (c == null) {
+              throw new VcsException("The branch name could not be resolved " + refName);
+            }
+            if (LOG.isDebugEnabled()) {
+              LOG.debug("Current version: " + c.getCommitId().name() + " " + s.debugInfo());
+            }
+            final String currentVersion = GitServerUtil.makeVersion(c);
+            ourCurrentVersionCache.put(s.getRepositoryPath(), currentVersion);
+            return currentVersion;
           }
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("Current version: " + c.getCommitId().name() + " " + s.debugInfo());
-          }
-          return GitServerUtil.makeVersion(c);
         } finally {
           r.close();
         }
@@ -950,6 +966,16 @@ public class GitVcsSupport extends ServerVcsSupport
         throw processException("retrieving current version", e);
       }
     }
+  }
+
+  /**
+   * Return cached current version for repository in specified dir, or null if no cache version found.
+   * This method assume 1->1 relationship between repository and dir (i.e. different branches go to different dirs).
+   * @param repositoryDir repository dir
+   * @return see above
+   */
+  private String getCachedCurrentVersion(File repositoryDir) {
+    return ourCurrentVersionCache.get(repositoryDir);
   }
 
   /**
