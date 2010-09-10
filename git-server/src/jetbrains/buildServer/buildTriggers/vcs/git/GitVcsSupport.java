@@ -958,6 +958,16 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   /**
+   * Return cached current version for repository in specified dir, or null if no cache version found.
+   * This method assume 1->1 relationship between repository and dir (i.e. different branches go to different dirs).
+   * @param repositoryDir repository dir
+   * @return see above
+   */
+  private String getCachedCurrentVersion(File repositoryDir) {
+    return ourCurrentVersionCache.get(repositoryDir);
+  }
+
+  /**
    * Get repository using settings
    *
    * @param s a repository to get
