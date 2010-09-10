@@ -73,23 +73,6 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   private static Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   /**
-   * Random number generator used to generate artificial versions
-   */
-  private static final Random ourRandom = new Random();
-  /**
-   * JGit operations locks (repository dir -> lock)
-   *
-   * Due to problems with concurrent fetch using jgit all API operations that use jgit are synchronized by locks from this map.
-   * Sinse these operations are synchronized in server by VcsRoot,
-   * additional synchronization by repository dirs should not create problems.
-   */
-  private static ConcurrentMap<File, Object> myRepositoryLocks = new ConcurrentHashMap<File, Object>();
-  /**
-   * Current version cache (bare repository dir -> current version).
-   * We should have only one branch per bare repository.
-   */
-  private static RecentEntriesCache<File, String> ourCurrentVersionCache;
-  /**
    * Name of property for repository directory path for fetch process
    */
   static final String REPOSITORY_DIR_PROPERTY_NAME = "REPOSITORY_DIR";
@@ -97,6 +80,27 @@ public class GitVcsSupport extends ServerVcsSupport
    * Name of property for cache directory path for fetch process
    */
   static final String CACHE_DIR_PROPERTY_NAME = "CACHE_DIR";
+  /**
+   * The method that allows to set non-ignorable attribute on modification data
+   */
+  private final static Method MD_SET_CAN_BE_IGNORED;
+  /**
+   * Random number generator used to generate artificial versions
+   */
+  private final Random myRandom = new Random();
+  /**
+   * JGit operations locks (repository dir -> lock)
+   *
+   * Due to problems with concurrent fetch using jgit all API operations that use jgit are synchronized by locks from this map.
+   * Sinse these operations are synchronized in server by VcsRoot,
+   * additional synchronization by repository dirs should not create problems.
+   */
+  private final ConcurrentMap<File, Object> myRepositoryLocks = new ConcurrentHashMap<File, Object>();
+  /**
+   * Current version cache (bare repository dir -> current version).
+   * We should have only one branch per bare repository.
+   */
+  private final RecentEntriesCache<File, String> myCurrentVersionCache;
   /**
    * Paths to the server
    */
@@ -110,10 +114,6 @@ public class GitVcsSupport extends ServerVcsSupport
    * This factory is used when known host database is specified to be ignored
    */
   final SshSessionFactory mySshSessionFactoryKnownHostsIgnored;
-  /**
-   * The method that allows to set non-ignorable attribute on modification data
-   */
-  final static Method MD_SET_CAN_BE_IGNORED;
 
   static {
     Method m = null;
@@ -123,8 +123,6 @@ public class GitVcsSupport extends ServerVcsSupport
       // ignore exception
     }
     MD_SET_CAN_BE_IGNORED = m;
-    int currentVersionCacheSize = TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
-    ourCurrentVersionCache = new RecentEntriesCache<File, String>(currentVersionCacheSize);
   }
 
   /**
@@ -134,6 +132,8 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   public GitVcsSupport(@Nullable ServerPaths serverPaths) {
     this.myServerPaths = serverPaths;
+    int currentVersionCacheSize = TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
+    myCurrentVersionCache = new RecentEntriesCache<File, String>(currentVersionCacheSize);
     if (serverPaths == null) {
       // the test mode, ssh is not available
       this.mySshSessionFactory = null;
@@ -240,7 +240,7 @@ public class GitVcsSupport extends ServerVcsSupport
             }
             // add revision with warning text and random number as version
             byte[] idBytes = new byte[20];
-            ourRandom.nextBytes(idBytes);
+            myRandom.nextBytes(idBytes);
             String version = GitUtils.makeVersion(ObjectId.fromRaw(idBytes).name(), limitTime);
             rc.add(new ModificationData(new Date(currentRev.getCommitTime()),
                                         new ArrayList<VcsChange>(),
@@ -956,7 +956,7 @@ public class GitVcsSupport extends ServerVcsSupport
               LOG.debug("Current version: " + c.getCommitId().name() + " " + s.debugInfo());
             }
             final String currentVersion = GitServerUtil.makeVersion(c);
-            ourCurrentVersionCache.put(s.getRepositoryPath(), currentVersion);
+            myCurrentVersionCache.put(s.getRepositoryPath(), currentVersion);
             return currentVersion;
           }
         } finally {
@@ -975,7 +975,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * @return see above
    */
   private String getCachedCurrentVersion(File repositoryDir) {
-    return ourCurrentVersionCache.get(repositoryDir);
+    return myCurrentVersionCache.get(repositoryDir);
   }
 
   /**
