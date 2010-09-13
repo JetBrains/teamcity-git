@@ -68,7 +68,7 @@ public class GitServerUtil {
         if (existingRemote != null && !remote.toString().equals(existingRemote)) {
           throw new VcsException(
             "The specified directory " + dir + " is already used for another remote " + existingRemote +
-            " and cannot be used for others. Please specify the other directory explicitly.");
+            " and cannot be used for others (" + remote.toString() + "). Please specify the other directory explicitly.");
         }
       }
       return r;
