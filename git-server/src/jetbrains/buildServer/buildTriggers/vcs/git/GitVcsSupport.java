@@ -1041,7 +1041,7 @@ public class GitVcsSupport extends ServerVcsSupport
           if (myServerPaths != null) {
             properties.put(CACHE_DIR_PROPERTY_NAME, myServerPaths.getCachesDir());
           }
-          processInput.write(VcsRootImpl.propertiesToString(properties).getBytes());
+          processInput.write(VcsRootImpl.propertiesToString(properties).getBytes("UTF-8"));
           processInput.flush();
         } catch (IOException e) {
           errors.add(e);
