@@ -87,7 +87,7 @@ public class Fetcher {
   private static String readInput() throws IOException {
     char[] chars = new char[512];
     StringBuilder sb = new StringBuilder();
-    Reader processInput = new BufferedReader(new InputStreamReader(System.in));
+    Reader processInput = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
     while (processInput.read(chars) != -1) {
       sb.append(new String(chars));
     }
