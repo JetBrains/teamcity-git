@@ -88,8 +88,10 @@ public class Fetcher {
     char[] chars = new char[512];
     StringBuilder sb = new StringBuilder();
     Reader processInput = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
-    while (processInput.read(chars) != -1) {
-      sb.append(new String(chars));
+    int count = 0;
+    while ((count = processInput.read(chars)) != -1) {
+      final String str = new String(chars, 0, count);
+      sb.append(str);
     }
     return sb.toString();
   }

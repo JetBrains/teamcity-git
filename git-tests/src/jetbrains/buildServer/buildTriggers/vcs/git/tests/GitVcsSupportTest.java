@@ -37,7 +37,6 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
 
-import static com.intellij.openapi.util.io.FileUtil.delete;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 
 /**
@@ -849,5 +848,29 @@ public class GitVcsSupportTest extends PatchTestCase {
     for (String[] d : data) {
       assertEquals(GitUtils.normalizePath(d[0]), d[1]);
     }
+  }
+
+
+  /**
+   * TW-13330
+   * Test reproduces bug in Fetcher code: Fetcher worked only if all parameters of VcsRoot
+   * sent to process input as string were smaller than 512 bytes (most of the cases) or size mod 512 = 0.
+   */
+  @Test
+  public void test_long_input_for_fetcher_process() throws IOException, VcsException {
+    System.setProperty("teamcity.git.fetch.separate.process", "true");
+    GitVcsSupport support = getSupport();
+    VcsRootImpl root = (VcsRootImpl) getRoot("version-test");
+    root.addProperty("param",
+                     "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" +
+                     "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" +
+                     "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" +
+                     "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" +
+                     "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" +
+                     "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" +
+                     "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" +
+                     "bbbbbbbbbbbbbbbbbbbbb");//with such long param size of input for fetcher process is greater than 512 bytes
+    String version = support.getCurrentVersion(root);
+    assertEquals(VERSION_TEST_HEAD, version);
   }
 }
