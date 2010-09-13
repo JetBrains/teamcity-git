@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.Pair;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import jetbrains.buildServer.ExecResult;
@@ -59,7 +60,9 @@ import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 
 /**
@@ -97,10 +100,9 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   private final ConcurrentMap<File, Object> myRepositoryLocks = new ConcurrentHashMap<File, Object>();
   /**
-   * Current version cache (bare repository dir -> current version).
-   * We should have only one branch per bare repository.
+   * Current version cache (Pair<bare repository dir, branch name> -> current version).
    */
-  private final RecentEntriesCache<File, String> myCurrentVersionCache;
+  private final RecentEntriesCache<Pair<File, String>, String> myCurrentVersionCache;
   /**
    * Paths to the server
    */
@@ -133,7 +135,7 @@ public class GitVcsSupport extends ServerVcsSupport
   public GitVcsSupport(@Nullable ServerPaths serverPaths) {
     this.myServerPaths = serverPaths;
     int currentVersionCacheSize = TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
-    myCurrentVersionCache = new RecentEntriesCache<File, String>(currentVersionCacheSize);
+    myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(currentVersionCacheSize);
     if (serverPaths == null) {
       // the test mode, ssh is not available
       this.mySshSessionFactory = null;
@@ -944,7 +946,7 @@ public class GitVcsSupport extends ServerVcsSupport
           fetchBranchData(s, r, root);
           String refName = GitUtils.branchRef(s.getBranch());
           Ref branchRef = r.getRef(refName);
-          String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryPath());
+          String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryPath(), s.getBranch());
           if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
             return cachedCurrentVersion;
           } else {
@@ -956,7 +958,7 @@ public class GitVcsSupport extends ServerVcsSupport
               LOG.debug("Current version: " + c.getCommitId().name() + " " + s.debugInfo());
             }
             final String currentVersion = GitServerUtil.makeVersion(c);
-            myCurrentVersionCache.put(s.getRepositoryPath(), currentVersion);
+            setCachedCurrentVersion(s.getRepositoryPath(), s.getBranch(), currentVersion);
             return currentVersion;
           }
         } finally {
@@ -969,13 +971,17 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   /**
-   * Return cached current version for repository in specified dir, or null if no cache version found.
-   * This method assume 1->1 relationship between repository and dir (i.e. different branches go to different dirs).
-   * @param repositoryDir repository dir
-   * @return see above
+   * Return cached current version for branch in repository in specified dir, or null if no cache version found.
    */
-  private String getCachedCurrentVersion(File repositoryDir) {
-    return myCurrentVersionCache.get(repositoryDir);
+  private String getCachedCurrentVersion(File repositoryDir, String branchName) {
+    return myCurrentVersionCache.get(Pair.create(repositoryDir, branchName));
+  }
+
+  /**
+   * Save current version for branch of repository in cache.
+   */
+  private void setCachedCurrentVersion(File repositoryDir, String branchName, String currentVersion) {
+    myCurrentVersionCache.put(Pair.create(repositoryDir, branchName), currentVersion);
   }
 
   /**
