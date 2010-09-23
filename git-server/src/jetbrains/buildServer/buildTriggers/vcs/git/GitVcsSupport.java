@@ -46,6 +46,7 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
@@ -70,7 +71,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class GitVcsSupport extends ServerVcsSupport
   implements VcsPersonalSupport, LabelingSupport, VcsFileContentProvider, CollectChangesByCheckoutRules, BuildPatchByCheckoutRules,
-             TestConnectionSupport {
+             TestConnectionSupport, BranchSupport {
   /**
    * logger instance
    */
@@ -261,6 +262,45 @@ public class GitVcsSupport extends ServerVcsSupport
       }
     }
     return rc;
+  }
+
+  public List<ModificationData> collectChanges(@NotNull VcsRoot originalRoot,
+                                               @NotNull String  originalRootVersion,
+                                               @NotNull VcsRoot branchRoot,
+                                               @Nullable String  branchRootVersion,
+                                               @NotNull CheckoutRules checkoutRules) throws VcsException {
+    String forkPoint = getLastCommonVersion(originalRoot, originalRootVersion, branchRoot, branchRootVersion);
+    return collectChanges(branchRoot, forkPoint, branchRootVersion, checkoutRules);
+  }
+
+  private String getLastCommonVersion(VcsRoot baseRoot, String baseVersion, VcsRoot tipRoot, String tipVersion) throws VcsException {
+    Settings baseSettings = createSettings(baseRoot);
+    Settings tipSettings = createSettings(tipRoot);
+    try {
+      Commit baseCommit = ensureCommitLoaded(baseRoot, baseSettings, baseVersion);
+      Commit tipCommit = ensureCommitLoaded(tipRoot, tipSettings, tipVersion);
+      Repository tipRepository = GitServerUtil.getRepository(tipSettings.getRepositoryPath(), tipSettings.getRepositoryFetchURL());
+      RevWalk walk = new RevWalk(tipRepository);
+      walk.setRevFilter(RevFilter.MERGE_BASE);
+      walk.markStart(walk.parseCommit(baseCommit.getCommitId()));
+      walk.markStart(walk.parseCommit(tipCommit.getCommitId()));
+      final RevCommit base = walk.next();
+      return GitServerUtil.makeVersion(base.asCommit(walk));
+    } catch (Exception e) {
+      throw processException("find fork version", e);
+    }
+  }
+
+  private Commit ensureCommitLoaded(VcsRoot root, Settings rootSettings, String commitWithDate) throws Exception {
+    synchronized (getRepositoryLock(rootSettings.getRepositoryPath())) {
+      final Repository repository = GitServerUtil.getRepository(rootSettings.getRepositoryPath(), rootSettings.getRepositoryFetchURL());
+      try {
+        final String commit = GitUtils.versionRevision(commitWithDate);
+        return ensureCommitLoaded(rootSettings, repository, commit, root);
+      } finally {
+        repository.close();
+      }
+    }
   }
 
   /**
@@ -1118,7 +1158,8 @@ public class GitVcsSupport extends ServerVcsSupport
       Settings.class,
       com.jcraft.jsch.JSch.class,
       Decoder.class,
-      gnu.trove.TObjectHashingStrategy.class
+      gnu.trove.TObjectHashingStrategy.class,
+      BranchSupport.class
     }, null, null);
   }
 
