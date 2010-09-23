@@ -1212,12 +1212,12 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   /**
-   * Check if fetch should be run in separate process, false by default
+   * Check if fetch should be run in separate process, true by default
    *
    * @return true if fetch should be run in separate process
    */
   private boolean separateProcessForFetch() {
-    return TeamCityProperties.getBoolean("teamcity.git.fetch.separate.process");
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.fetch.separate.process");
   }
 
   // 2 methods below are copied from git-plugin agent code and probably should be moved to common:
