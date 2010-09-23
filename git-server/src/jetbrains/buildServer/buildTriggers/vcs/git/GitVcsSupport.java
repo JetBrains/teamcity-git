@@ -1203,12 +1203,12 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   /**
-   * Get maximum amount of memory for fetch process, 200M by default
+   * Get maximum amount of memory for fetch process, 512M by default
    *
    * @return maximum amount of memory for fetch process
    */
   private String getFetchProcessMaxMemory() {
-    return TeamCityProperties.getProperty("teamcity.git.fetch.process.max.memory", "200M");
+    return TeamCityProperties.getProperty("teamcity.git.fetch.process.max.memory", "512M");
   }
 
   /**
