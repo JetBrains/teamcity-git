@@ -56,7 +56,7 @@ public class Fetcher {
   private static void fetch(File repositoryDir, final String cacheDirPath, Map<String, String> vcsRootProperties) throws IOException, VcsException, URISyntaxException {
     VcsRootImpl myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
     myRoot.addAllProperties(vcsRootProperties);
-    GitVcsSupport gitSupport = new GitVcsSupport(new ServerPaths()) {
+    GitVcsSupport gitSupport = new GitVcsSupport(new ServerPaths(), null) {
       protected Settings createSettings(VcsRoot vcsRoot) throws VcsException {
         final Settings s = super.createSettings(vcsRoot);
         s.setCachesDirectory(cacheDirPath);

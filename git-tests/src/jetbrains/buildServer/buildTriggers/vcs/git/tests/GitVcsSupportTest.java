@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.BaseTestCase;
+import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.util.FileUtil;
@@ -27,6 +28,8 @@ import jetbrains.buildServer.vcs.patches.PatchTestCase;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.Tag;
 import org.eclipse.jgit.transport.URIish;
+import org.jmock.Expectations;
+import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -144,7 +147,11 @@ public class GitVcsSupportTest extends PatchTestCase {
    * @return a created vcs support object
    */
   protected GitVcsSupport getSupport() {
-    return new GitVcsSupport(null) {
+    return getSupport(null);
+  }
+
+  private GitVcsSupport getSupport(ExtensionHolder holder) {
+    return new GitVcsSupport(null, holder) {
       @Override
       protected Settings createSettings(VcsRoot vcsRoot) throws VcsException {
         final Settings s = super.createSettings(vcsRoot);
@@ -872,5 +879,37 @@ public class GitVcsSupportTest extends PatchTestCase {
                      "bbbbbbbbbbbbbbbbbbbbb");//with such long param size of input for fetcher process is greater than 512 bytes
     String version = support.getCurrentVersion(root);
     assertEquals(VERSION_TEST_HEAD, version);
+  }
+
+
+  @Test
+  public void test_display_name_conflict() {
+    Mockery context = new Mockery();
+    final ExtensionHolder holder = context.mock(ExtensionHolder.class);
+    final VcsSupportContext anotherGitPlugin = context.mock(VcsSupportContext.class);
+    final VcsSupportCore anotherGitPluginCore = context.mock(VcsSupportCore.class);
+    context.checking(new Expectations() {{
+      allowing(holder).getServices(VcsSupportContext.class); will(returnValue(Arrays.asList(anotherGitPlugin)));
+      allowing(anotherGitPlugin).getCore(); will(returnValue(anotherGitPluginCore));
+      allowing(anotherGitPluginCore).getDisplayName(); will(returnValue("Git"));
+    }});
+    GitVcsSupport jetbrainsPlugin = getSupport(holder);
+    assertEquals(jetbrainsPlugin.getDisplayName(), "Git (Jetbrains plugin)");
+  }
+
+
+  @Test
+  public void test_display_name_no_conflict() {
+    Mockery context = new Mockery();
+    final ExtensionHolder holder = context.mock(ExtensionHolder.class);
+    final VcsSupportContext anotherVcsPlugin = context.mock(VcsSupportContext.class);
+    final VcsSupportCore anotherVcsPluginCore = context.mock(VcsSupportCore.class);
+    context.checking(new Expectations() {{
+      allowing(holder).getServices(VcsSupportContext.class); will(returnValue(Arrays.asList(anotherVcsPlugin)));
+      allowing(anotherVcsPlugin).getCore(); will(returnValue(anotherVcsPluginCore));
+      allowing(anotherVcsPluginCore).getDisplayName(); will(returnValue("Hg"));
+    }});
+    GitVcsSupport jetbrainsPlugin = getSupport(holder);
+    assertEquals(jetbrainsPlugin.getDisplayName(), "Git");
   }
 }

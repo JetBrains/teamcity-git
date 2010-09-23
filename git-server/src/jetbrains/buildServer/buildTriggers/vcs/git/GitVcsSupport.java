@@ -22,6 +22,7 @@ import com.intellij.openapi.util.Pair;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
@@ -64,6 +65,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Pattern;
 
 
 /**
@@ -118,6 +120,8 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   final SshSessionFactory mySshSessionFactoryKnownHostsIgnored;
 
+  private String myDisplayName;
+
   static {
     Method m = null;
     try {
@@ -133,7 +137,8 @@ public class GitVcsSupport extends ServerVcsSupport
    *
    * @param serverPaths the paths to the server
    */
-  public GitVcsSupport(@Nullable ServerPaths serverPaths) {
+  public GitVcsSupport(@Nullable ServerPaths serverPaths,
+                       @Nullable final ExtensionHolder extensionHolder) {
     this.myServerPaths = serverPaths;
     int currentVersionCacheSize = TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(currentVersionCacheSize);
@@ -151,6 +156,24 @@ public class GitVcsSupport extends ServerVcsSupport
           return session;
         }
       };
+    }
+    initDisplayName(extensionHolder);
+  }
+
+  private void initDisplayName(ExtensionHolder extensionHolder) {
+    if (extensionHolder != null) {
+      final Collection<VcsSupportContext> vcsPlugins = extensionHolder.getServices(VcsSupportContext.class);
+      Pattern p = Pattern.compile(".*git.*", Pattern.CASE_INSENSITIVE);
+      for (VcsSupportContext plugin : vcsPlugins) {
+        String displayName = plugin.getCore().getDisplayName();
+        if (p.matcher(displayName).matches()) {
+          myDisplayName = "Git (Jetbrains plugin)";
+          return;
+        }
+      }
+      myDisplayName = "Git";
+    } else {
+      myDisplayName = "Git (Jetbrains plugin)";
     }
   }
 
@@ -887,7 +910,7 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   @NotNull
   public String getDisplayName() {
-    return "Git (JetBrains)";
+    return myDisplayName;
   }
 
   /**

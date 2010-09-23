@@ -101,7 +101,7 @@ public class BranchSupportTest {
   }
 
   private GitVcsSupport getSupport() {
-    return new GitVcsSupport(null) {
+    return new GitVcsSupport(null, null) {
       @Override
       protected Settings createSettings(VcsRoot vcsRoot) throws VcsException {
         final Settings s = super.createSettings(vcsRoot);
