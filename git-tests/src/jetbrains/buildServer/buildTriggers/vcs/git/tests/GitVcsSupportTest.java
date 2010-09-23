@@ -891,7 +891,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     context.checking(new Expectations() {{
       allowing(holder).getServices(VcsSupportContext.class); will(returnValue(Arrays.asList(anotherGitPlugin)));
       allowing(anotherGitPlugin).getCore(); will(returnValue(anotherGitPluginCore));
-      allowing(anotherGitPluginCore).getDisplayName(); will(returnValue("Git"));
+      allowing(anotherGitPluginCore).getName(); will(returnValue("git"));
     }});
     GitVcsSupport jetbrainsPlugin = getSupport(holder);
     assertEquals(jetbrainsPlugin.getDisplayName(), "Git (Jetbrains plugin)");
@@ -907,7 +907,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     context.checking(new Expectations() {{
       allowing(holder).getServices(VcsSupportContext.class); will(returnValue(Arrays.asList(anotherVcsPlugin)));
       allowing(anotherVcsPlugin).getCore(); will(returnValue(anotherVcsPluginCore));
-      allowing(anotherVcsPluginCore).getDisplayName(); will(returnValue("Hg"));
+      allowing(anotherVcsPluginCore).getName(); will(returnValue("hg"));
     }});
     GitVcsSupport jetbrainsPlugin = getSupport(holder);
     assertEquals(jetbrainsPlugin.getDisplayName(), "Git");

@@ -65,7 +65,6 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.regex.Pattern;
 
 
 /**
@@ -120,7 +119,8 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   final SshSessionFactory mySshSessionFactoryKnownHostsIgnored;
 
-  private String myDisplayName;
+  private final ExtensionHolder myExtensionHolder;
+  private volatile String myDisplayName = null;
 
   static {
     Method m = null;
@@ -140,6 +140,7 @@ public class GitVcsSupport extends ServerVcsSupport
   public GitVcsSupport(@Nullable ServerPaths serverPaths,
                        @Nullable final ExtensionHolder extensionHolder) {
     this.myServerPaths = serverPaths;
+    myExtensionHolder = extensionHolder;
     int currentVersionCacheSize = TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(currentVersionCacheSize);
     if (serverPaths == null) {
@@ -156,24 +157,6 @@ public class GitVcsSupport extends ServerVcsSupport
           return session;
         }
       };
-    }
-    initDisplayName(extensionHolder);
-  }
-
-  private void initDisplayName(ExtensionHolder extensionHolder) {
-    if (extensionHolder != null) {
-      final Collection<VcsSupportContext> vcsPlugins = extensionHolder.getServices(VcsSupportContext.class);
-      Pattern p = Pattern.compile(".*git.*", Pattern.CASE_INSENSITIVE);
-      for (VcsSupportContext plugin : vcsPlugins) {
-        String displayName = plugin.getCore().getDisplayName();
-        if (p.matcher(displayName).matches()) {
-          myDisplayName = "Git (Jetbrains plugin)";
-          return;
-        }
-      }
-      myDisplayName = "Git";
-    } else {
-      myDisplayName = "Git (Jetbrains plugin)";
     }
   }
 
@@ -910,8 +893,30 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   @NotNull
   public String getDisplayName() {
+    initDisplayNameIfRequired();
     return myDisplayName;
   }
+
+  private void initDisplayNameIfRequired() {
+    if (myDisplayName == null) {
+      if (myExtensionHolder != null) {
+        boolean communityPluginFound = false;
+        final Collection<VcsSupportContext> vcsPlugins = myExtensionHolder.getServices(VcsSupportContext.class);
+        for (VcsSupportContext plugin : vcsPlugins) {
+          if (plugin.getCore().getName().equals("git")) {
+            communityPluginFound = true;
+          }
+        }
+        if (communityPluginFound) {
+          myDisplayName = "Git (Jetbrains plugin)";
+        } else {
+          myDisplayName = "Git";
+        }
+      } else {
+        myDisplayName = "Git (Jetbrains plugin)";
+      }
+    }
+  }  
 
   /**
    * {@inheritDoc}
