@@ -1089,6 +1089,8 @@ public class GitVcsSupport extends ServerVcsSupport
       try {
         RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
         tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
+      } catch (OutOfMemoryError oom) {
+        clean(repository);
       } finally {
         tn.close();
       }
@@ -1168,7 +1170,40 @@ public class GitVcsSupport extends ServerVcsSupport
     if (!errors.isEmpty()) {
       throw errors.get(0);
     }
-    checkCommandFailed("git fetch", result);
+    VcsException commandError = CommandLineUtil.getCommandLineError("git fetch", result);
+    if (commandError != null) {
+      LOG.warn(commandError.getMessage());
+      if (isOutOfMemoryError(result)) {
+        LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + getFetchProcessMaxMemory() + ", try to increase it.");
+        clean(repository);
+      }
+      throw commandError;
+    }
+    if (result.getStderr().length() > 0) {
+      LOG.warn("Error output produced by git fetch");
+      LOG.warn(result.getStderr());
+    }
+  }
+
+  private boolean isOutOfMemoryError(ExecResult result) {
+    return result.getStderr().contains("java.lang.OutOfMemoryError");
+  }
+
+  /**
+   * Clean out garbage in case of errors
+   * @param db repository
+   */
+  private void clean(Repository db) {
+    //When jgit loads new pack into repository, it first writes it to file
+    //incoming_xxx.pack. When it tries to open such pack we can run out of memory.
+    //In this case incoming_xxx.pack files will waste disk space.
+    //See TW-13450 for details
+    File objectsDir = db.getObjectsDirectory();
+    for (File f : objectsDir.listFiles()) {
+      if (f.isFile() && f.getName().startsWith("incoming_") && f.getName().endsWith(".pack")) {
+        FileUtil.delete(f);
+      }
+    }
   }
 
   /**
@@ -1219,33 +1254,6 @@ public class GitVcsSupport extends ServerVcsSupport
   private boolean separateProcessForFetch() {
     return TeamCityProperties.getBooleanOrTrue("teamcity.git.fetch.separate.process");
   }
-
-  // 2 methods below are copied from git-plugin agent code and probably should be moved to common:
-
-  @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
-  public static void checkCommandFailed(@NotNull String cmdName, @NotNull ExecResult res) throws VcsException {
-    if (res.getExitCode() != 0 || res.getException() != null) {
-      commandFailed(cmdName, res);
-    }
-    if (res.getStderr().length() > 0) {
-      LOG.warn("Error output produced by: " + cmdName);
-      LOG.warn(res.getStderr());
-    }
-  }
-
-  @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
-  public static void commandFailed(final String cmdName, final ExecResult res) throws VcsException {
-    Throwable exception = res.getException();
-    String stderr = res.getStderr();
-    String stdout = res.getStdout();
-    final String message = "'" + cmdName + "' command failed.\n" +
-            (!StringUtil.isEmpty(stderr) ? "stderr: " + stderr + "\n" : "") +
-            (!StringUtil.isEmpty(stdout) ? "stdout: " + stdout + "\n" : "") +
-            (exception != null ? "exception: " + exception.getLocalizedMessage() : "");
-    LOG.warn(message);
-    throw new VcsException(message);
-  }
-
 
   /**
    * {@inheritDoc}
