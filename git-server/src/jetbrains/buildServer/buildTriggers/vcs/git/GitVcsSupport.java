@@ -58,7 +58,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
-import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.*;
@@ -73,22 +72,10 @@ import java.util.concurrent.ConcurrentMap;
 public class GitVcsSupport extends ServerVcsSupport
   implements VcsPersonalSupport, LabelingSupport, VcsFileContentProvider, CollectChangesByCheckoutRules, BuildPatchByCheckoutRules,
              TestConnectionSupport, BranchSupport {
-  /**
-   * logger instance
-   */
+
   private static Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
-  /**
-   * Name of property for repository directory path for fetch process
-   */
   static final String REPOSITORY_DIR_PROPERTY_NAME = "REPOSITORY_DIR";
-  /**
-   * Name of property for cache directory path for fetch process
-   */
   static final String CACHE_DIR_PROPERTY_NAME = "CACHE_DIR";
-  /**
-   * The method that allows to set non-ignorable attribute on modification data
-   */
-  private final static Method MD_SET_CAN_BE_IGNORED;
   /**
    * Random number generator used to generate artificial versions
    */
@@ -97,7 +84,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * JGit operations locks (repository dir -> lock)
    *
    * Due to problems with concurrent fetch using jgit all API operations that use jgit are synchronized by locks from this map.
-   * Sinse these operations are synchronized in server by VcsRoot,
+   * Since these operations are synchronized in server by VcsRoot,
    * additional synchronization by repository dirs should not create problems.
    *
    * These locks are also used in Cleaner
@@ -107,32 +94,20 @@ public class GitVcsSupport extends ServerVcsSupport
    * Current version cache (Pair<bare repository dir, branch name> -> current version).
    */
   private final RecentEntriesCache<Pair<File, String>, String> myCurrentVersionCache;
-  /**
-   * Paths to the server
-   */
-  final ServerPaths myServerPaths;
+  private final ServerPaths myServerPaths;
   /**
    * The default SSH session factory used for not explicitly configured host
    * It fails when user is prompted for some information.
    */
-  final SshSessionFactory mySshSessionFactory;
+  private final SshSessionFactory mySshSessionFactory;
   /**
    * This factory is used when known host database is specified to be ignored
    */
-  final SshSessionFactory mySshSessionFactoryKnownHostsIgnored;
+  private final SshSessionFactory mySshSessionFactoryKnownHostsIgnored;
 
   private final ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
 
-  static {
-    Method m = null;
-    try {
-      m = ModificationData.class.getMethod("setCanBeIgnored", boolean.class);
-    } catch (Exception ex) {
-      // ignore exception
-    }
-    MD_SET_CAN_BE_IGNORED = m;
-  }
 
   public GitVcsSupport(@NotNull  final ServerPaths serverPaths,
                        @Nullable final ExtensionHolder extensionHolder) {
@@ -190,9 +165,6 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
 
-  /**
-   * {@inheritDoc}
-   */
   public List<ModificationData> collectChanges(@NotNull VcsRoot root,
                                                @NotNull String fromVersion,
                                                @Nullable String currentVersion,
@@ -336,12 +308,8 @@ public class GitVcsSupport extends ServerVcsSupport
     List<VcsChange> changes = getCommitChanges(repositories, s, r, cc, parentIds, cv, pv, ignoreSubmodulesErrors);
     ModificationData m = new ModificationData(cc.getAuthor().getWhen(), changes, cc.getMessage(), GitServerUtil.getUser(s, cc), root, cv,
                                               GitServerUtil.displayVersion(cc));
-    if (parentIds.length > 1 && MD_SET_CAN_BE_IGNORED != null) {
-      try {
-        MD_SET_CAN_BE_IGNORED.invoke(m, false);
-      } catch (Exception e) {
-        // ignore exception
-      }
+    if (parentIds.length > 1) {
+      m.setCanBeIgnored(false);
     }
     rc.add(m);
   }
@@ -572,9 +540,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return ChangeType.UNCHANGED;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public void buildPatch(@NotNull VcsRoot root,
                          @Nullable final String fromVersion,
                          @NotNull String toVersion,
@@ -732,9 +697,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return (m.getBits() & (1 << 6)) != 0;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @NotNull
   public byte[] getContent(@NotNull VcsModification vcsModification,
                            @NotNull VcsChangeInfo change,
@@ -748,9 +710,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return getContent(file, vcsRoot, version);
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @NotNull
   public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot versionedRoot, @NotNull String version) throws VcsException {
     Settings s = createSettings(versionedRoot);
@@ -871,17 +830,11 @@ public class GitVcsSupport extends ServerVcsSupport
     return c;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @NotNull
   public String getName() {
     return Constants.VCS_NAME;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @NotNull
   public String getDisplayName() {
     initDisplayNameIfRequired();
@@ -909,9 +862,6 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public PropertiesProcessor getVcsPropertiesProcessor() {
     return new PropertiesProcessor() {
       public Collection<InvalidProperty> process(Map<String, String> properties) {
@@ -951,50 +901,32 @@ public class GitVcsSupport extends ServerVcsSupport
     };
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @NotNull
   public String getVcsSettingsJspFilePath() {
     return "gitSettings.jsp";
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @NotNull
   public String describeVcsRoot(VcsRoot root) {
     final String branch = root.getProperty(Constants.BRANCH_NAME);
     return root.getProperty(Constants.FETCH_URL) + "#" + (branch == null ? "master" : branch);
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public Map<String, String> getDefaultVcsProperties() {
     final HashMap<String, String> map = new HashMap<String, String>();
     map.put(Constants.BRANCH_NAME, "master");
     return map;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public String getVersionDisplayName(@NotNull String version, @NotNull VcsRoot root) throws VcsException {
     return GitServerUtil.displayVersion(version);
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @NotNull
   public Comparator<String> getVersionComparator() {
     return GitUtils.VERSION_COMPARATOR;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @NotNull
   public String getCurrentVersion(@NotNull VcsRoot root) throws VcsException {
     Settings s = createSettings(root);
@@ -1054,9 +986,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return getRepository(s, null);
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public boolean sourcesUpdatePossibleIfChangesNotFound(@NotNull VcsRoot root) {
     return true;
   }
@@ -1244,9 +1173,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return TeamCityProperties.getBooleanOrTrue("teamcity.git.fetch.separate.process");
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
     Settings s = createSettings(vcsRoot);
     File repositoryTempDir = null;
@@ -1307,9 +1233,6 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @Override
   public TestConnectionSupport getTestConnectionSupport() {
     return this;
@@ -1328,41 +1251,25 @@ public class GitVcsSupport extends ServerVcsSupport
     return settings;
   }
 
-
-  /**
-   * {@inheritDoc}
-   */
   public LabelingSupport getLabelingSupport() {
     return this;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @NotNull
   public VcsFileContentProvider getContentProvider() {
     return this;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @NotNull
   public CollectChangesPolicy getCollectChangesPolicy() {
     return this;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @NotNull
   public BuildPatchPolicy getBuildPatchPolicy() {
     return this;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public String label(@NotNull String label, @NotNull String version, @NotNull VcsRoot root, @NotNull CheckoutRules checkoutRules)
     throws VcsException {
     Settings s = createSettings(root);
