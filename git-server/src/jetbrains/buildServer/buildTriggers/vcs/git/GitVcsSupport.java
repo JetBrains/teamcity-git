@@ -99,6 +99,8 @@ public class GitVcsSupport extends ServerVcsSupport
    * Due to problems with concurrent fetch using jgit all API operations that use jgit are synchronized by locks from this map.
    * Sinse these operations are synchronized in server by VcsRoot,
    * additional synchronization by repository dirs should not create problems.
+   *
+   * These locks are also used in Cleaner
    */
   private final ConcurrentMap<File, Object> myRepositoryLocks = new ConcurrentHashMap<File, Object>();
   /**
@@ -132,32 +134,21 @@ public class GitVcsSupport extends ServerVcsSupport
     MD_SET_CAN_BE_IGNORED = m;
   }
 
-  /**
-   * The constructor
-   *
-   * @param serverPaths the paths to the server
-   */
-  public GitVcsSupport(@Nullable ServerPaths serverPaths,
+  public GitVcsSupport(@NotNull  final ServerPaths serverPaths,
                        @Nullable final ExtensionHolder extensionHolder) {
-    this.myServerPaths = serverPaths;
+    myServerPaths = serverPaths;
     myExtensionHolder = extensionHolder;
     int currentVersionCacheSize = TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(currentVersionCacheSize);
-    if (serverPaths == null) {
-      // the test mode, ssh is not available
-      this.mySshSessionFactory = null;
-      this.mySshSessionFactoryKnownHostsIgnored = null;
-    } else {
-      this.mySshSessionFactory = new RefreshableSshConfigSessionFactory();
-      this.mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory() {
-        // note that different instance is used because JSch cannot be shared with strict host checking
-        public Session getSession(String user, String pass, String host, int port) throws JSchException {
-          final Session session = super.getSession(user, pass, host, port);
-          session.setConfig("StrictHostKeyChecking", "no");
-          return session;
-        }
-      };
-    }
+    mySshSessionFactory = new RefreshableSshConfigSessionFactory();
+    mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory() {
+      // note that different instance is used because JSch cannot be shared with strict host checking
+      public Session getSession(String user, String pass, String host, int port) throws JSchException {
+        final Session session = super.getSession(user, pass, host, port);
+        session.setConfig("StrictHostKeyChecking", "no");
+        return session;
+      }
+    };
   }
 
   /**
@@ -916,7 +907,7 @@ public class GitVcsSupport extends ServerVcsSupport
         myDisplayName = "Git (Jetbrains plugin)";
       }
     }
-  }  
+  }
 
   /**
    * {@inheritDoc}
@@ -1098,13 +1089,13 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   /**
-   * Get repository lock for work with jgit
+   * Get repository lock
    *
    * @param repositoryDir repository dir where fetch run
-   * @return lock associated with repository dir 
+   * @return lock associated with repository dir
    */
   @NotNull
-  private Object getRepositoryLock(@NotNull File repositoryDir) {
+  public Object getRepositoryLock(@NotNull File repositoryDir) {
     Object newLock = new Object();
     Object existingLock = myRepositoryLocks.putIfAbsent(repositoryDir, newLock);
     if (existingLock != null)
@@ -1140,9 +1131,7 @@ public class GitVcsSupport extends ServerVcsSupport
         try {
           Map<String, String> properties = new HashMap<String, String>(root.getProperties());
           properties.put(REPOSITORY_DIR_PROPERTY_NAME, repository.getDirectory().getCanonicalPath());
-          if (myServerPaths != null) {
-            properties.put(CACHE_DIR_PROPERTY_NAME, myServerPaths.getCachesDir());
-          }
+          properties.put(CACHE_DIR_PROPERTY_NAME, myServerPaths.getCachesDir());
           processInput.write(VcsRootImpl.propertiesToString(properties).getBytes("UTF-8"));
           processInput.flush();
         } catch (IOException e) {
@@ -1317,7 +1306,7 @@ public class GitVcsSupport extends ServerVcsSupport
       if (repositoryTempDir != null) FileUtil.delete(repositoryTempDir);
     }
   }
-  
+
   /**
    * {@inheritDoc}
    */
@@ -1335,9 +1324,7 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   protected Settings createSettings(VcsRoot vcsRoot) throws VcsException {
     final Settings settings = new Settings(vcsRoot);
-    if (myServerPaths != null) {
-      settings.setCachesDirectory(myServerPaths.getCachesDir());
-    }
+    settings.setCachesDirectory(myServerPaths.getCachesDir());
     return settings;
   }
 
@@ -1561,6 +1548,7 @@ public class GitVcsSupport extends ServerVcsSupport
     final String trimmedString = string.trim();
     return trimmedString.length() > 0 ? trimmedString : null;
   }
+
 
   /**
    * Git change type

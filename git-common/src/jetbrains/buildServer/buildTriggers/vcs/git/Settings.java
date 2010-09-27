@@ -99,23 +99,19 @@ public class Settings {
    * @throws VcsException in case of incorrect configuration
    */
   public Settings(VcsRoot root) throws VcsException {
-    final String p = root.getProperty(Constants.PATH);
-    repositoryPath = p == null ? null : new File(p);
+    repositoryPath = getPath(root);
     branch = root.getProperty(Constants.BRANCH_NAME);
     final String style = root.getProperty(Constants.USERNAME_STYLE);
     usernameStyle = style == null ? UserNameStyle.USERID : Enum.valueOf(UserNameStyle.class, style);
     String submoduleCheckout = root.getProperty(Constants.SUBMODULES_CHECKOUT);
     submodulePolicy =
       submoduleCheckout != null ? Enum.valueOf(SubmodulesCheckoutPolicy.class, submoduleCheckout) : SubmodulesCheckoutPolicy.IGNORE;
-    final String authMethod = root.getProperty(Constants.AUTH_METHOD);
-    authenticationMethod = authMethod == null ? AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, authMethod);
+    authenticationMethod = readAuthMethod(root);
     String userName = authenticationMethod == AuthenticationMethod.ANONYMOUS ? null : root.getProperty(Constants.USERNAME);
     String password = authenticationMethod != AuthenticationMethod.PASSWORD ? null : root.getProperty(Constants.PASSWORD);
     ignoreKnownHosts = "true".equals(root.getProperty(Constants.IGNORE_KNOWN_HOSTS));
-    final String fetchUrl = root.getProperty(Constants.FETCH_URL);
-    URIish uri = parseUri(userName, password, fetchUrl);
-    publicURL = uri.toString();
-    repositoryFetchURL = uri;
+    repositoryFetchURL = parseUri(userName, password, root.getProperty(Constants.FETCH_URL));
+    publicURL = repositoryFetchURL.toString();
     final String pushUrl = root.getProperty(Constants.PUSH_URL);
     if (StringUtil.isEmpty(pushUrl)) {
       repositoryPushURL = repositoryFetchURL;
@@ -134,6 +130,21 @@ public class Settings {
         setSubmoduleUrl(pairs[i * 2], pairs[i * 2 + 1]);
       }
     }
+  }
+
+  private static AuthenticationMethod readAuthMethod(VcsRoot root) {
+    String method = root.getProperty(Constants.AUTH_METHOD);
+    return method == null ? AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, method);
+  }
+
+  private static File getPath(VcsRoot root) {
+    String path = root.getProperty(Constants.PATH);
+    return path == null ? null : new File(path);
+  }
+
+  private static URIish getFetchURIish(VcsRoot root, String userName, String password) throws VcsException {
+    final String fetchUrl = root.getProperty(Constants.FETCH_URL);
+    return parseUri(userName, password, fetchUrl);
   }
 
   /**
@@ -250,6 +261,19 @@ public class Settings {
     return repositoryPath;
   }
 
+  public static File getRepositoryPath(File cacheDir, VcsRoot root) throws VcsException {
+    File userDefinedPath = getPath(root);
+    if (userDefinedPath == null) {
+      AuthenticationMethod method = readAuthMethod(root);
+      String userName = method == AuthenticationMethod.ANONYMOUS ? null : root.getProperty(Constants.USERNAME);
+      String password = method != AuthenticationMethod.PASSWORD ? null : root.getProperty(Constants.PASSWORD);
+      URIish fetchUrl = getFetchURIish(root, userName, password);
+      return getPathForUrl(cacheDir, fetchUrl.toString());
+    } else {
+      return userDefinedPath;
+    }
+  }
+
   /**
    * Set repository path
    *
@@ -318,11 +342,14 @@ public class Settings {
    * @return the internal directory name for the URL
    */
   public File getPathForUrl(String url) {
-    File dir = new File(cachesDirectory);
+    return getPathForUrl(new File(cachesDirectory), url);
+  }
+
+  public static File getPathForUrl(File cacheDir, String url) {
     // TODO the directory needs to be cleaned up
     // TODO consider using a better hash in order to reduce a chance for conflict
     String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
-    return new File(dir, "git" + File.separatorChar + name);
+    return new File(cacheDir, "git" + File.separatorChar + name);
   }
 
   /**

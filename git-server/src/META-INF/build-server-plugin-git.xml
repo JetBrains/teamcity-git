@@ -19,4 +19,5 @@
 
 <beans default-autowire="constructor">
   <bean id="jetbrainsGitServer" class="jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport"/>
+  <bean id="cleaner" class="jetbrains.buildServer.buildTriggers.vcs.git.Cleaner"/>
 </beans>

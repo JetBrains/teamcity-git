@@ -20,6 +20,7 @@ import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -93,10 +94,7 @@ public class GitVcsSupportTest extends PatchTestCase {
    * The source directory
    */
   protected File mySourceRep;
-  /**
-   * The caches directory
-   */
-  private File myCachesDir;
+  private ServerPaths myServerPaths;
   /**
    * Temporary files
    */
@@ -110,6 +108,19 @@ public class GitVcsSupportTest extends PatchTestCase {
     }));
   }
 
+  @BeforeMethod
+  public void setUp() throws IOException {
+    File teamcitySystemDir = myTempFiles.createTempDir();
+    myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
+    File masterRep = dataFile("repo.git");
+    mySourceRep = myTempFiles.createTempDir();
+    FileUtil.copyDir(masterRep, mySourceRep);
+  }
+
+  @AfterMethod
+  public void tearDown() {
+    myTempFiles.cleanup();
+  }
 
   /**
    * Create a VCS root for the current parameters and specified branch
@@ -143,52 +154,17 @@ public class GitVcsSupportTest extends PatchTestCase {
     return myRoot;
   }
 
-  /**
-   * @return a created vcs support object
-   */
-  protected GitVcsSupport getSupport() {
+  private GitVcsSupport getSupport() {
     return getSupport(null);
   }
 
   private GitVcsSupport getSupport(ExtensionHolder holder) {
-    return new GitVcsSupport(null, holder) {
-      @Override
-      protected Settings createSettings(VcsRoot vcsRoot) throws VcsException {
-        final Settings s = super.createSettings(vcsRoot);
-        s.setCachesDirectory(myCachesDir.getPath());
-        return s;
-      }
-    };
+    return new GitVcsSupport(myServerPaths, holder);
   }
 
-  /**
-   * Setup test environment
-   *
-   * @throws IOException in case of IO problem
-   */
-  @BeforeMethod
-  public void setUp() throws IOException {
-    File masterRep = dataFile("repo.git");
-    mySourceRep = myTempFiles.createTempDir();
-    FileUtil.copyDir(masterRep, mySourceRep);
-    myCachesDir = myTempFiles.createTempDir();
-  }
 
-  /**
-   * {@inheritDoc}
-   */
   protected String getTestDataPath() {
     return dataFile().getPath();
-  }
-
-
-  /**
-   * Tear down test environment
-   */
-  @AfterMethod
-  public void tearDown() {
-    // clear root
-    myTempFiles.cleanup();
   }
 
   /**

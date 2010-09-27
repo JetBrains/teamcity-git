@@ -20,6 +20,7 @@
     <classes>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVcsSupportTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SubmoduleTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CleanerTest"/>
     </classes>
   </test>
 </suite>

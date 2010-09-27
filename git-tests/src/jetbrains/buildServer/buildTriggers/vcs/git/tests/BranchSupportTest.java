@@ -20,7 +20,7 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.ModificationData;
@@ -39,28 +39,27 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.data
 import static org.testng.AssertJUnit.assertEquals;
 
 /**
- *
- *
  * @author dmitry.neverov
  */
 @Test
 public class BranchSupportTest {
 
-  private static final TempFiles TEMP_FILES = new TempFiles();
+  private static final TempFiles ourTempFiles = new TempFiles();
   protected File myRepositoryDir;
-  private File myCachesDir;
+  private ServerPaths myServerPaths;
 
   @BeforeMethod
   public void setUp() throws IOException {
+    File teamcitySystemDir = ourTempFiles.createTempDir();
+    myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
     File masterRep = dataFile("repo.git");
-    myRepositoryDir = TEMP_FILES.createTempDir();
+    myRepositoryDir = ourTempFiles.createTempDir();
     FileUtil.copyDir(masterRep, myRepositoryDir);
-    myCachesDir = TEMP_FILES.createTempDir();
   }
 
   @AfterMethod
   public void tearDown() {
-    TEMP_FILES.cleanup();
+    ourTempFiles.cleanup();
   }
 
 
@@ -101,13 +100,6 @@ public class BranchSupportTest {
   }
 
   private GitVcsSupport getSupport() {
-    return new GitVcsSupport(null, null) {
-      @Override
-      protected Settings createSettings(VcsRoot vcsRoot) throws VcsException {
-        final Settings s = super.createSettings(vcsRoot);
-        s.setCachesDirectory(myCachesDir.getPath());
-        return s;
-      }
-    };
+    return new GitVcsSupport(myServerPaths, null);
   }
 }
