@@ -23,17 +23,30 @@ public enum AuthenticationMethod {
   /**
    * Anonymous access (or password is a part of URL)
    */
-  ANONYMOUS,
+  ANONYMOUS("Anonymous"),
   /**
    * The default SSH private key
    */
-  PRIVATE_KEY_DEFAULT,
+  PRIVATE_KEY_DEFAULT("Default Private Key"),
   /**
    * The private key is specified in the file
    */
-  PRIVATE_KEY_FILE,
+  PRIVATE_KEY_FILE("Password"),
   /**
    * The password is used
    */
-  PASSWORD
+  PASSWORD("Private Key");
+
+  /**
+   * Name of auth method for user, e.g. in error messages 
+   */
+  private final String myUIName;
+
+  AuthenticationMethod(String uiName) {
+    myUIName = uiName;
+  }
+
+  public String uiName() {
+    return myUIName;
+  }
 }
