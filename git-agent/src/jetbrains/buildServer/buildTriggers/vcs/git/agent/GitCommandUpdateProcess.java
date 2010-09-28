@@ -123,7 +123,8 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
       throw new VcsException("Unable to run git at path " + path, e);
     }
     if (!GitVersion.MIN.isLessOrEqual(v)) {
-      throw new VcsException("Unsupported version of Git is detected at (" + path + "): " + v);
+      throw new VcsException("TeamCity supports Git version 1.6.4.0 or higher, found Git ("+ path +") has version " + v +
+                             ". Please upgrade Git or use server-side checkout.");
     }
   }
 
@@ -183,7 +184,7 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
         return f.getAbsolutePath();
       }
     }
-    Loggers.VCS.info(String.format("The git has not been found in default locations. Will use '%s' command without specified path.", 
+    Loggers.VCS.info(String.format("The git has not been found in default locations. Will use '%s' command without specified path.",
                                    SystemInfo.isWindows ? DEFAULT_WINDOWS_GIT : DEFAULT_UNIX_GIT));
     return SystemInfo.isWindows ? DEFAULT_WINDOWS_GIT : DEFAULT_UNIX_GIT;
   }
