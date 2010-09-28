@@ -744,8 +744,8 @@ public class GitVcsSupport extends ServerVcsSupport
         } finally {
           final long finish = System.currentTimeMillis();
           if (PERFORMANCE_LOG.isDebugEnabled()) {
-            PERFORMANCE_LOG.debug("[getContent] root=" + root.getId() + ", wait for repository lock: " + (acquireLock - start) + "ms");
-            PERFORMANCE_LOG.debug("[getContent] root=" + root.getId() + ", get object content: " + (finish - acquireLock) + "ms");
+            PERFORMANCE_LOG.debug("[getContent] root=" + s.debugInfo() + ", file=" + filePath + ", wait for repository lock: " + (acquireLock - start) + "ms");
+            PERFORMANCE_LOG.debug("[getContent] root=" + s.debugInfo() + ", file=" + filePath + ", get object content: " + (finish - acquireLock) + "ms");
           }
           close(repositories);
         }
