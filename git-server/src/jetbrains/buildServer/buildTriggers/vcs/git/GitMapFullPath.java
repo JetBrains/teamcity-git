@@ -17,10 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import jetbrains.buildServer.util.UptodateValue;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRootEntry;
@@ -28,6 +24,13 @@ import org.eclipse.jgit.lib.Commit;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
 * @author kir
@@ -42,6 +45,7 @@ class GitMapFullPath {
       }
     }, 10000);
 
+  private final GitVcsSupport myGitSupport;
   private final VcsRootEntry myRootEntry;
   private final String myFullPath;
 
@@ -51,7 +55,8 @@ class GitMapFullPath {
 
   private String myGitRevision;
 
-  public GitMapFullPath(final VcsRootEntry rootEntry, final String fullPath, final Settings settings) {
+  public GitMapFullPath(final GitVcsSupport gitSupport, final VcsRootEntry rootEntry, final String fullPath, final Settings settings) {
+    myGitSupport = gitSupport;
     myRootEntry = rootEntry;
     myFullPath = fullPath;
 
@@ -99,7 +104,7 @@ class GitMapFullPath {
   }
 
   private Commit findCommit() throws VcsException, IOException {
-    final Repository repository = GitVcsSupport.getRepository(mySettings, null);
+    final Repository repository = myGitSupport.getRepository(mySettings);
     try {
       return repository.mapCommit(myGitRevision);
     } finally {

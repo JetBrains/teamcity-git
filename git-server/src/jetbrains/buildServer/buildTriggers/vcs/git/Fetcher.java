@@ -66,6 +66,8 @@ public class Fetcher {
     Settings settings = new Settings(myRoot);
     if (cacheDirPath != null)
       settings.setCachesDirectory(cacheDirPath);
+    //this method should be called with repository lock, but Fetcher is ran in separate process, so
+    //locks will not help; Fetcher is ran after we have ensured that repository exists, so we can call it without lock
     Repository repository = GitServerUtil.getRepository(repositoryDir, settings.getRepositoryFetchURL());
 
     final String refName = GitUtils.branchRef(settings.getBranch());

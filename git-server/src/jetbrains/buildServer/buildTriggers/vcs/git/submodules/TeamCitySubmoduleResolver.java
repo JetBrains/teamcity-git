@@ -115,7 +115,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
         return mySubmoduleRepositories.get(dir);
       }
       final URIish uri = new URIish(url);
-      final Repository r = GitServerUtil.getRepository(new File(dir), uri);
+      final Repository r = myVcs.getRepository(new File(dir), uri);
       mySubmoduleRepositories.put(dir, r);
       final Transport tn = myVcs.openTransport(mySettings, r, uri);
       if (LOG.isDebugEnabled()) {
