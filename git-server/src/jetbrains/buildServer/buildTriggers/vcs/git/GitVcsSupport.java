@@ -74,6 +74,7 @@ public class GitVcsSupport extends ServerVcsSupport
              TestConnectionSupport, BranchSupport {
 
   private static Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
+  private static Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
   static final String REPOSITORY_DIR_PROPERTY_NAME = "REPOSITORY_DIR";
   static final String CACHE_DIR_PROPERTY_NAME = "CACHE_DIR";
   /**
@@ -711,10 +712,12 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot versionedRoot, @NotNull String version) throws VcsException {
-    Settings s = createSettings(versionedRoot);
+  public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot root, @NotNull String version) throws VcsException {
+    Settings s = createSettings(root);
+    final long start = System.currentTimeMillis();
     synchronized (getRepositoryLock(s.getRepositoryPath())) {
       try {
+        final long acquireLock = System.currentTimeMillis();
         Map<String, Repository> repositories = new HashMap<String, Repository>();
         Repository r = getRepository(s, repositories);
         try {
@@ -722,7 +725,7 @@ public class GitVcsSupport extends ServerVcsSupport
             LOG.debug("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
           }
           final String rev = GitUtils.versionRevision(version);
-          Commit c = ensureCommitLoaded(s, r, rev, versionedRoot);
+          Commit c = ensureCommitLoaded(s, r, rev, root);
           final TreeWalk tw = new TreeWalk(r);
           tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
           tw.setRecursive(tw.getFilter().shouldBeRecursive());
@@ -739,6 +742,11 @@ public class GitVcsSupport extends ServerVcsSupport
           }
           return data;
         } finally {
+          final long finish = System.currentTimeMillis();
+          if (PERFORMANCE_LOG.isDebugEnabled()) {
+            PERFORMANCE_LOG.debug("[getContent] root=" + root.getId() + ", wait for repository lock: " + (acquireLock - start) + "ms");
+            PERFORMANCE_LOG.debug("[getContent] root=" + root.getId() + ", get object content: " + (finish - acquireLock) + "ms");
+          }
           close(repositories);
         }
       } catch (Exception e) {
@@ -811,7 +819,12 @@ public class GitVcsSupport extends ServerVcsSupport
   private Commit ensureCommitLoaded(Settings s, Repository r, String rev, VcsRoot root) throws Exception {
     Commit c = null;
     try {
+      final long lookingForCommitStart = System.currentTimeMillis();
       c = r.mapCommit(rev);
+      final long lookingForCommitFinish= System.currentTimeMillis();
+      if (PERFORMANCE_LOG.isDebugEnabled()) {
+        PERFORMANCE_LOG.debug("[ensureCommitLoaded] root=" + s.debugInfo() + ", commit=" + rev + ", local commit lookup: " + (lookingForCommitFinish - lookingForCommitStart) + "ms");
+      }
     } catch (IOException ex) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("IO problem for commit " + rev + " in " + s.debugInfo(), ex);
@@ -1001,6 +1014,7 @@ public class GitVcsSupport extends ServerVcsSupport
     if (separateProcessForFetch()) {
       fetchBranchDataInSeparateProcess(settings, repository, root);
     } else {
+      final long fetchStart = System.currentTimeMillis();
       final String refName = GitUtils.branchRef(settings.getBranch());
       final Transport tn = openTransport(settings, repository);
       if (LOG.isDebugEnabled()) {
@@ -1013,6 +1027,9 @@ public class GitVcsSupport extends ServerVcsSupport
         clean(repository);
       } finally {
         tn.close();
+        if (PERFORMANCE_LOG.isDebugEnabled()) {
+          PERFORMANCE_LOG.debug("[fetch in server process] root=" + settings.debugInfo() + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
+        }
       }
     }
   }
@@ -1042,6 +1059,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * @throws Exception if there is a problem with fetching data
    */
   private void fetchBranchDataInSeparateProcess(final Settings settings, final Repository repository, final VcsRoot root) throws Exception {
+    final long fetchStart = System.currentTimeMillis();
     GeneralCommandLine cl = new GeneralCommandLine();
     cl.setWorkingDirectory(repository.getDirectory());
     cl.setExePath(getFetchProcessJavaPath());
@@ -1085,6 +1103,9 @@ public class GitVcsSupport extends ServerVcsSupport
       }
     });
 
+    if (PERFORMANCE_LOG.isDebugEnabled()) {
+      PERFORMANCE_LOG.debug("[fetch in separate process] root=" + settings.debugInfo() + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
+    }
     if (!errors.isEmpty()) {
       throw errors.get(0);
     }
