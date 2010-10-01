@@ -75,10 +75,6 @@ public interface Constants {
    */
   public static String IGNORE_KNOWN_HOSTS = "ignoreKnownHosts";
   /**
-   * The ignore known hosts property
-   */
-  public static String SUBMODULE_URLS = "submoduleUrls_TEST_ONLY";
-  /**
    * The property that specifies when working tree should be cleaned on agent
    */
   public static String AGENT_CLEAN_POLICY = "agentCleanPolicy";
@@ -94,4 +90,16 @@ public interface Constants {
    * The property that points to git path
    */
   public static String GIT_PATH_ENV = "TEAMCITY_GIT_PATH";
+  /**
+   * Path to bare repository dir, used in communication with Fetcher
+   */
+  public static String REPOSITORY_DIR_PROPERTY_NAME = "REPOSITORY_DIR";
+  /**
+   * Path to git cache dir, used in communication with Fetcher
+   */
+  public static String CACHE_DIR_PROPERTY_NAME = "CACHE_DIR";
+  /**
+   * Refspec to fetch, used in communication with Fetcher
+   */
+  public static String REFSPEC = "REFSPEC";
 }

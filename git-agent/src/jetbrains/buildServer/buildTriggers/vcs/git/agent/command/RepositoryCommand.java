@@ -83,7 +83,7 @@ public class RepositoryCommand extends BaseCommand {
       mySsh = ssh;
       Map<String, String> env = new HashMap<String, String>(System.getenv());
       env.put(GitSSHHandler.SSH_PORT_ENV, Integer.toString(mySsh.getXmlRcpPort()));
-      if (mySettings.isKnownHostsIgnored()) {
+      if (mySettings.getAuthSettings().isIgnoreKnownHosts()) {
         env.put(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV, "true");
       }
       try {
@@ -118,7 +118,7 @@ public class RepositoryCommand extends BaseCommand {
       if (resetPassword) {
         return null;
       }
-      return mySettings.getPassphrase();
+      return mySettings.getAuthSettings().getPassphrase();
     }
 
     /**

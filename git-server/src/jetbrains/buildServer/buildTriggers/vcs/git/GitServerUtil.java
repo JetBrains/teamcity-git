@@ -18,6 +18,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.storage.file.WindowCache;
+import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.URIish;
 
 import java.io.File;
@@ -56,14 +59,14 @@ public class GitServerUtil {
       throw new VcsException("The specified path is not a directory: " + dir);
     }
     try {
-      Repository r = new Repository(dir);
+      Repository r = new RepositoryBuilder().setBare().setGitDir(dir).build();
       if (!new File(dir, "config").exists()) {
         r.create(true);
-        final RepositoryConfig config = r.getConfig();
+        final StoredConfig config = r.getConfig();
         config.setString("teamcity", null, "remote", remote.toString());
         config.save();
       } else {
-        final RepositoryConfig config = r.getConfig();
+        final StoredConfig config = r.getConfig();
         final String existingRemote = config.getString("teamcity", null, "remote");
         if (existingRemote != null && !remote.toString().equals(existingRemote)) {
           throw new VcsException(
@@ -83,43 +86,42 @@ public class GitServerUtil {
    * @param c the commit object
    * @return the version string
    */
-  public static String makeVersion(Commit c) {
-    return GitUtils.makeVersion(c.getCommitId().name(), c.getCommitter().getWhen().getTime());
+  public static String makeVersion(RevCommit c) {
+    return GitUtils.makeVersion(c.getId().name(), c.getAuthorIdent().getWhen().getTime());
   }
 
-  /**
-   * Get user for the commit
-   *
-   * @param s the vcs root settings
-   * @param c the commit
-   * @return the user name
-   */
-  public static String getUser(Settings s, Commit c) {
-    final PersonIdent a = c.getAuthor();
+  public static String getParentVersion(RevCommit commit, String defaultParentVersion) {
+    RevCommit[] parents = commit.getParents();
+    if (parents.length == 0) {
+      return GitUtils.makeVersion(ObjectId.zeroId().name(), 0);
+    } else {
+      if (commit.getParent(0).getRawBuffer() == null) {
+        return defaultParentVersion;
+      } else {
+        return GitServerUtil.makeVersion(commit.getParents()[0]);
+      }
+    }
+  }
+
+  public static String getUser(Settings s, RevCommit c) {
+    return getUser(c.getAuthorIdent(), s);
+  }
+
+  private static String getUser(PersonIdent id, Settings s) {
     switch (s.getUsernameStyle()) {
       case NAME:
-        return a.getName();
+        return id.getName();
       case EMAIL:
-        return a.getEmailAddress();
+        return id.getEmailAddress();
       case FULL:
-        return a.getName() + " <" + a.getEmailAddress() + ">";
+        return id.getName() + " <" + id.getEmailAddress() + ">";
       case USERID:
-        String email = a.getEmailAddress();
+        String email = id.getEmailAddress();
         final int i = email.lastIndexOf("@");
         return email.substring(0, i > 0 ? i : email.length());
       default:
         throw new IllegalStateException("Unsupported username style: " + s.getUsernameStyle());
     }
-  }
-
-  /**
-   * Create display version for the commit
-   *
-   * @param c the commit to examine
-   * @return the display version
-   */
-  public static String displayVersion(Commit c) {
-    return displayVersion(c.getCommitId().name());
   }
 
   /**

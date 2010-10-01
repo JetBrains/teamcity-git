@@ -17,41 +17,38 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.lib.Commit;
-import org.eclipse.jgit.lib.NullProgressMonitor;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.RefSpec;
-import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Collections;
 import java.util.Map;
 
 /**
  * The resolver for submodules that uses TeamCity repository mapping.
  */
 public class TeamCitySubmoduleResolver extends SubmoduleResolver {
-  /**
-   * logger instance
-   */
+
   private static Logger LOG = Logger.getInstance(TeamCitySubmoduleResolver.class.getName());
   /**
-   * Base path within root for the resolver
+   * Path from the root of the first repository.
+   * For root repository = "".
+   * For submodule repository = path of submodule.
+   * For sub-submodules = path of submodule/path of sub-submodule in submodule repository.
    */
-  final String myBasePath;
+  private final String myPathFromRoot;
   /**
    * The settings object
    */
-  final Settings mySettings;
-  /**
-   * The vcs support
-   */
-  private final GitVcsSupport myVcs;
+  private final Settings myBaseRepositorySettings;
   /**
    * Repositories created for submodules
    */
@@ -65,8 +62,8 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    * @param settings              the settings object
    * @param commit                the commit this resolves handles
    */
-  public TeamCitySubmoduleResolver(Map<String, Repository> submoduleRepositories, GitVcsSupport vcs, Settings settings, Commit commit) {
-    this(submoduleRepositories, vcs, settings, "", commit);
+  public TeamCitySubmoduleResolver(Map<String, Repository> submoduleRepositories, GitVcsSupport vcs, Settings settings, RevCommit commit, Repository db) {
+    this(submoduleRepositories, vcs, settings, "", commit, db);
   }
 
   /**
@@ -82,52 +79,31 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
                                     GitVcsSupport vcs,
                                     Settings settings,
                                     String basePath,
-                                    Commit commit) {
-    super(commit);
+                                    RevCommit commit,
+                                    Repository db) {
+    super(vcs, db, commit);
     mySubmoduleRepositories = submoduleRepositories;
-    myBasePath = basePath;
-    mySettings = settings;
-    myVcs = vcs;
+    myPathFromRoot = basePath;
+    myBaseRepositorySettings = settings;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   protected Repository resolveRepository(String path, String url) throws IOException, VcsAuthenticationException {
-    String overrideUrl = mySettings.getSubmoduleUrl(path);
-    if (overrideUrl != null) {
-      url = overrideUrl;
-    }
     try {
-      if (url.startsWith(".")) {
-        String baseUrl = myCommit.getRepository().getConfig().getString("teamcity", null, "remote");
-        URIish u = new URIish(baseUrl);
-        String newPath = u.getPath();
-        if (newPath.length() == 0) {
-          newPath = url;
-        } else {
-          newPath = GitUtils.normalizePath(newPath + '/' + url);
-        }
-        url = u.setPath(newPath).toPrivateString();
+      if (isRelative(url)) {
+        url = resolveRelativeUrl(url);
       }
-      String dir = mySettings.getSubmodulePath(path, url);
+      String dir = myBaseRepositorySettings.getPathForUrl(url).getPath();
       if (mySubmoduleRepositories.containsKey(dir)) {
         return mySubmoduleRepositories.get(dir);
       }
       final URIish uri = new URIish(url);
-      final Repository r = myVcs.getRepository(new File(dir), uri);
+      final Repository r = myGitSupport.getRepository(new File(dir), uri);
       mySubmoduleRepositories.put(dir, r);
-      final Transport tn = myVcs.openTransport(mySettings, r, uri);
+
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Fetching submodule " + path + " data for " + mySettings.debugInfo());
+        LOG.debug("Fetching submodule " + path + " data for " + myBaseRepositorySettings.debugInfo());
       }
-      try {
-        String refName = GitUtils.branchRef("*");
-        RefSpec spec = new RefSpec("+" + refName + ":" + refName);
-        tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
-      } finally {
-        tn.close();
-      }
+      myGitSupport.fetch(r, myBaseRepositorySettings.getAuthSettings(), uri, new RefSpec("+refs/heads/*:refs/heads/*"));
       return r;
     } catch (VcsAuthenticationException ae) {
       throw ae;
@@ -145,11 +121,34 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
     }
   }
 
-  /**
-   * {@inheritDoc}
-   */
-  public SubmoduleResolver getSubResolver(Commit commit, String path) {
-    return new TeamCitySubmoduleResolver(mySubmoduleRepositories, myVcs, mySettings, fullPath(path), commit);
+  private boolean isRelative(String url) {
+    return url.startsWith(".");
+  }
+
+  private String resolveRelativeUrl(String relativeUrl) throws URISyntaxException {
+    String baseUrl = getRepository().getConfig().getString("teamcity", null, "remote");
+    URIish u = new URIish(baseUrl);
+    String newPath = u.getPath();
+    if (newPath.length() == 0) {
+      newPath = relativeUrl;
+    } else {
+      newPath = GitUtils.normalizePath(newPath + '/' + relativeUrl);
+    }
+    return u.setPath(newPath).toPrivateString();
+  }
+
+  public SubmoduleResolver getSubResolver(RevCommit commit, String path) {
+    Repository db = null;
+    try {
+      db = resolveRepository(path, getSubmoduleUrl(path));
+    } catch (Exception e) {
+      //ignore
+    }
+    if (db != null) {
+      return new TeamCitySubmoduleResolver(mySubmoduleRepositories, myGitSupport, myBaseRepositorySettings, fullPath(path), commit, db);
+    } else {
+      return new TeamCitySubmoduleResolver(mySubmoduleRepositories, myGitSupport, myBaseRepositorySettings, fullPath(path), commit, getRepository());
+    }
   }
 
   /**
@@ -159,6 +158,6 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    * @return the full including the base path
    */
   private String fullPath(String path) {
-    return myBasePath.length() == 0 ? path : myBasePath + "/" + path;
+    return myPathFromRoot.length() == 0 ? path : myPathFromRoot + "/" + path;
   }
 }

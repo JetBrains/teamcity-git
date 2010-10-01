@@ -25,80 +25,36 @@ import org.eclipse.jgit.transport.URIish;
 import java.io.File;
 import java.net.URISyntaxException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
  * Git Vcs Settings
  */
 public class Settings {
-  /**
-   * logger instance
-   */
+
   private static final Logger LOG = Logger.getInstance(Settings.class.getName());
-  /**
-   * The fetch url for the repository
-   */
+
   private URIish repositoryFetchURL;
-  /**
-   * The fetch url for the repository
-   */
   private URIish repositoryPushURL;
-  /**
-   * The public URL
-   */
-  private String publicURL;
   /**
    * The current branch
    */
   private String branch;
-  /**
-   * The repository path
-   */
   private File repositoryPath;
-  /**
-   * The style for user name
-   */
   private UserNameStyle usernameStyle;
-  /**
-   * The authentication method
-   */
-  private AuthenticationMethod authenticationMethod;
-  /**
-   * Submodule checkout policy
-   */
   private SubmodulesCheckoutPolicy submodulePolicy;
-  /**
-   * The passphrase (used for {@link AuthenticationMethod#PRIVATE_KEY_FILE})
-   */
-  private String passphrase;
-  /**
-   * The private key file (used for {@link AuthenticationMethod#PRIVATE_KEY_FILE})
-   */
-  private String privateKeyFile;
-  /**
-   * If true, known hosts are ignored
-   */
-  private boolean ignoreKnownHosts;
-  /**
-   * The directory where internal roots are created
-   */
   private String cachesDirectory;
-  /**
-   * The submodule URLs
-   */
-  private final Map<String, String> submoduleUrls = new HashMap<String, String>();
-  /**
-   * The submodule paths.
-   */
-  private final Map<String, String> submodulePaths = new HashMap<String, String>();
+  private final Map<String, String> myAllRootProperties;
+  private final AuthSettings myAuthSettings;
 
-  /**
-   * The constructor from the root object
-   *
-   * @param root the root
-   * @throws VcsException in case of incorrect configuration
-   */
   public Settings(VcsRoot root) throws VcsException {
+    this(root, null);
+  }
+
+  public Settings(VcsRoot root, String cacheDir) throws VcsException {
+    cachesDirectory = cacheDir;
+    myAllRootProperties = new HashMap<String, String>(root.getProperties());
     repositoryPath = getPath(root);
     branch = root.getProperty(Constants.BRANCH_NAME);
     final String style = root.getProperty(Constants.USERNAME_STYLE);
@@ -106,118 +62,19 @@ public class Settings {
     String submoduleCheckout = root.getProperty(Constants.SUBMODULES_CHECKOUT);
     submodulePolicy =
       submoduleCheckout != null ? Enum.valueOf(SubmodulesCheckoutPolicy.class, submoduleCheckout) : SubmodulesCheckoutPolicy.IGNORE;
-    authenticationMethod = readAuthMethod(root);
-    String userName = authenticationMethod == AuthenticationMethod.ANONYMOUS ? null : root.getProperty(Constants.USERNAME);
-    String password = authenticationMethod != AuthenticationMethod.PASSWORD ? null : root.getProperty(Constants.PASSWORD);
-    ignoreKnownHosts = "true".equals(root.getProperty(Constants.IGNORE_KNOWN_HOSTS));
-    repositoryFetchURL = parseUri(userName, password, root.getProperty(Constants.FETCH_URL));
-    publicURL = repositoryFetchURL.toString();
+    myAuthSettings = new AuthSettings(root.getProperties());
+    repositoryFetchURL = myAuthSettings.createAuthURI(root.getProperty(Constants.FETCH_URL));
     final String pushUrl = root.getProperty(Constants.PUSH_URL);
     if (StringUtil.isEmpty(pushUrl)) {
       repositoryPushURL = repositoryFetchURL;
     } else {
-      repositoryPushURL = parseUri(userName, password, pushUrl);
+      repositoryPushURL = myAuthSettings.createAuthURI(pushUrl);
     }
-    if (authenticationMethod == AuthenticationMethod.PRIVATE_KEY_FILE) {
-      passphrase = root.getProperty(Constants.PASSPHRASE);
-      privateKeyFile = root.getProperty(Constants.PRIVATE_KEY_PATH);
-    }
-    String urls = root.getProperty(Constants.SUBMODULE_URLS);
-    if (urls != null) {
-      final String[] pairs = urls.split("\n");
-      final int n = pairs.length / 2;
-      for (int i = 0; i < n; i++) {
-        setSubmoduleUrl(pairs[i * 2], pairs[i * 2 + 1]);
-      }
-    }
-  }
-
-  private static AuthenticationMethod readAuthMethod(VcsRoot root) {
-    String method = root.getProperty(Constants.AUTH_METHOD);
-    return method == null ? AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, method);
   }
 
   private static File getPath(VcsRoot root) {
     String path = root.getProperty(Constants.PATH);
     return path == null ? null : new File(path);
-  }
-
-  private static URIish getFetchURIish(VcsRoot root, String userName, String password) throws VcsException {
-    final String fetchUrl = root.getProperty(Constants.FETCH_URL);
-    return parseUri(userName, password, fetchUrl);
-  }
-
-  /**
-   * Parse URL using user name and password
-   *
-   * @param userName the name of user
-   * @param password the password to use
-   * @param url      the url to parse
-   * @return the parsed {@link URIish}
-   * @throws VcsException if the URL could not be parsed
-   */
-  private static URIish parseUri(String userName, String password, String url) throws VcsException {
-    URIish uri;
-    try {
-      uri = new URIish(url);
-    } catch (URISyntaxException e) {
-      throw new VcsException("Invalid URI: " + url);
-    }
-    if (!"git".equals(uri.getScheme())) {
-      if (!StringUtil.isEmptyOrSpaces(userName)) {
-        uri = uri.setUser(userName);
-      }
-      if (!StringUtil.isEmpty(password)) {
-        uri = uri.setPass(password);
-      }
-    }
-    return uri;
-  }
-
-
-  /**
-   * Set submodule path
-   *
-   * @param submodule the local path of submodule within vcs root
-   * @param path      the path to set
-   */
-  public void setSubmodulePath(String submodule, String path) {
-    submodulePaths.put(submodule, path);
-  }
-
-  /**
-   * Get submodule path
-   *
-   * @param submodule the local path of submodule within vcs root
-   * @param url       the url used to construct a default path
-   * @return the path on file system or null if path is not set
-   */
-  public String getSubmodulePath(String submodule, String url) {
-    String path = submodulePaths.get(submodule);
-    if (path == null) {
-      path = getPathForUrl(url).getPath();
-    }
-    return path;
-  }
-
-  /**
-   * Set submodule url
-   *
-   * @param submodule the local path of submodule within vcs root
-   * @param url       the url to set
-   */
-  public void setSubmoduleUrl(String submodule, String url) {
-    submoduleUrls.put(submodule, url);
-  }
-
-  /**
-   * Get submodule url
-   *
-   * @param submodule the local path of submodule within vcs root
-   * @return the url or null if url is not set
-   */
-  public String getSubmoduleUrl(String submodule) {
-    return submoduleUrls.get(submodule);
   }
 
   /**
@@ -242,19 +99,12 @@ public class Settings {
   }
 
   /**
-   * @return the URL with password removed
-   */
-  public String getPublicURL() {
-    return publicURL;
-  }
-
-  /**
    * @return the local repository path
    */
   public File getRepositoryPath() {
     if (repositoryPath == null) {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Using internal directory for (" + getPublicURL() + "#" + getBranch() + ")");
+        LOG.debug("Using internal directory for (" + getRepositoryFetchURL().toString() + "#" + getBranch() + ")");
       }
       repositoryPath = getPathForUrl(getRepositoryFetchURL().toString());
     }
@@ -264,10 +114,8 @@ public class Settings {
   public static File getRepositoryPath(File cacheDir, VcsRoot root) throws VcsException {
     File userDefinedPath = getPath(root);
     if (userDefinedPath == null) {
-      AuthenticationMethod method = readAuthMethod(root);
-      String userName = method == AuthenticationMethod.ANONYMOUS ? null : root.getProperty(Constants.USERNAME);
-      String password = method != AuthenticationMethod.PASSWORD ? null : root.getProperty(Constants.PASSWORD);
-      URIish fetchUrl = getFetchURIish(root, userName, password);
+      AuthSettings auth = new AuthSettings(root.getProperties());
+      URIish fetchUrl = auth.createAuthURI(root.getProperty(Constants.FETCH_URL));
       return getPathForUrl(cacheDir, fetchUrl.toString());
     } else {
       return userDefinedPath;
@@ -301,38 +149,7 @@ public class Settings {
    * @return debug information that allows identify repository operation context
    */
   public String debugInfo() {
-    return " (" + getRepositoryPath() + ", " + getPublicURL() + "#" + getBranch() + ")";
-  }
-
-  /**
-   * Authentication method to use
-   *
-   * @return the authentication method
-   */
-  public AuthenticationMethod getAuthenticationMethod() {
-    return authenticationMethod;
-  }
-
-
-  /**
-   * @return the passphrase for private key
-   */
-  public String getPassphrase() {
-    return passphrase;
-  }
-
-  /**
-   * @return the path to private key file
-   */
-  public String getPrivateKeyFile() {
-    return privateKeyFile;
-  }
-
-  /**
-   * @return true if the result of checking in known hosts database should be ignored
-   */
-  public boolean isKnownHostsIgnored() {
-    return ignoreKnownHosts;
+    return " (" + getRepositoryPath() + ", " + getRepositoryFetchURL().toString() + "#" + getBranch() + ")";
   }
 
   /**
@@ -368,6 +185,97 @@ public class Settings {
     return repositoryPushURL;
   }
 
+  public Map<String, String> getAllRootProperties() {
+    return myAllRootProperties;
+  }
+
+  public AuthSettings getAuthSettings() {
+    return myAuthSettings;
+  }
+
+  public static class AuthSettings {
+    private final AuthenticationMethod myAuthMethod;
+    private final boolean myIgnoreKnownHosts;
+    private final String myPassphrase;
+    private final String myPrivateKeyFilePath;
+    private final String myUserName;
+    private final String myPassword;
+
+    public AuthSettings(Map<String, String> properties) {
+      myAuthMethod = readAuthMethod(properties);
+      myIgnoreKnownHosts = "true".equals(properties.get(Constants.IGNORE_KNOWN_HOSTS));
+      if (myAuthMethod == AuthenticationMethod.PRIVATE_KEY_FILE) {
+        myPassphrase = properties.get(Constants.PASSPHRASE);
+        myPrivateKeyFilePath = properties.get(Constants.PRIVATE_KEY_PATH);
+      } else {
+        myPassphrase = null;
+        myPrivateKeyFilePath = null;
+      }
+      myUserName = myAuthMethod == AuthenticationMethod.ANONYMOUS ? null : properties.get(Constants.USERNAME);
+      myPassword = myAuthMethod != AuthenticationMethod.PASSWORD ? null : properties.get(Constants.PASSWORD);
+    }
+
+    public AuthenticationMethod getAuthMethod() {
+      return myAuthMethod;
+    }
+
+    public boolean isIgnoreKnownHosts() {
+      return myIgnoreKnownHosts;
+    }
+
+    public String getPassphrase() {
+      return myPassphrase;
+    }
+
+    public String getPrivateKeyFilePath() {
+      return myPrivateKeyFilePath;
+    }
+
+    public URIish createAuthURI(String uri) throws VcsException {
+      URIish uriish;
+      try {
+        uriish = new URIish(uri);
+      } catch (URISyntaxException e) {
+        throw new VcsException("Invalid URI: " + uri);
+      }
+      if (!"git".equals(uriish.getScheme())) {
+        if (!StringUtil.isEmptyOrSpaces(myUserName)) {
+          uriish = uriish.setUser(myUserName);
+        }
+        if (!StringUtil.isEmpty(myPassword)) {
+          uriish = uriish.setPass(myPassword);
+        }
+      }
+      return uriish;
+    }
+
+    public Map<String, String> toMap() {
+      Map<String, String> result = new HashMap<String, String>();
+      result.put(Constants.AUTH_METHOD, myAuthMethod.name());
+      result.put(Constants.IGNORE_KNOWN_HOSTS, String.valueOf(myIgnoreKnownHosts));
+      result.put(Constants.PASSPHRASE, myPassphrase);
+      result.put(Constants.PRIVATE_KEY_PATH, myPrivateKeyFilePath);
+      result.put(Constants.USERNAME, myUserName);
+      result.put(Constants.PASSWORD, myPassword);
+      filterNullValues(result);
+      return result;
+    }
+
+    private void filterNullValues(Map<String, String> map) {
+      Iterator<Map.Entry<String, String>> iter = map.entrySet().iterator();
+      while (iter.hasNext()) {
+        Map.Entry<String, String> entry = iter.next();
+        if (entry.getValue() == null) {
+          iter.remove();
+        }
+      }
+    }
+
+    private static AuthenticationMethod readAuthMethod(Map<String, String> properties) {
+      String method = properties.get(Constants.AUTH_METHOD);
+      return method == null ? AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, method);
+    }
+  }
 
   /**
    * The style for user names

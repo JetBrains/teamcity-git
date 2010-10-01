@@ -101,6 +101,6 @@ public class AgentSettings extends Settings {
    * @return debug information
    */
   public String debugInfo() {
-    return "(" + rootName + ", " + getLocalRepositoryDir() + "," + getPublicURL() + ")";
+    return "(" + rootName + ", " + getLocalRepositoryDir() + "," + getRepositoryFetchURL().toString() + ")";
   }
 }

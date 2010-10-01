@@ -506,20 +506,38 @@
   </component>
   <component name="WebServicesPlugin" addRequiredLibraries="true" />
   <component name="libraryTable">
+    <library name="JGit">
+      <CLASSES>
+        <root url="jar://$PROJECT_DIR$/lib/common/jsch-0.1.41.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-0.7.1-SNAPSHOT.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES>
+        <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.41.zip!/jsch-0.1.41-src/src" />
+        <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit-0.7.1-SNAPSHOT-sources.jar!/" />
+      </SOURCES>
+    </library>
+    <library name="JGit-0.10">
+      <CLASSES>
+        <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-0.10.0-SNAPSHOT.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/common/jsch-0.1.41.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES>
+        <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit-0.10.0-SNAPSHOT-sources.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.41.zip!/jsch-0.1.41-src/src" />
+      </SOURCES>
+    </library>
+    <library name="TeamCity Agent">
+      <CLASSES>
+        <root url="jar://$TeamCityDistribution$/buildAgent/lib/agent.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES />
+    </library>
     <library name="TeamCity Open API agent">
       <CLASSES>
         <root url="jar://$TeamCityDistribution$/devPackage/agent-api.jar!/" />
-      </CLASSES>
-      <JAVADOC>
-        <root url="jar://$TeamCityDistribution$/devPackage/javadoc/openApi-help.jar!/" />
-      </JAVADOC>
-      <SOURCES>
-        <root url="jar://$TeamCityDistribution$/devPackage/src/openApi-source.jar!/" />
-      </SOURCES>
-    </library>
-    <library name="TeamCity Open API server">
-      <CLASSES>
-        <root url="jar://$TeamCityDistribution$/devPackage/server-api.jar!/" />
       </CLASSES>
       <JAVADOC>
         <root url="jar://$TeamCityDistribution$/devPackage/javadoc/openApi-help.jar!/" />
@@ -544,6 +562,32 @@
         <root url="jar://$TeamCityDistribution$/devPackage/src/openApi-source.jar!/" />
       </SOURCES>
     </library>
+    <library name="TeamCity Open API server">
+      <CLASSES>
+        <root url="jar://$TeamCityDistribution$/devPackage/server-api.jar!/" />
+      </CLASSES>
+      <JAVADOC>
+        <root url="jar://$TeamCityDistribution$/devPackage/javadoc/openApi-help.jar!/" />
+      </JAVADOC>
+      <SOURCES>
+        <root url="jar://$TeamCityDistribution$/devPackage/src/openApi-source.jar!/" />
+      </SOURCES>
+    </library>
+    <library name="TeamCity server">
+      <CLASSES>
+        <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/server.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES />
+    </library>
+    <library name="TeamCity Tests">
+      <CLASSES>
+        <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/patches-impl.jar!/" />
+        <root url="jar://$TeamCityDistribution$/devPackage/tests/patches-test.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES />
+    </library>
     <library name="TeamCity Third-Party">
       <CLASSES>
         <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/annotations.jar!/" />
@@ -551,13 +595,6 @@
         <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/openapi.jar!/" />
         <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/util.jar!/" />
         <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/spring-webmvc.jar!/" />
-      </CLASSES>
-      <JAVADOC />
-      <SOURCES />
-    </library>
-    <library name="Tomcat">
-      <CLASSES>
-        <root url="jar://$TeamCityDistribution$/lib/servlet-api.jar!/" />
       </CLASSES>
       <JAVADOC />
       <SOURCES />
@@ -570,10 +607,9 @@
       <SOURCES />
       <jarDirectory url="file://$PROJECT_DIR$/git-tests/lib" recursive="false" />
     </library>
-    <library name="TeamCity Tests">
+    <library name="Tomcat">
       <CLASSES>
-        <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/patches-impl.jar!/" />
-        <root url="jar://$TeamCityDistribution$/devPackage/tests/patches-test.jar!/" />
+        <root url="jar://$TeamCityDistribution$/lib/servlet-api.jar!/" />
       </CLASSES>
       <JAVADOC />
       <SOURCES />
@@ -586,31 +622,6 @@
       <SOURCES>
         <root url="jar://$PROJECT_DIR$/lib/agent/src/trilead-ssh2-src.zip!/" />
       </SOURCES>
-    </library>
-    <library name="TeamCity Agent">
-      <CLASSES>
-        <root url="jar://$TeamCityDistribution$/buildAgent/lib/agent.jar!/" />
-      </CLASSES>
-      <JAVADOC />
-      <SOURCES />
-    </library>
-    <library name="JGit">
-      <CLASSES>
-        <root url="jar://$PROJECT_DIR$/lib/common/jsch-0.1.41.jar!/" />
-        <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-0.7.1-SNAPSHOT.jar!/" />
-      </CLASSES>
-      <JAVADOC />
-      <SOURCES>
-        <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.41.zip!/jsch-0.1.41-src/src" />
-        <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit-0.7.1-SNAPSHOT-sources.jar!/" />
-      </SOURCES>
-    </library>
-    <library name="TeamCity server">
-      <CLASSES>
-        <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/server.jar!/" />
-      </CLASSES>
-      <JAVADOC />
-      <SOURCES />
     </library>
   </component>
 </project>

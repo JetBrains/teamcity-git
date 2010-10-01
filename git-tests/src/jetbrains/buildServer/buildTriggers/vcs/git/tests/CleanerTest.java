@@ -128,6 +128,8 @@ public class CleanerTest {
       allowing(result).getProperty(Constants.PATH); will(returnValue(root.getProperty(Constants.PATH)));
       allowing(result).getProperty(Constants.AUTH_METHOD); will(returnValue(root.getProperty(Constants.AUTH_METHOD)));
       allowing(result).getProperty(Constants.FETCH_URL); will(returnValue(root.getProperty(Constants.FETCH_URL)));
+      allowing(result).getProperty(Constants.IGNORE_KNOWN_HOSTS); will(returnValue(root.getProperty(Constants.IGNORE_KNOWN_HOSTS)));
+      allowing(result).getProperties(); will(returnValue(root.getProperties()));
     }});
     return result;
   }

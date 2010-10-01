@@ -23,6 +23,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.transport.SshSessionFactory;
+import org.eclipse.jgit.util.FS;
 
 /**
  * The SSH session factory that uses explicitly specified private key file
@@ -34,14 +35,9 @@ public class PrivateKeyFileSshSessionFactory extends SshSessionFactory {
    */
   private final JSch sch;
 
-  /**
-   * A construction
-   *
-   * @param privateKeyPath a path to the key
-   * @param passphrase     a passphrase for the key
-   * @throws VcsException if private key could not be read
-   */
-  public PrivateKeyFileSshSessionFactory(String privateKeyPath, String passphrase) throws VcsException {
+  public PrivateKeyFileSshSessionFactory(Settings.AuthSettings settings) throws VcsException {
+    final String privateKeyPath = settings.getPrivateKeyFilePath();
+    final String passphrase = settings.getPassphrase();
     if(privateKeyPath == null || privateKeyPath.length() == 0) {
       throw new VcsAuthenticationException("The private key path is not specified");
     }
@@ -53,20 +49,7 @@ public class PrivateKeyFileSshSessionFactory extends SshSessionFactory {
     }
   }
 
-  /**
-   * A constructor from vcs root settings
-   *
-   * @param s a settings object
-   * @throws VcsException if private key could not be read
-   */
-  public PrivateKeyFileSshSessionFactory(Settings s) throws VcsException {
-    this(s.getPrivateKeyFile(), s.getPassphrase());
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  public Session getSession(String user, String pass, String host, int port) throws JSchException {
+  public Session getSession(String user, String pass, String host, int port, FS fs) throws JSchException {
     return SshUtils.createSession(sch, user, host, port);
   }
 }
