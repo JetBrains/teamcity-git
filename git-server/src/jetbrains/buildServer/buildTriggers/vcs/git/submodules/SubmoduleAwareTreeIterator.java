@@ -273,7 +273,9 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
         Repository r = mySubmoduleResolver.resolveRepository(path, mySubmoduleResolver.getSubmoduleUrl(path));
         p.reset(r.newObjectReader(), mySubmoduleCommit.getTree().getId());
       } catch (VcsAuthenticationException e) {
-        e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        IOException ioe = new IOException("Submodule error");
+        ioe.initCause(e);
+        throw ioe;
       }
       return createSubmoduleAwareTreeIterator(this, p, mySubmoduleResolver.getSubResolver(mySubmoduleCommit, path),
                                               "",
