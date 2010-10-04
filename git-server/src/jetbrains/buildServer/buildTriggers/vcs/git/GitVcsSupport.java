@@ -333,10 +333,14 @@ public class GitVcsSupport extends ServerVcsSupport
     List<VcsChange> changes = getCommitChanges(repositories, settings, db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
     ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
                                               GitServerUtil.getUser(settings, commit), root, currentVersion, commit.getId().name());
-    if (commit.getParents().length > 1) {
+    if (isMergeCommit(commit)) {
       result.setCanBeIgnored(false);
     }
     return result;
+  }
+
+  private boolean isMergeCommit(RevCommit commit) {
+    return commit.getParents().length > 1;
   }
 
   /**
