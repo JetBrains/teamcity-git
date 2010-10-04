@@ -176,7 +176,7 @@ public class Cleaner extends BuildServerAdapter {
           }
         }
         public Integer getOutputIdleSecondsTimeout() {
-          return null;
+          return 3 * 60 * 60;//3 hours
         }
       });
 
