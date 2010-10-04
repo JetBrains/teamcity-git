@@ -78,9 +78,9 @@ public class CleanerTest {
 
   @Test
   public void test_clean() throws VcsException, InterruptedException {
-    System.setProperty("teamcity.git.run.native.gc", String.valueOf(true));
+    System.setProperty("teamcity.server.git.gc.enabled ", String.valueOf(true));
     if (System.getenv(Constants.GIT_PATH_ENV) != null)
-      System.setProperty("teamcity.git.server.path", System.getenv(Constants.GIT_PATH_ENV));
+      System.setProperty("teamcity.server.git.executable.path", System.getenv(Constants.GIT_PATH_ENV));
 
     final VcsRoot root = getVcsRoot();
     GitVcsSupport vcsSupport = new GitVcsSupport(myServerPaths, null);

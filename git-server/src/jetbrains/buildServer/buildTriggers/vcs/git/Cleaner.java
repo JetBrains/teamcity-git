@@ -113,15 +113,15 @@ public class Cleaner extends BuildServerAdapter {
   }
 
   private boolean isRunNativeGC() {
-    return TeamCityProperties.getBoolean("teamcity.git.run.native.gc");
+    return TeamCityProperties.getBoolean("teamcity.server.git.gc.enabled ");
   }
 
   private String getPathToGit() {
-    return TeamCityProperties.getProperty("teamcity.git.server.path", "git");
+    return TeamCityProperties.getProperty("teamcity.server.git.executable.path", "git");
   }
 
   private long getNativeGCQuotaMilliseconds() {
-    int quotaInMinutes = TeamCityProperties.getInteger("teamcity.git.native.gc.quota.minutes", 60);
+    int quotaInMinutes = TeamCityProperties.getInteger("teamcity.server.git.gc.quota.minutes", 60);
     return minutes2Milliseconds(quotaInMinutes);
   }
 
