@@ -575,15 +575,22 @@ public class GitVcsSupport extends ServerVcsSupport
                 final Repository objRep = getRepository(r, tw, 0);
                 final Callable<Void> action = new Callable<Void>() {
                   public Void call() throws Exception {
+                    InputStream objectStream = null;
                     try {
-                      byte[] bytes = loadObject(objRep, path, id);
-                      builder.changeOrCreateBinaryFile(GitUtils.toFile(mapped), mode, new ByteArrayInputStream(bytes), bytes.length);
+                      final ObjectLoader loader = objRep.open(id);
+                      if (loader == null) {
+                        throw new IOException("Unable to find blob " + id + (path == null ? "" : "(" + path + ")") + " in repository " + r);
+                      }
+                      objectStream = loader.isLarge() ? loader.openStream() : new ByteArrayInputStream(loader.getCachedBytes());
+                      builder.changeOrCreateBinaryFile(GitUtils.toFile(mapped), mode, objectStream, loader.getSize());
                     } catch (Error e) {
                       LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + s.debugInfo());
                       throw e;
                     } catch (Exception e) {
                       LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + s.debugInfo());
                       throw e;
+                    } finally {
+                      if (objectStream != null) objectStream.close();
                     }
                     return null;
                   }
@@ -756,7 +763,14 @@ public class GitVcsSupport extends ServerVcsSupport
     if (loader == null) {
       throw new IOException("Unable to find blob " + id + (path == null ? "" : "(" + path + ")") + " in repository " + r);
     }
-    return loader.getCachedBytes();
+    if (loader.isLarge()) {
+      assert loader.getSize() < Integer.MAX_VALUE;
+      ByteArrayOutputStream output = new ByteArrayOutputStream((int) loader.getSize());
+      loader.copyTo(output);
+      return output.toByteArray();
+    } else {
+      return loader.getCachedBytes();
+    }
   }
 
   /**
