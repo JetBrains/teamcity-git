@@ -343,6 +343,20 @@ public class GitVcsSupport extends ServerVcsSupport
     return commit.getParents().length > 1;
   }
 
+  private boolean hasInterestingChanges(final Repository db, final RevCommit mergeCommit, final CheckoutRules rules, String firstUninterestingSHA)
+    throws IOException {
+    RevWalk walk = new RevWalk(db);
+    walk.sort(RevSort.TOPO);
+    walk.markStart(Arrays.asList(mergeCommit.getParents()));
+    walk.markUninteresting(walk.parseCommit(ObjectId.fromString(firstUninterestingSHA)));
+    try {
+
+    } finally {
+      walk.release();
+    }
+    return true;
+  }
+
   /**
    * Get changes for the commit
    *
