@@ -321,6 +321,32 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   /**
+   * Test collecting build changes respects checkout rules
+   *    master
+   *      o 2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6 (merge commit with no changed files)
+   *     /|
+   *    / |
+   *   o 2494559261ab85e92b1780860b34f876b5e6bce6 (commit from other branch) changes file readme.txt (not in dir/)
+   *      |
+   *      |
+   *      o 3b9fbfbb43e7edfad018b482e15e7f93cca4e69f
+   */
+  @Test
+  public void testCollectBuildChangesWithCheckoutRules() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("master");
+    final List<ModificationData> mds = support.collectChanges(root,
+                                                              GitUtils.makeVersion("3b9fbfbb43e7edfad018b482e15e7f93cca4e69f", 1283497225000L),
+                                                              GitUtils.makeVersion("2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", 1286183770000L),
+                                                              new CheckoutRules("+:dir=>."));
+    //we can ignore checkout rules during collecting changes, TeamCity will apply them later,
+    //but we should not set canBeIgnored = false for modifications, otherwise TeamCity won't exclude them
+    for (ModificationData md : mds) {
+      assertTrue(md.isCanBeIgnored());
+    }
+  }
+
+  /**
    * Test getting changes for the build concurrently. Copy of previous test but with several threads collecting changes
    *
    * @throws Exception in case of IO problem
