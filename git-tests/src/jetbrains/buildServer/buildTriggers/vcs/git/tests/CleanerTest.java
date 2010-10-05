@@ -78,6 +78,10 @@ public class CleanerTest {
 
   @Test
   public void test_clean() throws VcsException, InterruptedException {
+    System.setProperty("teamcity.server.git.gc.enabled ", String.valueOf(true));
+    if (System.getenv(Constants.GIT_PATH_ENV) != null)
+      System.setProperty("teamcity.server.git.executable.path", System.getenv(Constants.GIT_PATH_ENV));
+
     final VcsRoot root = getVcsRoot();
     GitVcsSupport vcsSupport = new GitVcsSupport(myServerPaths, null);
     vcsSupport.getCurrentVersion(root);//it will create dir in cache directory
@@ -94,10 +98,12 @@ public class CleanerTest {
     File[] files = gitCacheDir.listFiles();
     assertEquals(1, files.length);
     assertEquals(repositoryDir, files[0]);
+
+    vcsSupport.getCurrentVersion(root);//check that repository is fine after git gc
   }
 
   private void invokeClean() throws InterruptedException {
-    myCleaner.cleanupFinished();
+    myCleaner.cleanupStarted();
     myCleanExecutor.shutdown();
     myCleanExecutor.awaitTermination(Integer.MAX_VALUE, TimeUnit.SECONDS);
   }

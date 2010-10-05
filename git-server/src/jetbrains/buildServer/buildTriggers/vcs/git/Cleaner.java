@@ -16,14 +16,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.serverSide.BuildServerAdapter;
-import jetbrains.buildServer.serverSide.BuildServerListener;
-import jetbrains.buildServer.serverSide.SBuildServer;
-import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.SimpleCommandLineProcessRunner;
+import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.SVcsRoot;
+import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 
@@ -55,7 +56,7 @@ public class Cleaner extends BuildServerAdapter {
   }
 
   @Override
-  public void cleanupFinished() {
+  public void cleanupStarted() {
     super.cleanupFinished();
     myServer.getExecutor().submit(new Runnable() {
       public void run() {
@@ -65,14 +66,26 @@ public class Cleaner extends BuildServerAdapter {
   }
 
   private void clean() {
+    LOG.debug("Clean started");
+    removeUnusedRepositories();
+    if (isRunNativeGC()) {
+      runNativeGC();
+    }
+    LOG.debug("Clean finished");
+  }
+
+  private void removeUnusedRepositories() {
     Collection<? extends SVcsRoot> gitRoots = getAllGitRoots();
     List<File> unusedDirs = getUnusedDirs(gitRoots);
+    LOG.debug("Remove unused repositories started");
     for (File dir : unusedDirs) {
       LOG.info("Remove unused dir " + dir.getAbsolutePath());
       synchronized (myGitVcsSupport.getRepositoryLock(dir)) {
         FileUtil.delete(dir);
       }
+      LOG.debug("Remove unused dir " + dir.getAbsolutePath() + " finished");
     }
+    LOG.debug("Remove unused repositories finished");
   }
 
   private Collection<? extends SVcsRoot> getAllGitRoots() {
@@ -97,5 +110,86 @@ public class Cleaner extends BuildServerAdapter {
     String teamcityCachesPath = myPaths.getCachesDir();
     File gitCacheDir = new File(teamcityCachesPath, "git");
     return new ArrayList<File>(FileUtil.getSubDirectories(gitCacheDir));
+  }
+
+  private boolean isRunNativeGC() {
+    return TeamCityProperties.getBoolean("teamcity.server.git.gc.enabled ");
+  }
+
+  private String getPathToGit() {
+    return TeamCityProperties.getProperty("teamcity.server.git.executable.path", "git");
+  }
+
+  private long getNativeGCQuotaMilliseconds() {
+    int quotaInMinutes = TeamCityProperties.getInteger("teamcity.server.git.gc.quota.minutes", 60);
+    return minutes2Milliseconds(quotaInMinutes);
+  }
+
+  private long minutes2Milliseconds(int quotaInMinutes) {
+    return quotaInMinutes * 60 * 1000L;
+  }
+
+  private void runNativeGC() {
+    final long start = System.currentTimeMillis();
+    final long gcTimeQuota = getNativeGCQuotaMilliseconds();
+    LOG.debug("Garbage collection started");
+    List<File> allDirs = getAllRepositoryDirs();
+    int runGCCounter = 0;
+    for (File gitDir : allDirs) {
+      synchronized (myGitVcsSupport.getRepositoryLock(gitDir)) {
+        runNativeGC(gitDir);
+      }
+      runGCCounter++;
+      final long repositoryFinish = System.currentTimeMillis();
+      if ((repositoryFinish - start) > gcTimeQuota) {
+        final int restRepositories = allDirs.size() - runGCCounter;
+        if (restRepositories > 0) {
+          LOG.info("Garbage collection quota exceeded, skip " + restRepositories + " repositories");
+          break;
+        }
+      }
+    }
+    final long finish = System.currentTimeMillis();
+    LOG.debug("Garbage collection finished, it took " + (finish - start) + "ms");
+  }
+
+  private void runNativeGC(final File bareGitDir) {
+    String pathToGit = getPathToGit();
+    try {
+      final long start = System.currentTimeMillis();
+      GeneralCommandLine cl = new GeneralCommandLine();
+      cl.setWorkingDirectory(bareGitDir.getParentFile());
+      cl.setExePath(pathToGit);
+      cl.addParameter("--git-dir="+bareGitDir.getCanonicalPath());
+      cl.addParameter("gc");
+
+      ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.RunCommandEvents() {
+        public void onProcessStarted(Process ps) {
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Start 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc' started");
+          }
+        }
+        public void onProcessFinished(Process ps) {
+          if (LOG.isDebugEnabled()) {
+            final long finish = System.currentTimeMillis();
+            LOG.debug("Finish 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc' finished, it took " + (finish - start) + "ms");
+          }
+        }
+        public Integer getOutputIdleSecondsTimeout() {
+          return 3 * 60 * 60;//3 hours
+        }
+      });
+
+      VcsException commandError = CommandLineUtil.getCommandLineError("'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", result);
+      if (commandError != null) {
+        LOG.error("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", commandError);
+      }
+      if (result.getStderr().length() > 0) {
+        LOG.warn("Error output produced by 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
+        LOG.warn(result.getStderr());
+      }
+    } catch (Exception e) {
+      LOG.error("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", e);
+    }
   }
 }
