@@ -37,10 +37,6 @@ public class GitServerUtil {
    * User name for the system user
    */
   public static final String SYSTEM_USER = "system@git-plugin.teamcity";
-  /**
-   * Max size of cached file
-   */
-  public static final int MAX_CACHED_FILE = 16 * 1024;
 
   /**
    * Ensures that a bare repository exists at the specified path.
@@ -53,7 +49,7 @@ public class GitServerUtil {
    */
   public static Repository getRepository(File dir, URIish remote) throws VcsException {
     WindowCacheConfig cfg = new WindowCacheConfig();
-    cfg.setDeltaBaseCacheLimit(MAX_CACHED_FILE);
+    cfg.setStreamFileThreshold(64 * WindowCacheConfig.MB);
     WindowCache.reconfigure(cfg);
     if (dir.exists() && !dir.isDirectory()) {
       throw new VcsException("The specified path is not a directory: " + dir);
