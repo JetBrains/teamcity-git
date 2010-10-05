@@ -88,7 +88,7 @@ public class GitServerUtil {
    * @return the version string
    */
   public static String makeVersion(RevCommit c) {
-    return GitUtils.makeVersion(c.getId().name(), c.getAuthorIdent().getWhen().getTime());
+    return GitUtils.makeVersion(c.getId().name(), c.getCommitterIdent().getWhen().getTime());
   }
 
   public static String getParentVersion(RevCommit commit, String defaultParentVersion) {
