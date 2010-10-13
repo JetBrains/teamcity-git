@@ -1068,7 +1068,7 @@ public class GitVcsSupport extends ServerVcsSupport
     if (!errors.isEmpty()) {
       throw errors.get(0);
     }
-    checkCommandFailed("git fetch", result);
+    checkCommandFailed("git fetch " + settings.debugInfo(), result);
   }
 
   /**
@@ -1208,7 +1208,7 @@ public class GitVcsSupport extends ServerVcsSupport
       if (repositoryTempDir != null) FileUtil.delete(repositoryTempDir);
     }
   }
-  
+
   /**
    * {@inheritDoc}
    */
