@@ -34,6 +34,7 @@ import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.util.StringUtil;
@@ -1139,7 +1140,8 @@ public class GitVcsSupport extends ServerVcsSupport
       com.jcraft.jsch.JSch.class,
       Decoder.class,
       gnu.trove.TObjectHashingStrategy.class,
-      BranchSupport.class
+      BranchSupport.class,
+      EncryptUtil.class
     }, null, null);
   }
 
