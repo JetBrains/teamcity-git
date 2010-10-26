@@ -154,7 +154,7 @@
       </td>
     </tr>
     <tr>
-      <th><label for="agentCleanFilesPolicy">Clean Policy:</label></th>
+      <th><label for="agentCleanFilesPolicy">Clean Files Policy:</label></th>
       <td><props:selectProperty name="agentCleanFilesPolicy">
         <props:option value="ALL_UNTRACKED">All untracked files</props:option>
         <props:option value="IGNORED_ONLY">All ignored untracked files</props:option>
