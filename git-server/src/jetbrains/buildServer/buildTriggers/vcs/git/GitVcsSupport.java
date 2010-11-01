@@ -43,6 +43,7 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.apache.commons.codec.Decoder;
+import org.eclipse.jgit.JGitText;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
@@ -63,6 +64,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 import java.net.UnknownHostException;
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1221,6 +1223,16 @@ public class GitVcsSupport extends ServerVcsSupport
           }
         }
         return null;
+      } catch (NotSupportedException nse) {
+        URIish fetchURI = s.getRepositoryFetchURL();
+        if (GitServerUtil.isRedundantColon(fetchURI)) {
+          //url with username looks like ssh://username/hostname:/path/to/repo - it will
+          //confuse user even further, so show url without user name
+          throw new NotSupportedException(MessageFormat.format(JGitText.get().URINotSupported, vcsRoot.getProperty(Constants.FETCH_URL)) +
+                                          ". Make sure you don't have a colon after the host name.");
+        } else {
+          throw nse;
+        }
       } finally {
         r.close();
       }
