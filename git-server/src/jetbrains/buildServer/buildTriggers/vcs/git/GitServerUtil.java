@@ -134,4 +134,26 @@ public class GitServerUtil {
   public static String displayVersion(String version) {
     return version.substring(0, DISPLAY_VERSION_AMOUNT);
   }
+
+  /**
+   * Test if uri contains a common error -- redundant colon after hostname.
+   *
+   * Example of incorrect uri:
+   *
+   * ssh://hostname:/path/to/repo.git
+   *
+   * ':' after hostname is redundant.
+   *
+   * URIish doesn't throw an exception for such uri in its constructor (see
+   * https://bugs.eclipse.org/bugs/show_bug.cgi?id=315571 for explanation why),
+   * exception is thrown only on attempt to open transport.
+   *
+   * @param uri uri to check
+   * @return true if uri contains this error
+   */
+  public static boolean isRedundantColon(URIish uri) {
+    return uri.getScheme().equals("ssh") &&
+           uri.getHost() == null &&
+           uri.getPath().contains(":");
+  }
 }
