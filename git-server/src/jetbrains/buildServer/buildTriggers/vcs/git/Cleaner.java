@@ -168,13 +168,13 @@ public class Cleaner extends BuildServerAdapter {
       ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.RunCommandEvents() {
         public void onProcessStarted(Process ps) {
           if (LOG.isDebugEnabled()) {
-            LOG.debug("Start 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc' started");
+            LOG.debug("Start 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
           }
         }
         public void onProcessFinished(Process ps) {
           if (LOG.isDebugEnabled()) {
             final long finish = System.currentTimeMillis();
-            LOG.debug("Finish 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc' finished, it took " + (finish - start) + "ms");
+            LOG.debug("Finish 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc', it took " + (finish - start) + "ms");
           }
         }
         public Integer getOutputIdleSecondsTimeout() {
