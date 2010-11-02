@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.TestLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.BuildServerListener;
 import jetbrains.buildServer.serverSide.SBuildServer;
@@ -32,6 +33,7 @@ import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import jetbrains.buildServer.BaseTestCase;
 
 import java.io.File;
 import java.io.IOException;
@@ -46,7 +48,7 @@ import static org.testng.AssertJUnit.assertEquals;
 /**
  * @author dmitry.neverov
  */
-public class CleanerTest {
+public class CleanerTest extends BaseTestCase {
 
   private static final TempFiles ourTempFiles = new TempFiles();
   private ServerPaths myServerPaths;
