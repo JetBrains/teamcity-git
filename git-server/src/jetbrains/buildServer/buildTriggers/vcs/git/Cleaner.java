@@ -113,7 +113,7 @@ public class Cleaner extends BuildServerAdapter {
   }
 
   private boolean isRunNativeGC() {
-    return TeamCityProperties.getBoolean("teamcity.server.git.gc.enabled ");
+    return TeamCityProperties.getBoolean("teamcity.server.git.gc.enabled");
   }
 
   private String getPathToGit() {
