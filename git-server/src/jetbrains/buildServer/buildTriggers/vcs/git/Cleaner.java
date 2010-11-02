@@ -20,6 +20,7 @@ import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
@@ -39,7 +40,7 @@ import java.util.List;
  */
 public class Cleaner extends BuildServerAdapter {
 
-  private static Logger LOG = Logger.getInstance(Cleaner.class.getName());
+  private static Logger LOG = Loggers.CLEANUP;
 
   private final SBuildServer myServer;
   private final ServerPaths myPaths;
