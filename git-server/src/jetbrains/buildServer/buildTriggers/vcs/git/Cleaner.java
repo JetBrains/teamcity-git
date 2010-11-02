@@ -133,7 +133,7 @@ public class Cleaner extends BuildServerAdapter {
   private void runNativeGC() {
     final long start = System.currentTimeMillis();
     final long gcTimeQuota = getNativeGCQuotaMilliseconds();
-    LOG.debug("Garbage collection started");
+    LOG.info("Garbage collection started");
     List<File> allDirs = getAllRepositoryDirs();
     int runGCCounter = 0;
     for (File gitDir : allDirs) {
@@ -151,7 +151,7 @@ public class Cleaner extends BuildServerAdapter {
       }
     }
     final long finish = System.currentTimeMillis();
-    LOG.debug("Garbage collection finished, it took " + (finish - start) + "ms");
+    LOG.info("Garbage collection finished, it took " + (finish - start) + "ms");
   }
 
   private void runNativeGC(final File bareGitDir) {
@@ -168,13 +168,13 @@ public class Cleaner extends BuildServerAdapter {
       ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.RunCommandEvents() {
         public void onProcessStarted(Process ps) {
           if (LOG.isDebugEnabled()) {
-            LOG.debug("Start 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
+            LOG.info("Start 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
           }
         }
         public void onProcessFinished(Process ps) {
           if (LOG.isDebugEnabled()) {
             final long finish = System.currentTimeMillis();
-            LOG.debug("Finish 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc', it took " + (finish - start) + "ms");
+            LOG.info("Finish 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc', it took " + (finish - start) + "ms");
           }
         }
         public Integer getOutputIdleSecondsTimeout() {
