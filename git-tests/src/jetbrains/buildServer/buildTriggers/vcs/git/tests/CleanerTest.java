@@ -80,7 +80,7 @@ public class CleanerTest extends BaseTestCase {
 
   @Test
   public void test_clean() throws VcsException, InterruptedException {
-    System.setProperty("teamcity.server.git.gc.enabled ", String.valueOf(true));
+    System.setProperty("teamcity.server.git.gc.enabled", String.valueOf(true));
     if (System.getenv(Constants.GIT_PATH_ENV) != null)
       System.setProperty("teamcity.server.git.executable.path", System.getenv(Constants.GIT_PATH_ENV));
 
