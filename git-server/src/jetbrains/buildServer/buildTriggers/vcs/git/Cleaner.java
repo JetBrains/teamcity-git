@@ -164,6 +164,7 @@ public class Cleaner extends BuildServerAdapter {
       cl.addParameter("--git-dir="+bareGitDir.getCanonicalPath());
       cl.addParameter("gc");
       cl.addParameter("--auto");
+      cl.addParameter("--quiet");
 
       ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.RunCommandEvents() {
         public void onProcessStarted(Process ps) {
