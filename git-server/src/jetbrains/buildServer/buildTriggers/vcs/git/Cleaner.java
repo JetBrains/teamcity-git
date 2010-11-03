@@ -188,8 +188,8 @@ public class Cleaner extends BuildServerAdapter {
         LOG.error("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", commandError);
       }
       if (result.getStderr().length() > 0) {
-        LOG.warn("Error output produced by 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
-        LOG.warn(result.getStderr());
+        LOG.debug("Output produced by 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
+        LOG.debug(result.getStderr());
       }
     } catch (Exception e) {
       LOG.error("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", e);
