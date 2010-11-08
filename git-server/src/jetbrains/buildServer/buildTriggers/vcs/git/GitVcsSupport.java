@@ -807,10 +807,14 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   private RevCommit ensureRevCommitLoaded(Settings settings, Repository db, String commitSHA) throws Exception {
-    final long start = System.currentTimeMillis();
     RevCommit result = null;
     try {
+      final long start = System.currentTimeMillis();
       result = getCommit(db, commitSHA);
+      final long finish = System.currentTimeMillis();
+      if (PERFORMANCE_LOG.isDebugEnabled()) {
+        PERFORMANCE_LOG.debug("[ensureCommitLoaded] root=" + settings.debugInfo() + ", commit=" + commitSHA + ", local commit lookup: " + (finish - start) + "ms");
+      }
     } catch (IOException ex) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("IO problem for commit " + commitSHA + " in " + settings.debugInfo(), ex);
@@ -825,10 +829,6 @@ public class GitVcsSupport extends ServerVcsSupport
       if (result == null) {
         throw new VcsException("The version name could not be resolved " + commitSHA + "(" + settings.getRepositoryFetchURL().toString() + "#" + settings.getBranch() + ")");
       }
-    }
-    final long finish = System.currentTimeMillis();
-    if (PERFORMANCE_LOG.isDebugEnabled()) {
-      PERFORMANCE_LOG.debug("[findCommit] root=" + settings.debugInfo() + ", commitSHA=" + commitSHA + ", took: " + (finish - start) + "ms");
     }
     return result;
   }
