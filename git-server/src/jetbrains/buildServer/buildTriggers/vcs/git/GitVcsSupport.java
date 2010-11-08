@@ -807,6 +807,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   private RevCommit ensureRevCommitLoaded(Settings settings, Repository db, String commitSHA) throws Exception {
+    final long start = System.currentTimeMillis();
     RevCommit result = null;
     try {
       result = getCommit(db, commitSHA);
@@ -815,17 +816,21 @@ public class GitVcsSupport extends ServerVcsSupport
         LOG.debug("IO problem for commit " + commitSHA + " in " + settings.debugInfo(), ex);
       }
     }
-     if (result == null) {
-       if (LOG.isDebugEnabled()) {
-         LOG.debug("Commit " + commitSHA + " is not in the repository for " + settings.debugInfo() + ", fetching data... ");
-       }
-       fetchBranchData(settings, db);
-       result = getCommit(db, commitSHA);
-       if (result == null) {
-         throw new VcsException("The version name could not be resolved " + commitSHA + "(" + settings.getRepositoryFetchURL().toString() + "#" + settings.getBranch() + ")");
-       }
-     }
-     return result;
+    if (result == null) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Commit " + commitSHA + " is not in the repository for " + settings.debugInfo() + ", fetching data... ");
+      }
+      fetchBranchData(settings, db);
+      result = getCommit(db, commitSHA);
+      if (result == null) {
+        throw new VcsException("The version name could not be resolved " + commitSHA + "(" + settings.getRepositoryFetchURL().toString() + "#" + settings.getBranch() + ")");
+      }
+    }
+    final long finish = System.currentTimeMillis();
+    if (PERFORMANCE_LOG.isDebugEnabled()) {
+      PERFORMANCE_LOG.debug("[findCommit] root=" + settings.debugInfo() + ", commitSHA=" + commitSHA + ", took: " + (finish - start) + "ms");
+    }
+    return result;
   }
 
   RevCommit getCommit(Repository repository, String commitSHA) throws IOException {
