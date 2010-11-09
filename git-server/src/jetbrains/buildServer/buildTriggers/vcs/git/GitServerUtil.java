@@ -20,8 +20,6 @@ import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.storage.file.WindowCache;
-import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.URIish;
 
 import java.io.File;
@@ -49,9 +47,6 @@ public class GitServerUtil {
    * @throws jetbrains.buildServer.vcs.VcsException if the there is a problem with accessing VCS
    */
   public static Repository getRepository(File dir, URIish remote) throws VcsException {
-    WindowCacheConfig cfg = new WindowCacheConfig();
-    cfg.setStreamFileThreshold(getStreamFileThreshold() * WindowCacheConfig.MB);
-    WindowCache.reconfigure(cfg);
     if (dir.exists() && !dir.isDirectory()) {
       throw new VcsException("The specified path is not a directory: " + dir);
     }
@@ -75,10 +70,6 @@ public class GitServerUtil {
     } catch (Exception ex) {
       throw new VcsException("The repository at " + dir + " cannot be opened or created: " + ex, ex);
     }
-  }
-
-  private static int getStreamFileThreshold() {
-    return TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 64);
   }
 
   /**
