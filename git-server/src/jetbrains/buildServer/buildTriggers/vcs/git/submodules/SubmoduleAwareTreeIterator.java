@@ -277,13 +277,16 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
         ioe.initCause(e);
         throw ioe;
       }
-      return createSubmoduleAwareTreeIterator(this, p, mySubmoduleResolver.getSubResolver(mySubmoduleCommit, path),
+      return createSubmoduleAwareTreeIterator(this,
+                                              p,
+                                              mySubmoduleResolver.getSubResolver(mySubmoduleCommit, path),
                                               "",
                                               mySubmoduleResolver.getSubmoduleUrl(path),
                                               getPathFromRoot(path),
                                               SubmodulesCheckoutPolicy.getSubSubModulePolicyFor(mySubmodulesPolicy));
     } else {
-      return createSubmoduleAwareTreeIterator(this, myWrappedIterator.createSubtreeIterator(reader),
+      return createSubmoduleAwareTreeIterator(this,
+                                              myWrappedIterator.createSubtreeIterator(reader),
                                               mySubmoduleResolver,
                                               path,
                                               myUrl,
