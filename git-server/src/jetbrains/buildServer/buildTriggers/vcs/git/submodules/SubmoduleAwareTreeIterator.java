@@ -284,8 +284,9 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                               getPathFromRoot(path),
                                               SubmodulesCheckoutPolicy.getSubSubModulePolicyFor(mySubmodulesPolicy));
     } else {
+      Repository r = mySubmoduleResolver.getRepository();
       return createSubmoduleAwareTreeIterator(this,
-                                              myWrappedIterator.createSubtreeIterator(reader),
+                                              myWrappedIterator.createSubtreeIterator(r.newObjectReader()),
                                               mySubmoduleResolver,
                                               path,
                                               myUrl,
