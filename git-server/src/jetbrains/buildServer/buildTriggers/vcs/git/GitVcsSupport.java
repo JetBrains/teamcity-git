@@ -52,6 +52,8 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
+import org.eclipse.jgit.storage.file.WindowCache;
+import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
@@ -126,6 +128,13 @@ public class GitVcsSupport extends ServerVcsSupport
         return session;
       }
     };
+    setStreamFileThreshold();
+  }
+
+  private void setStreamFileThreshold() {
+    WindowCacheConfig cfg = new WindowCacheConfig();
+    cfg.setStreamFileThreshold(TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 64) * WindowCacheConfig.MB);
+    WindowCache.reconfigure(cfg);
   }
 
   /**
