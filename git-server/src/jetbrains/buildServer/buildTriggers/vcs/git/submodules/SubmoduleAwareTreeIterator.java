@@ -21,7 +21,6 @@ import com.intellij.util.containers.IntArrayList;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import org.eclipse.jgit.errors.CorruptObjectException;
-import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -131,7 +130,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                     SubmodulesCheckoutPolicy submodulesPolicy)
     throws CorruptObjectException {
     super(parent);
-    this.myParent = parent;
+    myParent = parent;
     myWrappedIterator = wrappedIterator;
     mySubmoduleResolver = submoduleResolver;
     myUrl = repositoryUrl;
