@@ -265,7 +265,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   }
 
   @Override
-  public AbstractTreeIterator createSubtreeIterator(ObjectReader reader) throws IncorrectObjectTypeException, IOException {
+  public AbstractTreeIterator createSubtreeIterator(ObjectReader reader) throws IOException {
     String path = myWrappedIterator.getEntryPathString();
     if (myIsOnSubmodule) {
       CanonicalTreeParser p = new CanonicalTreeParser();
