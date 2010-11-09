@@ -601,6 +601,15 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(mds.get(0).getChanges().size(), 2);//.gitmodules and 1 file inside submodule
   }
 
+  @Test
+  public void testSubmoduleWithDirs() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("wrong-submodule", true);
+    String beforeSubmodWithDirCommit = GitUtils.makeVersion("e6b15b1f4741199857e2fa744eaadfe5a9d9aede", 1282822922000L);
+    String submodWithDirCommit = GitUtils.makeVersion("6cf3cb6a87091d17466607858c699c35edf30d3b", 1289297786000L);
+    List<ModificationData> mds = support.collectChanges(root, beforeSubmodWithDirCommit, submodWithDirCommit, new CheckoutRules(""));
+  }
+
 
   /**
    * Test collecting changes with non-recursive submodule checkout: only first level submodule files are checked out

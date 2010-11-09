@@ -21,7 +21,6 @@ import com.intellij.util.containers.IntArrayList;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import org.eclipse.jgit.errors.CorruptObjectException;
-import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -131,7 +130,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                     SubmodulesCheckoutPolicy submodulesPolicy)
     throws CorruptObjectException {
     super(parent);
-    this.myParent = parent;
+    myParent = parent;
     myWrappedIterator = wrappedIterator;
     mySubmoduleResolver = submoduleResolver;
     myUrl = repositoryUrl;
@@ -265,7 +264,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   }
 
   @Override
-  public AbstractTreeIterator createSubtreeIterator(ObjectReader reader) throws IncorrectObjectTypeException, IOException {
+  public AbstractTreeIterator createSubtreeIterator(ObjectReader reader) throws IOException {
     String path = myWrappedIterator.getEntryPathString();
     if (myIsOnSubmodule) {
       CanonicalTreeParser p = new CanonicalTreeParser();
@@ -277,13 +276,17 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
         ioe.initCause(e);
         throw ioe;
       }
-      return createSubmoduleAwareTreeIterator(this, p, mySubmoduleResolver.getSubResolver(mySubmoduleCommit, path),
+      return createSubmoduleAwareTreeIterator(this,
+                                              p,
+                                              mySubmoduleResolver.getSubResolver(mySubmoduleCommit, path),
                                               "",
                                               mySubmoduleResolver.getSubmoduleUrl(path),
                                               getPathFromRoot(path),
                                               SubmodulesCheckoutPolicy.getSubSubModulePolicyFor(mySubmodulesPolicy));
     } else {
-      return createSubmoduleAwareTreeIterator(this, myWrappedIterator.createSubtreeIterator(reader),
+      Repository r = mySubmoduleResolver.getRepository();
+      return createSubmoduleAwareTreeIterator(this,
+                                              myWrappedIterator.createSubtreeIterator(r.newObjectReader()),
                                               mySubmoduleResolver,
                                               path,
                                               myUrl,
