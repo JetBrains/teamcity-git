@@ -847,11 +847,16 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   public RevCommit getCommit(Repository repository, ObjectId commitId) throws IOException {
+    final long start = System.currentTimeMillis();
     RevWalk walk = new RevWalk(repository);
     try {
       return walk.parseCommit(commitId);
     } finally {
       walk.release();
+      final long finish = System.currentTimeMillis();
+      if (PERFORMANCE_LOG.isDebugEnabled()) {
+        PERFORMANCE_LOG.debug("[RevWalk.parseCommit] repository=" + repository.getDirectory().getAbsolutePath() + ", commit=" + commitId.name() + ", took: " + (finish - start) + "ms");
+      }
     }
   }
 

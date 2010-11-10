@@ -99,7 +99,12 @@ class GitMapFullPath {
     final Boolean hasRevision = ourRevisionsCache.getValue().get(revisionAndRootKey());
     if (hasRevision != null) return !hasRevision;
 
-    RevCommit existingCommit = findCommit();
+    RevCommit existingCommit = null;
+    try {
+      existingCommit = findCommit();
+    } catch (IOException e) {
+      //commit not found, ignore exception
+    }
     ourRevisionsCache.getValue().put(revisionAndRootKey(), existingCommit != null);
     return existingCommit == null;
   }
