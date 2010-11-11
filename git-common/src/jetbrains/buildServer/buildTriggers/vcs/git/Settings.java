@@ -34,10 +34,10 @@ public class Settings {
 
   private URIish repositoryFetchURL;
   private URIish repositoryPushURL;
-  private String branch;
+  final private String branch;
   private File userDefinedRepositoryPath;
-  private UserNameStyle usernameStyle;
-  private SubmodulesCheckoutPolicy submodulePolicy;
+  final private UserNameStyle usernameStyle;
+  final private SubmodulesCheckoutPolicy submodulePolicy;
   private String cachesDirectory;
   private final AuthSettings myAuthSettings;
 
