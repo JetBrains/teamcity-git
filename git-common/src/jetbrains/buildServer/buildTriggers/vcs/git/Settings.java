@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -32,8 +31,6 @@ import java.util.Map;
  * Git Vcs Settings
  */
 public class Settings {
-
-  private static final Logger LOG = Logger.getInstance(Settings.class.getName());
 
   private URIish repositoryFetchURL;
   private URIish repositoryPushURL;
@@ -98,9 +95,6 @@ public class Settings {
    */
   public File getRepositoryPath() {
     if (repositoryPath == null) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Using internal directory for (" + getRepositoryFetchURL().toString() + "#" + getBranch() + ")");
-      }
       repositoryPath = getPathForUrl(getRepositoryFetchURL().toString());
     }
     return repositoryPath;
