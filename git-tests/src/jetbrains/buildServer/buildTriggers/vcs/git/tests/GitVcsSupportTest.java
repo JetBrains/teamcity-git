@@ -345,6 +345,20 @@ public class GitVcsSupportTest extends PatchTestCase {
     }
   }
 
+  @Test
+  public void testMergeCommitCannotBeIgnored() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("master");
+    final List<ModificationData> mds = support.collectChanges(root,
+                                                              GitUtils.makeVersion("2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", 1289483376000L),
+                                                              GitUtils.makeVersion("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", 1289483394000L),
+                                                              new CheckoutRules("+:dir=>."));
+    //we can ignore checkout rules during collecting changes, TeamCity will apply them later,
+    //but we should not set canBeIgnored = false for modifications, otherwise TeamCity won't exclude them
+    ModificationData mergeCommit = mds.get(0);
+    assertFalse(mergeCommit.isCanBeIgnored());
+  }
+
   /**
    * Test getting changes for the build concurrently. Copy of previous test but with several threads collecting changes
    */
