@@ -1197,7 +1197,7 @@ public class GitVcsSupport extends ServerVcsSupport
     File repositoryTempDir = null;
     try {
       repositoryTempDir = FileUtil.createTempDirectory("git-testcon", "");
-      s.setRepositoryPath(repositoryTempDir);
+      s.setUserDefinedRepositoryPath(repositoryTempDir);
       Repository r = getRepository(s);
       try {
         if (LOG.isDebugEnabled()) {

@@ -35,7 +35,7 @@ public class Settings {
   private URIish repositoryFetchURL;
   private URIish repositoryPushURL;
   private String branch;
-  private File repositoryPath;
+  private File userDefinedRepositoryPath;
   private UserNameStyle usernameStyle;
   private SubmodulesCheckoutPolicy submodulePolicy;
   private String cachesDirectory;
@@ -47,7 +47,7 @@ public class Settings {
 
   public Settings(VcsRoot root, String cacheDir) throws VcsException {
     cachesDirectory = cacheDir;
-    repositoryPath = getPath(root);
+    userDefinedRepositoryPath = getPath(root);
     branch = root.getProperty(Constants.BRANCH_NAME);
     final String style = root.getProperty(Constants.USERNAME_STYLE);
     usernameStyle = style == null ? UserNameStyle.USERID : Enum.valueOf(UserNameStyle.class, style);
@@ -94,10 +94,11 @@ public class Settings {
    * @return the local repository path
    */
   public File getRepositoryPath() {
-    if (repositoryPath == null) {
-      repositoryPath = getPathForUrl(getRepositoryFetchURL().toString());
+    if (userDefinedRepositoryPath == null) {
+      return getPathForUrl(getRepositoryFetchURL().toString());
+    } else {
+      return userDefinedRepositoryPath;
     }
-    return repositoryPath;
   }
 
   public static File getRepositoryPath(File cacheDir, VcsRoot root) throws VcsException {
@@ -116,8 +117,8 @@ public class Settings {
    *
    * @param file the path to set
    */
-  public void setRepositoryPath(File file) {
-    repositoryPath = file;
+  public void setUserDefinedRepositoryPath(File file) {
+    userDefinedRepositoryPath = file;
   }
 
   /**
