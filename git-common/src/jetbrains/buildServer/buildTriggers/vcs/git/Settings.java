@@ -45,7 +45,6 @@ public class Settings {
   private UserNameStyle usernameStyle;
   private SubmodulesCheckoutPolicy submodulePolicy;
   private String cachesDirectory;
-  private final Map<String, String> myAllRootProperties;
   private final AuthSettings myAuthSettings;
 
   public Settings(VcsRoot root) throws VcsException {
@@ -54,7 +53,6 @@ public class Settings {
 
   public Settings(VcsRoot root, String cacheDir) throws VcsException {
     cachesDirectory = cacheDir;
-    myAllRootProperties = new HashMap<String, String>(root.getProperties());
     repositoryPath = getPath(root);
     branch = root.getProperty(Constants.BRANCH_NAME);
     final String style = root.getProperty(Constants.USERNAME_STYLE);
@@ -183,10 +181,6 @@ public class Settings {
    */
   public URIish getRepositoryPushURL() {
     return repositoryPushURL;
-  }
-
-  public Map<String, String> getAllRootProperties() {
-    return myAllRootProperties;
   }
 
   public AuthSettings getAuthSettings() {
