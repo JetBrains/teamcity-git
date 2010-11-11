@@ -47,7 +47,7 @@ public class Settings {
 
   public Settings(VcsRoot root, String cacheDir) throws VcsException {
     cachesDirectory = cacheDir;
-    userDefinedRepositoryPath = getPath(root);
+    userDefinedRepositoryPath = readPath(root);
     branch = root.getProperty(Constants.BRANCH_NAME);
     usernameStyle = readUserNameStyle(root);
     submodulePolicy = readSubmodulesPolicy(root);
@@ -57,7 +57,7 @@ public class Settings {
     repositoryPushURL = StringUtil.isEmpty(pushUrl) ? repositoryFetchURL : myAuthSettings.createAuthURI(pushUrl);
   }
 
-  private static File getPath(VcsRoot root) {
+  private static File readPath(VcsRoot root) {
     String path = root.getProperty(Constants.PATH);
     return path == null ? null : new File(path);
   }
@@ -113,7 +113,7 @@ public class Settings {
   }
 
   public static File getRepositoryPath(File cacheDir, VcsRoot root) throws VcsException {
-    File userDefinedPath = getPath(root);
+    File userDefinedPath = readPath(root);
     if (userDefinedPath == null) {
       AuthSettings auth = new AuthSettings(root.getProperties());
       URIish fetchUrl = auth.createAuthURI(root.getProperty(Constants.FETCH_URL));
