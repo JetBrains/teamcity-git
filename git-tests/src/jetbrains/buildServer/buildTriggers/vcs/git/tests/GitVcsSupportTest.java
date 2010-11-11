@@ -329,7 +329,7 @@ public class GitVcsSupportTest extends PatchTestCase {
    *   o 2494559261ab85e92b1780860b34f876b5e6bce6 (commit from other branch) changes file readme.txt (not in dir/)
    *      |
    *      |
-   *      o 3b9fbfbb43e7edfad018b482e15e7f93cca4e69f
+   *      o 3b9fbfbb43e7edfad018b482e15e7f93cca4e69f (no changes in dir/)
    */
   @Test
   public void testCollectBuildChangesWithCheckoutRules() throws Exception {
