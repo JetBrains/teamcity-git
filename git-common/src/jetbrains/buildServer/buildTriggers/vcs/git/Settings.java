@@ -32,14 +32,14 @@ import java.util.Map;
  */
 public class Settings {
 
-  private URIish repositoryFetchURL;
-  private URIish repositoryPushURL;
+  final private URIish repositoryFetchURL;
+  final private URIish repositoryPushURL;
   final private String branch;
-  private File userDefinedRepositoryPath;
   final private UserNameStyle usernameStyle;
   final private SubmodulesCheckoutPolicy submodulePolicy;
   final private String cachesDirectory;
   final private AuthSettings myAuthSettings;
+  private File userDefinedRepositoryPath;
 
   public Settings(VcsRoot root) throws VcsException {
     this(root, null);
@@ -57,11 +57,7 @@ public class Settings {
     myAuthSettings = new AuthSettings(root.getProperties());
     repositoryFetchURL = myAuthSettings.createAuthURI(root.getProperty(Constants.FETCH_URL));
     final String pushUrl = root.getProperty(Constants.PUSH_URL);
-    if (StringUtil.isEmpty(pushUrl)) {
-      repositoryPushURL = repositoryFetchURL;
-    } else {
-      repositoryPushURL = myAuthSettings.createAuthURI(pushUrl);
-    }
+    repositoryPushURL = StringUtil.isEmpty(pushUrl) ? repositoryFetchURL : myAuthSettings.createAuthURI(pushUrl);
   }
 
   private static File getPath(VcsRoot root) {
