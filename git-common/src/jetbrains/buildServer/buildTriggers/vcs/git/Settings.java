@@ -39,7 +39,7 @@ public class Settings {
   final private UserNameStyle usernameStyle;
   final private SubmodulesCheckoutPolicy submodulePolicy;
   final private String cachesDirectory;
-  private final AuthSettings myAuthSettings;
+  final private AuthSettings myAuthSettings;
 
   public Settings(VcsRoot root) throws VcsException {
     this(root, null);
