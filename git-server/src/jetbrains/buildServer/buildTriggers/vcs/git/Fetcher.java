@@ -61,7 +61,7 @@ public class Fetcher {
     Repository repository = GitServerUtil.getRepository(repositoryDir, new URIish(fetchUrl));
 
     GitVcsSupport gitSupport = new GitVcsSupport(new ServerPaths(), null);
-    final Transport tn = gitSupport.openTransport(auth, repository, auth.createAuthURI(fetchUrl));
+    final Transport tn = gitSupport.openTransport(auth, repository, new URIish(fetchUrl));
     try {
       RefSpec spec = new RefSpec(refspec).setForceUpdate(true);
       tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));

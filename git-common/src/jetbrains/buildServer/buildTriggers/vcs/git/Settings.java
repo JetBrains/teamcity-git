@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -33,20 +32,14 @@ import java.util.Map;
  */
 public class Settings {
 
-  private static final Logger LOG = Logger.getInstance(Settings.class.getName());
-
-  private URIish repositoryFetchURL;
-  private URIish repositoryPushURL;
-  /**
-   * The current branch
-   */
-  private String branch;
-  private File repositoryPath;
-  private UserNameStyle usernameStyle;
-  private SubmodulesCheckoutPolicy submodulePolicy;
-  private String cachesDirectory;
-  private final Map<String, String> myAllRootProperties;
-  private final AuthSettings myAuthSettings;
+  final private URIish repositoryFetchURL;
+  final private URIish repositoryPushURL;
+  final private String branch;
+  final private UserNameStyle usernameStyle;
+  final private SubmodulesCheckoutPolicy submodulePolicy;
+  final private String cachesDirectory;
+  final private AuthSettings myAuthSettings;
+  private File userDefinedRepositoryPath;
 
   public Settings(VcsRoot root) throws VcsException {
     this(root, null);
@@ -54,27 +47,37 @@ public class Settings {
 
   public Settings(VcsRoot root, String cacheDir) throws VcsException {
     cachesDirectory = cacheDir;
-    myAllRootProperties = new HashMap<String, String>(root.getProperties());
-    repositoryPath = getPath(root);
+    userDefinedRepositoryPath = readPath(root);
     branch = root.getProperty(Constants.BRANCH_NAME);
-    final String style = root.getProperty(Constants.USERNAME_STYLE);
-    usernameStyle = style == null ? UserNameStyle.USERID : Enum.valueOf(UserNameStyle.class, style);
-    String submoduleCheckout = root.getProperty(Constants.SUBMODULES_CHECKOUT);
-    submodulePolicy =
-      submoduleCheckout != null ? Enum.valueOf(SubmodulesCheckoutPolicy.class, submoduleCheckout) : SubmodulesCheckoutPolicy.IGNORE;
+    usernameStyle = readUserNameStyle(root);
+    submodulePolicy = readSubmodulesPolicy(root);
     myAuthSettings = new AuthSettings(root.getProperties());
     repositoryFetchURL = myAuthSettings.createAuthURI(root.getProperty(Constants.FETCH_URL));
     final String pushUrl = root.getProperty(Constants.PUSH_URL);
-    if (StringUtil.isEmpty(pushUrl)) {
-      repositoryPushURL = repositoryFetchURL;
+    repositoryPushURL = StringUtil.isEmpty(pushUrl) ? repositoryFetchURL : myAuthSettings.createAuthURI(pushUrl);
+  }
+
+  private static File readPath(VcsRoot root) {
+    String path = root.getProperty(Constants.PATH);
+    return path == null ? null : new File(path);
+  }
+
+  private static UserNameStyle readUserNameStyle(VcsRoot root) {
+    final String style = root.getProperty(Constants.USERNAME_STYLE);
+    if (style == null) {
+      return UserNameStyle.USERID;
     } else {
-      repositoryPushURL = myAuthSettings.createAuthURI(pushUrl);
+      return Enum.valueOf(UserNameStyle.class, style);
     }
   }
 
-  private static File getPath(VcsRoot root) {
-    String path = root.getProperty(Constants.PATH);
-    return path == null ? null : new File(path);
+  private static SubmodulesCheckoutPolicy readSubmodulesPolicy(VcsRoot root) {
+    final String submoduleCheckout = root.getProperty(Constants.SUBMODULES_CHECKOUT);
+    if (submoduleCheckout == null) {
+      return SubmodulesCheckoutPolicy.IGNORE;
+    } else {
+      return Enum.valueOf(SubmodulesCheckoutPolicy.class, submoduleCheckout);
+    }
   }
 
   /**
@@ -102,17 +105,15 @@ public class Settings {
    * @return the local repository path
    */
   public File getRepositoryPath() {
-    if (repositoryPath == null) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Using internal directory for (" + getRepositoryFetchURL().toString() + "#" + getBranch() + ")");
-      }
-      repositoryPath = getPathForUrl(getRepositoryFetchURL().toString());
+    if (userDefinedRepositoryPath == null) {
+      return getPathForUrl(getRepositoryFetchURL().toString());
+    } else {
+      return userDefinedRepositoryPath;
     }
-    return repositoryPath;
   }
 
   public static File getRepositoryPath(File cacheDir, VcsRoot root) throws VcsException {
-    File userDefinedPath = getPath(root);
+    File userDefinedPath = readPath(root);
     if (userDefinedPath == null) {
       AuthSettings auth = new AuthSettings(root.getProperties());
       URIish fetchUrl = auth.createAuthURI(root.getProperty(Constants.FETCH_URL));
@@ -127,8 +128,8 @@ public class Settings {
    *
    * @param file the path to set
    */
-  public void setRepositoryPath(File file) {
-    repositoryPath = file;
+  public void setUserDefinedRepositoryPath(File file) {
+    userDefinedRepositoryPath = file;
   }
 
   /**
@@ -170,23 +171,10 @@ public class Settings {
   }
 
   /**
-   * Set caches directory for the settings
-   *
-   * @param cachesDirectory caches directory
-   */
-  public void setCachesDirectory(String cachesDirectory) {
-    this.cachesDirectory = cachesDirectory;
-  }
-
-  /**
    * @return the push URL for the repository
    */
   public URIish getRepositoryPushURL() {
     return repositoryPushURL;
-  }
-
-  public Map<String, String> getAllRootProperties() {
-    return myAllRootProperties;
   }
 
   public AuthSettings getAuthSettings() {
@@ -232,21 +220,26 @@ public class Settings {
     }
 
     public URIish createAuthURI(String uri) throws VcsException {
-      URIish uriish;
+      URIish result;
       try {
-        uriish = new URIish(uri);
+        result = new URIish(uri);
       } catch (URISyntaxException e) {
         throw new VcsException("Invalid URI: " + uri);
       }
-      if (!"git".equals(uriish.getScheme())) {
+      return createAuthURI(result);
+    }
+
+    public URIish createAuthURI(final URIish uri) {
+      URIish result = uri;
+      if (!"git".equals(result.getScheme())) {
         if (!StringUtil.isEmptyOrSpaces(myUserName)) {
-          uriish = uriish.setUser(myUserName);
+          result = result.setUser(myUserName);
         }
         if (!StringUtil.isEmpty(myPassword)) {
-          uriish = uriish.setPass(myPassword);
+          result = result.setPass(myPassword);
         }
       }
-      return uriish;
+      return result;
     }
 
     public Map<String, String> toMap() {
