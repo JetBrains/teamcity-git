@@ -1380,7 +1380,8 @@ public class GitVcsSupport extends ServerVcsSupport
    * @throws VcsException          if there is a problem with configuring the transport
    */
   public Transport openTransport(Settings.AuthSettings authSettings, Repository r, final URIish url) throws NotSupportedException, VcsException {
-    final Transport t = Transport.open(r, url);
+    final URIish authUrl = authSettings.createAuthURI(url);
+    final Transport t = Transport.open(r, authUrl);
     if (t instanceof SshTransport) {
       SshTransport ssh = (SshTransport)t;
       ssh.setSshSessionFactory(getSshSessionFactory(authSettings, url));
