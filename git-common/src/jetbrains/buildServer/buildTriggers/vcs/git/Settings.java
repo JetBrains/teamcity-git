@@ -50,9 +50,7 @@ public class Settings {
     userDefinedRepositoryPath = getPath(root);
     branch = root.getProperty(Constants.BRANCH_NAME);
     usernameStyle = readUserNameStyle(root);
-    String submoduleCheckout = root.getProperty(Constants.SUBMODULES_CHECKOUT);
-    submodulePolicy =
-      submoduleCheckout != null ? Enum.valueOf(SubmodulesCheckoutPolicy.class, submoduleCheckout) : SubmodulesCheckoutPolicy.IGNORE;
+    submodulePolicy = readSubmodulesPolicy(root);
     myAuthSettings = new AuthSettings(root.getProperties());
     repositoryFetchURL = myAuthSettings.createAuthURI(root.getProperty(Constants.FETCH_URL));
     final String pushUrl = root.getProperty(Constants.PUSH_URL);
@@ -70,6 +68,15 @@ public class Settings {
       return UserNameStyle.USERID;
     } else {
       return Enum.valueOf(UserNameStyle.class, style);
+    }
+  }
+
+  private static SubmodulesCheckoutPolicy readSubmodulesPolicy(VcsRoot root) {
+    final String submoduleCheckout = root.getProperty(Constants.SUBMODULES_CHECKOUT);
+    if (submoduleCheckout == null) {
+      return SubmodulesCheckoutPolicy.IGNORE;
+    } else {
+      return Enum.valueOf(SubmodulesCheckoutPolicy.class, submoduleCheckout);
     }
   }
 
