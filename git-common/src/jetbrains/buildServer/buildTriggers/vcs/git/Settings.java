@@ -220,21 +220,21 @@ public class Settings {
     }
 
     public URIish createAuthURI(String uri) throws VcsException {
-      URIish uriish;
+      URIish result;
       try {
-        uriish = new URIish(uri);
+        result = new URIish(uri);
       } catch (URISyntaxException e) {
         throw new VcsException("Invalid URI: " + uri);
       }
-      if (!"git".equals(uriish.getScheme())) {
+      if (!"git".equals(result.getScheme())) {
         if (!StringUtil.isEmptyOrSpaces(myUserName)) {
-          uriish = uriish.setUser(myUserName);
+          result = result.setUser(myUserName);
         }
         if (!StringUtil.isEmpty(myPassword)) {
-          uriish = uriish.setPass(myPassword);
+          result = result.setPass(myPassword);
         }
       }
-      return uriish;
+      return result;
     }
 
     public URIish createAuthURI(final URIish uri) {
