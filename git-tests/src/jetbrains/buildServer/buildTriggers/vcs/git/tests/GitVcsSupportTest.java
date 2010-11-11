@@ -290,7 +290,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     final List<ModificationData> mms1 = support.collectChanges(root, CUD1_VERSION, MERGE_VERSION, new CheckoutRules(""));
     assertEquals(3, mms1.size());
     ModificationData md1 = mms1.get(0);
-    assertFalse(md1.isCanBeIgnored());
     assertEquals("merge commit\n", md1.getDescription());
     assertEquals(MERGE_VERSION, md1.getVersion());
     assertEquals(3, md1.getChanges().size());
@@ -412,7 +411,6 @@ public class GitVcsSupportTest extends PatchTestCase {
           final List<ModificationData> mms1 = support.collectChanges(root, CUD1_VERSION, MERGE_VERSION, new CheckoutRules(""));
           assertEquals(3, mms1.size());
           ModificationData md1 = mms1.get(0);
-          assertFalse(md1.isCanBeIgnored());
           assertEquals("merge commit\n", md1.getDescription());
           assertEquals(MERGE_VERSION, md1.getVersion());
           assertEquals(3, md1.getChanges().size());
