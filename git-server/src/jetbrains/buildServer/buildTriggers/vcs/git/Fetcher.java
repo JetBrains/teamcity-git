@@ -23,6 +23,7 @@ import org.eclipse.jgit.lib.NullProgressMonitor;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.Transport;
+import org.eclipse.jgit.transport.URIish;
 
 import java.io.*;
 import java.net.URISyntaxException;
@@ -57,7 +58,7 @@ public class Fetcher {
     Settings.AuthSettings auth = new Settings.AuthSettings(vcsRootProperties);
     //this method should be called with repository lock, but Fetcher is ran in separate process, so
     //locks will not help; Fetcher is ran after we have ensured that repository exists, so we can call it without lock
-    Repository repository = GitServerUtil.getRepository(repositoryDir, auth.createAuthURI(fetchUrl));
+    Repository repository = GitServerUtil.getRepository(repositoryDir, new URIish(fetchUrl));
 
     GitVcsSupport gitSupport = new GitVcsSupport(new ServerPaths(), null);
     final Transport tn = gitSupport.openTransport(auth, repository, auth.createAuthURI(fetchUrl));
