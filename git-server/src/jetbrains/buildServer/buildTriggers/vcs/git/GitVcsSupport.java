@@ -217,7 +217,7 @@ public class GitVcsSupport extends ServerVcsSupport
           RevCommit c;
           boolean lastCommit = true;
           while ((c = revs.next()) != null) {
-            result.add(createModificationData(c, r, repositories, root, s, !lastCommit, firstUninterestingVersion));
+            result.add(createModificationData(c, r, repositories, root, s, !lastCommit, firstUninterestingVersion, checkoutRules));
             lastCommit = false;
           }
         } else {
@@ -229,7 +229,7 @@ public class GitVcsSupport extends ServerVcsSupport
             if (c.getCommitTime() * 1000L <= limitTime) {
               revs.markUninteresting(c);
             } else {
-              result.add(createModificationData(c, r, repositories, root, s, !lastCommit, null));
+              result.add(createModificationData(c, r, repositories, root, s, !lastCommit, null, checkoutRules));
             }
             lastCommit = false;
           }
@@ -323,7 +323,8 @@ public class GitVcsSupport extends ServerVcsSupport
                                                   final VcsRoot root,
                                                   final Settings settings,
                                                   final boolean ignoreSubmodulesErrors,
-                                                  final String firstUninterestingVersion) throws IOException {
+                                                  final String firstUninterestingVersion,
+                                                  final CheckoutRules checkoutRules) throws IOException {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Collecting changes in commit " + commit.getId().name() + ":" + commit.getShortMessage() +
                 " (" + commit.getCommitterIdent().getWhen() + ") for " + settings.debugInfo());
@@ -333,7 +334,7 @@ public class GitVcsSupport extends ServerVcsSupport
     List<VcsChange> changes = getCommitChanges(repositories, settings, db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
     ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
                                               GitServerUtil.getUser(settings, commit), root, currentVersion, commit.getId().name());
-    if (isMergeCommit(commit)) {
+    if (isMergeCommit(commit) && changes.isEmpty() && hasInterestingChanges(db, commit, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion))) {
       result.setCanBeIgnored(false);
     }
     return result;
@@ -346,11 +347,19 @@ public class GitVcsSupport extends ServerVcsSupport
   private boolean hasInterestingChanges(final Repository db, final RevCommit mergeCommit, final CheckoutRules rules, String firstUninterestingSHA)
     throws IOException {
     RevWalk walk = new RevWalk(db);
-    walk.sort(RevSort.TOPO);
-    walk.markStart(Arrays.asList(mergeCommit.getParents()));
+    List<RevCommit> start = new ArrayList<RevCommit>();
+    for (RevCommit c : mergeCommit.getParents()) {
+      start.add(walk.parseCommit(c));
+    }
+    walk.markStart(start);
     walk.markUninteresting(walk.parseCommit(ObjectId.fromString(firstUninterestingSHA)));
+    walk.sort(RevSort.TOPO);
+    walk.sort(RevSort.COMMIT_TIME_DESC);
     try {
-
+      RevCommit c;
+      while ((c = walk.next()) != null) {
+        //TODO: check if commit has interesting changes
+      }
     } finally {
       walk.release();
     }
