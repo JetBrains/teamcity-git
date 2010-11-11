@@ -37,9 +37,6 @@ public class Settings {
 
   private URIish repositoryFetchURL;
   private URIish repositoryPushURL;
-  /**
-   * The current branch
-   */
   private String branch;
   private File repositoryPath;
   private UserNameStyle usernameStyle;
