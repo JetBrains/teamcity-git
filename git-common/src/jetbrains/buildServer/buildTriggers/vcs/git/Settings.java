@@ -226,15 +226,7 @@ public class Settings {
       } catch (URISyntaxException e) {
         throw new VcsException("Invalid URI: " + uri);
       }
-      if (!"git".equals(result.getScheme())) {
-        if (!StringUtil.isEmptyOrSpaces(myUserName)) {
-          result = result.setUser(myUserName);
-        }
-        if (!StringUtil.isEmpty(myPassword)) {
-          result = result.setPass(myPassword);
-        }
-      }
-      return result;
+      return createAuthURI(result);
     }
 
     public URIish createAuthURI(final URIish uri) {
