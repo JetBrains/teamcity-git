@@ -348,11 +348,9 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   /**
    * Test getting changes for the build concurrently. Copy of previous test but with several threads collecting changes
-   *
-   * @throws Exception in case of IO problem
    */
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void testConcurrentCollectBuildChanges(boolean fetchInSeparateProcess) throws Exception {
+  public void testConcurrentCollectBuildChanges(boolean fetchInSeparateProcess) throws Throwable {
     System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
 
     final GitVcsSupport support = getSupport();
