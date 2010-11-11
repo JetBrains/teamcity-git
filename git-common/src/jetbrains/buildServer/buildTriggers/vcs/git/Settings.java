@@ -237,6 +237,19 @@ public class Settings {
       return uriish;
     }
 
+    public URIish createAuthURI(final URIish uri) {
+      URIish result = uri;
+      if (!"git".equals(result.getScheme())) {
+        if (!StringUtil.isEmptyOrSpaces(myUserName)) {
+          result = result.setUser(myUserName);
+        }
+        if (!StringUtil.isEmpty(myPassword)) {
+          result = result.setPass(myPassword);
+        }
+      }
+      return result;
+    }
+
     public Map<String, String> toMap() {
       Map<String, String> result = new HashMap<String, String>();
       result.put(Constants.AUTH_METHOD, myAuthMethod.name());
