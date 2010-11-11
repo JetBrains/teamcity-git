@@ -38,7 +38,7 @@ public class Settings {
   private File userDefinedRepositoryPath;
   final private UserNameStyle usernameStyle;
   final private SubmodulesCheckoutPolicy submodulePolicy;
-  private String cachesDirectory;
+  final private String cachesDirectory;
   private final AuthSettings myAuthSettings;
 
   public Settings(VcsRoot root) throws VcsException {
@@ -157,15 +157,6 @@ public class Settings {
     // TODO consider using a better hash in order to reduce a chance for conflict
     String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
     return new File(cacheDir, "git" + File.separatorChar + name);
-  }
-
-  /**
-   * Set caches directory for the settings
-   *
-   * @param cachesDirectory caches directory
-   */
-  public void setCachesDirectory(String cachesDirectory) {
-    this.cachesDirectory = cachesDirectory;
   }
 
   /**
