@@ -49,8 +49,7 @@ public class Settings {
     cachesDirectory = cacheDir;
     userDefinedRepositoryPath = getPath(root);
     branch = root.getProperty(Constants.BRANCH_NAME);
-    final String style = root.getProperty(Constants.USERNAME_STYLE);
-    usernameStyle = style == null ? UserNameStyle.USERID : Enum.valueOf(UserNameStyle.class, style);
+    usernameStyle = readUserNameStyle(root);
     String submoduleCheckout = root.getProperty(Constants.SUBMODULES_CHECKOUT);
     submodulePolicy =
       submoduleCheckout != null ? Enum.valueOf(SubmodulesCheckoutPolicy.class, submoduleCheckout) : SubmodulesCheckoutPolicy.IGNORE;
@@ -63,6 +62,15 @@ public class Settings {
   private static File getPath(VcsRoot root) {
     String path = root.getProperty(Constants.PATH);
     return path == null ? null : new File(path);
+  }
+
+  private static UserNameStyle readUserNameStyle(VcsRoot root) {
+    final String style = root.getProperty(Constants.USERNAME_STYLE);
+    if (style == null) {
+      return UserNameStyle.USERID;
+    } else {
+      return Enum.valueOf(UserNameStyle.class, style);
+    }
   }
 
   /**
