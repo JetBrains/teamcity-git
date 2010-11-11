@@ -354,7 +354,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
 
     final GitVcsSupport support = getSupport();
-    final List<Exception> errors = Collections.synchronizedList(new ArrayList<Exception>());
+    final List<Throwable> errors = Collections.synchronizedList(new ArrayList<Throwable>());
 
     Runnable r1 = new Runnable() {
       public void run() {
@@ -385,7 +385,7 @@ public class GitVcsSupportTest extends PatchTestCase {
           VcsChange ch12 = m1.getChanges().get(2);
           assertEquals("dir/tr.txt", ch12.getFileName());
           assertEquals(VcsChange.Type.REMOVED, ch12.getType());
-        } catch (Exception e) {
+        } catch (Throwable e) {
           errors.add(e);
         }
       }
@@ -398,7 +398,7 @@ public class GitVcsSupportTest extends PatchTestCase {
           final VcsRoot root = getRoot("master");
           final List<ModificationData> mms0 = support.collectChanges(root, MERGE_BRANCH_VERSION, MERGE_VERSION, new CheckoutRules(""));
           assertEquals(2, mms0.size());
-        } catch (Exception e) {
+        } catch (Throwable e) {
           errors.add(e);
         }
       }
@@ -433,7 +433,7 @@ public class GitVcsSupportTest extends PatchTestCase {
           ModificationData md3 = mms1.get(2);
           assertEquals("a-mod, c-rm\n", md3.getDescription());
           assertEquals(2, md3.getChanges().size());
-        } catch (Exception e) {
+        } catch (Throwable e) {
           errors.add(e);
         }
       }
@@ -450,7 +450,7 @@ public class GitVcsSupportTest extends PatchTestCase {
           ModificationData mb3 = mms2.get(3);
           assertEquals(GitServerUtil.SYSTEM_USER, mb3.getUserName());
           assertEquals(0, mb3.getChanges().size());
-        } catch (Exception e) {
+        } catch (Throwable e) {
           errors.add(e);
         }
       }
