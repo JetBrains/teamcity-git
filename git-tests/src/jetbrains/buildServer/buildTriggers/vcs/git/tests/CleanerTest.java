@@ -67,7 +67,7 @@ public class CleanerTest extends BaseTestCase {
       allowing(server).getExecutor(); will(returnValue(myCleanExecutor));
       allowing(server).getVcsManager(); will(returnValue(myVcsManager));
     }});
-    GitVcsSupport gitSupport = new GitVcsSupport(myServerPaths, null);
+    GitVcsSupport gitSupport = new GitVcsSupport(myServerPaths, null, null);
     myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), myServerPaths, gitSupport);
   }
 
@@ -83,7 +83,7 @@ public class CleanerTest extends BaseTestCase {
       System.setProperty("teamcity.server.git.executable.path", System.getenv(Constants.GIT_PATH_ENV));
 
     final VcsRoot root = getVcsRoot();
-    GitVcsSupport vcsSupport = new GitVcsSupport(myServerPaths, null);
+    GitVcsSupport vcsSupport = new GitVcsSupport(myServerPaths, null, null);
     vcsSupport.getCurrentVersion(root);//it will create dir in cache directory
     File repositoryDir = getRepositoryDir(root);
     File gitCacheDir = new File(myServerPaths.getCachesDir(), "git");

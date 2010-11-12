@@ -63,7 +63,7 @@ public class SubmoduleTest {
   public void setUp() throws IOException {
     File teamcitySystemDir = myTempFiles.createTempDir();
     myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
-    myGitSupport = new GitVcsSupport(myServerPaths, null);
+    myGitSupport = new GitVcsSupport(myServerPaths, null, null);
   }
 
   @AfterMethod

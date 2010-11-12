@@ -100,6 +100,6 @@ public class BranchSupportTest {
   }
 
   private GitVcsSupport getSupport() {
-    return new GitVcsSupport(myServerPaths, null);
+    return new GitVcsSupport(myServerPaths, null, null);
   }
 }

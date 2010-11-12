@@ -32,10 +32,9 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErr
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolver;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.TeamCitySubmoduleResolver;
-import jetbrains.buildServer.serverSide.PropertiesProcessor;
-import jetbrains.buildServer.serverSide.ServerPaths;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
+import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.util.StringUtil;
@@ -103,24 +102,26 @@ public class GitVcsSupport extends ServerVcsSupport
    * The default SSH session factory used for not explicitly configured host
    * It fails when user is prompted for some information.
    */
-  private final SshSessionFactory mySshSessionFactory;
+  private final RefreshableSshConfigSessionFactory mySshSessionFactory;
   /**
    * This factory is used when known host database is specified to be ignored
    */
-  private final SshSessionFactory mySshSessionFactoryKnownHostsIgnored;
+  private final RefreshableSshConfigSessionFactory mySshSessionFactoryKnownHostsIgnored;
 
   private final ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
 
 
   public GitVcsSupport(@NotNull  final ServerPaths serverPaths,
-                       @Nullable final ExtensionHolder extensionHolder) {
+                       @Nullable final ExtensionHolder extensionHolder,
+                       @Nullable final EventDispatcher<BuildServerListener> dispatcher) {
     myServerPaths = serverPaths;
     myExtensionHolder = extensionHolder;
     int currentVersionCacheSize = TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(currentVersionCacheSize);
-    mySshSessionFactory = new RefreshableSshConfigSessionFactory();
-    mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory() {
+    final boolean monitorSshConfigs = dispatcher != null; //dispatcher is null in tests and when invoked from the Fetcher
+    mySshSessionFactory = new RefreshableSshConfigSessionFactory(monitorSshConfigs);
+    mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory(monitorSshConfigs) {
       // note that different instance is used because JSch cannot be shared with strict host checking
       public Session getSession(String user, String pass, String host, int port, FS fs) throws JSchException {
         final Session session = super.getSession(user, pass, host, port, fs);
@@ -129,6 +130,15 @@ public class GitVcsSupport extends ServerVcsSupport
       }
     };
     setStreamFileThreshold();
+    if (monitorSshConfigs) {
+      dispatcher.addListener(new BuildServerAdapter() {
+        @Override
+        public void serverShutdown() {
+          mySshSessionFactory.stopMonitoringConfigs();
+          mySshSessionFactoryKnownHostsIgnored.stopMonitoringConfigs();
+        }
+      });
+    }
   }
 
   private void setStreamFileThreshold() {

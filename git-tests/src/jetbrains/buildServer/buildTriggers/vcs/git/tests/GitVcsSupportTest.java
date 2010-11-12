@@ -166,7 +166,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   private GitVcsSupport getSupport(ExtensionHolder holder) {
-    return new GitVcsSupport(myServerPaths, holder);
+    return new GitVcsSupport(myServerPaths, holder, null);
   }
 
 

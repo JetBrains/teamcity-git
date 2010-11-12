@@ -44,23 +44,34 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
    * The lock that guards {@link #myDelegate}
    */
   private final Object delegateLock = new Object();
+  private final FilesWatcher myWatcher;
 
   /**
    * A constructor
    */
-  public RefreshableSshConfigSessionFactory() {
-    FilesWatcher watcher = new FilesWatcher(new FilesWatcher.WatchedFilesProvider() {
-      public File[] getWatchedFiles() {
-        File sshDir = new File(System.getProperty("user.home"), ".ssh");
-        return new File[] {sshDir};
-      }
-    });
-    watcher.registerListener(new ChangeListener() {
-      public void changeOccured(String requestor) {
-        expireDelegate();
-      }
-    });
-    watcher.start();
+  public RefreshableSshConfigSessionFactory(final boolean monitorDotSshChanges) {
+    if (monitorDotSshChanges) {
+      myWatcher = new FilesWatcher(new FilesWatcher.WatchedFilesProvider() {
+        public File[] getWatchedFiles() {
+          File sshDir = new File(System.getProperty("user.home"), ".ssh");
+          return new File[] {sshDir};
+        }
+      });
+      myWatcher.registerListener(new ChangeListener() {
+        public void changeOccured(String requestor) {
+          expireDelegate();
+        }
+      });
+      myWatcher.start();
+    } else {
+      myWatcher = null;
+    }
+  }
+
+  public void stopMonitoringConfigs() {
+    if (myWatcher != null) {
+      myWatcher.stop();
+    }
   }
 
   /**
