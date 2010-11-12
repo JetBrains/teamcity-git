@@ -18,12 +18,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.lib.NullProgressMonitor;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.Transport;
+import org.eclipse.jgit.transport.URIish;
 
 import java.io.*;
 import java.net.URISyntaxException;
@@ -39,9 +39,8 @@ public class Fetcher {
 
   public static void main(String[] args) throws IOException, VcsException, URISyntaxException {
     Map<String, String> properties = VcsRootImpl.stringToProperties(readInput());
-    String repositoryPath = properties.remove(GitVcsSupport.REPOSITORY_DIR_PROPERTY_NAME);
-    String cacheDirPath = properties.remove(GitVcsSupport.CACHE_DIR_PROPERTY_NAME);
-    fetch(new File(repositoryPath), cacheDirPath, properties);
+    String repositoryPath = properties.remove(Constants.REPOSITORY_DIR_PROPERTY_NAME);
+    fetch(new File(repositoryPath), properties);
   }
 
   /**
@@ -53,27 +52,18 @@ public class Fetcher {
    * @throws VcsException
    * @throws URISyntaxException
    */
-  private static void fetch(File repositoryDir, final String cacheDirPath, Map<String, String> vcsRootProperties) throws IOException, VcsException, URISyntaxException {
-    VcsRootImpl myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
-    myRoot.addAllProperties(vcsRootProperties);
-    GitVcsSupport gitSupport = new GitVcsSupport(new ServerPaths(), null) {
-      protected Settings createSettings(VcsRoot vcsRoot) throws VcsException {
-        final Settings s = super.createSettings(vcsRoot);
-        s.setCachesDirectory(cacheDirPath);
-        return s;
-      }
-    };
-    Settings settings = new Settings(myRoot);
-    if (cacheDirPath != null)
-      settings.setCachesDirectory(cacheDirPath);
+  private static void fetch(final File repositoryDir, Map<String, String> vcsRootProperties) throws IOException, VcsException, URISyntaxException {
+    final String fetchUrl = vcsRootProperties.get(Constants.FETCH_URL);
+    final String refspec = vcsRootProperties.get(Constants.REFSPEC);
+    Settings.AuthSettings auth = new Settings.AuthSettings(vcsRootProperties);
     //this method should be called with repository lock, but Fetcher is ran in separate process, so
     //locks will not help; Fetcher is ran after we have ensured that repository exists, so we can call it without lock
-    Repository repository = GitServerUtil.getRepository(repositoryDir, settings.getRepositoryFetchURL());
+    Repository repository = GitServerUtil.getRepository(repositoryDir, new URIish(fetchUrl));
 
-    final String refName = GitUtils.branchRef(settings.getBranch());
-    final Transport tn = gitSupport.openTransport(settings, repository);
+    GitVcsSupport gitSupport = new GitVcsSupport(new ServerPaths(), null, null);
+    final Transport tn = gitSupport.openTransport(auth, repository, new URIish(fetchUrl));
     try {
-      RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
+      RefSpec spec = new RefSpec(refspec).setForceUpdate(true);
       tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
     } finally {
       tn.close();

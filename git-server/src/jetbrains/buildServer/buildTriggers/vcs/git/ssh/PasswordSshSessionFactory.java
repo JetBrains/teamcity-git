@@ -20,6 +20,7 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import org.eclipse.jgit.transport.SshSessionFactory;
+import org.eclipse.jgit.util.FS;
 
 /**
  * A simple session factory used for password authentication.
@@ -45,7 +46,7 @@ public class PasswordSshSessionFactory extends SshSessionFactory {
   /**
    * {@inheritDoc}
    */
-  public Session getSession(String user, String pass, String host, int port) throws JSchException {
+  public Session getSession(String user, String pass, String host, int port, FS fs) throws JSchException {
     final Session session = SshUtils.createSession(sch, user, host, port);
     session.setPassword(pass);
     return session;

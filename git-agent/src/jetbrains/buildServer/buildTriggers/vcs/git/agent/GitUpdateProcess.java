@@ -235,9 +235,9 @@ public abstract class GitUpdateProcess {
       LOG.info("No fetch needed for revision '" + revision + "' in " + mySettings.getLocalRepositoryDir());
     } else {
       if (!"git".equals(mySettings.getRepositoryFetchURL().getScheme()) &&
-          (mySettings.getAuthenticationMethod() == AuthenticationMethod.PASSWORD ||
-           mySettings.getAuthenticationMethod() == AuthenticationMethod.PRIVATE_KEY_FILE)) {
-        throw new VcsException("TeamCity doesn't support authentication method " + mySettings.getAuthenticationMethod().uiName() + " with agent checkout. " +
+          (mySettings.getAuthSettings().getAuthMethod() == AuthenticationMethod.PASSWORD ||
+           mySettings.getAuthSettings().getAuthMethod() == AuthenticationMethod.PRIVATE_KEY_FILE)) {
+        throw new VcsException("TeamCity doesn't support authentication method " + mySettings.getAuthSettings().getAuthMethod().uiName() + " with agent checkout. " +
         "Please use '" + AuthenticationMethod.ANONYMOUS.uiName() + "' or '" + AuthenticationMethod.PRIVATE_KEY_DEFAULT.uiName() + "' methods.");
       }
       LOG.info("Fetching in repository " + mySettings.debugInfo());

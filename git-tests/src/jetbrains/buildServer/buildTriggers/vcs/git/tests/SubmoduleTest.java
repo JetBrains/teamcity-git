@@ -16,42 +16,78 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.*;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import jetbrains.buildServer.serverSide.ServerPaths;
 import org.eclipse.jgit.lib.BlobBasedConfig;
-import org.eclipse.jgit.lib.Commit;
-import org.eclipse.jgit.lib.FileBasedConfig;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.storage.file.FileBasedConfig;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
-import static org.testng.Assert.*;
+import org.eclipse.jgit.util.FS;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static org.testng.Assert.*;
+
 /**
  * The test for submodule utilities
  */
 public class SubmoduleTest {
+
+  private static TempFiles myTempFiles = new TempFiles();
+  private ServerPaths myServerPaths;
+  private GitVcsSupport myGitSupport;
+
+  static {
+    Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+      public void run() {
+        myTempFiles.cleanup();
+      }
+    }));
+  }
+
+  @BeforeMethod
+  public void setUp() throws IOException {
+    File teamcitySystemDir = myTempFiles.createTempDir();
+    myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
+    myGitSupport = new GitVcsSupport(myServerPaths, null, null);
+  }
+
+  @AfterMethod
+  public void tearDown() {
+    myTempFiles.cleanup();
+  }
+
+
   /**
    * Test loading mapping for submodules
    *
    * @throws IOException if there is IO problem
    */
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)  
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testSubmoduleMapping(boolean fetchInSeparateProcess) throws Exception {
     System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     File masterRep = dataFile("repo.git");
-    Repository r = new Repository(masterRep);
+    Repository r = new RepositoryBuilder().setGitDir(masterRep).build();
     try {
-      SubmodulesConfig s = new SubmodulesConfig(r.getConfig(), new BlobBasedConfig(null, r.mapCommit(
+      SubmodulesConfig s = new SubmodulesConfig(r.getConfig(), new BlobBasedConfig(null, r, r.resolve(
         GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_ADDED_VERSION)), ".gitmodules"));
       assertTrue(s.isSubmodulePrefix(""));
       assertFalse(s.isSubmodulePrefix("submodule"));
-      Submodule m = s.findEntry("submodule");
+      Submodule m = s.findSubmodule("submodule");
       assertEquals(m.getName(), "submodule");
       assertEquals(m.getPath(), "submodule");
       assertEquals(m.getUrl(), "../submodule.git");
@@ -70,18 +106,18 @@ public class SubmoduleTest {
     System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     File masterRep = dataFile("repo.git");
     File submodulesFile = dataFile("content", "dotgitmodules");
-    Repository r = new Repository(masterRep);
+    Repository r = new RepositoryBuilder().setGitDir(masterRep).build();
     try {
-      FileBasedConfig config = new FileBasedConfig(null, submodulesFile);
+      FileBasedConfig config = new FileBasedConfig(null, submodulesFile, FS.DETECTED);
       config.load();
       SubmodulesConfig s = new SubmodulesConfig(r.getConfig(), config);
       assertTrue(s.isSubmodulePrefix(""));
       assertFalse(s.isSubmodulePrefix("c/"));
-      Submodule m = s.findEntry("b");
+      Submodule m = s.findSubmodule("b");
       assertEquals(m.getName(), "b");
       assertEquals(m.getPath(), "b");
       assertEquals(m.getUrl(), "git@gitrep:/git/b.git");
-      m = s.findEntry("c/D");
+      m = s.findSubmodule("c/D");
       assertEquals(m.getName(), "c/D");
       assertEquals(m.getPath(), "c/D");
       assertEquals(m.getUrl(), "git@gitrep:/git/d.git");
@@ -99,25 +135,26 @@ public class SubmoduleTest {
   public void testSubmoduleTreeWalk(boolean fetchInSeparateProcess) throws IOException {
     System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     File masterRep = dataFile("repo.git");
-    Repository rm = new Repository(masterRep);
+    Repository rm = new RepositoryBuilder().setGitDir(masterRep).build();
     try {
       File submoduleRep = dataFile("submodule.git");
-      final Repository rs = new Repository(submoduleRep);
+      final Repository rs = new RepositoryBuilder().setGitDir(submoduleRep).build();
+      RevWalk revWalk = new RevWalk(rm);
       try {
-        final Commit submoduleTxtAdded = rm.mapCommit(
-          GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_TXT_ADDED_VERSION));
-        final Commit submoduleModified = rm.mapCommit(
-          GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_MODIFIED_VERSION));
-        final Commit submoduleAdded = rm.mapCommit(
-          GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_ADDED_VERSION));
-        final Commit beforeSubmoduleAdded = rm.mapCommit(
-          GitUtils.versionRevision(GitVcsSupportTest.BEFORE_SUBMODULE_ADDED_VERSION));
-        SubmoduleResolver r = new MySubmoduleResolver(submoduleAdded, rs);
+        final RevCommit submoduleTxtAdded = revWalk.parseCommit(
+          ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_TXT_ADDED_VERSION)));
+        final RevCommit submoduleModified = revWalk.parseCommit(
+          ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_MODIFIED_VERSION)));
+        final RevCommit submoduleAdded = revWalk.parseCommit(
+          ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_ADDED_VERSION)));
+        final RevCommit beforeSubmoduleAdded = revWalk.parseCommit(
+          ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.BEFORE_SUBMODULE_ADDED_VERSION)));
+        SubmoduleResolver r = new MySubmoduleResolver(myGitSupport, rm, submoduleAdded, rs);
         TreeWalk tw = new TreeWalk(rm);
         tw.setRecursive(true);
         tw.reset();
-        tw.addTree(SubmoduleAwareTreeIterator.create(beforeSubmoduleAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT));
-        tw.addTree(SubmoduleAwareTreeIterator.create(submoduleAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT));
+        tw.addTree(SubmoduleAwareTreeIterator.create(rm, beforeSubmoduleAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT));
+        tw.addTree(SubmoduleAwareTreeIterator.create(rm, submoduleAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT));
         tw.setFilter(TreeFilter.ANY_DIFF);
         checkElement(tw, ".gitmodules");
         assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rm);
@@ -125,8 +162,8 @@ public class SubmoduleTest {
         assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rs);
         assertFalse(tw.next());
         tw.reset();
-        tw.addTree(SubmoduleAwareTreeIterator.create(submoduleModified, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT));
-        tw.addTree(SubmoduleAwareTreeIterator.create(submoduleTxtAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT));
+        tw.addTree(SubmoduleAwareTreeIterator.create(rm, submoduleModified, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT));
+        tw.addTree(SubmoduleAwareTreeIterator.create(rm, submoduleTxtAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT));
         tw.setFilter(TreeFilter.ANY_DIFF);
         checkElement(tw, "submodule.txt");
         assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rm);
@@ -177,16 +214,14 @@ public class SubmoduleTest {
      * The referenced repository
      */
     private final Repository myReferencedRepository;
+    private final GitVcsSupport myGitSupport;
+    private final Repository myDb;
 
-    /**
-     * The constructor
-     *
-     * @param baseCommit           the base commit for this resolver. It is used to locate .gitmodules
-     * @param referencedRepository the repository to which all URLs are resolved
-     */
-    public MySubmoduleResolver(Commit baseCommit, Repository referencedRepository) {
-      super(baseCommit);
+    public MySubmoduleResolver(GitVcsSupport gitSupport, Repository db, RevCommit commit, Repository referencedRepository) {
+      super(gitSupport, db, commit);
       this.myReferencedRepository = referencedRepository;
+      myGitSupport = gitSupport;
+      myDb = db;
     }
 
     /**
@@ -196,16 +231,13 @@ public class SubmoduleTest {
       return myReferencedRepository;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public SubmoduleResolver getSubResolver(Commit commit, String path) {
-      return new SubmoduleResolver(commit) {
+    @Override
+    public SubmoduleResolver getSubResolver(RevCommit commit, String path) {
+      return new SubmoduleResolver(myGitSupport, myReferencedRepository, commit) {
         protected Repository resolveRepository(String path, String url) throws IOException {
           throw new IOException("Repository not found");
         }
-
-        public SubmoduleResolver getSubResolver(Commit commit, String path) {
+        public SubmoduleResolver getSubResolver(RevCommit commit, String path) {
           throw new RuntimeException("There are no submodules");
         }
       };

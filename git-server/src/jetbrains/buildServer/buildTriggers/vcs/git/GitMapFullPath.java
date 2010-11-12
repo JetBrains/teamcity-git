@@ -20,10 +20,11 @@ import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.util.UptodateValue;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRootEntry;
-import org.eclipse.jgit.lib.Commit;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -39,7 +40,7 @@ class GitMapFullPath {
 
   private static final Logger LOG = Logger.getInstance(GitMapFullPath.class.getName());
 
-  private static final UptodateValue<Map<String, Boolean>> ourRevistionsCache = new UptodateValue<Map<String, Boolean>>(new UptodateValue.ValueProvider<Map<String, Boolean>>() {
+  private static final UptodateValue<Map<String, Boolean>> ourRevisionsCache = new UptodateValue<Map<String, Boolean>>(new UptodateValue.ValueProvider<Map<String, Boolean>>() {
       public Map<String, Boolean> getNewValue() {
         return new ConcurrentHashMap<String, Boolean>();
       }
@@ -95,18 +96,23 @@ class GitMapFullPath {
   }
 
   private boolean noSuchRevisionInRepository() throws IOException, VcsException {
-    final Boolean hasRevision = ourRevistionsCache.getValue().get(revisionAndRootKey());
+    final Boolean hasRevision = ourRevisionsCache.getValue().get(revisionAndRootKey());
     if (hasRevision != null) return !hasRevision;
 
-    Commit existingCommit = findCommit();
-    ourRevistionsCache.getValue().put(revisionAndRootKey(), existingCommit != null);
+    RevCommit existingCommit = null;
+    try {
+      existingCommit = findCommit();
+    } catch (IOException e) {
+      //commit not found, ignore exception
+    }
+    ourRevisionsCache.getValue().put(revisionAndRootKey(), existingCommit != null);
     return existingCommit == null;
   }
 
-  private Commit findCommit() throws VcsException, IOException {
+  private RevCommit findCommit() throws VcsException, IOException {
     final Repository repository = myGitSupport.getRepository(mySettings);
     try {
-      return repository.mapCommit(myGitRevision);
+      return myGitSupport.getCommit(repository, myGitRevision);
     } finally {
       repository.close();
     }
@@ -150,7 +156,7 @@ class GitMapFullPath {
         LOG.error(e);
         return false;
       }
-      branch = GitVcsSupport.getNullIfEmpty(repositoryUrlWithBranch.substring(branchSep + 1));
+      branch = getNullIfEmpty(repositoryUrlWithBranch.substring(branchSep + 1));
     }
 
     final URIish settingsUrl = mySettings.getRepositoryFetchURL();
@@ -159,10 +165,15 @@ class GitMapFullPath {
     if (url.getPort() != settingsUrl.getPort()) return false;
     if (!url.getPath().equals(settingsUrl.getPath())) return false;
 
-    final String settingsBranch = GitVcsSupport.getNullIfEmpty(mySettings.getBranch());
+    final String settingsBranch = getNullIfEmpty(mySettings.getBranch());
     if (branch != null && settingsBranch != null && !branch.equals(settingsBranch)) return false;
 
     return true;
   }
 
+  @Nullable
+  private static String getNullIfEmpty(@NotNull final String string) {
+    final String trimmedString = string.trim();
+    return trimmedString.length() > 0 ? trimmedString : null;
+  }
 }

@@ -18,7 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
 import org.eclipse.jgit.lib.Config;
-import org.eclipse.jgit.lib.RepositoryConfig;
+import org.eclipse.jgit.lib.StoredConfig;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,15 +35,15 @@ public class SubmodulesConfig {
   /**
    * Repository configuration
    */
-  private final RepositoryConfig myRepositoryConfig;
+  private final StoredConfig myRepositoryConfig;
   /**
    * Module configuration
    */
   private final Config myModulesConfig;
   /**
-   * Loaded entries
+   * submodule path -> submodule
    */
-  private final Map<String, Submodule> myPathToEntry = new HashMap<String, Submodule>();
+  private final Map<String, Submodule> myPathToSubmodule = new HashMap<String, Submodule>();
   /**
    * The set of direct parents for submodules
    */
@@ -59,20 +59,32 @@ public class SubmodulesConfig {
    * @param repositoryConfig repository configuration
    * @param modulesConfig    modules configuration
    */
-  public SubmodulesConfig(RepositoryConfig repositoryConfig, Config modulesConfig) {
+  public SubmodulesConfig(StoredConfig repositoryConfig, Config modulesConfig) {
     myRepositoryConfig = repositoryConfig;
     myModulesConfig = modulesConfig;
   }
 
   /**
-   * Get entry for the path
+   * Get submodule for the path
    *
    * @param path the entry path
-   * @return the entry or null if the entry is not found for the path
+   * @return the submodule or null if submodule is not found for the path
    */
-  public Submodule findEntry(String path) {
+  public Submodule findSubmodule(String path) {
     ensureLoaded();
-    return myPathToEntry.get(path);
+    return myPathToSubmodule.get(path);
+  }
+
+  /**
+   * Check if the specified prefix is a direct submodule parent. This check is used to detect
+   * situation when the directory might be reordered due to the submodules.
+   *
+   * @param path the path to be checked if it is a submodule parent.
+   * @return true if the path can directly contain submodules
+   */
+  public boolean isSubmodulePrefix(String path) {
+    ensureLoaded();
+    return mySubmoduleDirectParents.contains(path);
   }
 
   /**
@@ -94,7 +106,7 @@ public class SubmodulesConfig {
         LOG.warn("Invalid submodule entry: " + name + " path: " + path + " url :" + url);
         continue;
       }
-      myPathToEntry.put(path, new Submodule(name, path, url));
+      myPathToSubmodule.put(path, new Submodule(name, path, url));
       int p = path.lastIndexOf('/');
       if (p == -1) {
         p = 0;
@@ -102,39 +114,5 @@ public class SubmodulesConfig {
       mySubmoduleDirectParents.add(path.substring(0, p));
     }
     myIsLoaded = true;
-  }
-
-  /**
-   * Check if the specified prefix is a direct submodule parent. This check is used to detect
-   * situation when the directory might be reordered due to the submodules.
-   *
-   * @param path the path to be checked if it is a submodule parent.
-   * @return true if the path can directly contain submodules
-   */
-  public boolean isSubmodulePrefix(String path) {
-    ensureLoaded();
-    return mySubmoduleDirectParents.contains(path);
-  }
-
-  /**
-   * Get url of submodule repository for specified submodule path
-   *
-   * @param submodulePath submodule path in parent repository
-   * @return url of submodule repository as it defined in .git/config or .gitmodules
-   * or null if no submodule is registered for such path 
-   */
-  public String getSubmoduleUrl(String submodulePath) {
-    ensureLoaded();
-    for (String name : myModulesConfig.getSubsections("submodule")) {
-      final String path = myModulesConfig.getString("submodule", name, "path");
-      if (path.equals(submodulePath)) {
-        String url = myRepositoryConfig.getString("submodule", name, "url");
-        if (url == null) {
-          url = myModulesConfig.getString("submodule", name, "url");
-        }
-        return url;
-      }
-    }
-    return null;
   }
 }

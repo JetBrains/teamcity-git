@@ -21,8 +21,9 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import jetbrains.buildServer.configuration.ChangeListener;
 import jetbrains.buildServer.configuration.FilesWatcher;
-import org.jetbrains.annotations.NotNull;
 import org.eclipse.jgit.transport.SshSessionFactory;
+import org.eclipse.jgit.util.FS;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 
@@ -43,28 +44,34 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
    * The lock that guards {@link #myDelegate}
    */
   private final Object delegateLock = new Object();
+  private final FilesWatcher myWatcher;
 
   /**
    * A constructor
    */
-  public RefreshableSshConfigSessionFactory() {
-    FilesWatcher watcher = new FilesWatcher(new FilesWatcher.WatchedFilesProvider() {
-      public File[] getWatchedFiles() {
-        File sshDir = new File(System.getProperty("user.home"), ".ssh");
-        if (sshDir.exists() && sshDir.isDirectory()) {
-          final File[] files = sshDir.listFiles();
-          if (files != null) {
-            return files;
-          }
+  public RefreshableSshConfigSessionFactory(final boolean monitorDotSshChanges) {
+    if (monitorDotSshChanges) {
+      myWatcher = new FilesWatcher(new FilesWatcher.WatchedFilesProvider() {
+        public File[] getWatchedFiles() {
+          File sshDir = new File(System.getProperty("user.home"), ".ssh");
+          return new File[] {sshDir};
         }
-        return new File[0];
-      }
-    });
-    watcher.registerListener(new ChangeListener() {
-      public void changeOccured(String requestor) {
-        expireDelegate();
-      }
-    });
+      });
+      myWatcher.registerListener(new ChangeListener() {
+        public void changeOccured(String requestor) {
+          expireDelegate();
+        }
+      });
+      myWatcher.start();
+    } else {
+      myWatcher = null;
+    }
+  }
+
+  public void stopMonitoringConfigs() {
+    if (myWatcher != null) {
+      myWatcher.stop();
+    }
   }
 
   /**
@@ -93,7 +100,7 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
   /**
    * {@inheritDoc}
    */
-  public Session getSession(String user, String pass, String host, int port) throws JSchException {
-    return delegate().getSession(user, pass, host, port);
+  public Session getSession(String user, String pass, String host, int port, FS fs) throws JSchException {
+    return delegate().getSession(user, pass, host, port, fs);
   }
 }

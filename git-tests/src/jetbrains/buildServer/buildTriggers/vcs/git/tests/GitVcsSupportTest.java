@@ -26,8 +26,11 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import jetbrains.buildServer.vcs.patches.PatchTestCase;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.Tag;
+import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.revwalk.RevTag;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.URIish;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
@@ -93,7 +96,8 @@ public class GitVcsSupportTest extends PatchTestCase {
   /**
    * The source directory
    */
-  protected File mySourceRep;
+  protected File myMainRepositoryDir;
+  private File myTmpDir;
   private ServerPaths myServerPaths;
   /**
    * Temporary files
@@ -113,8 +117,12 @@ public class GitVcsSupportTest extends PatchTestCase {
     File teamcitySystemDir = myTempFiles.createTempDir();
     myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
     File masterRep = dataFile("repo.git");
-    mySourceRep = myTempFiles.createTempDir();
-    FileUtil.copyDir(masterRep, mySourceRep);
+    myTmpDir = myTempFiles.createTempDir();
+    myMainRepositoryDir = new File(myTmpDir, "repo.git");
+    FileUtil.copyDir(masterRep, myMainRepositoryDir);
+    FileUtil.copyDir(dataFile("submodule.git"), new File(myTmpDir, "submodule"));
+    FileUtil.copyDir(dataFile("submodule.git"), new File(myTmpDir, "submodule.git"));
+    FileUtil.copyDir(dataFile("sub-submodule.git"), new File(myTmpDir, "sub-submodule.git"));
   }
 
   @AfterMethod
@@ -143,10 +151,9 @@ public class GitVcsSupportTest extends PatchTestCase {
    */
   protected VcsRoot getRoot(String branchName, boolean enableSubmodules) throws IOException {
     VcsRootImpl myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
-    myRoot.addProperty(Constants.FETCH_URL, GitUtils.toURL(mySourceRep));
+    myRoot.addProperty(Constants.FETCH_URL, GitUtils.toURL(myMainRepositoryDir));
     if (branchName != null) {
       myRoot.addProperty(Constants.BRANCH_NAME, branchName);
-      myRoot.addProperty(Constants.SUBMODULE_URLS, "submodule\n" + GitUtils.toURL(dataFile("submodule.git")));
     }
     if (enableSubmodules) {
       myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
@@ -159,7 +166,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   private GitVcsSupport getSupport(ExtensionHolder holder) {
-    return new GitVcsSupport(myServerPaths, holder);
+    return new GitVcsSupport(myServerPaths, holder, null);
   }
 
 
@@ -534,7 +541,7 @@ public class GitVcsSupportTest extends PatchTestCase {
    * o add submodule wihtout entry in .gitmodules         | 6eae9acd29db2dba146929634a4bb1e6e72a31fd
    * |                                                    |
    * |                                                    |
-   * v                                                    |   
+   * v                                                    |
    * o no submodules                                      | f3f826ce85d6dad25156b2d7550cedeb1a422f4c (merge_version)
    *
    */
@@ -542,7 +549,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   public void testCollectBuildChangesWithBrokenSubmoduleOnLastCommit() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("wrong-submodule", true);
-    ((VcsRootImpl) root).addProperty(Constants.SUBMODULE_URLS, "submodule-wihtout-entry\n" + GitUtils.toURL(dataFile("submodule.git")));
 
     String brokenSubmoduleCommit = GitUtils.makeVersion("78cbbed3561de3417467ee819b1795ba14c03dfb", 1282637672000L);
     try {
@@ -552,13 +558,12 @@ public class GitVcsSupportTest extends PatchTestCase {
       assertTrue(true);
     }
   }
-  
+
 
   @Test
   public void testCollectBuildChangesWithFixedSubmoduleOnLastCommit() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("wrong-submodule", true);
-    ((VcsRootImpl) root).addProperty(Constants.SUBMODULE_URLS, "submodule-wihtout-entry\n" + GitUtils.toURL(dataFile("submodule.git")));
 
     String fixedSubmoduleCommit = GitUtils.makeVersion("f5bdd3819df0358a43d9a8f94eaf96bb306e19fe", 1282636308000L);
     List<ModificationData> mds = support.collectChanges(root, MERGE_VERSION, fixedSubmoduleCommit, new CheckoutRules(""));
@@ -571,7 +576,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   public void testCollectBuildChangesWithFixedBrokenFixedSubmodule() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("wrong-submodule", true);
-    ((VcsRootImpl) root).addProperty(Constants.SUBMODULE_URLS, "submodule-wihtout-entry\n" + GitUtils.toURL(dataFile("submodule.git")));
     String fixedSubmoduleCommit = GitUtils.makeVersion("f5bdd3819df0358a43d9a8f94eaf96bb306e19fe", 1282636308000L);
     String submoduleFixedAgainCommit = GitUtils.makeVersion("92112555d9eb3e433eaa91fe32ec001ae8fe3c52", 1282736040000L);
     List<ModificationData> mds = support.collectChanges(root, fixedSubmoduleCommit, submoduleFixedAgainCommit, new CheckoutRules(""));
@@ -587,7 +591,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   public void testCollectBuildChangesWithFixedBrokenFixedSubmodule2() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("wrong-submodule", true);
-    ((VcsRootImpl) root).addProperty(Constants.SUBMODULE_URLS, "submodule-wihtout-entry\n" + GitUtils.toURL(dataFile("submodule.git")));
     String fixedSubmoduleCommit = GitUtils.makeVersion("92112555d9eb3e433eaa91fe32ec001ae8fe3c52", 1282636308000L);
     String submoduleFixedAgainCommit = GitUtils.makeVersion("e6b15b1f4741199857e2fa744eaadfe5a9d9aede", 1282813085000L);
     List<ModificationData> mds = support.collectChanges(root, fixedSubmoduleCommit, submoduleFixedAgainCommit, new CheckoutRules(""));
@@ -597,7 +600,16 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     assertEquals(mds.get(0).getChanges().size(), 2);//.gitmodules and 1 file inside submodule
   }
-  
+
+  @Test
+  public void testSubmoduleWithDirs() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("wrong-submodule", true);
+    String beforeSubmodWithDirCommit = GitUtils.makeVersion("e6b15b1f4741199857e2fa744eaadfe5a9d9aede", 1282822922000L);
+    String submodWithDirCommit = GitUtils.makeVersion("6cf3cb6a87091d17466607858c699c35edf30d3b", 1289297786000L);
+    List<ModificationData> mds = support.collectChanges(root, beforeSubmodWithDirCommit, submodWithDirCommit, new CheckoutRules(""));
+  }
+
 
   /**
    * Test collecting changes with non-recursive submodule checkout: only first level submodule files are checked out
@@ -612,14 +624,14 @@ public class GitVcsSupportTest extends PatchTestCase {
 
 
   /**
-   * Test collecting changes with recursive submodule checkout: submodules of submodules are checked out 
+   * Test collecting changes with recursive submodule checkout: submodules of submodules are checked out
    *
    * @param fetchInSeparateProcess
    * @throws Exception
    */
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testCollectBuildChangesSubSubmodulesRecursive(boolean fetchInSeparateProcess) throws Exception {
-    checkCollectBuildChangesSubSubmodules(fetchInSeparateProcess, true);
+    checkCollectBuildChangesSubSubmodules(false, true);
   }
 
 
@@ -630,10 +642,9 @@ public class GitVcsSupportTest extends PatchTestCase {
     Set<String> subSubmoduleFileNames = new HashSet<String>();
     subSubmoduleFileNames.add("first-level-submodule/sub-sub/file.txt");
     subSubmoduleFileNames.add("first-level-submodule/sub-sub/new file.txt");
-    
+
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("sub-submodule", true);
-    ((VcsRootImpl) root).addProperty(Constants.SUBMODULE_URLS, "first-level-submodule\n" + GitUtils.toURL(dataFile("sub-submodule.git")));
     if (!recursiveSubmoduleCheckout) {
       ((VcsRootImpl) root).addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT.name());
     }
@@ -658,7 +669,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       assertTrue(subSubmoduleFilesRetrieved);
     } else {
       assertFalse(subSubmoduleFilesRetrieved);
-    }      
+    }
   }
 
 
@@ -755,10 +766,12 @@ public class GitVcsSupportTest extends PatchTestCase {
     VcsRoot root = getRoot("master");
     // ensure that all revisions reachable from master are fetched
     support.label("test_label", VERSION_TEST_HEAD, root, new CheckoutRules(""));
-    Repository r = new Repository(new File(new URIish(root.getProperty(Constants.FETCH_URL)).getPath()));
+    Repository r = new RepositoryBuilder().setGitDir(new File(new URIish(root.getProperty(Constants.FETCH_URL)).getPath())).build();
+    RevWalk revWalk = new RevWalk(r);
     try {
-      Tag t = r.mapTag("test_label");
-      assertEquals(t.getObjId().name(), GitUtils.versionRevision(VERSION_TEST_HEAD));
+      Ref tagRef = r.getTags().get("test_label");
+      RevTag t = revWalk.parseTag(tagRef.getObjectId());
+      assertEquals(t.getObject().name(), GitUtils.versionRevision(VERSION_TEST_HEAD));
     } finally {
       r.close();
     }
@@ -799,7 +812,7 @@ public class GitVcsSupportTest extends PatchTestCase {
             support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
                                 GitUtils.versionRevision(MERGE_BRANCH_VERSION) + "|" + repositoryUrl + "|readme.txt");
             support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
-                                GitUtils.versionRevision(CUD1_VERSION) + "|" + repositoryUrl + "|readme.txt");            
+                                GitUtils.versionRevision(CUD1_VERSION) + "|" + repositoryUrl + "|readme.txt");
           }
         } catch (Exception e) {
           errors.add(e);

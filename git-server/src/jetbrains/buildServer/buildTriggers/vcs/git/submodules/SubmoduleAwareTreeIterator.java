@@ -23,6 +23,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 
@@ -47,7 +48,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   /**
    * Path from root of the main repository to the entry of repository of this iterator, used in error messages.
    * For main repository it is equals "", for repository of submodule it is equals to submodule path,
-   * for sub-submodule path of parent submodule + path of current submodule and so on. 
+   * for sub-submodule path of parent submodule + path of current submodule and so on.
    */
   private final String myPathFromRoot;
   /**
@@ -73,7 +74,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   /**
    * The referenced commit for the submodule, the commit is in other repository.
    */
-  protected Commit mySubmoduleCommit;
+  protected RevCommit mySubmoduleCommit;
 
   private boolean mySubmoduleError;
   /**
@@ -113,26 +114,6 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   /**
    * The constructor
    *
-   * @param commit            the commit that is starting point for iteration
-   * @param submoduleResolver the resolver for submodules
-   * @param repositoryUrl     the url of the repository of this iterator
-   * @param pathFromRoot      the path from the root of main repository to the entry of this repository
-   * @param submodulesPolicy  should iterator checkout submodules
-   * @throws IOException in case of IO problem
-   */
-  public SubmoduleAwareTreeIterator(Commit commit,
-                                    SubmoduleResolver submoduleResolver,
-                                    String repositoryUrl,
-                                    String pathFromRoot,
-                                    SubmodulesCheckoutPolicy submodulesPolicy)
-    throws IOException {
-    this(createTreeParser(commit), submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy);
-  }
-
-
-  /**
-   * The constructor
-   *
    * @param parent            the parent iterator
    * @param wrappedIterator   the wrapped iterator
    * @param submoduleResolver the resolver for submodules
@@ -149,34 +130,13 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                     SubmodulesCheckoutPolicy submodulesPolicy)
     throws CorruptObjectException {
     super(parent);
-    this.myParent = parent;
+    myParent = parent;
     myWrappedIterator = wrappedIterator;
     mySubmoduleResolver = submoduleResolver;
     myUrl = repositoryUrl;
     myPathFromRoot = pathFromRoot;
     mySubmodulesPolicy = submodulesPolicy;
     movedToEntry();
-  }
-
-  /**
-   * The constructor
-   *
-   * @param parent            the parent iterator
-   * @param commit            the commit that is starting point for iteration
-   * @param submoduleResolver the resolver for submodules
-   * @param repositoryUrl     the url of the repository of this iterator
-   * @param pathFromRoot      the path from the root of main repository to the entry of this repository
-   * @param submodulesPolicy  should iterator checkout submodules
-   * @throws IOException in case of IO problem
-   */
-  public SubmoduleAwareTreeIterator(SubmoduleAwareTreeIterator parent,
-                                    Commit commit,
-                                    SubmoduleResolver submoduleResolver,
-                                    String repositoryUrl,
-                                    String pathFromRoot,
-                                    SubmodulesCheckoutPolicy submodulesPolicy)
-    throws IOException {
-    this(parent, createTreeParser(commit), submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy);
   }
 
   /**
@@ -199,7 +159,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     }
     int wrappedMode = myWrappedIterator.getEntryRawMode();
     myIsOnSubmodule = checkoutSubmodules() && GITLINK_MODE_BITS == wrappedMode;
-    mode = myIsOnSubmodule ? TREE_MODE_BITS : wrappedMode;    
+    mode = myIsOnSubmodule ? TREE_MODE_BITS : wrappedMode;
     if (myIsOnSubmodule) {
       String entryPath = myWrappedIterator.getEntryPathString();
       try {
@@ -211,7 +171,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
           mySubmoduleCommit = null;
           myIsOnSubmodule = false;
           mySubmoduleError = true;
-          mode = wrappedMode;          
+          mode = wrappedMode;
         } else {
           throw e;
         }
@@ -220,7 +180,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
         myIdBuffer = new byte[Constants.OBJECT_ID_LENGTH];
       }
       if (mySubmoduleCommit != null) {
-        mySubmoduleCommit.getTreeId().copyRawTo(myIdBuffer, 0);        
+        mySubmoduleCommit.getTree().getId().copyRawTo(myIdBuffer, 0);
       }
     } else {
       mySubmoduleCommit = null;
@@ -245,9 +205,9 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     return myIsOnSubmodule;
   }
 
-  private Commit getSubmoduleCommit(String path, ObjectId entryObjectId) throws CorruptObjectException {
+  private RevCommit getSubmoduleCommit(String path, ObjectId entryObjectId) throws CorruptObjectException {
     try {
-      return mySubmoduleResolver.getSubmodule(path, entryObjectId);
+      return mySubmoduleResolver.getSubmoduleCommit(path, entryObjectId);
     } catch (VcsAuthenticationException e) {
       //in case of VcsAuthenticationException throw CorruptObjectException without object id,
       //because problem is related to whole repository, not to concrete object
@@ -303,22 +263,30 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     return myIsOnSubmodule ? 0 : myWrappedIterator.idOffset();
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @Override
-  public AbstractTreeIterator createSubtreeIterator(Repository repo, MutableObjectId idBuffer, WindowCursor curs)
-    throws IOException {
+  public AbstractTreeIterator createSubtreeIterator(ObjectReader reader) throws IOException {
     String path = myWrappedIterator.getEntryPathString();
     if (myIsOnSubmodule) {
-      CanonicalTreeParser p = createTreeParser(curs, mySubmoduleCommit);
-      return createSubmoduleAwareTreeIterator(this, p, mySubmoduleResolver.getSubResolver(mySubmoduleCommit, path),
+      CanonicalTreeParser p = new CanonicalTreeParser();
+      try {
+        Repository r = mySubmoduleResolver.resolveRepository(path, mySubmoduleResolver.getSubmoduleUrl(path));
+        p.reset(r.newObjectReader(), mySubmoduleCommit.getTree().getId());
+      } catch (VcsAuthenticationException e) {
+        IOException ioe = new IOException("Submodule error");
+        ioe.initCause(e);
+        throw ioe;
+      }
+      return createSubmoduleAwareTreeIterator(this,
+                                              p,
+                                              mySubmoduleResolver.getSubResolver(mySubmoduleCommit, path),
                                               "",
                                               mySubmoduleResolver.getSubmoduleUrl(path),
                                               getPathFromRoot(path),
                                               SubmodulesCheckoutPolicy.getSubSubModulePolicyFor(mySubmodulesPolicy));
     } else {
-      return createSubmoduleAwareTreeIterator(this, myWrappedIterator.createSubtreeIterator(getRepository(), idBuffer, curs),
+      Repository r = mySubmoduleResolver.getRepository();
+      return createSubmoduleAwareTreeIterator(this,
+                                              myWrappedIterator.createSubtreeIterator(r.newObjectReader()),
                                               mySubmoduleResolver,
                                               path,
                                               myUrl,
@@ -326,7 +294,6 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                               mySubmodulesPolicy);
     }
   }
-
 
   /**
    * Create a tree iterator from commit
@@ -338,13 +305,14 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    * @return an iterator for tree that considers submodules
    * @throws IOException in the case if IO error occurs
    */
-  public static SubmoduleAwareTreeIterator create(Commit commit,
+  public static SubmoduleAwareTreeIterator create(Repository db,
+                                                  RevCommit commit,
                                                   SubmoduleResolver subResolver,
                                                   String repositoryUrl,
                                                   String pathFromRoot,
                                                   SubmodulesCheckoutPolicy submodulePolicy)
     throws IOException {
-    return createSubmoduleAwareTreeIterator(null, createTreeParser(commit), subResolver, "", repositoryUrl, pathFromRoot, submodulePolicy);
+    return createSubmoduleAwareTreeIterator(null, createTreeParser(db, commit), subResolver, "", repositoryUrl, pathFromRoot, submodulePolicy);
   }
 
 
@@ -363,7 +331,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    */
   private static SubmoduleAwareTreeIterator createSubmoduleAwareTreeIterator(SubmoduleAwareTreeIterator parent,
                                                                              AbstractTreeIterator wrapped,
-                                                                             SubmoduleResolver subResolver, 
+                                                                             SubmoduleResolver subResolver,
                                                                              String path,
                                                                              String repositoryUrl,
                                                                              String pathFromRoot,
@@ -388,55 +356,19 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
            : new DirectSubmoduleAwareTreeIterator(parent, wrapped, subResolver, repositoryUrl, pathFromRoot, submodulesPolicy);
   }
 
-  /**
-   * {@inheritDoc}
-   */
-  public AbstractTreeIterator createSubtreeIterator(Repository repo) throws IOException {
-    String path = myWrappedIterator.getEntryPathString();
-    if (myIsOnSubmodule) {
-      WindowCursor curs = new WindowCursor();
-      try {
-        CanonicalTreeParser p = createTreeParser(curs, mySubmoduleCommit);
-        return createSubmoduleAwareTreeIterator(this, p, mySubmoduleResolver.getSubResolver(mySubmoduleCommit, path), "", myUrl,
-                                                getPathFromRoot(path),
-                                                SubmodulesCheckoutPolicy.getSubSubModulePolicyFor(mySubmodulesPolicy));
-      } finally {
-        curs.release();
-      }
-    } else {
-      return createSubmoduleAwareTreeIterator(this, myWrappedIterator.createSubtreeIterator(getRepository()), mySubmoduleResolver,
-                                              path, myUrl, myPathFromRoot, mySubmodulesPolicy);
-    }
+  @Override
+  public boolean hasId() {
+    return true;
   }
 
-  /**
-   * Create tree parser
-   *
-   * @param curs   the window cursor for loading objects
-   * @param commit the commit
-   * @return the tree parser for tree in the commit
-   * @throws IOException in case of IO problem
-   */
-  private static CanonicalTreeParser createTreeParser(WindowCursor curs, final Commit commit) throws IOException {
-    CanonicalTreeParser p = new CanonicalTreeParser();
-    p.reset(commit.getRepository(), commit.getTreeId(), curs);
-    return p;
-  }
-
-
-  /**
-   * Create tree parser
-   *
-   * @param commit the commit that contains point ot the tree
-   * @return the tree parser
-   * @throws IOException in case of IO problem
-   */
-  public static CanonicalTreeParser createTreeParser(final Commit commit) throws IOException {
-    WindowCursor curs = new WindowCursor();
+  private static CanonicalTreeParser createTreeParser(final Repository db, final RevCommit commit) throws IOException {
+    ObjectReader reader = db.newObjectReader();
     try {
-      return createTreeParser(curs, commit);
+      CanonicalTreeParser parser = new CanonicalTreeParser();
+      parser.reset(reader, commit.getTree().getId());
+      return parser;
     } finally {
-      curs.release();
+      reader.release();
     }
   }
 
@@ -447,7 +379,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    * @return a mapping or null if the mapping is not needed
    * @throws CorruptObjectException in case if navigation fails
    */
-  static int[] buildMapping(final AbstractTreeIterator w) throws CorruptObjectException {
+  private static int[] buildMapping(final AbstractTreeIterator w) throws CorruptObjectException {
     class SubmoduleEntry {
       final ByteRange name;
       final int position;

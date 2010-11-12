@@ -17,11 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
-import org.eclipse.jgit.lib.Commit;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -30,25 +31,17 @@ import java.io.IOException;
  * The resolver for submodules
  */
 public abstract class SubmoduleResolver {
-  /**
-   * logger instance
-   */
-  private static Logger LOG = Logger.getInstance(SubmoduleResolver.class.getName());
-  /**
-   * The base for submodule configuration
-   */
-  final Commit myCommit;
-  /**
-   * The submodule configuration
-   */
-  SubmodulesConfig myConfig;
 
-  /**
-   * The commit for that contains submodule reference
-   *
-   * @param commit the submodule commit
-   */
-  public SubmoduleResolver(Commit commit) {
+  private static Logger LOG = Logger.getInstance(SubmoduleResolver.class.getName());
+
+  private final RevCommit myCommit;
+  private final Repository myDb;
+  protected final GitVcsSupport myGitSupport;
+  private SubmodulesConfig myConfig;
+
+  public SubmoduleResolver(GitVcsSupport gitSupport, Repository db, RevCommit commit) {
+    myGitSupport = gitSupport;
+    myDb = db;
     myCommit = commit;
   }
 
@@ -60,40 +53,25 @@ public abstract class SubmoduleResolver {
    * @return the the resoled commit in other repository
    * @throws IOException if there is an IO problem during resolving repository or mapping commit
    */
-  public Commit getSubmodule(String path, ObjectId commit) throws IOException, VcsAuthenticationException {
+  public RevCommit getSubmoduleCommit(String path, ObjectId commit) throws IOException, VcsAuthenticationException {
     ensureConfigLoaded();
-    String mainRepositoryUrl = myCommit.getRepository().getConfig().getString("teamcity", null, "remote");
+    String mainRepositoryUrl = myDb.getConfig().getString("teamcity", null, "remote");
     if (myConfig == null) {
       throw new IOException(String.format("No submodule configuration found. Main repository: '%1$s', main repository commit: '%2$s', path to submodule: '%3$s', submodule commit: '%4$s'.",
-                                          mainRepositoryUrl, myCommit.getCommitId().name(), path, commit.name()));
+                                          mainRepositoryUrl, myCommit.getId().name(), path, commit.name()));
     }
-    final Submodule submodule = myConfig.findEntry(path);
+    final Submodule submodule = myConfig.findSubmodule(path);
     if (submodule == null) {
       throw new IOException(String.format("No submodule entry found in .gitmodules. Main repository: '%1$s', main repository commit: '%2$s', path to submodule: '%3$s', submodule commit: '%4$s'.",
-                                          mainRepositoryUrl, myCommit.getCommitId().name(), path, commit.name()));
+                                          mainRepositoryUrl, myCommit.getId().name(), path, commit.name()));
     }
     Repository r = resolveRepository(path, submodule.getUrl());
-    final Commit c = r.mapCommit(commit);
+    final RevCommit c = myGitSupport.getCommit(r, commit);
     if (c == null) {
       throw new IOException(String.format("Submodule commit is not found. Main repository: '%1$s', main repository commit: '%2$s', path to submodule: '%3$s', submodule repository: '%4$s', submodule commit: '%5$s'.",
-                                          mainRepositoryUrl, myCommit.getCommitId().name(), path, submodule.getUrl(), commit.name()));
+                                          mainRepositoryUrl, myCommit.getId().name(), path, submodule.getUrl(), commit.name()));
     }
     return c;
-  }
-
-  /**
-   * Ensure that submodule configuration has been loaded.
-   */
-  private void ensureConfigLoaded() {
-    if (myConfig == null) {
-      try {
-        myConfig = new SubmodulesConfig(myCommit.getRepository().getConfig(), new BlobBasedConfig(null, myCommit, ".gitmodules"));
-      } catch (FileNotFoundException e) {
-        // do nothing
-      } catch (Exception e) {
-        LOG.error("Unable to load or parse submodule configuration at: " + myCommit.getCommitId().name(), e);
-      }
-    }
   }
 
   /**
@@ -113,7 +91,7 @@ public abstract class SubmoduleResolver {
    * @param path   the local path within repository
    * @return the submodule resolver that handles submodules inside the specified commit
    */
-  public abstract SubmoduleResolver getSubResolver(Commit commit, String path);
+  public abstract SubmoduleResolver getSubResolver(RevCommit commit, String path);
 
   /**
    * Check if the specified directory is a submodule prefix
@@ -130,16 +108,37 @@ public abstract class SubmoduleResolver {
    * @return the current repository
    */
   public Repository getRepository() {
-    return myCommit.getRepository();
+    return myDb;
   }
 
   /**
    * Get submodule url by it's path in current repository
    *
    * @param submodulePath path of submodule in current repository
-   * @return submodule repository url or null if no submodules is registered for specified path 
+   * @return submodule repository url or null if no submodules is registered for specified path
    */
   public String getSubmoduleUrl(String submodulePath) {
-    return myConfig.getSubmoduleUrl(submodulePath);
+    ensureConfigLoaded();
+    if (myConfig != null) {
+      Submodule submodule = myConfig.findSubmodule(submodulePath);
+      return submodule != null ? submodule.getUrl() : null;
+    } else {
+      return null;
+    }
+  }
+
+  /**
+   * Ensure that submodule configuration has been loaded.
+   */
+  private void ensureConfigLoaded() {
+    if (myConfig == null) {
+      try {
+        myConfig = new SubmodulesConfig(myDb.getConfig(), new BlobBasedConfig(null, myDb, myCommit, ".gitmodules"));
+      } catch (FileNotFoundException e) {
+        // do nothing
+      } catch (Exception e) {
+        LOG.error("Unable to load or parse submodule configuration at: " + myCommit.getId().name(), e);
+      }
+    }
   }
 }

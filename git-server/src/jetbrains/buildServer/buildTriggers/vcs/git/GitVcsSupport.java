@@ -28,13 +28,13 @@ import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.RefreshableSshConfigSessionFactory;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolver;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.TeamCitySubmoduleResolver;
-import jetbrains.buildServer.serverSide.InvalidProperty;
-import jetbrains.buildServer.serverSide.PropertiesProcessor;
-import jetbrains.buildServer.serverSide.ServerPaths;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
+import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.util.StringUtil;
@@ -42,6 +42,8 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.apache.commons.codec.Decoder;
+import org.eclipse.jgit.JGitText;
+import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
@@ -49,18 +51,21 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
+import org.eclipse.jgit.storage.file.WindowCache;
+import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilterGroup;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
+import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
-import java.net.URISyntaxException;
 import java.net.UnknownHostException;
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -76,8 +81,6 @@ public class GitVcsSupport extends ServerVcsSupport
 
   private static Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   private static Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
-  static final String REPOSITORY_DIR_PROPERTY_NAME = "REPOSITORY_DIR";
-  static final String CACHE_DIR_PROPERTY_NAME = "CACHE_DIR";
   /**
    * Random number generator used to generate artificial versions
    */
@@ -99,31 +102,49 @@ public class GitVcsSupport extends ServerVcsSupport
    * The default SSH session factory used for not explicitly configured host
    * It fails when user is prompted for some information.
    */
-  private final SshSessionFactory mySshSessionFactory;
+  private final RefreshableSshConfigSessionFactory mySshSessionFactory;
   /**
    * This factory is used when known host database is specified to be ignored
    */
-  private final SshSessionFactory mySshSessionFactoryKnownHostsIgnored;
+  private final RefreshableSshConfigSessionFactory mySshSessionFactoryKnownHostsIgnored;
 
   private final ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
 
 
   public GitVcsSupport(@NotNull  final ServerPaths serverPaths,
-                       @Nullable final ExtensionHolder extensionHolder) {
+                       @Nullable final ExtensionHolder extensionHolder,
+                       @Nullable final EventDispatcher<BuildServerListener> dispatcher) {
     myServerPaths = serverPaths;
     myExtensionHolder = extensionHolder;
     int currentVersionCacheSize = TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(currentVersionCacheSize);
-    mySshSessionFactory = new RefreshableSshConfigSessionFactory();
-    mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory() {
+    final boolean monitorSshConfigs = dispatcher != null; //dispatcher is null in tests and when invoked from the Fetcher
+    mySshSessionFactory = new RefreshableSshConfigSessionFactory(monitorSshConfigs);
+    mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory(monitorSshConfigs) {
       // note that different instance is used because JSch cannot be shared with strict host checking
-      public Session getSession(String user, String pass, String host, int port) throws JSchException {
-        final Session session = super.getSession(user, pass, host, port);
+      public Session getSession(String user, String pass, String host, int port, FS fs) throws JSchException {
+        final Session session = super.getSession(user, pass, host, port, fs);
         session.setConfig("StrictHostKeyChecking", "no");
         return session;
       }
     };
+    setStreamFileThreshold();
+    if (monitorSshConfigs) {
+      dispatcher.addListener(new BuildServerAdapter() {
+        @Override
+        public void serverShutdown() {
+          mySshSessionFactory.stopMonitoringConfigs();
+          mySshSessionFactoryKnownHostsIgnored.stopMonitoringConfigs();
+        }
+      });
+    }
+  }
+
+  private void setStreamFileThreshold() {
+    WindowCacheConfig cfg = new WindowCacheConfig();
+    cfg.setStreamFileThreshold(TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 64) * WindowCacheConfig.MB);
+    WindowCache.reconfigure(cfg);
   }
 
   /**
@@ -169,19 +190,19 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @NotNull String fromVersion,
                                                @Nullable String currentVersion,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
-    List<ModificationData> rc = new ArrayList<ModificationData>();
+    List<ModificationData> result = new ArrayList<ModificationData>();
     Settings s = createSettings(root);
     try {
       Map<String, Repository> repositories = new HashMap<String, Repository>();
       Repository r = getRepository(s, repositories);
+      RevWalk revs = new RevWalk(r);
       try {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + s.debugInfo());
         }
         final String current = GitUtils.versionRevision(currentVersion);
-        ensureCommitLoaded(s, r, current, root);
+        ensureRevCommitLoaded(s, r, current);
         final String from = GitUtils.versionRevision(fromVersion);
-        RevWalk revs = new RevWalk(r);
         final RevCommit currentRev = revs.parseCommit(ObjectId.fromString(current));
         revs.markStart(currentRev);
         revs.sort(RevSort.TOPO);
@@ -189,11 +210,12 @@ public class GitVcsSupport extends ServerVcsSupport
         final ObjectId fromId = ObjectId.fromString(from);
         if (r.hasObject(fromId)) {
           final RevCommit fromRev = revs.parseCommit(fromId);
+          String firstUninterestingVersion = GitServerUtil.makeVersion(fromRev);
           revs.markUninteresting(fromRev);
           RevCommit c;
           boolean lastCommit = true;
           while ((c = revs.next()) != null) {
-            addCommit(root, rc, r, repositories, s, revs, c, !lastCommit);
+            result.add(createModificationData(c, r, repositories, root, s, !lastCommit, firstUninterestingVersion));
             lastCommit = false;
           }
         } else {
@@ -205,7 +227,7 @@ public class GitVcsSupport extends ServerVcsSupport
             if (c.getCommitTime() * 1000L <= limitTime) {
               revs.markUninteresting(c);
             } else {
-              addCommit(root, rc, r, repositories, s, revs, c, !lastCommit);
+              result.add(createModificationData(c, r, repositories, root, s, !lastCommit, null));
             }
             lastCommit = false;
           }
@@ -213,7 +235,7 @@ public class GitVcsSupport extends ServerVcsSupport
           byte[] idBytes = new byte[20];
           myRandom.nextBytes(idBytes);
           String version = GitUtils.makeVersion(ObjectId.fromRaw(idBytes).name(), limitTime);
-          rc.add(new ModificationData(new Date(currentRev.getCommitTime()),
+          result.add(new ModificationData(new Date(currentRev.getCommitTime()),
                                       new ArrayList<VcsChange>(),
                                       "The previous version was removed from repository, " +
                                       "getting changes using date. The changes reported might be not accurate.",
@@ -223,12 +245,13 @@ public class GitVcsSupport extends ServerVcsSupport
                                       GitServerUtil.displayVersion(version)));
         }
       } finally {
-        close(repositories);
+        revs.release();
+        close(repositories.values());
       }
     } catch (Exception e) {
       throw processException("collecting changes", e);
     }
-    return rc;
+    return result;
   }
 
   public List<ModificationData> collectChanges(@NotNull VcsRoot originalRoot,
@@ -243,72 +266,44 @@ public class GitVcsSupport extends ServerVcsSupport
   private String getLastCommonVersion(VcsRoot baseRoot, String baseVersion, VcsRoot tipRoot, String tipVersion) throws VcsException {
     Settings baseSettings = createSettings(baseRoot);
     Settings tipSettings = createSettings(tipRoot);
+    RevWalk walk = null;
     try {
-      Commit baseCommit = ensureCommitLoaded(baseRoot, baseSettings, baseVersion);
-      Commit tipCommit = ensureCommitLoaded(tipRoot, tipSettings, tipVersion);
+      RevCommit baseCommit = ensureCommitLoaded(baseSettings, baseVersion);
+      RevCommit tipCommit = ensureCommitLoaded(tipSettings, tipVersion);
       Repository tipRepository = getRepository(tipSettings);
-      RevWalk walk = new RevWalk(tipRepository);
+      walk = new RevWalk(tipRepository);
       walk.setRevFilter(RevFilter.MERGE_BASE);
-      walk.markStart(walk.parseCommit(baseCommit.getCommitId()));
-      walk.markStart(walk.parseCommit(tipCommit.getCommitId()));
+      walk.markStart(walk.parseCommit(baseCommit.getId()));
+      walk.markStart(walk.parseCommit(tipCommit.getId()));
       final RevCommit base = walk.next();
-      return GitServerUtil.makeVersion(base.asCommit(walk));
+      return GitServerUtil.makeVersion(base);
     } catch (Exception e) {
       throw processException("find fork version", e);
-    }
-  }
-
-  private Commit ensureCommitLoaded(VcsRoot root, Settings rootSettings, String commitWithDate) throws Exception {
-    final Repository repository;
-    repository = getRepository(rootSettings);
-    try {
-      final String commit = GitUtils.versionRevision(commitWithDate);
-      return ensureCommitLoaded(rootSettings, repository, commit, root);
     } finally {
-      repository.close();
+      if (walk != null) walk.release();
     }
   }
 
-  /**
-   * Add commit as a list of modification data
-   *
-   * @param root         the vcs root
-   * @param rc           list of commits to update
-   * @param r            repository
-   * @param repositories a collection of repositories
-   * @param s            the settings object
-   * @param revs         revision iterator
-   * @param c            the current commit
-   * @throws IOException in case of IO problem
-   */
-  private void addCommit(VcsRoot root,
-                         List<ModificationData> rc,
-                         Repository r,
-                         Map<String, Repository> repositories,
-                         Settings s,
-                         RevWalk revs,
-                         RevCommit c,
-                         boolean ignoreSubmodulesErrors)
-    throws IOException {
-    Commit cc = c.asCommit(revs);
+  private ModificationData createModificationData(final RevCommit commit,
+                                                  final Repository db,
+                                                  final Map<String, Repository> repositories,
+                                                  final VcsRoot root,
+                                                  final Settings settings,
+                                                  final boolean ignoreSubmodulesErrors,
+                                                  final String firstUninterestingVersion) throws IOException {
     if (LOG.isDebugEnabled()) {
-      LOG.debug(
-        "Collecting changes in commit " + c.getId() + ":" + c.getShortMessage() + " (" + c.getCommitterIdent().getWhen() + ") for " +
-        s.debugInfo());
+      LOG.debug("Collecting changes in commit " + commit.getId().name() + ":" + commit.getShortMessage() +
+                " (" + commit.getCommitterIdent().getWhen() + ") for " + settings.debugInfo());
     }
-    final ObjectId[] parentIds = cc.getParentIds();
-    String cv = GitServerUtil.makeVersion(cc);
-    String pv =
-      parentIds.length == 0
-      ? GitUtils.makeVersion(ObjectId.zeroId().name(), 0)
-      : GitServerUtil.makeVersion(r.mapCommit(cc.getParentIds()[0]));
-    List<VcsChange> changes = getCommitChanges(repositories, s, r, cc, parentIds, cv, pv, ignoreSubmodulesErrors);
-    ModificationData m = new ModificationData(cc.getAuthor().getWhen(), changes, cc.getMessage(), GitServerUtil.getUser(s, cc), root, cv,
-                                              GitServerUtil.displayVersion(cc));
-    if (parentIds.length > 1) {
-      m.setCanBeIgnored(false);
+    String currentVersion = GitServerUtil.makeVersion(commit);
+    String parentVersion = GitServerUtil.getParentVersion(commit, firstUninterestingVersion);
+    List<VcsChange> changes = getCommitChanges(repositories, settings, db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
+    ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
+                                              GitServerUtil.getUser(settings, commit), root, currentVersion, commit.getId().name());
+    if (commit.getParents().length > 1) {
+      result.setCanBeIgnored(false);
     }
-    rc.add(m);
+    return result;
   }
 
   /**
@@ -317,66 +312,71 @@ public class GitVcsSupport extends ServerVcsSupport
    * @param repositories the collection of repositories
    * @param s            the setting object
    * @param r            the change version
-   * @param cc           the current commit
-   * @param parentIds    parent commit identifiers
-   * @param cv           the commit version
-   * @param pv           the parent commit version
+   * @param commit           the current commit
+   * @param currentVersion           the commit version
+   * @param parentVersion           the parent commit version
    * @return the commit changes
    * @throws IOException if there is a repository access problem
    */
   private List<VcsChange> getCommitChanges(final Map<String, Repository> repositories,
                                            final Settings s,
                                            final Repository r,
-                                           final Commit cc,
-                                           ObjectId[] parentIds,
-                                           final String cv,
-                                           String pv,
+                                           final RevCommit commit,
+                                           final String currentVersion,
+                                           final String parentVersion,
                                            final boolean ignoreSubmodulesErrors)
     throws IOException {
     List<VcsChange> changes = new ArrayList<VcsChange>();
     TreeWalk tw = new TreeWalk(r);
-    IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(s);
-    tw.setFilter(filter);
-    tw.setRecursive(true);
-    // remove empty tree iterator before adding new tree
-    tw.reset();
-    addTree(tw, cc, s, repositories, ignoreSubmodulesErrors);
-    for (ObjectId pid : parentIds) {
-      Commit pc = r.mapCommit(pid);
-      addTree(tw, pc, s, repositories, true);
-    }
-    String repositoryDebugInfo = s.debugInfo();
-    while (tw.next()) {
-      String path = tw.getPathString();
-      Commit commitWithFix = null;
-      if (s.isCheckoutSubmodules() && filter.isBrokenSubmodulePath(path)
-          && (commitWithFix = getPreviousCommitWithFixedSubmodule(cc, path, repositories, s)) != null) {
-        //report changes between 2 commits where submodules fixed
-        TreeWalk tw2 = new TreeWalk(r);
-        tw2.setFilter(TreeFilter.ANY_DIFF);
-        tw2.setRecursive(true);
-        tw2.reset();
-        addTree(tw2, cc, s, repositories, true);
-        addTree(tw2, commitWithFix, s, repositories, true);
-        while (tw2.next()) {
-          if (tw2.getPathString().equals(path)) {
-            VcsChange change = getVcsChange(tw2, path, cv, commitWithFix.getCommitId().toString(), repositoryDebugInfo);
-            if (change != null) {
-              changes.add(change);
+    try {
+      IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(s);
+      tw.setFilter(filter);
+      tw.setRecursive(true);
+      // remove empty tree iterator before adding new tree
+      tw.reset();
+      addTree(tw, commit, s, repositories, ignoreSubmodulesErrors, r);
+      for (RevCommit parentCommit : commit.getParents()) {
+        addTree(tw, parentCommit, s, repositories, true, r);
+      }
+      String repositoryDebugInfo = s.debugInfo();
+      while (tw.next()) {
+        String path = tw.getPathString();
+        RevCommit commitWithFix = null;
+        if (s.isCheckoutSubmodules() && filter.isBrokenSubmodulePath(path)
+            && (commitWithFix = getPreviousCommitWithFixedSubmodule(r, commit, path, repositories, s)) != null) {
+          //report changes between 2 commits where submodules fixed
+          TreeWalk tw2 = new TreeWalk(r);
+          try {
+            tw2.setFilter(TreeFilter.ANY_DIFF);
+            tw2.setRecursive(true);
+            tw2.reset();
+            addTree(tw2, commit, s, repositories, true, r);
+            addTree(tw2, commitWithFix, s, repositories, true, r);
+            while (tw2.next()) {
+              if (tw2.getPathString().equals(path)) {
+                VcsChange change = getVcsChange(tw2, path, currentVersion, commitWithFix.getId().name(), repositoryDebugInfo);
+                if (change != null) {
+                  changes.add(change);
+                }
+              }
             }
+          } finally {
+            tw2.release();
+          }
+        } else {
+          VcsChange change = getVcsChange(tw, path, currentVersion, parentVersion, repositoryDebugInfo);
+          if (change != null) {
+            changes.add(change);
           }
         }
-      } else {
-        VcsChange change = getVcsChange(tw, path, cv, pv, repositoryDebugInfo);
-        if (change != null) {
-          changes.add(change);
-        }
       }
-    }
     return changes;
+    } finally {
+      tw.release();
+    }
   }
 
-  private VcsChange getVcsChange(TreeWalk treeWalk, String path, String currentCommitHash, String parentCommitHash, String repositoryDebugInfo) {
+  private VcsChange getVcsChange(TreeWalk treeWalk, String path, String commitSHA, String parentCommitSHA, String repositoryDebugInfo) {
     final ChangeType gitChangeType = classifyChange(treeWalk);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Processing change " + treeWalkInfo(treeWalk) + " as " + gitChangeType + " " + repositoryDebugInfo);
@@ -386,7 +386,7 @@ public class GitVcsSupport extends ServerVcsSupport
       return null;
     } else {
       String description = gitChangeType == ChangeType.FILE_MODE_CHANGED ? "File mode changed" : null;
-      return new VcsChange(type, description, path, path, parentCommitHash, currentCommitHash);
+      return new VcsChange(type, description, path, path, parentCommitSHA, commitSHA);
     }
   }
 
@@ -411,54 +411,54 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  private Commit getPreviousCommitWithFixedSubmodule(Commit fromCommit, String submodulePath, final Map<String, Repository> repositories, Settings settings) throws IOException {
-    Repository r = fromCommit.getRepository();
-    RevWalk revWalk = new RevWalk(r);
-    final RevCommit fromRev = revWalk.parseCommit(fromCommit.getCommitId());
-    revWalk.markStart(fromRev);
-    revWalk.sort(RevSort.TOPO);
-    revWalk.sort(RevSort.COMMIT_TIME_DESC);
+  private RevCommit getPreviousCommitWithFixedSubmodule(Repository db, RevCommit fromCommit, String submodulePath, final Map<String, Repository> repositories, Settings settings) throws IOException {
+    RevWalk revWalk = new RevWalk(db);
+    try {
+      final RevCommit fromRev = revWalk.parseCommit(fromCommit.getId());
+      revWalk.markStart(fromRev);
+      revWalk.sort(RevSort.TOPO);
+      revWalk.sort(RevSort.COMMIT_TIME_DESC);
 
-    Commit result = null;
-    RevCommit prevRev;
-    revWalk.next();
-    while (result == null && (prevRev = revWalk.next()) != null) {
-      TreeWalk prevTreeWalk = new TreeWalk(r);
-      prevTreeWalk.setFilter(TreeFilter.ALL);
-      prevTreeWalk.setRecursive(true);
-      prevTreeWalk.reset();
-      addTree(prevTreeWalk, prevRev.asCommit(revWalk), settings, repositories, true);
-      while(prevTreeWalk.next()) {
-        if (prevTreeWalk.getPathString().startsWith(submodulePath)) {
-          SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
-          if (!iter.isSubmoduleError() && iter.getParent().isOnSubmodule()) {
-            result = prevRev.asCommit(revWalk);
-            break;
+      RevCommit result = null;
+      RevCommit prevRev;
+      revWalk.next();
+      while (result == null && (prevRev = revWalk.next()) != null) {
+        TreeWalk prevTreeWalk = new TreeWalk(db);
+        try {
+          prevTreeWalk.setFilter(TreeFilter.ALL);
+          prevTreeWalk.setRecursive(true);
+          prevTreeWalk.reset();
+          addTree(prevTreeWalk, prevRev, settings, repositories, true, db);
+          while(prevTreeWalk.next()) {
+            if (prevTreeWalk.getPathString().startsWith(submodulePath)) {
+              SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
+              if (!iter.isSubmoduleError() && iter.getParent().isOnSubmodule()) {
+                result = prevRev;
+                break;
+              }
+            }
           }
+        } finally {
+          prevTreeWalk.release();
         }
       }
+      return result;
+    } finally {
+      revWalk.release();
     }
-
-    return result;
   }
 
-  /**
-   * Add the tree of the commit to the tree walker
-   *
-   * @param tw           tree walker
-   * @param pc           the commit
-   * @param s            the settings object
-   * @param repositories the set of used repositories
-   * @throws IOException in case of IO problem
-   */
-  private void addTree(TreeWalk tw, Commit pc, Settings s, Map<String, Repository> repositories, boolean ignoreSubmodulesErrors) throws IOException {
+  private void addTree(TreeWalk tw, RevCommit commit, Settings s, Map<String, Repository> repositories, boolean ignoreSubmodulesErrors, Repository db) throws IOException {
     if (s.isCheckoutSubmodules()) {
-      tw.addTree(SubmoduleAwareTreeIterator.create(pc, new TeamCitySubmoduleResolver(repositories, this, s, pc),
+      final SubmoduleResolver submoduleResolver = new TeamCitySubmoduleResolver(repositories, this, s, commit, db);
+      final SubmodulesCheckoutPolicy checkoutPolicy =
+        SubmodulesCheckoutPolicy.getPolicyWithErrorsIgnored(s.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
+      tw.addTree(SubmoduleAwareTreeIterator.create(db, commit, submoduleResolver,
                                                    s.getRepositoryFetchURL().toString(),
                                                    "",
-                                                   SubmodulesCheckoutPolicy.getPolicyWithErrorsIgnored(s.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors)));
+                                                   checkoutPolicy));
     } else {
-      tw.addTree(pc.getTreeId());
+      tw.addTree(commit.getTree().getId());
     }
   }
 
@@ -467,9 +467,9 @@ public class GitVcsSupport extends ServerVcsSupport
    *
    * @param repositories repositories to close
    */
-  private void close(Map<String, Repository> repositories) {
+  private void close(Collection<Repository> repositories) {
     RuntimeException e = null;
-    for (Repository r : repositories.values()) {
+    for (Repository r : repositories) {
       try {
         r.close();
       } catch (RuntimeException ex) {
@@ -548,25 +548,26 @@ public class GitVcsSupport extends ServerVcsSupport
     try {
       Map<String, Repository> repositories = new HashMap<String, Repository>();
       final Repository r = getRepository(s, repositories);
+      TreeWalk tw = null;
       try {
-        Commit toCommit = ensureCommitLoaded(s, r, GitUtils.versionRevision(toVersion), root);
+        RevCommit toCommit = ensureRevCommitLoaded(s, r, GitUtils.versionRevision(toVersion));
         if (toCommit == null) {
           throw new VcsException("Missing commit for version: " + toVersion);
         }
-        final TreeWalk tw = new TreeWalk(r);
+        tw = new TreeWalk(r);
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.setRecursive(true);
         tw.reset();
-        addTree(tw, toCommit, s, repositories, false);
+        addTree(tw, toCommit, s, repositories, false, r);
         if (fromVersion != null) {
           if (debugFlag) {
             LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
           }
-          Commit fromCommit = r.mapCommit(GitUtils.versionRevision(fromVersion));
+          RevCommit fromCommit = getCommit(r, GitUtils.versionRevision(fromVersion));
           if (fromCommit == null) {
             throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not available in the repository");
           }
-          addTree(tw, fromCommit, s, repositories, true);
+          addTree(tw, fromCommit, s, repositories, true, r);
         } else {
           if (debugFlag) {
             LOG.debug("Creating clean patch " + toVersion + " for " + s.debugInfo());
@@ -596,15 +597,22 @@ public class GitVcsSupport extends ServerVcsSupport
                 final Repository objRep = getRepository(r, tw, 0);
                 final Callable<Void> action = new Callable<Void>() {
                   public Void call() throws Exception {
+                    InputStream objectStream = null;
                     try {
-                      byte[] bytes = loadObject(objRep, path, id);
-                      builder.changeOrCreateBinaryFile(GitUtils.toFile(mapped), mode, new ByteArrayInputStream(bytes), bytes.length);
+                      final ObjectLoader loader = objRep.open(id);
+                      if (loader == null) {
+                        throw new IOException("Unable to find blob " + id + (path == null ? "" : "(" + path + ")") + " in repository " + r);
+                      }
+                      objectStream = loader.isLarge() ? loader.openStream() : new ByteArrayInputStream(loader.getCachedBytes());
+                      builder.changeOrCreateBinaryFile(GitUtils.toFile(mapped), mode, objectStream, loader.getSize());
                     } catch (Error e) {
                       LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + s.debugInfo());
                       throw e;
                     } catch (Exception e) {
                       LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + s.debugInfo());
                       throw e;
+                    } finally {
+                      if (objectStream != null) objectStream.close();
                     }
                     return null;
                   }
@@ -630,7 +638,8 @@ public class GitVcsSupport extends ServerVcsSupport
           a.call();
         }
       } finally {
-        close(repositories);
+        if (tw != null) tw.release();
+        close(repositories.values());
       }
     } catch (Exception e) {
       throw processException("patch building", e);
@@ -712,17 +721,17 @@ public class GitVcsSupport extends ServerVcsSupport
       final long start = System.currentTimeMillis();
       Map<String, Repository> repositories = new HashMap<String, Repository>();
       Repository r = getRepository(s, repositories);
+      final TreeWalk tw = new TreeWalk(r);
       try {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
         }
         final String rev = GitUtils.versionRevision(version);
-        Commit c = ensureCommitLoaded(s, r, rev, root);
-        final TreeWalk tw = new TreeWalk(r);
+        RevCommit c = ensureRevCommitLoaded(s, r, rev);
         tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
         tw.setRecursive(tw.getFilter().shouldBeRecursive());
         tw.reset();
-        addTree(tw, c, s, repositories, true);
+        addTree(tw, c, s, repositories, true, r);
         if (!tw.next()) {
           throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + s.debugInfo());
         }
@@ -738,7 +747,8 @@ public class GitVcsSupport extends ServerVcsSupport
         if (PERFORMANCE_LOG.isDebugEnabled()) {
           PERFORMANCE_LOG.debug("[getContent] root=" + s.debugInfo() + ", file=" + filePath + ", get object content: " + (finish - start) + "ms");
         }
-        close(repositories);
+        tw.release();
+        close(repositories.values());
       }
     } catch (Exception e) {
       throw processException("retrieving content", e);
@@ -771,11 +781,18 @@ public class GitVcsSupport extends ServerVcsSupport
    * @throws IOException in case of IO problem
    */
   private byte[] loadObject(Repository r, String path, ObjectId id) throws IOException {
-    final ObjectLoader loader = r.openBlob(id);
+    final ObjectLoader loader = r.open(id);
     if (loader == null) {
       throw new IOException("Unable to find blob " + id + (path == null ? "" : "(" + path + ")") + " in repository " + r);
     }
-    return loader.getCachedBytes();
+    if (loader.isLarge()) {
+      assert loader.getSize() < Integer.MAX_VALUE;
+      ByteArrayOutputStream output = new ByteArrayOutputStream((int) loader.getSize());
+      loader.copyTo(output);
+      return output.toByteArray();
+    } else {
+      return loader.getCachedBytes();
+    }
   }
 
   /**
@@ -797,40 +814,60 @@ public class GitVcsSupport extends ServerVcsSupport
     return objRep;
   }
 
-  /**
-   * Ensure that the specified commit is loaded in the repository
-   *
-   * @param s   the settings
-   * @param r   the repository
-   * @param rev the revision to fetch
-   * @return the mapped commit
-   * @throws Exception in case of IO problem
-   */
-  private Commit ensureCommitLoaded(Settings s, Repository r, String rev, VcsRoot root) throws Exception {
-    Commit c = null;
+  private RevCommit ensureCommitLoaded(Settings rootSettings, String commitWithDate) throws Exception {
+    final Repository repository;
+    repository = getRepository(rootSettings);
     try {
-      final long lookingForCommitStart = System.currentTimeMillis();
-      c = r.mapCommit(rev);
-      final long lookingForCommitFinish= System.currentTimeMillis();
+      final String commit = GitUtils.versionRevision(commitWithDate);
+      return ensureRevCommitLoaded(rootSettings, repository, commit);
+    } finally {
+      repository.close();
+    }
+  }
+
+  private RevCommit ensureRevCommitLoaded(Settings settings, Repository db, String commitSHA) throws Exception {
+    RevCommit result = null;
+    try {
+      final long start = System.currentTimeMillis();
+      result = getCommit(db, commitSHA);
+      final long finish = System.currentTimeMillis();
       if (PERFORMANCE_LOG.isDebugEnabled()) {
-        PERFORMANCE_LOG.debug("[ensureCommitLoaded] root=" + s.debugInfo() + ", commit=" + rev + ", local commit lookup: " + (lookingForCommitFinish - lookingForCommitStart) + "ms");
+        PERFORMANCE_LOG.debug("[ensureCommitLoaded] root=" + settings.debugInfo() + ", commit=" + commitSHA + ", local commit lookup: " + (finish - start) + "ms");
       }
     } catch (IOException ex) {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("IO problem for commit " + rev + " in " + s.debugInfo(), ex);
+        LOG.debug("IO problem for commit " + commitSHA + " in " + settings.debugInfo(), ex);
       }
     }
-    if (c == null) {
+    if (result == null) {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Commit " + rev + " is not in the repository for " + s.debugInfo() + ", fetching data... ");
+        LOG.debug("Commit " + commitSHA + " is not in the repository for " + settings.debugInfo() + ", fetching data... ");
       }
-      fetchBranchData(s, r, root);
-      c = r.mapCommit(rev);
-      if (c == null) {
-        throw new VcsException("The version name could not be resolved " + rev + "(" + s.getPublicURL() + "#" + s.getBranch() + ")");
+      fetchBranchData(settings, db);
+      result = getCommit(db, commitSHA);
+      if (result == null) {
+        throw new VcsException("The version name could not be resolved " + commitSHA + "(" + settings.getRepositoryFetchURL().toString() + "#" + settings.getBranch() + ")");
       }
     }
-    return c;
+    return result;
+  }
+
+  RevCommit getCommit(Repository repository, String commitSHA) throws IOException {
+    return getCommit(repository, ObjectId.fromString(commitSHA));
+  }
+
+  public RevCommit getCommit(Repository repository, ObjectId commitId) throws IOException {
+    final long start = System.currentTimeMillis();
+    RevWalk walk = new RevWalk(repository);
+    try {
+      return walk.parseCommit(commitId);
+    } finally {
+      walk.release();
+      final long finish = System.currentTimeMillis();
+      if (PERFORMANCE_LOG.isDebugEnabled()) {
+        PERFORMANCE_LOG.debug("[RevWalk.parseCommit] repository=" + repository.getDirectory().getAbsolutePath() + ", commit=" + commitId.name() + ", took: " + (finish - start) + "ms");
+      }
+    }
   }
 
   @NotNull
@@ -866,42 +903,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   public PropertiesProcessor getVcsPropertiesProcessor() {
-    return new PropertiesProcessor() {
-      public Collection<InvalidProperty> process(Map<String, String> properties) {
-        Collection<InvalidProperty> rc = new LinkedList<InvalidProperty>();
-        String url = properties.get(Constants.FETCH_URL);
-        if (url == null || url.trim().length() == 0) {
-          rc.add(new InvalidProperty(Constants.FETCH_URL, "The URL must be specified"));
-        } else {
-          try {
-            new URIish(url);
-          } catch (URISyntaxException e) {
-            rc.add(new InvalidProperty(Constants.FETCH_URL, "Invalid URL syntax: " + url));
-          }
-        }
-        String pushUrl = properties.get(Constants.PUSH_URL);
-        if (pushUrl != null && pushUrl.trim().length() != 0) {
-          try {
-            new URIish(pushUrl);
-          } catch (URISyntaxException e) {
-            rc.add(new InvalidProperty(Constants.PUSH_URL, "Invalid URL syntax: " + pushUrl));
-          }
-
-        }
-        String authMethod = properties.get(Constants.AUTH_METHOD);
-        AuthenticationMethod authenticationMethod =
-          authMethod == null ? AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, authMethod);
-        switch (authenticationMethod) {
-          case PRIVATE_KEY_FILE:
-            String pkFile = properties.get(Constants.PRIVATE_KEY_PATH);
-            if (pkFile == null || pkFile.length() == 0) {
-              rc.add(new InvalidProperty(Constants.PRIVATE_KEY_PATH, "The private key path must be specified."));
-            }
-            break;
-        }
-        return rc;
-      }
-    };
+    return new VcsPropertiesProcessor();
   }
 
   @NotNull
@@ -918,6 +920,7 @@ public class GitVcsSupport extends ServerVcsSupport
   public Map<String, String> getDefaultVcsProperties() {
     final HashMap<String, String> map = new HashMap<String, String>();
     map.put(Constants.BRANCH_NAME, "master");
+    map.put(Constants.IGNORE_KNOWN_HOSTS, "true");
     return map;
   }
 
@@ -936,19 +939,19 @@ public class GitVcsSupport extends ServerVcsSupport
     try {
       Repository r = getRepository(s);
       try {
-        fetchBranchData(s, r, root);
+        fetchBranchData(s, r);
         String refName = GitUtils.branchRef(s.getBranch());
         Ref branchRef = r.getRef(refName);
         String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryPath(), s.getBranch());
         if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
           return cachedCurrentVersion;
         } else {
-          Commit c = r.mapCommit(refName);
+          RevCommit c = getCommit(r, branchRef.getObjectId());
           if (c == null) {
             throw new VcsException("The branch name could not be resolved " + refName);
           }
           if (LOG.isDebugEnabled()) {
-            LOG.debug("Current version: " + c.getCommitId().name() + " " + s.debugInfo());
+            LOG.debug("Current version: " + c.getId().name() + " " + s.debugInfo());
           }
           final String currentVersion = GitServerUtil.makeVersion(c);
           setCachedCurrentVersion(s.getRepositoryPath(), s.getBranch(), currentVersion);
@@ -987,28 +990,29 @@ public class GitVcsSupport extends ServerVcsSupport
    * @param repository the repository
    * @throws Exception if there is a problem with fetching data
    */
-  private void fetchBranchData(Settings settings, Repository repository, VcsRoot root) throws Exception {
-    synchronized (getRepositoryLock(settings.getRepositoryPath())) {
+  private void fetchBranchData(Settings settings, Repository repository) throws Exception {
+    final String refName = GitUtils.branchRef(settings.getBranch());
+    RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
+    fetch(repository, settings.getAuthSettings(), settings.getRepositoryFetchURL(), spec);
+  }
+
+  /**
+   * Make fetch into local repository (it.s getDirectory() should be != null)
+   *
+   * @param db repository
+   * @param auth auth settings
+   * @param fetchURI uri to fetch
+   * @param refspec refspec
+   */
+  public void fetch(Repository db, Settings.AuthSettings auth, URIish fetchURI, RefSpec refspec)
+    throws NotSupportedException, VcsException, TransportException {
+    File repositoryDir = db.getDirectory();
+    assert repositoryDir != null : "Non-local repository";
+    synchronized (getRepositoryLock(repositoryDir)) {
       if (separateProcessForFetch()) {
-        fetchBranchDataInSeparateProcess(settings, repository, root);
+        fetchBranchDataInSeparateProcess(db, auth, fetchURI, refspec);
       } else {
-        final long fetchStart = System.currentTimeMillis();
-        final String refName = GitUtils.branchRef(settings.getBranch());
-        final Transport tn = openTransport(settings, repository);
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Fetching data for " + refName + "... " + settings.debugInfo());
-        }
-        try {
-          RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
-          tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
-        } catch (OutOfMemoryError oom) {
-          clean(repository);
-        } finally {
-          tn.close();
-          if (PERFORMANCE_LOG.isDebugEnabled()) {
-            PERFORMANCE_LOG.debug("[fetch in server process] root=" + settings.debugInfo() + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
-          }
-        }
+        fetchInSameProcess(db, auth, fetchURI, refspec);
       }
     }
   }
@@ -1029,35 +1033,60 @@ public class GitVcsSupport extends ServerVcsSupport
       return newLock;
   }
 
+  private void fetchInSameProcess(final Repository db, final Settings.AuthSettings auth, final URIish uri, final RefSpec refSpec)
+    throws NotSupportedException, VcsException, TransportException {
+    final String debugInfo = " (" + (db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"")
+                             + uri.toString() + "#" + refSpec.toString() + ")";
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Fetch in server process: " + debugInfo);
+    }
+    final long fetchStart = System.currentTimeMillis();
+    final Transport tn = openTransport(auth, db, uri);
+    try {
+      tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(refSpec));
+    } catch (OutOfMemoryError oom) {
+      clean(db);
+    } finally {
+      tn.close();
+      if (PERFORMANCE_LOG.isDebugEnabled()) {
+        PERFORMANCE_LOG.debug("[fetch in server process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
+      }
+    }
+
+  }
+
   /**
    * Fetch data for the branch in separate process
    *
    * @param settings   settings for the root
    * @param repository the repository
-   * @param root       vcs root, used to pass properties to forked process
    * @throws Exception if there is a problem with fetching data
    */
-  private void fetchBranchDataInSeparateProcess(final Settings settings, final Repository repository, final VcsRoot root) throws Exception {
+  private void fetchBranchDataInSeparateProcess(final Repository repository, final Settings.AuthSettings settings, final URIish uri, final RefSpec spec)
+    throws VcsException {
     final long fetchStart = System.currentTimeMillis();
+    final String debugInfo = " (" + (repository.getDirectory() != null? repository.getDirectory().getAbsolutePath() + ", ":"")
+                             + uri.toString() + "#" + spec.toString() + ")";
     GeneralCommandLine cl = new GeneralCommandLine();
     cl.setWorkingDirectory(repository.getDirectory());
     cl.setExePath(getFetchProcessJavaPath());
     cl.addParameters("-Xmx" + getFetchProcessMaxMemory(), "-cp", getFetchClasspath(), Fetcher.class.getName(),
-                     settings.getRepositoryFetchURL().toString());//last parameter is not used in Fetcher, but useful to distinguish fetch processes
+                     uri.toString());//last parameter is not used in Fetcher, but is useful to distinguish fetch processes
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Start fetch process for " + settings.debugInfo());
+      LOG.debug("Start fetch process for " + debugInfo);
     }
     final List<Exception> errors = new ArrayList<Exception>();
     ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.RunCommandEvents() {
       public void onProcessStarted(Process ps) {
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Fetch process for " + settings.debugInfo() + " started");
+          LOG.debug("Fetch process for " + debugInfo + " started");
         }
         OutputStream processInput = ps.getOutputStream();
         try {
-          Map<String, String> properties = new HashMap<String, String>(root.getProperties());
-          properties.put(REPOSITORY_DIR_PROPERTY_NAME, repository.getDirectory().getCanonicalPath());
-          properties.put(CACHE_DIR_PROPERTY_NAME, myServerPaths.getCachesDir());
+          Map<String, String> properties = new HashMap<String, String>(settings.toMap());
+          properties.put(Constants.REPOSITORY_DIR_PROPERTY_NAME, repository.getDirectory().getCanonicalPath());
+          properties.put(Constants.FETCH_URL, uri.toString());
+          properties.put(Constants.REFSPEC, spec.toString());
           processInput.write(VcsRootImpl.propertiesToString(properties).getBytes("UTF-8"));
           processInput.flush();
         } catch (IOException e) {
@@ -1073,7 +1102,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
       public void onProcessFinished(Process ps) {
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Fetch process for " + settings.debugInfo() + " finished");
+          LOG.debug("Fetch process for " + debugInfo + " finished");
         }
       }
 
@@ -1083,10 +1112,10 @@ public class GitVcsSupport extends ServerVcsSupport
     });
 
     if (PERFORMANCE_LOG.isDebugEnabled()) {
-      PERFORMANCE_LOG.debug("[fetch in separate process] root=" + settings.debugInfo() + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
+      PERFORMANCE_LOG.debug("[fetch in separate process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
     }
     if (!errors.isEmpty()) {
-      throw errors.get(0);
+      throw new VcsException("Separate process fetch error", errors.get(0));
     }
     VcsException commandError = CommandLineUtil.getCommandLineError("git fetch", result);
     if (commandError != null) {
@@ -1179,13 +1208,13 @@ public class GitVcsSupport extends ServerVcsSupport
     File repositoryTempDir = null;
     try {
       repositoryTempDir = FileUtil.createTempDirectory("git-testcon", "");
-      s.setRepositoryPath(repositoryTempDir);
+      s.setUserDefinedRepositoryPath(repositoryTempDir);
       Repository r = getRepository(s);
       try {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Opening connection for " + s.debugInfo());
         }
-        final Transport tn = openTransport(s, r);
+        final Transport tn = openTransport(s.getAuthSettings(), r, s.getRepositoryFetchURL());
         try {
           final FetchConnection c = tn.openFetch();
           try {
@@ -1202,7 +1231,7 @@ public class GitVcsSupport extends ServerVcsSupport
               }
             }
             if (!refFound) {
-              throw new VcsException("The branch " + refName + " was not found in the repository " + s.getPublicURL());
+              throw new VcsException("The branch " + refName + " was not found in the repository " + s.getRepositoryFetchURL().toString());
             }
           } finally {
             c.close();
@@ -1211,7 +1240,7 @@ public class GitVcsSupport extends ServerVcsSupport
           tn.close();
         }
         if (!s.getRepositoryFetchURL().equals(s.getRepositoryPushURL())) {
-          final Transport push = openTransport(s, r, s.getRepositoryPushURL());
+          final Transport push = openTransport(s.getAuthSettings(), r, s.getRepositoryPushURL());
           try {
             final PushConnection c = push.openPush();
             try {
@@ -1224,6 +1253,24 @@ public class GitVcsSupport extends ServerVcsSupport
           }
         }
         return null;
+      } catch (NotSupportedException nse) {
+        URIish fetchURI = s.getRepositoryFetchURL();
+        if (GitServerUtil.isRedundantColon(fetchURI)) {
+          //url with username looks like ssh://username/hostname:/path/to/repo - it will
+          //confuse user even further, so show url without user name
+          throw new NotSupportedException(MessageFormat.format(JGitText.get().URINotSupported, vcsRoot.getProperty(Constants.FETCH_URL)) +
+                                          ". Make sure you don't have a colon after the host name.");
+        } else {
+          throw nse;
+        }
+      } catch (TransportException te) {
+        if (GitServerUtil.isUnknownHostKeyError(te)) {
+          String originalMessage = te.getMessage();
+          String message = originalMessage + ". Add this host to a known hosts database or check option 'Ignore Known Hosts Database'.";
+          throw new VcsException(message, te);
+        } else {
+          throw te;
+        }
       } finally {
         r.close();
       }
@@ -1239,17 +1286,8 @@ public class GitVcsSupport extends ServerVcsSupport
     return this;
   }
 
-  /**
-   * Create settings object basing on vcs root configuration
-   *
-   * @param vcsRoot the root object
-   * @return the created object
-   * @throws VcsException in case of IO problems
-   */
-  protected Settings createSettings(VcsRoot vcsRoot) throws VcsException {
-    final Settings settings = new Settings(vcsRoot);
-    settings.setCachesDirectory(myServerPaths.getCachesDir());
-    return settings;
+  private Settings createSettings(VcsRoot vcsRoot) throws VcsException {
+    return new Settings(vcsRoot, myServerPaths.getCachesDir());
   }
 
   public LabelingSupport getLabelingSupport() {
@@ -1278,17 +1316,15 @@ public class GitVcsSupport extends ServerVcsSupport
       try {
         Repository r = getRepository(s);
         try {
-          final ObjectId rev = versionObjectId(version);
-          ensureCommitLoaded(s, r, rev.name(), root);
-          Tag t = new Tag(r);
-          t.setTag(label);
-          t.setObjId(rev);
-          t.tag();
+          String commitSHA = GitUtils.versionRevision(version);
+          RevCommit commit = ensureRevCommitLoaded(s, r, commitSHA);
+          Git git = new Git(r);
+          git.tag().setName(label).setObjectId(commit).call();
           String tagRef = GitUtils.tagName(label);
           if (LOG.isDebugEnabled()) {
             LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
           }
-          final Transport tn = openTransport(s, r, s.getRepositoryPushURL());
+          final Transport tn = openTransport(s.getAuthSettings(), r, s.getRepositoryPushURL());
           try {
             final PushConnection c = tn.openPush();
             try {
@@ -1355,44 +1391,21 @@ public class GitVcsSupport extends ServerVcsSupport
   /**
    * Open transport for the repository
    *
-   * @param s the vcs settings
-   * @param r the repository to open
-   * @return the transport instance
-   * @throws NotSupportedException if transport is not supported
-   * @throws URISyntaxException    if URI is incorrect syntax
-   * @throws VcsException          if there is a problem with configuring the transport
-   */
-  public Transport openTransport(Settings s, Repository r) throws NotSupportedException, URISyntaxException, VcsException {
-    return openTransport(s, r, s.getRepositoryFetchURL());
-  }
-
-  /**
-   * Open transport for the repository
-   *
-   * @param s   the vcs settings
+   * @param authSettings authentication settings
    * @param r   the repository to open
    * @param url the URL to open
    * @return the transport instance
    * @throws NotSupportedException if transport is not supported
-   * @throws URISyntaxException    if URI is incorrect syntax
    * @throws VcsException          if there is a problem with configuring the transport
    */
-  public Transport openTransport(Settings s, Repository r, final URIish url)
-    throws NotSupportedException, URISyntaxException, VcsException {
-    final Transport t = Transport.open(r, url);
+  public Transport openTransport(Settings.AuthSettings authSettings, Repository r, final URIish url) throws NotSupportedException, VcsException {
+    final URIish authUrl = authSettings.createAuthURI(url);
+    final Transport t = Transport.open(r, authUrl);
     if (t instanceof SshTransport) {
       SshTransport ssh = (SshTransport)t;
-      ssh.setSshSessionFactory(getSshSessionFactory(s, url));
+      ssh.setSshSessionFactory(getSshSessionFactory(authSettings, url));
     }
-    boolean clone = true;
-    try {
-      if (r.resolve(s.getBranch()) != null) {
-        clone = false;
-      }
-    } catch (IOException e) {
-      // ignore result
-    }
-    t.setTimeout(clone ? getCloneTimeout() : getFetchTimeout());
+    t.setTimeout(getCloneTimeout());
     return t;
   }
 
@@ -1407,17 +1420,17 @@ public class GitVcsSupport extends ServerVcsSupport
   /**
    * Get appropriate session factory object using settings
    *
-   * @param s a vcs root settings
+   * @param authSettings a vcs root settings
    * @return session factory object
    * @throws VcsException in case of problems with creating object
    */
-  private SshSessionFactory getSshSessionFactory(Settings s, URIish url) throws VcsException {
-    switch (s.getAuthenticationMethod()) {
+  private SshSessionFactory getSshSessionFactory(Settings.AuthSettings authSettings, URIish url) throws VcsException {
+    switch (authSettings.getAuthMethod()) {
       case PRIVATE_KEY_DEFAULT:
-        return s.isKnownHostsIgnored() ? mySshSessionFactoryKnownHostsIgnored : mySshSessionFactory;
+        return authSettings.isIgnoreKnownHosts() ? mySshSessionFactoryKnownHostsIgnored : mySshSessionFactory;
       case PRIVATE_KEY_FILE:
         try {
-          return new PrivateKeyFileSshSessionFactory(s);
+          return new PrivateKeyFileSshSessionFactory(authSettings);
         } catch (VcsAuthenticationException e) {
           //add url to exception
           throw new VcsAuthenticationException(url.toString(), e.getMessage().toString());
@@ -1425,18 +1438,8 @@ public class GitVcsSupport extends ServerVcsSupport
       case PASSWORD:
         return PasswordSshSessionFactory.INSTANCE;
       default:
-        throw new VcsAuthenticationException(url.toString(), "The authentication method " + s.getAuthenticationMethod() + " is not supported for SSH");
+        throw new VcsAuthenticationException(url.toString(), "The authentication method " + authSettings.getAuthMethod() + " is not supported for SSH");
     }
-  }
-
-  /**
-   * Make object identifier from the version string
-   *
-   * @param version the version string
-   * @return object identifier
-   */
-  private static ObjectId versionObjectId(String version) {
-    return ObjectId.fromString(GitUtils.versionRevision(version));
   }
 
   @Override
@@ -1469,103 +1472,17 @@ public class GitVcsSupport extends ServerVcsSupport
     return true;
   }
 
-  @Nullable
-  static String getNullIfEmpty(@NotNull final String string) {
-    final String trimmedString = string.trim();
-    return trimmedString.length() > 0 ? trimmedString : null;
-  }
-
-
-  /**
-   * Git change type
-   */
+  /** Git change type */
   private enum ChangeType {
-    /**
-     * the file is added
-     */
+    /** the file is added */
     ADDED,
-    /**
-     * the file is deleted
-     */
+    /** the file is deleted */
     DELETED,
-    /**
-     * the file content (or content+mode) changed
-     */
+    /** the file content (or content+mode) changed */
     MODIFIED,
-    /**
-     * the file mode only changed
-     */
+    /** the file mode only changed */
     FILE_MODE_CHANGED,
-    /**
-     * no change detected
-     */
+    /** no change detected */
     UNCHANGED,
-  }
-
-
-  /**
-   * Tree filter that ignore changes if they arouse because of errors in submodules in the first tree (i.e. in the first commit)
-   */
-  private class IgnoreSubmoduleErrorsTreeFilter extends TreeFilter {
-
-    private final Settings mySettings;
-    private final Set<String> myBrokenSubmodulePathsInFirstTree = new HashSet<String>();
-    private final Set<String> myBrokenSubmodulePathsInRestTrees = new HashSet<String>();
-
-    private IgnoreSubmoduleErrorsTreeFilter(Settings settings) {
-      mySettings = settings;
-    }
-
-    @Override
-    public boolean include(TreeWalk walker) throws IOException {
-      if (mySettings.isCheckoutSubmodules()) {
-        String path = walker.getPathString();
-        if (isFirstTreeHasBrokenSubmodule(walker, path)) {
-          myBrokenSubmodulePathsInFirstTree.add(path);
-          return false;
-        } else if (!myBrokenSubmodulePathsInRestTrees.contains(path)) {
-          for (int i = 1; i < walker.getTreeCount(); i++) {
-            if (FileMode.GITLINK.equals(walker.getRawMode(i))) {
-              myBrokenSubmodulePathsInRestTrees.add(path);
-            }
-          }
-        }
-        return TreeFilter.ANY_DIFF.include(walker);
-      } else {
-        return TreeFilter.ANY_DIFF.include(walker);
-      }
-    }
-
-    private boolean isFirstTreeHasBrokenSubmodule(TreeWalk walker, String path) {
-      return FileMode.GITLINK.equals(walker.getRawMode(0)) || myBrokenSubmodulePathsInFirstTree.contains(path);
-    }
-
-    public Set<String> getBrokenSubmodulePathsInRestTrees() {
-      return myBrokenSubmodulePathsInRestTrees;
-    }
-
-    public boolean isBrokenSubmodulePath(String path) {
-      for (String brokenSubmodulePath : myBrokenSubmodulePathsInRestTrees) {
-        if (path.equals(brokenSubmodulePath) || path.startsWith(brokenSubmodulePath + "/")) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    @Override
-    public boolean shouldBeRecursive() {
-      return TreeFilter.ANY_DIFF.shouldBeRecursive();
-    }
-
-    @Override
-    public TreeFilter clone() {
-      return this;
-    }
-
-    @Override
-    public String toString() {
-      return "IGNORE_SUBMODULE_ERRORS";
-    }
   }
 }

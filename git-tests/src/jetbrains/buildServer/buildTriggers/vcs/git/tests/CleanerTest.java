@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
@@ -43,7 +44,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
-import static org.testng.AssertJUnit.assertEquals;
 
 /**
  * @author dmitry.neverov
@@ -69,7 +69,7 @@ public class CleanerTest extends BaseTestCase {
       allowing(server).getExecutor(); will(returnValue(myCleanExecutor));
       allowing(server).getVcsManager(); will(returnValue(myVcsManager));
     }});
-    GitVcsSupport gitSupport = new GitVcsSupport(myServerPaths, null);
+    GitVcsSupport gitSupport = new GitVcsSupport(myServerPaths, null, null);
     myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), myServerPaths, gitSupport);
   }
 
@@ -85,7 +85,7 @@ public class CleanerTest extends BaseTestCase {
       System.setProperty("teamcity.server.git.executable.path", System.getenv(Constants.GIT_PATH_ENV));
 
     final VcsRoot root = getVcsRoot();
-    GitVcsSupport vcsSupport = new GitVcsSupport(myServerPaths, null);
+    GitVcsSupport vcsSupport = new GitVcsSupport(myServerPaths, null, null);
     vcsSupport.getCurrentVersion(root);//it will create dir in cache directory
     File repositoryDir = getRepositoryDir(root);
     File gitCacheDir = new File(myServerPaths.getCachesDir(), "git");
@@ -111,8 +111,7 @@ public class CleanerTest extends BaseTestCase {
   }
 
   private File getRepositoryDir(VcsRoot root) throws VcsException {
-    Settings settings = new Settings(root);
-    settings.setCachesDirectory(myServerPaths.getCachesDir());
+    Settings settings = new Settings(root, myServerPaths.getCachesDir());
     return settings.getRepositoryPath();
   }
 
@@ -136,6 +135,8 @@ public class CleanerTest extends BaseTestCase {
       allowing(result).getProperty(Constants.PATH); will(returnValue(root.getProperty(Constants.PATH)));
       allowing(result).getProperty(Constants.AUTH_METHOD); will(returnValue(root.getProperty(Constants.AUTH_METHOD)));
       allowing(result).getProperty(Constants.FETCH_URL); will(returnValue(root.getProperty(Constants.FETCH_URL)));
+      allowing(result).getProperty(Constants.IGNORE_KNOWN_HOSTS); will(returnValue(root.getProperty(Constants.IGNORE_KNOWN_HOSTS)));
+      allowing(result).getProperties(); will(returnValue(root.getProperties()));
     }});
     return result;
   }
