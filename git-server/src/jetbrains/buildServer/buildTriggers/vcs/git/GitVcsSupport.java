@@ -1252,6 +1252,14 @@ public class GitVcsSupport extends ServerVcsSupport
         } else {
           throw nse;
         }
+      } catch (TransportException te) {
+        if (GitServerUtil.isUnknownHostKeyError(te)) {
+          String originalMessage = te.getMessage();
+          String message = originalMessage + ". Add this host to a known hosts database or check option 'Ignore Known Hosts Database'.";
+          throw new VcsException(message, te);
+        } else {
+          throw te;
+        }
       } finally {
         r.close();
       }

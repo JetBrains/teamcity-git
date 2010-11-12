@@ -16,8 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.URIish;
@@ -146,5 +146,10 @@ public class GitServerUtil {
     return uri.getScheme().equals("ssh") &&
            uri.getHost() == null &&
            uri.getPath().contains(":");
+  }
+
+  public static boolean isUnknownHostKeyError(TransportException error) {
+    String message = error.getMessage();
+    return message != null && message.contains("UnknownHostKey") && message.contains("key fingerprint is");
   }
 }

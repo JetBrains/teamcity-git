@@ -52,13 +52,7 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
     FilesWatcher watcher = new FilesWatcher(new FilesWatcher.WatchedFilesProvider() {
       public File[] getWatchedFiles() {
         File sshDir = new File(System.getProperty("user.home"), ".ssh");
-        if (sshDir.exists() && sshDir.isDirectory()) {
-          final File[] files = sshDir.listFiles();
-          if (files != null) {
-            return files;
-          }
-        }
-        return new File[0];
+        return new File[] {sshDir};
       }
     });
     watcher.registerListener(new ChangeListener() {
@@ -66,6 +60,7 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
         expireDelegate();
       }
     });
+    watcher.start();
   }
 
   /**
