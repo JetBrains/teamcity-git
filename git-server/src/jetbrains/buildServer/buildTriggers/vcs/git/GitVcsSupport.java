@@ -910,6 +910,7 @@ public class GitVcsSupport extends ServerVcsSupport
   public Map<String, String> getDefaultVcsProperties() {
     final HashMap<String, String> map = new HashMap<String, String>();
     map.put(Constants.BRANCH_NAME, "master");
+    map.put(Constants.IGNORE_KNOWN_HOSTS, "true");
     return map;
   }
 
