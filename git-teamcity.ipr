@@ -488,6 +488,9 @@
       <module fileurl="file://$PROJECT_DIR$/root.iml" filepath="$PROJECT_DIR$/root.iml" />
     </modules>
   </component>
+  <component name="ProjectResources">
+    <default-html-doctype>http://www.w3.org/1999/xhtml</default-html-doctype>
+  </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_1_5" assert-keyword="true" jdk-15="true" project-jdk-name="1.5" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/out" />
   </component>
@@ -506,17 +509,6 @@
   </component>
   <component name="WebServicesPlugin" addRequiredLibraries="true" />
   <component name="libraryTable">
-    <library name="JGit">
-      <CLASSES>
-        <root url="jar://$PROJECT_DIR$/lib/common/jsch-0.1.41.jar!/" />
-        <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-0.7.1-SNAPSHOT.jar!/" />
-      </CLASSES>
-      <JAVADOC />
-      <SOURCES>
-        <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.41.zip!/jsch-0.1.41-src/src" />
-        <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit-0.7.1-SNAPSHOT-sources.jar!/" />
-      </SOURCES>
-    </library>
     <library name="JGit-0.10">
       <CLASSES>
         <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-0.10.0-SNAPSHOT.jar!/" />
