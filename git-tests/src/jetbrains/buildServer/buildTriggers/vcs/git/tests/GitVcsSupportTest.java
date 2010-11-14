@@ -901,4 +901,21 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport jetbrainsPlugin = getSupport(holder);
     assertEquals(jetbrainsPlugin.getDisplayName(), "Git");
   }
+
+
+  /**
+   * Test work-around for http://youtrack.jetbrains.net/issue/TW-9933.
+   */
+  @Test
+  public void test_not_existing_local_repository() {
+    File notExisting = new File(myTmpDir, "not-existing");
+    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
+    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(notExisting));
+    try {
+      getSupport().testConnection(root);
+      fail("Should throw an exception for not-existing repository");
+    } catch (VcsException e) {
+      assertTrue(e.getMessage().contains("Cannot access repository"));
+    }
+  }
 }

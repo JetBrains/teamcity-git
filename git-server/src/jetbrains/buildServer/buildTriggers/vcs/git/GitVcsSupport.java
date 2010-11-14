@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
+import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import jetbrains.buildServer.ExecResult;
@@ -1400,6 +1401,7 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   public Transport openTransport(Settings.AuthSettings authSettings, Repository r, final URIish url) throws NotSupportedException, VcsException {
     final URIish authUrl = authSettings.createAuthURI(url);
+    checkUrl(url);
     final Transport t = Transport.open(r, authUrl);
     if (t instanceof SshTransport) {
       SshTransport ssh = (SshTransport)t;
@@ -1407,6 +1409,34 @@ public class GitVcsSupport extends ServerVcsSupport
     }
     t.setTimeout(getCloneTimeout());
     return t;
+  }
+
+  /**
+   * This is a work-around for an issue http://youtrack.jetbrains.net/issue/TW-9933.
+   * Due to bug in jgit (https://bugs.eclipse.org/bugs/show_bug.cgi?id=315564),
+   * in the case of not-existing local repository we get an obscure exception:
+   * 'org.eclipse.jgit.errors.NotSupportedException: URI not supported: x:/git/myrepo.git',
+   * while URI is correct.
+   *
+   * It often happens when people try to access a repository located on a mapped network
+   * drive from the TeamCity ran as Windows service.
+   *
+   * If repository is local and is not exists this method throws a friendly exception.
+   *
+   * @param url URL to check
+   * @throws VcsException if url points to not-existing local repository
+   */
+  private void checkUrl(final URIish url) throws VcsException {
+    if (!url.isRemote()) {
+      File localRepository = new File(url.getPath());
+      if (!localRepository.exists()) {
+        String error = "Cannot access repository " + url.toString();
+        if (SystemInfo.isWindows) {
+          error += ". If TeamCity is ran as a service, it cannot access network mapped drives. Make sure this is not your case.";
+        }
+        throw new VcsException(error);
+      }
+    }
   }
 
   private int getFetchTimeout() {
