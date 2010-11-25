@@ -129,7 +129,7 @@
   </l:settingsGroup>
   <l:settingsGroup title="Agent Settings">
     <tr>
-      <td colspan="2">Agent-specific settings that are used in case of agent checkout.</td>
+      <td colspan="2">Agent-specific settings that are used in case of agent checkout.<bs:help file="Git+(JetBrains)" anchor="agentSettings"/></td>
     </tr>
     <tr>
       <th><label for="agentGitPath">Path to git: </label></th>
