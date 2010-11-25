@@ -724,6 +724,9 @@ public class GitVcsSupport extends ServerVcsSupport
       Repository r = getRepository(s, repositories);
       final TreeWalk tw = new TreeWalk(r);
       try {
+
+
+
         if (LOG.isDebugEnabled()) {
           LOG.debug("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
         }
@@ -1440,7 +1443,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   private int getFetchTimeout() {
-    return TeamCityProperties.getInteger("teamcity.git.fetch.timeout", 1800);
+    return TeamCityProperties.getInteger("teamcity.git.fetch.timeout", 18000);
   }
 
   private int getCloneTimeout() {
