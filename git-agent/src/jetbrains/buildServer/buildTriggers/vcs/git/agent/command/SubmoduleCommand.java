@@ -66,11 +66,15 @@ public class SubmoduleCommand extends RepositoryCommand {
     GeneralCommandLine cmd = createCommandLine();
     cmd.addParameter("submodule");
     cmd.addParameter("update");
-    SshHandler h = new SshHandler(mySsh, cmd);
-    try {
+    if (mySettings.isUseNativeSSH()) {
       runCommand(cmd, FetchCommand.TIMEOUT);
-    } finally {
-      h.unregister();
+    } else {
+      SshHandler h = new SshHandler(mySsh, cmd);
+      try {
+        runCommand(cmd, FetchCommand.TIMEOUT);
+      } finally {
+        h.unregister();
+      }
     }
   }
 

@@ -58,11 +58,15 @@ public class FetchCommand extends RepositoryCommand {
     AgentSettings s = getSettings();
     cmd.addParameters("--no-tags", "-q", "origin",
                       "+" + GitUtils.branchRef(s.getBranch()) + ":" + GitUtils.remotesBranchRef(s.getBranch()));
-    SshHandler h = new SshHandler(mySsh, cmd);
-    try {
+    if (mySettings.isUseNativeSSH()) {
       runCommand(cmd, TIMEOUT);
-    } finally {
-      h.unregister();
+    } else {
+      SshHandler h = new SshHandler(mySsh, cmd);
+      try {
+        runCommand(cmd, TIMEOUT);
+      } finally {
+        h.unregister();
+      }
     }
   }
 

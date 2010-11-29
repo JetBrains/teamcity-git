@@ -308,6 +308,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
       allowing(configuration).getCustomProperties(); will(returnValue(new HashMap<String, String>()));
       allowing(configuration).getOwnPort(); will(returnValue(600));
       allowing(configuration).getTempDirectory(); will(returnValue(agentConfigurationTempDirectory));
+      allowing(configuration).getConfigurationParameters(); will(returnValue(new HashMap<String, String>()));
     }});
     return configuration;
   }
