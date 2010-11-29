@@ -95,12 +95,13 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
                                  @NotNull BuildProgressLogger logger)
     throws VcsException {
     super(agentConfiguration, directoryCleaner, root, checkoutRules, toVersion, checkoutDirectory, logger,
-          getGitPath(root, agentConfiguration, gitPathResolver, buildTracker), isUseNativeSSH());
+          getGitPath(root, agentConfiguration, gitPathResolver, buildTracker), isUseNativeSSH(agentConfiguration));
     mySshService = sshService;
   }
 
-  private static boolean isUseNativeSSH() {
-    return false;
+  private static boolean isUseNativeSSH(BuildAgentConfiguration agentConfiguration) {
+    String value = agentConfiguration.getConfigurationParameters().get("teamcity.git.use.native.ssh");
+    return "true".equals(value);
   }
 
   /**
