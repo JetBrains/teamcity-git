@@ -50,6 +50,8 @@ public class AgentSettings extends Settings {
    */
   private final File localRepositoryDir;
 
+  private final boolean useNativeSSH;
+
   /**
    * The constructor
    *
@@ -67,6 +69,7 @@ public class AgentSettings extends Settings {
     this.cleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);
     String cleanFiles = root.getProperty(Constants.AGENT_CLEAN_FILES_POLICY);
     this.cleanFilesPolicy = cleanFiles == null ? AgentCleanFilesPolicy.ALL_UNTRACKED : AgentCleanFilesPolicy.valueOf(cleanFiles);
+    this.useNativeSSH = false;
   }
 
   /**
@@ -95,6 +98,10 @@ public class AgentSettings extends Settings {
    */
   public String getGitCommandPath() {
     return gitCommandPath;
+  }
+
+  public boolean isUseNativeSSH() {
+    return useNativeSSH;
   }
 
   /**
