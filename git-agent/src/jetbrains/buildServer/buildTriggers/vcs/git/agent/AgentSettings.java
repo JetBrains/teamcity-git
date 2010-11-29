@@ -60,7 +60,7 @@ public class AgentSettings extends Settings {
    * @param root               the VCS root to get settings from
    * @throws VcsException if there is a configuration problem
    */
-  public AgentSettings(String gitCommandPath, File localRepositoryDir, VcsRoot root) throws VcsException {
+  public AgentSettings(String gitCommandPath, File localRepositoryDir, VcsRoot root, boolean useNativeSSH) throws VcsException {
     super(root);
     this.gitCommandPath = gitCommandPath;
     this.localRepositoryDir = localRepositoryDir;
@@ -69,7 +69,7 @@ public class AgentSettings extends Settings {
     this.cleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);
     String cleanFiles = root.getProperty(Constants.AGENT_CLEAN_FILES_POLICY);
     this.cleanFilesPolicy = cleanFiles == null ? AgentCleanFilesPolicy.ALL_UNTRACKED : AgentCleanFilesPolicy.valueOf(cleanFiles);
-    this.useNativeSSH = false;
+    this.useNativeSSH = useNativeSSH;
   }
 
   /**

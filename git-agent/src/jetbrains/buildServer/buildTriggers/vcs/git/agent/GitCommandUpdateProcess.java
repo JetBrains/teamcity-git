@@ -95,7 +95,7 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
                                  @NotNull BuildProgressLogger logger)
     throws VcsException {
     super(agentConfiguration, directoryCleaner, root, checkoutRules, toVersion, checkoutDirectory, logger,
-          getGitPath(root, agentConfiguration, gitPathResolver, buildTracker));
+          getGitPath(root, agentConfiguration, gitPathResolver, buildTracker), false);
     mySshService = sshService;
   }
 

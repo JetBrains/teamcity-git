@@ -104,7 +104,8 @@ public abstract class GitUpdateProcess {
                           @NotNull String toVersion,
                           @NotNull File checkoutDirectory,
                           @NotNull BuildProgressLogger logger,
-                          @Nullable String gitPath) throws VcsException {
+                          @Nullable String gitPath,
+                          boolean useNativeSSH) throws VcsException {
     myAgentConfiguration = agentConfiguration;
     myDirectoryCleaner = directoryCleaner;
     myRoot = root;
@@ -114,7 +115,7 @@ public abstract class GitUpdateProcess {
     mLogger = logger;
     revision = GitUtils.versionRevision(toVersion);
     myDirectory = findDirectory();
-    mySettings = new AgentSettings(gitPath, myDirectory, root);
+    mySettings = new AgentSettings(gitPath, myDirectory, root, useNativeSSH);
   }
 
   /**
