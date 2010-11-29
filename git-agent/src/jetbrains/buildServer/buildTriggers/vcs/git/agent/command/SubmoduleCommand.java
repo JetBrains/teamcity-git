@@ -66,8 +66,7 @@ public class SubmoduleCommand extends RepositoryCommand {
     GeneralCommandLine cmd = createCommandLine();
     cmd.addParameter("submodule");
     cmd.addParameter("update");
-    boolean useNativeSSH = false;
-    if (useNativeSSH) {
+    if (mySettings.isUseNativeSSH()) {
       runCommand(cmd, FetchCommand.TIMEOUT);
     } else {
       SshHandler h = new SshHandler(mySsh, cmd);
