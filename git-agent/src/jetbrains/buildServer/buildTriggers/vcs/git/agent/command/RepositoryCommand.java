@@ -34,7 +34,7 @@ public class RepositoryCommand extends BaseCommand {
   /**
    * The settings from vcs root
    */
-  private final AgentSettings mySettings;
+  protected final AgentSettings mySettings;
 
 
   /**
