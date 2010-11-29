@@ -16,12 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
-import jetbrains.buildServer.agent.BuildProgressLogger;
-import jetbrains.buildServer.agent.CurrentBuildTracker;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.agent.vcs.AgentVcsSupport;
-import jetbrains.buildServer.agent.vcs.UpdateByCheckoutRules;
+import jetbrains.buildServer.agent.vcs.UpdateByCheckoutRules2;
 import jetbrains.buildServer.agent.vcs.UpdatePolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -34,7 +33,7 @@ import java.io.File;
 /**
  * The agent support for VCS.
  */
-public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheckoutRules {
+public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheckoutRules2 {
   /**
    * The configuration for the agent
    */
@@ -51,10 +50,6 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * The resolver service
    */
   final GitPathResolver myGitPathResovler;
-  /**
-   * The tracker for the builds
-   */
-  final CurrentBuildTracker myBuildTracker;
 
   /**
    * The constructor
@@ -63,18 +58,15 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @param directoryCleaner   the directory cleaner
    * @param sshService         the used ssh service
    * @param gitPathResolver    the resolver for path to git 
-   * @param buildTracker       the tracker for builds
    */
   public GitAgentVcsSupport(BuildAgentConfiguration agentConfiguration,
                             SmartDirectoryCleaner directoryCleaner,
                             GitAgentSSHService sshService,
-                            GitPathResolver gitPathResolver,
-                            CurrentBuildTracker buildTracker) {
+                            GitPathResolver gitPathResolver) {
     myAgentConfiguration = agentConfiguration;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
     myGitPathResovler = gitPathResolver;
-    myBuildTracker = buildTracker;
   }
 
 
@@ -96,24 +88,20 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     return Constants.VCS_NAME;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   public void updateSources(@NotNull VcsRoot root,
                             @NotNull CheckoutRules checkoutRules,
                             @NotNull String toVersion,
                             @NotNull File checkoutDirectory,
-                            @NotNull BuildProgressLogger logger) throws VcsException {
+                            @NotNull AgentRunningBuild build,
+                            boolean cleanCheckoutRequested) throws VcsException {
     new GitCommandUpdateProcess(myAgentConfiguration,
                                 myDirectoryCleaner,
                                 mySshService,
                                 myGitPathResovler,
-                                myBuildTracker,
                                 root,
                                 checkoutRules,
                                 toVersion,
                                 checkoutDirectory,
-                                logger).updateSources();
+                                build).updateSources();
   }
-
 }

@@ -17,11 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.io.FileUtil;
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.regex.Matcher;
-
 import jetbrains.buildServer.*;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.BuildAgent;
@@ -39,6 +34,11 @@ import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
@@ -88,6 +88,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
    */
   private GitAgentVcsSupport myVcsSupport;
   private BuildProgressLogger myLogger;
+  private AgentRunningBuild myBuild;
 
 
   static {
@@ -135,10 +136,10 @@ public class AgentVcsSupportTest extends BaseTestCase {
     myVcsSupport = new GitAgentVcsSupport(configuration,
                                           createSmartDirectoryCleaner(),
                                           new GitAgentSSHService(createBuildAgent(), configuration),
-                                          resolver,
-                                          createCurrentBuildTracker());
+                                          resolver);
 
     myLogger = createLogger();
+    myBuild = createRunningBuild();
 
     myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
     myRoot.addProperty(Constants.FETCH_URL, GitUtils.toURL(myMainRepo));
@@ -165,13 +166,13 @@ public class AgentVcsSupportTest extends BaseTestCase {
     myRoot.addProperty(Constants.BRANCH_NAME, "master");
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD,
-                               myCheckoutDir, myLogger);
+                               myCheckoutDir, myBuild, false);
 
     //emulate incorrect git termination (in this it could leave index.lock file)
     FileUtil.copy(new File(myCheckoutDir, ".git" + File.separator + "index"),
                   new File(myCheckoutDir, ".git" + File.separator + "index.lock"));
 
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.CUD1_VERSION, myCheckoutDir, myLogger);
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.CUD1_VERSION, myCheckoutDir, myBuild, false);
   }
 
 
@@ -182,14 +183,14 @@ public class AgentVcsSupportTest extends BaseTestCase {
    */
   public void testRecoverRefLock() throws VcsException, IOException {
     myRoot.addProperty(Constants.BRANCH_NAME, "master");
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myLogger);
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
     String firstCommitInPatchTests = GitUtils.makeVersion("a894d7d58ffde625019a9ecf8267f5f1d1e5c341", 1245766034000L);
     myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), firstCommitInPatchTests, myCheckoutDir, myLogger);
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), firstCommitInPatchTests, myCheckoutDir, myBuild, false);
 
     myRoot.addProperty(Constants.BRANCH_NAME, "master");
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myLogger);
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
     //now we have 2 branches in local repository
 
@@ -199,7 +200,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
                                                          ".lock"));
     
     myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), firstCommitInPatchTests, myCheckoutDir, myLogger);
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), firstCommitInPatchTests, myCheckoutDir, myBuild, false);
   }
 
 
@@ -213,7 +214,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.SUBMODULE_ADDED_VERSION,
-                               myCheckoutDir, myLogger);
+                               myCheckoutDir, myBuild, false);
 
     assertTrue(new File (myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
   }
@@ -262,7 +263,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     }
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION,
-                               myCheckoutDir, myLogger);
+                               myCheckoutDir, myBuild, false);
 
     assertTrue(new File (myCheckoutDir, "first-level-submodule" + File.separator + "submoduleFile.txt").exists());
     if (recursiveSubmoduleCheckout) {
@@ -330,6 +331,16 @@ public class AgentVcsSupportTest extends BaseTestCase {
       allowing(logger).warning(with(any(String.class)));
     }});
     return logger;
+  }
+
+
+  private AgentRunningBuild createRunningBuild() {
+    final AgentRunningBuild build = myMockery.mock(AgentRunningBuild.class);
+    myMockery.checking(new Expectations() {{
+      allowing(build).getBuildLogger(); will(returnValue(myLogger));
+      allowing(build).getSharedConfigParameters(); will(returnValue(new HashMap<String, String>()));
+    }});
+    return build;
   }
 
 

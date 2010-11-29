@@ -17,10 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.SystemInfo;
-import jetbrains.buildServer.agent.BuildAgentConfiguration;
-import jetbrains.buildServer.agent.BuildProgressLogger;
-import jetbrains.buildServer.agent.CurrentBuildTracker;
-import jetbrains.buildServer.agent.SmartDirectoryCleaner;
+import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
@@ -68,39 +65,25 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
    */
   @NonNls private static final String DEFAULT_UNIX_GIT = "git";
 
-  /**
-   * The constructor
-   *
-   * @param agentConfiguration the configuration for this agent
-   * @param directoryCleaner   the directory cleaner
-   * @param sshService         the used ssh service
-   * @param gitPathResolver    the resolver used to resolve path to git
-   * @param buildTracker       the build tracker
-   * @param root               the vcs root
-   * @param checkoutRules      the checkout rules
-   * @param toVersion          the version to update to
-   * @param checkoutDirectory  the checkout directory
-   * @param logger             the logger
-   * @throws VcsException if there is problem with starting the process
-   */
+
   public GitCommandUpdateProcess(@NotNull BuildAgentConfiguration agentConfiguration,
                                  @NotNull SmartDirectoryCleaner directoryCleaner,
                                  @NotNull GitAgentSSHService sshService,
                                  @NotNull GitPathResolver gitPathResolver,
-                                 @NotNull CurrentBuildTracker buildTracker,
                                  @NotNull VcsRoot root,
                                  @NotNull CheckoutRules checkoutRules,
                                  @NotNull String toVersion,
                                  @NotNull File checkoutDirectory,
-                                 @NotNull BuildProgressLogger logger)
+                                 @NotNull AgentRunningBuild build)
     throws VcsException {
-    super(agentConfiguration, directoryCleaner, root, checkoutRules, toVersion, checkoutDirectory, logger,
-          getGitPath(root, agentConfiguration, gitPathResolver, buildTracker), isUseNativeSSH(agentConfiguration));
+    super(agentConfiguration, directoryCleaner, root, checkoutRules, toVersion, checkoutDirectory, build.getBuildLogger(),
+          getGitPath(root, agentConfiguration, gitPathResolver, build), isUseNativeSSH(build));
     mySshService = sshService;
   }
 
-  private static boolean isUseNativeSSH(BuildAgentConfiguration agentConfiguration) {
-    String value = agentConfiguration.getConfigurationParameters().get("teamcity.git.use.native.ssh");
+
+  private static boolean isUseNativeSSH(AgentRunningBuild runningBuild) {
+    String value = runningBuild.getSharedConfigParameters().get("teamcity.git.use.native.ssh");
     return "true".equals(value);
   }
 
@@ -123,26 +106,16 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     }
   }
 
-  /**
-   * Get git path from root
-   *
-   * @param root               the vcs root
-   * @param agentConfiguration the agent configuration
-   * @param gitPathResolver    knows how to resolve path to git on agent
-   * @param buildTracker       the build tracker
-   * @return the path to the git executable or null if neither configured nor found
-   * @throws VcsException if git could not be found or has invalid version
-   */
   private static String getGitPath(VcsRoot root,
                                    final BuildAgentConfiguration agentConfiguration,
                                    GitPathResolver gitPathResolver,
-                                   CurrentBuildTracker buildTracker) throws VcsException {
+                                   @NotNull AgentRunningBuild build) throws VcsException {
     String path = root.getProperty(Constants.AGENT_GIT_PATH);
     if (path != null) {
       path = gitPathResolver.resolveGitPath(agentConfiguration, path);
       Loggers.VCS.info("Using vcs root's git: " + path);
     } else {
-      path = buildTracker.getCurrentBuild().getBuildParameters().getEnvironmentVariables().get(Constants.GIT_PATH_ENV);
+      path = build.getSharedBuildParameters().getEnvironmentVariables().get(Constants.GIT_PATH_ENV);
       if (path != null) {
         Loggers.VCS.info("Using git specified by " + Constants.GIT_PATH_ENV + ": " + path);
       } else {
