@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.TestLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
@@ -431,7 +432,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     };
 
     for (int i = 0; i < 50; i++) {
-      BaseTestCase.runAsync(4, r1, r2, r3, r4);
+      BaseTestCase.runAsync(4, new TestLogger(), r1, r2, r3, r4);
     }
 
     if (!errors.isEmpty()) {
@@ -821,7 +822,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     };
 
     support.collectChanges(root, VERSION_TEST_HEAD, VERSION_TEST_HEAD, new CheckoutRules(""));
-    BaseTestCase.runAsync(4, collectChanges, mapFullPath);
+    BaseTestCase.runAsync(4, new TestLogger(), collectChanges, mapFullPath);
 
     if (!errors.isEmpty()) {
       throw errors.get(0);
