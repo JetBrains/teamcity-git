@@ -144,7 +144,11 @@ public class GitVcsSupport extends ServerVcsSupport
 
   private void setStreamFileThreshold() {
     WindowCacheConfig cfg = new WindowCacheConfig();
-    cfg.setStreamFileThreshold(TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 64) * WindowCacheConfig.MB);
+    if (separateProcessForFetch()) {
+      cfg.setStreamFileThreshold(TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 128) * WindowCacheConfig.MB);
+    } else {
+      cfg.setStreamFileThreshold(TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 64) * WindowCacheConfig.MB);
+    }
     WindowCache.reconfigure(cfg);
   }
 
