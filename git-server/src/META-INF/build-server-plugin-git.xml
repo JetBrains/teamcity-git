@@ -20,5 +20,4 @@
 <beans default-autowire="constructor">
   <bean id="jetbrainsGitServer" class="jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport"/>
   <bean id="cleaner" class="jetbrains.buildServer.buildTriggers.vcs.git.Cleaner"/>
-  <bean id="urlSupport" class="jetbrains.buildServer.buildTriggers.vcs.git.GitUrlSupport"/>
 </beans>

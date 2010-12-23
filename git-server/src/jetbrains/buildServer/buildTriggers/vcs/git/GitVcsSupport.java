@@ -1509,11 +1509,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return true;
   }
 
-  @Override
-  public UrlSupport getUrlSupport() {
-    return new GitUrlSupport();
-  }
-
   /** Git change type */
   private enum ChangeType {
     /** the file is added */
