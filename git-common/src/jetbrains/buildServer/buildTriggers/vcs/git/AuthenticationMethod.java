@@ -31,11 +31,11 @@ public enum AuthenticationMethod {
   /**
    * The private key is specified in the file
    */
-  PRIVATE_KEY_FILE("Password"),
+  PRIVATE_KEY_FILE("Private Key"),
   /**
    * The password is used
    */
-  PASSWORD("Private Key");
+  PASSWORD("Password");
 
   /**
    * Name of auth method for user, e.g. in error messages 
