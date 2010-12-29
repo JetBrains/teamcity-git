@@ -124,8 +124,8 @@ public class GitVcsSupport extends ServerVcsSupport
     mySshSessionFactory = new RefreshableSshConfigSessionFactory(monitorSshConfigs);
     mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory(monitorSshConfigs) {
       // note that different instance is used because JSch cannot be shared with strict host checking
-      public Session getSession(String user, String pass, String host, int port, FS fs) throws JSchException {
-        final Session session = super.getSession(user, pass, host, port, fs);
+      public Session getSession(String user, String pass, String host, int port, CredentialsProvider credentialsProvider, FS fs) throws JSchException {
+        final Session session = super.getSession(user, pass, host, port, credentialsProvider, fs);
         session.setConfig("StrictHostKeyChecking", "no");
         return session;
       }

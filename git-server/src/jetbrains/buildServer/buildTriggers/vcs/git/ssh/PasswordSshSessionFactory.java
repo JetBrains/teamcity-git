@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.ssh;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.util.FS;
 
@@ -43,10 +44,9 @@ public class PasswordSshSessionFactory extends SshSessionFactory {
     sch = new JSch();
   }
 
-  /**
-   * {@inheritDoc}
-   */
-  public Session getSession(String user, String pass, String host, int port, FS fs) throws JSchException {
+  @Override
+  public Session getSession(String user, String pass, String host, int port, CredentialsProvider credentialsProvider, FS fs)
+    throws JSchException {
     final Session session = SshUtils.createSession(sch, user, host, port);
     session.setPassword(pass);
     return session;

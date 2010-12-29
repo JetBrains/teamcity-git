@@ -21,6 +21,7 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import jetbrains.buildServer.configuration.ChangeListener;
 import jetbrains.buildServer.configuration.FilesWatcher;
+import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
@@ -97,10 +98,9 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
     }
   }
 
-  /**
-   * {@inheritDoc}
-   */
-  public Session getSession(String user, String pass, String host, int port, FS fs) throws JSchException {
-    return delegate().getSession(user, pass, host, port, fs);
+  @Override
+  public Session getSession(String user, String pass, String host, int port, CredentialsProvider credentialsProvider, FS fs)
+    throws JSchException {
+    return delegate().getSession(user, pass, host, port, credentialsProvider, fs);
   }
 }

@@ -22,6 +22,7 @@ import com.jcraft.jsch.Session;
 import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.util.FS;
 
@@ -49,7 +50,9 @@ public class PrivateKeyFileSshSessionFactory extends SshSessionFactory {
     }
   }
 
-  public Session getSession(String user, String pass, String host, int port, FS fs) throws JSchException {
+  @Override
+  public Session getSession(String user, String pass, String host, int port, CredentialsProvider credentialsProvider, FS fs)
+    throws JSchException {
     return SshUtils.createSession(sch, user, host, port);
   }
 }
