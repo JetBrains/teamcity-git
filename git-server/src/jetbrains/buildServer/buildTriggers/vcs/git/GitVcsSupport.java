@@ -1410,6 +1410,7 @@ public class GitVcsSupport extends ServerVcsSupport
     final URIish authUrl = authSettings.createAuthURI(url);
     checkUrl(url);
     final Transport t = Transport.open(r, authUrl);
+    t.setCredentialsProvider(authSettings.toCredentialsProvider());
     if (t instanceof SshTransport) {
       SshTransport ssh = (SshTransport)t;
       ssh.setSshSessionFactory(getSshSessionFactory(authSettings, url));

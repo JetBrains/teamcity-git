@@ -19,6 +19,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import org.eclipse.jgit.errors.UnsupportedCredentialItem;
+import org.eclipse.jgit.transport.CredentialItem;
+import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.URIish;
 
 import java.io.File;
@@ -252,6 +255,42 @@ public class Settings {
       result.put(Constants.PASSWORD, myPassword);
       filterNullValues(result);
       return result;
+    }
+
+    public CredentialsProvider toCredentialsProvider() {
+      return new CredentialsProvider() {
+        @Override
+        public boolean isInteractive() {
+          return false;
+        }
+        @Override
+        public boolean supports(CredentialItem... items) {
+          for (CredentialItem i : items) {
+            if (myAuthMethod != AuthenticationMethod.ANONYMOUS && i instanceof CredentialItem.Username) {
+              continue;
+            } else if (myAuthMethod == AuthenticationMethod.PASSWORD && i instanceof CredentialItem.Password) {
+              continue;
+            } else {
+              return false;
+            }
+          }
+          return true;
+        }
+
+        @Override
+        public boolean get(URIish uri, CredentialItem... items) throws UnsupportedCredentialItem {
+          for (CredentialItem i : items) {
+            if (myAuthMethod != AuthenticationMethod.ANONYMOUS && i instanceof CredentialItem.Username) {
+              ((CredentialItem.Username) i).setValue(myUserName);
+            } else if (myAuthMethod == AuthenticationMethod.PASSWORD && i instanceof CredentialItem.Password) {
+              ((CredentialItem.Password) i).setValue(myPassword.toCharArray());
+            } else {
+              throw new UnsupportedCredentialItem(uri, i.getPromptText());
+            }
+          }
+          return true;
+        }
+      };
     }
 
     private void filterNullValues(Map<String, String> map) {
