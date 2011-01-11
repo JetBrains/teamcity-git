@@ -100,7 +100,11 @@ public class GitUtils {
    * @return the reference name
    */
   public static String branchRef(String branch) {
-    return "refs/heads/" + branch;
+    if (branch.startsWith("refs/")) {
+      return branch;
+    } else {
+      return "refs/heads/" + branch;
+    }
   }
 
   /**
@@ -110,7 +114,15 @@ public class GitUtils {
    * @return the reference name
    */
   public static String remotesBranchRef(String branch) {
-    return "refs/remotes/origin/" + branch;
+    if (branch.startsWith("refs/")) {
+      if (branch.startsWith("refs/heads/")) {
+        return "refs/remotes/origin/" + branch.substring("refs/heads/".length());
+      } else {
+        return "refs/remotes/origin/" + branch.substring("refs/".length());
+      }
+    } else {
+      return "refs/remotes/origin/" + branch;
+    }
   }
 
   /**

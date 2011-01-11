@@ -16,6 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+
 import java.io.File;
 
 /**
@@ -41,6 +46,17 @@ public class GitTestUtil {
       f = new File(f, p);
     }
     return f.getAbsoluteFile();
+  }
+
+  public static VcsRoot getVcsRoot() {
+    return getVcsRoot("repo.git");
+  }
+
+  public static VcsRoot getVcsRoot(String repositoryName) {
+    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
+    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(dataFile(repositoryName)));
+    root.addProperty(Constants.BRANCH_NAME, "master");
+    return root;
   }
 
 }

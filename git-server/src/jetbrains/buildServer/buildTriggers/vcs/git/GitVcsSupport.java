@@ -71,6 +71,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Pattern;
 
 
 /**
@@ -256,6 +257,28 @@ public class GitVcsSupport extends ServerVcsSupport
     } catch (Exception e) {
       throw processException("collecting changes", e);
     }
+    return result;
+  }
+
+
+  @NotNull
+  public String getRemoteRunOnBranchPattern() {
+    return "refs/remote-run/{teamcity.user}/.+";
+  }
+
+  @NotNull
+  public Map<String, String> getBranchesRevisions(@NotNull VcsRoot root) throws VcsException {
+    final Map<String, String> result = new HashMap<String, String>();
+    for (Ref ref : getRemoteRefs(root)) {
+      result.put(ref.getName(), ref.getObjectId().name());
+    }
+    return result;
+  }
+
+  @NotNull
+  public Map<String, String> getBranchRootOptions(@NotNull VcsRoot root, @NotNull String branchName) {
+    final Map<String, String> result = new HashMap<String, String>(root.getProperties());
+    result.put(Constants.BRANCH_NAME, branchName);
     return result;
   }
 
@@ -1262,23 +1285,9 @@ public class GitVcsSupport extends ServerVcsSupport
         }
         return null;
       } catch (NotSupportedException nse) {
-        URIish fetchURI = s.getRepositoryFetchURL();
-        if (GitServerUtil.isRedundantColon(fetchURI)) {
-          //url with username looks like ssh://username/hostname:/path/to/repo - it will
-          //confuse user even further, so show url without user name
-          throw new NotSupportedException(MessageFormat.format(JGitText.get().URINotSupported, vcsRoot.getProperty(Constants.FETCH_URL)) +
-                                          ". Make sure you don't have a colon after the host name.");
-        } else {
-          throw nse;
-        }
+        throw friendlyNotSupportedException(vcsRoot, s, nse);
       } catch (TransportException te) {
-        if (GitServerUtil.isUnknownHostKeyError(te)) {
-          String originalMessage = te.getMessage();
-          String message = originalMessage + ". Add this host to a known hosts database or check option 'Ignore Known Hosts Database'.";
-          throw new VcsException(message, te);
-        } else {
-          throw te;
-        }
+        throw friendlyTransportException(te);
       } finally {
         r.close();
       }
@@ -1510,9 +1519,75 @@ public class GitVcsSupport extends ServerVcsSupport
     return true;
   }
 
+
   @Override
   public UrlSupport getUrlSupport() {
     return new GitUrlSupport();
+  }
+
+
+  public List<String> getRemoteBranches(@NotNull final VcsRoot root, @NotNull final String pattern) throws VcsException {
+    Collection<Ref> remotes = getRemoteRefs(root);
+    Pattern p = Pattern.compile(pattern);
+    List<String> result = new ArrayList<String>();
+    for (Ref ref : remotes) {
+      if (p.matcher(ref.getName()).matches()) {
+        result.add(ref.getName());
+      }
+    }
+    return result;
+  }
+
+  @NotNull
+  Collection<Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
+    Settings s = createSettings(root);
+    File tmpDir = null;
+    try {
+      tmpDir = FileUtil.createTempDirectory("git-ls-remote", "");
+      s.setUserDefinedRepositoryPath(tmpDir);
+      Repository db = getRepository(s);
+      Transport transport = null;
+      FetchConnection connection = null;
+      try {
+        transport = openTransport(s.getAuthSettings(), db, s.getRepositoryFetchURL());
+        connection = transport.openFetch();
+        return connection.getRefs();
+      } catch (NotSupportedException nse) {
+        throw friendlyNotSupportedException(root, s, nse);
+      } catch (TransportException te) {
+        throw friendlyTransportException(te);
+      } finally {
+        if (connection != null) connection.close();
+        if (transport != null) transport.close();
+        db.close();
+      }
+    } catch (Exception e) {
+      throw processException("list remote branches", e);
+    } finally {
+      if (tmpDir != null) FileUtil.delete(tmpDir);
+    }
+  }
+
+  private Exception friendlyTransportException(TransportException te) {
+    if (GitServerUtil.isUnknownHostKeyError(te)) {
+      String originalMessage = te.getMessage();
+      String message = originalMessage + ". Add this host to a known hosts database or check option 'Ignore Known Hosts Database'.";
+      return new VcsException(message, te);
+    } else {
+      return te;
+    }
+  }
+
+  private NotSupportedException friendlyNotSupportedException(VcsRoot root, Settings s, NotSupportedException nse)  {
+    URIish fetchURI = s.getRepositoryFetchURL();
+    if (GitServerUtil.isRedundantColon(fetchURI)) {
+      //url with username looks like ssh://username/hostname:/path/to/repo - it will
+      //confuse user even further, so show url without user name
+      return new NotSupportedException(MessageFormat.format(JGitText.get().URINotSupported, root.getProperty(Constants.FETCH_URL)) +
+                                      ". Make sure you don't have a colon after the host name.");
+    } else {
+      return nse;
+    }
   }
 
   /** Git change type */

@@ -18,8 +18,10 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.TestLogger;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.Cleaner;
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.serverSide.BuildServerListener;
 import jetbrains.buildServer.serverSide.SBuildServer;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -28,13 +30,11 @@ import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsManager;
 import jetbrains.buildServer.vcs.VcsRoot;
-import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import jetbrains.buildServer.BaseTestCase;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,8 +42,6 @@ import java.util.Collections;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 
 /**
  * @author dmitry.neverov
@@ -84,7 +82,7 @@ public class CleanerTest extends BaseTestCase {
     if (System.getenv(Constants.GIT_PATH_ENV) != null)
       System.setProperty("teamcity.server.git.executable.path", System.getenv(Constants.GIT_PATH_ENV));
 
-    final VcsRoot root = getVcsRoot();
+    final VcsRoot root = GitTestUtil.getVcsRoot();
     GitVcsSupport vcsSupport = new GitVcsSupport(myServerPaths, null, null);
     vcsSupport.getCurrentVersion(root);//it will create dir in cache directory
     File repositoryDir = getRepositoryDir(root);
@@ -119,13 +117,6 @@ public class CleanerTest extends BaseTestCase {
     for (int i = 0; i < 10; i++) {
       new File(dir, "git-AHAHAHA"+i+".git").mkdir();
     }
-  }
-
-  private VcsRoot getVcsRoot() {
-    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
-    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(dataFile("repo.git")));
-    root.addProperty(Constants.BRANCH_NAME, "master");
-    return root;
   }
 
   private SVcsRoot createSVcsRootFor(final VcsRoot root) {
