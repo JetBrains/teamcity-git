@@ -751,9 +751,6 @@ public class GitVcsSupport extends ServerVcsSupport
       Repository r = getRepository(s, repositories);
       final TreeWalk tw = new TreeWalk(r);
       try {
-
-
-
         if (LOG.isDebugEnabled()) {
           LOG.debug("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
         }
