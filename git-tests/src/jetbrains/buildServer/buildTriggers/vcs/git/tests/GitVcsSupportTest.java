@@ -916,6 +916,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       fail("Should throw an exception for not-existing repository");
     } catch (VcsException e) {
       assertTrue(e.getMessage().contains("Cannot access repository"));
+      assertFalse(e.getMessage().endsWith("\n"));
     }
   }
 }
