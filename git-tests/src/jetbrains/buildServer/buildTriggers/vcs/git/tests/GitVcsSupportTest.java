@@ -20,12 +20,14 @@ import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import jetbrains.buildServer.vcs.patches.PatchTestCase;
+import org.apache.log4j.Level;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
@@ -918,5 +920,36 @@ public class GitVcsSupportTest extends PatchTestCase {
       assertTrue(e.getMessage().contains("Cannot access repository"));
       assertFalse(e.getMessage().endsWith("\n"));
     }
+  }
+
+
+  /**
+   * TW-14813
+   */
+  @Test
+  public void test_logging() {
+    String noDebugError = getCurrentVersionExceptionMessage();
+    assertFalse(noDebugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"));//no stacktrace
+    assertFalse(noDebugError.endsWith("\n"));
+
+    Loggers.VCS.setLevel(Level.DEBUG);
+    String debugError = getCurrentVersionExceptionMessage();
+    assertTrue(debugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"));
+    assertFalse(debugError.endsWith("\n"));
+  }
+
+
+  private String getCurrentVersionExceptionMessage() {
+    String result = null;
+    File notExisting = new File(myTmpDir, "not-existing");
+    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
+    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(notExisting));
+    try {
+      getSupport().getCurrentVersion(root);
+      fail("Should throw an exception for not-existing repository");
+    } catch (VcsException e) {
+      result = e.getMessage();
+    }
+    return result;
   }
 }
