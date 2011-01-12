@@ -38,9 +38,20 @@ import java.util.Map;
 public class Fetcher {
 
   public static void main(String[] args) throws IOException, VcsException, URISyntaxException {
-    Map<String, String> properties = VcsRootImpl.stringToProperties(readInput());
-    String repositoryPath = properties.remove(Constants.REPOSITORY_DIR_PROPERTY_NAME);
-    fetch(new File(repositoryPath), properties);
+    boolean debug = false;
+    try {
+      Map<String, String> properties = VcsRootImpl.stringToProperties(readInput());
+      String repositoryPath = properties.remove(Constants.REPOSITORY_DIR_PROPERTY_NAME);
+      debug = "true".equals(properties.remove(Constants.VCS_DEBUG_ENABLED));
+      fetch(new File(repositoryPath), properties);
+    } catch (Throwable t) {
+      if (debug) {
+        t.printStackTrace(System.err);
+      } else {
+        System.err.println(t.getMessage());
+      }
+      System.exit(1);
+    }
   }
 
   /**

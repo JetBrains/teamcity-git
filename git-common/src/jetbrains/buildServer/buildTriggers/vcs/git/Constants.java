@@ -102,4 +102,5 @@ public interface Constants {
    * Refspec to fetch, used in communication with Fetcher
    */
   public static String REFSPEC = "REFSPEC";
+  public static String VCS_DEBUG_ENABLED = "VCS_DEBUG_ENABLED";
 }

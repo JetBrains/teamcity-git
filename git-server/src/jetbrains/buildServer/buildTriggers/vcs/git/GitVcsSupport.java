@@ -1115,6 +1115,7 @@ public class GitVcsSupport extends ServerVcsSupport
           properties.put(Constants.REPOSITORY_DIR_PROPERTY_NAME, repository.getDirectory().getCanonicalPath());
           properties.put(Constants.FETCH_URL, uri.toString());
           properties.put(Constants.REFSPEC, spec.toString());
+          properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
           processInput.write(VcsRootImpl.propertiesToString(properties).getBytes("UTF-8"));
           processInput.flush();
         } catch (IOException e) {
