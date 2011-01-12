@@ -1147,7 +1147,6 @@ public class GitVcsSupport extends ServerVcsSupport
     }
     VcsException commandError = CommandLineUtil.getCommandLineError("git fetch", result);
     if (commandError != null) {
-      LOG.warn(commandError.getMessage());
       if (isOutOfMemoryError(result)) {
         LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + getFetchProcessMaxMemory() + ", try to increase it.");
         clean(repository);
