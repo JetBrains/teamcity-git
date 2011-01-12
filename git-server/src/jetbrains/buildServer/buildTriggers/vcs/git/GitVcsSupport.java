@@ -33,6 +33,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErr
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolver;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.TeamCitySubmoduleResolver;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
 import jetbrains.buildServer.util.EventDispatcher;
@@ -181,12 +182,7 @@ public class GitVcsSupport extends ServerVcsSupport
         message = t.toString();
       }
     } else {
-      StringBuilder b = new StringBuilder();
-      for (Throwable t = ex; t != null; t = t.getCause()) {
-        b.append('\n');
-        b.append(t.toString());
-      }
-      message = b.toString();
+      message = ex.toString();
     }
     return new VcsException(StringUtil.capitalize(operation) + " failed: " + message, ex);
   }
