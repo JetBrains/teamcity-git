@@ -928,7 +928,7 @@ public class GitVcsSupportTest extends PatchTestCase {
    */
   @Test
   public void test_logging() {
-    System.setProperty("teamcity.git.fetch.separate.process", "false");
+    System.setProperty("teamcity.git.fetch.separate.process", "true");
 
     String noDebugError = getCurrentVersionExceptionMessage();
     assertFalse(noDebugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"));//no stacktrace
