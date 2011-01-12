@@ -328,8 +328,8 @@ public abstract class GitUpdateProcess {
     if (myCheckoutRules.getIncludeRules().size() == 1) {
       IncludeRule ir = myCheckoutRules.getIncludeRules().get(0);
       if (!".".equals(ir.getFrom()) && ir.getFrom().length() != 0) {
-        throw new VcsException("The include rule must have a form '. => subdir' (" + ir.toDescriptiveString() +
-                               ") for VCS Root " + myRoot.getName());
+        throw new VcsException("Agent checkout for the git supports only include rule of form '. => subdir', rule " + ir.toDescriptiveString() +
+                               " for VCS Root " + myRoot.getName() + " is not supported");
       }
     }
   }
