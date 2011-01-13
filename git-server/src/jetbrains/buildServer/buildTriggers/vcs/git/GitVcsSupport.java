@@ -1056,6 +1056,7 @@ public class GitVcsSupport extends ServerVcsSupport
     try {
       tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(refSpec));
     } catch (OutOfMemoryError oom) {
+      LOG.warn("There is not enough memory for git fetch, try to run fetch in a separate process.");
       clean(db);
     } finally {
       tn.close();
