@@ -1037,7 +1037,7 @@ public class GitVcsSupport extends ServerVcsSupport
     assert repositoryDir != null : "Non-local repository";
     synchronized (getRepositoryLock(repositoryDir)) {
       if (separateProcessForFetch()) {
-        fetchBranchDataInSeparateProcess(db, auth, fetchURI, refspec);
+        fetchInSeparateProcess(db, auth, fetchURI, refspec);
       } else {
         fetchInSameProcess(db, auth, fetchURI, refspec);
       }
@@ -1090,7 +1090,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * @param repository the repository
    * @throws Exception if there is a problem with fetching data
    */
-  private void fetchBranchDataInSeparateProcess(final Repository repository, final Settings.AuthSettings settings, final URIish uri, final RefSpec spec)
+  private void fetchInSeparateProcess(final Repository repository, final Settings.AuthSettings settings, final URIish uri, final RefSpec spec)
     throws VcsException {
     final long fetchStart = System.currentTimeMillis();
     final String debugInfo = " (" + (repository.getDirectory() != null? repository.getDirectory().getAbsolutePath() + ", ":"")
