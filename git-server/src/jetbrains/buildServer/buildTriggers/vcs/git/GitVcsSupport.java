@@ -950,6 +950,9 @@ public class GitVcsSupport extends ServerVcsSupport
         fetchBranchData(s, r);
         String refName = GitUtils.branchRef(s.getBranch());
         Ref branchRef = r.getRef(refName);
+        if (branchRef == null) {
+          throw new VcsException("The branch name could not be resolved " + refName);
+        }
         String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryPath(), s.getBranch());
         if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
           return cachedCurrentVersion;
