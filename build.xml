@@ -32,7 +32,7 @@
         <fileset dir="${basedir}" includes="license/**"/>
       </server-additional-files>
       <agent-additional-files>
-        <fileset dir="${basedir}/lib/agent-ssh" includes="trilead-ssh2.jar"/>
+        <fileset dir="${basedir}" includes="lib/ssh/trilead-ssh2.jar"/>
       </agent-additional-files>
     </package.teamcity.plugin>
 

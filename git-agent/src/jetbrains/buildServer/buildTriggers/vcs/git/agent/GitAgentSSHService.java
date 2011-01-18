@@ -67,7 +67,8 @@ public class GitAgentSSHService extends GitSSHService {
 
   @Override
   public String getSshLibraryPath() throws IOException {
-    File sshJar = new File(myPluginDescriptor.getPluginRoot(), "trilead-ssh2.jar");
+    File sshLibDir = new File(myPluginDescriptor.getPluginRoot(), "lib" + File.separator + "ssh");
+    File sshJar = new File(sshLibDir, "trilead-ssh2.jar");
     if (!sshJar.exists()) {
       LOG.warn("Cannot find ssh library jar at " + sshJar.getCanonicalPath());
     }
