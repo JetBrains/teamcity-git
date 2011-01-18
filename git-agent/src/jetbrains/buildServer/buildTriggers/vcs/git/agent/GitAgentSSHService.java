@@ -18,15 +18,20 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.BuildAgent;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
+import jetbrains.buildServer.agent.plugins.beans.PluginDescriptor;
+import org.apache.log4j.Logger;
 import org.jetbrains.git4idea.ssh.GitSSHHandler;
 import org.jetbrains.git4idea.ssh.GitSSHService;
 
 import java.io.File;
+import java.io.IOException;
 
 /**
  * SSH service implementation for TeamCity agents
  */
 public class GitAgentSSHService extends GitSSHService {
+
+  private final static Logger LOG = Logger.getLogger(GitAgentSSHService.class);
 
   /**
    * The configuration for the build agent
@@ -36,6 +41,7 @@ public class GitAgentSSHService extends GitSSHService {
    * The agent service
    */
   final BuildAgent myAgent;
+  private final PluginDescriptor myPluginDescriptor;
 
   /**
    * The constructor
@@ -43,9 +49,10 @@ public class GitAgentSSHService extends GitSSHService {
    * @param myAgent              the agent to use
    * @param myAgentConfiguration the agent configuration to use
    */
-  public GitAgentSSHService(BuildAgent myAgent, BuildAgentConfiguration myAgentConfiguration) {
+  public GitAgentSSHService(BuildAgent myAgent, BuildAgentConfiguration myAgentConfiguration, PluginDescriptor pluginDescriptor) {
     this.myAgent = myAgent;
     this.myAgentConfiguration = myAgentConfiguration;
+    this.myPluginDescriptor = pluginDescriptor;
   }
 
   @Override
@@ -56,6 +63,16 @@ public class GitAgentSSHService extends GitSSHService {
   @Override
   public int getXmlRcpPort() {
     return myAgentConfiguration.getOwnPort();
+  }
+
+  @Override
+  public String getSshLibraryPath() throws IOException {
+    File sshLibDir = new File(myPluginDescriptor.getPluginRoot(), "lib" + File.separator + "ssh");
+    File sshJar = new File(sshLibDir, "trilead-ssh2.jar");
+    if (!sshJar.exists()) {
+      LOG.warn("Cannot find ssh library jar at " + sshJar.getCanonicalPath());
+    }
+    return sshJar.getCanonicalPath();
   }
 
   @Override

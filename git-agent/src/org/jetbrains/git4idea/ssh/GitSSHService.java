@@ -16,7 +16,6 @@
 package org.jetbrains.git4idea.ssh;
 
 import com.intellij.openapi.util.io.FileUtil;
-import com.trilead.ssh2.KnownHosts;
 import gnu.trove.THashMap;
 import org.apache.commons.codec.DecoderException;
 import org.apache.xmlrpc.XmlRpcClientLite;
@@ -56,6 +55,8 @@ public abstract class GitSSHService {
    */
   public abstract int getXmlRcpPort();
 
+  public abstract String getSshLibraryPath() throws IOException;
+
   /**
    * Get file to the script service
    *
@@ -67,7 +68,8 @@ public abstract class GitSSHService {
     if (myScriptPath == null || !myScriptPath.exists()) {
       ScriptGenerator generator = new ScriptGenerator(GitSSHHandler.GIT_SSH_PREFIX, SSHMain.class, getTempDir());
       generator.addClasses(XmlRpcClientLite.class, DecoderException.class);
-      generator.addClasses(KnownHosts.class, FileUtil.class);
+      generator.addClasses(FileUtil.class);
+      generator.addPath(getSshLibraryPath());
       generator.addResource(SSHMainBundle.class, "/org/jetbrains/git4idea/ssh/SSHMainBundle.properties");
       myScriptPath = generator.generate();
     }

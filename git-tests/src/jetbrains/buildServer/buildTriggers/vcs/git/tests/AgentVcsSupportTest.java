@@ -20,6 +20,7 @@ import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.*;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.BuildAgent;
+import jetbrains.buildServer.agent.plugins.beans.PluginDescriptor;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
@@ -29,6 +30,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitPathResolver;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.jetbrains.annotations.NotNull;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
@@ -135,7 +137,12 @@ public class AgentVcsSupportTest extends BaseTestCase {
     BuildAgentConfiguration configuration = createBuildAgentConfiguration();
     myVcsSupport = new GitAgentVcsSupport(configuration,
                                           createSmartDirectoryCleaner(),
-                                          new GitAgentSSHService(createBuildAgent(), configuration),
+                                          new GitAgentSSHService(createBuildAgent(), configuration, new PluginDescriptor() {
+                                            @NotNull
+                                            public File getPluginRoot() {
+                                              return new File("jetbrains.git");
+                                            }
+                                          }),
                                           resolver);
 
     myLogger = createLogger();

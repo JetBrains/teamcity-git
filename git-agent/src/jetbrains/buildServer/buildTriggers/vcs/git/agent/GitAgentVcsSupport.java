@@ -49,7 +49,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   /**
    * The resolver service
    */
-  final GitPathResolver myGitPathResovler;
+  final GitPathResolver myGitPathResolver;
 
   /**
    * The constructor
@@ -66,7 +66,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     myAgentConfiguration = agentConfiguration;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
-    myGitPathResovler = gitPathResolver;
+    myGitPathResolver = gitPathResolver;
   }
 
 
@@ -97,7 +97,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     new GitCommandUpdateProcess(myAgentConfiguration,
                                 myDirectoryCleaner,
                                 mySshService,
-                                myGitPathResovler,
+                                myGitPathResolver,
                                 root,
                                 checkoutRules,
                                 toVersion,

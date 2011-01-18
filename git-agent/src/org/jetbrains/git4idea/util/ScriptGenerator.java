@@ -111,7 +111,7 @@ public class ScriptGenerator {
    *
    * @param path the path to add
    */
-  private void addPath(final String path) {
+  public void addPath(final String path) {
     if (!myPaths.contains(path)) {
       // the size of path is expected to be quite small, so no optimization is done here
       myPaths.add(path);

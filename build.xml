@@ -26,13 +26,14 @@
                              server.output="${git-server.output.dir}"
                              common.lib.dir="lib/common"
                              common.lib.includes="*.jar"
-                             agent.lib.dir="lib/agent"
-                             agent.lib.includes="*.jar"
                              plugin.descriptor.file="teamcity-plugin.dist.xml"
                              plugin.version="${plugin.version}">
       <server-additional-files>
         <fileset dir="${basedir}" includes="license/**"/>
       </server-additional-files>
+      <agent-additional-files>
+        <fileset dir="${basedir}" includes="lib/ssh/trilead-ssh2.jar"/>
+      </agent-additional-files>
     </package.teamcity.plugin>
 
     <mkdir dir="${basedir}/dist/src"/>
