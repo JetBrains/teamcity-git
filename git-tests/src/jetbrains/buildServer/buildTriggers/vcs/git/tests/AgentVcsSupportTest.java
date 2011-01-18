@@ -310,6 +310,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
       allowing(configuration).getOwnPort(); will(returnValue(600));
       allowing(configuration).getTempDirectory(); will(returnValue(agentConfigurationTempDirectory));
       allowing(configuration).getConfigurationParameters(); will(returnValue(new HashMap<String, String>()));
+      allowing(configuration).getAgentPluginsDirectory(); will(returnValue(new File("agent_plugins")));
     }});
     return configuration;
   }
