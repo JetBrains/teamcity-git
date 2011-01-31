@@ -92,6 +92,27 @@ public class GitUrlSupportTest extends BaseTestCase {
   }
 
 
+  @Test
+  public void convert_scp_like_syntax() throws Exception {
+    VcsUrl url = new VcsUrl("scm:git:git@github.com:user/repo.git");
+    Settings s = toSettings(url);
+    assertEquals(new URIish(url.getProviderSpecificPart()), s.getRepositoryFetchURL());
+    assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, s.getAuthSettings().getAuthMethod());
+    assertEquals("git", s.getAuthSettings().toMap().get(Constants.USERNAME));
+  }
+
+
+  @Test
+  public void convert_scp_like_syntax_with_credentials() throws Exception {
+    VcsUrl url = new VcsUrl("scm:git:git@github.com:user/repo.git", "user", "pass");
+    Settings s = toSettings(url);
+    assertEquals(new URIish("user@github.com:user/repo.git"), s.getRepositoryFetchURL());
+    assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, s.getAuthSettings().getAuthMethod());
+    assertEquals("user", s.getAuthSettings().toMap().get(Constants.USERNAME));
+    assertNull(s.getAuthSettings().toMap().get(Constants.PASSWORD));
+  }
+
+
   private void checkAuthMethod(VcsUrl url, Settings s) {
     if (url.getProviderSpecificPart().startsWith("ssh")) {
       assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, s.getAuthSettings().getAuthMethod());
