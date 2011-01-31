@@ -57,7 +57,11 @@ public class GitUrlSupport implements UrlSupport {
     Map<String, String> result = new HashMap<String, String>();
     result.put(Constants.FETCH_URL, url.getProviderSpecificPart());
     result.put(Constants.USERNAME, url.getUsername());
-    if (uri.getScheme().equals("ssh")) {
+    final boolean scpSyntax = isScpSyntax(uri);
+    if (scpSyntax || "ssh".equals(uri.getScheme())) {
+      if (scpSyntax && url.getUsername() == null) {
+        result.put(Constants.USERNAME, uri.getUser());
+      }
       result.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString());
       result.put(Constants.IGNORE_KNOWN_HOSTS, "true");
     } else if (url.getPassword() != null && !StringUtil.isEmptyOrSpaces(url.getProviderSpecificPart())) {
@@ -65,5 +69,10 @@ public class GitUrlSupport implements UrlSupport {
       result.put(Constants.PASSWORD, url.getPassword());
     }
     return result;
+  }
+
+
+  private boolean isScpSyntax(URIish uriish) {
+    return uriish.getScheme() == null;
   }
 }
