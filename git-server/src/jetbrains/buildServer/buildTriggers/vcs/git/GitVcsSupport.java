@@ -259,7 +259,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public String getRemoteRunOnBranchPattern() {
-    return "refs/remote-run/{teamcity.user}/.+";
+    return "refs/remote-run/{teamcity.username}/.+";
   }
 
   @NotNull
