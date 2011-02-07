@@ -1443,7 +1443,7 @@ public class GitVcsSupport extends ServerVcsSupport
       if (!localRepository.exists()) {
         String error = "Cannot access repository " + url.toString();
         if (SystemInfo.isWindows) {
-          error += ". If TeamCity is ran as a service, it cannot access network mapped drives. Make sure this is not your case.";
+          error += ". If TeamCity is run as a service, it cannot access network mapped drives. Make sure this is not your case.";
         }
         throw new VcsException(error);
       }
