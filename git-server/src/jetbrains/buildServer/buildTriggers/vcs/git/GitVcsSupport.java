@@ -283,6 +283,11 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @NotNull VcsRoot branchRoot,
                                                @Nullable String  branchRootVersion,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
+    if (LOG.isDebugEnabled()) {
+      Settings originalSettings = createSettings(originalRoot);
+      Settings branchSettings = createSettings(branchRoot);
+      LOG.debug("Collecting changes [" + originalSettings.debugInfo() + "-" + originalRootVersion + "]..[" + branchSettings.debugInfo() + "-" + branchRootVersion + "]");
+    }
     String forkPoint = getLastCommonVersion(originalRoot, originalRootVersion, branchRoot, branchRootVersion);
     return collectChanges(branchRoot, forkPoint, branchRootVersion, checkoutRules);
   }
@@ -300,7 +305,11 @@ public class GitVcsSupport extends ServerVcsSupport
       walk.markStart(walk.parseCommit(baseCommit.getId()));
       walk.markStart(walk.parseCommit(tipCommit.getId()));
       final RevCommit base = walk.next();
-      return GitServerUtil.makeVersion(base);
+      String result = GitServerUtil.makeVersion(base);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Last common revision between " + baseSettings.debugInfo() + " and " + tipSettings.debugInfo() + " is " + result);
+      }
+      return result;
     } catch (Exception e) {
       throw processException("find fork version", e);
     } finally {
