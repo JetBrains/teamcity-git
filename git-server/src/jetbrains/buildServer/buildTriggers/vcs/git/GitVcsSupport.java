@@ -354,16 +354,32 @@ public class GitVcsSupport extends ServerVcsSupport
     walk.markStart(start);
     walk.markUninteresting(walk.parseCommit(ObjectId.fromString(firstUninterestingSHA)));
     walk.sort(RevSort.TOPO);
-    walk.sort(RevSort.COMMIT_TIME_DESC);
     try {
       RevCommit c;
       while ((c = walk.next()) != null) {
-        //TODO: check if commit has interesting changes
+        TreeWalk tw = new TreeWalk(db);
+        tw.setRecursive(true);
+        tw.setFilter(TreeFilter.ANY_DIFF);
+        tw.reset();
+        try {
+          tw.addTree(c.getTree().getId());
+          for (RevCommit parent : c.getParents()) {
+            tw.addTree(parent.getTree().getId());
+          }
+          while (tw.next()) {
+            String path = tw.getPathString();
+            if (rules.shouldInclude(path)) {
+              return true;
+            }
+          }
+        } finally {
+          tw.release();
+        }
       }
     } finally {
       walk.release();
     }
-    return true;
+    return false;
   }
 
   /**
