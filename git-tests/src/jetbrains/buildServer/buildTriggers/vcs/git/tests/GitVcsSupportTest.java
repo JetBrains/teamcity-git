@@ -331,7 +331,7 @@ public class GitVcsSupportTest extends PatchTestCase {
    *      o 3b9fbfbb43e7edfad018b482e15e7f93cca4e69f (no changes in dir/)
    */
   @Test
-  public void testCollectBuildChangesWithCheckoutRules() throws Exception {
+  public void test_merge_without_interesting_changes_commit_can_be_ignored() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master");
     final List<ModificationData> mds = support.collectChanges(root,
@@ -346,7 +346,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   @Test
-  public void testMergeCommitCannotBeIgnored() throws Exception {
+  public void merge_commit_with_interesting_changes_cannot_be_ignored() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master");
     final List<ModificationData> mds = support.collectChanges(root,
