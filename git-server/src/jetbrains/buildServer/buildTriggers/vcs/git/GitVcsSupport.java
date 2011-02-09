@@ -334,8 +334,11 @@ public class GitVcsSupport extends ServerVcsSupport
     List<VcsChange> changes = getCommitChanges(repositories, settings, db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
     ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
                                               GitServerUtil.getUser(settings, commit), root, currentVersion, commit.getId().name());
-    if (isMergeCommit(commit) && changes.isEmpty() && hasInterestingChanges(db, commit, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion))) {
-      result.setCanBeIgnored(false);
+    if (isMergeCommit(commit) && changes.isEmpty()) {
+      boolean hasInterestingChanges = hasInterestingChanges(db, commit, repositories, settings, ignoreSubmodulesErrors, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion));
+      if (hasInterestingChanges) {
+        result.setCanBeIgnored(false);
+      }
     }
     return result;
   }
@@ -344,7 +347,13 @@ public class GitVcsSupport extends ServerVcsSupport
     return commit.getParents().length > 1;
   }
 
-  private boolean hasInterestingChanges(final Repository db, final RevCommit mergeCommit, final CheckoutRules rules, String firstUninterestingSHA)
+  private boolean hasInterestingChanges(final Repository db,
+                                        final RevCommit mergeCommit,
+                                        final Map<String, Repository> repositories,
+                                        final Settings settings,
+                                        final boolean ignoreSubmodulesErrors,
+                                        final CheckoutRules rules,
+                                        final String firstUninterestingSHA)
     throws IOException {
     RevWalk walk = new RevWalk(db);
     List<RevCommit> start = new ArrayList<RevCommit>();
@@ -362,9 +371,10 @@ public class GitVcsSupport extends ServerVcsSupport
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.reset();
         try {
+          addTree(tw, c, settings, repositories, ignoreSubmodulesErrors, db);
           tw.addTree(c.getTree().getId());
           for (RevCommit parent : c.getParents()) {
-            tw.addTree(parent.getTree().getId());
+            addTree(tw, parent, settings, repositories, ignoreSubmodulesErrors, db);
           }
           while (tw.next()) {
             String path = tw.getPathString();
