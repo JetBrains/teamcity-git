@@ -217,7 +217,7 @@ public class GitVcsSupport extends ServerVcsSupport
           RevCommit c;
           boolean lastCommit = true;
           while ((c = revs.next()) != null) {
-            result.add(createModificationData(c, r, repositories, root, s, !lastCommit, firstUninterestingVersion));
+            result.add(createModificationData(c, r, repositories, root, s, !lastCommit, firstUninterestingVersion, checkoutRules));
             lastCommit = false;
           }
         } else {
@@ -229,7 +229,7 @@ public class GitVcsSupport extends ServerVcsSupport
             if (c.getCommitTime() * 1000L <= limitTime) {
               revs.markUninteresting(c);
             } else {
-              result.add(createModificationData(c, r, repositories, root, s, !lastCommit, null));
+              result.add(createModificationData(c, r, repositories, root, s, !lastCommit, null, checkoutRules));
             }
             lastCommit = false;
           }
@@ -323,7 +323,8 @@ public class GitVcsSupport extends ServerVcsSupport
                                                   final VcsRoot root,
                                                   final Settings settings,
                                                   final boolean ignoreSubmodulesErrors,
-                                                  final String firstUninterestingVersion) throws IOException {
+                                                  final String firstUninterestingVersion,
+                                                  final CheckoutRules checkoutRules) throws IOException {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Collecting changes in commit " + commit.getId().name() + ":" + commit.getShortMessage() +
                 " (" + commit.getCommitterIdent().getWhen() + ") for " + settings.debugInfo());
@@ -333,10 +334,62 @@ public class GitVcsSupport extends ServerVcsSupport
     List<VcsChange> changes = getCommitChanges(repositories, settings, db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
     ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
                                               GitServerUtil.getUser(settings, commit), root, currentVersion, commit.getId().name());
-    if (commit.getParents().length > 1) {
-      result.setCanBeIgnored(false);
+    if (isMergeCommit(commit) && changes.isEmpty()) {
+      boolean hasInterestingChanges = hasInterestingChanges(db, commit, repositories, settings, ignoreSubmodulesErrors, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion));
+      if (hasInterestingChanges) {
+        result.setCanBeIgnored(false);
+      }
     }
     return result;
+  }
+
+  private boolean isMergeCommit(RevCommit commit) {
+    return commit.getParents().length > 1;
+  }
+
+  private boolean hasInterestingChanges(final Repository db,
+                                        final RevCommit mergeCommit,
+                                        final Map<String, Repository> repositories,
+                                        final Settings settings,
+                                        final boolean ignoreSubmodulesErrors,
+                                        final CheckoutRules rules,
+                                        final String firstUninterestingSHA)
+    throws IOException {
+    RevWalk walk = new RevWalk(db);
+    List<RevCommit> start = new ArrayList<RevCommit>();
+    for (RevCommit c : mergeCommit.getParents()) {
+      start.add(walk.parseCommit(c));
+    }
+    walk.markStart(start);
+    walk.markUninteresting(walk.parseCommit(ObjectId.fromString(firstUninterestingSHA)));
+    walk.sort(RevSort.TOPO);
+    try {
+      RevCommit c;
+      while ((c = walk.next()) != null) {
+        TreeWalk tw = new TreeWalk(db);
+        tw.setRecursive(true);
+        tw.setFilter(TreeFilter.ANY_DIFF);
+        tw.reset();
+        try {
+          addTree(tw, c, settings, repositories, ignoreSubmodulesErrors, db);
+          tw.addTree(c.getTree().getId());
+          for (RevCommit parent : c.getParents()) {
+            addTree(tw, parent, settings, repositories, ignoreSubmodulesErrors, db);
+          }
+          while (tw.next()) {
+            String path = tw.getPathString();
+            if (rules.shouldInclude(path)) {
+              return true;
+            }
+          }
+        } finally {
+          tw.release();
+        }
+      }
+    } finally {
+      walk.release();
+    }
+    return false;
   }
 
   /**

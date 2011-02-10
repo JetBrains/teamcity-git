@@ -290,7 +290,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     final List<ModificationData> mms1 = support.collectChanges(root, CUD1_VERSION, MERGE_VERSION, new CheckoutRules(""));
     assertEquals(3, mms1.size());
     ModificationData md1 = mms1.get(0);
-    assertFalse(md1.isCanBeIgnored());
     assertEquals("merge commit\n", md1.getDescription());
     assertEquals(MERGE_VERSION, md1.getVersion());
     assertEquals(3, md1.getChanges().size());
@@ -321,16 +320,52 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   /**
+   * Test collecting build changes respects checkout rules
+   *    master
+   *      o 2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6 (merge commit with no changed files)
+   *     /|
+   *    / |
+   *   o 2494559261ab85e92b1780860b34f876b5e6bce6 (commit from other branch) changes file readme.txt (not in dir/)
+   *      |
+   *      |
+   *      o 3b9fbfbb43e7edfad018b482e15e7f93cca4e69f (no changes in dir/)
+   */
+  @Test
+  public void test_merge_commit_without_interesting_changes_can_be_ignored() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("master");
+    final List<ModificationData> mds = support.collectChanges(root,
+                                                              GitUtils.makeVersion("3b9fbfbb43e7edfad018b482e15e7f93cca4e69f", 1283497225000L),
+                                                              GitUtils.makeVersion("2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", 1286183770000L),
+                                                              new CheckoutRules("+:dir=>."));
+    //we can ignore checkout rules during collecting changes, TeamCity will apply them later,
+    //but we should not set canBeIgnored = false for modifications, otherwise TeamCity won't exclude them
+    for (ModificationData md : mds) {
+      assertTrue(md.isCanBeIgnored());
+    }
+  }
+
+  @Test
+  public void merge_commit_with_interesting_changes_cannot_be_ignored() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("master");
+    final List<ModificationData> mds = support.collectChanges(root,
+                                                              GitUtils.makeVersion("2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", 1289483376000L),
+                                                              GitUtils.makeVersion("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", 1289483394000L),
+                                                              new CheckoutRules("+:dir=>."));
+    ModificationData mergeCommit = mds.get(0);
+    assertFalse(mergeCommit.isCanBeIgnored());
+  }
+
+  /**
    * Test getting changes for the build concurrently. Copy of previous test but with several threads collecting changes
-   *
-   * @throws Exception in case of IO problem
    */
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void testConcurrentCollectBuildChanges(boolean fetchInSeparateProcess) throws Exception {
+  public void testConcurrentCollectBuildChanges(boolean fetchInSeparateProcess) throws Throwable {
     System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
 
     final GitVcsSupport support = getSupport();
-    final List<Exception> errors = Collections.synchronizedList(new ArrayList<Exception>());
+    final List<Throwable> errors = Collections.synchronizedList(new ArrayList<Throwable>());
 
     Runnable r1 = new Runnable() {
       public void run() {
@@ -361,7 +396,7 @@ public class GitVcsSupportTest extends PatchTestCase {
           VcsChange ch12 = m1.getChanges().get(2);
           assertEquals("dir/tr.txt", ch12.getFileName());
           assertEquals(VcsChange.Type.REMOVED, ch12.getType());
-        } catch (Exception e) {
+        } catch (Throwable e) {
           errors.add(e);
         }
       }
@@ -374,7 +409,7 @@ public class GitVcsSupportTest extends PatchTestCase {
           final VcsRoot root = getRoot("master");
           final List<ModificationData> mms0 = support.collectChanges(root, MERGE_BRANCH_VERSION, MERGE_VERSION, new CheckoutRules(""));
           assertEquals(2, mms0.size());
-        } catch (Exception e) {
+        } catch (Throwable e) {
           errors.add(e);
         }
       }
@@ -388,7 +423,6 @@ public class GitVcsSupportTest extends PatchTestCase {
           final List<ModificationData> mms1 = support.collectChanges(root, CUD1_VERSION, MERGE_VERSION, new CheckoutRules(""));
           assertEquals(3, mms1.size());
           ModificationData md1 = mms1.get(0);
-          assertFalse(md1.isCanBeIgnored());
           assertEquals("merge commit\n", md1.getDescription());
           assertEquals(MERGE_VERSION, md1.getVersion());
           assertEquals(3, md1.getChanges().size());
@@ -409,7 +443,7 @@ public class GitVcsSupportTest extends PatchTestCase {
           ModificationData md3 = mms1.get(2);
           assertEquals("a-mod, c-rm\n", md3.getDescription());
           assertEquals(2, md3.getChanges().size());
-        } catch (Exception e) {
+        } catch (Throwable e) {
           errors.add(e);
         }
       }
@@ -426,7 +460,7 @@ public class GitVcsSupportTest extends PatchTestCase {
           ModificationData mb3 = mms2.get(3);
           assertEquals(GitServerUtil.SYSTEM_USER, mb3.getUserName());
           assertEquals(0, mb3.getChanges().size());
-        } catch (Exception e) {
+        } catch (Throwable e) {
           errors.add(e);
         }
       }
