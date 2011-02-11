@@ -160,7 +160,7 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @Nullable String currentVersion,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     List<ModificationData> result = new ArrayList<ModificationData>();
-    OperationContext context = new OperationContext(root, "collecting changes");
+    OperationContext context = createContext(root, "collecting changes");
     Settings s = createSettings(root);
     try {
       Map<String, Repository> repositories = new HashMap<String, Repository>();
@@ -261,7 +261,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   private String getLastCommonVersion(VcsRoot baseRoot, String baseVersion, VcsRoot tipRoot, String tipVersion) throws VcsException {
-    OperationContext context = new OperationContext(tipRoot, "find fork version");
+    OperationContext context = createContext(tipRoot, "find fork version");
     Settings baseSettings = createSettings(baseRoot);
     Settings tipSettings = createSettings(tipRoot);
     RevWalk walk = null;
@@ -597,7 +597,7 @@ public class GitVcsSupport extends ServerVcsSupport
                          @NotNull String toVersion,
                          @NotNull final PatchBuilder builder,
                          @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
-    OperationContext context = new OperationContext(root, "patch building");
+    OperationContext context = createContext(root, "patch building");
     final boolean debugFlag = LOG.isDebugEnabled();
     final Settings s = createSettings(root);
     final boolean debugInfoOnEachCommit = TeamCityProperties.getBoolean("teamcity.git.commit.debug.info");
@@ -772,7 +772,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot root, @NotNull String version) throws VcsException {
-    OperationContext context = new OperationContext(root, "retrieving content");
+    OperationContext context = createContext(root, "retrieving content");
     Settings s = createSettings(root);
     try {
       final long start = System.currentTimeMillis();
@@ -992,7 +992,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public String getCurrentVersion(@NotNull VcsRoot root) throws VcsException {
-    OperationContext context = new OperationContext(root, "retrieving current version");
+    OperationContext context = createContext(root, "retrieving current version");
     Settings s = createSettings(root);
     try {
       Repository r = getRepository(s);
@@ -1266,7 +1266,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
-    OperationContext context = new OperationContext(vcsRoot, "connection test");
+    OperationContext context = createContext(vcsRoot, "connection test");
     Settings s = createSettings(vcsRoot);
     File repositoryTempDir = null;
     try {
@@ -1335,6 +1335,10 @@ public class GitVcsSupport extends ServerVcsSupport
     return this;
   }
 
+  public OperationContext createContext(VcsRoot root, String operation) {
+    return new OperationContext(root, operation);
+  }
+
   private Settings createSettings(VcsRoot vcsRoot) throws VcsException {
     return new Settings(vcsRoot, myServerPaths.getCachesDir());
   }
@@ -1360,7 +1364,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   public String label(@NotNull String label, @NotNull String version, @NotNull VcsRoot root, @NotNull CheckoutRules checkoutRules)
     throws VcsException {
-    OperationContext context = new OperationContext(root, "labelling");
+    OperationContext context = createContext(root, "labelling");
     Settings s = createSettings(root);
     synchronized (getRepositoryLock(s.getRepositoryPath())) {
       try {
@@ -1573,7 +1577,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   Collection<Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
-    OperationContext context = new OperationContext(root, "list remote branches");
+    OperationContext context = createContext(root, "list remote branches");
     Settings s = createSettings(root);
     File tmpDir = null;
     try {
