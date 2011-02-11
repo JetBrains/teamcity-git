@@ -805,6 +805,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot root, @NotNull String version) throws VcsException {
+    OperationContext context = new OperationContext(root, "retrieving content");
     Settings s = createSettings(root);
     try {
       final long start = System.currentTimeMillis();
@@ -840,7 +841,7 @@ public class GitVcsSupport extends ServerVcsSupport
         close(repositories.values());
       }
     } catch (Exception e) {
-      throw processException("retrieving content", e);
+      throw context.wrapException(e);
     }
   }
 
