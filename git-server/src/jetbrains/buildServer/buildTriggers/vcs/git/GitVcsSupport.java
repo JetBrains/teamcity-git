@@ -193,6 +193,7 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @Nullable String currentVersion,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     List<ModificationData> result = new ArrayList<ModificationData>();
+    OperationContext context = new OperationContext(root, "collecting changes");
     Settings s = createSettings(root);
     try {
       Map<String, Repository> repositories = new HashMap<String, Repository>();
@@ -251,7 +252,7 @@ public class GitVcsSupport extends ServerVcsSupport
         close(repositories.values());
       }
     } catch (Exception e) {
-      throw processException("collecting changes", e);
+      throw context.wrapException(e);
     }
     return result;
   }
