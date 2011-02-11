@@ -294,6 +294,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   private String getLastCommonVersion(VcsRoot baseRoot, String baseVersion, VcsRoot tipRoot, String tipVersion) throws VcsException {
+    OperationContext context = new OperationContext(tipRoot, "find fork version");
     Settings baseSettings = createSettings(baseRoot);
     Settings tipSettings = createSettings(tipRoot);
     RevWalk walk = null;
@@ -312,7 +313,7 @@ public class GitVcsSupport extends ServerVcsSupport
       }
       return result;
     } catch (Exception e) {
-      throw processException("find fork version", e);
+      throw context.wrapException(e);
     } finally {
       if (walk != null) walk.release();
     }
