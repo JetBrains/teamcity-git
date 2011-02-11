@@ -32,11 +32,13 @@ public class OperationContext {
 
   private static Logger LOG = Logger.getInstance(OperationContext.class.getName());
 
+  private final GitVcsSupport mySupport;
   private final VcsRoot myRoot;
   private final String myOperation;
 
 
-  public OperationContext(VcsRoot root, String operation) {
+  public OperationContext(GitVcsSupport support, VcsRoot root, String operation) {
+    mySupport = support;
     myRoot = root;
     myOperation = operation;
   }

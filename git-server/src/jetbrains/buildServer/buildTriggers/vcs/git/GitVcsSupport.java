@@ -1336,7 +1336,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   public OperationContext createContext(VcsRoot root, String operation) {
-    return new OperationContext(root, operation);
+    return new OperationContext(this, root, operation);
   }
 
   private Settings createSettings(VcsRoot vcsRoot) throws VcsException {
