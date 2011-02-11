@@ -630,6 +630,7 @@ public class GitVcsSupport extends ServerVcsSupport
                          @NotNull String toVersion,
                          @NotNull final PatchBuilder builder,
                          @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
+    OperationContext context = new OperationContext(root, "patch building");
     final boolean debugFlag = LOG.isDebugEnabled();
     final Settings s = createSettings(root);
     final boolean debugInfoOnEachCommit = TeamCityProperties.getBoolean("teamcity.git.commit.debug.info");
@@ -730,7 +731,7 @@ public class GitVcsSupport extends ServerVcsSupport
         close(repositories.values());
       }
     } catch (Exception e) {
-      throw processException("patch building", e);
+      throw context.wrapException(e);
     }
   }
 
