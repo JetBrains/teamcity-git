@@ -154,39 +154,6 @@ public class GitVcsSupport extends ServerVcsSupport
     WindowCache.reconfigure(cfg);
   }
 
-  /**
-   * Convert exception to vcs exception with readable message
-   *
-   * @param operation operation name (like "collecting changes")
-   * @param ex        an exception to convert
-   * @return a converted vcs exception
-   */
-  private static VcsException processException(String operation, Exception ex) {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("The error during GIT vcs operation " + operation, ex);
-    }
-    if (ex instanceof VcsException) {
-      return (VcsException)ex;
-    }
-    if (ex instanceof RuntimeException) {
-      throw (RuntimeException)ex;
-    }
-    String message;
-    if (ex instanceof TransportException && ex.getCause() != null) {
-      Throwable t = ex.getCause();
-      if (t instanceof FileNotFoundException) {
-        message = "File not found: " + t.getMessage();
-      } else if (t instanceof UnknownHostException) {
-        message = "Unknown host: " + t.getMessage();
-      } else {
-        message = t.toString();
-      }
-    } else {
-      message = ex.toString();
-    }
-    return new VcsException(StringUtil.capitalize(operation) + " failed: " + message, ex);
-  }
-
 
   public List<ModificationData> collectChanges(@NotNull VcsRoot root,
                                                @NotNull String fromVersion,
