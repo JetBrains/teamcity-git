@@ -52,6 +52,14 @@ public class OperationContext {
     return myOperation;
   }
 
+  public Settings createSettings() throws VcsException {
+    return createSettings(myRoot);
+  }
+
+  public Settings createSettings(VcsRoot root) throws VcsException {
+    return new Settings(root, mySupport.getServerPaths().getCachesDir());
+  }
+
   public VcsException wrapException(Exception ex) {
     if (LOG.isDebugEnabled()) {
       LOG.debug("The error during GIT vcs operation " + myOperation, ex);
