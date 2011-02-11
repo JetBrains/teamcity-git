@@ -1299,6 +1299,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
+    OperationContext context = new OperationContext(vcsRoot, "connection test");
     Settings s = createSettings(vcsRoot);
     File repositoryTempDir = null;
     try {
@@ -1356,7 +1357,7 @@ public class GitVcsSupport extends ServerVcsSupport
         r.close();
       }
     } catch (Exception e) {
-      throw processException("connection test", e);
+      throw context.wrapException(e);
     } finally {
       if (repositoryTempDir != null) FileUtil.delete(repositoryTempDir);
     }
