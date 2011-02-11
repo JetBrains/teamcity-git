@@ -1393,6 +1393,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   public String label(@NotNull String label, @NotNull String version, @NotNull VcsRoot root, @NotNull CheckoutRules checkoutRules)
     throws VcsException {
+    OperationContext context = new OperationContext(root, "labelling");
     Settings s = createSettings(root);
     synchronized (getRepositoryLock(s.getRepositoryPath())) {
       try {
@@ -1431,7 +1432,7 @@ public class GitVcsSupport extends ServerVcsSupport
           r.close();
         }
       } catch (Exception e) {
-        throw processException("labelling", e);
+        throw context.wrapException(e);
       }
     }
   }
