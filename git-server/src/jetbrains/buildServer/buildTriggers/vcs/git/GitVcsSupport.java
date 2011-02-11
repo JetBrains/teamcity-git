@@ -1600,6 +1600,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   Collection<Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
+    OperationContext context = new OperationContext(root, "list remote branches");
     Settings s = createSettings(root);
     File tmpDir = null;
     try {
@@ -1622,7 +1623,7 @@ public class GitVcsSupport extends ServerVcsSupport
         db.close();
       }
     } catch (Exception e) {
-      throw processException("list remote branches", e);
+      throw context.wrapException(e);
     } finally {
       if (tmpDir != null) FileUtil.delete(tmpDir);
     }
