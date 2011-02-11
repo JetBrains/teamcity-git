@@ -1025,6 +1025,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public String getCurrentVersion(@NotNull VcsRoot root) throws VcsException {
+    OperationContext context = new OperationContext(root, "retrieving current version");
     Settings s = createSettings(root);
     try {
       Repository r = getRepository(s);
@@ -1054,7 +1055,7 @@ public class GitVcsSupport extends ServerVcsSupport
         r.close();
       }
     } catch (Exception e) {
-      throw processException("retrieving current version", e);
+      throw context.wrapException(e);
     }
   }
 
