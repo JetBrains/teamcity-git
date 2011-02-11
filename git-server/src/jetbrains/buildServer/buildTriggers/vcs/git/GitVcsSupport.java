@@ -1343,6 +1343,10 @@ public class GitVcsSupport extends ServerVcsSupport
     return new Settings(vcsRoot, myServerPaths.getCachesDir());
   }
 
+  ServerPaths getServerPaths() {
+    return myServerPaths;
+  }
+
   public LabelingSupport getLabelingSupport() {
     return this;
   }
