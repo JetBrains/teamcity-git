@@ -62,17 +62,13 @@ public class OperationContext {
   public Settings getSettings(VcsRoot root) throws VcsException {
     Settings s = rootSettings.get(root.getId());
     if (s == null) {
-      s = createSettings();
+      s = createSettings(myRoot);
       rootSettings.put(root.getId(), s);
     }
     return s;
   }
 
-  public Settings createSettings() throws VcsException {
-    return createSettings(myRoot);
-  }
-
-  public Settings createSettings(VcsRoot root) throws VcsException {
+  private Settings createSettings(VcsRoot root) throws VcsException {
     return new Settings(root, mySupport.getServerPaths().getCachesDir());
   }
 
