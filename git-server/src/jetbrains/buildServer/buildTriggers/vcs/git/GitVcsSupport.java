@@ -161,7 +161,7 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     List<ModificationData> result = new ArrayList<ModificationData>();
     OperationContext context = createContext(root, "collecting changes");
-    Settings s = context.createSettings();
+    Settings s = context.getSettings();
     try {
       Map<String, Repository> repositories = new HashMap<String, Repository>();
       Repository r = getRepository(s, repositories);
@@ -253,8 +253,8 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     if (LOG.isDebugEnabled()) {
       OperationContext context = createContext(branchRoot, "collecting changes");
-      Settings originalSettings = context.createSettings(originalRoot);
-      Settings branchSettings = context.createSettings();
+      Settings originalSettings = context.getSettings(originalRoot);
+      Settings branchSettings = context.getSettings();
       LOG.debug("Collecting changes [" + originalSettings.debugInfo() + "-" + originalRootVersion + "]..[" + branchSettings.debugInfo() + "-" + branchRootVersion + "]");
     }
     String forkPoint = getLastCommonVersion(originalRoot, originalRootVersion, branchRoot, branchRootVersion);
@@ -263,8 +263,8 @@ public class GitVcsSupport extends ServerVcsSupport
 
   private String getLastCommonVersion(VcsRoot baseRoot, String baseVersion, VcsRoot tipRoot, String tipVersion) throws VcsException {
     OperationContext context = createContext(tipRoot, "find fork version");
-    Settings baseSettings = context.createSettings(baseRoot);
-    Settings tipSettings = context.createSettings();
+    Settings baseSettings = context.getSettings(baseRoot);
+    Settings tipSettings = context.getSettings();
     RevWalk walk = null;
     try {
       RevCommit baseCommit = ensureCommitLoaded(baseSettings, baseVersion);
@@ -600,7 +600,7 @@ public class GitVcsSupport extends ServerVcsSupport
                          @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
     OperationContext context = createContext(root, "patch building");
     final boolean debugFlag = LOG.isDebugEnabled();
-    final Settings s = context.createSettings();
+    final Settings s = context.getSettings();
     final boolean debugInfoOnEachCommit = TeamCityProperties.getBoolean("teamcity.git.commit.debug.info");
     try {
       Map<String, Repository> repositories = new HashMap<String, Repository>();
@@ -774,7 +774,7 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot root, @NotNull String version) throws VcsException {
     OperationContext context = createContext(root, "retrieving content");
-    Settings s = context.createSettings();
+    Settings s = context.getSettings();
     try {
       final long start = System.currentTimeMillis();
       Map<String, Repository> repositories = new HashMap<String, Repository>();
@@ -994,7 +994,7 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public String getCurrentVersion(@NotNull VcsRoot root) throws VcsException {
     OperationContext context = createContext(root, "retrieving current version");
-    Settings s = context.createSettings();
+    Settings s = context.getSettings();
     try {
       Repository r = getRepository(s);
       try {
@@ -1268,7 +1268,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
     OperationContext context = createContext(vcsRoot, "connection test");
-    Settings s = context.createSettings();
+    Settings s = context.getSettings();
     File repositoryTempDir = null;
     try {
       repositoryTempDir = FileUtil.createTempDirectory("git-testcon", "");
@@ -1366,7 +1366,7 @@ public class GitVcsSupport extends ServerVcsSupport
   public String label(@NotNull String label, @NotNull String version, @NotNull VcsRoot root, @NotNull CheckoutRules checkoutRules)
     throws VcsException {
     OperationContext context = createContext(root, "labelling");
-    Settings s = context.createSettings();
+    Settings s = context.getSettings();
     synchronized (getRepositoryLock(s.getRepositoryPath())) {
       try {
         Repository r = getRepository(s);
@@ -1545,7 +1545,7 @@ public class GitVcsSupport extends ServerVcsSupport
   public Collection<String> mapFullPath(@NotNull final VcsRootEntry rootEntry, @NotNull final String fullPath) {
     OperationContext context = createContext(rootEntry.getVcsRoot(), "map full path");
     try {
-      Settings settings = context.createSettings();
+      Settings settings = context.getSettings();
       return new GitMapFullPath(this, rootEntry, fullPath, settings).mapFullPath();
     } catch (VcsException e) {
       LOG.error(e);
@@ -1580,7 +1580,7 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   Collection<Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
     OperationContext context = createContext(root, "list remote branches");
-    Settings s = context.createSettings();
+    Settings s = context.getSettings();
     File tmpDir = null;
     try {
       tmpDir = FileUtil.createTempDirectory("git-ls-remote", "");
