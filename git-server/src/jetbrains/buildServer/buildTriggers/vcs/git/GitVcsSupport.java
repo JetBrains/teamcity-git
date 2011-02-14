@@ -1340,10 +1340,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return new OperationContext(this, root, operation);
   }
 
-  private Settings createSettings(VcsRoot vcsRoot) throws VcsException {
-    return new Settings(vcsRoot, myServerPaths.getCachesDir());
-  }
-
   ServerPaths getServerPaths() {
     return myServerPaths;
   }
