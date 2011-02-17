@@ -1400,7 +1400,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * while URI is correct.
    *
    * It often happens when people try to access a repository located on a mapped network
-   * drive from the TeamCity ran as Windows service.
+   * drive from the TeamCity started as Windows service.
    *
    * If repository is local and is not exists this method throws a friendly exception.
    *
