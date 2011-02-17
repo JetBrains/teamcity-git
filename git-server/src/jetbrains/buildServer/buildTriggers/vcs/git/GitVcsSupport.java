@@ -296,7 +296,7 @@ public class GitVcsSupport extends ServerVcsSupport
     }
     String currentVersion = GitServerUtil.makeVersion(commit);
     String parentVersion = GitServerUtil.getParentVersion(commit, firstUninterestingVersion);
-    List<VcsChange> changes = getCommitChanges(context, context.getRepositories(), context.getSettings(), db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
+    List<VcsChange> changes = getCommitChanges(context, db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
     ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
                                               GitServerUtil.getUser(context.getSettings(), commit), context.getRoot(), currentVersion, commit.getId().name());
     if (isMergeCommit(commit) && changes.isEmpty()) {
@@ -360,8 +360,7 @@ public class GitVcsSupport extends ServerVcsSupport
   /**
    * Get changes for the commit
    *
-   * @param repositories the collection of repositories
-   * @param s            the setting object
+   * @param context context of current operation
    * @param r            the change version
    * @param commit           the current commit
    * @param currentVersion           the commit version
@@ -370,40 +369,38 @@ public class GitVcsSupport extends ServerVcsSupport
    * @throws IOException if there is a repository access problem
    */
   private List<VcsChange> getCommitChanges(final OperationContext context,
-                                           final Map<String, Repository> repositories,
-                                           final Settings s,
                                            final Repository r,
                                            final RevCommit commit,
                                            final String currentVersion,
                                            final String parentVersion,
                                            final boolean ignoreSubmodulesErrors)
-    throws IOException {
+    throws IOException, VcsException {
     List<VcsChange> changes = new ArrayList<VcsChange>();
     TreeWalk tw = new TreeWalk(r);
     try {
-      IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(s);
+      IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(context.getSettings());
       tw.setFilter(filter);
       tw.setRecursive(true);
       // remove empty tree iterator before adding new tree
       tw.reset();
-      addTree(tw, commit, s, repositories, ignoreSubmodulesErrors, r);
+      addTree(tw, commit, context.getSettings(), context.getRepositories(), ignoreSubmodulesErrors, r);
       for (RevCommit parentCommit : commit.getParents()) {
-        addTree(tw, parentCommit, s, repositories, true, r);
+        addTree(tw, parentCommit, context.getSettings(), context.getRepositories(), true, r);
       }
-      String repositoryDebugInfo = s.debugInfo();
+      String repositoryDebugInfo = context.getSettings().debugInfo();
       while (tw.next()) {
         String path = tw.getPathString();
         RevCommit commitWithFix = null;
-        if (s.isCheckoutSubmodules() && filter.isBrokenSubmodulePath(path)
-            && (commitWithFix = getPreviousCommitWithFixedSubmodule(r, commit, path, repositories, s)) != null) {
+        if (context.getSettings().isCheckoutSubmodules() && filter.isBrokenSubmodulePath(path)
+            && (commitWithFix = getPreviousCommitWithFixedSubmodule(r, commit, path, context.getRepositories(), context.getSettings())) != null) {
           //report changes between 2 commits where submodules fixed
           TreeWalk tw2 = new TreeWalk(r);
           try {
             tw2.setFilter(TreeFilter.ANY_DIFF);
             tw2.setRecursive(true);
             tw2.reset();
-            addTree(tw2, commit, s, repositories, true, r);
-            addTree(tw2, commitWithFix, s, repositories, true, r);
+            addTree(tw2, commit, context.getSettings(), context.getRepositories(), true, r);
+            addTree(tw2, commitWithFix, context.getSettings(), context.getRepositories(), true, r);
             while (tw2.next()) {
               if (tw2.getPathString().equals(path)) {
                 VcsChange change = getVcsChange(tw2, path, currentVersion, commitWithFix.getId().name(), repositoryDebugInfo);
