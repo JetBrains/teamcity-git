@@ -765,35 +765,34 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot root, @NotNull String version) throws VcsException {
     OperationContext context = createContext(root, "retrieving content");
-    Settings s = context.getSettings();
     try {
       final long start = System.currentTimeMillis();
-      Repository r = getRepository(s, context.getRepositories());
+      Repository r = getRepository(context.getSettings(), context.getRepositories());
       final TreeWalk tw = new TreeWalk(r);
       try {
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Getting data from " + version + ":" + filePath + " for " + s.debugInfo());
+          LOG.debug("Getting data from " + version + ":" + filePath + " for " + context.getSettings().debugInfo());
         }
         final String rev = GitUtils.versionRevision(version);
-        RevCommit c = ensureRevCommitLoaded(s, r, rev);
+        RevCommit c = ensureRevCommitLoaded(context.getSettings(), r, rev);
         tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
         tw.setRecursive(tw.getFilter().shouldBeRecursive());
         tw.reset();
-        addTree(tw, c, s, context.getRepositories(), true, r);
+        addTree(tw, c, context.getSettings(), context.getRepositories(), true, r);
         if (!tw.next()) {
-          throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + s.debugInfo());
+          throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + context.getSettings().debugInfo());
         }
         final byte[] data = loadObject(r, tw, 0);
         if (LOG.isDebugEnabled()) {
           LOG.debug(
             "File retrieved " + version + ":" + filePath + " (hash = " + tw.getObjectId(0) + ", length = " + data.length + ") for " +
-            s.debugInfo());
+            context.getSettings().debugInfo());
         }
         return data;
       } finally {
         final long finish = System.currentTimeMillis();
         if (PERFORMANCE_LOG.isDebugEnabled()) {
-          PERFORMANCE_LOG.debug("[getContent] root=" + s.debugInfo() + ", file=" + filePath + ", get object content: " + (finish - start) + "ms");
+          PERFORMANCE_LOG.debug("[getContent] root=" + context.getSettings().debugInfo() + ", file=" + filePath + ", get object content: " + (finish - start) + "ms");
         }
         tw.release();
         close(context.getRepositories().values());
