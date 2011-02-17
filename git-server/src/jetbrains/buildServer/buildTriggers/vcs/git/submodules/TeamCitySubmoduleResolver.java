@@ -50,7 +50,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    * @param commit                the commit this resolves handles
    */
   public TeamCitySubmoduleResolver(OperationContext context, RevCommit commit, Repository db) {
-    this(context, "", commit, db);
+    this(context, commit, db, "");
   }
 
   /**
@@ -60,7 +60,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    * @param basePath              the base path
    * @param commit                the commit this resolves handles
    */
-  private TeamCitySubmoduleResolver(OperationContext context, String basePath, RevCommit commit, Repository db) {
+  private TeamCitySubmoduleResolver(OperationContext context, RevCommit commit, Repository db, String basePath) {
     super(context.getSupport(), db, commit);
     myContext = context;
     myPathFromRoot = basePath;
@@ -124,9 +124,9 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
       //ignore
     }
     if (db != null) {
-      return new TeamCitySubmoduleResolver(myContext, fullPath(path), commit, db);
+      return new TeamCitySubmoduleResolver(myContext, commit, db, fullPath(path));
     } else {
-      return new TeamCitySubmoduleResolver(myContext, fullPath(path), commit, getRepository());
+      return new TeamCitySubmoduleResolver(myContext, commit, getRepository(), fullPath(path));
     }
   }
 
