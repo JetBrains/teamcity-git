@@ -280,6 +280,7 @@ public class GitVcsSupport extends ServerVcsSupport
       throw context.wrapException(e);
     } finally {
       if (walk != null) walk.release();
+      context.close();
     }
   }
 
