@@ -56,7 +56,7 @@ class GitMapFullPath {
 
   private String myGitRevision;
 
-  public GitMapFullPath(final GitVcsSupport gitSupport, final VcsRootEntry rootEntry, final String fullPath, final Settings settings) {
+  public GitMapFullPath(final OperationContext context, final GitVcsSupport gitSupport, final VcsRootEntry rootEntry, final String fullPath, final Settings settings) {
     myGitSupport = gitSupport;
     myRootEntry = rootEntry;
     myFullPath = fullPath;

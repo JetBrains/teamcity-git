@@ -1517,7 +1517,7 @@ public class GitVcsSupport extends ServerVcsSupport
     OperationContext context = createContext(rootEntry.getVcsRoot(), "map full path");
     try {
       Settings settings = context.getSettings();
-      return new GitMapFullPath(this, rootEntry, fullPath, settings).mapFullPath();
+      return new GitMapFullPath(context, this, rootEntry, fullPath, settings).mapFullPath();
     } catch (VcsException e) {
       LOG.error(e);
       return Collections.emptySet();
