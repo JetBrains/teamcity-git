@@ -265,7 +265,7 @@ public class GitVcsSupport extends ServerVcsSupport
     try {
       RevCommit baseCommit = ensureCommitLoaded(baseSettings, baseVersion);
       RevCommit tipCommit = ensureCommitLoaded(tipSettings, tipVersion);
-      Repository tipRepository = getRepository(tipSettings);
+      Repository tipRepository = context.getRepository(tipSettings);
       walk = new RevWalk(tipRepository);
       walk.setRevFilter(RevFilter.MERGE_BASE);
       walk.markStart(walk.parseCommit(baseCommit.getId()));
