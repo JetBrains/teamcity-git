@@ -93,12 +93,11 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
         url = resolveRelativeUrl(url);
       }
       String dir = myBaseRepositorySettings.getPathForUrl(url).getPath();
-      if (mySubmoduleRepositories.containsKey(dir)) {
-        return mySubmoduleRepositories.get(dir);
+      if (myContext.getRepositories().containsKey(dir)) {
+        return myContext.getRepositories().get(dir);
       }
       final URIish uri = new URIish(url);
       final Repository r = myContext.getRepository(new File(dir), uri);
-      mySubmoduleRepositories.put(dir, r);
 
       if (LOG.isDebugEnabled()) {
         LOG.debug("Fetching submodule " + path + " data for " + myBaseRepositorySettings.debugInfo());
