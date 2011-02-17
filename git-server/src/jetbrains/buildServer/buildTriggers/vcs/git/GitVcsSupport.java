@@ -182,7 +182,7 @@ public class GitVcsSupport extends ServerVcsSupport
           RevCommit c;
           boolean lastCommit = true;
           while ((c = revs.next()) != null) {
-            result.add(createModificationData(context, c, r, s, !lastCommit, firstUninterestingVersion, checkoutRules));
+            result.add(createModificationData(context, c, r, !lastCommit, firstUninterestingVersion, checkoutRules));
             lastCommit = false;
           }
         } else {
@@ -194,7 +194,7 @@ public class GitVcsSupport extends ServerVcsSupport
             if (c.getCommitTime() * 1000L <= limitTime) {
               revs.markUninteresting(c);
             } else {
-              result.add(createModificationData(context, c, r, s, !lastCommit, null, checkoutRules));
+              result.add(createModificationData(context, c, r, !lastCommit, null, checkoutRules));
             }
             lastCommit = false;
           }
@@ -287,21 +287,20 @@ public class GitVcsSupport extends ServerVcsSupport
   private ModificationData createModificationData(final OperationContext context,
                                                   final RevCommit commit,
                                                   final Repository db,
-                                                  final Settings settings,
                                                   final boolean ignoreSubmodulesErrors,
                                                   final String firstUninterestingVersion,
-                                                  final CheckoutRules checkoutRules) throws IOException {
+                                                  final CheckoutRules checkoutRules) throws IOException, VcsException {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Collecting changes in commit " + commit.getId().name() + ":" + commit.getShortMessage() +
-                " (" + commit.getCommitterIdent().getWhen() + ") for " + settings.debugInfo());
+                " (" + commit.getCommitterIdent().getWhen() + ") for " + context.getSettings().debugInfo());
     }
     String currentVersion = GitServerUtil.makeVersion(commit);
     String parentVersion = GitServerUtil.getParentVersion(commit, firstUninterestingVersion);
-    List<VcsChange> changes = getCommitChanges(context.getRepositories(), settings, db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
+    List<VcsChange> changes = getCommitChanges(context.getRepositories(), context.getSettings(), db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
     ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
-                                              GitServerUtil.getUser(settings, commit), context.getRoot(), currentVersion, commit.getId().name());
+                                              GitServerUtil.getUser(context.getSettings(), commit), context.getRoot(), currentVersion, commit.getId().name());
     if (isMergeCommit(commit) && changes.isEmpty()) {
-      boolean hasInterestingChanges = hasInterestingChanges(db, commit, context.getRepositories(), settings, ignoreSubmodulesErrors, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion));
+      boolean hasInterestingChanges = hasInterestingChanges(db, commit, context.getRepositories(), context.getSettings(), ignoreSubmodulesErrors, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion));
       if (hasInterestingChanges) {
         result.setCanBeIgnored(false);
       }
