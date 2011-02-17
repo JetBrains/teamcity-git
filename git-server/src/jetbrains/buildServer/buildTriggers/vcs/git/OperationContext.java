@@ -26,7 +26,6 @@ import org.eclipse.jgit.lib.Repository;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.net.UnknownHostException;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -119,11 +118,10 @@ public class OperationContext {
 
   /**
    * Release all resources acquired during operation
-   * @param repositories
    */
-  public void close(Collection<Repository> repositories) {
+  public void close() {
     RuntimeException e = null;
-    for (Repository r : repositories) {
+    for (Repository r : myRepositories.values()) {
       try {
         r.close();
       } catch (RuntimeException ex) {
