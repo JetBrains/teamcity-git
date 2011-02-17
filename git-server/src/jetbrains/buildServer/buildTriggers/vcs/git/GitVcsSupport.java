@@ -39,7 +39,6 @@ import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
-import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
@@ -66,7 +65,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
-import java.net.UnknownHostException;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -163,8 +161,7 @@ public class GitVcsSupport extends ServerVcsSupport
     OperationContext context = createContext(root, "collecting changes");
     Settings s = context.getSettings();
     try {
-      Map<String, Repository> repositories = new HashMap<String, Repository>();
-      Repository r = getRepository(s, repositories);
+      Repository r = getRepository(s, context.getRepositories());
       RevWalk revs = new RevWalk(r);
       try {
         if (LOG.isDebugEnabled()) {
@@ -185,7 +182,7 @@ public class GitVcsSupport extends ServerVcsSupport
           RevCommit c;
           boolean lastCommit = true;
           while ((c = revs.next()) != null) {
-            result.add(createModificationData(c, r, repositories, root, s, !lastCommit, firstUninterestingVersion, checkoutRules));
+            result.add(createModificationData(c, r, context.getRepositories(), root, s, !lastCommit, firstUninterestingVersion, checkoutRules));
             lastCommit = false;
           }
         } else {
@@ -197,7 +194,7 @@ public class GitVcsSupport extends ServerVcsSupport
             if (c.getCommitTime() * 1000L <= limitTime) {
               revs.markUninteresting(c);
             } else {
-              result.add(createModificationData(c, r, repositories, root, s, !lastCommit, null, checkoutRules));
+              result.add(createModificationData(c, r, context.getRepositories(), root, s, !lastCommit, null, checkoutRules));
             }
             lastCommit = false;
           }
@@ -216,7 +213,7 @@ public class GitVcsSupport extends ServerVcsSupport
         }
       } finally {
         revs.release();
-        close(repositories.values());
+        close(context.getRepositories().values());
       }
     } catch (Exception e) {
       throw context.wrapException(e);
