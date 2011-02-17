@@ -17,18 +17,27 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolver;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.TeamCitySubmoduleResolver;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.URIish;
+import org.eclipse.jgit.treewalk.TreeWalk;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy.getPolicyWithErrorsIgnored;
+import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator.create;
 
 /**
  *
@@ -148,4 +157,18 @@ public class OperationContext {
     }
   }
 
+  /**
+   * Adds tree to tree walker.
+   * If we should checkout submodules - adds submodule-aware tree iterator
+   */
+  public void addTree(TreeWalk tw, Repository db, RevCommit commit, boolean ignoreSubmodulesErrors) throws IOException, VcsException {
+    Settings s = getSettings();
+    if (getSettings().isCheckoutSubmodules()) {
+      SubmoduleResolver submoduleResolver = new TeamCitySubmoduleResolver(this, db, commit);
+      SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(s.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
+      tw.addTree(create(db, commit, submoduleResolver, s.getRepositoryFetchURL().toString(), "", checkoutPolicy));
+    } else {
+      tw.addTree(commit.getTree().getId());
+    }
+  }
 }
