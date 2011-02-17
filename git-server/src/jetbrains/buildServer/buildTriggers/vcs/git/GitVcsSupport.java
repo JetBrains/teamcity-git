@@ -596,8 +596,7 @@ public class GitVcsSupport extends ServerVcsSupport
     final Settings s = context.getSettings();
     final boolean debugInfoOnEachCommit = TeamCityProperties.getBoolean("teamcity.git.commit.debug.info");
     try {
-      Map<String, Repository> repositories = new HashMap<String, Repository>();
-      final Repository r = getRepository(s, repositories);
+      final Repository r = getRepository(s, context.getRepositories());
       TreeWalk tw = null;
       try {
         RevCommit toCommit = ensureRevCommitLoaded(s, r, GitUtils.versionRevision(toVersion));
@@ -608,7 +607,7 @@ public class GitVcsSupport extends ServerVcsSupport
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.setRecursive(true);
         tw.reset();
-        addTree(tw, toCommit, s, repositories, false, r);
+        addTree(tw, toCommit, s, context.getRepositories(), false, r);
         if (fromVersion != null) {
           if (debugFlag) {
             LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
@@ -617,7 +616,7 @@ public class GitVcsSupport extends ServerVcsSupport
           if (fromCommit == null) {
             throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not available in the repository");
           }
-          addTree(tw, fromCommit, s, repositories, true, r);
+          addTree(tw, fromCommit, s, context.getRepositories(), true, r);
         } else {
           if (debugFlag) {
             LOG.debug("Creating clean patch " + toVersion + " for " + s.debugInfo());
@@ -689,7 +688,7 @@ public class GitVcsSupport extends ServerVcsSupport
         }
       } finally {
         if (tw != null) tw.release();
-        close(repositories.values());
+        close(context.getRepositories().values());
       }
     } catch (Exception e) {
       throw context.wrapException(e);
