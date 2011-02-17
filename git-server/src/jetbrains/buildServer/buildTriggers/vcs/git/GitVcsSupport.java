@@ -335,10 +335,10 @@ public class GitVcsSupport extends ServerVcsSupport
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.reset();
         try {
-          addTree(context, tw, c, context.getSettings(), context.getRepositories(), ignoreSubmodulesErrors, db);
+          addTree(context, tw, c, ignoreSubmodulesErrors, db);
           tw.addTree(c.getTree().getId());
           for (RevCommit parent : c.getParents()) {
-            addTree(context, tw, parent, context.getSettings(), context.getRepositories(), ignoreSubmodulesErrors, db);
+            addTree(context, tw, parent, ignoreSubmodulesErrors, db);
           }
           while (tw.next()) {
             String path = tw.getPathString();
@@ -382,9 +382,9 @@ public class GitVcsSupport extends ServerVcsSupport
       tw.setRecursive(true);
       // remove empty tree iterator before adding new tree
       tw.reset();
-      addTree(context, tw, commit, context.getSettings(), context.getRepositories(), ignoreSubmodulesErrors, r);
+      addTree(context, tw, commit, ignoreSubmodulesErrors, r);
       for (RevCommit parentCommit : commit.getParents()) {
-        addTree(context, tw, parentCommit, context.getSettings(), context.getRepositories(), true, r);
+        addTree(context, tw, parentCommit, true, r);
       }
       String repositoryDebugInfo = context.getSettings().debugInfo();
       while (tw.next()) {
@@ -398,8 +398,8 @@ public class GitVcsSupport extends ServerVcsSupport
             tw2.setFilter(TreeFilter.ANY_DIFF);
             tw2.setRecursive(true);
             tw2.reset();
-            addTree(context, tw2, commit, context.getSettings(), context.getRepositories(), true, r);
-            addTree(context, tw2, commitWithFix, context.getSettings(), context.getRepositories(), true, r);
+            addTree(context, tw2, commit, true, r);
+            addTree(context, tw2, commitWithFix, true, r);
             while (tw2.next()) {
               if (tw2.getPathString().equals(path)) {
                 VcsChange change = getVcsChange(tw2, path, currentVersion, commitWithFix.getId().name(), repositoryDebugInfo);
@@ -477,7 +477,7 @@ public class GitVcsSupport extends ServerVcsSupport
           prevTreeWalk.setFilter(TreeFilter.ALL);
           prevTreeWalk.setRecursive(true);
           prevTreeWalk.reset();
-          addTree(context, prevTreeWalk, prevRev, context.getSettings(), context.getRepositories(), true, db);
+          addTree(context, prevTreeWalk, prevRev, true, db);
           while(prevTreeWalk.next()) {
             if (prevTreeWalk.getPathString().startsWith(submodulePath)) {
               SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
@@ -497,7 +497,7 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  private void addTree(OperationContext context, TreeWalk tw, RevCommit commit, Settings s, Map<String, Repository> repositories, boolean ignoreSubmodulesErrors, Repository db)
+  private void addTree(OperationContext context, TreeWalk tw, RevCommit commit, boolean ignoreSubmodulesErrors, Repository db)
     throws IOException, VcsException {
     if (context.getSettings().isCheckoutSubmodules()) {
       final SubmoduleResolver submoduleResolver = new TeamCitySubmoduleResolver(context.getRepositories(), this, context.getSettings(), commit, db);
@@ -607,7 +607,7 @@ public class GitVcsSupport extends ServerVcsSupport
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.setRecursive(true);
         tw.reset();
-        addTree(context, tw, toCommit, context.getSettings(), context.getRepositories(), false, r);
+        addTree(context, tw, toCommit, false, r);
         if (fromVersion != null) {
           if (debugFlag) {
             LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + context.getSettings().debugInfo());
@@ -616,7 +616,7 @@ public class GitVcsSupport extends ServerVcsSupport
           if (fromCommit == null) {
             throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not available in the repository");
           }
-          addTree(context, tw, fromCommit, context.getSettings(), context.getRepositories(), true, r);
+          addTree(context, tw, fromCommit, true, r);
         } else {
           if (debugFlag) {
             LOG.debug("Creating clean patch " + toVersion + " for " + context.getSettings().debugInfo());
@@ -779,7 +779,7 @@ public class GitVcsSupport extends ServerVcsSupport
         tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
         tw.setRecursive(tw.getFilter().shouldBeRecursive());
         tw.reset();
-        addTree(context, tw, c, context.getSettings(), context.getRepositories(), true, r);
+        addTree(context, tw, c, true, r);
         if (!tw.next()) {
           throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + context.getSettings().debugInfo());
         }
