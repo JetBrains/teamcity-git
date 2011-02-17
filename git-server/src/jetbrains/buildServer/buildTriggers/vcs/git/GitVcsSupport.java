@@ -591,15 +591,14 @@ public class GitVcsSupport extends ServerVcsSupport
                          @NotNull String toVersion,
                          @NotNull final PatchBuilder builder,
                          @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
-    OperationContext context = createContext(root, "patch building");
+    final OperationContext context = createContext(root, "patch building");
     final boolean debugFlag = LOG.isDebugEnabled();
-    final Settings s = context.getSettings();
     final boolean debugInfoOnEachCommit = TeamCityProperties.getBoolean("teamcity.git.commit.debug.info");
     try {
-      final Repository r = getRepository(s, context.getRepositories());
+      final Repository r = getRepository(context.getSettings(), context.getRepositories());
       TreeWalk tw = null;
       try {
-        RevCommit toCommit = ensureRevCommitLoaded(s, r, GitUtils.versionRevision(toVersion));
+        RevCommit toCommit = ensureRevCommitLoaded(context.getSettings(), r, GitUtils.versionRevision(toVersion));
         if (toCommit == null) {
           throw new VcsException("Missing commit for version: " + toVersion);
         }
@@ -607,19 +606,19 @@ public class GitVcsSupport extends ServerVcsSupport
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.setRecursive(true);
         tw.reset();
-        addTree(tw, toCommit, s, context.getRepositories(), false, r);
+        addTree(tw, toCommit, context.getSettings(), context.getRepositories(), false, r);
         if (fromVersion != null) {
           if (debugFlag) {
-            LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + s.debugInfo());
+            LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + context.getSettings().debugInfo());
           }
           RevCommit fromCommit = getCommit(r, GitUtils.versionRevision(fromVersion));
           if (fromCommit == null) {
             throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not available in the repository");
           }
-          addTree(tw, fromCommit, s, context.getRepositories(), true, r);
+          addTree(tw, fromCommit, context.getSettings(), context.getRepositories(), true, r);
         } else {
           if (debugFlag) {
-            LOG.debug("Creating clean patch " + toVersion + " for " + s.debugInfo());
+            LOG.debug("Creating clean patch " + toVersion + " for " + context.getSettings().debugInfo());
           }
           tw.addTree(new EmptyTreeIterator());
         }
@@ -631,7 +630,7 @@ public class GitVcsSupport extends ServerVcsSupport
             continue;
           }
           if (debugFlag && debugInfoOnEachCommit) {
-            LOG.debug("File found " + treeWalkInfo(tw) + " for " + s.debugInfo());
+            LOG.debug("File found " + treeWalkInfo(tw) + " for " + context.getSettings().debugInfo());
           }
           switch (classifyChange(tw)) {
             case UNCHANGED:
@@ -655,10 +654,10 @@ public class GitVcsSupport extends ServerVcsSupport
                       objectStream = loader.isLarge() ? loader.openStream() : new ByteArrayInputStream(loader.getCachedBytes());
                       builder.changeOrCreateBinaryFile(GitUtils.toFile(mapped), mode, objectStream, loader.getSize());
                     } catch (Error e) {
-                      LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + s.debugInfo());
+                      LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + context.getSettings().debugInfo());
                       throw e;
                     } catch (Exception e) {
-                      LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + s.debugInfo());
+                      LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + context.getSettings().debugInfo());
                       throw e;
                     } finally {
                       if (objectStream != null) objectStream.close();
