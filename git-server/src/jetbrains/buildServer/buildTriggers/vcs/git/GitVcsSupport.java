@@ -300,7 +300,7 @@ public class GitVcsSupport extends ServerVcsSupport
     ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
                                                    GitServerUtil.getUser(context.getSettings(), commit), context.getRoot(), currentVersion, commit.getId().name());
     if (isMergeCommit(commit) && changes.isEmpty()) {
-      boolean hasInterestingChanges = hasInterestingChanges(db, commit, context.getRepositories(), context.getSettings(), ignoreSubmodulesErrors, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion));
+      boolean hasInterestingChanges = hasInterestingChanges(context, db, commit, context.getRepositories(), context.getSettings(), ignoreSubmodulesErrors, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion));
       if (hasInterestingChanges) {
         result.setCanBeIgnored(false);
       }
@@ -312,7 +312,8 @@ public class GitVcsSupport extends ServerVcsSupport
     return commit.getParents().length > 1;
   }
 
-  private boolean hasInterestingChanges(final Repository db,
+  private boolean hasInterestingChanges(final OperationContext context,
+                                        final Repository db,
                                         final RevCommit mergeCommit,
                                         final Map<String, Repository> repositories,
                                         final Settings settings,
