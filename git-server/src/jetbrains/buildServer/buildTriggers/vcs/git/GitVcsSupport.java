@@ -182,7 +182,7 @@ public class GitVcsSupport extends ServerVcsSupport
           RevCommit c;
           boolean lastCommit = true;
           while ((c = revs.next()) != null) {
-            result.add(createModificationData(context, c, r, root, s, !lastCommit, firstUninterestingVersion, checkoutRules));
+            result.add(createModificationData(context, c, r, s, !lastCommit, firstUninterestingVersion, checkoutRules));
             lastCommit = false;
           }
         } else {
@@ -194,7 +194,7 @@ public class GitVcsSupport extends ServerVcsSupport
             if (c.getCommitTime() * 1000L <= limitTime) {
               revs.markUninteresting(c);
             } else {
-              result.add(createModificationData(context, c, r, root, s, !lastCommit, null, checkoutRules));
+              result.add(createModificationData(context, c, r, s, !lastCommit, null, checkoutRules));
             }
             lastCommit = false;
           }
@@ -287,7 +287,6 @@ public class GitVcsSupport extends ServerVcsSupport
   private ModificationData createModificationData(final OperationContext context,
                                                   final RevCommit commit,
                                                   final Repository db,
-                                                  final VcsRoot root,
                                                   final Settings settings,
                                                   final boolean ignoreSubmodulesErrors,
                                                   final String firstUninterestingVersion,
@@ -300,7 +299,7 @@ public class GitVcsSupport extends ServerVcsSupport
     String parentVersion = GitServerUtil.getParentVersion(commit, firstUninterestingVersion);
     List<VcsChange> changes = getCommitChanges(context.getRepositories(), settings, db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
     ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
-                                              GitServerUtil.getUser(settings, commit), root, currentVersion, commit.getId().name());
+                                              GitServerUtil.getUser(settings, commit), context.getRoot(), currentVersion, commit.getId().name());
     if (isMergeCommit(commit) && changes.isEmpty()) {
       boolean hasInterestingChanges = hasInterestingChanges(db, commit, context.getRepositories(), settings, ignoreSubmodulesErrors, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion));
       if (hasInterestingChanges) {
