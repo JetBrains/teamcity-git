@@ -1395,9 +1395,7 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   private Repository getRepository(OperationContext context) throws VcsException {
     final Repository r = getRepository(context.getSettings().getRepositoryPath(), context.getSettings().getRepositoryFetchURL());
-    if (context.getRepositories() != null) {
-      context.getRepositories().put(context.getSettings().getRepositoryPath().getPath(), r);
-    }
+    context.getRepositories().put(context.getSettings().getRepositoryPath().getPath(), r);
     return r;
   }
 
