@@ -17,10 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
-import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -53,6 +50,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    * Repositories created for submodules
    */
   private final Map<String, Repository> mySubmoduleRepositories;
+  private final OperationContext myContext;
 
   /**
    * The resolver constructor
@@ -62,8 +60,8 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    * @param settings              the settings object
    * @param commit                the commit this resolves handles
    */
-  public TeamCitySubmoduleResolver(Map<String, Repository> submoduleRepositories, GitVcsSupport vcs, Settings settings, RevCommit commit, Repository db) {
-    this(submoduleRepositories, vcs, settings, "", commit, db);
+  public TeamCitySubmoduleResolver(OperationContext context, Map<String, Repository> submoduleRepositories, GitVcsSupport vcs, Settings settings, RevCommit commit, Repository db) {
+    this(context, submoduleRepositories, vcs, settings, "", commit, db);
   }
 
   /**
@@ -75,13 +73,15 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    * @param basePath              the base path
    * @param commit                the commit this resolves handles
    */
-  private TeamCitySubmoduleResolver(Map<String, Repository> submoduleRepositories,
+  private TeamCitySubmoduleResolver(OperationContext context,
+                                    Map<String, Repository> submoduleRepositories,
                                     GitVcsSupport vcs,
                                     Settings settings,
                                     String basePath,
                                     RevCommit commit,
                                     Repository db) {
     super(vcs, db, commit);
+    myContext = context;
     mySubmoduleRepositories = submoduleRepositories;
     myPathFromRoot = basePath;
     myBaseRepositorySettings = settings;
@@ -145,9 +145,9 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
       //ignore
     }
     if (db != null) {
-      return new TeamCitySubmoduleResolver(mySubmoduleRepositories, myGitSupport, myBaseRepositorySettings, fullPath(path), commit, db);
+      return new TeamCitySubmoduleResolver(myContext, mySubmoduleRepositories, myGitSupport, myBaseRepositorySettings, fullPath(path), commit, db);
     } else {
-      return new TeamCitySubmoduleResolver(mySubmoduleRepositories, myGitSupport, myBaseRepositorySettings, fullPath(path), commit, getRepository());
+      return new TeamCitySubmoduleResolver(myContext, mySubmoduleRepositories, myGitSupport, myBaseRepositorySettings, fullPath(path), commit, getRepository());
     }
   }
 
