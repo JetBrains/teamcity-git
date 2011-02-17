@@ -159,16 +159,15 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     List<ModificationData> result = new ArrayList<ModificationData>();
     OperationContext context = createContext(root, "collecting changes");
-    Settings s = context.getSettings();
     try {
-      Repository r = getRepository(s, context.getRepositories());
+      Repository r = getRepository(context.getSettings(), context.getRepositories());
       RevWalk revs = new RevWalk(r);
       try {
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + s.debugInfo());
+          LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + context.getSettings().debugInfo());
         }
         final String current = GitUtils.versionRevision(currentVersion);
-        ensureRevCommitLoaded(s, r, current);
+        ensureRevCommitLoaded(context.getSettings(), r, current);
         final String from = GitUtils.versionRevision(fromVersion);
         final RevCommit currentRev = revs.parseCommit(ObjectId.fromString(current));
         revs.markStart(currentRev);
@@ -186,7 +185,7 @@ public class GitVcsSupport extends ServerVcsSupport
             lastCommit = false;
           }
         } else {
-          LOG.warn("From version " + fromVersion + " is not found, collecting changes based on commit date and time " + s.debugInfo());
+          LOG.warn("From version " + fromVersion + " is not found, collecting changes based on commit date and time " + context.getSettings().debugInfo());
           RevCommit c;
           long limitTime = GitUtils.versionTime(fromVersion);
           boolean lastCommit = true;
