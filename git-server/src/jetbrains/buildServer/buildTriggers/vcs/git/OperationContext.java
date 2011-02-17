@@ -85,8 +85,8 @@ public class OperationContext {
     return result;
   }
 
-  public Repository getRepositoryFor(String path) {
-    return myRepositories.get(path);
+  public Repository getRepositoryFor(File dir) {
+    return myRepositories.get(dir.getPath());
   }
 
   public Settings getSettings() throws VcsException {
