@@ -512,26 +512,6 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   /**
-   * Close repositories
-   *
-   * @param repositories repositories to close
-   */
-  private void close(Collection<Repository> repositories) {
-    RuntimeException e = null;
-    for (Repository r : repositories) {
-      try {
-        r.close();
-      } catch (RuntimeException ex) {
-        LOG.error("Exception during closing repository: " + r, ex);
-        e = ex;
-      }
-    }
-    if (e != null) {
-      throw e;
-    }
-  }
-
-  /**
    * Classify change in tree walker. The first tree is assumed to be a current commit and other
    * trees are assumed to be parent commits. In the case of multiple changes, the changes that
    * come from at lease one parent commit are assumed to be reported in the parent commit.
