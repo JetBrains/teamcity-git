@@ -1418,9 +1418,9 @@ public class GitVcsSupport extends ServerVcsSupport
    * @throws VcsException if the repository could not be accessed
    */
   private Repository getRepository(OperationContext context, Settings s, Map<String, Repository> repositories) throws VcsException {
-    final Repository r = getRepository(s.getRepositoryPath(), s.getRepositoryFetchURL());
-    if (repositories != null) {
-      repositories.put(s.getRepositoryPath().getPath(), r);
+    final Repository r = getRepository(context.getSettings().getRepositoryPath(), context.getSettings().getRepositoryFetchURL());
+    if (context.getRepositories() != null) {
+      context.getRepositories().put(context.getSettings().getRepositoryPath().getPath(), r);
     }
     return r;
   }
