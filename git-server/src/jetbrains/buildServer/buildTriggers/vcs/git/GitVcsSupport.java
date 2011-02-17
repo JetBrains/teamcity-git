@@ -391,7 +391,7 @@ public class GitVcsSupport extends ServerVcsSupport
         String path = tw.getPathString();
         RevCommit commitWithFix = null;
         if (context.getSettings().isCheckoutSubmodules() && filter.isBrokenSubmodulePath(path)
-            && (commitWithFix = getPreviousCommitWithFixedSubmodule(r, commit, path, context.getRepositories(), context.getSettings())) != null) {
+            && (commitWithFix = getPreviousCommitWithFixedSubmodule(context, r, commit, path)) != null) {
           //report changes between 2 commits where submodules fixed
           TreeWalk tw2 = new TreeWalk(r);
           try {
@@ -459,7 +459,8 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  private RevCommit getPreviousCommitWithFixedSubmodule(Repository db, RevCommit fromCommit, String submodulePath, final Map<String, Repository> repositories, Settings settings) throws IOException {
+  private RevCommit getPreviousCommitWithFixedSubmodule(OperationContext context, Repository db, RevCommit fromCommit, String submodulePath)
+    throws IOException, VcsException {
     RevWalk revWalk = new RevWalk(db);
     try {
       final RevCommit fromRev = revWalk.parseCommit(fromCommit.getId());
@@ -476,7 +477,7 @@ public class GitVcsSupport extends ServerVcsSupport
           prevTreeWalk.setFilter(TreeFilter.ALL);
           prevTreeWalk.setRecursive(true);
           prevTreeWalk.reset();
-          addTree(prevTreeWalk, prevRev, settings, repositories, true, db);
+          addTree(prevTreeWalk, prevRev, context.getSettings(), context.getRepositories(), true, db);
           while(prevTreeWalk.next()) {
             if (prevTreeWalk.getPathString().startsWith(submodulePath)) {
               SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
