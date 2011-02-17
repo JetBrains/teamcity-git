@@ -55,8 +55,9 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    * @param settings              the settings object
    * @param commit                the commit this resolves handles
    */
-  public TeamCitySubmoduleResolver(OperationContext context, GitVcsSupport vcs, Settings settings, RevCommit commit, Repository db) {
-    this(context, vcs, settings, "", commit, db);
+  public TeamCitySubmoduleResolver(OperationContext context, GitVcsSupport vcs, Settings settings, RevCommit commit, Repository db)
+    throws VcsException {
+    this(context, vcs, context.getSettings(), "", commit, db);
   }
 
   /**
