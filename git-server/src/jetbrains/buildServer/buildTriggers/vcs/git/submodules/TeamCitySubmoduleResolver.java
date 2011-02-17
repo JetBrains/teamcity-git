@@ -121,13 +121,10 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
     try {
       db = resolveRepository(path, getSubmoduleUrl(path));
     } catch (Exception e) {
-      //ignore
+      //exception means path does not contain submodule, use current repository
+      db = getRepository();
     }
-    if (db != null) {
-      return new TeamCitySubmoduleResolver(myContext, db, commit, fullPath(path));
-    } else {
-      return new TeamCitySubmoduleResolver(myContext, getRepository(), commit, fullPath(path));
-    }
+    return new TeamCitySubmoduleResolver(myContext, db, commit, fullPath(path));
   }
 
   /**
