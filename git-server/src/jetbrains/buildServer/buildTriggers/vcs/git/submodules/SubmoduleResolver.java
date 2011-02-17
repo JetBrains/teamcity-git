@@ -19,7 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
-import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
