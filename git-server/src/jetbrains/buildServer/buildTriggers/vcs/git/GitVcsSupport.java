@@ -1533,12 +1533,12 @@ public class GitVcsSupport extends ServerVcsSupport
       } finally {
         if (connection != null) connection.close();
         if (transport != null) transport.close();
-        db.close();
       }
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
       if (tmpDir != null) FileUtil.delete(tmpDir);
+      context.close();
     }
   }
 
