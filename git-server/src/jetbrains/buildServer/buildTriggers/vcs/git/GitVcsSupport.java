@@ -497,21 +497,6 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  private void addTree(OperationContext context, TreeWalk tw, RevCommit commit, boolean ignoreSubmodulesErrors, Repository db)
-    throws IOException, VcsException {
-    if (context.getSettings().isCheckoutSubmodules()) {
-      final SubmoduleResolver submoduleResolver = new TeamCitySubmoduleResolver(context, db, commit);
-      final SubmodulesCheckoutPolicy checkoutPolicy =
-        SubmodulesCheckoutPolicy.getPolicyWithErrorsIgnored(context.getSettings().getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
-      tw.addTree(SubmoduleAwareTreeIterator.create(db, commit, submoduleResolver,
-                                                   context.getSettings().getRepositoryFetchURL().toString(),
-                                                   "",
-                                                   checkoutPolicy));
-    } else {
-      tw.addTree(commit.getTree().getId());
-    }
-  }
-
   /**
    * Classify change in tree walker. The first tree is assumed to be a current commit and other
    * trees are assumed to be parent commits. In the case of multiple changes, the changes that
