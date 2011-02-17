@@ -300,7 +300,7 @@ public class GitVcsSupport extends ServerVcsSupport
     ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
                                                    GitServerUtil.getUser(context.getSettings(), commit), context.getRoot(), currentVersion, commit.getId().name());
     if (isMergeCommit(commit) && changes.isEmpty()) {
-      boolean hasInterestingChanges = hasInterestingChanges(context, db, commit, context.getRepositories(), context.getSettings(), ignoreSubmodulesErrors, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion));
+      boolean hasInterestingChanges = hasInterestingChanges(context, db, commit, ignoreSubmodulesErrors, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion));
       if (hasInterestingChanges) {
         result.setCanBeIgnored(false);
       }
@@ -315,12 +315,10 @@ public class GitVcsSupport extends ServerVcsSupport
   private boolean hasInterestingChanges(final OperationContext context,
                                         final Repository db,
                                         final RevCommit mergeCommit,
-                                        final Map<String, Repository> repositories,
-                                        final Settings settings,
                                         final boolean ignoreSubmodulesErrors,
                                         final CheckoutRules rules,
                                         final String firstUninterestingSHA)
-    throws IOException {
+    throws IOException, VcsException {
     RevWalk walk = new RevWalk(db);
     List<RevCommit> start = new ArrayList<RevCommit>();
     for (RevCommit c : mergeCommit.getParents()) {
@@ -337,10 +335,10 @@ public class GitVcsSupport extends ServerVcsSupport
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.reset();
         try {
-          addTree(tw, c, settings, repositories, ignoreSubmodulesErrors, db);
+          addTree(tw, c, context.getSettings(), context.getRepositories(), ignoreSubmodulesErrors, db);
           tw.addTree(c.getTree().getId());
           for (RevCommit parent : c.getParents()) {
-            addTree(tw, parent, settings, repositories, ignoreSubmodulesErrors, db);
+            addTree(tw, parent, context.getSettings(), context.getRepositories(), ignoreSubmodulesErrors, db);
           }
           while (tw.next()) {
             String path = tw.getPathString();
