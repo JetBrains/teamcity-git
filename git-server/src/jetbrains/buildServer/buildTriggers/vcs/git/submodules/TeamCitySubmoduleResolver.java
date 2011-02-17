@@ -47,27 +47,24 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    * The resolver constructor
    *
    * @param context current operation context
-   * @param vcs                   the Git vcs service
    * @param commit                the commit this resolves handles
    */
-  public TeamCitySubmoduleResolver(OperationContext context, GitVcsSupport vcs, RevCommit commit, Repository db) {
-    this(context, vcs, "", commit, db);
+  public TeamCitySubmoduleResolver(OperationContext context, RevCommit commit, Repository db) {
+    this(context, "", commit, db);
   }
 
   /**
    * The resolver constructor
    *
    * @param context current operation context
-   * @param vcs                   the Git vcs service
    * @param basePath              the base path
    * @param commit                the commit this resolves handles
    */
   private TeamCitySubmoduleResolver(OperationContext context,
-                                    GitVcsSupport vcs,
                                     String basePath,
                                     RevCommit commit,
                                     Repository db) {
-    super(vcs, db, commit);
+    super(context.getSupport(), db, commit);
     myContext = context;
     myPathFromRoot = basePath;
   }
@@ -129,9 +126,9 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
       //ignore
     }
     if (db != null) {
-      return new TeamCitySubmoduleResolver(myContext, myGitSupport, fullPath(path), commit, db);
+      return new TeamCitySubmoduleResolver(myContext, fullPath(path), commit, db);
     } else {
-      return new TeamCitySubmoduleResolver(myContext, myGitSupport, fullPath(path), commit, getRepository());
+      return new TeamCitySubmoduleResolver(myContext, fullPath(path), commit, getRepository());
     }
   }
 

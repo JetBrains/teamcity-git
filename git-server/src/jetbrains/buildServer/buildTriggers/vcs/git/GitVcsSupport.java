@@ -500,7 +500,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private void addTree(OperationContext context, TreeWalk tw, RevCommit commit, boolean ignoreSubmodulesErrors, Repository db)
     throws IOException, VcsException {
     if (context.getSettings().isCheckoutSubmodules()) {
-      final SubmoduleResolver submoduleResolver = new TeamCitySubmoduleResolver(context, this, commit, db);
+      final SubmoduleResolver submoduleResolver = new TeamCitySubmoduleResolver(context, commit, db);
       final SubmodulesCheckoutPolicy checkoutPolicy =
         SubmodulesCheckoutPolicy.getPolicyWithErrorsIgnored(context.getSettings().getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
       tw.addTree(SubmoduleAwareTreeIterator.create(db, commit, submoduleResolver,
