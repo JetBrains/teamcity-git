@@ -296,7 +296,7 @@ public class GitVcsSupport extends ServerVcsSupport
     }
     String currentVersion = GitServerUtil.makeVersion(commit);
     String parentVersion = GitServerUtil.getParentVersion(commit, firstUninterestingVersion);
-    List<VcsChange> changes = getCommitChanges(context.getRepositories(), context.getSettings(), db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
+    List<VcsChange> changes = getCommitChanges(context, context.getRepositories(), context.getSettings(), db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
     ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
                                               GitServerUtil.getUser(context.getSettings(), commit), context.getRoot(), currentVersion, commit.getId().name());
     if (isMergeCommit(commit) && changes.isEmpty()) {
@@ -369,7 +369,8 @@ public class GitVcsSupport extends ServerVcsSupport
    * @return the commit changes
    * @throws IOException if there is a repository access problem
    */
-  private List<VcsChange> getCommitChanges(final Map<String, Repository> repositories,
+  private List<VcsChange> getCommitChanges(final OperationContext context,
+                                           final Map<String, Repository> repositories,
                                            final Settings s,
                                            final Repository r,
                                            final RevCommit commit,
