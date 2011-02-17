@@ -112,7 +112,7 @@ class GitMapFullPath {
   }
 
   private RevCommit findCommit() throws VcsException, IOException {
-    final Repository repository = myGitSupport.getRepository(mySettings);
+    final Repository repository = myContext.getRepository();
     try {
       return myGitSupport.getCommit(repository, myGitRevision);
     } finally {
