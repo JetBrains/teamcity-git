@@ -1390,16 +1390,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return getRepository(s.getRepositoryPath(), s.getRepositoryFetchURL());
   }
 
-  /**
-   * Get repository for current operation context
-   */
-  private Repository getRepository(OperationContext context) throws VcsException {
-    final Repository r = getRepository(context.getSettings().getRepositoryPath(), context.getSettings().getRepositoryFetchURL());
-    context.getRepositories().put(context.getSettings().getRepositoryPath().getPath(), r);
-    return r;
-  }
-
-
   public Repository getRepository(File repositoryDir, URIish fetchUrl) throws VcsException {
     synchronized (getRepositoryLock(repositoryDir)) {
       return GitServerUtil.getRepository(repositoryDir, fetchUrl);
