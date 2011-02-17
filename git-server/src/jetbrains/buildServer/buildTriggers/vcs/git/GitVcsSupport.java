@@ -263,8 +263,8 @@ public class GitVcsSupport extends ServerVcsSupport
     Settings tipSettings = context.getSettings();
     RevWalk walk = null;
     try {
-      RevCommit baseCommit = ensureCommitLoaded(baseSettings, baseVersion);
-      RevCommit tipCommit = ensureCommitLoaded(tipSettings, tipVersion);
+      RevCommit baseCommit = ensureCommitLoaded(context, baseSettings, baseVersion);
+      RevCommit tipCommit = ensureCommitLoaded(context, tipSettings, tipVersion);
       Repository tipRepository = context.getRepository(tipSettings);
       walk = new RevWalk(tipRepository);
       walk.setRevFilter(RevFilter.MERGE_BASE);
@@ -842,7 +842,7 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  private RevCommit ensureCommitLoaded(Settings rootSettings, String commitWithDate) throws Exception {
+  private RevCommit ensureCommitLoaded(OperationContext context, Settings rootSettings, String commitWithDate) throws Exception {
     final Repository repository = getRepository(rootSettings);
     try {
       final String commit = GitUtils.versionRevision(commitWithDate);
