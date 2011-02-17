@@ -62,13 +62,7 @@ public class OperationContext {
   }
 
   public Repository getRepository() throws VcsException {
-    File dir = getSettings().getRepositoryPath();
-    Repository result = myRepositories.get(dir.getPath());
-    if (result == null) {
-      result = mySupport.getRepository(dir, getSettings().getRepositoryFetchURL());
-      myRepositories.put(dir.getPath(), result);
-    }
-    return result;
+    return getRepository(getSettings());
   }
 
   public Repository getRepository(Settings settings) throws VcsException {
