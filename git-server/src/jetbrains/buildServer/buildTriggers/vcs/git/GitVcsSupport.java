@@ -1354,12 +1354,6 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  public Repository getRepository(File repositoryDir, URIish fetchUrl) throws VcsException {
-    synchronized (getRepositoryLock(repositoryDir)) {
-      return GitServerUtil.getRepository(repositoryDir, fetchUrl);
-    }
-  }
-
   /**
    * Get repository from tree walker
    *
