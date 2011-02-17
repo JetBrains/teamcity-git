@@ -212,7 +212,7 @@ public class GitVcsSupport extends ServerVcsSupport
         }
       } finally {
         revs.release();
-        close(context.getRepositories().values());
+        context.close(context.getRepositories().values());
       }
     } catch (Exception e) {
       throw context.wrapException(e);
@@ -687,7 +687,7 @@ public class GitVcsSupport extends ServerVcsSupport
         }
       } finally {
         if (tw != null) tw.release();
-        close(context.getRepositories().values());
+        context.close(context.getRepositories().values());
       }
     } catch (Exception e) {
       throw context.wrapException(e);
@@ -795,7 +795,7 @@ public class GitVcsSupport extends ServerVcsSupport
           PERFORMANCE_LOG.debug("[getContent] root=" + context.getSettings().debugInfo() + ", file=" + filePath + ", get object content: " + (finish - start) + "ms");
         }
         tw.release();
-        close(context.getRepositories().values());
+        context.close(context.getRepositories().values());
       }
     } catch (Exception e) {
       throw context.wrapException(e);
