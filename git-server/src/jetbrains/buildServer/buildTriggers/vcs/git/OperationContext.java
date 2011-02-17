@@ -22,6 +22,7 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.transport.URIish;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -66,11 +67,16 @@ public class OperationContext {
   }
 
   public Repository getRepository(Settings settings) throws VcsException {
-    File dir = settings.getRepositoryPath();
-    Repository result = myRepositories.get(dir.getPath());
+    return getRepository(settings.getRepositoryPath(), settings.getRepositoryFetchURL());
+  }
+
+  public Repository getRepository(File repositoryDir, URIish fetchUrl) throws VcsException {
+    Repository result = myRepositories.get(repositoryDir);
     if (result == null) {
-      result = mySupport.getRepository(dir, settings.getRepositoryFetchURL());
-      myRepositories.put(dir.getPath(), result);
+      synchronized (mySupport.getRepositoryLock(repositoryDir)) {
+        result = GitServerUtil.getRepository(repositoryDir, fetchUrl);
+      }
+      myRepositories.put(repositoryDir.getPath(), result);
     }
     return result;
   }
