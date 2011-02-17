@@ -21,6 +21,7 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.errors.TransportException;
+import org.eclipse.jgit.lib.Repository;
 
 import java.io.FileNotFoundException;
 import java.net.UnknownHostException;
@@ -38,7 +39,7 @@ public class OperationContext {
   private final VcsRoot myRoot;
   private final String myOperation;
   private final Map<Long, Settings> myRootSettings = new HashMap<Long, Settings>(); //root id -> settings
-
+  private final Map<String, Repository> myRepositories = new HashMap<String, Repository>(); //repository path -> repository
 
   public OperationContext(GitVcsSupport support, VcsRoot root, String operation) {
     mySupport = support;
@@ -53,6 +54,10 @@ public class OperationContext {
 
   public String getOperation() {
     return myOperation;
+  }
+
+  public Map<String, Repository> getRepositories() {
+    return myRepositories;
   }
 
   public Settings getSettings() throws VcsException {
