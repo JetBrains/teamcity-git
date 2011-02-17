@@ -74,18 +74,19 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
       if (isRelative(url)) {
         url = resolveRelativeUrl(url);
       }
-      String dir = myContext.getSettings().getPathForUrl(url).getPath();
-      if (myContext.getRepositories().containsKey(dir)) {
-        return myContext.getRepositories().get(dir);
+      File repositoryDir = myContext.getSettings().getPathForUrl(url);
+      Repository result = myContext.getRepositoryFor(repositoryDir);
+      if (result != null) {
+        return result;
+      } else {
+        final URIish uri = new URIish(url);
+        result = myContext.getRepository(repositoryDir, uri);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Fetching submodule " + path + " data for " + myContext.getSettings().debugInfo());
+        }
+        myGitSupport.fetch(result, myContext.getSettings().getAuthSettings(), uri, new RefSpec("+refs/heads/*:refs/heads/*"));
+        return result;
       }
-      final URIish uri = new URIish(url);
-      final Repository r = myContext.getRepository(new File(dir), uri);
-
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Fetching submodule " + path + " data for " + myContext.getSettings().debugInfo());
-      }
-      myGitSupport.fetch(r, myContext.getSettings().getAuthSettings(), uri, new RefSpec("+refs/heads/*:refs/heads/*"));
-      return r;
     } catch (VcsAuthenticationException ae) {
       throw ae;
     } catch (VcsException e) {
