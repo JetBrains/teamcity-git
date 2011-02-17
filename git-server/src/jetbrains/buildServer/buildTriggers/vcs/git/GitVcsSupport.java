@@ -1242,7 +1242,7 @@ public class GitVcsSupport extends ServerVcsSupport
     try {
       repositoryTempDir = FileUtil.createTempDirectory("git-testcon", "");
       s.setUserDefinedRepositoryPath(repositoryTempDir);
-      Repository r = getRepository(s);
+      Repository r = context.getRepository();
       try {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Opening connection for " + s.debugInfo());
@@ -1338,7 +1338,7 @@ public class GitVcsSupport extends ServerVcsSupport
     Settings s = context.getSettings();
     synchronized (getRepositoryLock(s.getRepositoryPath())) {
       try {
-        Repository r = getRepository(s);
+        Repository r = context.getRepository();
         try {
           String commitSHA = GitUtils.versionRevision(version);
           RevCommit commit = ensureRevCommitLoaded(s, r, commitSHA);
@@ -1556,7 +1556,7 @@ public class GitVcsSupport extends ServerVcsSupport
     try {
       tmpDir = FileUtil.createTempDirectory("git-ls-remote", "");
       s.setUserDefinedRepositoryPath(tmpDir);
-      Repository db = getRepository(s);
+      Repository db = context.getRepository();
       Transport transport = null;
       FetchConnection connection = null;
       try {
