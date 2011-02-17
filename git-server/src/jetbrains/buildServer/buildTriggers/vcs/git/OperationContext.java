@@ -71,6 +71,16 @@ public class OperationContext {
     return result;
   }
 
+  public Repository getRepository(Settings settings) throws VcsException {
+    File dir = settings.getRepositoryPath();
+    Repository result = myRepositories.get(dir.getPath());
+    if (result == null) {
+      result = mySupport.getRepository(dir, settings.getRepositoryFetchURL());
+      myRepositories.put(dir.getPath(), result);
+    }
+    return result;
+  }
+
   public Settings getSettings() throws VcsException {
     return getSettings(myRoot);
   }
