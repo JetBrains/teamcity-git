@@ -946,33 +946,31 @@ public class GitVcsSupport extends ServerVcsSupport
     Settings s = context.getSettings();
     try {
       Repository r = context.getRepository();
-      try {
-        fetchBranchData(s, r);
-        String refName = GitUtils.branchRef(s.getBranch());
-        Ref branchRef = r.getRef(refName);
-        if (branchRef == null) {
+      fetchBranchData(s, r);
+      String refName = GitUtils.branchRef(s.getBranch());
+      Ref branchRef = r.getRef(refName);
+      if (branchRef == null) {
+        throw new VcsException("The branch name could not be resolved " + refName);
+      }
+      String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryPath(), s.getBranch());
+      if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
+        return cachedCurrentVersion;
+      } else {
+        RevCommit c = getCommit(r, branchRef.getObjectId());
+        if (c == null) {
           throw new VcsException("The branch name could not be resolved " + refName);
         }
-        String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryPath(), s.getBranch());
-        if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
-          return cachedCurrentVersion;
-        } else {
-          RevCommit c = getCommit(r, branchRef.getObjectId());
-          if (c == null) {
-            throw new VcsException("The branch name could not be resolved " + refName);
-          }
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("Current version: " + c.getId().name() + " " + s.debugInfo());
-          }
-          final String currentVersion = GitServerUtil.makeVersion(c);
-          setCachedCurrentVersion(s.getRepositoryPath(), s.getBranch(), currentVersion);
-          return currentVersion;
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Current version: " + c.getId().name() + " " + s.debugInfo());
         }
-      } finally {
-        r.close();
+        final String currentVersion = GitServerUtil.makeVersion(c);
+        setCachedCurrentVersion(s.getRepositoryPath(), s.getBranch(), currentVersion);
+        return currentVersion;
       }
     } catch (Exception e) {
       throw context.wrapException(e);
+    } finally {
+      context.close();
     }
   }
 
