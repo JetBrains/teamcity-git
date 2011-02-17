@@ -160,7 +160,7 @@ public class GitVcsSupport extends ServerVcsSupport
     List<ModificationData> result = new ArrayList<ModificationData>();
     OperationContext context = createContext(root, "collecting changes");
     try {
-      Repository r = getRepository(context);
+      Repository r = context.getRepository();
       RevWalk revs = new RevWalk(r);
       try {
         if (LOG.isDebugEnabled()) {
@@ -595,7 +595,7 @@ public class GitVcsSupport extends ServerVcsSupport
     final boolean debugFlag = LOG.isDebugEnabled();
     final boolean debugInfoOnEachCommit = TeamCityProperties.getBoolean("teamcity.git.commit.debug.info");
     try {
-      final Repository r = getRepository(context);
+      final Repository r = context.getRepository();
       TreeWalk tw = null;
       try {
         RevCommit toCommit = ensureRevCommitLoaded(context.getSettings(), r, GitUtils.versionRevision(toVersion));
@@ -767,7 +767,7 @@ public class GitVcsSupport extends ServerVcsSupport
     OperationContext context = createContext(root, "retrieving content");
     try {
       final long start = System.currentTimeMillis();
-      Repository r = getRepository(context);
+      Repository r = context.getRepository();
       final TreeWalk tw = new TreeWalk(r);
       try {
         if (LOG.isDebugEnabled()) {
