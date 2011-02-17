@@ -58,6 +58,10 @@ public class OperationContext {
     return myOperation;
   }
 
+  public GitVcsSupport getSupport() {
+    return mySupport;
+  }
+
   public Map<String, Repository> getRepositories() {
     return myRepositories;
   }
