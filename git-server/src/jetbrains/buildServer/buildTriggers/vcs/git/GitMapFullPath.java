@@ -50,20 +50,22 @@ class GitMapFullPath {
   private final VcsRootEntry myRootEntry;
   private final String myFullPath;
 
+  private OperationContext myContext;
   private final Settings mySettings;
   private final int myFirstSep;
   private final int myLastSep;
 
   private String myGitRevision;
 
-  public GitMapFullPath(final OperationContext context, final GitVcsSupport gitSupport, final VcsRootEntry rootEntry, final String fullPath, final Settings settings) {
+  public GitMapFullPath(final OperationContext context, final GitVcsSupport gitSupport, final VcsRootEntry rootEntry, final String fullPath, final Settings settings) throws VcsException {
     myGitSupport = gitSupport;
     myRootEntry = rootEntry;
     myFullPath = fullPath;
 
     myFirstSep = myFullPath.indexOf("|");
     myLastSep = myFullPath.lastIndexOf("|");
-    mySettings = settings;
+    myContext = context;
+    mySettings = context.getSettings();
   }
 
   public Collection<String> mapFullPath() throws VcsException {
