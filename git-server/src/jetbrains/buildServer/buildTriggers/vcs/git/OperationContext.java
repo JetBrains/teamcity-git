@@ -37,7 +37,7 @@ public class OperationContext {
   private final GitVcsSupport mySupport;
   private final VcsRoot myRoot;
   private final String myOperation;
-  private final Map<Long, Settings> rootSettings = new HashMap<Long, Settings>(); //root id -> settings
+  private final Map<Long, Settings> myRootSettings = new HashMap<Long, Settings>(); //root id -> settings
 
 
   public OperationContext(GitVcsSupport support, VcsRoot root, String operation) {
@@ -60,10 +60,10 @@ public class OperationContext {
   }
 
   public Settings getSettings(VcsRoot root) throws VcsException {
-    Settings s = rootSettings.get(root.getId());
+    Settings s = myRootSettings.get(root.getId());
     if (s == null) {
       s = createSettings(myRoot);
-      rootSettings.put(root.getId(), s);
+      myRootSettings.put(root.getId(), s);
     }
     return s;
   }
