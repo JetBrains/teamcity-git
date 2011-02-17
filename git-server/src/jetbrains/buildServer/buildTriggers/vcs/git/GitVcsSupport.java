@@ -1268,13 +1268,12 @@ public class GitVcsSupport extends ServerVcsSupport
         throw friendlyNotSupportedException(vcsRoot, s, nse);
       } catch (TransportException te) {
         throw friendlyTransportException(te);
-      } finally {
-        r.close();
       }
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
       if (repositoryTempDir != null) FileUtil.delete(repositoryTempDir);
+      context.close();
     }
   }
 
