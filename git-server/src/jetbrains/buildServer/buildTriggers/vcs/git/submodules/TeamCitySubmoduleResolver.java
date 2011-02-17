@@ -60,10 +60,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    * @param basePath              the base path
    * @param commit                the commit this resolves handles
    */
-  private TeamCitySubmoduleResolver(OperationContext context,
-                                    String basePath,
-                                    RevCommit commit,
-                                    Repository db) {
+  private TeamCitySubmoduleResolver(OperationContext context, String basePath, RevCommit commit, Repository db) {
     super(context.getSupport(), db, commit);
     myContext = context;
     myPathFromRoot = basePath;
