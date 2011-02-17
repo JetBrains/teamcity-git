@@ -965,7 +965,7 @@ public class GitVcsSupport extends ServerVcsSupport
     OperationContext context = createContext(root, "retrieving current version");
     Settings s = context.getSettings();
     try {
-      Repository r = getRepository(s);
+      Repository r = context.getRepository();
       try {
         fetchBranchData(s, r);
         String refName = GitUtils.branchRef(s.getBranch());
