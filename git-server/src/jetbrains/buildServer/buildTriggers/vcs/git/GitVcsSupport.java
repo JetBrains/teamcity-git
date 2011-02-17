@@ -842,25 +842,6 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  /**
-   * Get repository from tree walker
-   *
-   * @param r   the initial repository
-   * @param tw  the tree walker
-   * @param nth the position
-   * @return the actual repository
-   */
-  private Repository getRepository(Repository r, TreeWalk tw, int nth) {
-    Repository objRep;
-    AbstractTreeIterator ti = tw.getTree(nth, AbstractTreeIterator.class);
-    if (ti instanceof SubmoduleAwareTreeIterator) {
-      objRep = ((SubmoduleAwareTreeIterator)ti).getRepository();
-    } else {
-      objRep = r;
-    }
-    return objRep;
-  }
-
   private RevCommit ensureCommitLoaded(Settings rootSettings, String commitWithDate) throws Exception {
     final Repository repository;
     repository = getRepository(rootSettings);
@@ -1425,6 +1406,25 @@ public class GitVcsSupport extends ServerVcsSupport
     synchronized (getRepositoryLock(repositoryDir)) {
       return GitServerUtil.getRepository(repositoryDir, fetchUrl);
     }
+  }
+
+  /**
+   * Get repository from tree walker
+   *
+   * @param r   the initial repository
+   * @param tw  the tree walker
+   * @param nth the position
+   * @return the actual repository
+   */
+  private Repository getRepository(Repository r, TreeWalk tw, int nth) {
+    Repository objRep;
+    AbstractTreeIterator ti = tw.getTree(nth, AbstractTreeIterator.class);
+    if (ti instanceof SubmoduleAwareTreeIterator) {
+      objRep = ((SubmoduleAwareTreeIterator)ti).getRepository();
+    } else {
+      objRep = r;
+    }
+    return objRep;
   }
 
   /**
