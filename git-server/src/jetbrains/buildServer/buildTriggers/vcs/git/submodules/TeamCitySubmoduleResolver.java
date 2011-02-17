@@ -72,11 +72,11 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
                                     Settings settings,
                                     String basePath,
                                     RevCommit commit,
-                                    Repository db) {
+                                    Repository db) throws VcsException {
     super(vcs, db, commit);
     myContext = context;
     myPathFromRoot = basePath;
-    myBaseRepositorySettings = settings;
+    myBaseRepositorySettings = context.getSettings();
   }
 
   protected Repository resolveRepository(String path, String url) throws IOException, VcsAuthenticationException {
