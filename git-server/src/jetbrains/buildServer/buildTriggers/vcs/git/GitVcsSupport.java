@@ -1378,17 +1378,6 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  /**
-   * Get repository using settings
-   *
-   * @param s a repository to get
-   * @return an opened repository
-   * @throws VcsException if there is a problem with opening the repository
-   */
-  Repository getRepository(Settings s) throws VcsException {
-    return getRepository(s.getRepositoryPath(), s.getRepositoryFetchURL());
-  }
-
   public Repository getRepository(File repositoryDir, URIish fetchUrl) throws VcsException {
     synchronized (getRepositoryLock(repositoryDir)) {
       return GitServerUtil.getRepository(repositoryDir, fetchUrl);
