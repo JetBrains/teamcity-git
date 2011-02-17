@@ -27,7 +27,6 @@ import org.eclipse.jgit.transport.URIish;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Map;
 
 /**
  * The resolver for submodules that uses TeamCity repository mapping.
@@ -46,35 +45,30 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    * The settings object
    */
   private final Settings myBaseRepositorySettings;
-  /**
-   * Repositories created for submodules
-   */
-  private final Map<String, Repository> mySubmoduleRepositories;
   private final OperationContext myContext;
 
   /**
    * The resolver constructor
    *
-   * @param submoduleRepositories the collection to accumulate submodule repositories
+   * @param context current operation context
    * @param vcs                   the Git vcs service
    * @param settings              the settings object
    * @param commit                the commit this resolves handles
    */
-  public TeamCitySubmoduleResolver(OperationContext context, Map<String, Repository> submoduleRepositories, GitVcsSupport vcs, Settings settings, RevCommit commit, Repository db) {
-    this(context, submoduleRepositories, vcs, settings, "", commit, db);
+  public TeamCitySubmoduleResolver(OperationContext context, GitVcsSupport vcs, Settings settings, RevCommit commit, Repository db) {
+    this(context, vcs, settings, "", commit, db);
   }
 
   /**
    * The resolver constructor
    *
-   * @param submoduleRepositories the collection to accumulate submodule repositories
+   * @param context current operation context
    * @param vcs                   the Git vcs service
    * @param settings              the settings object
    * @param basePath              the base path
    * @param commit                the commit this resolves handles
    */
   private TeamCitySubmoduleResolver(OperationContext context,
-                                    Map<String, Repository> submoduleRepositories,
                                     GitVcsSupport vcs,
                                     Settings settings,
                                     String basePath,
@@ -82,7 +76,6 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
                                     Repository db) {
     super(vcs, db, commit);
     myContext = context;
-    mySubmoduleRepositories = submoduleRepositories;
     myPathFromRoot = basePath;
     myBaseRepositorySettings = settings;
   }
@@ -144,9 +137,9 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
       //ignore
     }
     if (db != null) {
-      return new TeamCitySubmoduleResolver(myContext, mySubmoduleRepositories, myGitSupport, myBaseRepositorySettings, fullPath(path), commit, db);
+      return new TeamCitySubmoduleResolver(myContext, myGitSupport, myBaseRepositorySettings, fullPath(path), commit, db);
     } else {
-      return new TeamCitySubmoduleResolver(myContext, mySubmoduleRepositories, myGitSupport, myBaseRepositorySettings, fullPath(path), commit, getRepository());
+      return new TeamCitySubmoduleResolver(myContext, myGitSupport, myBaseRepositorySettings, fullPath(path), commit, getRepository());
     }
   }
 
