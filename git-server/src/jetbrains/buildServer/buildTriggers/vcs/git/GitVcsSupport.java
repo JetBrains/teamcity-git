@@ -1316,41 +1316,39 @@ public class GitVcsSupport extends ServerVcsSupport
     synchronized (getRepositoryLock(s.getRepositoryPath())) {
       try {
         Repository r = context.getRepository();
+        String commitSHA = GitUtils.versionRevision(version);
+        RevCommit commit = ensureRevCommitLoaded(s, r, commitSHA);
+        Git git = new Git(r);
+        git.tag().setName(label).setObjectId(commit).call();
+        String tagRef = GitUtils.tagName(label);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
+        }
+        final Transport tn = openTransport(s.getAuthSettings(), r, s.getRepositoryPushURL());
         try {
-          String commitSHA = GitUtils.versionRevision(version);
-          RevCommit commit = ensureRevCommitLoaded(s, r, commitSHA);
-          Git git = new Git(r);
-          git.tag().setName(label).setObjectId(commit).call();
-          String tagRef = GitUtils.tagName(label);
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
-          }
-          final Transport tn = openTransport(s.getAuthSettings(), r, s.getRepositoryPushURL());
+          final PushConnection c = tn.openPush();
           try {
-            final PushConnection c = tn.openPush();
-            try {
-              RemoteRefUpdate ru = new RemoteRefUpdate(r, tagRef, tagRef, false, null, null);
-              c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(tagRef, ru));
-              LOG.info("Tag  " + label + "=" + version + " pushed with status " + ru.getStatus() + " for " + s.debugInfo());
-              switch (ru.getStatus()) {
-                case UP_TO_DATE:
-                case OK:
-                  break;
-                default:
-                  throw new VcsException("The remote tag was not created (" + ru.getStatus() + "): " + label);
-              }
-            } finally {
-              c.close();
+            RemoteRefUpdate ru = new RemoteRefUpdate(r, tagRef, tagRef, false, null, null);
+            c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(tagRef, ru));
+            LOG.info("Tag  " + label + "=" + version + " pushed with status " + ru.getStatus() + " for " + s.debugInfo());
+            switch (ru.getStatus()) {
+              case UP_TO_DATE:
+              case OK:
+                break;
+              default:
+                throw new VcsException("The remote tag was not created (" + ru.getStatus() + "): " + label);
             }
-            return label;
           } finally {
-            tn.close();
+            c.close();
           }
+          return label;
         } finally {
-          r.close();
+          tn.close();
         }
       } catch (Exception e) {
         throw context.wrapException(e);
+      } finally {
+        context.close();
       }
     }
   }
