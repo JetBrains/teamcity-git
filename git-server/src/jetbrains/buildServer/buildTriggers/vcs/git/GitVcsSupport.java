@@ -843,7 +843,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   private RevCommit ensureCommitLoaded(OperationContext context, Settings rootSettings, String commitWithDate) throws Exception {
-    final Repository repository = getRepository(rootSettings);
+    final Repository repository = context.getRepository(rootSettings);
     try {
       final String commit = GitUtils.versionRevision(commitWithDate);
       return ensureRevCommitLoaded(rootSettings, repository, commit);
