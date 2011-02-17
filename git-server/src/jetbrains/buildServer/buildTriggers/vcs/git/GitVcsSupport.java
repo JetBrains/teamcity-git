@@ -167,7 +167,7 @@ public class GitVcsSupport extends ServerVcsSupport
           LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + context.getSettings().debugInfo());
         }
         final String current = GitUtils.versionRevision(currentVersion);
-        ensureRevCommitLoaded(context, context.getSettings(), r, current);
+        ensureRevCommitLoaded(context, context.getSettings(), current);
         final String from = GitUtils.versionRevision(fromVersion);
         final RevCommit currentRev = revs.parseCommit(ObjectId.fromString(current));
         revs.markStart(currentRev);
@@ -579,7 +579,7 @@ public class GitVcsSupport extends ServerVcsSupport
       final Repository r = context.getRepository();
       TreeWalk tw = null;
       try {
-        RevCommit toCommit = ensureRevCommitLoaded(context, context.getSettings(), r, GitUtils.versionRevision(toVersion));
+        RevCommit toCommit = ensureRevCommitLoaded(context, context.getSettings(), GitUtils.versionRevision(toVersion));
         if (toCommit == null) {
           throw new VcsException("Missing commit for version: " + toVersion);
         }
@@ -755,7 +755,7 @@ public class GitVcsSupport extends ServerVcsSupport
           LOG.debug("Getting data from " + version + ":" + filePath + " for " + context.getSettings().debugInfo());
         }
         final String rev = GitUtils.versionRevision(version);
-        RevCommit c = ensureRevCommitLoaded(context, context.getSettings(), r, rev);
+        RevCommit c = ensureRevCommitLoaded(context, context.getSettings(), rev);
         tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
         tw.setRecursive(tw.getFilter().shouldBeRecursive());
         tw.reset();
@@ -824,12 +824,12 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   private RevCommit ensureCommitLoaded(OperationContext context, Settings rootSettings, String commitWithDate) throws Exception {
-    final Repository repository = context.getRepository(rootSettings);
     final String commit = GitUtils.versionRevision(commitWithDate);
-    return ensureRevCommitLoaded(context, rootSettings, repository, commit);
+    return ensureRevCommitLoaded(context, rootSettings, commit);
   }
 
-  private RevCommit ensureRevCommitLoaded(OperationContext context, Settings settings, Repository db, String commitSHA) throws Exception {
+  private RevCommit ensureRevCommitLoaded(OperationContext context, Settings settings, String commitSHA) throws Exception {
+    Repository db = context.getRepository(settings);
     RevCommit result = null;
     try {
       final long start = System.currentTimeMillis();
@@ -1314,7 +1314,7 @@ public class GitVcsSupport extends ServerVcsSupport
       try {
         Repository r = context.getRepository();
         String commitSHA = GitUtils.versionRevision(version);
-        RevCommit commit = ensureRevCommitLoaded(context, s, r, commitSHA);
+        RevCommit commit = ensureRevCommitLoaded(context, s, commitSHA);
         Git git = new Git(r);
         git.tag().setName(label).setObjectId(commit).call();
         String tagRef = GitUtils.tagName(label);
