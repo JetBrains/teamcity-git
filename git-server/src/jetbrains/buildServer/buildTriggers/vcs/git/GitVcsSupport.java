@@ -769,8 +769,7 @@ public class GitVcsSupport extends ServerVcsSupport
     Settings s = context.getSettings();
     try {
       final long start = System.currentTimeMillis();
-      Map<String, Repository> repositories = new HashMap<String, Repository>();
-      Repository r = getRepository(s, repositories);
+      Repository r = getRepository(s, context.getRepositories());
       final TreeWalk tw = new TreeWalk(r);
       try {
         if (LOG.isDebugEnabled()) {
@@ -781,7 +780,7 @@ public class GitVcsSupport extends ServerVcsSupport
         tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
         tw.setRecursive(tw.getFilter().shouldBeRecursive());
         tw.reset();
-        addTree(tw, c, s, repositories, true, r);
+        addTree(tw, c, s, context.getRepositories(), true, r);
         if (!tw.next()) {
           throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + s.debugInfo());
         }
@@ -798,7 +797,7 @@ public class GitVcsSupport extends ServerVcsSupport
           PERFORMANCE_LOG.debug("[getContent] root=" + s.debugInfo() + ", file=" + filePath + ", get object content: " + (finish - start) + "ms");
         }
         tw.release();
-        close(repositories.values());
+        close(context.getRepositories().values());
       }
     } catch (Exception e) {
       throw context.wrapException(e);
