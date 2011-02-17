@@ -298,7 +298,7 @@ public class GitVcsSupport extends ServerVcsSupport
     String parentVersion = GitServerUtil.getParentVersion(commit, firstUninterestingVersion);
     List<VcsChange> changes = getCommitChanges(context, db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
     ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
-                                              GitServerUtil.getUser(context.getSettings(), commit), context.getRoot(), currentVersion, commit.getId().name());
+                                                   GitServerUtil.getUser(context.getSettings(), commit), context.getRoot(), currentVersion, commit.getId().name());
     if (isMergeCommit(commit) && changes.isEmpty()) {
       boolean hasInterestingChanges = hasInterestingChanges(db, commit, context.getRepositories(), context.getSettings(), ignoreSubmodulesErrors, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion));
       if (hasInterestingChanges) {
