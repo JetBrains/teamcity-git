@@ -23,6 +23,7 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.net.UnknownHostException;
 import java.util.HashMap;
@@ -58,6 +59,16 @@ public class OperationContext {
 
   public Map<String, Repository> getRepositories() {
     return myRepositories;
+  }
+
+  public Repository getRepository() throws VcsException {
+    File dir = getSettings().getRepositoryPath();
+    Repository result = myRepositories.get(dir.getPath());
+    if (result == null) {
+      result = mySupport.getRepository(dir, getSettings().getRepositoryFetchURL());
+      myRepositories.put(dir.getPath(), result);
+    }
+    return result;
   }
 
   public Settings getSettings() throws VcsException {
