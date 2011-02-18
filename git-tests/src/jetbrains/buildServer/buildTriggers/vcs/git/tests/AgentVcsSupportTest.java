@@ -40,6 +40,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.regex.Matcher;
@@ -266,17 +267,25 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  public void should_create_bare_repository_in_caches_dir() throws VcsException {
+  public void should_create_bare_repository_in_caches_dir() throws VcsException, IOException {
     File gitCacheDir = myAgentConfiguration.getCacheDirectory("git");
     assertTrue(gitCacheDir.listFiles().length == 0);
+    Settings settings = new Settings(myRoot, gitCacheDir);
     myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
-    File bareRepositoryDir = Settings.getRepositoryDir(gitCacheDir, myRoot);
+
+    File bareRepositoryDir = settings.getRepositoryDir();
     assertTrue(bareRepositoryDir.exists());
     //check some dirs that should be present in the bare repository:
     assertTrue(new File(bareRepositoryDir, "info").exists());
     assertTrue(new File(bareRepositoryDir, "objects").exists());
     assertTrue(new File(bareRepositoryDir, "refs").exists());
+
+    String config = FileUtil.loadTextAndClose(new FileReader(new File(bareRepositoryDir, "config")));
+    assertTrue(config.contains("[remote \"origin\"]"));
+    String remoteUrl = "url = " + settings.getRepositoryFetchURL();
+    assertTrue(config.contains(remoteUrl));
+
   }
 
 
