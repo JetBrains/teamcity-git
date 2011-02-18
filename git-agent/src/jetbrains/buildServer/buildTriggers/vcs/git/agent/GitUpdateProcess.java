@@ -33,6 +33,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.net.URISyntaxException;
 
 /**
  * The agent support for VCS.
@@ -279,8 +280,7 @@ public abstract class GitUpdateProcess {
    *
    * @throws VcsException if there are problems with initializing the directory
    */
-  void initDirectory()
-    throws VcsException {
+  void initDirectory() throws VcsException {
     BuildDirectoryCleanerCallback c = new BuildDirectoryCleanerCallback(mLogger, LOG);
     myDirectoryCleaner.cleanFolder(myDirectory, c);
     //noinspection ResultOfMethodCallIgnored
@@ -290,7 +290,11 @@ public abstract class GitUpdateProcess {
     }
     mLogger.message("The .git directory is missing in '" + myDirectory + "'. Running 'git init'...");
     init();
-    addRemote("origin", mySettings.getRepositoryFetchURL());
+    try {
+      addRemote("origin", new URIish(mySettings.getRepositoryDir().getAbsolutePath()));
+    } catch (URISyntaxException e) {
+      throw new VcsException("Error during initializing repository", e);
+    }
     URIish url = mySettings.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();
     if (pushUrl != null && !pushUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
