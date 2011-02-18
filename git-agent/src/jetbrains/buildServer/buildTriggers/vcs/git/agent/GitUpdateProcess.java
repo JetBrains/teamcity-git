@@ -115,7 +115,7 @@ public abstract class GitUpdateProcess {
     mLogger = logger;
     revision = GitUtils.versionRevision(toVersion);
     myDirectory = findDirectory();
-    mySettings = new AgentSettings(gitPath, myDirectory, root, useNativeSSH);
+    mySettings = new AgentSettings(agentConfiguration.getCacheDirectory("git"), gitPath, myDirectory, root, useNativeSSH);
   }
 
   /**
