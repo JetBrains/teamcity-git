@@ -294,21 +294,6 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  private CurrentBuildTracker createCurrentBuildTracker() {
-    CurrentBuildTracker tracker = myMockery.mock(CurrentBuildTracker.class);
-    return tracker;
-  }
-
-
-  private ExtensionHolder createExtensionHolder() {
-    final ExtensionHolder holder = myMockery.mock(ExtensionHolder.class);
-    myMockery.checking(new Expectations(){{
-      allowing(holder).getExtensions(with(Expectations.<Class<TeamCityExtension>>anything()));
-    }});
-    return holder;
-  }
-
-
   private BuildAgentConfiguration createBuildAgentConfiguration() throws IOException {
     final File cacheDir = myTempFiles.createTempDir();
     final BuildAgentConfiguration configuration = myMockery.mock(BuildAgentConfiguration.class);
