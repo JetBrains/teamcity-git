@@ -115,7 +115,7 @@ public class Settings {
     }
   }
 
-  public static File getRepositoryPath(File cacheDir, VcsRoot root) throws VcsException {
+  public static File getRepositoryDir(File cacheDir, VcsRoot root) throws VcsException {
     File userDefinedPath = readPath(root);
     if (userDefinedPath == null) {
       AuthSettings auth = new AuthSettings(root.getProperties());

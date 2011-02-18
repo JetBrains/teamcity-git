@@ -98,7 +98,7 @@ public class Cleaner extends BuildServerAdapter {
     File cacheDir = new File(myPaths.getCachesDir(), "git");
     for (VcsRoot root : roots) {
       try {
-        File usedRootDir = Settings.getRepositoryPath(cacheDir, root);
+        File usedRootDir = Settings.getRepositoryDir(cacheDir, root);
         repositoryDirs.remove(usedRootDir);
       } catch (Exception e) {
         LOG.warn("Get repository path error", e);
