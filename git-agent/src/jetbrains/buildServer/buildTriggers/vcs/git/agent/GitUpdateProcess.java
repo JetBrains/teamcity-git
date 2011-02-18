@@ -120,6 +120,7 @@ public abstract class GitUpdateProcess {
 
 
   public void updateSources() throws VcsException {
+    updateBareRepository();
     LOG.info("Starting update of root " + myRoot.getName() + " in " + myCheckoutDirectory + " to revision " + myToVersion);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Updating " + mySettings.debugInfo());
@@ -178,6 +179,13 @@ public abstract class GitUpdateProcess {
       doSubmoduleUpdate(myDirectory);
     }
   }
+
+
+  private void updateBareRepository() {
+    File bareRepositoryDir = mySettings.getRepositoryDir();
+    bareRepositoryDir.mkdirs();
+  }
+
 
   /**
    * If some git process crashed in this repository earlier it can leave lock files for ref.
