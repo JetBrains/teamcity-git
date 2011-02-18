@@ -141,7 +141,7 @@ public abstract class GitUpdateProcess {
         }
         remoteUrl = "";
       }
-      if (!remoteUrl.equals(getLocalMirrorUrl())) {
+      if (!remoteUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
         initDirectory();
         firstFetch = true;
       }
@@ -298,11 +298,8 @@ public abstract class GitUpdateProcess {
     }
     mLogger.message("The .git directory is missing in '" + myDirectory + "'. Running 'git init'...");
     init();
-    try {
-      addRemote("origin", new URIish(mySettings.getRepositoryDir().getAbsolutePath()));
-    } catch (URISyntaxException e) {
-      throw new VcsException("Error during initializing repository", e);
-    }
+    addRemote("origin", mySettings.getRepositoryFetchURL());
+    setConfigProperty("url." + mySettings.getRepositoryDir().getAbsolutePath() + ".insteadOf", mySettings.getRepositoryFetchURL().toString());
     URIish url = mySettings.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();
     if (pushUrl != null && !pushUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
