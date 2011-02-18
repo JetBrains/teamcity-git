@@ -62,7 +62,7 @@ public class AgentSettings extends Settings {
    * @throws VcsException if there is a configuration problem
    */
   public AgentSettings(File cacheDir, String gitCommandPath, File localRepositoryDir, VcsRoot root, boolean useNativeSSH) throws VcsException {
-    super(root);
+    super(root, cacheDir);
     this.gitCommandPath = gitCommandPath;
     this.localRepositoryDir = localRepositoryDir;
     this.rootName = root.getName();
