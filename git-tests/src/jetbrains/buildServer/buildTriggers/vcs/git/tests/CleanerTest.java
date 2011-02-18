@@ -54,6 +54,7 @@ public class CleanerTest extends BaseTestCase {
   private ScheduledExecutorService myCleanExecutor;
   private VcsManager myVcsManager;
   private Mockery myContext;
+  private GitVcsSupport mySupport;
 
   @BeforeMethod
   public void setUp() throws IOException {
@@ -67,8 +68,8 @@ public class CleanerTest extends BaseTestCase {
       allowing(server).getExecutor(); will(returnValue(myCleanExecutor));
       allowing(server).getVcsManager(); will(returnValue(myVcsManager));
     }});
-    GitVcsSupport gitSupport = new GitVcsSupport(myServerPaths, null, null);
-    myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), myServerPaths, gitSupport);
+    mySupport = new GitVcsSupport(myServerPaths, null, null);
+    myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), myServerPaths, mySupport);
   }
 
   @AfterMethod
@@ -109,7 +110,7 @@ public class CleanerTest extends BaseTestCase {
   }
 
   private File getRepositoryDir(VcsRoot root) throws VcsException {
-    Settings settings = new Settings(root, new File(myServerPaths.getCachesDir(), "git"));
+    Settings settings = new Settings(root, mySupport.getCachesDir());
     return settings.getRepositoryDir();
   }
 
