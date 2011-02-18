@@ -159,6 +159,11 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     new RemoteCommand(mySettings).add(name, fetchUrl.toString());
   }
 
+  @Override
+  protected void addRemoteBare(String name, URIish fetchUrl) throws VcsException {
+    new RemoteCommand(mySettings, mySettings.getRepositoryDir().getAbsolutePath()).add(name, fetchUrl.toString());
+  }
+
   /**
    * {@inheritDoc}
    */
@@ -190,6 +195,11 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
    */
   protected void setConfigProperty(final String propertyName, final String value) throws VcsException {
     new ConfigCommand(mySettings).set(propertyName, value);
+  }
+
+  @Override
+  protected void setConfigPropertyBare(String propertyName, String value) throws VcsException {
+    new ConfigCommand(mySettings, mySettings.getRepositoryDir().getAbsolutePath()).set(propertyName, value);
   }
 
   protected void hardReset() throws VcsException {

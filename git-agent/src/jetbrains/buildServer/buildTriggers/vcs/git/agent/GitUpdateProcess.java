@@ -186,6 +186,11 @@ public abstract class GitUpdateProcess {
     if (!bareRepositoryDir.exists()) {
       bareRepositoryDir.mkdirs();
       initBare();
+      addRemoteBare("origin", mySettings.getRepositoryFetchURL());
+      String pushUrl = mySettings.getRepositoryPushURL().toString();
+      if (!pushUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
+        setConfigPropertyBare("remote.origin.pushurl", pushUrl);
+      }
     }
     //fetch --git-dir
   }
@@ -351,6 +356,8 @@ public abstract class GitUpdateProcess {
    */
   protected abstract void addRemote(String name, URIish fetchUrl) throws VcsException;
 
+  protected abstract void addRemoteBare(String name, URIish fetchUrl) throws VcsException;
+
   /**
    * Init repository
    *
@@ -387,6 +394,8 @@ public abstract class GitUpdateProcess {
    * @throws VcsException if the property could not be set
    */
   protected abstract void setConfigProperty(String propertyName, String value) throws VcsException;
+
+  protected abstract void setConfigPropertyBare(String propertyName, String value) throws VcsException;
 
   /**
    * Hard reset to the specified revision

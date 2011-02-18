@@ -35,6 +35,10 @@ public class ConfigCommand extends RepositoryCommand {
     super(settings);
   }
 
+  public ConfigCommand(@NotNull final AgentSettings settings, String bareRepositoryPath) {
+    super(settings, bareRepositoryPath);
+  }
+
   /**
    * Get configuration property value
    *
