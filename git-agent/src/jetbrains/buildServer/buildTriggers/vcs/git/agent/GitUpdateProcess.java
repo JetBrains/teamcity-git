@@ -197,6 +197,15 @@ public abstract class GitUpdateProcess {
   }
 
 
+  private String getLocalMirrorUrl() throws VcsException {
+    try {
+      return new URIish(mySettings.getRepositoryDir().getAbsolutePath()).toString();
+    } catch (URISyntaxException e) {
+      throw new VcsException("Error in url to local mirror", e);
+    }
+  }
+
+
   /**
    * If some git process crashed in this repository earlier it can leave lock files for ref.
    * This method delete such lock file if it exists (with warning message), otherwise git operation will fail.
