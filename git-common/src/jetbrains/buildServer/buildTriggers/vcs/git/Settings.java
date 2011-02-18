@@ -97,16 +97,10 @@ public class Settings {
     return submodulePolicy;
   }
 
-  /**
-   * @return username style
-   */
   public UserNameStyle getUsernameStyle() {
     return usernameStyle;
   }
 
-  /**
-   * @return the local repository path
-   */
   public File getRepositoryDir() {
     if (userDefinedRepositoryPath == null) {
       return getRepositoryDirForUrl(getRepositoryFetchURL().toString());
@@ -126,12 +120,6 @@ public class Settings {
     }
   }
 
-  /**
-   * Get server paths for the URL
-   *
-   * @param url the URL to get path for
-   * @return the internal directory name for the URL
-   */
   public File getRepositoryDirForUrl(String url) {
     return getRepositoryDirForUrl(new File(cachesDirectory), url);
   }
