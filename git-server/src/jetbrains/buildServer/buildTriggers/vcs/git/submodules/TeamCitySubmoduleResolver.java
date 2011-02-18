@@ -17,10 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
-import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -30,7 +27,6 @@ import org.eclipse.jgit.transport.URIish;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Map;
 
 /**
  * The resolver for submodules that uses TeamCity repository mapping.
@@ -45,46 +41,29 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    * For sub-submodules = path of submodule/path of sub-submodule in submodule repository.
    */
   private final String myPathFromRoot;
-  /**
-   * The settings object
-   */
-  private final Settings myBaseRepositorySettings;
-  /**
-   * Repositories created for submodules
-   */
-  private final Map<String, Repository> mySubmoduleRepositories;
+  private final OperationContext myContext;
 
   /**
    * The resolver constructor
    *
-   * @param submoduleRepositories the collection to accumulate submodule repositories
-   * @param vcs                   the Git vcs service
-   * @param settings              the settings object
+   * @param context current operation context
    * @param commit                the commit this resolves handles
    */
-  public TeamCitySubmoduleResolver(Map<String, Repository> submoduleRepositories, GitVcsSupport vcs, Settings settings, RevCommit commit, Repository db) {
-    this(submoduleRepositories, vcs, settings, "", commit, db);
+  public TeamCitySubmoduleResolver(OperationContext context, Repository db, RevCommit commit) {
+    this(context, db, commit, "");
   }
 
   /**
    * The resolver constructor
    *
-   * @param submoduleRepositories the collection to accumulate submodule repositories
-   * @param vcs                   the Git vcs service
-   * @param settings              the settings object
+   * @param context current operation context
    * @param basePath              the base path
    * @param commit                the commit this resolves handles
    */
-  private TeamCitySubmoduleResolver(Map<String, Repository> submoduleRepositories,
-                                    GitVcsSupport vcs,
-                                    Settings settings,
-                                    String basePath,
-                                    RevCommit commit,
-                                    Repository db) {
-    super(vcs, db, commit);
-    mySubmoduleRepositories = submoduleRepositories;
+  private TeamCitySubmoduleResolver(OperationContext context, Repository db, RevCommit commit, String basePath) {
+    super(context.getSupport(), db, commit);
+    myContext = context;
     myPathFromRoot = basePath;
-    myBaseRepositorySettings = settings;
   }
 
   protected Repository resolveRepository(String path, String url) throws IOException, VcsAuthenticationException {
@@ -92,19 +71,19 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
       if (isRelative(url)) {
         url = resolveRelativeUrl(url);
       }
-      String dir = myBaseRepositorySettings.getPathForUrl(url).getPath();
-      if (mySubmoduleRepositories.containsKey(dir)) {
-        return mySubmoduleRepositories.get(dir);
+      File repositoryDir = myContext.getSettings().getPathForUrl(url);
+      Repository result = myContext.getRepositoryFor(repositoryDir);
+      if (result != null) {
+        return result;
+      } else {
+        final URIish uri = new URIish(url);
+        result = myContext.getRepository(repositoryDir, uri);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Fetching submodule " + path + " data for " + myContext.getSettings().debugInfo());
+        }
+        myGitSupport.fetch(result, myContext.getSettings().getAuthSettings(), uri, new RefSpec("+refs/heads/*:refs/heads/*"));
+        return result;
       }
-      final URIish uri = new URIish(url);
-      final Repository r = myGitSupport.getRepository(new File(dir), uri);
-      mySubmoduleRepositories.put(dir, r);
-
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Fetching submodule " + path + " data for " + myBaseRepositorySettings.debugInfo());
-      }
-      myGitSupport.fetch(r, myBaseRepositorySettings.getAuthSettings(), uri, new RefSpec("+refs/heads/*:refs/heads/*"));
-      return r;
     } catch (VcsAuthenticationException ae) {
       throw ae;
     } catch (VcsException e) {
@@ -142,13 +121,10 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
     try {
       db = resolveRepository(path, getSubmoduleUrl(path));
     } catch (Exception e) {
-      //ignore
+      //exception means path does not contain submodule, use current repository
+      db = getRepository();
     }
-    if (db != null) {
-      return new TeamCitySubmoduleResolver(mySubmoduleRepositories, myGitSupport, myBaseRepositorySettings, fullPath(path), commit, db);
-    } else {
-      return new TeamCitySubmoduleResolver(mySubmoduleRepositories, myGitSupport, myBaseRepositorySettings, fullPath(path), commit, getRepository());
-    }
+    return new TeamCitySubmoduleResolver(myContext, db, commit, fullPath(path));
   }
 
   /**
