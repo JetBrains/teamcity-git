@@ -17,12 +17,14 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.io.FileUtil;
-import jetbrains.buildServer.*;
+import jetbrains.buildServer.BaseTestCase;
+import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.XmlRpcHandlerManager;
 import jetbrains.buildServer.agent.*;
-import jetbrains.buildServer.agent.BuildAgent;
 import jetbrains.buildServer.agent.plugins.beans.PluginDescriptor;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
@@ -269,7 +271,8 @@ public class AgentVcsSupportTest extends BaseTestCase {
     assertTrue(gitCacheDir.listFiles().length == 0);
     myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
-    assertTrue(gitCacheDir.listFiles().length > 0);
+    File bareRepositoryDir = Settings.getRepositoryDir(gitCacheDir, myRoot);
+    assertTrue(bareRepositoryDir.exists());
   }
 
 
