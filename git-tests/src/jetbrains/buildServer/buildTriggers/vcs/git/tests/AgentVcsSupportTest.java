@@ -83,6 +83,8 @@ public class AgentVcsSupportTest extends BaseTestCase {
    */
   private VcsRootImpl myRoot;
 
+  private BuildAgentConfiguration myAgentConfiguration;
+
   private Mockery myMockery;
 
   /**
@@ -134,10 +136,10 @@ public class AgentVcsSupportTest extends BaseTestCase {
     myMockery.checking(new Expectations() {{
       allowing(resolver).resolveGitPath(with(any(BuildAgentConfiguration.class)), with(any(String.class))); will(returnValue(pathToGit));
     }});
-    BuildAgentConfiguration configuration = createBuildAgentConfiguration();
-    myVcsSupport = new GitAgentVcsSupport(configuration,
+    myAgentConfiguration = createBuildAgentConfiguration();
+    myVcsSupport = new GitAgentVcsSupport(myAgentConfiguration,
                                           createSmartDirectoryCleaner(),
-                                          new GitAgentSSHService(createBuildAgent(), configuration, new PluginDescriptor() {
+                                          new GitAgentSSHService(createBuildAgent(), myAgentConfiguration, new PluginDescriptor() {
                                             @NotNull
                                             public File getPluginRoot() {
                                               return new File("jetbrains.git");
@@ -162,6 +164,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     FileUtil.delete(mySubmoduleRepo2);
     FileUtil.delete(myCheckoutDir);
     FileUtil.delete(agentConfigurationTempDirectory);
+    FileUtil.delete(myAgentConfiguration.getCacheDirectory("git"));
   }
 
   /**
@@ -223,7 +226,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.SUBMODULE_ADDED_VERSION,
                                myCheckoutDir, myBuild, false);
 
-    assertTrue(new File (myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
+    assertTrue(new File(myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
   }
 
 
@@ -258,6 +261,15 @@ public class AgentVcsSupportTest extends BaseTestCase {
       //this means we should escape windowsPath
     }
     "/".replaceAll("/", Matcher.quoteReplacement(windowsPathSeparator));
+  }
+
+
+  public void should_create_bare_repository_in_caches_dir() throws VcsException {
+    File gitCacheDir = myAgentConfiguration.getCacheDirectory("git");
+    assertTrue(gitCacheDir.listFiles().length == 0);
+    myRoot.addProperty(Constants.BRANCH_NAME, "master");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
+    assertTrue(gitCacheDir.listFiles().length > 0);
   }
 
 
