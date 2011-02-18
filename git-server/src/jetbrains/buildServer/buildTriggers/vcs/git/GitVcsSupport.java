@@ -932,7 +932,7 @@ public class GitVcsSupport extends ServerVcsSupport
       if (branchRef == null) {
         throw new VcsException("The branch name could not be resolved " + refName);
       }
-      String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryPath(), s.getBranch());
+      String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getBranch());
       if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
         return cachedCurrentVersion;
       } else {
@@ -944,7 +944,7 @@ public class GitVcsSupport extends ServerVcsSupport
           LOG.debug("Current version: " + c.getId().name() + " " + s.debugInfo());
         }
         final String currentVersion = GitServerUtil.makeVersion(c);
-        setCachedCurrentVersion(s.getRepositoryPath(), s.getBranch(), currentVersion);
+        setCachedCurrentVersion(s.getRepositoryDir(), s.getBranch(), currentVersion);
         return currentVersion;
       }
     } catch (Exception e) {
@@ -1293,7 +1293,7 @@ public class GitVcsSupport extends ServerVcsSupport
     throws VcsException {
     OperationContext context = createContext(root, "labelling");
     Settings s = context.getSettings();
-    synchronized (getRepositoryLock(s.getRepositoryPath())) {
+    synchronized (getRepositoryLock(s.getRepositoryDir())) {
       try {
         Repository r = context.getRepository();
         String commitSHA = GitUtils.versionRevision(version);

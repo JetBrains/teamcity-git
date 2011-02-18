@@ -79,7 +79,7 @@ public class OperationContext {
   }
 
   public Repository getRepository(Settings settings) throws VcsException {
-    return getRepository(settings.getRepositoryPath(), settings.getRepositoryFetchURL());
+    return getRepository(settings.getRepositoryDir(), settings.getRepositoryFetchURL());
   }
 
   public Repository getRepository(File repositoryDir, URIish fetchUrl) throws VcsException {

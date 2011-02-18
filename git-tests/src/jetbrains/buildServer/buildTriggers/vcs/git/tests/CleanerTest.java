@@ -110,7 +110,7 @@ public class CleanerTest extends BaseTestCase {
 
   private File getRepositoryDir(VcsRoot root) throws VcsException {
     Settings settings = new Settings(root, new File(myServerPaths.getCachesDir(), "git").getAbsolutePath());
-    return settings.getRepositoryPath();
+    return settings.getRepositoryDir();
   }
 
   private void generateGarbage(File dir) {

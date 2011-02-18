@@ -107,7 +107,7 @@ public class Settings {
   /**
    * @return the local repository path
    */
-  public File getRepositoryPath() {
+  public File getRepositoryDir() {
     if (userDefinedRepositoryPath == null) {
       return getPathForUrl(getRepositoryFetchURL().toString());
     } else {
@@ -153,7 +153,7 @@ public class Settings {
    * @return debug information that allows identify repository operation context
    */
   public String debugInfo() {
-    return " (" + getRepositoryPath() + ", " + getRepositoryFetchURL().toString() + "#" + getBranch() + ")";
+    return " (" + getRepositoryDir() + ", " + getRepositoryFetchURL().toString() + "#" + getBranch() + ")";
   }
 
   /**

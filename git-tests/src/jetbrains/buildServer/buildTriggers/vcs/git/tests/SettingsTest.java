@@ -63,7 +63,7 @@ public class SettingsTest extends TestCase {
   public void bare_repository_located_directly_under_provide_caches_dir() throws VcsException {
     VcsRoot root = createRoot();
     Settings settings = new Settings(root, myServerPaths.getCachesDir());
-    File bareRepositoryDir = settings.getRepositoryPath();
+    File bareRepositoryDir = settings.getRepositoryDir();
     assertEquals(myServerPaths.getCachesDir(), bareRepositoryDir.getParentFile().getAbsolutePath());
   }
 
