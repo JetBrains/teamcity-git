@@ -277,8 +277,9 @@ public class AgentVcsSupportTest extends BaseTestCase {
     File bareRepositoryDir = settings.getRepositoryDir();
     assertTrue(bareRepositoryDir.exists());
     //check some dirs that should be present in the bare repository:
+    File objectsDir = new File(bareRepositoryDir, "objects");
     assertTrue(new File(bareRepositoryDir, "info").exists());
-    assertTrue(new File(bareRepositoryDir, "objects").exists());
+    assertTrue(objectsDir.exists());
     assertTrue(new File(bareRepositoryDir, "refs").exists());
 
     String config = FileUtil.loadTextAndClose(new FileReader(new File(bareRepositoryDir, "config")));
@@ -286,6 +287,11 @@ public class AgentVcsSupportTest extends BaseTestCase {
     String remoteUrl = "url = " + settings.getRepositoryFetchURL();
     assertTrue(config.contains(remoteUrl));
 
+    File packDir = new File(objectsDir, "pack");
+    boolean looseObjectsExists = objectsDir.listFiles().length > 2;//2 - because there are 2 dirs there: info and pack
+    boolean packFilesExists = packDir.listFiles().length >=2; //at least one pack file with its index exists
+    boolean fetchWasDone = looseObjectsExists || packFilesExists;
+    assertTrue(fetchWasDone);//actual fetch was done
   }
 
 
