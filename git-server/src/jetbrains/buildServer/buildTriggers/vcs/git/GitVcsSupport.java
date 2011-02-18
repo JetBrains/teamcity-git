@@ -97,6 +97,7 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   private final RecentEntriesCache<Pair<File, String>, String> myCurrentVersionCache;
   private final ServerPaths myServerPaths;
+  private final File myCacheDir;
   /**
    * The default SSH session factory used for not explicitly configured host
    * It fails when user is prompted for some information.
@@ -115,6 +116,7 @@ public class GitVcsSupport extends ServerVcsSupport
                        @Nullable final ExtensionHolder extensionHolder,
                        @Nullable final EventDispatcher<BuildServerListener> dispatcher) {
     myServerPaths = serverPaths;
+    myCacheDir = new File(myServerPaths.getCachesDir(), "git");
     myExtensionHolder = extensionHolder;
     int currentVersionCacheSize = TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(currentVersionCacheSize);
@@ -1514,6 +1516,10 @@ public class GitVcsSupport extends ServerVcsSupport
       if (tmpDir != null) FileUtil.delete(tmpDir);
       context.close();
     }
+  }
+
+  public File getCachesDir() {
+    return myCacheDir;
   }
 
   private Exception friendlyTransportException(TransportException te) {
