@@ -127,6 +127,23 @@ public class Settings {
   }
 
   /**
+   * Get server paths for the URL
+   *
+   * @param url the URL to get path for
+   * @return the internal directory name for the URL
+   */
+  public File getPathForUrl(String url) {
+    return getPathForUrl(new File(cachesDirectory), url);
+  }
+
+  public static File getPathForUrl(File cacheDir, String url) {
+    // TODO the directory needs to be cleaned up
+    // TODO consider using a better hash in order to reduce a chance for conflict
+    String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
+    return new File(cacheDir, name);
+  }
+
+  /**
    * Set repository path
    *
    * @param file the path to set
@@ -154,23 +171,6 @@ public class Settings {
    */
   public String debugInfo() {
     return " (" + getRepositoryDir() + ", " + getRepositoryFetchURL().toString() + "#" + getBranch() + ")";
-  }
-
-  /**
-   * Get server paths for the URL
-   *
-   * @param url the URL to get path for
-   * @return the internal directory name for the URL
-   */
-  public File getPathForUrl(String url) {
-    return getPathForUrl(new File(cachesDirectory), url);
-  }
-
-  public static File getPathForUrl(File cacheDir, String url) {
-    // TODO the directory needs to be cleaned up
-    // TODO consider using a better hash in order to reduce a chance for conflict
-    String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
-    return new File(cacheDir, name);
   }
 
   /**
