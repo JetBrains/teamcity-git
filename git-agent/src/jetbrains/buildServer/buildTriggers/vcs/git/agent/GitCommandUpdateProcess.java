@@ -152,9 +152,6 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     return SystemInfo.isWindows ? DEFAULT_WINDOWS_GIT : DEFAULT_UNIX_GIT;
   }
 
-  /**
-   * {@inheritDoc}
-   */
   protected void addRemote(final String name, final URIish fetchUrl) throws VcsException {
     new RemoteCommand(mySettings).add(name, fetchUrl.toString());
   }
@@ -164,9 +161,6 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     new RemoteCommand(mySettings, mySettings.getRepositoryDir().getAbsolutePath()).add(name, fetchUrl.toString());
   }
 
-  /**
-   * {@inheritDoc}
-   */
   protected void init() throws VcsException {
     new InitCommand(mySettings).init();
   }
@@ -176,39 +170,32 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     new InitCommand(mySettings).initBare(bareRepositoryDir.getAbsolutePath());
   }
 
-  /**
-   * {@inheritDoc}
-   */
   protected BranchInfo getBranchInfo(final String branch) throws VcsException {
     return new BranchCommand(mySettings).branchInfo(branch);
   }
 
-  /**
-   * {@inheritDoc}
-   */
+
   protected String getConfigProperty(final String propertyName) throws VcsException {
     return new ConfigCommand(mySettings).get(propertyName);
   }
 
-  /**
-   * {@inheritDoc}
-   */
+
   protected void setConfigProperty(final String propertyName, final String value) throws VcsException {
     new ConfigCommand(mySettings).set(propertyName, value);
   }
+
 
   @Override
   protected void setConfigPropertyBare(String propertyName, String value) throws VcsException {
     new ConfigCommand(mySettings, mySettings.getRepositoryDir().getAbsolutePath()).set(propertyName, value);
   }
 
+
   protected void hardReset() throws VcsException {
     new ResetCommand(mySettings).hardReset(revision);
   }
 
-  /**
-   * {@inheritDoc}
-   */
+
   protected void doClean(BranchInfo branchInfo) throws VcsException {
     if (mySettings.getCleanPolicy() == AgentCleanPolicy.ALWAYS ||
         (!branchInfo.isCurrent && mySettings.getCleanPolicy() == AgentCleanPolicy.ON_BRANCH_CHANGE)) {
@@ -217,30 +204,18 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     }
   }
 
-  /**
-   * {@inheritDoc}
-   */
   protected void forceCheckout() throws VcsException {
     new BranchCommand(mySettings).forceCheckout(mySettings.getBranch());
   }
 
-  /**
-   * {@inheritDoc}
-   */
   protected void setBranchCommit() throws VcsException {
     new BranchCommand(mySettings).setBranchCommit(mySettings.getBranch(), revision);
   }
 
-  /**
-   * {@inheritDoc}
-   */
   protected void createBranch() throws VcsException {
     new BranchCommand(mySettings).createBranch(mySettings.getBranch(), GitUtils.remotesBranchRef(mySettings.getBranch()));
   }
 
-  /**
-   * {@inheritDoc}
-   */
   protected void fetch() throws VcsException {
     new FetchCommand(mySettings, mySshService).fetch();
   }
@@ -250,16 +225,10 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     new FetchCommand(mySettings, mySshService, mySettings.getRepositoryDir().getAbsolutePath()).fetch();
   }
 
-  /**
-   * {@inheritDoc}
-   */
   protected String checkRevision(final String revision, String... errorsLogLevel) {
     return new LogCommand(mySettings).checkRevision(revision, errorsLogLevel);
   }
 
-  /**
-   * {@inheritDoc}
-   */
   protected void doSubmoduleUpdate(File directory) throws VcsException {
     File gitmodules = new File(directory, ".gitmodules");
     if (gitmodules.exists()) {
