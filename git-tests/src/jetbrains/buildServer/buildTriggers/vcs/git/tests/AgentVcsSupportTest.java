@@ -344,11 +344,11 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
 
   private SmartDirectoryCleaner createSmartDirectoryCleaner() {
-    final SmartDirectoryCleaner cleaner = myMockery.mock(SmartDirectoryCleaner.class);
-    myMockery.checking(new Expectations() {{
-      allowing(cleaner).cleanFolder(with(any(File.class)), with(any(SmartDirectoryCleanerCallback.class)));
-    }});
-    return cleaner;
+    return new SmartDirectoryCleaner() {
+      public void cleanFolder(@NotNull File file, @NotNull SmartDirectoryCleanerCallback callback) {
+        FileUtil.delete(file);
+      }
+    };
   }
 
   
