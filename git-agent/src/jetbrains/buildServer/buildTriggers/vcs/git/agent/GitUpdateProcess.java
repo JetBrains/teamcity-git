@@ -126,7 +126,6 @@ public abstract class GitUpdateProcess {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Updating " + mySettings.debugInfo());
     }
-    String url = mySettings.getRepositoryFetchURL().toString();
     // clean directory if origin does not matches fetch URL or it is non-git directory
     boolean firstFetch = false;
     if (!new File(myDirectory, ".git").exists()) {
@@ -142,7 +141,7 @@ public abstract class GitUpdateProcess {
         }
         remoteUrl = "";
       }
-      if (!remoteUrl.equals(url)) {
+      if (!remoteUrl.equals(getLocalMirrorUrl())) {
         initDirectory();
         firstFetch = true;
       }
