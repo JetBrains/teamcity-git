@@ -309,7 +309,8 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  private BuildAgentConfiguration createBuildAgentConfiguration() {
+  private BuildAgentConfiguration createBuildAgentConfiguration() throws IOException {
+    final File cacheDir = myTempFiles.createTempDir();
     final BuildAgentConfiguration configuration = myMockery.mock(BuildAgentConfiguration.class);
     myMockery.checking(new Expectations() {{
       allowing(configuration).getAgentParameters(); will(returnValue(new HashMap<String, String>()));
@@ -317,6 +318,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
       allowing(configuration).getOwnPort(); will(returnValue(600));
       allowing(configuration).getTempDirectory(); will(returnValue(agentConfigurationTempDirectory));
       allowing(configuration).getConfigurationParameters(); will(returnValue(new HashMap<String, String>()));
+      allowing(configuration).getCacheDirectory("git"); will(returnValue(cacheDir));
     }});
     return configuration;
   }
