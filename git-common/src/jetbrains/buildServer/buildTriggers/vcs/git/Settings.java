@@ -44,10 +44,6 @@ public class Settings {
   final private AuthSettings myAuthSettings;
   private File userDefinedRepositoryPath;
 
-  public Settings(VcsRoot root) throws VcsException {
-    this(root, null);
-  }
-
   public Settings(VcsRoot root, File cacheDir) throws VcsException {
     cachesDirectory = cacheDir;
     userDefinedRepositoryPath = readPath(root);
