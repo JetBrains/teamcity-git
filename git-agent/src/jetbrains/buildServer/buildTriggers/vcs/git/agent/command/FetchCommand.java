@@ -47,6 +47,12 @@ public class FetchCommand extends RepositoryCommand {
     mySsh = ssh;
   }
 
+  public FetchCommand(@NotNull final AgentSettings settings, @NotNull final GitAgentSSHService ssh, String bareRepositorydir) {
+    super(settings, bareRepositorydir);
+    mySsh = ssh;
+  }
+
+
   /**
    * Perform fetch operation according to settings
    *

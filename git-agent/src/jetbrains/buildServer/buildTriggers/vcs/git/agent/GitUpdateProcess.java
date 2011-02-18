@@ -192,7 +192,7 @@ public abstract class GitUpdateProcess {
         setConfigPropertyBare("remote.origin.pushurl", pushUrl);
       }
     }
-    //fetch --git-dir
+    fetchBare();
   }
 
 
@@ -439,6 +439,8 @@ public abstract class GitUpdateProcess {
    * @throws VcsException if there is a problem with accessing repository
    */
   protected abstract void fetch() throws VcsException;
+
+  protected abstract void fetchBare() throws VcsException;
 
   /**
    * Check the specified revision

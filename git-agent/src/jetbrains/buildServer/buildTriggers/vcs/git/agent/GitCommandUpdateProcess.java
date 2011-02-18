@@ -245,6 +245,11 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     new FetchCommand(mySettings, mySshService).fetch();
   }
 
+  @Override
+  protected void fetchBare() throws VcsException {
+    new FetchCommand(mySettings, mySshService, mySettings.getRepositoryDir().getAbsolutePath()).fetch();
+  }
+
   /**
    * {@inheritDoc}
    */
