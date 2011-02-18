@@ -137,7 +137,6 @@ public class Settings {
   }
 
   private static File getRepositoryDirForUrl(File cacheDir, String url) {
-    // TODO the directory needs to be cleaned up
     // TODO consider using a better hash in order to reduce a chance for conflict
     String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
     return new File(cacheDir, name);
