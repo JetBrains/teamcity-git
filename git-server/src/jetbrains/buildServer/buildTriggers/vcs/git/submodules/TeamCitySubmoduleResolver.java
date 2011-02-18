@@ -71,7 +71,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
       if (isRelative(url)) {
         url = resolveRelativeUrl(url);
       }
-      File repositoryDir = myContext.getSettings().getPathForUrl(url);
+      File repositoryDir = myContext.getSettings().getRepositoryDirForUrl(url);
       Repository result = myContext.getRepositoryFor(repositoryDir);
       if (result != null) {
         return result;

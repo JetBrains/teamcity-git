@@ -109,7 +109,7 @@ public class Settings {
    */
   public File getRepositoryDir() {
     if (userDefinedRepositoryPath == null) {
-      return getPathForUrl(getRepositoryFetchURL().toString());
+      return getRepositoryDirForUrl(getRepositoryFetchURL().toString());
     } else {
       return userDefinedRepositoryPath;
     }
@@ -132,7 +132,7 @@ public class Settings {
    * @param url the URL to get path for
    * @return the internal directory name for the URL
    */
-  public File getPathForUrl(String url) {
+  public File getRepositoryDirForUrl(String url) {
     return getPathForUrl(new File(cachesDirectory), url);
   }
 
