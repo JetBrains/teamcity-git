@@ -95,7 +95,7 @@ public class Cleaner extends BuildServerAdapter {
 
   private List<File> getUnusedDirs(Collection<? extends SVcsRoot> roots) {
     List<File> repositoryDirs = getAllRepositoryDirs();
-    File cacheDir = new File(myPaths.getCachesDir());
+    File cacheDir = new File(myPaths.getCachesDir(), "git");
     for (VcsRoot root : roots) {
       try {
         File usedRootDir = Settings.getRepositoryPath(cacheDir, root);

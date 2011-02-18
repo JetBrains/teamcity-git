@@ -111,7 +111,8 @@ public class OperationContext {
   }
 
   private Settings createSettings(VcsRoot root) throws VcsException {
-    return new Settings(root, mySupport.getServerPaths().getCachesDir());
+    File gitCachesDir = new File(mySupport.getServerPaths().getCachesDir(), "git");
+    return new Settings(root, gitCachesDir.getAbsolutePath());
   }
 
   public VcsException wrapException(Exception ex) {
