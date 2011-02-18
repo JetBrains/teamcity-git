@@ -170,7 +170,7 @@ public class Settings {
     // TODO the directory needs to be cleaned up
     // TODO consider using a better hash in order to reduce a chance for conflict
     String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
-    return new File(cacheDir, "git" + File.separatorChar + name);
+    return new File(cacheDir, name);
   }
 
   /**
