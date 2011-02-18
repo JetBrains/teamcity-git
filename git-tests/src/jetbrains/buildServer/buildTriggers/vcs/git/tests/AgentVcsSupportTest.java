@@ -273,6 +273,10 @@ public class AgentVcsSupportTest extends BaseTestCase {
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
     File bareRepositoryDir = Settings.getRepositoryDir(gitCacheDir, myRoot);
     assertTrue(bareRepositoryDir.exists());
+    //check some dirs that should be present in the bare repository:
+    assertTrue(new File(bareRepositoryDir, "info").exists());
+    assertTrue(new File(bareRepositoryDir, "objects").exists());
+    assertTrue(new File(bareRepositoryDir, "refs").exists());
   }
 
 
