@@ -70,23 +70,19 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   }
 
 
-  /**
-   * {@inheritDoc}
-   */
   @NotNull
   @Override
   public UpdatePolicy getUpdatePolicy() {
     return this;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+
   @NotNull
   @Override
   public String getName() {
     return Constants.VCS_NAME;
   }
+
 
   public void updateSources(@NotNull VcsRoot root,
                             @NotNull CheckoutRules checkoutRules,
