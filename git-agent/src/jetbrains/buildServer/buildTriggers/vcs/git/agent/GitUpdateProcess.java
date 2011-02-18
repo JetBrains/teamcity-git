@@ -133,16 +133,16 @@ public abstract class GitUpdateProcess {
       initDirectory();
       firstFetch = true;
     } else {
-      String dirUrl;
+      String remoteUrl;
       try {
-        dirUrl = getConfigProperty("remote.origin.url");
+        remoteUrl = getConfigProperty("remote.origin.url");
       } catch (VcsException e) {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Failed to read property", e);
         }
-        dirUrl = "";
+        remoteUrl = "";
       }
-      if (!dirUrl.equals(url)) {
+      if (!remoteUrl.equals(url)) {
         initDirectory();
         firstFetch = true;
       }
