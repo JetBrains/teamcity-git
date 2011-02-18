@@ -120,7 +120,7 @@ public class Settings {
     if (userDefinedPath == null) {
       AuthSettings auth = new AuthSettings(root.getProperties());
       URIish fetchUrl = auth.createAuthURI(root.getProperty(Constants.FETCH_URL));
-      return getPathForUrl(cacheDir, fetchUrl.toString());
+      return getRepositoryDirForUrl(cacheDir, fetchUrl.toString());
     } else {
       return userDefinedPath;
     }
@@ -133,10 +133,10 @@ public class Settings {
    * @return the internal directory name for the URL
    */
   public File getRepositoryDirForUrl(String url) {
-    return getPathForUrl(new File(cachesDirectory), url);
+    return getRepositoryDirForUrl(new File(cachesDirectory), url);
   }
 
-  public static File getPathForUrl(File cacheDir, String url) {
+  public static File getRepositoryDirForUrl(File cacheDir, String url) {
     // TODO the directory needs to be cleaned up
     // TODO consider using a better hash in order to reduce a chance for conflict
     String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
