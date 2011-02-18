@@ -181,9 +181,13 @@ public abstract class GitUpdateProcess {
   }
 
 
-  private void updateBareRepository() {
+  private void updateBareRepository() throws VcsException {
     File bareRepositoryDir = mySettings.getRepositoryDir();
-    bareRepositoryDir.mkdirs();
+    if (!bareRepositoryDir.exists()) {
+      bareRepositoryDir.mkdirs();
+      initBare();
+    }
+    //fetch --git-dir
   }
 
 
@@ -353,6 +357,8 @@ public abstract class GitUpdateProcess {
    * @throws VcsException if repository cannot be accessed
    */
   protected abstract void init() throws VcsException;
+
+  protected abstract void initBare() throws VcsException;
 
 
   /**

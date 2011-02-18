@@ -166,6 +166,11 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     new InitCommand(mySettings).init();
   }
 
+  protected void initBare() throws VcsException {
+    File bareRepositoryDir = mySettings.getRepositoryDir();
+    new InitCommand(mySettings).initBare(bareRepositoryDir.getAbsolutePath());
+  }
+
   /**
    * {@inheritDoc}
    */
