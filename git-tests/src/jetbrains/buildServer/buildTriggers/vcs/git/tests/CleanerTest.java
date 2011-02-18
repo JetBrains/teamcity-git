@@ -109,7 +109,7 @@ public class CleanerTest extends BaseTestCase {
   }
 
   private File getRepositoryDir(VcsRoot root) throws VcsException {
-    Settings settings = new Settings(root, new File(myServerPaths.getCachesDir(), "git").getAbsolutePath());
+    Settings settings = new Settings(root, new File(myServerPaths.getCachesDir(), "git"));
     return settings.getRepositoryDir();
   }
 

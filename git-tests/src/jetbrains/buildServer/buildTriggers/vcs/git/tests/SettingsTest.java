@@ -63,7 +63,7 @@ public class SettingsTest extends TestCase {
   public void bare_repository_located_directly_under_provide_caches_dir() throws VcsException {
     VcsRoot root = createRoot();
     File gitCachesDir = new File(myServerPaths.getCachesDir(), "git");
-    Settings settings = new Settings(root, gitCachesDir.getAbsolutePath());
+    Settings settings = new Settings(root, gitCachesDir);
     File bareRepositoryDir = settings.getRepositoryDir();
     assertEquals(gitCachesDir.getAbsolutePath(), bareRepositoryDir.getParentFile().getAbsolutePath());
   }

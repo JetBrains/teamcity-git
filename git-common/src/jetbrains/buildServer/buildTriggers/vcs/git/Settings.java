@@ -40,7 +40,7 @@ public class Settings {
   final private String branch;
   final private UserNameStyle usernameStyle;
   final private SubmodulesCheckoutPolicy submodulePolicy;
-  final private String cachesDirectory;
+  final private File cachesDirectory;
   final private AuthSettings myAuthSettings;
   private File userDefinedRepositoryPath;
 
@@ -48,7 +48,7 @@ public class Settings {
     this(root, null);
   }
 
-  public Settings(VcsRoot root, String cacheDir) throws VcsException {
+  public Settings(VcsRoot root, File cacheDir) throws VcsException {
     cachesDirectory = cacheDir;
     userDefinedRepositoryPath = readPath(root);
     branch = root.getProperty(Constants.BRANCH_NAME);
@@ -121,7 +121,7 @@ public class Settings {
   }
 
   public File getRepositoryDirForUrl(String url) {
-    return getRepositoryDirForUrl(new File(cachesDirectory), url);
+    return getRepositoryDirForUrl(cachesDirectory, url);
   }
 
   private static File getRepositoryDirForUrl(File cacheDir, String url) {
