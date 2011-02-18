@@ -118,11 +118,7 @@ public abstract class GitUpdateProcess {
     mySettings = new AgentSettings(agentConfiguration.getCacheDirectory("git"), gitPath, myDirectory, root, useNativeSSH);
   }
 
-  /**
-   * Update sources
-   *
-   * @throws VcsException the exception to use
-   */
+
   public void updateSources() throws VcsException {
     LOG.info("Starting update of root " + myRoot.getName() + " in " + myCheckoutDirectory + " to revision " + myToVersion);
     if (LOG.isDebugEnabled()) {
