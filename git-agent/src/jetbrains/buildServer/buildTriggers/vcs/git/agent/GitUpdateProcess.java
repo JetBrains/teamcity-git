@@ -182,7 +182,9 @@ public abstract class GitUpdateProcess {
 
   private void updateLocalMirror() throws VcsException {
     File bareRepositoryDir = mySettings.getRepositoryDir();
+    LOG.info("Update local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir);
     if (!bareRepositoryDir.exists()) {
+      LOG.info("Init local mirror at " + bareRepositoryDir);
       bareRepositoryDir.mkdirs();
       initBare();
       addRemoteBare("origin", mySettings.getRepositoryFetchURL());
@@ -191,6 +193,7 @@ public abstract class GitUpdateProcess {
         setConfigPropertyBare("remote.origin.pushurl", pushUrl);
       }
     }
+    LOG.info("Fetch in local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir);
     fetchBare();
   }
 
