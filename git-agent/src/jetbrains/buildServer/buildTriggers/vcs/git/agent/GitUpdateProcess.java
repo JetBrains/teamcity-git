@@ -190,10 +190,6 @@ public abstract class GitUpdateProcess {
       bareRepositoryDir.mkdirs();
       initBare();
       addRemoteBare("origin", mySettings.getRepositoryFetchURL());
-      String pushUrl = mySettings.getRepositoryPushURL().toString();
-      if (!pushUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
-        setConfigPropertyBare("remote.origin.pushurl", pushUrl);
-      }
     } else {
       LOG.debug("Try to find revision " + revision + " in " + mirrorDescription);
       String revInfo = checkRevision(revision, "debug");
