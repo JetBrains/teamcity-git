@@ -52,8 +52,8 @@ public class FetchCommand extends RepositoryCommand {
     myMirror = false;
   }
 
-  public FetchCommand(@NotNull final AgentSettings settings, @NotNull final GitAgentSSHService ssh, String bareRepositorydir) {
-    super(settings, bareRepositorydir);
+  public FetchCommand(@NotNull final AgentSettings settings, @NotNull final GitAgentSSHService ssh, String bareRepositoryDir) {
+    super(settings, bareRepositoryDir);
     mySsh = ssh;
     myMirror = true;
   }
