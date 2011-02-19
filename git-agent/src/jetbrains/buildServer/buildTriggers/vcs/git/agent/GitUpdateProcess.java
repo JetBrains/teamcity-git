@@ -453,6 +453,8 @@ public abstract class GitUpdateProcess {
    */
   protected abstract String checkRevision(final String revision, final String... errorsLogLevel);
 
+  protected abstract String checkRevisionBare(final String revision, final String... errorsLogLevel);
+
   /**
    * Make submodule init and submodule update
    *

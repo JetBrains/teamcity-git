@@ -41,6 +41,10 @@ public class LogCommand extends RepositoryCommand {
     super(settings);
   }
 
+  public LogCommand(AgentSettings settings, String bareRepositoryDir) {
+    super(settings, bareRepositoryDir);
+  }
+
   /**
    * Check if the revision is already available
    *

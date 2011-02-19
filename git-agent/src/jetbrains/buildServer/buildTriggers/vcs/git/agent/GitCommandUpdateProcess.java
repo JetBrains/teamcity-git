@@ -229,6 +229,11 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     return new LogCommand(mySettings).checkRevision(revision, errorsLogLevel);
   }
 
+  @Override
+  protected String checkRevisionBare(String revision, String... errorsLogLevel) {
+    return new LogCommand(mySettings, mySettings.getRepositoryDir().getAbsolutePath()).checkRevision(revision, errorsLogLevel);
+  }
+
   protected void doSubmoduleUpdate(File directory) throws VcsException {
     File gitmodules = new File(directory, ".gitmodules");
     if (gitmodules.exists()) {
