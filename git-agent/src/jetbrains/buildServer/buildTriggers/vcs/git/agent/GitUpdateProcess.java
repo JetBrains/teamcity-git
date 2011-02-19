@@ -33,7 +33,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.net.URISyntaxException;
 
 /**
  * The agent support for VCS.
@@ -121,7 +120,7 @@ public abstract class GitUpdateProcess {
 
 
   public void updateSources() throws VcsException {
-    updateBareRepository();
+    updateLocalMirror();
     LOG.info("Starting update of root " + myRoot.getName() + " in " + myCheckoutDirectory + " to revision " + myToVersion);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Updating " + mySettings.debugInfo());
@@ -181,7 +180,7 @@ public abstract class GitUpdateProcess {
   }
 
 
-  private void updateBareRepository() throws VcsException {
+  private void updateLocalMirror() throws VcsException {
     File bareRepositoryDir = mySettings.getRepositoryDir();
     if (!bareRepositoryDir.exists()) {
       bareRepositoryDir.mkdirs();
