@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolver;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.TeamCitySubmoduleResolver;
 import jetbrains.buildServer.util.StringUtil;
@@ -80,7 +79,7 @@ public class OperationContext {
   }
 
   public Repository getRepository(Settings settings) throws VcsException {
-    return getRepository(settings.getRepositoryPath(), settings.getRepositoryFetchURL());
+    return getRepository(settings.getRepositoryDir(), settings.getRepositoryFetchURL());
   }
 
   public Repository getRepository(File repositoryDir, URIish fetchUrl) throws VcsException {
@@ -112,7 +111,7 @@ public class OperationContext {
   }
 
   private Settings createSettings(VcsRoot root) throws VcsException {
-    return new Settings(root, mySupport.getServerPaths().getCachesDir());
+    return new Settings(root, mySupport.getCachesDir());
   }
 
   public VcsException wrapException(Exception ex) {

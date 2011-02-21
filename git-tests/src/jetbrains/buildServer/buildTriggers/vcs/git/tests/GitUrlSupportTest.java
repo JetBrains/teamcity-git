@@ -29,6 +29,7 @@ import org.eclipse.jgit.transport.URIish;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
@@ -137,6 +138,6 @@ public class GitUrlSupportTest extends BaseTestCase {
   private Settings toSettings(VcsUrl url) throws VcsException {
     Map<String, String> properties = mySupport.convertToVcsRootProperties(url);
     VcsRootImpl myRoot = new VcsRootImpl(1, properties);
-    return new Settings(myRoot);
+    return new Settings(myRoot, new File("path/that/doesn't/matter"));
   }
 }

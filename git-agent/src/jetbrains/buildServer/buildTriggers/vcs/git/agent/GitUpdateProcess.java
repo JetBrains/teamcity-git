@@ -115,36 +115,32 @@ public abstract class GitUpdateProcess {
     mLogger = logger;
     revision = GitUtils.versionRevision(toVersion);
     myDirectory = findDirectory();
-    mySettings = new AgentSettings(gitPath, myDirectory, root, useNativeSSH);
+    mySettings = new AgentSettings(agentConfiguration.getCacheDirectory("git"), gitPath, myDirectory, root, useNativeSSH);
   }
 
-  /**
-   * Update sources
-   *
-   * @throws VcsException the exception to use
-   */
+
   public void updateSources() throws VcsException {
+    updateLocalMirror();
     LOG.info("Starting update of root " + myRoot.getName() + " in " + myCheckoutDirectory + " to revision " + myToVersion);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Updating " + mySettings.debugInfo());
     }
-    String url = mySettings.getRepositoryFetchURL().toString();
     // clean directory if origin does not matches fetch URL or it is non-git directory
     boolean firstFetch = false;
     if (!new File(myDirectory, ".git").exists()) {
       initDirectory();
       firstFetch = true;
     } else {
-      String dirUrl;
+      String remoteUrl;
       try {
-        dirUrl = getConfigProperty("remote.origin.url");
+        remoteUrl = getConfigProperty("remote.origin.url");
       } catch (VcsException e) {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Failed to read property", e);
         }
-        dirUrl = "";
+        remoteUrl = "";
       }
-      if (!dirUrl.equals(url)) {
+      if (!remoteUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
         initDirectory();
         firstFetch = true;
       }
@@ -182,6 +178,32 @@ public abstract class GitUpdateProcess {
       doSubmoduleUpdate(myDirectory);
     }
   }
+
+
+  private void updateLocalMirror() throws VcsException {
+    File bareRepositoryDir = mySettings.getRepositoryDir();
+    String mirrorDescription = "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
+    LOG.info("Update " + mirrorDescription);
+    boolean fetchRequired = true;
+    if (!bareRepositoryDir.exists()) {
+      LOG.info("Init " + mirrorDescription);
+      bareRepositoryDir.mkdirs();
+      initBare();
+      addRemoteBare("origin", mySettings.getRepositoryFetchURL());
+    } else {
+      LOG.debug("Try to find revision " + revision + " in " + mirrorDescription);
+      String revInfo = checkRevision(revision, "debug");
+      if (revInfo != null) {
+        LOG.info("No fetch required for revision '" + revision + "' in " + mirrorDescription);
+        fetchRequired = false;
+      }
+    }
+    if (fetchRequired) {
+      LOG.info("Fetch in " + mirrorDescription);
+      fetchBare();
+    }
+  }
+
 
   /**
    * If some git process crashed in this repository earlier it can leave lock files for ref.
@@ -266,8 +288,7 @@ public abstract class GitUpdateProcess {
    *
    * @throws VcsException if there are problems with initializing the directory
    */
-  void initDirectory()
-    throws VcsException {
+  void initDirectory() throws VcsException {
     BuildDirectoryCleanerCallback c = new BuildDirectoryCleanerCallback(mLogger, LOG);
     myDirectoryCleaner.cleanFolder(myDirectory, c);
     //noinspection ResultOfMethodCallIgnored
@@ -278,6 +299,7 @@ public abstract class GitUpdateProcess {
     mLogger.message("The .git directory is missing in '" + myDirectory + "'. Running 'git init'...");
     init();
     addRemote("origin", mySettings.getRepositoryFetchURL());
+    setConfigProperty("url." + mySettings.getRepositoryDir().getAbsolutePath() + ".insteadOf", mySettings.getRepositoryFetchURL().toString());
     URIish url = mySettings.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();
     if (pushUrl != null && !pushUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
@@ -343,12 +365,16 @@ public abstract class GitUpdateProcess {
    */
   protected abstract void addRemote(String name, URIish fetchUrl) throws VcsException;
 
+  protected abstract void addRemoteBare(String name, URIish fetchUrl) throws VcsException;
+
   /**
    * Init repository
    *
    * @throws VcsException if repository cannot be accessed
    */
   protected abstract void init() throws VcsException;
+
+  protected abstract void initBare() throws VcsException;
 
 
   /**
@@ -377,6 +403,8 @@ public abstract class GitUpdateProcess {
    * @throws VcsException if the property could not be set
    */
   protected abstract void setConfigProperty(String propertyName, String value) throws VcsException;
+
+  protected abstract void setConfigPropertyBare(String propertyName, String value) throws VcsException;
 
   /**
    * Hard reset to the specified revision
@@ -421,6 +449,8 @@ public abstract class GitUpdateProcess {
    */
   protected abstract void fetch() throws VcsException;
 
+  protected abstract void fetchBare() throws VcsException;
+
   /**
    * Check the specified revision
    *
@@ -429,6 +459,8 @@ public abstract class GitUpdateProcess {
    * @return a short revision information or null if revision is not found
    */
   protected abstract String checkRevision(final String revision, final String... errorsLogLevel);
+
+  protected abstract String checkRevisionBare(final String revision, final String... errorsLogLevel);
 
   /**
    * Make submodule init and submodule update

@@ -17,12 +17,14 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.io.FileUtil;
-import jetbrains.buildServer.*;
+import jetbrains.buildServer.BaseTestCase;
+import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.XmlRpcHandlerManager;
 import jetbrains.buildServer.agent.*;
-import jetbrains.buildServer.agent.BuildAgent;
 import jetbrains.buildServer.agent.plugins.beans.PluginDescriptor;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
@@ -38,6 +40,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.regex.Matcher;
@@ -82,6 +85,8 @@ public class AgentVcsSupportTest extends BaseTestCase {
    * VcsRoot for tests
    */
   private VcsRootImpl myRoot;
+
+  private BuildAgentConfiguration myAgentConfiguration;
 
   private Mockery myMockery;
 
@@ -134,10 +139,10 @@ public class AgentVcsSupportTest extends BaseTestCase {
     myMockery.checking(new Expectations() {{
       allowing(resolver).resolveGitPath(with(any(BuildAgentConfiguration.class)), with(any(String.class))); will(returnValue(pathToGit));
     }});
-    BuildAgentConfiguration configuration = createBuildAgentConfiguration();
-    myVcsSupport = new GitAgentVcsSupport(configuration,
+    myAgentConfiguration = createBuildAgentConfiguration();
+    myVcsSupport = new GitAgentVcsSupport(myAgentConfiguration,
                                           createSmartDirectoryCleaner(),
-                                          new GitAgentSSHService(createBuildAgent(), configuration, new PluginDescriptor() {
+                                          new GitAgentSSHService(createBuildAgent(), myAgentConfiguration, new PluginDescriptor() {
                                             @NotNull
                                             public File getPluginRoot() {
                                               return new File("jetbrains.git");
@@ -162,6 +167,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     FileUtil.delete(mySubmoduleRepo2);
     FileUtil.delete(myCheckoutDir);
     FileUtil.delete(agentConfigurationTempDirectory);
+    FileUtil.delete(myAgentConfiguration.getCacheDirectory("git"));
   }
 
   /**
@@ -223,7 +229,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.SUBMODULE_ADDED_VERSION,
                                myCheckoutDir, myBuild, false);
 
-    assertTrue(new File (myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
+    assertTrue(new File(myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
   }
 
 
@@ -261,6 +267,34 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
+  public void should_create_bare_repository_in_caches_dir() throws VcsException, IOException {
+    File gitCacheDir = myAgentConfiguration.getCacheDirectory("git");
+    assertTrue(gitCacheDir.listFiles().length == 0);
+    Settings settings = new Settings(myRoot, gitCacheDir);
+    myRoot.addProperty(Constants.BRANCH_NAME, "master");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
+
+    File bareRepositoryDir = settings.getRepositoryDir();
+    assertTrue(bareRepositoryDir.exists());
+    //check some dirs that should be present in the bare repository:
+    File objectsDir = new File(bareRepositoryDir, "objects");
+    assertTrue(new File(bareRepositoryDir, "info").exists());
+    assertTrue(objectsDir.exists());
+    assertTrue(new File(bareRepositoryDir, "refs").exists());
+
+    String config = FileUtil.loadTextAndClose(new FileReader(new File(bareRepositoryDir, "config")));
+    assertTrue(config.contains("[remote \"origin\"]"));
+    String remoteUrl = "url = " + settings.getRepositoryFetchURL();
+    assertTrue(config.contains(remoteUrl));
+
+    File packDir = new File(objectsDir, "pack");
+    boolean looseObjectsExists = objectsDir.listFiles().length > 2;//2 - because there are 2 dirs there: info and pack
+    boolean packFilesExists = packDir.listFiles().length >=2; //at least one pack file with its index exists
+    boolean fetchWasDone = looseObjectsExists || packFilesExists;
+    assertTrue(fetchWasDone);//actual fetch was done
+  }
+
+
   private void testSubSubmoduleCheckout(boolean recursiveSubmoduleCheckout) throws IOException, VcsException {
     myRoot.addProperty(Constants.BRANCH_NAME, "sub-submodule");
     if (recursiveSubmoduleCheckout) {
@@ -294,22 +328,8 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  private CurrentBuildTracker createCurrentBuildTracker() {
-    CurrentBuildTracker tracker = myMockery.mock(CurrentBuildTracker.class);
-    return tracker;
-  }
-
-
-  private ExtensionHolder createExtensionHolder() {
-    final ExtensionHolder holder = myMockery.mock(ExtensionHolder.class);
-    myMockery.checking(new Expectations(){{
-      allowing(holder).getExtensions(with(Expectations.<Class<TeamCityExtension>>anything()));
-    }});
-    return holder;
-  }
-
-
-  private BuildAgentConfiguration createBuildAgentConfiguration() {
+  private BuildAgentConfiguration createBuildAgentConfiguration() throws IOException {
+    final File cacheDir = myTempFiles.createTempDir();
     final BuildAgentConfiguration configuration = myMockery.mock(BuildAgentConfiguration.class);
     myMockery.checking(new Expectations() {{
       allowing(configuration).getAgentParameters(); will(returnValue(new HashMap<String, String>()));
@@ -317,17 +337,18 @@ public class AgentVcsSupportTest extends BaseTestCase {
       allowing(configuration).getOwnPort(); will(returnValue(600));
       allowing(configuration).getTempDirectory(); will(returnValue(agentConfigurationTempDirectory));
       allowing(configuration).getConfigurationParameters(); will(returnValue(new HashMap<String, String>()));
+      allowing(configuration).getCacheDirectory("git"); will(returnValue(cacheDir));
     }});
     return configuration;
   }
 
 
   private SmartDirectoryCleaner createSmartDirectoryCleaner() {
-    final SmartDirectoryCleaner cleaner = myMockery.mock(SmartDirectoryCleaner.class);
-    myMockery.checking(new Expectations() {{
-      allowing(cleaner).cleanFolder(with(any(File.class)), with(any(SmartDirectoryCleanerCallback.class)));
-    }});
-    return cleaner;
+    return new SmartDirectoryCleaner() {
+      public void cleanFolder(@NotNull File file, @NotNull SmartDirectoryCleanerCallback callback) {
+        FileUtil.delete(file);
+      }
+    };
   }
 
   

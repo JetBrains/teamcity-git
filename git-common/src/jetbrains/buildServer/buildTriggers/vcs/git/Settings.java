@@ -40,15 +40,11 @@ public class Settings {
   final private String branch;
   final private UserNameStyle usernameStyle;
   final private SubmodulesCheckoutPolicy submodulePolicy;
-  final private String cachesDirectory;
+  final private File cachesDirectory;
   final private AuthSettings myAuthSettings;
   private File userDefinedRepositoryPath;
 
-  public Settings(VcsRoot root) throws VcsException {
-    this(root, null);
-  }
-
-  public Settings(VcsRoot root, String cacheDir) throws VcsException {
+  public Settings(VcsRoot root, File cacheDir) throws VcsException {
     cachesDirectory = cacheDir;
     userDefinedRepositoryPath = readPath(root);
     branch = root.getProperty(Constants.BRANCH_NAME);
@@ -97,33 +93,37 @@ public class Settings {
     return submodulePolicy;
   }
 
-  /**
-   * @return username style
-   */
   public UserNameStyle getUsernameStyle() {
     return usernameStyle;
   }
 
-  /**
-   * @return the local repository path
-   */
-  public File getRepositoryPath() {
+  public File getRepositoryDir() {
     if (userDefinedRepositoryPath == null) {
-      return getPathForUrl(getRepositoryFetchURL().toString());
+      return getRepositoryDirForUrl(getRepositoryFetchURL().toString());
     } else {
       return userDefinedRepositoryPath;
     }
   }
 
-  public static File getRepositoryPath(File cacheDir, VcsRoot root) throws VcsException {
+  public static File getRepositoryDir(File cacheDir, VcsRoot root) throws VcsException {
     File userDefinedPath = readPath(root);
     if (userDefinedPath == null) {
       AuthSettings auth = new AuthSettings(root.getProperties());
       URIish fetchUrl = auth.createAuthURI(root.getProperty(Constants.FETCH_URL));
-      return getPathForUrl(cacheDir, fetchUrl.toString());
+      return getRepositoryDirForUrl(cacheDir, fetchUrl.toString());
     } else {
       return userDefinedPath;
     }
+  }
+
+  public File getRepositoryDirForUrl(String url) {
+    return getRepositoryDirForUrl(cachesDirectory, url);
+  }
+
+  private static File getRepositoryDirForUrl(File cacheDir, String url) {
+    // TODO consider using a better hash in order to reduce a chance for conflict
+    String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
+    return new File(cacheDir, name);
   }
 
   /**
@@ -153,24 +153,7 @@ public class Settings {
    * @return debug information that allows identify repository operation context
    */
   public String debugInfo() {
-    return " (" + getRepositoryPath() + ", " + getRepositoryFetchURL().toString() + "#" + getBranch() + ")";
-  }
-
-  /**
-   * Get server paths for the URL
-   *
-   * @param url the URL to get path for
-   * @return the internal directory name for the URL
-   */
-  public File getPathForUrl(String url) {
-    return getPathForUrl(new File(cachesDirectory), url);
-  }
-
-  public static File getPathForUrl(File cacheDir, String url) {
-    // TODO the directory needs to be cleaned up
-    // TODO consider using a better hash in order to reduce a chance for conflict
-    String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
-    return new File(cacheDir, "git" + File.separatorChar + name);
+    return " (" + getRepositoryDir() + ", " + getRepositoryFetchURL().toString() + "#" + getBranch() + ")";
   }
 
   /**

@@ -35,6 +35,10 @@ public class FetchCommand extends RepositoryCommand {
    * Agent's SSH service
    */
   private final GitAgentSSHService mySsh;
+  /**
+   * Do fetch into branches with same spec as in remote repository. Used for bare repositories which we use as a mirrors of remotes.
+   */
+  private final boolean myMirror;
 
   /**
    * The constructor
@@ -45,7 +49,15 @@ public class FetchCommand extends RepositoryCommand {
   public FetchCommand(@NotNull final AgentSettings settings, @NotNull final GitAgentSSHService ssh) {
     super(settings);
     mySsh = ssh;
+    myMirror = false;
   }
+
+  public FetchCommand(@NotNull final AgentSettings settings, @NotNull final GitAgentSSHService ssh, String bareRepositoryDir) {
+    super(settings, bareRepositoryDir);
+    mySsh = ssh;
+    myMirror = true;
+  }
+
 
   /**
    * Perform fetch operation according to settings
@@ -55,9 +67,8 @@ public class FetchCommand extends RepositoryCommand {
   public void fetch() throws VcsException {
     GeneralCommandLine cmd = createCommandLine();
     cmd.addParameter("fetch");
-    AgentSettings s = getSettings();
-    cmd.addParameters("--no-tags", "-q", "origin",
-                      "+" + GitUtils.branchRef(s.getBranch()) + ":" + GitUtils.remotesBranchRef(s.getBranch()));
+    cmd.addParameters("--no-tags", "-q", "origin");
+    cmd.addParameter(getRefSpec());
     if (mySettings.isUseNativeSSH()) {
       runCommand(cmd, TIMEOUT);
     } else {
@@ -67,6 +78,15 @@ public class FetchCommand extends RepositoryCommand {
       } finally {
         h.unregister();
       }
+    }
+  }
+
+  private String getRefSpec() {
+    AgentSettings s = getSettings();
+    if (myMirror) {
+      return "+" + GitUtils.branchRef(s.getBranch()) + ":" + GitUtils.branchRef(s.getBranch());
+    } else {
+      return "+" + GitUtils.branchRef(s.getBranch()) + ":" + GitUtils.remotesBranchRef(s.getBranch());
     }
   }
 

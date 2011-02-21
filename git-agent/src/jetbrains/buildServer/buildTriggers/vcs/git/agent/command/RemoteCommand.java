@@ -36,6 +36,10 @@ public class RemoteCommand extends RepositoryCommand {
     super(settings);
   }
 
+  public RemoteCommand(@NotNull final AgentSettings settings, String bareRepositoryPath) {
+    super(settings, bareRepositoryPath);
+  }
+
   /**
    * Configure remote
    *

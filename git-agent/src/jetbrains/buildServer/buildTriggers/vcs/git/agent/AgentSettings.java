@@ -55,13 +55,14 @@ public class AgentSettings extends Settings {
   /**
    * The constructor
    *
+   * @param cacheDir dir where bare repositories are stored
    * @param gitCommandPath     the path to the git
    * @param localRepositoryDir the local directory
    * @param root               the VCS root to get settings from
    * @throws VcsException if there is a configuration problem
    */
-  public AgentSettings(String gitCommandPath, File localRepositoryDir, VcsRoot root, boolean useNativeSSH) throws VcsException {
-    super(root);
+  public AgentSettings(File cacheDir, String gitCommandPath, File localRepositoryDir, VcsRoot root, boolean useNativeSSH) throws VcsException {
+    super(root, cacheDir);
     this.gitCommandPath = gitCommandPath;
     this.localRepositoryDir = localRepositoryDir;
     this.rootName = root.getName();

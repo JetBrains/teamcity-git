@@ -45,4 +45,18 @@ public class InitCommand extends RepositoryCommand {
     ExecResult r = runCommand(cmd);
     failIfNotEmptyStdErr(cmd, r);
   }
+
+
+  /**
+   * Init bare repository at specified path
+   * @param bareRepositoryPath path where bare repository will be created
+   */
+  public void initBare(String bareRepositoryPath) throws VcsException {
+    GeneralCommandLine cmd = createCommandLine();
+    cmd.addParameter("init");
+    cmd.addParameter("--bare");
+    cmd.addParameter(bareRepositoryPath);
+    ExecResult r = runCommand(cmd);
+    failIfNotEmptyStdErr(cmd, r);
+  }
 }

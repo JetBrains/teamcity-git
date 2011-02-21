@@ -31,8 +31,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionF
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.RefreshableSshConfigSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
-import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolver;
-import jetbrains.buildServer.buildTriggers.vcs.git.submodules.TeamCitySubmoduleResolver;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
@@ -99,6 +97,7 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   private final RecentEntriesCache<Pair<File, String>, String> myCurrentVersionCache;
   private final ServerPaths myServerPaths;
+  private final File myCacheDir;
   /**
    * The default SSH session factory used for not explicitly configured host
    * It fails when user is prompted for some information.
@@ -117,6 +116,7 @@ public class GitVcsSupport extends ServerVcsSupport
                        @Nullable final ExtensionHolder extensionHolder,
                        @Nullable final EventDispatcher<BuildServerListener> dispatcher) {
     myServerPaths = serverPaths;
+    myCacheDir = new File(myServerPaths.getCachesDir(), "git");
     myExtensionHolder = extensionHolder;
     int currentVersionCacheSize = TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(currentVersionCacheSize);
@@ -934,7 +934,7 @@ public class GitVcsSupport extends ServerVcsSupport
       if (branchRef == null) {
         throw new VcsException("The branch name could not be resolved " + refName);
       }
-      String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryPath(), s.getBranch());
+      String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getBranch());
       if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
         return cachedCurrentVersion;
       } else {
@@ -946,7 +946,7 @@ public class GitVcsSupport extends ServerVcsSupport
           LOG.debug("Current version: " + c.getId().name() + " " + s.debugInfo());
         }
         final String currentVersion = GitServerUtil.makeVersion(c);
-        setCachedCurrentVersion(s.getRepositoryPath(), s.getBranch(), currentVersion);
+        setCachedCurrentVersion(s.getRepositoryDir(), s.getBranch(), currentVersion);
         return currentVersion;
       }
     } catch (Exception e) {
@@ -1295,7 +1295,7 @@ public class GitVcsSupport extends ServerVcsSupport
     throws VcsException {
     OperationContext context = createContext(root, "labelling");
     Settings s = context.getSettings();
-    synchronized (getRepositoryLock(s.getRepositoryPath())) {
+    synchronized (getRepositoryLock(s.getRepositoryDir())) {
       try {
         Repository r = context.getRepository();
         String commitSHA = GitUtils.versionRevision(version);
@@ -1516,6 +1516,10 @@ public class GitVcsSupport extends ServerVcsSupport
       if (tmpDir != null) FileUtil.delete(tmpDir);
       context.close();
     }
+  }
+
+  public File getCachesDir() {
+    return myCacheDir;
   }
 
   private Exception friendlyTransportException(TransportException te) {

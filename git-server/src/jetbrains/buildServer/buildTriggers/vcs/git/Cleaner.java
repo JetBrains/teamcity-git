@@ -95,10 +95,9 @@ public class Cleaner extends BuildServerAdapter {
 
   private List<File> getUnusedDirs(Collection<? extends SVcsRoot> roots) {
     List<File> repositoryDirs = getAllRepositoryDirs();
-    File cacheDir = new File(myPaths.getCachesDir());
     for (VcsRoot root : roots) {
       try {
-        File usedRootDir = Settings.getRepositoryPath(cacheDir, root);
+        File usedRootDir = Settings.getRepositoryDir(myGitVcsSupport.getCachesDir(), root);
         repositoryDirs.remove(usedRootDir);
       } catch (Exception e) {
         LOG.warn("Get repository path error", e);
@@ -108,9 +107,7 @@ public class Cleaner extends BuildServerAdapter {
   }
 
   private List<File> getAllRepositoryDirs() {
-    String teamcityCachesPath = myPaths.getCachesDir();
-    File gitCacheDir = new File(teamcityCachesPath, "git");
-    return new ArrayList<File>(FileUtil.getSubDirectories(gitCacheDir));
+    return new ArrayList<File>(FileUtil.getSubDirectories(myGitVcsSupport.getCachesDir()));
   }
 
   private boolean isRunNativeGC() {
