@@ -45,7 +45,7 @@ public class Fetcher {
       debug = "true".equals(properties.remove(Constants.VCS_DEBUG_ENABLED));
       fetch(new File(repositoryPath), properties);
     } catch (Throwable t) {
-      if (debug) {
+      if (debug || isImportant(t)) {
         t.printStackTrace(System.err);
       } else {
         System.err.println(t.getMessage());
@@ -97,6 +97,11 @@ public class Fetcher {
       sb.append(str);
     }
     return sb.toString();
+  }
+
+
+  private static boolean isImportant(Throwable t) {
+    return t instanceof NullPointerException || t instanceof Error;
   }
 
 }
