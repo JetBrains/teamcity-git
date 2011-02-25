@@ -33,6 +33,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.net.URISyntaxException;
 
 /**
  * The agent support for VCS.
@@ -131,18 +132,12 @@ public abstract class GitUpdateProcess {
       initDirectory();
       firstFetch = true;
     } else {
-      String remoteUrl;
-      try {
-        remoteUrl = getConfigProperty("remote.origin.url");
-      } catch (VcsException e) {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Failed to read property", e);
-        }
-        remoteUrl = "";
-      }
+      String remoteUrl = getRemoteUrl();
       if (!remoteUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
         initDirectory();
         firstFetch = true;
+      } else if (!isUseLocalMirror()) {
+        useLocalMirror();
       }
     }
     // fetch data from the repository
@@ -176,6 +171,42 @@ public abstract class GitUpdateProcess {
     doClean(branchInfo);
     if (mySettings.isCheckoutSubmodules()) {
       doSubmoduleUpdate(myDirectory);
+    }
+  }
+
+  private void useLocalMirror() throws VcsException {
+    String localMirrorUrl = getLocalMirrorUrl();
+    setConfigProperty("url." + localMirrorUrl + ".insteadOf", mySettings.getRepositoryFetchURL().toString());
+  }
+
+  private String getLocalMirrorUrl() throws VcsException {
+    try {
+      return new URIish(mySettings.getRepositoryDir().toURI().toASCIIString()).toString();
+    } catch (URISyntaxException e) {
+      throw new VcsException("Cannot create uri for local mirror " + mySettings.getRepositoryDir().getAbsolutePath(), e);
+    }
+  }
+
+
+  private String getRemoteUrl() {
+    try {
+      return getConfigProperty("remote.origin.url");
+    } catch (VcsException e) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Failed to read property", e);
+      }
+      return "";
+    }
+  }
+
+
+  private boolean isUseLocalMirror() throws VcsException {
+    String remoteUrl = mySettings.getRepositoryFetchURL().toString();
+    try {
+      String configRemoteUrl = getConfigProperty("url." + getLocalMirrorUrl());
+      return remoteUrl.equals(configRemoteUrl);
+    } catch (VcsException e) {
+      return false;
     }
   }
 
@@ -213,7 +244,8 @@ public abstract class GitUpdateProcess {
     String branchRef = GitUtils.branchRef(mySettings.getBranch());
     File refLock = new File(myDirectory, ".git" + File.separator + branchRef + ".lock");
     if (refLock.exists()) {
-      mLogger.warning("The .git/" + branchRef + ".lock file exists. This probably means a git process crashed in this repository earlier. Deleting lock file");
+      mLogger.warning("The .git/" + branchRef +
+                      ".lock file exists. This probably means a git process crashed in this repository earlier. Deleting lock file");
       FileUtil.delete(refLock);
     }
   }
@@ -299,7 +331,7 @@ public abstract class GitUpdateProcess {
     mLogger.message("The .git directory is missing in '" + myDirectory + "'. Running 'git init'...");
     init();
     addRemote("origin", mySettings.getRepositoryFetchURL());
-    setConfigProperty("url." + mySettings.getRepositoryDir().getAbsolutePath() + ".insteadOf", mySettings.getRepositoryFetchURL().toString());
+    useLocalMirror();
     URIish url = mySettings.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();
     if (pushUrl != null && !pushUrl.equals(mySettings.getRepositoryFetchURL().toString())) {

@@ -32,6 +32,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitPathResolver;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
@@ -42,12 +43,15 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.util.FileUtil.writeFile;
 
 /**
  * @author dmitry.neverov
@@ -291,7 +295,37 @@ public class AgentVcsSupportTest extends BaseTestCase {
     boolean looseObjectsExists = objectsDir.listFiles().length > 2;//2 - because there are 2 dirs there: info and pack
     boolean packFilesExists = packDir.listFiles().length >=2; //at least one pack file with its index exists
     boolean fetchWasDone = looseObjectsExists || packFilesExists;
-    assertTrue(fetchWasDone);//actual fetch was done
+    assertTrue(fetchWasDone);
+  }
+
+
+  public void old_cloned_repository_should_use_local_mirror() throws VcsException, IOException, URISyntaxException {
+    File gitCacheDir = myAgentConfiguration.getCacheDirectory("git");
+    Settings settings = new Settings(myRoot, gitCacheDir);
+    File bareRepositoryDir = settings.getRepositoryDir();
+
+    //emulate old cloned repository (it has no config option 'url.<URL>.insteadOf')
+    myRoot.addProperty(Constants.BRANCH_NAME, "master");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
+
+    //cut off 'url.<URL>.insteadOf option:
+    File gitConfigFile = new File(myCheckoutDir, ".git" + File.separator + "config");
+    String config = FileUtil.loadTextAndClose(new FileReader(gitConfigFile));
+    String localMirrorUrl = new URIish(bareRepositoryDir.toURI().toASCIIString()).toString();
+    Pattern pattern = Pattern.compile("(.*)\\[url \"" + localMirrorUrl + "\"\\]\\s+insteadOf = " +
+                                      Pattern.quote(settings.getRepositoryFetchURL().toString()) +
+                                      "\\s*(.*)", Pattern.DOTALL);
+    Matcher matcher = pattern.matcher(config);
+    assertTrue("config is " + config, matcher.matches());
+    String newConfig = matcher.group(1) + matcher.group(2);
+    writeFile(gitConfigFile, newConfig);
+
+    //at this point cloned repository do not use local mirror, after second call to updateSources it should start using it
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
+    config = FileUtil.loadTextAndClose(new FileReader(gitConfigFile));
+    matcher = pattern.matcher(config);
+    assertTrue(matcher.matches());
   }
 
 
