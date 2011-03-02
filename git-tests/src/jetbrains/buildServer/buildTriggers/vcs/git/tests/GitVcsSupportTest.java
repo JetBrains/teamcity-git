@@ -844,11 +844,19 @@ public class GitVcsSupportTest extends PatchTestCase {
             support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
                                 GitUtils.versionRevision(VERSION_TEST_HEAD) + "|" + repositoryUrl + "|readme.txt");
             support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
+                                "ad4528ed5c84092fdbe9e0502163cf8d6e6141e8|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
                                 GitUtils.versionRevision(MERGE_VERSION) + "|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
+                                "ad4528ed5c84092fdbe9e0502163cf8d6e6141e9|" + repositoryUrl + "|readme.txt");
             support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
                                 GitUtils.versionRevision(MERGE_BRANCH_VERSION) + "|" + repositoryUrl + "|readme.txt");
             support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
+                                "ad4528ed5c84092fdbe9e0502163cf8d6e6141f0|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
                                 GitUtils.versionRevision(CUD1_VERSION) + "|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
+                                "ad4528ed5c84092fdbe9e0502163cf8d6e6141f1|" + repositoryUrl + "|readme.txt");
           }
         } catch (Exception e) {
           errors.add(e);

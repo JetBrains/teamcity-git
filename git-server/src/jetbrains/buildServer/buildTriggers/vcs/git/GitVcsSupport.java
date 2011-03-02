@@ -947,6 +947,7 @@ public class GitVcsSupport extends ServerVcsSupport
         }
         final String currentVersion = GitServerUtil.makeVersion(c);
         setCachedCurrentVersion(s.getRepositoryDir(), s.getBranch(), currentVersion);
+        GitMapFullPath.invalidateRevisionsCache(root);
         return currentVersion;
       }
     } catch (Exception e) {
@@ -1460,6 +1461,8 @@ public class GitVcsSupport extends ServerVcsSupport
     } catch (VcsException e) {
       LOG.error(e);
       return Collections.emptySet();
+    } finally {
+      context.close();
     }
   }
 
