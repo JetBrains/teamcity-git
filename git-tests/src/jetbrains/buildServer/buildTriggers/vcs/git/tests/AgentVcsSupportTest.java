@@ -45,6 +45,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -93,6 +94,8 @@ public class AgentVcsSupportTest extends BaseTestCase {
   private BuildAgentConfiguration myAgentConfiguration;
 
   private Mockery myMockery;
+
+  private int myBuildId = 0;
 
   /**
    * Mocks of objects provided by TeamCity server
@@ -155,11 +158,15 @@ public class AgentVcsSupportTest extends BaseTestCase {
                                           resolver);
 
     myLogger = createLogger();
-    myBuild = createRunningBuild();
+    myBuild = createRunningBuild(true);
 
-    myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
-    myRoot.addProperty(Constants.FETCH_URL, GitUtils.toURL(myMainRepo));
-    myRoot.addProperty(Constants.AGENT_GIT_PATH, pathToGit);
+
+    myRoot = new VcsRootImpl(1, new HashMap<String, String>() {{
+      put(VcsRootImpl.VCS_NAME_PROP, Constants.VCS_NAME);
+      put(VcsRootImpl.VCS_ROOT_NAME_PROP, "test");
+      put(Constants.FETCH_URL, GitUtils.toURL(myMainRepo));
+      put(Constants.AGENT_GIT_PATH, pathToGit);
+    }});
   }
 
   @AfterMethod
@@ -329,6 +336,29 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
+  public void do_not_use_mirror_if_agent_property_set_to_false() throws VcsException, IOException {
+    AgentRunningBuild build2 = createRunningBuild(false);
+    myRoot.addProperty(Constants.BRANCH_NAME, "master");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
+    File gitConfigFile = new File(myCheckoutDir, ".git" + File.separator + "config");
+    String config = FileUtil.loadTextAndClose(new FileReader(gitConfigFile));
+    assertFalse(config, config.contains("insteadOf"));
+  }
+
+
+  public void stop_use_mirror_if_agent_property_changed_to_false() throws VcsException, IOException {
+    myRoot.addProperty(Constants.BRANCH_NAME, "master");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
+
+    AgentRunningBuild build2 = createRunningBuild(false);
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
+
+    File gitConfigFile = new File(myCheckoutDir, ".git" + File.separator + "config");
+    String config = FileUtil.loadTextAndClose(new FileReader(gitConfigFile));
+    assertFalse(config, config.contains("insteadOf"));
+  }
+
+
   private void testSubSubmoduleCheckout(boolean recursiveSubmoduleCheckout) throws IOException, VcsException {
     myRoot.addProperty(Constants.BRANCH_NAME, "sub-submodule");
     if (recursiveSubmoduleCheckout) {
@@ -396,11 +426,13 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  private AgentRunningBuild createRunningBuild() {
-    final AgentRunningBuild build = myMockery.mock(AgentRunningBuild.class);
+  private AgentRunningBuild createRunningBuild(boolean useLocalMirrors) {
+    final Map<String, String> sharedConfigParameters = new HashMap<String, String>();
+    sharedConfigParameters.put("teamcity.git.use.local.mirrors", String.valueOf(useLocalMirrors));
+    final AgentRunningBuild build = myMockery.mock(AgentRunningBuild.class, "build"+myBuildId++);
     myMockery.checking(new Expectations() {{
       allowing(build).getBuildLogger(); will(returnValue(myLogger));
-      allowing(build).getSharedConfigParameters(); will(returnValue(new HashMap<String, String>()));
+      allowing(build).getSharedConfigParameters(); will(returnValue(sharedConfigParameters));
     }});
     return build;
   }

@@ -84,6 +84,7 @@ public abstract class GitUpdateProcess {
    * The git revision
    */
   protected final String revision;
+  private boolean myUseLocalMirrors;
 
   /**
    * The constructor
@@ -106,7 +107,8 @@ public abstract class GitUpdateProcess {
                           @NotNull File checkoutDirectory,
                           @NotNull BuildProgressLogger logger,
                           @Nullable String gitPath,
-                          boolean useNativeSSH) throws VcsException {
+                          boolean useNativeSSH,
+                          boolean useLocalMirrors) throws VcsException {
     myAgentConfiguration = agentConfiguration;
     myDirectoryCleaner = directoryCleaner;
     myRoot = root;
@@ -116,12 +118,13 @@ public abstract class GitUpdateProcess {
     mLogger = logger;
     revision = GitUtils.versionRevision(toVersion);
     myDirectory = findDirectory();
+    myUseLocalMirrors = useLocalMirrors;
     mySettings = new AgentSettings(agentConfiguration.getCacheDirectory("git"), gitPath, myDirectory, root, useNativeSSH);
   }
 
 
   public void updateSources() throws VcsException {
-    updateLocalMirror();
+    if (myUseLocalMirrors) updateLocalMirror();
     LOG.info("Starting update of root " + myRoot.getName() + " in " + myCheckoutDirectory + " to revision " + myToVersion);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Updating " + mySettings.debugInfo());
@@ -136,9 +139,13 @@ public abstract class GitUpdateProcess {
       if (!remoteUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
         initDirectory();
         firstFetch = true;
-      } else if (!isUseLocalMirror()) {
-        useLocalMirror();
+      } else {
+        if (myUseLocalMirrors && !isRepositoryUseLocalMirror()) {
+        setUseLocalMirror();
+        } else if (!myUseLocalMirrors && isRepositoryUseLocalMirror()) {
+          setNotUseLocalMirror();
       }
+    }
     }
     // fetch data from the repository
     String revInfo = doFetch(firstFetch);
@@ -174,9 +181,14 @@ public abstract class GitUpdateProcess {
     }
   }
 
-  private void useLocalMirror() throws VcsException {
+  private void setUseLocalMirror() throws VcsException {
     String localMirrorUrl = getLocalMirrorUrl();
     setConfigProperty("url." + localMirrorUrl + ".insteadOf", mySettings.getRepositoryFetchURL().toString());
+  }
+
+  private void setNotUseLocalMirror() throws VcsException {
+    String localMirrorUrl = getLocalMirrorUrl();
+    removeConfigSection("url." + localMirrorUrl);
   }
 
   private String getLocalMirrorUrl() throws VcsException {
@@ -200,10 +212,10 @@ public abstract class GitUpdateProcess {
   }
 
 
-  private boolean isUseLocalMirror() throws VcsException {
+  private boolean isRepositoryUseLocalMirror() throws VcsException {
     String remoteUrl = mySettings.getRepositoryFetchURL().toString();
     try {
-      String configRemoteUrl = getConfigProperty("url." + getLocalMirrorUrl());
+      String configRemoteUrl = getConfigProperty("url." + getLocalMirrorUrl() + ".insteadOf");
       return remoteUrl.equals(configRemoteUrl);
     } catch (VcsException e) {
       return false;
@@ -331,7 +343,7 @@ public abstract class GitUpdateProcess {
     mLogger.message("The .git directory is missing in '" + myDirectory + "'. Running 'git init'...");
     init();
     addRemote("origin", mySettings.getRepositoryFetchURL());
-    useLocalMirror();
+    if (myUseLocalMirrors) setUseLocalMirror();
     URIish url = mySettings.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();
     if (pushUrl != null && !pushUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
@@ -441,9 +453,16 @@ public abstract class GitUpdateProcess {
   /**
    * Hard reset to the specified revision
    *
-   * @throws VcsException if there is a prolem with accessing repository
+   * @throws VcsException if there is a problem with accessing repository
    */
   protected abstract void hardReset() throws VcsException;
+
+  /**
+   * Remove configuration section
+   * @param sectionName name of the section to remove
+   * @throws VcsException
+   */
+  protected abstract void removeConfigSection(String sectionName) throws VcsException;
 
   /**
    * Perform clean according to the settings

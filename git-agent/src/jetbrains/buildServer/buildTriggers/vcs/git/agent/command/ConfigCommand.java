@@ -67,4 +67,17 @@ public class ConfigCommand extends RepositoryCommand {
     ExecResult r = runCommand(cmd);
     failIfNotEmptyStdErr(cmd, r);
   }
+
+
+  /**
+   * Remove config section by name
+   * @param sectionName name of the section to remove
+   * @throws VcsException
+   */
+  public void removeSection(String sectionName) throws VcsException {
+    GeneralCommandLine cmd = createCommandLine();
+    cmd.addParameters("config", "--remove-section", sectionName);
+    ExecResult r = runCommand(cmd);
+    failIfNotEmptyStdErr(cmd, r);
+  }
 }

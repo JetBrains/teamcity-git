@@ -77,13 +77,18 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
                                  @NotNull AgentRunningBuild build)
     throws VcsException {
     super(agentConfiguration, directoryCleaner, root, checkoutRules, toVersion, checkoutDirectory, build.getBuildLogger(),
-          getGitPath(root, agentConfiguration, gitPathResolver, build), isUseNativeSSH(build));
+          getGitPath(root, agentConfiguration, gitPathResolver, build), isUseNativeSSH(build), isUseLocalMirrors(build));
     mySshService = sshService;
   }
 
 
   private static boolean isUseNativeSSH(AgentRunningBuild runningBuild) {
     String value = runningBuild.getSharedConfigParameters().get("teamcity.git.use.native.ssh");
+    return "true".equals(value);
+  }
+
+  private static boolean isUseLocalMirrors(AgentRunningBuild runningBuild) {
+    String value = runningBuild.getSharedConfigParameters().get("teamcity.git.use.local.mirrors");
     return "true".equals(value);
   }
 
@@ -184,6 +189,9 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     new ConfigCommand(mySettings).set(propertyName, value);
   }
 
+  protected void removeConfigSection(final String sectionName) throws VcsException {
+    new ConfigCommand(mySettings).removeSection(sectionName);
+  }
 
   @Override
   protected void setConfigPropertyBare(String propertyName, String value) throws VcsException {
