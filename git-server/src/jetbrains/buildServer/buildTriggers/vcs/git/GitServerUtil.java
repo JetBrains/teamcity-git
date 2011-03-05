@@ -64,6 +64,9 @@ public class GitServerUtil {
           throw new VcsException(
             "The specified directory " + dir + " is already used for another remote " + existingRemote +
             " and cannot be used for others (" + remote.toString() + "). Please specify the other directory explicitly.");
+        } else if (existingRemote == null) {
+          config.setString("teamcity", null, "remote", remote.toString());
+          config.save();
         }
       }
       return r;
