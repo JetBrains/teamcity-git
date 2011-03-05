@@ -57,19 +57,19 @@ public abstract class SubmoduleResolver {
     ensureConfigLoaded();
     String mainRepositoryUrl = myDb.getConfig().getString("teamcity", null, "remote");
     if (myConfig == null) {
-      throw new IOException(String.format("No submodule configuration found. Main repository: '%1$s', main repository commit: '%2$s', path to submodule: '%3$s', submodule commit: '%4$s'.",
-                                          mainRepositoryUrl, myCommit.getId().name(), path, commit.name()));
+      String msg = "Repository '%1$s' has submodule in commit '%2$s' at path '%3$s', but has no .gitmodules configuration at the root directory.";
+      throw new IOException(String.format(msg, mainRepositoryUrl, myCommit.getId().name(), path));
     }
     final Submodule submodule = myConfig.findSubmodule(path);
     if (submodule == null) {
-      throw new IOException(String.format("No submodule entry found in .gitmodules. Main repository: '%1$s', main repository commit: '%2$s', path to submodule: '%3$s', submodule commit: '%4$s'.",
-                                          mainRepositoryUrl, myCommit.getId().name(), path, commit.name()));
+      String msg = "Repository '%1$s' has submodule in commit '%2$s' at path '%3$s', but has no entry for this path in .gitmodules configuration.";
+      throw new IOException(String.format(msg, mainRepositoryUrl, myCommit.getId().name(), path, commit.name()));
     }
     Repository r = resolveRepository(path, submodule.getUrl());
     final RevCommit c = myGitSupport.getCommit(r, commit);
     if (c == null) {
-      throw new IOException(String.format("Submodule commit is not found. Main repository: '%1$s', main repository commit: '%2$s', path to submodule: '%3$s', submodule repository: '%4$s', submodule commit: '%5$s'.",
-                                          mainRepositoryUrl, myCommit.getId().name(), path, submodule.getUrl(), commit.name()));
+      String msg = "Repository '%1$s' has submodule in commit '%2$s' at path '%3$s', but tracked submodule commit '%4$s' is not found in repository '%5$s'. Forget to push it?";
+      throw new IOException(String.format(msg, mainRepositoryUrl, myCommit.getId().name(), path, commit.name(), submodule.getUrl()));
     }
     return c;
   }

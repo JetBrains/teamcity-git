@@ -45,8 +45,11 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.util.FileUtil.writeFile;
 
 /**
  * The tests for version detection functionality
@@ -980,6 +983,33 @@ public class GitVcsSupportTest extends PatchTestCase {
     String debugError = getCurrentVersionExceptionMessage();
     assertTrue(debugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"));
     assertFalse(debugError.endsWith("\n"));
+  }
+
+
+  /**
+   * TW-15564: repository cloned by hand could have no teamcity.remote config, we should create it otherwise we can see 'null' as remote url in error messages
+   * (see log in the issue for details).
+   */
+  @Test
+  public void should_create_teamcity_config_in_root_with_custom_path() throws IOException, VcsException {
+    File customRootDir = new File(myTmpDir, "custom-dir");
+    VcsRootImpl root = (VcsRootImpl) getRoot("master");
+    root.addProperty(Constants.PATH, customRootDir.getAbsolutePath());
+    getSupport().getCurrentVersion(root);
+
+    File configFile = new File(customRootDir, "config");
+    String config = FileUtil.readText(configFile);
+    Pattern pattern = Pattern.compile("(.*)\\[teamcity\\]\\s+remote = " + GitUtils.toURL(myMainRepositoryDir) + "\\s*(.*)", Pattern.DOTALL);
+    Matcher matcher = pattern.matcher(config);
+    assertTrue(matcher.matches(), "config is " + config);
+
+    //erase teamcity.remote config
+    String newConfig = matcher.group(1) + matcher.group(2);
+    writeFile(configFile, newConfig);
+
+    getSupport().getCurrentVersion(root);
+    config = FileUtil.readText(configFile);
+    assertTrue(pattern.matcher(config).matches());
   }
 
 
