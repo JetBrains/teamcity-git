@@ -28,12 +28,17 @@ import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Set;
 
 /**
  * The agent support for VCS.
@@ -140,12 +145,18 @@ public abstract class GitUpdateProcess {
         initDirectory();
         firstFetch = true;
       } else {
-        if (myUseLocalMirrors && !isRepositoryUseLocalMirror()) {
-        setUseLocalMirror();
-        } else if (!myUseLocalMirrors && isRepositoryUseLocalMirror()) {
-          setNotUseLocalMirror();
+        try {
+          if (myUseLocalMirrors && !isRepositoryUseLocalMirror()) {
+            setUseLocalMirror();
+          } else if (!myUseLocalMirrors && isRepositoryUseLocalMirror()) {
+            setNotUseLocalMirror();
+          }
+        } catch (Exception e) {
+          LOG.warn("Do clean checkout due to errors while configure use of local mirrors", e);
+          initDirectory();
+          firstFetch = true;
+        }
       }
-    }
     }
     // fetch data from the repository
     String revInfo = doFetch(firstFetch);
@@ -187,8 +198,19 @@ public abstract class GitUpdateProcess {
   }
 
   private void setNotUseLocalMirror() throws VcsException {
-    String localMirrorUrl = getLocalMirrorUrl();
-    removeConfigSection("url." + localMirrorUrl);
+    try {
+      Repository r = new RepositoryBuilder().setWorkTree(myDirectory).build();
+      StoredConfig config = r.getConfig();
+      Set<String> urlSubsections = config.getSubsections("url");
+      for (String subsection : urlSubsections) {
+        config.unsetSection("url", subsection);
+      }
+      config.save();
+    } catch (IOException e) {
+      String msg = "Error while remove url.* sections";
+      LOG.error(msg, e);
+      throw new VcsException(msg, e);
+    }
   }
 
   private String getLocalMirrorUrl() throws VcsException {
@@ -213,12 +235,14 @@ public abstract class GitUpdateProcess {
 
 
   private boolean isRepositoryUseLocalMirror() throws VcsException {
-    String remoteUrl = mySettings.getRepositoryFetchURL().toString();
     try {
-      String configRemoteUrl = getConfigProperty("url." + getLocalMirrorUrl() + ".insteadOf");
-      return remoteUrl.equals(configRemoteUrl);
-    } catch (VcsException e) {
-      return false;
+      Repository r = new RepositoryBuilder().setWorkTree(myDirectory).build();
+      StoredConfig config = r.getConfig();
+      return !config.getSubsections("url").isEmpty();
+    } catch (IOException e) {
+      String msg = "Error while reading config file in repository " + myDirectory.getAbsolutePath();
+      LOG.error(msg, e);
+      throw new VcsException(msg, e);
     }
   }
 

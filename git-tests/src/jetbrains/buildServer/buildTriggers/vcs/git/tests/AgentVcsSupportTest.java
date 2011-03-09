@@ -32,6 +32,9 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitPathResolver;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jmock.Expectations;
@@ -356,6 +359,24 @@ public class AgentVcsSupportTest extends BaseTestCase {
     File gitConfigFile = new File(myCheckoutDir, ".git" + File.separator + "config");
     String config = FileUtil.loadTextAndClose(new FileReader(gitConfigFile));
     assertFalse(config, config.contains("insteadOf"));
+  }
+
+
+  public void stop_use_any_mirror_if_agent_property_changed_to_false() throws VcsException, IOException {
+    AgentRunningBuild build2 = createRunningBuild(false);
+    File gitCacheDir = myAgentConfiguration.getCacheDirectory("git");
+    Settings settings = new Settings(myRoot, gitCacheDir);
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
+
+    //add some mirror
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    StoredConfig config = r.getConfig();
+    config.setString("url", "/some/path", "insteadOf", settings.getRepositoryFetchURL().toString());
+    config.save();
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
+    config = r.getConfig();
+    assertTrue(config.getSubsections("url").isEmpty());
   }
 
 
