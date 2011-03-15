@@ -189,10 +189,6 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     new ConfigCommand(mySettings).set(propertyName, value);
   }
 
-  protected void removeConfigSection(final String sectionName) throws VcsException {
-    new ConfigCommand(mySettings).removeSection(sectionName);
-  }
-
   @Override
   protected void setConfigPropertyBare(String propertyName, String value) throws VcsException {
     new ConfigCommand(mySettings, mySettings.getRepositoryDir().getAbsolutePath()).set(propertyName, value);
@@ -207,7 +203,7 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   protected void doClean(BranchInfo branchInfo) throws VcsException {
     if (mySettings.getCleanPolicy() == AgentCleanPolicy.ALWAYS ||
         (!branchInfo.isCurrent && mySettings.getCleanPolicy() == AgentCleanPolicy.ON_BRANCH_CHANGE)) {
-      mLogger.message("Cleaning " + myRoot.getName() + " in " + myDirectory + " the file set " + mySettings.getCleanFilesPolicy());
+      myLogger.message("Cleaning " + myRoot.getName() + " in " + myDirectory + " the file set " + mySettings.getCleanFilesPolicy());
       new CleanCommand(mySettings).clean();
     }
   }
@@ -245,7 +241,7 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   protected void doSubmoduleUpdate(File directory) throws VcsException {
     File gitmodules = new File(directory, ".gitmodules");
     if (gitmodules.exists()) {
-      mLogger.message("Checkout submodules in " + directory);
+      myLogger.message("Checkout submodules in " + directory);
       SubmoduleCommand submoduleCommand = new SubmoduleCommand(mySettings, mySshService, directory.getAbsolutePath());
       submoduleCommand.init();
       submoduleCommand.update();

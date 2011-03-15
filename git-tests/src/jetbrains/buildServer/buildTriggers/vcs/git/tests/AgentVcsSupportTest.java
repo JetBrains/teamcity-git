@@ -375,7 +375,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     config.save();
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
-    config = r.getConfig();
+    config = new RepositoryBuilder().setWorkTree(myCheckoutDir).build().getConfig();
     assertTrue(config.getSubsections("url").isEmpty());
   }
 

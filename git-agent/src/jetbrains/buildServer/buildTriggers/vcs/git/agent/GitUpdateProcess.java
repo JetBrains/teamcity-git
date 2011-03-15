@@ -76,7 +76,7 @@ public abstract class GitUpdateProcess {
   /**
    * The logger for update process
    */
-  protected final BuildProgressLogger mLogger;
+  protected final BuildProgressLogger myLogger;
   /**
    * The vcs settings
    */
@@ -120,7 +120,7 @@ public abstract class GitUpdateProcess {
     myCheckoutRules = checkoutRules;
     myToVersion = toVersion;
     myCheckoutDirectory = checkoutDirectory;
-    mLogger = logger;
+    myLogger = logger;
     revision = GitUtils.versionRevision(toVersion);
     myDirectory = findDirectory();
     myUseLocalMirrors = useLocalMirrors;
@@ -158,34 +158,25 @@ public abstract class GitUpdateProcess {
         }
       }
     }
-    // fetch data from the repository
     String revInfo = doFetch(firstFetch);
-    // check what is the current branch
     BranchInfo branchInfo = getBranchInfo(mySettings.getBranch());
     if (branchInfo.isCurrent) {
-      // Force tracking of origin/branch
       forceTrackingBranch();
-      // Hard reset to the required revision.
-      mLogger.message("Resetting " + myRoot.getName() + " in " + myDirectory + " to revision " + revInfo);
+      myLogger.message("Resetting " + myRoot.getName() + " in " + myDirectory + " to revision " + revInfo);
       removeIndexLock();
       hardReset();
     } else {
-      // create branch if missing to track remote
       if (!branchInfo.isExists) {
         createBranch();
       } else {
-        // Force tracking of origin/branch
         forceTrackingBranch();
       }
       removeRefLock();
-      // update-ref to specified revision
       setBranchCommit();
-      // checkout branch
-      mLogger.message(
+      myLogger.message(
         "Checking out branch " + mySettings.getBranch() + " in " + myRoot.getName() + " in " + myDirectory + " with revision " + revInfo);
       forceCheckout();
     }
-    // do clean if requested
     doClean(branchInfo);
     if (mySettings.isCheckoutSubmodules()) {
       doSubmoduleUpdate(myDirectory);
@@ -259,7 +250,7 @@ public abstract class GitUpdateProcess {
       addRemoteBare("origin", mySettings.getRepositoryFetchURL());
     } else {
       LOG.debug("Try to find revision " + revision + " in " + mirrorDescription);
-      String revInfo = checkRevision(revision, "debug");
+      String revInfo = checkRevisionBare(revision, "debug");
       if (revInfo != null) {
         LOG.info("No fetch required for revision '" + revision + "' in " + mirrorDescription);
         fetchRequired = false;
@@ -280,7 +271,7 @@ public abstract class GitUpdateProcess {
     String branchRef = GitUtils.branchRef(mySettings.getBranch());
     File refLock = new File(myDirectory, ".git" + File.separator + branchRef + ".lock");
     if (refLock.exists()) {
-      mLogger.warning("The .git/" + branchRef +
+      myLogger.warning("The .git/" + branchRef +
                       ".lock file exists. This probably means a git process crashed in this repository earlier. Deleting lock file");
       FileUtil.delete(refLock);
     }
@@ -293,7 +284,7 @@ public abstract class GitUpdateProcess {
   private void removeIndexLock() {
     File indexLock = new File(myDirectory, ".git" + File.separator + "index.lock");
     if (indexLock.exists()) {
-      mLogger.warning("The .git/index.lock file exists. This probably means a git process crashed in this repository earlier. Deleting lock file");
+      myLogger.warning("The .git/index.lock file exists. This probably means a git process crashed in this repository earlier. Deleting lock file");
       FileUtil.delete(indexLock);
     }
   }
@@ -325,14 +316,9 @@ public abstract class GitUpdateProcess {
     if (revInfo != null) {
       LOG.info("No fetch needed for revision '" + revision + "' in " + mySettings.getLocalRepositoryDir());
     } else {
-      if (!"git".equals(mySettings.getRepositoryFetchURL().getScheme()) &&
-          (mySettings.getAuthSettings().getAuthMethod() == AuthenticationMethod.PASSWORD ||
-           mySettings.getAuthSettings().getAuthMethod() == AuthenticationMethod.PRIVATE_KEY_FILE)) {
-        throw new VcsException("TeamCity doesn't support authentication method " + mySettings.getAuthSettings().getAuthMethod().uiName() + " with agent checkout. " +
-        "Please use '" + AuthenticationMethod.ANONYMOUS.uiName() + "' or '" + AuthenticationMethod.PRIVATE_KEY_DEFAULT.uiName() + "' methods.");
-      }
+      checkAuthMethodIsSupported();
       LOG.info("Fetching in repository " + mySettings.debugInfo());
-      mLogger.message("Fetching data for '" + myRoot.getName() + "'...");
+      myLogger.message("Fetching data for '" + myRoot.getName() + "'...");
       String previousHead = null;
       if (!firstFetch) {
         previousHead = checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
@@ -342,13 +328,22 @@ public abstract class GitUpdateProcess {
       if (newHead == null) {
         throw new VcsException("Failed to fetch data for " + mySettings.debugInfo());
       }
-      mLogger.message("Fetched revisions " + (previousHead == null ? "up to " : previousHead + "..") + newHead);
+      myLogger.message("Fetched revisions " + (previousHead == null ? "up to " : previousHead + "..") + newHead);
       revInfo = checkRevision(revision);
-    }
-    if (revInfo == null) {
-      throw new VcsException("The revision " + revision + " is not found in the repository after fetch " + mySettings.debugInfo());
+      if (revInfo == null) {
+        throw new VcsException("The revision " + revision + " is not found in the repository after fetch " + mySettings.debugInfo());
+      }
     }
     return revInfo;
+  }
+
+  private void checkAuthMethodIsSupported() throws VcsException {
+    if (!"git".equals(mySettings.getRepositoryFetchURL().getScheme()) &&
+        (mySettings.getAuthSettings().getAuthMethod() == AuthenticationMethod.PASSWORD ||
+         mySettings.getAuthSettings().getAuthMethod() == AuthenticationMethod.PRIVATE_KEY_FILE)) {
+      throw new VcsException("TeamCity doesn't support authentication method " + mySettings.getAuthSettings().getAuthMethod().uiName() + " with agent checkout. " +
+      "Please use '" + AuthenticationMethod.ANONYMOUS.uiName() + "' or '" + AuthenticationMethod.PRIVATE_KEY_DEFAULT.uiName() + "' methods.");
+    }
   }
 
   /**
@@ -357,14 +352,14 @@ public abstract class GitUpdateProcess {
    * @throws VcsException if there are problems with initializing the directory
    */
   void initDirectory() throws VcsException {
-    BuildDirectoryCleanerCallback c = new BuildDirectoryCleanerCallback(mLogger, LOG);
+    BuildDirectoryCleanerCallback c = new BuildDirectoryCleanerCallback(myLogger, LOG);
     myDirectoryCleaner.cleanFolder(myDirectory, c);
     //noinspection ResultOfMethodCallIgnored
     myDirectory.mkdirs();
     if (c.isHasErrors()) {
       throw new VcsException("Unable to clean directory " + myDirectory + " for VCS root " + myRoot.getName());
     }
-    mLogger.message("The .git directory is missing in '" + myDirectory + "'. Running 'git init'...");
+    myLogger.message("The .git directory is missing in '" + myDirectory + "'. Running 'git init'...");
     init();
     addRemote("origin", mySettings.getRepositoryFetchURL());
     if (myUseLocalMirrors) setUseLocalMirror();
@@ -389,7 +384,7 @@ public abstract class GitUpdateProcess {
     }
     File directory = path.length() == 0 ? myCheckoutDirectory : new File(myCheckoutDirectory, path.replace('/', File.separatorChar));
     if (!directory.exists()) {
-      mLogger.message("The destination directory'" + directory + "' is missing. creating it...");
+      myLogger.message("The destination directory'" + directory + "' is missing. creating it...");
       //noinspection ResultOfMethodCallIgnored
       directory.mkdirs();
       if (!directory.exists()) {
@@ -480,13 +475,6 @@ public abstract class GitUpdateProcess {
    * @throws VcsException if there is a problem with accessing repository
    */
   protected abstract void hardReset() throws VcsException;
-
-  /**
-   * Remove configuration section
-   * @param sectionName name of the section to remove
-   * @throws VcsException
-   */
-  protected abstract void removeConfigSection(String sectionName) throws VcsException;
 
   /**
    * Perform clean according to the settings
