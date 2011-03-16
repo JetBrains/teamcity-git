@@ -67,7 +67,7 @@ public class FetchCommand extends RepositoryCommand {
   public void fetch() throws VcsException {
     GeneralCommandLine cmd = createCommandLine();
     cmd.addParameter("fetch");
-    cmd.addParameters("--no-tags", "-q", "origin");
+    cmd.addParameters("-q", "origin");
     cmd.addParameter(getRefSpec());
     if (mySettings.isUseNativeSSH()) {
       runCommand(cmd, TIMEOUT);
@@ -84,9 +84,9 @@ public class FetchCommand extends RepositoryCommand {
   private String getRefSpec() {
     AgentSettings s = getSettings();
     if (myMirror) {
-      return "+" + GitUtils.branchRef(s.getBranch()) + ":" + GitUtils.branchRef(s.getBranch());
+      return "+" + GitUtils.expandRef(s.getRef()) + ":" + GitUtils.expandRef(s.getRef());
     } else {
-      return "+" + GitUtils.branchRef(s.getBranch()) + ":" + GitUtils.remotesBranchRef(s.getBranch());
+      return "+" + GitUtils.expandRef(s.getRef()) + ":" + GitUtils.createRemoteRef(s.getRef());
     }
   }
 

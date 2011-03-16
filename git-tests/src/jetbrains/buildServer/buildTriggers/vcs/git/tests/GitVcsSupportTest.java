@@ -1013,6 +1013,19 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  @Test
+  public void should_support_git_refs_format() throws IOException, VcsException {
+    String versionTest1 = getSupport().getCurrentVersion(getRoot("version-test"));
+    String versionTest2 = getSupport().getCurrentVersion(getRoot("refs/heads/version-test"));
+    assertEquals(versionTest1, versionTest2);
+    String master1 = getSupport().getCurrentVersion(getRoot("master"));
+    String master2 = getSupport().getCurrentVersion(getRoot("refs/heads/master"));
+    String master3 = getSupport().getCurrentVersion(getRoot("refs/tags/v1.0"));
+    assertEquals(master1, master2);
+    assertEquals(master1, master3);
+  }
+
+
   private String getCurrentVersionExceptionMessage() {
     String result = null;
     File notExisting = new File(myTmpDir, "not-existing");

@@ -209,15 +209,15 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   }
 
   protected void forceCheckout() throws VcsException {
-    new BranchCommand(mySettings).forceCheckout(mySettings.getBranch());
+    new BranchCommand(mySettings).forceCheckout(mySettings.getRef());
   }
 
   protected void setBranchCommit() throws VcsException {
-    new BranchCommand(mySettings).setBranchCommit(mySettings.getBranch(), revision);
+    new BranchCommand(mySettings).setBranchCommit(mySettings.getRef(), revision);
   }
 
   protected void createBranch() throws VcsException {
-    new BranchCommand(mySettings).createBranch(mySettings.getBranch(), GitUtils.remotesBranchRef(mySettings.getBranch()));
+    new BranchCommand(mySettings).createBranch(mySettings.getRef(), GitUtils.createRemoteRef(mySettings.getRef()));
   }
 
   protected void fetch() throws VcsException {

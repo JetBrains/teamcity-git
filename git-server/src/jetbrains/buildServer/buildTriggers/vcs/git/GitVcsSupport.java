@@ -835,7 +835,7 @@ public class GitVcsSupport extends ServerVcsSupport
       fetchBranchData(settings, db);
       result = getCommit(db, commitSHA);
       if (result == null) {
-        throw new VcsException("The version name could not be resolved " + commitSHA + "(" + settings.getRepositoryFetchURL().toString() + "#" + settings.getBranch() + ")");
+        throw new VcsException("The version name could not be resolved " + commitSHA + "(" + settings.getRepositoryFetchURL().toString() + "#" + settings.getRef() + ")");
       }
     }
     return result;
@@ -929,24 +929,24 @@ public class GitVcsSupport extends ServerVcsSupport
     try {
       Repository r = context.getRepository();
       fetchBranchData(s, r);
-      String refName = GitUtils.branchRef(s.getBranch());
+      String refName = GitUtils.expandRef(s.getRef());
       Ref branchRef = r.getRef(refName);
       if (branchRef == null) {
-        throw new VcsException("The branch name could not be resolved " + refName);
+        throw new VcsException("The ref '" + refName + "' could not be resolved");
       }
-      String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getBranch());
+      String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getRef());
       if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
         return cachedCurrentVersion;
       } else {
         RevCommit c = getCommit(r, branchRef.getObjectId());
         if (c == null) {
-          throw new VcsException("The branch name could not be resolved " + refName);
+          throw new VcsException("The ref '" + refName + "' could not be resolved");
         }
         if (LOG.isDebugEnabled()) {
           LOG.debug("Current version: " + c.getId().name() + " " + s.debugInfo());
         }
         final String currentVersion = GitServerUtil.makeVersion(c);
-        setCachedCurrentVersion(s.getRepositoryDir(), s.getBranch(), currentVersion);
+        setCachedCurrentVersion(s.getRepositoryDir(), s.getRef(), currentVersion);
         GitMapFullPath.invalidateRevisionsCache(root);
         return currentVersion;
       }
@@ -983,7 +983,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * @throws Exception if there is a problem with fetching data
    */
   private void fetchBranchData(Settings settings, Repository repository) throws Exception {
-    final String refName = GitUtils.branchRef(settings.getBranch());
+    final String refName = GitUtils.expandRef(settings.getRef());
     RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
     fetch(repository, settings.getAuthSettings(), settings.getRepositoryFetchURL(), spec);
   }
@@ -1215,17 +1215,17 @@ public class GitVcsSupport extends ServerVcsSupport
             if (LOG.isDebugEnabled()) {
               LOG.debug("Checking references... " + s.debugInfo());
             }
-            String refName = GitUtils.branchRef(s.getBranch());
+            String refName = GitUtils.expandRef(s.getRef());
             boolean refFound = false;
             for (final Ref ref : c.getRefs()) {
               if (refName.equals(ref.getName())) {
-                LOG.info("The branch reference found " + refName + "=" + ref.getObjectId() + " for " + s.debugInfo());
+                LOG.info("Found the ref " + refName + "=" + ref.getObjectId() + " for " + s.debugInfo());
                 refFound = true;
                 break;
               }
             }
             if (!refFound) {
-              throw new VcsException("The branch " + refName + " was not found in the repository " + s.getRepositoryFetchURL().toString());
+              throw new VcsException("The ref '" + refName + "' was not found in the repository " + s.getRepositoryFetchURL().toString());
             }
           } finally {
             c.close();
@@ -1492,7 +1492,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   Collection<Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
-    OperationContext context = createContext(root, "list remote branches");
+    OperationContext context = createContext(root, "list remote refs");
     Settings s = context.getSettings();
     File tmpDir = null;
     try {

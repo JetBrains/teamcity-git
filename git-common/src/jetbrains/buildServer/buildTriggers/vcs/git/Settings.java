@@ -37,7 +37,7 @@ public class Settings {
 
   final private URIish repositoryFetchURL;
   final private URIish repositoryPushURL;
-  final private String branch;
+  final private String ref;
   final private UserNameStyle usernameStyle;
   final private SubmodulesCheckoutPolicy submodulePolicy;
   final private File cachesDirectory;
@@ -47,7 +47,7 @@ public class Settings {
   public Settings(VcsRoot root, File cacheDir) throws VcsException {
     cachesDirectory = cacheDir;
     userDefinedRepositoryPath = readPath(root);
-    branch = root.getProperty(Constants.BRANCH_NAME);
+    ref = root.getProperty(Constants.BRANCH_NAME);
     usernameStyle = readUserNameStyle(root);
     submodulePolicy = readSubmodulesPolicy(root);
     myAuthSettings = new AuthSettings(root.getProperties());
@@ -145,15 +145,15 @@ public class Settings {
   /**
    * @return the branch name
    */
-  public String getBranch() {
-    return branch == null || branch.length() == 0 ? "master" : branch;
+  public String getRef() {
+    return StringUtil.isEmptyOrSpaces(ref) ? "master" : ref;
   }
 
   /**
    * @return debug information that allows identify repository operation context
    */
   public String debugInfo() {
-    return " (" + getRepositoryDir() + ", " + getRepositoryFetchURL().toString() + "#" + getBranch() + ")";
+    return " (" + getRepositoryDir() + ", " + getRepositoryFetchURL().toString() + "#" + getRef() + ")";
   }
 
   /**

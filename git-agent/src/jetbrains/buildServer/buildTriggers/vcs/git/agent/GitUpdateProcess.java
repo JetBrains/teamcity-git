@@ -159,29 +159,38 @@ public abstract class GitUpdateProcess {
       }
     }
     String revInfo = doFetch(firstFetch);
-    BranchInfo branchInfo = getBranchInfo(mySettings.getBranch());
-    if (branchInfo.isCurrent) {
-      forceTrackingBranch();
-      myLogger.message("Resetting " + myRoot.getName() + " in " + myDirectory + " to revision " + revInfo);
-      removeIndexLock();
-      hardReset();
-    } else {
-      if (!branchInfo.isExists) {
-        createBranch();
-      } else {
-        forceTrackingBranch();
-      }
-      removeRefLock();
-      setBranchCommit();
-      myLogger.message(
-        "Checking out branch " + mySettings.getBranch() + " in " + myRoot.getName() + " in " + myDirectory + " with revision " + revInfo);
+    BranchInfo branchInfo = null;
+    if (isTag(GitUtils.expandRef(mySettings.getRef()))) {
+      branchInfo = new BranchInfo(true, false);//this branchInfo will enforce clean
       forceCheckout();
+    } else {
+      branchInfo = getBranchInfo(mySettings.getRef());
+      if (branchInfo.isCurrent) {
+        myLogger.message("Resetting " + myRoot.getName() + " in " + myDirectory + " to revision " + revInfo);
+        removeIndexLock();
+        hardReset();
+      } else {
+        if (!branchInfo.isExists) {
+          createBranch();
+        }
+        removeRefLock();
+        setBranchCommit();
+        myLogger.message(
+          "Checking out branch " + mySettings.getRef() + " in " + myRoot.getName() + " in " + myDirectory + " with revision " + revInfo);
+        forceCheckout();
+      }
     }
     doClean(branchInfo);
     if (mySettings.isCheckoutSubmodules()) {
       doSubmoduleUpdate(myDirectory);
     }
   }
+
+
+  private boolean isTag(@NotNull String fullRef) {
+    return fullRef.startsWith("refs/tags/");
+  }
+
 
   private void setUseLocalMirror() throws VcsException {
     String localMirrorUrl = getLocalMirrorUrl();
@@ -268,7 +277,7 @@ public abstract class GitUpdateProcess {
    * This method delete such lock file if it exists (with warning message), otherwise git operation will fail.
    */
   private void removeRefLock() {
-    String branchRef = GitUtils.branchRef(mySettings.getBranch());
+    String branchRef = GitUtils.expandRef(mySettings.getRef());
     File refLock = new File(myDirectory, ".git" + File.separator + branchRef + ".lock");
     if (refLock.exists()) {
       myLogger.warning("The .git/" + branchRef +
@@ -291,16 +300,6 @@ public abstract class GitUpdateProcess {
 
 
   /**
-   * Force tracking branch to origin's branch
-   *
-   * @throws VcsException if there problem with running git
-   */
-  private void forceTrackingBranch() throws VcsException {
-    setConfigProperty("branch." + mySettings.getBranch() + ".remote", "origin");
-    setConfigProperty("branch." + mySettings.getBranch() + ".merge", GitUtils.branchRef(mySettings.getBranch()));
-  }
-
-  /**
    * Do fetch operation if needed
    *
    * @param firstFetch true if the directory was just initialized
@@ -321,10 +320,10 @@ public abstract class GitUpdateProcess {
       myLogger.message("Fetching data for '" + myRoot.getName() + "'...");
       String previousHead = null;
       if (!firstFetch) {
-        previousHead = checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
+        previousHead = checkRevision(GitUtils.createRemoteRef(mySettings.getRef()));
       }
       fetch();
-      String newHead = checkRevision(GitUtils.remotesBranchRef(mySettings.getBranch()));
+      String newHead = checkRevision(GitUtils.createRemoteRef(mySettings.getRef()));
       if (newHead == null) {
         throw new VcsException("Failed to fetch data for " + mySettings.debugInfo());
       }

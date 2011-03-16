@@ -40,7 +40,7 @@
       </td>
     </tr>
     <tr>
-      <th><label for="branch">Branch name: </label></th>
+      <th><label for="branch">Ref name: </label></th>
       <td><props:textProperty name="branch"/>
         <div class="smallNote" style="margin: 0;">If blank, the branch "master" is used.</div>
       </td>

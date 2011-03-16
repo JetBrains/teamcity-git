@@ -94,34 +94,36 @@ public class GitUtils {
   }
 
   /**
-   * Create reference name from branch name
+   * Expands ref name to full ref name
    *
-   * @param branch the branch name
-   * @return the reference name
+   * @param ref the ref name
+   * @return full ref name
    */
-  public static String branchRef(String branch) {
-    if (branch.startsWith("refs/")) {
-      return branch;
+  public static String expandRef(String ref) {
+    if (ref.startsWith("refs/")) {
+      return ref;
     } else {
-      return "refs/heads/" + branch;
+      return "refs/heads/" + ref;
     }
   }
 
   /**
-   * Create remotes/origin reference name from branch name
+   * Creates remote ref from local ref name for remote called 'origin'
    *
-   * @param branch the branch name
-   * @return the reference name
+   * @param ref local ref name
+   * @return full remote ref name
    */
-  public static String remotesBranchRef(String branch) {
-    if (branch.startsWith("refs/")) {
-      if (branch.startsWith("refs/heads/")) {
-        return "refs/remotes/origin/" + branch.substring("refs/heads/".length());
+  public static String createRemoteRef(String ref) {
+    if (ref.startsWith("refs/")) {
+      if (ref.startsWith("refs/heads/")) {
+        return "refs/remotes/origin/" + ref.substring("refs/heads/".length());
+      } else if (ref.startsWith("refs/tags/")) {
+        return ref; //tags are mapped to the same place
       } else {
-        return "refs/remotes/origin/" + branch.substring("refs/".length());
+        return "refs/remotes/origin/" + ref.substring("refs/".length());
       }
     } else {
-      return "refs/remotes/origin/" + branch;
+      return "refs/remotes/origin/" + ref;
     }
   }
 

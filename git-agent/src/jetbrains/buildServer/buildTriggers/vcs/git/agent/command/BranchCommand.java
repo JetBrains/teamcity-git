@@ -71,7 +71,7 @@ public class BranchCommand extends RepositoryCommand {
    */
   public void setBranchCommit(String branch, String revision) throws VcsException {
     GeneralCommandLine cmd = createCommandLine();
-    cmd.addParameters("update-ref", "-m", "setting revision to checkout", GitUtils.branchRef(branch), revision);
+    cmd.addParameters("update-ref", "-m", "setting revision to checkout", GitUtils.expandRef(branch), revision);
     ExecResult r = runCommand(cmd);
     failIfNotEmptyStdErr(cmd, r);
   }

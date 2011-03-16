@@ -159,7 +159,7 @@ class GitMapFullPath {
     if (url.getPort() != settingsUrl.getPort()) return false;
     if (!url.getPath().equals(settingsUrl.getPath())) return false;
 
-    final String settingsBranch = getNullIfEmpty(mySettings.getBranch());
+    final String settingsBranch = getNullIfEmpty(mySettings.getRef());
     if (branch != null && settingsBranch != null && !branch.equals(settingsBranch)) return false;
 
     return true;

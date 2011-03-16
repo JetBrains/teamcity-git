@@ -32,6 +32,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitPathResolver;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.lib.StoredConfig;
@@ -223,7 +224,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
     //emulate incorrect git termination (in this it could leave refs/heads/<branch-name>.lock file)
     FileUtil.createIfDoesntExist(new File(myCheckoutDir, ".git" + File.separator +
-                                                         GitUtils.branchRef("patch-tests") +
+                                                         GitUtils.expandRef("patch-tests") +
                                                          ".lock"));
     
     myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
@@ -377,6 +378,50 @@ public class AgentVcsSupportTest extends BaseTestCase {
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
     config = new RepositoryBuilder().setWorkTree(myCheckoutDir).build().getConfig();
     assertTrue(config.getSubsections("url").isEmpty());
+  }
+
+
+  public void checkout_tag() throws VcsException, IOException {
+    myRoot.addProperty(Constants.BRANCH_NAME, "refs/tags/v1.0");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
+
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    Ref tagRef = r.getRef("refs/tags/v1.0");
+    assertNotNull(tagRef);
+  }
+
+
+  public void do_not_create_branch_when_checkout_tag() throws VcsException, IOException {
+    myRoot.addProperty(Constants.BRANCH_NAME, "refs/tags/v1.0");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
+
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    Map<String, Ref> refs = r.getRefDatabase().getRefs("refs/");
+    assertTrue(refs.containsKey("tags/v1.0"));
+    assertTrue(refs.containsKey("tags/v0.5"));//it is reachable from refs/tags/v1.0
+    assertEquals(2, refs.size());
+  }
+
+
+  public void checkout_tag_after_branch() throws VcsException, IOException {
+    myRoot.addProperty(Constants.BRANCH_NAME, "sub-submodule");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
+
+    myRoot.addProperty(Constants.BRANCH_NAME, "refs/tags/v1.0");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitUtils.makeVersion("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", 1289483394000L), myCheckoutDir, myBuild, false);
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    Ref headRef = r.getRef("HEAD");
+    assertEquals("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", headRef.getObjectId().name());
+  }
+
+
+  public void should_checkout_tags_reachable_from_branch() throws VcsException, IOException {
+    myRoot.addProperty(Constants.BRANCH_NAME, "master");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
+
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    assertNotNull(r.getRef("refs/tags/v0.5"));
+    assertNotNull(r.getRef("refs/tags/v1.0"));
   }
 
 
