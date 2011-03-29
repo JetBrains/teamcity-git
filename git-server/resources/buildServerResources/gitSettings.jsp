@@ -195,6 +195,7 @@
         alert('Unknown value: ' + c.value);
         break;
     }
+    BS.VisibilityHandlers.updateVisibility($('vcsRootProperties'));
   }
   gitSelectAuthentication();
   if ($('url').value == "") {
