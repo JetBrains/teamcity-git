@@ -50,6 +50,7 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
+import org.eclipse.jgit.storage.file.FileRepository;
 import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
@@ -1138,7 +1139,7 @@ public class GitVcsSupport extends ServerVcsSupport
     //incoming_xxx.pack. When it tries to open such pack we can run out of memory.
     //In this case incoming_xxx.pack files will waste disk space.
     //See TW-13450 for details
-    File objectsDir = db.getObjectsDirectory();
+    File objectsDir = ((FileRepository) db).getObjectsDirectory();
     for (File f : objectsDir.listFiles()) {
       if (f.isFile() && f.getName().startsWith("incoming_") && f.getName().endsWith(".pack")) {
         FileUtil.delete(f);

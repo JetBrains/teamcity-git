@@ -34,6 +34,10 @@
     <exclude name="**/vssver.scc/**"/>
     <exclude name="**/vssver2.scc/**"/>
     <exclude name="**/*.orig/**"/>
+    <exclude name="**/*.lib/**"/>
+    <exclude name="**/*~/**"/>
+    <exclude name="**/__pycache__/**"/>
+    <exclude name="**/.bundle/**"/>
   </patternset>
   <patternset id="library.patterns">
     <include name="*.zip"/>
@@ -83,9 +87,9 @@
   
   <!-- Project Libraries -->
   
-  <path id="library.jgit-0.10.classpath">
+  <path id="library.jgit-0.11.3.classpath">
     <pathelement location="${basedir}/lib/common/jsch-0.1.41.jar"/>
-    <pathelement location="${basedir}/lib/common/org.eclipse.jgit-0.10.0-SNAPSHOT.jar"/>
+    <pathelement location="${basedir}/lib/common/org.eclipse.jgit-0.11.3.jar"/>
   </path>
   
   <path id="library.teamcity_agent.classpath">
@@ -140,6 +144,9 @@
   </path>
   
   
+  <!-- Global Libraries -->
+  
+  
   <!-- Application Server Libraries -->
   <!-- Register Custom Compiler Taskdefs -->
   <property name="javac2.home" value="${idea.home}/lib"/>
@@ -180,14 +187,14 @@
     <path refid="${module.jdk.classpath.git-common}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
   </path>
   
   <path id="git-common.runtime.production.module.classpath">
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
   </path>
   
   <path id="git-common.module.classpath">
@@ -195,7 +202,7 @@
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
   </path>
   
   <path id="git-common.runtime.module.classpath">
@@ -203,7 +210,7 @@
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
   </path>
   
   
@@ -334,7 +341,7 @@
     <path refid="library.teamcity_third-party.classpath"/>
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
   </path>
   
   <path id="git-agent.runtime.production.module.classpath">
@@ -342,7 +349,7 @@
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
@@ -358,7 +365,7 @@
     <path refid="library.teamcity_third-party.classpath"/>
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
   </path>
   
   <path id="git-agent.runtime.module.classpath">
@@ -368,7 +375,7 @@
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
@@ -444,7 +451,7 @@
     <path refid="library.tomcat.classpath"/>
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_server.classpath"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
   </path>
   
   <path id="git-server.runtime.production.module.classpath">
@@ -454,7 +461,7 @@
     <path refid="library.teamcity_third-party.classpath"/>
     <path refid="library.tomcat.classpath"/>
     <pathelement location="${git-common.output.dir}"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
   </path>
   
@@ -468,7 +475,7 @@
     <pathelement location="${git-common.testoutput.dir}"/>
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_server.classpath"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
   </path>
   
   <path id="git-server.runtime.module.classpath">
@@ -480,7 +487,7 @@
     <path refid="library.tomcat.classpath"/>
     <pathelement location="${git-common.testoutput.dir}"/>
     <pathelement location="${git-common.output.dir}"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
   </path>
   
@@ -565,7 +572,7 @@
     <pathelement location="${git-agent.output.dir}"/>
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
   </path>
   
   <path id="git-tests.runtime.production.module.classpath">
@@ -577,7 +584,7 @@
     <path refid="library.teamcity_third-party.classpath"/>
     <path refid="library.tomcat.classpath"/>
     <pathelement location="${git-common.output.dir}"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
     <path refid="library.teamcity_tests.classpath"/>
@@ -604,7 +611,7 @@
     <pathelement location="${git-agent.output.dir}"/>
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
   </path>
   
   <path id="git-tests.runtime.module.classpath">
@@ -619,7 +626,7 @@
     <path refid="library.tomcat.classpath"/>
     <pathelement location="${git-common.testoutput.dir}"/>
     <pathelement location="${git-common.output.dir}"/>
-    <path refid="library.jgit-0.10.classpath"/>
+    <path refid="library.jgit-0.11.3.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
     <path refid="library.teamcity_tests.classpath"/>

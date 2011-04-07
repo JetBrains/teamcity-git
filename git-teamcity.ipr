@@ -523,6 +523,17 @@
         <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.41.zip!/jsch-0.1.41-src/src" />
       </SOURCES>
     </library>
+    <library name="JGit-0.11.3">
+      <CLASSES>
+        <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-0.11.3.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/common/jsch-0.1.41.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES>
+        <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit-0.11.3-sources.jar!/" />
+        <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.41.zip!/jsch-0.1.41-src/src" />
+      </SOURCES>
+    </library>
     <library name="TeamCity Agent">
       <CLASSES>
         <root url="jar://$TeamCityDistribution$/buildAgent/lib/agent.jar!/" />

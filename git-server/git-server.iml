@@ -19,7 +19,7 @@
     <orderEntry type="library" name="Tomcat" level="project" />
     <orderEntry type="module" module-name="git-common" />
     <orderEntry type="library" name="TeamCity server" level="project" />
-    <orderEntry type="library" name="JGit-0.10" level="project" />
+    <orderEntry type="library" name="JGit-0.11.3" level="project" />
   </component>
 </module>
 
