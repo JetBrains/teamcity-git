@@ -325,7 +325,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    * @param path               the path the submodule is referenced in the local repository
    * @param repositoryUrl      the url of the repository of this iterator
    * @param pathFromRoot       the path from the root of main repository to the entry of this repository
-   * @param checkoutSubmodules should created iterator checkout submodules
+   * @param submodulesPolicy   submodule checkout policy
    * @return an iterator for tree that considers submodules
    * @throws IOException in the case if IO error occurs
    */
