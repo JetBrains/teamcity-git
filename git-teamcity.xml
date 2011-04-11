@@ -88,7 +88,7 @@
   <!-- Project Libraries -->
   
   <path id="library.jgit-0.11.3.classpath">
-    <pathelement location="${basedir}/lib/common/jsch-0.1.41.jar"/>
+    <pathelement location="${basedir}/lib/common/jsch-0.1.44.jar"/>
     <pathelement location="${basedir}/lib/common/org.eclipse.jgit-0.11.3.jar"/>
   </path>
   

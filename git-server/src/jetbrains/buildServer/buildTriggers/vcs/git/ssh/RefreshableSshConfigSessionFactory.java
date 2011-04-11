@@ -21,12 +21,16 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import jetbrains.buildServer.configuration.ChangeListener;
 import jetbrains.buildServer.configuration.FilesWatcher;
+import jetbrains.buildServer.util.FileUtil;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * A {@link SshSessionFactory} that refreshes it states when the content of ~/.ssh directory changes. The factory delegates its work to {@link HeadlessSshSessionFactory}.
@@ -52,14 +56,14 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
    */
   public RefreshableSshConfigSessionFactory(final boolean monitorDotSshChanges) {
     if (monitorDotSshChanges) {
+      final File sshDir = new File(System.getProperty("user.home"), ".ssh");
       myWatcher = new FilesWatcher(new FilesWatcher.WatchedFilesProvider() {
         public File[] getWatchedFiles() {
-          File sshDir = new File(System.getProperty("user.home"), ".ssh");
-          return new File[] {sshDir};
+          return getAllFiles(sshDir);
         }
       });
       myWatcher.registerListener(new ChangeListener() {
-        public void changeOccured(String requestor) {
+        public void changeOccured(String requester) {
           expireDelegate();
         }
       });
@@ -96,6 +100,16 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
     synchronized (delegateLock) {
       myDelegate = null;
     }
+  }
+
+  /**
+   * @param dir directory of interest
+   * @return all files from specified dir recursively
+   */
+  private File[] getAllFiles(File dir) {
+    List<File> files = new ArrayList<File>();
+    FileUtil.collectMatchedFiles(dir, Pattern.compile(".*"), files);
+    return files.toArray(new File[0]);
   }
 
   @Override
