@@ -63,7 +63,7 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
         }
       });
       myWatcher.registerListener(new ChangeListener() {
-        public void changeOccured(String requestor) {
+        public void changeOccured(String requester) {
           expireDelegate();
         }
       });
