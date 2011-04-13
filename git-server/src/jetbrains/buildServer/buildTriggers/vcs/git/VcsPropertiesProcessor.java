@@ -39,7 +39,9 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
       try {
         new URIish(url);
       } catch (URISyntaxException e) {
-        rc.add(new InvalidProperty(Constants.FETCH_URL, "Invalid URL syntax: " + url));
+        if (!mayContainReference(url)) {
+          rc.add(new InvalidProperty(Constants.FETCH_URL, "Invalid URL syntax: " + url));
+        }
       }
     }
     String pushUrl = properties.get(Constants.PUSH_URL);
@@ -47,7 +49,9 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
       try {
         new URIish(pushUrl);
       } catch (URISyntaxException e) {
-        rc.add(new InvalidProperty(Constants.PUSH_URL, "Invalid URL syntax: " + pushUrl));
+        if (!mayContainReference(pushUrl)) {
+          rc.add(new InvalidProperty(Constants.PUSH_URL, "Invalid URL syntax: " + pushUrl));
+        }
       }
     }
     String authMethod = properties.get(Constants.AUTH_METHOD);
