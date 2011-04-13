@@ -268,13 +268,17 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     String path = myWrappedIterator.getEntryPathString();
     if (myIsOnSubmodule) {
       CanonicalTreeParser p = new CanonicalTreeParser();
+      ObjectReader or = null;
       try {
         Repository r = mySubmoduleResolver.resolveRepository(path, mySubmoduleResolver.getSubmoduleUrl(path));
-        p.reset(r.newObjectReader(), mySubmoduleCommit.getTree().getId());
+        or = r.newObjectReader();
+        p.reset(or, mySubmoduleCommit.getTree().getId());
       } catch (VcsAuthenticationException e) {
         IOException ioe = new IOException("Submodule error");
         ioe.initCause(e);
         throw ioe;
+      } finally {
+        if (or != null) or.release();
       }
       return createSubmoduleAwareTreeIterator(this,
                                               p,
@@ -285,8 +289,15 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                               SubmodulesCheckoutPolicy.getSubSubModulePolicyFor(mySubmodulesPolicy));
     } else {
       Repository r = mySubmoduleResolver.getRepository();
+      ObjectReader or = r.newObjectReader();
+      AbstractTreeIterator ati = null;
+      try {
+        ati = myWrappedIterator.createSubtreeIterator(or);
+      } finally {
+        or.release();
+      }
       return createSubmoduleAwareTreeIterator(this,
-                                              myWrappedIterator.createSubtreeIterator(r.newObjectReader()),
+                                              ati,
                                               mySubmoduleResolver,
                                               path,
                                               myUrl,
@@ -325,7 +336,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    * @param path               the path the submodule is referenced in the local repository
    * @param repositoryUrl      the url of the repository of this iterator
    * @param pathFromRoot       the path from the root of main repository to the entry of this repository
-   * @param checkoutSubmodules should created iterator checkout submodules
+   * @param submodulesPolicy   submodule checkout policy
    * @return an iterator for tree that considers submodules
    * @throws IOException in the case if IO error occurs
    */
