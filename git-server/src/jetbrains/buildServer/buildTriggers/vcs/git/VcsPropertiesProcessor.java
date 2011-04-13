@@ -16,8 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.buildTriggers.vcs.AbstractVcsPropertiesProcessor;
 import jetbrains.buildServer.serverSide.InvalidProperty;
-import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import org.eclipse.jgit.transport.URIish;
 
 import java.net.URISyntaxException;
@@ -28,12 +28,12 @@ import java.util.Map;
 /**
  * @author dmitry.neverov
  */
-public class VcsPropertiesProcessor implements PropertiesProcessor {
+public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
 
   public Collection<InvalidProperty> process(Map<String, String> properties) {
     Collection<InvalidProperty> rc = new LinkedList<InvalidProperty>();
     String url = properties.get(Constants.FETCH_URL);
-    if (url == null || url.trim().length() == 0) {
+    if (isEmpty(url)) {
       rc.add(new InvalidProperty(Constants.FETCH_URL, "The URL must be specified"));
     } else {
       try {
@@ -43,7 +43,7 @@ public class VcsPropertiesProcessor implements PropertiesProcessor {
       }
     }
     String pushUrl = properties.get(Constants.PUSH_URL);
-    if (pushUrl != null && pushUrl.trim().length() != 0) {
+    if (isEmpty(pushUrl)) {
       try {
         new URIish(pushUrl);
       } catch (URISyntaxException e) {
@@ -56,7 +56,7 @@ public class VcsPropertiesProcessor implements PropertiesProcessor {
     switch (authenticationMethod) {
       case PRIVATE_KEY_FILE:
         String pkFile = properties.get(Constants.PRIVATE_KEY_PATH);
-        if (pkFile == null || pkFile.length() == 0) {
+        if (isEmpty(pkFile)) {
           rc.add(new InvalidProperty(Constants.PRIVATE_KEY_PATH, "The private key path must be specified."));
         }
         break;
