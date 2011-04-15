@@ -33,11 +33,22 @@ public class VcsPropertiesProcessorTest extends TestCase {
 
   private VcsPropertiesProcessor myProcessor = new VcsPropertiesProcessor();
 
+
   public void empty_push_url_is_allowed() {
     Collection<InvalidProperty> invalids = myProcessor.process(new HashMap<String, String>() {{
       put(Constants.FETCH_URL, "git://some.org/repository");
     }});
     assertTrue(invalids.isEmpty());
+  }
+
+
+  public void non_default_key_auth_requires_private_key_path() {
+    Collection<InvalidProperty> invalids = myProcessor.process(new HashMap<String, String>() {{
+      put(Constants.FETCH_URL, "git://some.org/repository");
+      put(Constants.AUTH_METHOD, "PRIVATE_KEY_FILE");
+    }});
+    assertEquals(1, invalids.size());
+    assertEquals(Constants.PRIVATE_KEY_PATH, invalids.iterator().next().getPropertyName());
   }
 
 }
