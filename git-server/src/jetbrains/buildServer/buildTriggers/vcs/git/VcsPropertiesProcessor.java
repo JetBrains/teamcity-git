@@ -45,7 +45,7 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
       }
     }
     String pushUrl = properties.get(Constants.PUSH_URL);
-    if (isEmpty(pushUrl)) {
+    if (!isEmpty(pushUrl)) {
       try {
         new URIish(pushUrl);
       } catch (URISyntaxException e) {
@@ -55,15 +55,13 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
       }
     }
     String authMethod = properties.get(Constants.AUTH_METHOD);
-    AuthenticationMethod authenticationMethod =
-      authMethod == null ? AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, authMethod);
-    switch (authenticationMethod) {
-      case PRIVATE_KEY_FILE:
-        String pkFile = properties.get(Constants.PRIVATE_KEY_PATH);
-        if (isEmpty(pkFile)) {
-          rc.add(new InvalidProperty(Constants.PRIVATE_KEY_PATH, "The private key path must be specified."));
-        }
-        break;
+    AuthenticationMethod authenticationMethod = authMethod == null ?
+                                                AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, authMethod);
+    if (authenticationMethod == AuthenticationMethod.PRIVATE_KEY_FILE) {
+      String pkFile = properties.get(Constants.PRIVATE_KEY_PATH);
+      if (isEmpty(pkFile)) {
+        rc.add(new InvalidProperty(Constants.PRIVATE_KEY_PATH, "The private key path must be specified."));
+      }
     }
     return rc;
   }
