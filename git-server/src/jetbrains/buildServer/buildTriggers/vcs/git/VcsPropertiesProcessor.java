@@ -45,7 +45,7 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
       }
     }
     String pushUrl = properties.get(Constants.PUSH_URL);
-    if (isEmpty(pushUrl)) {
+    if (!isEmpty(pushUrl)) {
       try {
         new URIish(pushUrl);
       } catch (URISyntaxException e) {
