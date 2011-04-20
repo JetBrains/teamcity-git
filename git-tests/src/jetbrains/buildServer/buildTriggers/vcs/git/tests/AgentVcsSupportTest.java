@@ -26,9 +26,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitPathResolver;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -145,6 +143,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     myMockery = new Mockery();
 
     final GitPathResolver resolver = myMockery.mock(GitPathResolver.class);
+    final GitDetector detector = new GitDetectorImpl(resolver);
     final String pathToGit = getGitPath();
 
     myMockery.checking(new Expectations() {{
@@ -159,7 +158,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
                                               return new File("jetbrains.git");
                                             }
                                           }),
-                                          resolver);
+                                          detector);
 
     myLogger = createLogger();
     myBuild = createRunningBuild(true);

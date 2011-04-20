@@ -16,14 +16,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.intellij.openapi.util.SystemInfo;
-import jetbrains.buildServer.agent.*;
+import jetbrains.buildServer.agent.AgentRunningBuild;
+import jetbrains.buildServer.agent.BuildAgentConfiguration;
+import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanPolicy;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
-import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
@@ -31,7 +30,6 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.transport.URIish;
-import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -47,29 +45,12 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
    * The ssh service to use
    */
   final GitAgentSSHService mySshService;
-  /**
-   * the default windows git executable paths
-   */
-  @NonNls private static final String[] DEFAULT_WINDOWS_PATHS =
-    {"C:\\Program Files\\Git\\bin", "C:\\Program Files (x86)\\Git\\bin", "C:\\cygwin\\bin"};
-  /**
-   * Windows executable name
-   */
-  @NonNls private static final String DEFAULT_WINDOWS_GIT = "git.exe";
-  /**
-   * Default UNIX paths
-   */
-  @NonNls private static final String[] DEFAULT_UNIX_PATHS = {"/usr/local/bin", "/usr/bin", "/opt/local/bin", "/opt/bin"};
-  /**
-   * UNIX executable name
-   */
-  @NonNls private static final String DEFAULT_UNIX_GIT = "git";
 
 
   public GitCommandUpdateProcess(@NotNull BuildAgentConfiguration agentConfiguration,
                                  @NotNull SmartDirectoryCleaner directoryCleaner,
                                  @NotNull GitAgentSSHService sshService,
-                                 @NotNull GitPathResolver gitPathResolver,
+                                 @NotNull String pathToGit,
                                  @NotNull VcsRoot root,
                                  @NotNull CheckoutRules checkoutRules,
                                  @NotNull String toVersion,
@@ -77,7 +58,7 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
                                  @NotNull AgentRunningBuild build)
     throws VcsException {
     super(agentConfiguration, directoryCleaner, root, checkoutRules, toVersion, checkoutDirectory, build.getBuildLogger(),
-          getGitPath(root, agentConfiguration, gitPathResolver, build), isUseNativeSSH(build), isUseLocalMirrors(build));
+          pathToGit, isUseNativeSSH(build), isUseLocalMirrors(build));
     mySshService = sshService;
   }
 
@@ -90,71 +71,6 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   private static boolean isUseLocalMirrors(AgentRunningBuild runningBuild) {
     String value = runningBuild.getSharedConfigParameters().get("teamcity.git.use.local.mirrors");
     return "true".equals(value);
-  }
-
-  /**
-   * Check if the git could be run
-   *
-   * @param path the path to use
-   * @throws VcsException if there is a problem with running git or git has invalid version
-   */
-  private static void canRun(@NotNull String path) throws VcsException {
-    GitVersion v;
-    try {
-      v = new VersionCommand(path).version();
-    } catch (VcsException e) {
-      throw new VcsException("Unable to run git at path " + path, e);
-    }
-    if (!GitVersion.MIN.isLessOrEqual(v)) {
-      throw new VcsException("TeamCity supports Git version 1.6.4.0 or higher, found Git ("+ path +") has version " + v +
-                             ". Please upgrade Git or use server-side checkout.");
-    }
-  }
-
-  private static String getGitPath(VcsRoot root,
-                                   final BuildAgentConfiguration agentConfiguration,
-                                   GitPathResolver gitPathResolver,
-                                   @NotNull AgentRunningBuild build) throws VcsException {
-    String path = root.getProperty(Constants.AGENT_GIT_PATH);
-    if (path != null) {
-      path = gitPathResolver.resolveGitPath(agentConfiguration, path);
-      Loggers.VCS.info("Using vcs root's git: " + path);
-    } else {
-      path = build.getSharedBuildParameters().getEnvironmentVariables().get(Constants.GIT_PATH_ENV);
-      if (path != null) {
-        Loggers.VCS.info("Using git specified by " + Constants.GIT_PATH_ENV + ": " + path);
-      } else {
-        path = defaultGit();
-        Loggers.VCS.info("Using default git: " + path);
-      }
-    }
-    canRun(path);
-    return path;
-  }
-
-  /**
-   * @return the default executable name depending on the platform
-   */
-  private static String defaultGit() {
-    String[] paths;
-    String program;
-    if (SystemInfo.isWindows) {
-      program = DEFAULT_WINDOWS_GIT;
-      paths = DEFAULT_WINDOWS_PATHS;
-    } else {
-      program = DEFAULT_UNIX_GIT;
-      paths = DEFAULT_UNIX_PATHS;
-    }
-    for (String p : paths) {
-      File f = new File(p, program);
-      Loggers.VCS.info("Trying default git location: " + f.getPath());
-      if (f.exists()) {
-        return f.getAbsolutePath();
-      }
-    }
-    Loggers.VCS.info(String.format("The git has not been found in default locations. Will use '%s' command without specified path.",
-                                   SystemInfo.isWindows ? DEFAULT_WINDOWS_GIT : DEFAULT_UNIX_GIT));
-    return SystemInfo.isWindows ? DEFAULT_WINDOWS_GIT : DEFAULT_UNIX_GIT;
   }
 
   protected void addRemote(final String name, final URIish fetchUrl) throws VcsException {

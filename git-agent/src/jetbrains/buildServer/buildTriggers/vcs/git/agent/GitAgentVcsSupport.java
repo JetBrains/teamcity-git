@@ -46,10 +46,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * The ssh service to use
    */
   final GitAgentSSHService mySshService;
-  /**
-   * The resolver service
-   */
-  final GitPathResolver myGitPathResolver;
+  final private GitDetector myGitDetector;
 
   /**
    * The constructor
@@ -57,16 +54,16 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    * @param agentConfiguration the configuration for this agent
    * @param directoryCleaner   the directory cleaner
    * @param sshService         the used ssh service
-   * @param gitPathResolver    the resolver for path to git 
+   * @param gitDetector        detector of path to git on agent
    */
   public GitAgentVcsSupport(BuildAgentConfiguration agentConfiguration,
                             SmartDirectoryCleaner directoryCleaner,
                             GitAgentSSHService sshService,
-                            GitPathResolver gitPathResolver) {
+                            GitDetector gitDetector) {
     myAgentConfiguration = agentConfiguration;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
-    myGitPathResolver = gitPathResolver;
+    myGitDetector = gitDetector;
   }
 
 
@@ -90,10 +87,11 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull File checkoutDirectory,
                             @NotNull AgentRunningBuild build,
                             boolean cleanCheckoutRequested) throws VcsException {
+    String pathToGit = myGitDetector.getPathToGit(root, myAgentConfiguration, build);
     new GitCommandUpdateProcess(myAgentConfiguration,
                                 myDirectoryCleaner,
                                 mySshService,
-                                myGitPathResolver,
+                                pathToGit,
                                 root,
                                 checkoutRules,
                                 toVersion,
