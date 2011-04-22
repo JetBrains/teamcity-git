@@ -18,10 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.Cleaner;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.BuildServerListener;
 import jetbrains.buildServer.serverSide.SBuildServer;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -55,11 +52,13 @@ public class CleanerTest extends BaseTestCase {
   private VcsManager myVcsManager;
   private Mockery myContext;
   private GitVcsSupport mySupport;
+  private PluginConfigBuilder myConfigBuilder;
 
   @BeforeMethod
   public void setUp() throws IOException {
     File dotBuildServer = ourTempFiles.createTempDir();
     myServerPaths = new ServerPaths(dotBuildServer.getAbsolutePath(), dotBuildServer.getAbsolutePath(), dotBuildServer.getAbsolutePath());
+    myConfigBuilder = new PluginConfigBuilder(myServerPaths);
     myCleanExecutor = Executors.newSingleThreadScheduledExecutor();
     myContext = new Mockery();
     final SBuildServer server = myContext.mock(SBuildServer.class);
@@ -68,8 +67,9 @@ public class CleanerTest extends BaseTestCase {
       allowing(server).getExecutor(); will(returnValue(myCleanExecutor));
       allowing(server).getVcsManager(); will(returnValue(myVcsManager));
     }});
-    mySupport = new GitVcsSupport(myServerPaths, null, null);
-    myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), myServerPaths, mySupport);
+    PluginConfig config = new PluginConfigImpl(myServerPaths);
+    mySupport = new GitVcsSupport(config, null, null);
+    myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), config, mySupport);
   }
 
   @AfterMethod
@@ -79,12 +79,12 @@ public class CleanerTest extends BaseTestCase {
 
   @Test
   public void test_clean() throws VcsException, InterruptedException {
-    System.setProperty("teamcity.server.git.gc.enabled", String.valueOf(true));
+    myConfigBuilder.setRunNativeGC(true);
     if (System.getenv(Constants.GIT_PATH_ENV) != null)
-      System.setProperty("teamcity.server.git.executable.path", System.getenv(Constants.GIT_PATH_ENV));
+      myConfigBuilder.setPathToGit(System.getenv(Constants.GIT_PATH_ENV));
 
     final VcsRoot root = GitTestUtil.getVcsRoot();
-    GitVcsSupport vcsSupport = new GitVcsSupport(myServerPaths, null, null);
+    GitVcsSupport vcsSupport = new GitVcsSupport(myConfigBuilder.build(), null, null);
     vcsSupport.getCurrentVersion(root);//it will create dir in cache directory
     File repositoryDir = getRepositoryDir(root);
     File gitCacheDir = new File(myServerPaths.getCachesDir(), "git");

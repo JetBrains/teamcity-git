@@ -43,15 +43,15 @@ public class Cleaner extends BuildServerAdapter {
   private static Logger LOG = Loggers.CLEANUP;
 
   private final SBuildServer myServer;
-  private final ServerPaths myPaths;
   private final GitVcsSupport myGitVcsSupport;
+  private final PluginConfig myConfig;
 
   public Cleaner(@NotNull final SBuildServer server,
                  @NotNull final EventDispatcher<BuildServerListener> dispatcher,
-                 @NotNull final ServerPaths paths,
+                 @NotNull final PluginConfig config,
                  @NotNull final GitVcsSupport gitSupport) {
     myServer = server;
-    myPaths = paths;
+    myConfig = config;
     myGitVcsSupport = gitSupport;
     dispatcher.addListener(this);
   }
@@ -69,7 +69,7 @@ public class Cleaner extends BuildServerAdapter {
   private void clean() {
     LOG.debug("Clean started");
     removeUnusedRepositories();
-    if (isRunNativeGC()) {
+    if (myConfig.isRunNativeGC()) {
       runNativeGC();
     }
     LOG.debug("Clean finished");
@@ -110,26 +110,13 @@ public class Cleaner extends BuildServerAdapter {
     return new ArrayList<File>(FileUtil.getSubDirectories(myGitVcsSupport.getCachesDir()));
   }
 
-  private boolean isRunNativeGC() {
-    return TeamCityProperties.getBoolean("teamcity.server.git.gc.enabled");
-  }
-
-  private String getPathToGit() {
-    return TeamCityProperties.getProperty("teamcity.server.git.executable.path", "git");
-  }
-
-  private long getNativeGCQuotaMilliseconds() {
-    int quotaInMinutes = TeamCityProperties.getInteger("teamcity.server.git.gc.quota.minutes", 60);
-    return minutes2Milliseconds(quotaInMinutes);
-  }
-
   private long minutes2Milliseconds(int quotaInMinutes) {
     return quotaInMinutes * 60 * 1000L;
   }
 
   private void runNativeGC() {
     final long start = System.currentTimeMillis();
-    final long gcTimeQuota = getNativeGCQuotaMilliseconds();
+    final long gcTimeQuota = minutes2Milliseconds(myConfig.getNativeGCQuotaMinutes());
     LOG.info("Garbage collection started");
     List<File> allDirs = getAllRepositoryDirs();
     int runGCCounter = 0;
@@ -152,7 +139,7 @@ public class Cleaner extends BuildServerAdapter {
   }
 
   private void runNativeGC(final File bareGitDir) {
-    String pathToGit = getPathToGit();
+    String pathToGit = myConfig.getPathToGit();
     try {
       final long start = System.currentTimeMillis();
       GeneralCommandLine cl = new GeneralCommandLine();

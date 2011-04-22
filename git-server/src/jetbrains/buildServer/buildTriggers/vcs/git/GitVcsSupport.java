@@ -97,7 +97,6 @@ public class GitVcsSupport extends ServerVcsSupport
    * Current version cache (Pair<bare repository dir, branch name> -> current version).
    */
   private final RecentEntriesCache<Pair<File, String>, String> myCurrentVersionCache;
-  private final ServerPaths myServerPaths;
   private final File myCacheDir;
   /**
    * The default SSH session factory used for not explicitly configured host
@@ -111,16 +110,16 @@ public class GitVcsSupport extends ServerVcsSupport
 
   private final ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
+  private final PluginConfig myConfig;
 
 
-  public GitVcsSupport(@NotNull  final ServerPaths serverPaths,
+  public GitVcsSupport(@NotNull final PluginConfig config,
                        @Nullable final ExtensionHolder extensionHolder,
                        @Nullable final EventDispatcher<BuildServerListener> dispatcher) {
-    myServerPaths = serverPaths;
-    myCacheDir = new File(myServerPaths.getCachesDir(), "git");
+    myConfig = config;
+    myCacheDir = config.getCachesDir();
     myExtensionHolder = extensionHolder;
-    int currentVersionCacheSize = TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
-    myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(currentVersionCacheSize);
+    myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(myConfig.getCurrentVersionCacheSize());
     final boolean monitorSshConfigs = dispatcher != null; //dispatcher is null in tests and when invoked from the Fetcher
     mySshSessionFactory = new RefreshableSshConfigSessionFactory(monitorSshConfigs);
     mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory(monitorSshConfigs) {
@@ -145,11 +144,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   private void setStreamFileThreshold() {
     WindowCacheConfig cfg = new WindowCacheConfig();
-    if (separateProcessForFetch()) {
-      cfg.setStreamFileThreshold(TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 128) * WindowCacheConfig.MB);
-    } else {
-      cfg.setStreamFileThreshold(TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 64) * WindowCacheConfig.MB);
-    }
+    cfg.setStreamFileThreshold(myConfig.getStreamFileThreshold() * WindowCacheConfig.MB);
     WindowCache.reconfigure(cfg);
   }
 
@@ -560,7 +555,7 @@ public class GitVcsSupport extends ServerVcsSupport
                          @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
     final OperationContext context = createContext(root, "patch building");
     final boolean debugFlag = LOG.isDebugEnabled();
-    final boolean debugInfoOnEachCommit = TeamCityProperties.getBoolean("teamcity.git.commit.debug.info");
+    final boolean debugInfoOnEachCommit = myConfig.isPrintDebugInfoOnEachCommit();
     try {
       final Repository r = context.getRepository();
       TreeWalk tw = null;
@@ -1002,7 +997,7 @@ public class GitVcsSupport extends ServerVcsSupport
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
     synchronized (getRepositoryLock(repositoryDir)) {
-      if (separateProcessForFetch()) {
+      if (myConfig.isSeparateProcessForFetch()) {
         fetchInSeparateProcess(db, auth, fetchURI, refspec);
       } else {
         fetchInSameProcess(db, auth, fetchURI, refspec);
@@ -1063,8 +1058,8 @@ public class GitVcsSupport extends ServerVcsSupport
                              + uri.toString() + "#" + spec.toString() + ")";
     GeneralCommandLine cl = new GeneralCommandLine();
     cl.setWorkingDirectory(repository.getDirectory());
-    cl.setExePath(getFetchProcessJavaPath());
-    cl.addParameters("-Xmx" + getFetchProcessMaxMemory(), "-cp", getFetchClasspath(), Fetcher.class.getName(),
+    cl.setExePath(myConfig.getFetchProcessJavaPath());
+    cl.addParameters("-Xmx" + myConfig.getFetchProcessMaxMemory(), "-cp", getFetchClasspath(), Fetcher.class.getName(),
                      uri.toString());//last parameter is not used in Fetcher, but is useful to distinguish fetch processes
     if (LOG.isDebugEnabled()) {
       LOG.debug("Start fetch process for " + debugInfo);
@@ -1102,7 +1097,7 @@ public class GitVcsSupport extends ServerVcsSupport
       }
 
       public Integer getOutputIdleSecondsTimeout() {
-        return getFetchTimeout();
+        return myConfig.getFetchTimeout();
       }
     });
 
@@ -1115,7 +1110,7 @@ public class GitVcsSupport extends ServerVcsSupport
     VcsException commandError = CommandLineUtil.getCommandLineError("git fetch", result);
     if (commandError != null) {
       if (isOutOfMemoryError(result)) {
-        LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + getFetchProcessMaxMemory() + ", try to increase it.");
+        LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + myConfig.getFetchProcessMaxMemory() + ", try to increase it.");
         clean(repository);
       }
       throw commandError;
@@ -1166,35 +1161,6 @@ public class GitVcsSupport extends ServerVcsSupport
       BranchSupport.class,
       EncryptUtil.class
     }, null, null);
-  }
-
-  /**
-   * Get path to java executable for fetch process, "${java.home}/bin/java" by default
-   *
-   * @return path to java executable
-   */
-  private String getFetchProcessJavaPath() {
-    final String jdkHome = System.getProperty("java.home");
-    File defaultJavaExec = new File(jdkHome.replace('/', File.separatorChar) + File.separator + "bin" + File.separator + "java");
-    return TeamCityProperties.getProperty("teamcity.git.fetch.process.java.exec", defaultJavaExec.getAbsolutePath());
-  }
-
-  /**
-   * Get maximum amount of memory for fetch process, 512M by default
-   *
-   * @return maximum amount of memory for fetch process
-   */
-  private String getFetchProcessMaxMemory() {
-    return TeamCityProperties.getProperty("teamcity.git.fetch.process.max.memory", "512M");
-  }
-
-  /**
-   * Check if fetch should be run in separate process, true by default
-   *
-   * @return true if fetch should be run in separate process
-   */
-  private boolean separateProcessForFetch() {
-    return TeamCityProperties.getBooleanOrTrue("teamcity.git.fetch.separate.process");
   }
 
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
@@ -1268,10 +1234,6 @@ public class GitVcsSupport extends ServerVcsSupport
 
   public OperationContext createContext(VcsRoot root, String operation) {
     return new OperationContext(this, root, operation);
-  }
-
-  ServerPaths getServerPaths() {
-    return myServerPaths;
   }
 
   public LabelingSupport getLabelingSupport() {
@@ -1375,7 +1337,7 @@ public class GitVcsSupport extends ServerVcsSupport
       SshTransport ssh = (SshTransport)t;
       ssh.setSshSessionFactory(getSshSessionFactory(authSettings, url));
     }
-    t.setTimeout(getCloneTimeout());
+    t.setTimeout(myConfig.getCloneTimeout());
     return t;
   }
 
@@ -1405,14 +1367,6 @@ public class GitVcsSupport extends ServerVcsSupport
         throw new VcsException(error);
       }
     }
-  }
-
-  private int getFetchTimeout() {
-    return TeamCityProperties.getInteger("teamcity.git.fetch.timeout", 18000);
-  }
-
-  private int getCloneTimeout() {
-    return TeamCityProperties.getInteger("teamcity.git.clone.timeout", 18000);
   }
 
   /**

@@ -18,6 +18,7 @@
 <!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
 
 <beans default-autowire="constructor">
+  <bean id="config" class="jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl"/>
   <bean id="jetbrainsGitServer" class="jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport"/>
   <bean id="cleaner" class="jetbrains.buildServer.buildTriggers.vcs.git.Cleaner"/>
   <bean id="urlSupport" class="jetbrains.buildServer.buildTriggers.vcs.git.GitUrlSupport"/>

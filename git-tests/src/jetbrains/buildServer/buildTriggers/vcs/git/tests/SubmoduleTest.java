@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -63,7 +64,7 @@ public class SubmoduleTest {
   public void setUp() throws IOException {
     File teamcitySystemDir = myTempFiles.createTempDir();
     myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
-    myGitSupport = new GitVcsSupport(myServerPaths, null, null);
+    myGitSupport = new GitVcsSupport(new PluginConfigImpl(myServerPaths), null, null);
   }
 
   @AfterMethod
@@ -77,9 +78,8 @@ public class SubmoduleTest {
    *
    * @throws IOException if there is IO problem
    */
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void testSubmoduleMapping(boolean fetchInSeparateProcess) throws Exception {
-    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
+  @Test
+  public void testSubmoduleMapping() throws Exception {
     File masterRep = dataFile("repo.git");
     Repository r = new RepositoryBuilder().setGitDir(masterRep).build();
     try {
@@ -101,9 +101,8 @@ public class SubmoduleTest {
    *
    * @throws IOException if there is IO problem
    */
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void testSubmoduleMultiEntryMapping(boolean fetchInSeparateProcess) throws Exception {
-    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
+  @Test
+  public void testSubmoduleMultiEntryMapping() throws Exception {
     File masterRep = dataFile("repo.git");
     File submodulesFile = dataFile("content", "dotgitmodules");
     Repository r = new RepositoryBuilder().setGitDir(masterRep).build();
@@ -131,9 +130,8 @@ public class SubmoduleTest {
    *
    * @throws IOException in case of test failure
    */
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void testSubmoduleTreeWalk(boolean fetchInSeparateProcess) throws IOException {
-    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
+  @Test
+  public void testSubmoduleTreeWalk() throws IOException {
     File masterRep = dataFile("repo.git");
     Repository rm = new RepositoryBuilder().setGitDir(masterRep).build();
     try {

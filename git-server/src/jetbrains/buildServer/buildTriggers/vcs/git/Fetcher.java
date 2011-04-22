@@ -71,7 +71,8 @@ public class Fetcher {
     //locks will not help; Fetcher is ran after we have ensured that repository exists, so we can call it without lock
     Repository repository = GitServerUtil.getRepository(repositoryDir, new URIish(fetchUrl));
 
-    GitVcsSupport gitSupport = new GitVcsSupport(new ServerPaths(), null, null);
+    PluginConfigImpl config = new PluginConfigImpl(new ServerPaths());
+    GitVcsSupport gitSupport = new GitVcsSupport(config, null, null);
     final Transport tn = gitSupport.openTransport(auth, repository, new URIish(fetchUrl));
     try {
       RefSpec spec = new RefSpec(refspec).setForceUpdate(true);
