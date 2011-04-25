@@ -14,56 +14,28 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git;
+package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import org.jetbrains.annotations.NotNull;
+import jetbrains.buildServer.buildTriggers.vcs.git.Fetcher;
+import org.eclipse.jgit.storage.file.LockFile;
+import org.eclipse.jgit.util.FS;
 
 import java.io.File;
 
 /**
  * @author dmitry.neverov
  */
-public interface PluginConfig {
+public class MockFetcher {
 
-  @NotNull
-  File getCachesDir();
-
-
-  int getCurrentVersionCacheSize();
-
-
-  int getStreamFileThreshold();
-
-
-  int getFetchTimeout();
-
-
-  int getCloneTimeout();
-
-
-  boolean isPrintDebugInfoOnEachCommit();
-
-
-  String getFetchProcessJavaPath();
-
-
-  String getFetchProcessMaxMemory();
-
-
-  boolean isSeparateProcessForFetch();
-
-
-  boolean isRunNativeGC();
-
-
-  String getPathToGit();
-
-
-  int getNativeGCQuotaMinutes();
-
-
-  String getFetchClasspath();
-
-
-  String getFetcherClassName();
+  public static void main(String... args) throws Exception {
+    String repositoryPath = new File(".").getAbsolutePath();
+    LockFile lock = new LockFile(new File(repositoryPath, "mock"), FS.DETECTED);
+    lock.lock();
+    try {
+      Thread.sleep(10000);
+      Fetcher.main(args);
+    } finally {
+      lock.unlock();
+    }
+  }
 }

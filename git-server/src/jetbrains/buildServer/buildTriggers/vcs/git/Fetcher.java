@@ -67,18 +67,20 @@ public class Fetcher {
     final String fetchUrl = vcsRootProperties.get(Constants.FETCH_URL);
     final String refspec = vcsRootProperties.get(Constants.REFSPEC);
     Settings.AuthSettings auth = new Settings.AuthSettings(vcsRootProperties);
-    //this method should be called with repository lock, but Fetcher is ran in separate process, so
-    //locks will not help; Fetcher is ran after we have ensured that repository exists, so we can call it without lock
-    Repository repository = GitServerUtil.getRepository(repositoryDir, new URIish(fetchUrl));
-
     PluginConfigImpl config = new PluginConfigImpl(new ServerPaths());
     GitVcsSupport gitSupport = new GitVcsSupport(config, null, null);
-    final Transport tn = gitSupport.openTransport(auth, repository, new URIish(fetchUrl));
+    Transport tn = null;
     try {
+      //This method should be called with repository creation lock, but Fetcher is ran in separate process, so
+      //locks won't help. Fetcher is ran after we have ensured that repository exists, so we can call it without lock.
+      Repository repository = GitServerUtil.getRepository(repositoryDir, new URIish(fetchUrl));
+      workaroundRacyGit();
+      tn = gitSupport.openTransport(auth, repository, new URIish(fetchUrl));
       RefSpec spec = new RefSpec(refspec).setForceUpdate(true);
       tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
     } finally {
-      tn.close();
+      if (tn != null)
+        tn.close();
     }
   }
 
@@ -105,4 +107,19 @@ public class Fetcher {
     return t instanceof NullPointerException || t instanceof Error;
   }
 
+  /**
+   * Fetch could be so fast that even though it downloads some new packs
+   * a timestamp of objects/packs dir is not changed (at least on linux).
+   * If timestamp of that dir is not changed from the last read, jgit assumes
+   * there is nothing new there and could not find object even if it already
+   * exists in repository. This method sleeps for 1 second, so subsequent
+   * write to objects/pack dir will change its timestamp.
+   */
+  private static void workaroundRacyGit() {
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
 }

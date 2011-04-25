@@ -85,9 +85,7 @@ public class OperationContext {
   public Repository getRepository(File repositoryDir, URIish fetchUrl) throws VcsException {
     Repository result = myRepositories.get(repositoryDir.getPath());
     if (result == null) {
-      synchronized (mySupport.getRepositoryLock(repositoryDir)) {
-        result = GitServerUtil.getRepository(repositoryDir, fetchUrl);
-      }
+      result = mySupport.getRepository(repositoryDir, fetchUrl);
       myRepositories.put(repositoryDir.getPath(), result);
     }
     return result;

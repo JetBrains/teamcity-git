@@ -16,8 +16,18 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.openapi.diagnostic.Logger;
+import com.jcraft.jsch.JSch;
+import gnu.trove.TObjectHashingStrategy;
+import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
+import jetbrains.buildServer.vcs.BranchSupport;
+import jetbrains.buildServer.vcs.VcsPersonalSupport;
+import jetbrains.buildServer.vcs.VcsRoot;
+import org.apache.commons.codec.Decoder;
+import org.eclipse.jgit.lib.ProgressMonitor;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -97,5 +107,26 @@ public class PluginConfigImpl implements PluginConfig {
 
   public int getNativeGCQuotaMinutes() {
     return TeamCityProperties.getInteger("teamcity.server.git.gc.quota.minutes", 60);
+  }
+
+  public String getFetchClasspath() {
+    return ClasspathUtil.composeClasspath(new Class[]{
+      Fetcher.class,
+      VcsRoot.class,
+      ProgressMonitor.class,
+      VcsPersonalSupport.class,
+      Logger.class,
+      Settings.class,
+      JSch.class,
+      Decoder.class,
+      TObjectHashingStrategy.class,
+      BranchSupport.class,
+      EncryptUtil.class
+    }, null, null);
+  }
+
+
+  public String getFetcherClassName() {
+    return Fetcher.class.getName();
   }
 }

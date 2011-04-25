@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -33,7 +34,9 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.revwalk.RevTag;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.storage.file.LockFile;
 import org.eclipse.jgit.transport.URIish;
+import org.eclipse.jgit.util.FS;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
@@ -45,6 +48,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -365,7 +370,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   /**
    * Test getting changes for the build concurrently. Copy of previous test but with several threads collecting changes
    */
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class, invocationCount = 30)
   public void testConcurrentCollectBuildChanges(boolean fetchInSeparateProcess) throws Throwable {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
 
@@ -992,8 +997,9 @@ public class GitVcsSupportTest extends PatchTestCase {
    * TW-15564: repository cloned by hand could have no teamcity.remote config, we should create it otherwise we can see 'null' as remote url in error messages
    * (see log in the issue for details).
    */
-  @Test
-  public void should_create_teamcity_config_in_root_with_custom_path() throws IOException, VcsException {
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void should_create_teamcity_config_in_root_with_custom_path(boolean fetchInSeparateProcess) throws IOException, VcsException {
+    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     File customRootDir = new File(myTmpDir, "custom-dir");
     VcsRootImpl root = (VcsRootImpl) getRoot("master");
     root.addProperty(Constants.PATH, customRootDir.getAbsolutePath());
@@ -1025,6 +1031,76 @@ public class GitVcsSupportTest extends PatchTestCase {
     String master3 = getSupport().getCurrentVersion(getRoot("refs/tags/v1.0"));
     assertEquals(master1, master2);
     assertEquals(master1, master3);
+  }
+
+
+  @Test
+  public void collecting_changes_should_not_block_IDE_requests() throws Exception {
+    String classpath = myConfigBuilder.build().getFetchClasspath() + File.pathSeparator +
+                       ClasspathUtil.composeClasspath(new Class[]{MockFetcher.class}, null, null);
+    myConfigBuilder.setSeparateProcessForFetch(true)
+      .setFetchClasspath(classpath)
+      .setFetcherClassName(MockFetcher.class.getName());
+
+    final GitVcsSupport support = getSupport();
+
+    final VcsRootImpl root = (VcsRootImpl) getRoot("master");
+    final File customRootDir = new File(myTmpDir, "custom-dir");
+    root.addProperty(Constants.PATH, customRootDir.getAbsolutePath());
+    final String repositoryUrl = root.getProperty(Constants.FETCH_URL);
+
+    final AtomicInteger succeedIDERequestCount = new AtomicInteger(0);
+    final AtomicBoolean fetchBlocksIDERequests = new AtomicBoolean(false);
+    final List<Exception> errors = Collections.synchronizedList(new ArrayList<Exception>());
+
+    Runnable longFetch = new Runnable () {
+      public void run() {
+        try {
+          support.collectChanges(root, VERSION_TEST_HEAD, MERGE_VERSION, new CheckoutRules(""));
+          fetchBlocksIDERequests.set(succeedIDERequestCount.get() == 0);
+        } catch (VcsException e) {
+          errors.add(e);
+        }
+      }
+    };
+
+    Runnable requestsFromIDE = new Runnable() {
+      public void run() {
+        while (!new File(customRootDir, "mock.lock").exists()) {//wait for fetch to begin (MockFetcher holds a lock during fetch)
+          try {
+            Thread.sleep(50);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+        LockFile lock = new LockFile(new File(customRootDir.getAbsolutePath(), "mock"), FS.DETECTED);
+        try {
+          while (true) {//do mapFullPath while fetch is executed (we cannot acquire a lock while it is executed)
+            if (!lock.lock()) {
+              support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")), GitUtils.versionRevision(VERSION_TEST_HEAD) + "|" + repositoryUrl + "|readme.txt");
+              succeedIDERequestCount.incrementAndGet();
+            } else {
+              lock.unlock();
+              break;
+            }
+          }
+        } catch (Exception e) {
+          errors.add(e);
+        }
+      }
+    };
+
+    Thread fetch = new Thread(longFetch);
+    Thread ideRequests = new Thread(requestsFromIDE);
+    fetch.start();
+    ideRequests.start();
+    fetch.join();
+    ideRequests.join();
+    if (!errors.isEmpty()) {
+      fail("Errors in readers thread", errors.get(0));
+    }
+
+    assertFalse(fetchBlocksIDERequests.get());
   }
 
 

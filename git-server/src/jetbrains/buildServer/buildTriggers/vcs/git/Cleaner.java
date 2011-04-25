@@ -21,7 +21,9 @@ import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.serverSide.*;
+import jetbrains.buildServer.serverSide.BuildServerAdapter;
+import jetbrains.buildServer.serverSide.BuildServerListener;
+import jetbrains.buildServer.serverSide.SBuildServer;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.SVcsRoot;
@@ -33,6 +35,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
 
 /**
  * Cleans unused git repositories
@@ -81,8 +84,12 @@ public class Cleaner extends BuildServerAdapter {
     LOG.debug("Remove unused repositories started");
     for (File dir : unusedDirs) {
       LOG.info("Remove unused dir " + dir.getAbsolutePath());
-      synchronized (myGitVcsSupport.getRepositoryLock(dir)) {
+      Lock rmLock = myGitVcsSupport.getRmLock(dir).writeLock();
+      rmLock.lock();
+      try {
         FileUtil.delete(dir);
+      } finally {
+        rmLock.unlock();
       }
       LOG.debug("Remove unused dir " + dir.getAbsolutePath() + " finished");
     }
@@ -121,7 +128,7 @@ public class Cleaner extends BuildServerAdapter {
     List<File> allDirs = getAllRepositoryDirs();
     int runGCCounter = 0;
     for (File gitDir : allDirs) {
-      synchronized (myGitVcsSupport.getRepositoryLock(gitDir)) {
+      synchronized (myGitVcsSupport.getWriteLock(gitDir)) {
         runNativeGC(gitDir);
       }
       runGCCounter++;

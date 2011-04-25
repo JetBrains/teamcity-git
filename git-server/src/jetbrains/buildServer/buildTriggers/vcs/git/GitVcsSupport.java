@@ -25,22 +25,21 @@ import com.jcraft.jsch.Session;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
-import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.RefreshableSshConfigSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.serverSide.*;
-import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
+import jetbrains.buildServer.serverSide.BuildServerAdapter;
+import jetbrains.buildServer.serverSide.BuildServerListener;
+import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
-import org.apache.commons.codec.Decoder;
 import org.eclipse.jgit.JGitText;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.errors.NotSupportedException;
@@ -69,6 +68,9 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
 
@@ -86,18 +88,28 @@ public class GitVcsSupport extends ServerVcsSupport
    */
   private final Random myRandom = new Random();
   /**
-   * JGit operations locks (repository dir -> lock)
-   *
-   * Due to problems with concurrency in jgit fetch and push operations are synchronized by locks from this map.
-   *
-   * These locks are also used in Cleaner
-   */
-  private final ConcurrentMap<File, Object> myRepositoryLocks = new ConcurrentHashMap<File, Object>();
-  /**
    * Current version cache (Pair<bare repository dir, branch name> -> current version).
    */
   private final RecentEntriesCache<Pair<File, String>, String> myCurrentVersionCache;
   private final File myCacheDir;
+  /**
+   * During repository creation jgit checks existence of some files and directories. When several threads
+   * try to create repository concurrently some of them could see it in inconsistent state. This map contains
+   * locks for repository creation, so only one thread at a time will create repository at give dir.
+   */
+  private final ConcurrentMap<File, Object> myCreateLocks = new ConcurrentHashMap<File, Object>();
+  /**
+   * In the past jgit has some concurrency problems, in order to fix them we do only one fetch at a time.
+   * Also several concurrent fetches in single repository does not make sense since only one of them succeed.
+   * This map contains locks used for fetch and push operations.
+   */
+  private final ConcurrentMap<File, Object> myWriteLocks = new ConcurrentHashMap<File, Object>();
+  /**
+   * During cleanup unused bare repositories are removed. This map contains rw locks for repository removal.
+   * Fetch/push/create operations should be done with read lock hold, remove operation is done with write lock hold.
+   * @see Cleaner
+   */
+  private final ConcurrentMap<File, ReadWriteLock> myRmLocks = new ConcurrentHashMap<File, ReadWriteLock>();
   /**
    * The default SSH session factory used for not explicitly configured host
    * It fails when user is prompted for some information.
@@ -996,30 +1008,79 @@ public class GitVcsSupport extends ServerVcsSupport
     throws NotSupportedException, VcsException, TransportException {
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
-    synchronized (getRepositoryLock(repositoryDir)) {
-      if (myConfig.isSeparateProcessForFetch()) {
-        fetchInSeparateProcess(db, auth, fetchURI, refspec);
-      } else {
-        fetchInSameProcess(db, auth, fetchURI, refspec);
+    Lock rmLock = getRmLock(repositoryDir).readLock();
+    rmLock.lock();
+    synchronized (getWriteLock(repositoryDir)) {
+      try {
+        if (myConfig.isSeparateProcessForFetch()) {
+          fetchInSeparateProcess(db, auth, fetchURI, refspec);
+        } else {
+          fetchInSameProcess(db, auth, fetchURI, refspec);
+        }
+      } finally {
+        rmLock.unlock();
       }
     }
   }
 
-  /**
-   * Get repository lock
-   *
-   * @param repositoryDir repository dir where fetch run
-   * @return lock associated with repository dir
-   */
+
   @NotNull
-  public Object getRepositoryLock(@NotNull File repositoryDir) {
-    Object newLock = new Object();
-    Object existingLock = myRepositoryLocks.putIfAbsent(repositoryDir, newLock);
-    if (existingLock != null)
-      return existingLock;
-    else
-      return newLock;
+  private Object getCreateLock(File dir) {
+    return getOrCreate(myCreateLocks, dir, new Object());
   }
+
+
+  @NotNull
+  public Object getWriteLock(File dir) {
+    return getOrCreate(myWriteLocks, dir, new Object());
+  }
+
+
+  @NotNull
+  public ReadWriteLock getRmLock(File dir) {
+    return getOrCreate(myRmLocks, dir, new ReentrantReadWriteLock());
+  }
+
+
+  private <K, V> V getOrCreate(ConcurrentMap<K, V> map, K key, V value) {
+    V existing = map.putIfAbsent(key, value);
+    if (existing != null)
+      return existing;
+    else
+      return value;
+  }
+
+
+  @NotNull
+  public Repository getRepository(@NotNull File dir, URIish fetchUrl) throws VcsException {
+    try {
+      Repository r = RepositoryCache.open(RepositoryCache.FileKey.exact(dir, FS.DETECTED), true);
+      final StoredConfig config = r.getConfig();
+      final String existingRemote = config.getString("teamcity", null, "remote");
+      if (existingRemote == null || !fetchUrl.toString().equals(existingRemote)) {
+        r = createRepository(dir, fetchUrl);
+      }
+      return r;
+    } catch (Exception e) {
+      return createRepository(dir, fetchUrl);
+    }
+  }
+
+
+  private Repository createRepository(@NotNull File dir, URIish fetchUrl) throws VcsException {
+    Lock rmLock = getRmLock(dir).readLock();
+    rmLock.lock();
+    synchronized (getCreateLock(dir)) {
+      try {
+        Repository result = GitServerUtil.getRepository(dir, fetchUrl);
+        RepositoryCache.register(result);
+        return result;
+      } finally {
+        rmLock.unlock();
+      }
+    }
+  }
+
 
   private void fetchInSameProcess(final Repository db, final Settings.AuthSettings auth, final URIish uri, final RefSpec refSpec)
     throws NotSupportedException, VcsException, TransportException {
@@ -1041,7 +1102,6 @@ public class GitVcsSupport extends ServerVcsSupport
         PERFORMANCE_LOG.debug("[fetch in server process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
       }
     }
-
   }
 
   /**
@@ -1059,7 +1119,7 @@ public class GitVcsSupport extends ServerVcsSupport
     GeneralCommandLine cl = new GeneralCommandLine();
     cl.setWorkingDirectory(repository.getDirectory());
     cl.setExePath(myConfig.getFetchProcessJavaPath());
-    cl.addParameters("-Xmx" + myConfig.getFetchProcessMaxMemory(), "-cp", getFetchClasspath(), Fetcher.class.getName(),
+    cl.addParameters("-Xmx" + myConfig.getFetchProcessMaxMemory(), "-cp", myConfig.getFetchClasspath(), myConfig.getFetcherClassName(),
                      uri.toString());//last parameter is not used in Fetcher, but is useful to distinguish fetch processes
     if (LOG.isDebugEnabled()) {
       LOG.debug("Start fetch process for " + debugInfo);
@@ -1142,26 +1202,6 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  /**
-   * Get classpath for fetch process
-   *
-   * @return classpath for fetch process
-   */
-  private String getFetchClasspath() {
-    return ClasspathUtil.composeClasspath(new Class[] {
-      Fetcher.class,
-      VcsRoot.class,
-      ProgressMonitor.class,
-      VcsPersonalSupport.class,
-      Logger.class,
-      Settings.class,
-      com.jcraft.jsch.JSch.class,
-      Decoder.class,
-      gnu.trove.TObjectHashingStrategy.class,
-      BranchSupport.class,
-      EncryptUtil.class
-    }, null, null);
-  }
 
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
     OperationContext context = createContext(vcsRoot, "connection test");
@@ -1259,17 +1299,17 @@ public class GitVcsSupport extends ServerVcsSupport
     throws VcsException {
     OperationContext context = createContext(root, "labelling");
     Settings s = context.getSettings();
-    synchronized (getRepositoryLock(s.getRepositoryDir())) {
-      try {
-        Repository r = context.getRepository();
-        String commitSHA = GitUtils.versionRevision(version);
-        RevCommit commit = ensureRevCommitLoaded(context, s, commitSHA);
-        Git git = new Git(r);
-        git.tag().setName(label).setObjectId(commit).call();
-        String tagRef = GitUtils.tagName(label);
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
-        }
+    try {
+      Repository r = context.getRepository();
+      String commitSHA = GitUtils.versionRevision(version);
+      RevCommit commit = ensureRevCommitLoaded(context, s, commitSHA);
+      Git git = new Git(r);
+      git.tag().setName(label).setObjectId(commit).call();
+      String tagRef = GitUtils.tagName(label);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
+      }
+      synchronized (getWriteLock(s.getRepositoryDir())) {
         final Transport tn = openTransport(s.getAuthSettings(), r, s.getRepositoryPushURL());
         try {
           final PushConnection c = tn.openPush();
@@ -1291,11 +1331,11 @@ public class GitVcsSupport extends ServerVcsSupport
         } finally {
           tn.close();
         }
-      } catch (Exception e) {
-        throw context.wrapException(e);
-      } finally {
-        context.close();
       }
+    } catch (Exception e) {
+      throw context.wrapException(e);
+    } finally {
+      context.close();
     }
   }
 

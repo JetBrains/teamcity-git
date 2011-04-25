@@ -37,6 +37,8 @@ public class PluginConfigBuilder {
   private Boolean myRunNativeGC;
   private String  myPathToGit;
   private Integer myNativeGCQuota;
+  private String  myFetchClassPath;
+  private String  myFetcherClassName;
 
   public PluginConfigBuilder(@NotNull ServerPaths paths) {
     myDelegate = new PluginConfigImpl(paths);
@@ -92,6 +94,14 @@ public class PluginConfigBuilder {
 
       public int getNativeGCQuotaMinutes() {
         return myNativeGCQuota != null ? myNativeGCQuota.intValue() : myDelegate.getNativeGCQuotaMinutes();
+      }
+
+      public String getFetchClasspath() {
+        return myFetchClassPath != null ? myFetchClassPath : myDelegate.getFetchClasspath();
+      }
+
+      public String getFetcherClassName() {
+        return myFetcherClassName != null ? myFetcherClassName : myDelegate.getFetcherClassName();
       }
     };
   }
@@ -159,4 +169,15 @@ public class PluginConfigBuilder {
     return this;
   }
 
+
+  PluginConfigBuilder setFetchClasspath(String classpath) {
+    myFetchClassPath = classpath;
+    return this;
+  }
+
+
+  PluginConfigBuilder setFetcherClassName(String className) {
+    myFetcherClassName = className;
+    return this;
+  }
 }
