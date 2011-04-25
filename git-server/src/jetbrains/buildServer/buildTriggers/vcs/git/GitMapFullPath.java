@@ -94,10 +94,10 @@ class GitMapFullPath {
     RepositoryRevisionCache repositoryCache = ourCache.getRepositoryCache(myRootEntry.getVcsRoot());
     Boolean result = repositoryCache.hasRevision(myGitRevision);
     if (result != null) {
-      LOG.info("RevisionCache hit: root " + LogUtil.describe(myRootEntry.getVcsRoot()) + (result ? "contains " : "doesn't contain ") + "revision " + myGitRevision);
+      LOG.debug("RevisionCache hit: root " + LogUtil.describe(myRootEntry.getVcsRoot()) + (result ? "contains " : "doesn't contain ") + "revision " + myGitRevision);
       return result;
     } else {
-      LOG.info("RevisionCache miss: root " + LogUtil.describe(myRootEntry.getVcsRoot()) + ", revision " + myGitRevision);
+      LOG.debug("RevisionCache miss: root " + LogUtil.describe(myRootEntry.getVcsRoot()) + ", revision " + myGitRevision);
       result = findCommit() != null;
       repositoryCache.saveRevision(myGitRevision, result);
       return result;
