@@ -112,7 +112,7 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
 
 
   protected void hardReset() throws VcsException {
-    new ResetCommand(mySettings).hardReset(revision);
+    new ResetCommand(mySettings).hardReset(myRevision);
   }
 
 
@@ -129,7 +129,7 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   }
 
   protected void setBranchCommit() throws VcsException {
-    new BranchCommand(mySettings).setBranchCommit(mySettings.getRef(), revision);
+    new BranchCommand(mySettings).setBranchCommit(mySettings.getRef(), myRevision);
   }
 
   protected void createBranch() throws VcsException {

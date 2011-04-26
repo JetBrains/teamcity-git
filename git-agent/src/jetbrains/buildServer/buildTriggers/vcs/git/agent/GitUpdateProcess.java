@@ -88,7 +88,7 @@ public abstract class GitUpdateProcess {
   /**
    * The git revision
    */
-  protected final String revision;
+  protected final String myRevision;
   private boolean myUseLocalMirrors;
 
   /**
@@ -121,7 +121,7 @@ public abstract class GitUpdateProcess {
     myToVersion = toVersion;
     myCheckoutDirectory = checkoutDirectory;
     myLogger = logger;
-    revision = GitUtils.versionRevision(toVersion);
+    myRevision = GitUtils.versionRevision(toVersion);
     myDirectory = findDirectory();
     myUseLocalMirrors = useLocalMirrors;
     mySettings = new AgentSettings(agentConfiguration.getCacheDirectory("git"), gitPath, myDirectory, root, useNativeSSH);
@@ -258,10 +258,10 @@ public abstract class GitUpdateProcess {
       initBare();
       addRemoteBare("origin", mySettings.getRepositoryFetchURL());
     } else {
-      LOG.debug("Try to find revision " + revision + " in " + mirrorDescription);
-      String revInfo = checkRevisionBare(revision, "debug");
+      LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
+      String revInfo = checkRevisionBare(myRevision, "debug");
       if (revInfo != null) {
-        LOG.info("No fetch required for revision '" + revision + "' in " + mirrorDescription);
+        LOG.info("No fetch required for revision '" + myRevision + "' in " + mirrorDescription);
         fetchRequired = false;
       }
     }
@@ -309,11 +309,11 @@ public abstract class GitUpdateProcess {
   private String doFetch(boolean firstFetch) throws VcsException {
     String revInfo = null;
     if (!firstFetch) {
-      LOG.debug("Try to find revision " + revision);
-      revInfo = checkRevision(revision, "debug");
+      LOG.debug("Try to find revision " + myRevision);
+      revInfo = checkRevision(myRevision, "debug");
     }
     if (revInfo != null) {
-      LOG.info("No fetch needed for revision '" + revision + "' in " + mySettings.getLocalRepositoryDir());
+      LOG.info("No fetch needed for revision '" + myRevision + "' in " + mySettings.getLocalRepositoryDir());
     } else {
       checkAuthMethodIsSupported();
       LOG.info("Fetching in repository " + mySettings.debugInfo());
@@ -328,9 +328,9 @@ public abstract class GitUpdateProcess {
         throw new VcsException("Failed to fetch data for " + mySettings.debugInfo());
       }
       myLogger.message("Fetched revisions " + (previousHead == null ? "up to " : previousHead + "..") + newHead);
-      revInfo = checkRevision(revision);
+      revInfo = checkRevision(myRevision);
       if (revInfo == null) {
-        throw new VcsException("The revision " + revision + " is not found in the repository after fetch " + mySettings.debugInfo());
+        throw new VcsException("The revision " + myRevision + " is not found in the repository after fetch " + mySettings.debugInfo());
       }
     }
     return revInfo;
