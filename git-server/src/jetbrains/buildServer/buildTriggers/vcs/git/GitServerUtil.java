@@ -20,6 +20,8 @@ import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.transport.FetchResult;
+import org.eclipse.jgit.transport.TrackingRefUpdate;
 import org.eclipse.jgit.transport.URIish;
 
 import java.io.File;
@@ -154,5 +156,20 @@ public class GitServerUtil {
   public static boolean isUnknownHostKeyError(TransportException error) {
     String message = error.getMessage();
     return message != null && message.contains("UnknownHostKey") && message.contains("key fingerprint is");
+  }
+
+
+  /**
+   * Check all refs successfully updated, throws exception if they are not
+   * @param result fetch result
+   * @throws VcsException if any ref was not successfully updated
+   */
+  public static void checkFetchSuccessful(FetchResult result) throws VcsException {
+    for (TrackingRefUpdate update : result.getTrackingRefUpdates()) {
+      RefUpdate.Result status = update.getResult();
+      if (status == RefUpdate.Result.REJECTED || status == RefUpdate.Result.LOCK_FAILURE || status == RefUpdate.Result.IO_FAILURE) {
+        throw new VcsException("Fail to update '" + update.getLocalName() + "' (" + status.name() + ").");
+      }
+    }
   }
 }

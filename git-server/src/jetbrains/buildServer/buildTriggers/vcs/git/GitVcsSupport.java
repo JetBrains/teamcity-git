@@ -50,6 +50,7 @@ import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.storage.file.FileRepository;
+import org.eclipse.jgit.storage.file.LockFile;
 import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
@@ -1012,6 +1013,7 @@ public class GitVcsSupport extends ServerVcsSupport
     rmLock.lock();
     synchronized (getWriteLock(repositoryDir)) {
       try {
+        unlockRefs(db);
         if (myConfig.isSeparateProcessForFetch()) {
           fetchInSeparateProcess(db, auth, fetchURI, refspec);
         } else {
@@ -1092,7 +1094,8 @@ public class GitVcsSupport extends ServerVcsSupport
     final long fetchStart = System.currentTimeMillis();
     final Transport tn = openTransport(auth, db, uri);
     try {
-      tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(refSpec));
+      FetchResult result = tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(refSpec));
+      GitServerUtil.checkFetchSuccessful(result);
     } catch (OutOfMemoryError oom) {
       LOG.warn("There is not enough memory for git fetch, try to run fetch in a separate process.");
       clean(db);
@@ -1103,6 +1106,42 @@ public class GitVcsSupport extends ServerVcsSupport
       }
     }
   }
+
+  private void unlockRefs(Repository db) throws VcsException{
+    try {
+      Map<String, Ref> refMap = db.getRefDatabase().getRefs(org.eclipse.jgit.lib.Constants.R_HEADS);
+      for (Ref ref : refMap.values()) {
+        unlockRef(db, ref);
+      }
+    } catch (Exception e) {
+      throw new VcsException(e);
+    }
+  }
+
+
+  private void unlockRef(Repository db, Ref ref) throws IOException, InterruptedException {
+    File refFile = new File(db.getDirectory(), ref.getName());
+    File refLockFile = new File(db.getDirectory(), ref.getName() + ".lock");
+    LockFile lock = new LockFile(refFile, FS.DETECTED);
+    try {
+      if (!lock.lock()) {
+        LOG.warn("Cannot lock the ref " + ref.getName() + ", will wait and try again");
+        Thread.sleep(5000);
+        if (lock.lock()) {
+          LOG.warn("Successfully lock the ref " + ref.getName());
+        } else {
+          if (FileUtil.delete(refLockFile)) {
+            LOG.warn("Remove ref lock " + refLockFile.getAbsolutePath());
+          } else {
+            LOG.warn("Cannot remove ref lock " + refLockFile.getAbsolutePath() + ", fetch will probably fail. Please remove lock manually.");
+          }
+        }
+      }
+    } finally {
+      lock.unlock();
+    }
+  }
+
 
   /**
    * Fetch data for the branch in separate process

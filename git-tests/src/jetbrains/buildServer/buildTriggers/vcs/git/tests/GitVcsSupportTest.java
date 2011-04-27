@@ -162,8 +162,12 @@ public class GitVcsSupportTest extends PatchTestCase {
    * @throws IOException if the root could not be created
    */
   protected VcsRoot getRoot(String branchName, boolean enableSubmodules) throws IOException {
+    return getRoot(branchName, enableSubmodules, myMainRepositoryDir);
+  }
+
+  private VcsRootImpl getRoot(String branchName, boolean enableSubmodules, File repositoryDir) {
     VcsRootImpl myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
-    myRoot.addProperty(Constants.FETCH_URL, GitUtils.toURL(myMainRepositoryDir));
+    myRoot.addProperty(Constants.FETCH_URL, GitUtils.toURL(repositoryDir));
     if (branchName != null) {
       myRoot.addProperty(Constants.BRANCH_NAME, branchName);
     }
@@ -1101,6 +1105,64 @@ public class GitVcsSupportTest extends PatchTestCase {
     }
 
     assertFalse(fetchBlocksIDERequests.get());
+  }
+
+
+  //TW-16351
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void should_update_local_ref_when_it_locked(boolean fetchInSeparateProcess) throws Exception {
+    File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
+    FileUtil.copyDir(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
+
+    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
+    GitVcsSupport support = getSupport();
+    VcsRootImpl root = getRoot("master", false, remoteRepositoryDir);
+    String branch = root.getProperty(Constants.BRANCH_NAME);
+    File customRootDir = new File(myTmpDir, "custom-dir");
+    root.addProperty(Constants.PATH, customRootDir.getAbsolutePath());
+
+    String v1 = GitUtils.versionRevision(support.getCurrentVersion(root));
+
+    FileUtil.copyDir(dataFile("repo_for_fetch.2"), remoteRepositoryDir);//now remote repository contains new commits
+
+    File branchLockFile = createBranchLockFile(customRootDir, branch);
+    assertTrue(branchLockFile.exists());
+
+    String v2 = GitUtils.versionRevision(support.getCurrentVersion(root));
+    assertFalse(v2.equals(v1));//local repository is updated
+  }
+
+
+  //TW-16351
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void test_non_fast_forward_update(boolean fetchInSeparateProcess) throws Exception {
+    File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
+    FileUtil.copyDir(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
+
+    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("master", false, remoteRepositoryDir);
+
+    String v1 = GitUtils.versionRevision(support.getCurrentVersion(root));
+    assertEquals(v1, "add81050184d3c818560bdd8839f50024c188586");
+
+    FileUtil.copyDir(dataFile("repo_for_fetch.2"), remoteRepositoryDir);//fast-forward update
+
+    String v2 = GitUtils.versionRevision(support.getCurrentVersion(root));
+    assertEquals(v2, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168");
+
+    FileUtil.copyDir(dataFile("repo_for_fetch.3"), remoteRepositoryDir);//non-fast-forward update
+    String v3 = GitUtils.versionRevision(support.getCurrentVersion(root));
+    assertEquals("bba7fbcc200b4968e6abd2f7d475dc15306cafc6", v3);
+  }
+
+
+  private File createBranchLockFile(File repositoryDir, String branch) throws IOException {
+    String branchRefPath = "refs" + File.separator + "heads" + File.separator + branch;
+    File refFile  = new File(repositoryDir, branchRefPath);
+    File refLockFile = new File(repositoryDir, branchRefPath + ".lock");
+    FileUtil.copy(refFile, refLockFile);
+    return refLockFile;
   }
 
 

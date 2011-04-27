@@ -21,6 +21,7 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.lib.NullProgressMonitor;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
@@ -77,7 +78,8 @@ public class Fetcher {
       workaroundRacyGit();
       tn = gitSupport.openTransport(auth, repository, new URIish(fetchUrl));
       RefSpec spec = new RefSpec(refspec).setForceUpdate(true);
-      tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
+      FetchResult result = tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
+      GitServerUtil.checkFetchSuccessful(result);
     } finally {
       if (tn != null)
         tn.close();
