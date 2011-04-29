@@ -265,10 +265,7 @@ public abstract class GitUpdateProcess {
         fetchRequired = false;
       }
     }
-    if (fetchRequired) {
-      LOG.info("Fetch in " + mirrorDescription);
-      fetchBare();
-    }
+    fetchBare();
   }
 
 
