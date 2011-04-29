@@ -162,6 +162,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
 
+  @NotNull
   public List<ModificationData> collectChanges(@NotNull VcsRoot root,
                                                @NotNull String fromVersion,
                                                @Nullable String currentVersion,
@@ -251,6 +252,49 @@ public class GitVcsSupport extends ServerVcsSupport
     return result;
   }
 
+
+  @Nullable
+  public PersonalBranchDescription getPersonalBranchDescription(@NotNull VcsRoot original, @NotNull String branchName) throws VcsException {
+    VcsRoot branchRoot = createBranchRoot(original, branchName);
+    OperationContext context = createContext(branchRoot, "find fork version");
+    PersonalBranchDescription result = null;
+    RevWalk walk = null;
+    try {
+      String originalCommit = GitUtils.versionRevision(getCurrentVersion(original));
+      String branchCommit   = GitUtils.versionRevision(getCurrentVersion(branchRoot));
+      Repository db = context.getRepository();
+      walk = new RevWalk(db);
+      walk.markStart(walk.parseCommit(ObjectId.fromString(branchCommit)));
+      walk.markUninteresting(walk.parseCommit(ObjectId.fromString(originalCommit)));
+      walk.sort(RevSort.TOPO);
+      boolean lastCommit = true;
+      String firstCommitInBranch = null;
+      String lastCommitUser = null;
+      RevCommit c;
+      while ((c = walk.next()) != null) {
+        if (lastCommit)
+          lastCommitUser = GitServerUtil.getUser(context.getSettings(), c);
+        firstCommitInBranch = c.name();
+      }
+      if (firstCommitInBranch != null && lastCommitUser != null)
+        result = new PersonalBranchDescription(firstCommitInBranch, lastCommitUser);
+    } catch (Exception e) {
+      throw context.wrapException(e);
+    } finally {
+      if (walk != null)
+        walk.release();
+      context.close();
+    }
+    return result;
+  }
+
+  private VcsRoot createBranchRoot(VcsRoot original, String branchName) {
+    VcsRootImpl result = new VcsRootImpl(original.getId(), original.getProperties());
+    result.addProperty(Constants.BRANCH_NAME, branchName);
+    return result;
+  }
+
+  @NotNull
   public List<ModificationData> collectChanges(@NotNull VcsRoot originalRoot,
                                                @NotNull String  originalRootVersion,
                                                @NotNull VcsRoot branchRoot,

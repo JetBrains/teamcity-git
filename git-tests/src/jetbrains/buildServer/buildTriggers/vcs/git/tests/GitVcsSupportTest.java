@@ -1157,6 +1157,26 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  @Test
+  public void test_getPersonalBranchDescription_when_branch_contains_commits() throws Exception {
+    VcsRoot root = getRoot("master");
+    GitVcsSupport support = getSupport();
+    PersonalBranchDescription description = support.getPersonalBranchDescription(root, "personal-branch2");
+    assertNotNull(description);
+    assertEquals(description.getBranchId(), "1391281d33a83a7205f2f05d3eb64c349c636e87");
+    assertEquals(description.getUsername(), "dmitry.neverov");
+  }
+
+
+  @Test
+  public void test_getPersonalBranchDescription_when_branch_does_not_contain_commits() throws Exception {
+    VcsRoot root = getRoot("master");
+    GitVcsSupport support = getSupport();
+    PersonalBranchDescription description = support.getPersonalBranchDescription(root, "master");
+    assertNull(description);
+  }
+
+
   private File createBranchLockFile(File repositoryDir, String branch) throws IOException {
     String branchRefPath = "refs" + File.separator + "heads" + File.separator + branch;
     File refFile  = new File(repositoryDir, branchRefPath);
