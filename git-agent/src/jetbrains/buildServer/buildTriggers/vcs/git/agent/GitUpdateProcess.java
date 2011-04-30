@@ -22,12 +22,14 @@ import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefCommand;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.lib.StoredConfig;
@@ -38,6 +40,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -129,7 +132,8 @@ public abstract class GitUpdateProcess {
 
 
   public void updateSources() throws VcsException {
-    if (myUseLocalMirrors) updateLocalMirror();
+    if (myUseLocalMirrors)
+      updateLocalMirror();
     LOG.info("Starting update of root " + myRoot.getName() + " in " + myCheckoutDirectory + " to revision " + myToVersion);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Updating " + mySettings.debugInfo());
@@ -247,6 +251,17 @@ public abstract class GitUpdateProcess {
   }
 
 
+  private Ref getRef(String ref) {
+    ShowRefCommand command = new ShowRefCommand(mySettings);
+    command.setRef(ref);
+    List<Ref> refs = command.execute();
+    if (refs.isEmpty())
+      return null;
+    else
+      return refs.get(0);
+  }
+
+
   private void updateLocalMirror() throws VcsException {
     File bareRepositoryDir = mySettings.getRepositoryDir();
     String mirrorDescription = "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
@@ -259,13 +274,16 @@ public abstract class GitUpdateProcess {
       addRemoteBare("origin", mySettings.getRepositoryFetchURL());
     } else {
       LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
-      String revInfo = checkRevisionBare(myRevision, "debug");
-      if (revInfo != null) {
+      Ref ref = getRef(GitUtils.expandRef(mySettings.getRef()));
+      if (ref != null && myRevision.equals(ref.getObjectId().name())) {
         LOG.info("No fetch required for revision '" + myRevision + "' in " + mirrorDescription);
         fetchRequired = false;
+      } else {
+        fetchRequired = true;
       }
     }
-    fetchBare();
+    if (fetchRequired)
+      fetchBare();
   }
 
 
@@ -305,11 +323,13 @@ public abstract class GitUpdateProcess {
    */
   private String doFetch(boolean firstFetch) throws VcsException {
     String revInfo = null;
+    Ref ref = null;
     if (!firstFetch) {
       LOG.debug("Try to find revision " + myRevision);
       revInfo = checkRevision(myRevision, "debug");
+      ref = getRef(GitUtils.expandRef(mySettings.getRef()));
     }
-    if (revInfo != null) {
+    if (revInfo != null && ref != null) {//commit and branch exist
       LOG.info("No fetch needed for revision '" + myRevision + "' in " + mySettings.getLocalRepositoryDir());
     } else {
       checkAuthMethodIsSupported();

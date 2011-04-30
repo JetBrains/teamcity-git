@@ -40,6 +40,7 @@ import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -99,6 +100,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
   private int myBuildId = 0;
 
+  private int myVcsRootId = 0;
   /**
    * Mocks of objects provided by TeamCity server
    */
@@ -179,6 +181,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     FileUtil.delete(myCheckoutDir);
     FileUtil.delete(agentConfigurationTempDirectory);
     FileUtil.delete(myAgentConfiguration.getCacheDirectory("git"));
+    myTempFiles.cleanup();
   }
 
   /**
@@ -408,6 +411,40 @@ public class AgentVcsSupportTest extends BaseTestCase {
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
     assertNotNull(r.getRef("refs/tags/v0.5"));
     assertNotNull(r.getRef("refs/tags/v1.0"));
+  }
+
+
+  @DataProvider(name = "mirrors")
+  public Object[][] mirrors() {
+    return new Object[][] {{true}, {false}};
+  }
+
+  @Test(dataProvider = "mirrors")
+  public void should_do_fetch_if_ref_is_outdated(Boolean useMirrors) throws Exception {
+    AgentRunningBuild build = createRunningBuild(useMirrors);
+    final File remote = myTempFiles.createTempDir();
+    copyRepository(dataFile("repo_for_fetch.2.personal"), remote);
+    VcsRootImpl masterRoot = createRoot(remote, "master");
+    VcsRootImpl personalRoot = createRoot(remote, "personal");
+
+    myVcsSupport.updateSources(personalRoot, new CheckoutRules(""), "d47dda159b27b9a8c4cee4ce98e4435eb5b17168@1303829462000", myCheckoutDir, build, false);
+    myVcsSupport.updateSources(masterRoot,   new CheckoutRules(""), "add81050184d3c818560bdd8839f50024c188586@1303829295000", myCheckoutDir, build, false);
+
+    FileUtil.delete(remote);
+    copyRepository(dataFile("repo_for_fetch.2"), remote);
+
+    myVcsSupport.updateSources(masterRoot, new CheckoutRules(""), "d47dda159b27b9a8c4cee4ce98e4435eb5b17168@1303829462000", myCheckoutDir, build, false);
+  }
+
+  private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
+    myVcsRootId++;
+    return new VcsRootImpl(myVcsRootId, new HashMap<String, String>() {{
+      put(VcsRootImpl.VCS_NAME_PROP, Constants.VCS_NAME);
+      put(VcsRootImpl.VCS_ROOT_NAME_PROP, "test" + myVcsRootId);
+      put(Constants.FETCH_URL, GitUtils.toURL(remote));
+      put(Constants.AGENT_GIT_PATH, getGitPath());
+      put(Constants.BRANCH_NAME, branch);
+    }});
   }
 
 
