@@ -374,7 +374,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   /**
    * Test getting changes for the build concurrently. Copy of previous test but with several threads collecting changes
    */
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class, invocationCount = 30)
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testConcurrentCollectBuildChanges(boolean fetchInSeparateProcess) throws Throwable {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
 
@@ -480,9 +480,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       }
     };
 
-    for (int i = 0; i < 50; i++) {
-      BaseTestCase.runAsyncAndFailOnException(4, r1, r2, r3, r4);
-    }
+    BaseTestCase.runAsyncAndFailOnException(4, r1, r2, r3, r4);
 
     if (!errors.isEmpty()) {
       throw errors.get(0);
