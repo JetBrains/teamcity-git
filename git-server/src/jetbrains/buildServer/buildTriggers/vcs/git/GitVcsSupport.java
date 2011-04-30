@@ -1056,17 +1056,17 @@ public class GitVcsSupport extends ServerVcsSupport
     assert repositoryDir != null : "Non-local repository";
     Lock rmLock = getRmLock(repositoryDir).readLock();
     rmLock.lock();
-    synchronized (getWriteLock(repositoryDir)) {
-      try {
+    try {
+      synchronized (getWriteLock(repositoryDir)) {
         unlockRefs(db);
         if (myConfig.isSeparateProcessForFetch()) {
           fetchInSeparateProcess(db, auth, fetchURI, refspec);
         } else {
           fetchInSameProcess(db, auth, fetchURI, refspec);
         }
-      } finally {
-        rmLock.unlock();
       }
+    } finally {
+      rmLock.unlock();
     }
   }
 
@@ -1117,14 +1117,14 @@ public class GitVcsSupport extends ServerVcsSupport
   private Repository createRepository(@NotNull File dir, URIish fetchUrl) throws VcsException {
     Lock rmLock = getRmLock(dir).readLock();
     rmLock.lock();
-    synchronized (getCreateLock(dir)) {
-      try {
+    try {
+      synchronized (getCreateLock(dir)) {
         Repository result = GitServerUtil.getRepository(dir, fetchUrl);
         RepositoryCache.register(result);
         return result;
-      } finally {
-        rmLock.unlock();
       }
+    } finally {
+      rmLock.unlock();
     }
   }
 
