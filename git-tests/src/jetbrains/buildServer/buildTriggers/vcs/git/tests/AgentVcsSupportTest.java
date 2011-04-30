@@ -121,20 +121,17 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
     File masterRep = dataFile("repo.git");
     myMainRepo = myTempFiles.createTempDir();
-    copyDir(masterRep, myMainRepo);
-    new File(myMainRepo, "refs" + File.separator + "heads").mkdirs();
+    copyRepository(masterRep, myMainRepo);
 
     File submoduleRep = dataFile("submodule.git");
     mySubmoduleRepo = new File(myMainRepo.getParentFile(), "submodule.git");
     delete(mySubmoduleRepo);
-    copyDir(submoduleRep, mySubmoduleRepo);
-    new File(mySubmoduleRepo, "refs" + File.separator + "heads").mkdirs();
+    copyRepository(submoduleRep, mySubmoduleRepo);
 
     File submoduleRep2 = dataFile("sub-submodule.git");
     mySubmoduleRepo2 = new File(myMainRepo.getParentFile(), "sub-submodule.git");
     delete(mySubmoduleRepo2);
-    copyDir(submoduleRep2, mySubmoduleRepo2);
-    new File(mySubmoduleRepo2, "refs" + File.separator + "heads").mkdirs();
+    copyRepository(submoduleRep2, mySubmoduleRepo2);
 
     myCheckoutDir = myTempFiles.createTempDir();
 
@@ -505,5 +502,11 @@ public class AgentVcsSupportTest extends BaseTestCase {
     } else {
       return "git";
     }
+  }
+
+
+  private void copyRepository(File src, File dst) throws IOException {
+    copyDir(src, dst);
+    new File(dst, "refs" + File.separator + "heads").mkdirs();
   }
 }
