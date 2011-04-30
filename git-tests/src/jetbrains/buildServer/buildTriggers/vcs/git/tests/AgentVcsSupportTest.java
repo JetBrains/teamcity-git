@@ -186,10 +186,8 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
   /**
    * Test work normally if .git/index.lock file exists
-   * @throws VcsException
-   * @throws IOException
    */
-  public void testRecoverIndexLock() throws VcsException, IOException {
+  public void testRecoverIndexLock() throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "master");
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD,
@@ -205,10 +203,8 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
   /**
    * Test work normally if .git/refs/heads/<branch>.lock file exists
-   * @throws VcsException
-   * @throws IOException
    */
-  public void testRecoverRefLock() throws VcsException, IOException {
+  public void testRecoverRefLock() throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
@@ -225,18 +221,16 @@ public class AgentVcsSupportTest extends BaseTestCase {
     FileUtil.createIfDoesntExist(new File(myCheckoutDir, ".git" + File.separator +
                                                          GitUtils.expandRef("patch-tests") +
                                                          ".lock"));
-    
+
     myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), firstCommitInPatchTests, myCheckoutDir, myBuild, false);
   }
 
 
   /**
-   * Test checkout submodules on agent. Machine that runs this test should have git installed. 
-   * @throws VcsException
-   * @throws IOException
+   * Test checkout submodules on agent. Machine that runs this test should have git installed.
    */
-  public void testSubmodulesCheckout() throws VcsException, IOException {
+  public void testSubmodulesCheckout() throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
     myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
 
@@ -249,20 +243,16 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
   /**
    * Test non-recursive submodules checkout: submodules of submodules are not retrieved
-   * @throws VcsException
-   * @throws IOException
    */
-  public void testSubSubmodulesCheckoutNonRecursive() throws VcsException, IOException {
+  public void testSubSubmodulesCheckoutNonRecursive() throws Exception {
     testSubSubmoduleCheckout(false);
   }
 
 
   /**
    * Test recursive submodules checkout: submodules of submodules are retrieved
-   * @throws VcsException
-   * @throws IOException
    */
-  public void testSubSubmodulesCheckoutRecursive() throws VcsException, IOException {
+  public void testSubSubmodulesCheckoutRecursive() throws Exception {
     testSubSubmoduleCheckout(true);
   }
 
@@ -281,7 +271,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  public void should_create_bare_repository_in_caches_dir() throws VcsException, IOException {
+  public void should_create_bare_repository_in_caches_dir() throws Exception {
     File gitCacheDir = myAgentConfiguration.getCacheDirectory("git");
     assertTrue(gitCacheDir.listFiles().length == 0);
     Settings settings = new Settings(myRoot, gitCacheDir);
@@ -309,7 +299,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  public void old_cloned_repository_should_use_local_mirror() throws VcsException, IOException, URISyntaxException {
+  public void old_cloned_repository_should_use_local_mirror() throws Exception {
     File gitCacheDir = myAgentConfiguration.getCacheDirectory("git");
     Settings settings = new Settings(myRoot, gitCacheDir);
     File bareRepositoryDir = settings.getRepositoryDir();
@@ -339,7 +329,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  public void do_not_use_mirror_if_agent_property_set_to_false() throws VcsException, IOException {
+  public void do_not_use_mirror_if_agent_property_set_to_false() throws Exception {
     AgentRunningBuild build2 = createRunningBuild(false);
     myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
@@ -349,7 +339,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  public void stop_use_mirror_if_agent_property_changed_to_false() throws VcsException, IOException {
+  public void stop_use_mirror_if_agent_property_changed_to_false() throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
@@ -362,7 +352,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  public void stop_use_any_mirror_if_agent_property_changed_to_false() throws VcsException, IOException {
+  public void stop_use_any_mirror_if_agent_property_changed_to_false() throws Exception {
     AgentRunningBuild build2 = createRunningBuild(false);
     File gitCacheDir = myAgentConfiguration.getCacheDirectory("git");
     Settings settings = new Settings(myRoot, gitCacheDir);
@@ -380,7 +370,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  public void checkout_tag() throws VcsException, IOException {
+  public void checkout_tag() throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "refs/tags/v1.0");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
@@ -390,7 +380,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  public void do_not_create_branch_when_checkout_tag() throws VcsException, IOException {
+  public void do_not_create_branch_when_checkout_tag() throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "refs/tags/v1.0");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
@@ -402,7 +392,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  public void checkout_tag_after_branch() throws VcsException, IOException {
+  public void checkout_tag_after_branch() throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "sub-submodule");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
@@ -414,7 +404,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  public void should_checkout_tags_reachable_from_branch() throws VcsException, IOException {
+  public void should_checkout_tags_reachable_from_branch() throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
@@ -424,12 +414,12 @@ public class AgentVcsSupportTest extends BaseTestCase {
   }
 
 
-  private void testSubSubmoduleCheckout(boolean recursiveSubmoduleCheckout) throws IOException, VcsException {
+  private void testSubSubmoduleCheckout(boolean recursiveSubmoduleCheckout) throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "sub-submodule");
     if (recursiveSubmoduleCheckout) {
       myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
     } else {
-      myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT.name());          
+      myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT.name());
     }
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION,
@@ -438,10 +428,10 @@ public class AgentVcsSupportTest extends BaseTestCase {
     assertTrue(new File (myCheckoutDir, "first-level-submodule" + File.separator + "submoduleFile.txt").exists());
     if (recursiveSubmoduleCheckout) {
       assertTrue(new File (myCheckoutDir, "first-level-submodule" + File.separator + "sub-sub" + File.separator + "file.txt").exists());
-      assertTrue(new File (myCheckoutDir, "first-level-submodule" + File.separator + "sub-sub" + File.separator + "new file.txt").exists());      
+      assertTrue(new File (myCheckoutDir, "first-level-submodule" + File.separator + "sub-sub" + File.separator + "new file.txt").exists());
     } else {
       assertFalse(new File (myCheckoutDir, "first-level-submodule" + File.separator + "sub-sub" + File.separator + "file.txt").exists());
-      assertFalse(new File (myCheckoutDir, "first-level-submodule" + File.separator + "sub-sub" + File.separator + "new file.txt").exists());      
+      assertFalse(new File (myCheckoutDir, "first-level-submodule" + File.separator + "sub-sub" + File.separator + "new file.txt").exists());
     }
   }
 
@@ -480,7 +470,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     };
   }
 
-  
+
   private BuildProgressLogger createLogger() {
     final BuildProgressLogger logger = myMockery.mock(BuildProgressLogger.class);
     myMockery.checking(new Expectations(){{
