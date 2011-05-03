@@ -290,7 +290,8 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   private VcsRoot createBranchRoot(VcsRoot original, String branchName) {
-    VcsRootImpl result = new VcsRootImpl(original.getId(), original.getProperties());
+    VcsRootImpl result = new VcsRootImpl(original.getId(), original.getVcsName());
+    result.addAllProperties(original.getProperties());
     result.addProperty(Constants.BRANCH_NAME, branchName);
     return result;
   }
