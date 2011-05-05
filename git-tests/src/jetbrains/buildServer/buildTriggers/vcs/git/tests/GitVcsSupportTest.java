@@ -1175,6 +1175,26 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  //TW-16530
+//  @Test
+  public void test_crlf() throws Exception {
+    String original = System.getProperty("user.home");
+    try {
+      File homeDir = myTempFiles.createTempDir();
+      File userConfig = new File(homeDir, ".gitconfig");
+      FileUtil.writeFile(userConfig, "[core]\n autocrlf=true\n");
+      System.setProperty("user.home", homeDir.getAbsolutePath());
+
+      VcsRoot root = getRoot("master");
+      byte[] bytes = getSupport().getContent("readme.txt", root, "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f@1283497225000");
+      String content = new String(bytes);
+      assertTrue(content.contains("\r\n"));
+    } finally {
+      System.setProperty("user.home", original);
+    }
+  }
+
+
   private File createBranchLockFile(File repositoryDir, String branch) throws IOException {
     String branchRefPath = "refs" + File.separator + "heads" + File.separator + branch;
     File refFile  = new File(repositoryDir, branchRefPath);
