@@ -56,10 +56,10 @@
     <tr>
       <th><label for="usernameStyle">User Name Style:</label></th>
       <td><props:selectProperty name="usernameStyle">
+        <props:option value="USERID">UserId (jsmith)</props:option>
         <props:option value="NAME">Author Name (John Smith)</props:option>
         <props:option value="FULL">Author Name and Email (John Smith &lt;jsmith@example.org&gt;)</props:option>
         <props:option value="EMAIL">Author Email (jsmith@example.org)</props:option>
-        <props:option value="USERID">UserId (jsmith)</props:option>
       </props:selectProperty>
         <div class="smallNote" style="margin: 0;">Changing user name style will affect only newly collected changes.
           Old changes will continue to be stored with the style that was active at the time of collecting changes.
