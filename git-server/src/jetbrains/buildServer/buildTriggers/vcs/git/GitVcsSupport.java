@@ -183,7 +183,6 @@ public class GitVcsSupport extends ServerVcsSupport
         final RevCommit currentRev = revs.parseCommit(ObjectId.fromString(current));
         revs.markStart(currentRev);
         revs.sort(RevSort.TOPO);
-        revs.sort(RevSort.COMMIT_TIME_DESC);
         final ObjectId fromId = ObjectId.fromString(from);
         if (r.hasObject(fromId)) {
           final RevCommit fromRev = revs.parseCommit(fromId);
@@ -521,7 +520,6 @@ public class GitVcsSupport extends ServerVcsSupport
       final RevCommit fromRev = revWalk.parseCommit(fromCommit.getId());
       revWalk.markStart(fromRev);
       revWalk.sort(RevSort.TOPO);
-      revWalk.sort(RevSort.COMMIT_TIME_DESC);
 
       RevCommit result = null;
       RevCommit prevRev;
