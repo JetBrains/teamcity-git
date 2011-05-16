@@ -1108,7 +1108,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   @NotNull
-  public Repository getRepository(@NotNull File dir, URIish fetchUrl) throws VcsException {
+  Repository getRepository(@NotNull File dir, URIish fetchUrl) throws VcsException {
     try {
       Repository r = RepositoryCache.open(RepositoryCache.FileKey.exact(dir, FS.DETECTED), true);
       final StoredConfig config = r.getConfig();
