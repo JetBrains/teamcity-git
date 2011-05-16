@@ -222,10 +222,11 @@ public class GitVcsSupport extends ServerVcsSupport
         }
       } finally {
         revs.release();
-        context.close();
       }
     } catch (Exception e) {
       throw context.wrapException(e);
+    } finally {
+      context.close();
     }
     return result;
   }
@@ -281,9 +282,12 @@ public class GitVcsSupport extends ServerVcsSupport
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
-      if (walk != null)
-        walk.release();
-      context.close();
+      try {
+        if (walk != null)
+          walk.release();
+      } finally {
+        context.close();
+      }
     }
     return result;
   }
@@ -333,8 +337,12 @@ public class GitVcsSupport extends ServerVcsSupport
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
-      if (walk != null) walk.release();
-      context.close();
+      try {
+        if (walk != null)
+          walk.release();
+      } finally {
+        context.close();
+      }
     }
   }
 
@@ -706,10 +714,11 @@ public class GitVcsSupport extends ServerVcsSupport
         }
       } finally {
         if (tw != null) tw.release();
-        context.close();
       }
     } catch (Exception e) {
       throw context.wrapException(e);
+    } finally {
+      context.close();
     }
   }
 
@@ -814,10 +823,11 @@ public class GitVcsSupport extends ServerVcsSupport
           PERFORMANCE_LOG.debug("[getContent] root=" + context.getSettings().debugInfo() + ", file=" + filePath + ", get object content: " + (finish - start) + "ms");
         }
         tw.release();
-        context.close();
       }
     } catch (Exception e) {
       throw context.wrapException(e);
+    } finally {
+      context.close();
     }
   }
 
@@ -1345,8 +1355,9 @@ public class GitVcsSupport extends ServerVcsSupport
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
-      if (repositoryTempDir != null) FileUtil.delete(repositoryTempDir);
       context.close();
+      if (repositoryTempDir != null)
+        FileUtil.delete(repositoryTempDir);
     }
   }
 
@@ -1594,8 +1605,9 @@ public class GitVcsSupport extends ServerVcsSupport
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
-      if (tmpDir != null) FileUtil.delete(tmpDir);
       context.close();
+      if (tmpDir != null)
+        FileUtil.delete(tmpDir);
     }
   }
 
