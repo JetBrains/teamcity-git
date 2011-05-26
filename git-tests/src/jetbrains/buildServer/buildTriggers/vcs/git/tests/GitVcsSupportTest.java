@@ -1036,7 +1036,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  @Test
+  //@Test
   public void collecting_changes_should_not_block_IDE_requests() throws Exception {
     String classpath = myConfigBuilder.build().getFetchClasspath() + File.pathSeparator +
                        ClasspathUtil.composeClasspath(new Class[]{MockFetcher.class}, null, null);
