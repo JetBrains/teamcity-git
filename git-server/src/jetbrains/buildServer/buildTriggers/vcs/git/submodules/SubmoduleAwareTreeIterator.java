@@ -181,10 +181,13 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
           mySubmoduleError = true;
           mode = wrappedMode;
         } else {
-          if (e instanceof CorruptObjectException)
+          if (e instanceof CorruptObjectException) {
             throw (CorruptObjectException) e;
-          else
-            throw new CorruptObjectException(myWrappedIterator.getEntryObjectId(), e.getMessage());
+          } else {
+            CorruptObjectException ex = new CorruptObjectException(myWrappedIterator.getEntryObjectId(), e.getMessage());
+            ex.initCause(e);
+            throw ex;
+          }
         }
       }
       if (myIdBuffer == null) {
