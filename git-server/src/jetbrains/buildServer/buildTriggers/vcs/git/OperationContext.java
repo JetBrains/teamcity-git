@@ -27,8 +27,6 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.treewalk.TreeWalk;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -104,7 +102,7 @@ public class OperationContext {
   public Settings getSettings(VcsRoot root) throws VcsException {
     Settings s = myRootSettings.get(root.getId());
     if (s == null) {
-      s = createSettings(myRoot);
+      s = createSettings(root);
       myRootSettings.put(root.getId(), s);
     }
     return s;
