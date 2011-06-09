@@ -67,22 +67,33 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
   }
 
   protected Repository resolveRepository(String path, String url) throws IOException, VcsException, URISyntaxException {
+    if (LOG.isDebugEnabled())
+      LOG.debug("Resolve repository for URL: " + url);
+
     if (isRelative(url)) {
       url = resolveRelativeUrl(url);
     }
     File repositoryDir = myContext.getSettings().getRepositoryDirForUrl(url);
+
+    if (LOG.isDebugEnabled())
+      LOG.debug("Cache dir for repository '" + url + "' is '" + repositoryDir.getAbsolutePath() + "'");
+
     Repository result = myContext.getRepositoryFor(repositoryDir);
-    if (result != null) {
-      return result;
-    } else {
+    if (result == null) {
       final URIish uri = new URIish(url);
       result = myContext.getRepository(repositoryDir, uri);
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Fetching submodule " + path + " data for " + myContext.getSettings().debugInfo());
-      }
+      if (LOG.isDebugEnabled())
+        LOG.debug("Fetching submodule " + url + " used at " + path + " for " + myContext.getSettings().debugInfo());
       myGitSupport.fetch(result, myContext.getSettings().getAuthSettings(), uri, new RefSpec("+refs/heads/*:refs/heads/*"));
-      return result;
     }
+    checkRepositoryCanBeUsedForUrl(result, url);
+    return result;
+  }
+
+  private void checkRepositoryCanBeUsedForUrl(Repository result, String url) {
+    String teamcityRemote = result.getConfig().getString("teamcity", null, "remote");
+    if (teamcityRemote != null && !url.equals(teamcityRemote))
+      LOG.warn("Directory '" + result.getDirectory().getAbsolutePath() + "' is used for 2 different repositories: '" + url + "' and '" + teamcityRemote + "'");
   }
 
   private boolean isRelative(String url) {
