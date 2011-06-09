@@ -73,7 +73,7 @@ public class GitServerUtil {
       }
       return r;
     } catch (Exception ex) {
-      throw new VcsException("The repository at " + dir + " cannot be opened or created: " + ex, ex);
+      throw new VcsException("The repository at directory '" + dir + "' cannot be opened or created, reason: " + ex.getMessage(), ex);
     }
   }
 

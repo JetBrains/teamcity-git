@@ -66,8 +66,9 @@ public class IndirectSubmoduleAwareTreeIterator extends SubmoduleAwareTreeIterat
                                             int[] mapping,
                                             String repositoryUrl,
                                             String pathFromRoot,
-                                            SubmodulesCheckoutPolicy submodulesPolicy) throws IOException {
-    super(wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy);
+                                            SubmodulesCheckoutPolicy submodulesPolicy,
+                                            boolean logSubmoduleErrors) throws IOException {
+    super(wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors);
     myMapping = mapping;
     adjustStartPosition();
   }
@@ -91,8 +92,9 @@ public class IndirectSubmoduleAwareTreeIterator extends SubmoduleAwareTreeIterat
                                             int[] mapping,
                                             String repositoryUrl,
                                             String pathFromRoot,
-                                            SubmodulesCheckoutPolicy submodulesPolicy) throws CorruptObjectException {
-    super(parent, wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy);
+                                            SubmodulesCheckoutPolicy submodulesPolicy,
+                                            boolean logSubmoduleErrors) throws CorruptObjectException {
+    super(parent, wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors);
     myMapping = mapping;
     adjustStartPosition();
   }

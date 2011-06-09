@@ -27,6 +27,8 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.treewalk.TreeWalk;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -36,7 +38,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy.getPolicyWithErrorsIgnored;
-import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator.create;
+import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIteratorFactory.create;
 
 /**
  *
@@ -159,11 +161,15 @@ public class OperationContext {
    * If we should checkout submodules - adds submodule-aware tree iterator
    */
   public void addTree(TreeWalk tw, Repository db, RevCommit commit, boolean ignoreSubmodulesErrors) throws IOException, VcsException {
+    addTree(tw, db, commit, ignoreSubmodulesErrors, true);
+  }
+
+  public void addTree(TreeWalk tw, Repository db, RevCommit commit, boolean ignoreSubmodulesErrors, boolean logSubmoduleErrors) throws IOException, VcsException {
     Settings s = getSettings();
     if (getSettings().isCheckoutSubmodules()) {
       SubmoduleResolver submoduleResolver = new TeamCitySubmoduleResolver(this, db, commit);
       SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(s.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
-      tw.addTree(create(db, commit, submoduleResolver, s.getRepositoryFetchURL().toString(), "", checkoutPolicy));
+      tw.addTree(create(db, commit, submoduleResolver, s.getRepositoryFetchURL().toString(), "", checkoutPolicy, logSubmoduleErrors));
     } else {
       tw.addTree(commit.getTree().getId());
     }

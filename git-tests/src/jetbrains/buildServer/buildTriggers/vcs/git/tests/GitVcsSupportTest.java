@@ -636,6 +636,22 @@ public class GitVcsSupportTest extends PatchTestCase {
 
 
   @Test
+  public void should_not_traverse_history_deeper_than_specified_limit() throws Exception {
+    myConfigBuilder.setFixedSubmoduleCommitSearchDepth(0);//do no search submodule commit with fix at all
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("wrong-submodule", true);
+    String fixedSubmoduleCommit = GitUtils.makeVersion("f5bdd3819df0358a43d9a8f94eaf96bb306e19fe", 1282636308000L);
+    String submoduleFixedAgainCommit = GitUtils.makeVersion("92112555d9eb3e433eaa91fe32ec001ae8fe3c52", 1282736040000L);
+    List<ModificationData> mds = support.collectChanges(root, fixedSubmoduleCommit, submoduleFixedAgainCommit, new CheckoutRules(""));
+    assertEquals(2, mds.size());
+
+    assertEquals(2, mds.get(0).getChanges().size());//that means we did not try to find commit with fixed submodule
+    //we report add of all files from submodule repository, so the first change is the change to .gitmodules,
+    //and the second - is the addition of file.txt from submodule
+  }
+
+
+  @Test
   public void testCollectBuildChangesWithFixedBrokenFixedSubmodule2() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("wrong-submodule", true);
@@ -647,6 +663,10 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(mds.get(1).getChanges().size(), 1);//only .gitmodules
 
     assertEquals(mds.get(0).getChanges().size(), 2);//.gitmodules and 1 file inside submodule
+
+    for (VcsChange change : mds.get(0).getChanges()) {
+      assertTrue(change.getBeforeChangeRevisionNumber().contains("@"), "revision should contain time");
+    }
   }
 
   @Test

@@ -19,6 +19,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
+import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
@@ -26,6 +28,7 @@ import org.eclipse.jgit.revwalk.RevCommit;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URISyntaxException;
 
 /**
  * The resolver for submodules
@@ -52,24 +55,26 @@ public abstract class SubmoduleResolver {
    * @param commit the commit identifier
    * @return the the resoled commit in other repository
    * @throws IOException if there is an IO problem during resolving repository or mapping commit
+   * @throws VcsAuthenticationException if there are authentication problems
+   * @throws URISyntaxException if there are errors in submodule repository URI
    */
-  public RevCommit getSubmoduleCommit(String path, ObjectId commit) throws IOException, VcsAuthenticationException {
+  public RevCommit getSubmoduleCommit(String path, ObjectId commit) throws IOException, VcsException, URISyntaxException {
     ensureConfigLoaded();
     String mainRepositoryUrl = myDb.getConfig().getString("teamcity", null, "remote");
     if (myConfig == null) {
       String msg = "Repository '%1$s' has submodule in commit '%2$s' at path '%3$s', but has no .gitmodules configuration at the root directory.";
-      throw new IOException(String.format(msg, mainRepositoryUrl, myCommit.getId().name(), path));
+      throw new CorruptObjectException(String.format(msg, mainRepositoryUrl, myCommit.getId().name(), path));
     }
     final Submodule submodule = myConfig.findSubmodule(path);
     if (submodule == null) {
       String msg = "Repository '%1$s' has submodule in commit '%2$s' at path '%3$s', but has no entry for this path in .gitmodules configuration.";
-      throw new IOException(String.format(msg, mainRepositoryUrl, myCommit.getId().name(), path, commit.name()));
+      throw new CorruptObjectException(String.format(msg, mainRepositoryUrl, myCommit.getId().name(), path, commit.name()));
     }
     Repository r = resolveRepository(path, submodule.getUrl());
     final RevCommit c = myGitSupport.getCommit(r, commit);
     if (c == null) {
       String msg = "Repository '%1$s' has submodule in commit '%2$s' at path '%3$s', but tracked submodule commit '%4$s' is not found in repository '%5$s'. Forget to push it?";
-      throw new IOException(String.format(msg, mainRepositoryUrl, myCommit.getId().name(), path, commit.name(), submodule.getUrl()));
+      throw new CorruptObjectException(String.format(msg, mainRepositoryUrl, myCommit.getId().name(), path, commit.name(), submodule.getUrl()));
     }
     return c;
   }
@@ -81,8 +86,10 @@ public abstract class SubmoduleResolver {
    * @param url  the URL to resolve  @return the resolved repository
    * @return the resolved repository
    * @throws IOException if repository could not be resolved
+   * @throws VcsAuthenticationException in case of authentication problems
+   * @throws URISyntaxException if there are errors in submodule repository URI
    */
-  protected abstract Repository resolveRepository(String path, String url) throws IOException, VcsAuthenticationException;
+  protected abstract Repository resolveRepository(String path, String url) throws IOException, VcsException, URISyntaxException;
 
   /**
    * Get submodule resolver for the path

@@ -395,7 +395,6 @@ public class GitVcsSupport extends ServerVcsSupport
         TreeWalk tw = new TreeWalk(db);
         tw.setRecursive(true);
         tw.setFilter(TreeFilter.ANY_DIFF);
-        tw.reset();
         try {
           context.addTree(tw, db, c, ignoreSubmodulesErrors);
           tw.addTree(c.getTree().getId());
@@ -422,68 +421,96 @@ public class GitVcsSupport extends ServerVcsSupport
    * Get changes for the commit
    *
    * @param context context of current operation
-   * @param r            the change version
-   * @param commit           the current commit
-   * @param currentVersion           the commit version
-   * @param parentVersion           the parent commit version
+   * @param r repository
+   * @param commit current commit
+   * @param currentVersion teamcity version of current commit (sha@time)
+   * @param parentVersion parent version to use in VcsChange objects
+   * @param ignoreSubmodulesErrors should method ignore errors in submodules or not
    * @return the commit changes
-   * @throws IOException if there is a repository access problem
+   * @throws IOException
+   * @throws VcsException
    */
   private List<VcsChange> getCommitChanges(final OperationContext context,
                                            final Repository r,
                                            final RevCommit commit,
                                            final String currentVersion,
                                            final String parentVersion,
-                                           final boolean ignoreSubmodulesErrors)
-    throws IOException, VcsException {
+                                           final boolean ignoreSubmodulesErrors) throws IOException, VcsException {
     List<VcsChange> changes = new ArrayList<VcsChange>();
     TreeWalk tw = new TreeWalk(r);
     try {
       IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(context.getSettings());
       tw.setFilter(filter);
       tw.setRecursive(true);
-      // remove empty tree iterator before adding new tree
-      tw.reset();
       context.addTree(tw, r, commit, ignoreSubmodulesErrors);
       for (RevCommit parentCommit : commit.getParents()) {
         context.addTree(tw, r, parentCommit, true);
       }
       String repositoryDebugInfo = context.getSettings().debugInfo();
+      RevCommit commitWithFix = null;
+      Map<String, RevCommit> commitsWithFix = new HashMap<String, RevCommit>();
       while (tw.next()) {
         String path = tw.getPathString();
-        RevCommit commitWithFix = null;
-        if (context.getSettings().isCheckoutSubmodules() && filter.isBrokenSubmodulePath(path)
-            && (commitWithFix = getPreviousCommitWithFixedSubmodule(context, r, commit, path)) != null) {
-          //report changes between 2 commits where submodules fixed
-          TreeWalk tw2 = new TreeWalk(r);
-          try {
-            tw2.setFilter(TreeFilter.ANY_DIFF);
-            tw2.setRecursive(true);
-            tw2.reset();
-            context.addTree(tw2, r, commit, true);
-            context.addTree(tw2, r, commitWithFix, true);
-            while (tw2.next()) {
-              if (tw2.getPathString().equals(path)) {
-                VcsChange change = getVcsChange(tw2, path, currentVersion, commitWithFix.getId().name(), repositoryDebugInfo);
-                if (change != null) {
-                  changes.add(change);
+        if (context.getSettings().isCheckoutSubmodules()) {
+          if (filter.isBrokenSubmoduleEntry(path)) {
+            commitWithFix = getPreviousCommitWithFixedSubmodule(context, r, commit, path);
+            commitsWithFix.put(path, commitWithFix);
+            if (commitWithFix != null) {
+              TreeWalk tw2 = new TreeWalk(r);
+              try {
+                tw2.setFilter(TreeFilter.ANY_DIFF);
+                tw2.setRecursive(true);
+                context.addTree(tw2, r, commit, true);
+                context.addTree(tw2, r, commitWithFix, true);
+                while (tw2.next()) {
+                  if (tw2.getPathString().equals(path)) {
+                    addVcsChange(changes, currentVersion, GitServerUtil.makeVersion(commitWithFix), tw2, repositoryDebugInfo, path);
+                  }
                 }
+              } finally {
+                tw2.release();
               }
+            } else {
+              addVcsChange(changes, currentVersion, parentVersion, tw, repositoryDebugInfo, path);
             }
-          } finally {
-            tw2.release();
+          } else if (filter.isChildOfBrokenSubmoduleEntry(path)) {
+            String brokenSubmodulePath = filter.getSubmodulePathForChildPath(path);
+            commitWithFix = commitsWithFix.get(brokenSubmodulePath);
+            if (commitWithFix != null) {
+              TreeWalk tw2 = new TreeWalk(r);
+              try {
+                tw2.setFilter(TreeFilter.ANY_DIFF);
+                tw2.setRecursive(true);
+                context.addTree(tw2, r, commit, true);
+                context.addTree(tw2, r, commitWithFix, true);
+                while (tw2.next()) {
+                  if (tw2.getPathString().equals(path)) {
+                    addVcsChange(changes, currentVersion, GitServerUtil.makeVersion(commitWithFix), tw2, repositoryDebugInfo, path);
+                  }
+                }
+              } finally {
+                tw2.release();
+              }
+            } else {
+              addVcsChange(changes, currentVersion, parentVersion, tw, repositoryDebugInfo, path);
+            }
+          } else {
+            addVcsChange(changes, currentVersion, parentVersion, tw, repositoryDebugInfo, path);
           }
         } else {
-          VcsChange change = getVcsChange(tw, path, currentVersion, parentVersion, repositoryDebugInfo);
-          if (change != null) {
-            changes.add(change);
-          }
+          addVcsChange(changes, currentVersion, parentVersion, tw, repositoryDebugInfo, path);
         }
       }
-    return changes;
+      return changes;
     } finally {
       tw.release();
     }
+  }
+
+  private void addVcsChange(List<VcsChange> changes, String currentVersion, String parentVersion, TreeWalk tw, String repositoryDebugInfo, String path) {
+    VcsChange change = getVcsChange(tw, path, currentVersion, parentVersion, repositoryDebugInfo);
+    if (change != null)
+      changes.add(change);
   }
 
   private VcsChange getVcsChange(TreeWalk treeWalk, String path, String commitSHA, String parentCommitSHA, String repositoryDebugInfo) {
@@ -523,6 +550,10 @@ public class GitVcsSupport extends ServerVcsSupport
 
   private RevCommit getPreviousCommitWithFixedSubmodule(OperationContext context, Repository db, RevCommit fromCommit, String submodulePath)
     throws IOException, VcsException {
+    int searchDepth = myConfig.getFixedSubmoduleCommitSearchDepth();
+    if (searchDepth == 0)
+      return null;
+
     RevWalk revWalk = new RevWalk(db);
     try {
       final RevCommit fromRev = revWalk.parseCommit(fromCommit.getId());
@@ -532,13 +563,14 @@ public class GitVcsSupport extends ServerVcsSupport
       RevCommit result = null;
       RevCommit prevRev;
       revWalk.next();
-      while (result == null && (prevRev = revWalk.next()) != null) {
+      int depth = 0;
+      while (result == null && depth < searchDepth && (prevRev = revWalk.next()) != null) {
+        depth++;
         TreeWalk prevTreeWalk = new TreeWalk(db);
         try {
           prevTreeWalk.setFilter(TreeFilter.ALL);
           prevTreeWalk.setRecursive(true);
-          prevTreeWalk.reset();
-          context.addTree(prevTreeWalk, db, prevRev, true);
+          context.addTree(prevTreeWalk, db, prevRev, true, false);
           while(prevTreeWalk.next()) {
             if (prevTreeWalk.getPathString().startsWith(submodulePath)) {
               SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
@@ -632,7 +664,6 @@ public class GitVcsSupport extends ServerVcsSupport
         tw = new TreeWalk(r);
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.setRecursive(true);
-        tw.reset();
         context.addTree(tw, r, toCommit, false);
         if (fromVersion != null) {
           if (debugFlag) {
@@ -805,7 +836,6 @@ public class GitVcsSupport extends ServerVcsSupport
         RevCommit c = ensureRevCommitLoaded(context, context.getSettings(), rev);
         tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
         tw.setRecursive(tw.getFilter().shouldBeRecursive());
-        tw.reset();
         context.addTree(tw, r, c, true);
         if (!tw.next()) {
           throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + context.getSettings().debugInfo());

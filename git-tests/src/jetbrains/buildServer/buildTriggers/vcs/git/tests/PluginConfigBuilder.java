@@ -39,6 +39,7 @@ public class PluginConfigBuilder {
   private Integer myNativeGCQuota;
   private String  myFetchClassPath;
   private String  myFetcherClassName;
+  private Integer myFixedSubmoduleCommitSearchDepth;
 
   public PluginConfigBuilder(@NotNull ServerPaths paths) {
     myDelegate = new PluginConfigImpl(paths);
@@ -102,6 +103,10 @@ public class PluginConfigBuilder {
 
       public String getFetcherClassName() {
         return myFetcherClassName != null ? myFetcherClassName : myDelegate.getFetcherClassName();
+      }
+
+      public int getFixedSubmoduleCommitSearchDepth() {
+        return myFixedSubmoduleCommitSearchDepth != null ? myFixedSubmoduleCommitSearchDepth : myDelegate.getFixedSubmoduleCommitSearchDepth();
       }
     };
   }
@@ -178,6 +183,12 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setFetcherClassName(String className) {
     myFetcherClassName = className;
+    return this;
+  }
+
+
+  public PluginConfigBuilder setFixedSubmoduleCommitSearchDepth(Integer depth) {
+    myFixedSubmoduleCommitSearchDepth = depth;
     return this;
   }
 }

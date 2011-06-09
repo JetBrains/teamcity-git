@@ -66,37 +66,22 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
     myPathFromRoot = basePath;
   }
 
-  protected Repository resolveRepository(String path, String url) throws IOException, VcsAuthenticationException {
-    try {
-      if (isRelative(url)) {
-        url = resolveRelativeUrl(url);
+  protected Repository resolveRepository(String path, String url) throws IOException, VcsException, URISyntaxException {
+    if (isRelative(url)) {
+      url = resolveRelativeUrl(url);
+    }
+    File repositoryDir = myContext.getSettings().getRepositoryDirForUrl(url);
+    Repository result = myContext.getRepositoryFor(repositoryDir);
+    if (result != null) {
+      return result;
+    } else {
+      final URIish uri = new URIish(url);
+      result = myContext.getRepository(repositoryDir, uri);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Fetching submodule " + path + " data for " + myContext.getSettings().debugInfo());
       }
-      File repositoryDir = myContext.getSettings().getRepositoryDirForUrl(url);
-      Repository result = myContext.getRepositoryFor(repositoryDir);
-      if (result != null) {
-        return result;
-      } else {
-        final URIish uri = new URIish(url);
-        result = myContext.getRepository(repositoryDir, uri);
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Fetching submodule " + path + " data for " + myContext.getSettings().debugInfo());
-        }
-        myGitSupport.fetch(result, myContext.getSettings().getAuthSettings(), uri, new RefSpec("+refs/heads/*:refs/heads/*"));
-        return result;
-      }
-    } catch (VcsAuthenticationException ae) {
-      throw ae;
-    } catch (VcsException e) {
-      if (e.getCause() instanceof IOException) {
-        throw (IOException)e.getCause();
-      }
-      final IOException ex = new IOException(e.getMessage());
-      ex.initCause(e);
-      throw ex;
-    } catch (URISyntaxException e) {
-      final IOException ex = new IOException(e.getMessage());
-      ex.initCause(e);
-      throw ex;
+      myGitSupport.fetch(result, myContext.getSettings().getAuthSettings(), uri, new RefSpec("+refs/heads/*:refs/heads/*"));
+      return result;
     }
   }
 
