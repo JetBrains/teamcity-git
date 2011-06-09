@@ -47,7 +47,7 @@ public class IgnoreSubmoduleErrorsTreeFilter extends TreeFilter {
         return false;
       } else if (!myBrokenSubmodulePathsInRestTrees.contains(path)) {
         for (int i = 1; i < walker.getTreeCount(); i++) {
-          if (FileMode.GITLINK.equals(walker.getRawMode(i))) {
+          if (isTreeIteratorOnBrokenSubmoduleEntry(walker, i)) {
             myBrokenSubmodulePathsInRestTrees.add(path);
           }
         }
@@ -58,22 +58,51 @@ public class IgnoreSubmoduleErrorsTreeFilter extends TreeFilter {
     }
   }
 
+
+  private boolean isTreeIteratorOnBrokenSubmoduleEntry(TreeWalk walker, int iteratorNumber) {
+    //if policy is checkoutSubmodules, then we get FileMode.GITLINK only if there was an error while resolving submodules
+    return FileMode.GITLINK.equals(walker.getRawMode(iteratorNumber));
+  }
+
+
   private boolean isFirstTreeHasBrokenSubmodule(TreeWalk walker, String path) {
-    return FileMode.GITLINK.equals(walker.getRawMode(0)) || myBrokenSubmodulePathsInFirstTree.contains(path);
+    return isTreeIteratorOnBrokenSubmoduleEntry(walker, 0) || myBrokenSubmodulePathsInFirstTree.contains(path);
   }
 
   public Set<String> getBrokenSubmodulePathsInRestTrees() {
     return myBrokenSubmodulePathsInRestTrees;
   }
 
-  public boolean isBrokenSubmodulePath(String path) {
+  public boolean isBrokenSubmoduleEntry(String path) {
     for (String brokenSubmodulePath : myBrokenSubmodulePathsInRestTrees) {
-      if (path.equals(brokenSubmodulePath) || path.startsWith(brokenSubmodulePath + "/")) {
+      if (path.equals(brokenSubmodulePath))
         return true;
-      }
     }
     return false;
   }
+
+
+  public boolean isChildOfBrokenSubmoduleEntry(String path) {
+    for (String brokenSubmodulePath : myBrokenSubmodulePathsInRestTrees) {
+      if (path.startsWith(brokenSubmodulePath + "/"))
+        return true;
+    }
+    return false;
+  }
+
+
+  public String getSubmodulePathForChildPath(String childPath) {
+    int maxLength = 0;
+    String result = null;
+    for (String brokenSubmoduleEntry : myBrokenSubmodulePathsInRestTrees) {
+      if (childPath.startsWith(brokenSubmoduleEntry + "/") && brokenSubmoduleEntry.length() > maxLength) {
+        result = brokenSubmoduleEntry;
+        maxLength = brokenSubmoduleEntry.length();
+      }
+    }
+    return result;
+  }
+
 
   @Override
   public boolean shouldBeRecursive() {

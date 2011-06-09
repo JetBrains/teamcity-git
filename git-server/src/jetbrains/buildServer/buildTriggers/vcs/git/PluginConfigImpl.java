@@ -129,4 +129,8 @@ public class PluginConfigImpl implements PluginConfig {
   public String getFetcherClassName() {
     return Fetcher.class.getName();
   }
+
+  public int getFixedSubmoduleCommitSearchDepth() {
+    return TeamCityProperties.getInteger("teamcity.server.git.fixed.submodule.commit.search.depth", 100);
+  }
 }

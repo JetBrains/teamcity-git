@@ -40,6 +40,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIteratorFactory.create;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static org.testng.Assert.*;
 
@@ -151,8 +152,8 @@ public class SubmoduleTest {
         TreeWalk tw = new TreeWalk(rm);
         tw.setRecursive(true);
         tw.reset();
-        tw.addTree(SubmoduleAwareTreeIterator.create(rm, beforeSubmoduleAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT));
-        tw.addTree(SubmoduleAwareTreeIterator.create(rm, submoduleAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT));
+        tw.addTree(create(rm, beforeSubmoduleAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT, true));
+        tw.addTree(create(rm, submoduleAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT, true));
         tw.setFilter(TreeFilter.ANY_DIFF);
         checkElement(tw, ".gitmodules");
         assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rm);
@@ -160,8 +161,8 @@ public class SubmoduleTest {
         assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rs);
         assertFalse(tw.next());
         tw.reset();
-        tw.addTree(SubmoduleAwareTreeIterator.create(rm, submoduleModified, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT));
-        tw.addTree(SubmoduleAwareTreeIterator.create(rm, submoduleTxtAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT));
+        tw.addTree(create(rm, submoduleModified, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT, true));
+        tw.addTree(create(rm, submoduleTxtAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT, true));
         tw.setFilter(TreeFilter.ANY_DIFF);
         checkElement(tw, "submodule.txt");
         assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rm);

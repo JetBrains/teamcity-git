@@ -66,4 +66,7 @@ public interface PluginConfig {
 
 
   String getFetcherClassName();
+
+
+  int getFixedSubmoduleCommitSearchDepth();
 }
