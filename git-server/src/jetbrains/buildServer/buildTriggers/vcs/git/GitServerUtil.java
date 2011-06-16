@@ -16,20 +16,29 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.openapi.diagnostic.Logger;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.storage.file.FileBasedConfig;
 import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.TrackingRefUpdate;
 import org.eclipse.jgit.transport.URIish;
+import org.eclipse.jgit.util.FS;
 
 import java.io.File;
+import java.io.IOException;
 
 /**
  * Utilities for server part of the plugin
  */
 public class GitServerUtil {
+
+  private static Logger LOG = Logger.getInstance(GitServerUtil.class.getName());
+
   /**
    * Amount of characters displayed for in the display version of revision number
    */
@@ -53,6 +62,7 @@ public class GitServerUtil {
       throw new VcsException("The specified path is not a directory: " + dir);
     }
     try {
+      ensureRepositoryIsValid(dir);
       Repository r = new RepositoryBuilder().setBare().setGitDir(dir).build();
       if (!new File(dir, "config").exists()) {
         r.create(true);
@@ -75,6 +85,45 @@ public class GitServerUtil {
     } catch (Exception ex) {
       throw new VcsException("The repository at directory '" + dir + "' cannot be opened or created, reason: " + ex.getMessage(), ex);
     }
+  }
+
+  private static void ensureRepositoryIsValid(File dir) throws InterruptedException, IOException, ConfigInvalidException {
+    File objectsDir = new File(dir, "objects");
+    if (objectsDir.exists()) {
+      File configFile = new File(dir, "config");
+      LOG.debug("Ensure repository at '" + dir.getAbsolutePath() + "' has a valid config file");
+      boolean valid = ensureConfigIsValid(configFile);
+      if (!valid) {
+        LOG.warn("Repository at '" + dir.getAbsolutePath() + "' has invalid config file, try to remove repository");
+        if (!FileUtil.delete(dir))
+          LOG.warn("Cannot remove repository at '" + dir.getAbsolutePath() + "', operations with such repository most likely will fail");
+      }
+    }
+  }
+
+  private static boolean ensureConfigIsValid(File configLocation) throws InterruptedException, IOException, ConfigInvalidException {
+    for (int i = 0; i < 3; i++) {
+      FileBasedConfig config = new FileBasedConfig(configLocation, FS.DETECTED);
+      config.load();
+      if (hasValidFormatVersion(config)) {
+        return true;
+      } else {
+        if (i < 2) {
+          LOG.warn("Config " + configLocation.getAbsolutePath() + " has invalid format version, will wait and check again");
+          Thread.sleep(2000);
+        } else {
+          LOG.warn("Config " + configLocation.getAbsolutePath() + " has invalid format version");
+        }
+      }
+    }
+    return false;
+  }
+
+
+  private static boolean hasValidFormatVersion(Config config) {
+    final String repositoryFormatVersion = config.getString(ConfigConstants.CONFIG_CORE_SECTION, null,
+                                                            ConfigConstants.CONFIG_KEY_REPO_FORMAT_VERSION);
+    return "0".equals(repositoryFormatVersion);
   }
 
   /**
