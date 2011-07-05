@@ -16,25 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
-import com.intellij.openapi.util.SystemInfo;
-import com.jcraft.jsch.JSchException;
-import com.jcraft.jsch.Session;
-import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ExtensionHolder;
-import jetbrains.buildServer.SimpleCommandLineProcessRunner;
-import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
-import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
-import jetbrains.buildServer.buildTriggers.vcs.git.ssh.RefreshableSshConfigSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
-import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.serverSide.BuildServerAdapter;
-import jetbrains.buildServer.serverSide.BuildServerListener;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
-import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.vcs.*;
@@ -50,8 +37,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
-import org.eclipse.jgit.storage.file.FileRepository;
-import org.eclipse.jgit.storage.file.LockFile;
 import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
@@ -112,48 +97,24 @@ public class GitVcsSupport extends ServerVcsSupport
    * @see Cleaner
    */
   private final ConcurrentMap<File, ReadWriteLock> myRmLocks = new ConcurrentHashMap<File, ReadWriteLock>();
-  /**
-   * The default SSH session factory used for not explicitly configured host
-   * It fails when user is prompted for some information.
-   */
-  private final RefreshableSshConfigSessionFactory mySshSessionFactory;
-  /**
-   * This factory is used when known host database is specified to be ignored
-   */
-  private final RefreshableSshConfigSessionFactory mySshSessionFactoryKnownHostsIgnored;
-
   private final ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
   private final PluginConfig myConfig;
+  private final TransportFactory myTransportFactory;
+  private final FetchCommand myFetchCommand;
 
 
   public GitVcsSupport(@NotNull final PluginConfig config,
-                       @Nullable final ExtensionHolder extensionHolder,
-                       @Nullable final EventDispatcher<BuildServerListener> dispatcher) {
+                       @NotNull final TransportFactory transportFactory,
+                       @NotNull final FetchCommand fetchCommand,
+                       @Nullable final ExtensionHolder extensionHolder) {
     myConfig = config;
     myCacheDir = config.getCachesDir();
     myExtensionHolder = extensionHolder;
+    myTransportFactory = transportFactory;
+    myFetchCommand = fetchCommand;
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(myConfig.getCurrentVersionCacheSize());
-    final boolean monitorSshConfigs = dispatcher != null; //dispatcher is null in tests and when invoked from the Fetcher
-    mySshSessionFactory = new RefreshableSshConfigSessionFactory(monitorSshConfigs);
-    mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory(monitorSshConfigs) {
-      // note that different instance is used because JSch cannot be shared with strict host checking
-      public Session getSession(String user, String pass, String host, int port, CredentialsProvider credentialsProvider, FS fs) throws JSchException {
-        final Session session = super.getSession(user, pass, host, port, credentialsProvider, fs);
-        session.setConfig("StrictHostKeyChecking", "no");
-        return session;
-      }
-    };
     setStreamFileThreshold();
-    if (monitorSshConfigs) {
-      dispatcher.addListener(new BuildServerAdapter() {
-        @Override
-        public void serverShutdown() {
-          mySshSessionFactory.stopMonitoringConfigs();
-          mySshSessionFactoryKnownHostsIgnored.stopMonitoringConfigs();
-        }
-      });
-    }
   }
 
   private void setStreamFileThreshold() {
@@ -240,7 +201,7 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public Map<String, String> getBranchesRevisions(@NotNull VcsRoot root) throws VcsException {
     final Map<String, String> result = new HashMap<String, String>();
-    for (Ref ref : getRemoteRefs(root)) {
+    for (Ref ref : getRemoteRefs(root).values()) {
       result.put(ref.getName(), ref.getObjectId().name());
     }
     return result;
@@ -1021,8 +982,11 @@ public class GitVcsSupport extends ServerVcsSupport
     Settings s = context.getSettings();
     try {
       Repository r = context.getRepository();
-      fetchBranchData(s, r);
       String refName = GitUtils.expandRef(s.getRef());
+
+      if (isRemoteRefUpdated(root, s, refName))
+        fetchBranchData(s, r);
+
       Ref branchRef = r.getRef(refName);
       if (branchRef == null) {
         throw new VcsException("The ref '" + refName + "' could not be resolved");
@@ -1049,6 +1013,18 @@ public class GitVcsSupport extends ServerVcsSupport
       context.close();
     }
   }
+
+
+  private boolean isRemoteRefUpdated(VcsRoot root, Settings s, String refName) throws VcsException {
+    Map<String, Ref> remoteRefs = getRemoteRefs(root);
+    Ref remoteRef = remoteRefs.get(refName);
+    if (remoteRef == null)
+      return true;
+
+    String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getRef());
+    return cachedCurrentVersion == null || !remoteRef.getObjectId().name().equals(GitUtils.versionRevision(cachedCurrentVersion));
+  }
+
 
   /**
    * Return cached current version for branch in repository in specified dir, or null if no cache version found.
@@ -1078,31 +1054,25 @@ public class GitVcsSupport extends ServerVcsSupport
   private void fetchBranchData(Settings settings, Repository repository) throws Exception {
     final String refName = GitUtils.expandRef(settings.getRef());
     RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
-    fetch(repository, settings.getAuthSettings(), settings.getRepositoryFetchURL(), spec);
+    fetch(repository, settings.getRepositoryFetchURL(), spec, settings.getAuthSettings());
   }
 
   /**
    * Make fetch into local repository (it.s getDirectory() should be != null)
    *
    * @param db repository
-   * @param auth auth settings
    * @param fetchURI uri to fetch
    * @param refspec refspec
+   * @param auth auth settings
    */
-  public void fetch(Repository db, Settings.AuthSettings auth, URIish fetchURI, RefSpec refspec)
-    throws NotSupportedException, VcsException, TransportException {
+  public void fetch(Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
     Lock rmLock = getRmLock(repositoryDir).readLock();
     rmLock.lock();
     try {
       synchronized (getWriteLock(repositoryDir)) {
-        unlockRefs(db);
-        if (myConfig.isSeparateProcessForFetch()) {
-          fetchInSeparateProcess(db, auth, fetchURI, refspec);
-        } else {
-          fetchInSameProcess(db, auth, fetchURI, refspec);
-        }
+        myFetchCommand.fetch(db, fetchURI, refspec, auth);
       }
     } finally {
       rmLock.unlock();
@@ -1168,164 +1138,6 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
 
-  private void fetchInSameProcess(final Repository db, final Settings.AuthSettings auth, final URIish uri, final RefSpec refSpec)
-    throws NotSupportedException, VcsException, TransportException {
-    final String debugInfo = " (" + (db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"")
-                             + uri.toString() + "#" + refSpec.toString() + ")";
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Fetch in server process: " + debugInfo);
-    }
-    final long fetchStart = System.currentTimeMillis();
-    final Transport tn = openTransport(auth, db, uri);
-    try {
-      FetchResult result = tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(refSpec));
-      GitServerUtil.checkFetchSuccessful(result);
-    } catch (OutOfMemoryError oom) {
-      LOG.warn("There is not enough memory for git fetch, try to run fetch in a separate process.");
-      clean(db);
-    } finally {
-      tn.close();
-      if (PERFORMANCE_LOG.isDebugEnabled()) {
-        PERFORMANCE_LOG.debug("[fetch in server process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
-      }
-    }
-  }
-
-  private void unlockRefs(Repository db) throws VcsException{
-    try {
-      Map<String, Ref> refMap = db.getRefDatabase().getRefs(org.eclipse.jgit.lib.Constants.R_HEADS);
-      for (Ref ref : refMap.values()) {
-        unlockRef(db, ref);
-      }
-    } catch (Exception e) {
-      throw new VcsException(e);
-    }
-  }
-
-
-  private void unlockRef(Repository db, Ref ref) throws IOException, InterruptedException {
-    File refFile = new File(db.getDirectory(), ref.getName());
-    File refLockFile = new File(db.getDirectory(), ref.getName() + ".lock");
-    LockFile lock = new LockFile(refFile, FS.DETECTED);
-    try {
-      if (!lock.lock()) {
-        LOG.warn("Cannot lock the ref " + ref.getName() + ", will wait and try again");
-        Thread.sleep(5000);
-        if (lock.lock()) {
-          LOG.warn("Successfully lock the ref " + ref.getName());
-        } else {
-          if (FileUtil.delete(refLockFile)) {
-            LOG.warn("Remove ref lock " + refLockFile.getAbsolutePath());
-          } else {
-            LOG.warn("Cannot remove ref lock " + refLockFile.getAbsolutePath() + ", fetch will probably fail. Please remove lock manually.");
-          }
-        }
-      }
-    } finally {
-      lock.unlock();
-    }
-  }
-
-
-  /**
-   * Fetch data for the branch in separate process
-   *
-   * @param settings   settings for the root
-   * @param repository the repository
-   * @throws Exception if there is a problem with fetching data
-   */
-  private void fetchInSeparateProcess(final Repository repository, final Settings.AuthSettings settings, final URIish uri, final RefSpec spec)
-    throws VcsException {
-    final long fetchStart = System.currentTimeMillis();
-    final String debugInfo = " (" + (repository.getDirectory() != null? repository.getDirectory().getAbsolutePath() + ", ":"")
-                             + uri.toString() + "#" + spec.toString() + ")";
-    GeneralCommandLine cl = new GeneralCommandLine();
-    cl.setWorkingDirectory(repository.getDirectory());
-    cl.setExePath(myConfig.getFetchProcessJavaPath());
-    cl.addParameters("-Xmx" + myConfig.getFetchProcessMaxMemory(), "-cp", myConfig.getFetchClasspath(), myConfig.getFetcherClassName(),
-                     uri.toString());//last parameter is not used in Fetcher, but is useful to distinguish fetch processes
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Start fetch process for " + debugInfo);
-    }
-    final List<Exception> errors = new ArrayList<Exception>();
-    ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.RunCommandEvents() {
-      public void onProcessStarted(Process ps) {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Fetch process for " + debugInfo + " started");
-        }
-        OutputStream processInput = ps.getOutputStream();
-        try {
-          Map<String, String> properties = new HashMap<String, String>(settings.toMap());
-          properties.put(Constants.REPOSITORY_DIR_PROPERTY_NAME, repository.getDirectory().getCanonicalPath());
-          properties.put(Constants.FETCH_URL, uri.toString());
-          properties.put(Constants.REFSPEC, spec.toString());
-          properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
-          processInput.write(VcsRootImpl.propertiesToString(properties).getBytes("UTF-8"));
-          processInput.flush();
-        } catch (IOException e) {
-          errors.add(e);
-        } finally {
-          try {
-            processInput.close();
-          } catch (IOException e) {
-            //ignore
-          }
-        }
-      }
-
-      public void onProcessFinished(Process ps) {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Fetch process for " + debugInfo + " finished");
-        }
-      }
-
-      public Integer getOutputIdleSecondsTimeout() {
-        return myConfig.getFetchTimeout();
-      }
-    });
-
-    if (PERFORMANCE_LOG.isDebugEnabled()) {
-      PERFORMANCE_LOG.debug("[fetch in separate process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
-    }
-    if (!errors.isEmpty()) {
-      throw new VcsException("Separate process fetch error", errors.get(0));
-    }
-    VcsException commandError = CommandLineUtil.getCommandLineError("git fetch", result);
-    if (commandError != null) {
-      if (isOutOfMemoryError(result)) {
-        LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + myConfig.getFetchProcessMaxMemory() + ", try to increase it.");
-        clean(repository);
-      }
-      throw commandError;
-    }
-    if (result.getStderr().length() > 0) {
-      LOG.warn("Error output produced by git fetch");
-      LOG.warn(result.getStderr());
-    }
-  }
-
-  private boolean isOutOfMemoryError(ExecResult result) {
-    return result.getStderr().contains("java.lang.OutOfMemoryError");
-  }
-
-  /**
-   * Clean out garbage in case of errors
-   * @param db repository
-   */
-  private void clean(Repository db) {
-    //When jgit loads new pack into repository, it first writes it to file
-    //incoming_xxx.pack. When it tries to open such pack we can run out of memory.
-    //In this case incoming_xxx.pack files will waste disk space.
-    //See TW-13450 for details
-    File objectsDir = ((FileRepository) db).getObjectsDirectory();
-    for (File f : objectsDir.listFiles()) {
-      if (f.isFile() && f.getName().startsWith("incoming_") && f.getName().endsWith(".pack")) {
-        FileUtil.delete(f);
-      }
-    }
-  }
-
-
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
     OperationContext context = createContext(vcsRoot, "connection test");
     Settings s = context.getSettings();
@@ -1338,7 +1150,7 @@ public class GitVcsSupport extends ServerVcsSupport
         if (LOG.isDebugEnabled()) {
           LOG.debug("Opening connection for " + s.debugInfo());
         }
-        final Transport tn = openTransport(s.getAuthSettings(), r, s.getRepositoryFetchURL());
+        final Transport tn = myTransportFactory.createTransport(r, s.getRepositoryFetchURL(), s.getAuthSettings());
         try {
           final FetchConnection c = tn.openFetch();
           try {
@@ -1364,7 +1176,7 @@ public class GitVcsSupport extends ServerVcsSupport
           tn.close();
         }
         if (!s.getRepositoryFetchURL().equals(s.getRepositoryPushURL())) {
-          final Transport push = openTransport(s.getAuthSettings(), r, s.getRepositoryPushURL());
+          final Transport push = myTransportFactory.createTransport(r, s.getRepositoryPushURL(), s.getAuthSettings());
           try {
             final PushConnection c = push.openPush();
             try {
@@ -1434,7 +1246,7 @@ public class GitVcsSupport extends ServerVcsSupport
         LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
       }
       synchronized (getWriteLock(s.getRepositoryDir())) {
-        final Transport tn = openTransport(s.getAuthSettings(), r, s.getRepositoryPushURL());
+        final Transport tn = myTransportFactory.createTransport(r, s.getRepositoryPushURL(), s.getAuthSettings());
         try {
           final PushConnection c = tn.openPush();
           try {
@@ -1482,82 +1294,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return objRep;
   }
 
-  /**
-   * Open transport for the repository
-   *
-   * @param authSettings authentication settings
-   * @param r   the repository to open
-   * @param url the URL to open
-   * @return the transport instance
-   * @throws NotSupportedException if transport is not supported
-   * @throws VcsException          if there is a problem with configuring the transport
-   */
-  public Transport openTransport(Settings.AuthSettings authSettings, Repository r, final URIish url) throws NotSupportedException, VcsException {
-    final URIish authUrl = authSettings.createAuthURI(url);
-    checkUrl(url);
-    final Transport t = Transport.open(r, authUrl);
-    t.setCredentialsProvider(authSettings.toCredentialsProvider());
-    if (t instanceof SshTransport) {
-      SshTransport ssh = (SshTransport)t;
-      ssh.setSshSessionFactory(getSshSessionFactory(authSettings, url));
-    }
-    t.setTimeout(myConfig.getCloneTimeout());
-    return t;
-  }
-
-  /**
-   * This is a work-around for an issue http://youtrack.jetbrains.net/issue/TW-9933.
-   * Due to bug in jgit (https://bugs.eclipse.org/bugs/show_bug.cgi?id=315564),
-   * in the case of not-existing local repository we get an obscure exception:
-   * 'org.eclipse.jgit.errors.NotSupportedException: URI not supported: x:/git/myrepo.git',
-   * while URI is correct.
-   *
-   * It often happens when people try to access a repository located on a mapped network
-   * drive from the TeamCity started as Windows service.
-   *
-   * If repository is local and is not exists this method throws a friendly exception.
-   *
-   * @param url URL to check
-   * @throws VcsException if url points to not-existing local repository
-   */
-  private void checkUrl(final URIish url) throws VcsException {
-    if (!url.isRemote()) {
-      File localRepository = new File(url.getPath());
-      if (!localRepository.exists()) {
-        String error = "Cannot access repository " + url.toString();
-        if (SystemInfo.isWindows) {
-          error += ". If TeamCity is run as a Windows service, it cannot access network mapped drives. Make sure this is not your case.";
-        }
-        throw new VcsException(error);
-      }
-    }
-  }
-
-  /**
-   * Get appropriate session factory object using settings
-   *
-   * @param authSettings a vcs root settings
-   * @return session factory object
-   * @throws VcsException in case of problems with creating object
-   */
-  private SshSessionFactory getSshSessionFactory(Settings.AuthSettings authSettings, URIish url) throws VcsException {
-    switch (authSettings.getAuthMethod()) {
-      case PRIVATE_KEY_DEFAULT:
-        return authSettings.isIgnoreKnownHosts() ? mySshSessionFactoryKnownHostsIgnored : mySshSessionFactory;
-      case PRIVATE_KEY_FILE:
-        try {
-          return new PrivateKeyFileSshSessionFactory(authSettings);
-        } catch (VcsAuthenticationException e) {
-          //add url to exception
-          throw new VcsAuthenticationException(url.toString(), e.getMessage().toString());
-        }
-      case PASSWORD:
-        return PasswordSshSessionFactory.INSTANCE;
-      default:
-        throw new VcsAuthenticationException(url.toString(), "The authentication method " + authSettings.getAuthMethod() + " is not supported for SSH");
-    }
-  }
-
   @Override
   public VcsPersonalSupport getPersonalSupport() {
     return this;
@@ -1598,7 +1334,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   public List<String> getRemoteBranches(@NotNull final VcsRoot root, @NotNull final String pattern) throws VcsException {
-    Collection<Ref> remotes = getRemoteRefs(root);
+    Collection<Ref> remotes = getRemoteRefs(root).values();
     Pattern p = Pattern.compile(pattern);
     List<String> result = new ArrayList<String>();
     for (Ref ref : remotes) {
@@ -1610,7 +1346,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  Collection<Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
+  Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
     OperationContext context = createContext(root, "list remote refs");
     Settings s = context.getSettings();
     File tmpDir = null;
@@ -1621,9 +1357,9 @@ public class GitVcsSupport extends ServerVcsSupport
       Transport transport = null;
       FetchConnection connection = null;
       try {
-        transport = openTransport(s.getAuthSettings(), db, s.getRepositoryFetchURL());
+        transport = myTransportFactory.createTransport(db, s.getRepositoryFetchURL(), s.getAuthSettings());
         connection = transport.openFetch();
-        return connection.getRefs();
+        return connection.getRefsMap();
       } catch (NotSupportedException nse) {
         throw friendlyNotSupportedException(root, s, nse);
       } catch (TransportException te) {

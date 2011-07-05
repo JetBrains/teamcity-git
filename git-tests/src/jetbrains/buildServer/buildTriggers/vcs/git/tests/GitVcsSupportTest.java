@@ -29,12 +29,15 @@ import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import jetbrains.buildServer.vcs.patches.PatchTestCase;
 import org.apache.log4j.Level;
+import org.eclipse.jgit.errors.NotSupportedException;
+import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.revwalk.RevTag;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.LockFile;
+import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.FS;
 import org.jmock.Expectations;
@@ -182,7 +185,10 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   private GitVcsSupport getSupport(ExtensionHolder holder) {
-    return new GitVcsSupport(myConfigBuilder.build(), holder, null);
+    PluginConfig config = myConfigBuilder.build();
+    TransportFactory transportFactory = new TransportFactoryImpl(config, null);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
+    return new GitVcsSupport(config, transportFactory, fetchCommand, holder);
   }
 
 
@@ -1004,12 +1010,12 @@ public class GitVcsSupportTest extends PatchTestCase {
   public void test_logging() {
     myConfigBuilder.setSeparateProcessForFetch(true);
 
-    String noDebugError = getCurrentVersionExceptionMessage();
+    String noDebugError = getFetchExceptionMessage();
     assertFalse(noDebugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"));//no stacktrace
     assertFalse(noDebugError.endsWith("\n"));
 
     Loggers.VCS.setLevel(Level.DEBUG);
-    String debugError = getCurrentVersionExceptionMessage();
+    String debugError = getFetchExceptionMessage();
     assertTrue(debugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"));
     assertFalse(debugError.endsWith("\n"));
   }
@@ -1215,6 +1221,52 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  //TW-17435
+  @Test
+  public void getCurrentVersion_should_not_do_fetch_if_remote_ref_not_changed() throws Exception {
+    PluginConfig config = myConfigBuilder.build();
+    TransportFactory transportFactory = new TransportFactoryImpl(config, null);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
+    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
+    GitVcsSupport git = new GitVcsSupport(config, transportFactory, fetchCounter, null);
+
+    File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
+    FileUtil.copyDir(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
+
+    VcsRootImpl root = getRoot("master", false, remoteRepositoryDir);
+
+    GitUtils.versionRevision(git.getCurrentVersion(root));
+    assertEquals(1, fetchCounter.getFetchCount());
+
+    GitUtils.versionRevision(git.getCurrentVersion(root));
+    assertEquals(1, fetchCounter.getFetchCount());
+  }
+
+
+  private static class FetchCommandCountDecorator implements FetchCommand {
+
+    private final FetchCommand myDelegate;
+    private int myFetchCount = 0;
+
+    FetchCommandCountDecorator(FetchCommand delegate) {
+      myDelegate = delegate;
+    }
+
+    public void fetch(Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+      myDelegate.fetch(db, fetchURI, refspec, auth);
+      inc();
+    }
+
+    private synchronized void inc() {
+      myFetchCount++;
+    }
+
+    public synchronized int getFetchCount() {
+      return myFetchCount;
+    }
+  }
+
+
   private File createBranchLockFile(File repositoryDir, String branch) throws IOException {
     String branchRefPath = "refs" + File.separator + "heads" + File.separator + branch;
     File refFile  = new File(repositoryDir, branchRefPath);
@@ -1224,13 +1276,13 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  private String getCurrentVersionExceptionMessage() {
+  private String getFetchExceptionMessage() {
     String result = null;
     File notExisting = new File(myTmpDir, "not-existing");
     VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
     root.addProperty(Constants.FETCH_URL, GitUtils.toURL(notExisting));
     try {
-      getSupport().getCurrentVersion(root);
+      getSupport().collectChanges(root, MERGE_VERSION, AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION, CheckoutRules.DEFAULT);
       fail("Should throw an exception for not-existing repository");
     } catch (VcsException e) {
       result = e.getMessage();

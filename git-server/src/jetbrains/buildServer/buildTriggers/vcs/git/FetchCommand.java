@@ -1,0 +1,44 @@
+/*
+ * Copyright 2000-2011 JetBrains s.r.o.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package jetbrains.buildServer.buildTriggers.vcs.git;
+
+import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.errors.NotSupportedException;
+import org.eclipse.jgit.errors.TransportException;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.URIish;
+
+/**
+ * @author dmitry.neverov
+ */
+public interface FetchCommand {
+
+  /**
+   * Make fetch into local repository (db.getDirectory() should be not null)
+   *
+   * @param db repository
+   * @param fetchURI uri to fetch
+   * @param refspec refspec
+   * @param auth auth settings
+   * @throws NotSupportedException
+   * @throws TransportException
+   * @throws VcsException
+   */
+  public void fetch(Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, TransportException, VcsException;
+
+}
