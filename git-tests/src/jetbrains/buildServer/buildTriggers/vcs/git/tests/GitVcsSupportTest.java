@@ -182,7 +182,9 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   private GitVcsSupport getSupport(ExtensionHolder holder) {
-    return new GitVcsSupport(myConfigBuilder.build(), holder, null);
+    PluginConfig config = myConfigBuilder.build();
+    TransportFactory transportFactory = new TransportFactoryImpl(config, null);
+    return new GitVcsSupport(config, transportFactory, holder);
   }
 
 

@@ -17,10 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -101,6 +98,8 @@ public class BranchSupportTest {
   }
 
   private GitVcsSupport getSupport() {
-    return new GitVcsSupport(new PluginConfigImpl(myServerPaths), null, null);
+    PluginConfigImpl config = new PluginConfigImpl(myServerPaths);
+    TransportFactory transportFactory = new TransportFactoryImpl(config, null);
+    return new GitVcsSupport(config, transportFactory, null);
   }
 }

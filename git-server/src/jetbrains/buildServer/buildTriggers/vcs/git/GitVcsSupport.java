@@ -19,22 +19,13 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
-import com.intellij.openapi.util.SystemInfo;
-import com.jcraft.jsch.JSchException;
-import com.jcraft.jsch.Session;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
-import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
-import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
-import jetbrains.buildServer.buildTriggers.vcs.git.ssh.RefreshableSshConfigSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.serverSide.BuildServerAdapter;
-import jetbrains.buildServer.serverSide.BuildServerListener;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
-import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.vcs.*;
@@ -112,48 +103,21 @@ public class GitVcsSupport extends ServerVcsSupport
    * @see Cleaner
    */
   private final ConcurrentMap<File, ReadWriteLock> myRmLocks = new ConcurrentHashMap<File, ReadWriteLock>();
-  /**
-   * The default SSH session factory used for not explicitly configured host
-   * It fails when user is prompted for some information.
-   */
-  private final RefreshableSshConfigSessionFactory mySshSessionFactory;
-  /**
-   * This factory is used when known host database is specified to be ignored
-   */
-  private final RefreshableSshConfigSessionFactory mySshSessionFactoryKnownHostsIgnored;
-
   private final ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
   private final PluginConfig myConfig;
+  private final TransportFactory myTransportFactory;
 
 
   public GitVcsSupport(@NotNull final PluginConfig config,
-                       @Nullable final ExtensionHolder extensionHolder,
-                       @Nullable final EventDispatcher<BuildServerListener> dispatcher) {
+                       @NotNull final TransportFactory transportFactory,
+                       @Nullable final ExtensionHolder extensionHolder) {
     myConfig = config;
     myCacheDir = config.getCachesDir();
     myExtensionHolder = extensionHolder;
+    myTransportFactory = transportFactory;
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(myConfig.getCurrentVersionCacheSize());
-    final boolean monitorSshConfigs = dispatcher != null; //dispatcher is null in tests and when invoked from the Fetcher
-    mySshSessionFactory = new RefreshableSshConfigSessionFactory(monitorSshConfigs);
-    mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory(monitorSshConfigs) {
-      // note that different instance is used because JSch cannot be shared with strict host checking
-      public Session getSession(String user, String pass, String host, int port, CredentialsProvider credentialsProvider, FS fs) throws JSchException {
-        final Session session = super.getSession(user, pass, host, port, credentialsProvider, fs);
-        session.setConfig("StrictHostKeyChecking", "no");
-        return session;
-      }
-    };
     setStreamFileThreshold();
-    if (monitorSshConfigs) {
-      dispatcher.addListener(new BuildServerAdapter() {
-        @Override
-        public void serverShutdown() {
-          mySshSessionFactory.stopMonitoringConfigs();
-          mySshSessionFactoryKnownHostsIgnored.stopMonitoringConfigs();
-        }
-      });
-    }
   }
 
   private void setStreamFileThreshold() {
@@ -1176,7 +1140,7 @@ public class GitVcsSupport extends ServerVcsSupport
       LOG.debug("Fetch in server process: " + debugInfo);
     }
     final long fetchStart = System.currentTimeMillis();
-    final Transport tn = openTransport(auth, db, uri);
+    final Transport tn = myTransportFactory.createTransport(db, uri, auth);
     try {
       FetchResult result = tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(refSpec));
       GitServerUtil.checkFetchSuccessful(result);
@@ -1338,7 +1302,7 @@ public class GitVcsSupport extends ServerVcsSupport
         if (LOG.isDebugEnabled()) {
           LOG.debug("Opening connection for " + s.debugInfo());
         }
-        final Transport tn = openTransport(s.getAuthSettings(), r, s.getRepositoryFetchURL());
+        final Transport tn = myTransportFactory.createTransport(r, s.getRepositoryFetchURL(), s.getAuthSettings());
         try {
           final FetchConnection c = tn.openFetch();
           try {
@@ -1364,7 +1328,7 @@ public class GitVcsSupport extends ServerVcsSupport
           tn.close();
         }
         if (!s.getRepositoryFetchURL().equals(s.getRepositoryPushURL())) {
-          final Transport push = openTransport(s.getAuthSettings(), r, s.getRepositoryPushURL());
+          final Transport push = myTransportFactory.createTransport(r, s.getRepositoryPushURL(), s.getAuthSettings());
           try {
             final PushConnection c = push.openPush();
             try {
@@ -1434,7 +1398,7 @@ public class GitVcsSupport extends ServerVcsSupport
         LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
       }
       synchronized (getWriteLock(s.getRepositoryDir())) {
-        final Transport tn = openTransport(s.getAuthSettings(), r, s.getRepositoryPushURL());
+        final Transport tn = myTransportFactory.createTransport(r, s.getRepositoryPushURL(), s.getAuthSettings());
         try {
           final PushConnection c = tn.openPush();
           try {
@@ -1480,82 +1444,6 @@ public class GitVcsSupport extends ServerVcsSupport
       objRep = r;
     }
     return objRep;
-  }
-
-  /**
-   * Open transport for the repository
-   *
-   * @param authSettings authentication settings
-   * @param r   the repository to open
-   * @param url the URL to open
-   * @return the transport instance
-   * @throws NotSupportedException if transport is not supported
-   * @throws VcsException          if there is a problem with configuring the transport
-   */
-  public Transport openTransport(Settings.AuthSettings authSettings, Repository r, final URIish url) throws NotSupportedException, VcsException {
-    final URIish authUrl = authSettings.createAuthURI(url);
-    checkUrl(url);
-    final Transport t = Transport.open(r, authUrl);
-    t.setCredentialsProvider(authSettings.toCredentialsProvider());
-    if (t instanceof SshTransport) {
-      SshTransport ssh = (SshTransport)t;
-      ssh.setSshSessionFactory(getSshSessionFactory(authSettings, url));
-    }
-    t.setTimeout(myConfig.getCloneTimeout());
-    return t;
-  }
-
-  /**
-   * This is a work-around for an issue http://youtrack.jetbrains.net/issue/TW-9933.
-   * Due to bug in jgit (https://bugs.eclipse.org/bugs/show_bug.cgi?id=315564),
-   * in the case of not-existing local repository we get an obscure exception:
-   * 'org.eclipse.jgit.errors.NotSupportedException: URI not supported: x:/git/myrepo.git',
-   * while URI is correct.
-   *
-   * It often happens when people try to access a repository located on a mapped network
-   * drive from the TeamCity started as Windows service.
-   *
-   * If repository is local and is not exists this method throws a friendly exception.
-   *
-   * @param url URL to check
-   * @throws VcsException if url points to not-existing local repository
-   */
-  private void checkUrl(final URIish url) throws VcsException {
-    if (!url.isRemote()) {
-      File localRepository = new File(url.getPath());
-      if (!localRepository.exists()) {
-        String error = "Cannot access repository " + url.toString();
-        if (SystemInfo.isWindows) {
-          error += ". If TeamCity is run as a Windows service, it cannot access network mapped drives. Make sure this is not your case.";
-        }
-        throw new VcsException(error);
-      }
-    }
-  }
-
-  /**
-   * Get appropriate session factory object using settings
-   *
-   * @param authSettings a vcs root settings
-   * @return session factory object
-   * @throws VcsException in case of problems with creating object
-   */
-  private SshSessionFactory getSshSessionFactory(Settings.AuthSettings authSettings, URIish url) throws VcsException {
-    switch (authSettings.getAuthMethod()) {
-      case PRIVATE_KEY_DEFAULT:
-        return authSettings.isIgnoreKnownHosts() ? mySshSessionFactoryKnownHostsIgnored : mySshSessionFactory;
-      case PRIVATE_KEY_FILE:
-        try {
-          return new PrivateKeyFileSshSessionFactory(authSettings);
-        } catch (VcsAuthenticationException e) {
-          //add url to exception
-          throw new VcsAuthenticationException(url.toString(), e.getMessage().toString());
-        }
-      case PASSWORD:
-        return PasswordSshSessionFactory.INSTANCE;
-      default:
-        throw new VcsAuthenticationException(url.toString(), "The authentication method " + authSettings.getAuthMethod() + " is not supported for SSH");
-    }
   }
 
   @Override
@@ -1621,7 +1509,7 @@ public class GitVcsSupport extends ServerVcsSupport
       Transport transport = null;
       FetchConnection connection = null;
       try {
-        transport = openTransport(s.getAuthSettings(), db, s.getRepositoryFetchURL());
+        transport = myTransportFactory.createTransport(db, s.getRepositoryFetchURL(), s.getAuthSettings());
         connection = transport.openFetch();
         return connection.getRefs();
       } catch (NotSupportedException nse) {
