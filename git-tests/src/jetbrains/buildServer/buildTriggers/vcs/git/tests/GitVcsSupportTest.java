@@ -29,12 +29,15 @@ import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import jetbrains.buildServer.vcs.patches.PatchTestCase;
 import org.apache.log4j.Level;
+import org.eclipse.jgit.errors.NotSupportedException;
+import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.revwalk.RevTag;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.LockFile;
+import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.FS;
 import org.jmock.Expectations;
@@ -1214,6 +1217,52 @@ public class GitVcsSupportTest extends PatchTestCase {
       assertTrue(content.contains("\r\n"));
     } finally {
       System.setProperty("user.home", original);
+    }
+  }
+
+
+  //TW-17435
+  @Test
+  public void getCurrentVersion_should_not_do_fetch_if_remote_ref_not_changed() throws Exception {
+    PluginConfig config = myConfigBuilder.build();
+    TransportFactory transportFactory = new TransportFactoryImpl(config, null);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
+    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
+    GitVcsSupport git = new GitVcsSupport(config, transportFactory, fetchCounter, null);
+
+    File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
+    FileUtil.copyDir(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
+
+    VcsRootImpl root = getRoot("master", false, remoteRepositoryDir);
+
+    GitUtils.versionRevision(git.getCurrentVersion(root));
+    assertEquals(1, fetchCounter.getFetchCount());
+
+    GitUtils.versionRevision(git.getCurrentVersion(root));
+    assertEquals(1, fetchCounter.getFetchCount());
+  }
+
+
+  private static class FetchCommandCountDecorator implements FetchCommand {
+
+    private final FetchCommand myDelegate;
+    private int myFetchCount = 0;
+
+    FetchCommandCountDecorator(FetchCommand delegate) {
+      myDelegate = delegate;
+    }
+
+    public void fetch(Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+      myDelegate.fetch(db, fetchURI, refspec, auth);
+      inc();
+    }
+
+    private synchronized void inc() {
+      myFetchCount++;
+    }
+
+    public synchronized int getFetchCount() {
+      return myFetchCount;
     }
   }
 
