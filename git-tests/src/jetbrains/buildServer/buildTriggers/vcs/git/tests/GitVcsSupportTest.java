@@ -1010,12 +1010,12 @@ public class GitVcsSupportTest extends PatchTestCase {
   public void test_logging() {
     myConfigBuilder.setSeparateProcessForFetch(true);
 
-    String noDebugError = getCurrentVersionExceptionMessage();
+    String noDebugError = getFetchExceptionMessage();
     assertFalse(noDebugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"));//no stacktrace
     assertFalse(noDebugError.endsWith("\n"));
 
     Loggers.VCS.setLevel(Level.DEBUG);
-    String debugError = getCurrentVersionExceptionMessage();
+    String debugError = getFetchExceptionMessage();
     assertTrue(debugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"));
     assertFalse(debugError.endsWith("\n"));
   }
@@ -1276,13 +1276,13 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  private String getCurrentVersionExceptionMessage() {
+  private String getFetchExceptionMessage() {
     String result = null;
     File notExisting = new File(myTmpDir, "not-existing");
     VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
     root.addProperty(Constants.FETCH_URL, GitUtils.toURL(notExisting));
     try {
-      getSupport().getCurrentVersion(root);
+      getSupport().collectChanges(root, MERGE_VERSION, AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION, CheckoutRules.DEFAULT);
       fail("Should throw an exception for not-existing repository");
     } catch (VcsException e) {
       result = e.getMessage();
