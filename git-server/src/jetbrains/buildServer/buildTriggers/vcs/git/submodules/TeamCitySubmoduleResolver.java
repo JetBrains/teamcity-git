@@ -84,7 +84,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
       result = myContext.getRepository(repositoryDir, uri);
       if (LOG.isDebugEnabled())
         LOG.debug("Fetching submodule " + url + " used at " + path + " for " + myContext.getSettings().debugInfo());
-      myGitSupport.fetch(result, myContext.getSettings().getAuthSettings(), uri, new RefSpec("+refs/heads/*:refs/heads/*"));
+      myGitSupport.fetch(result, uri, new RefSpec("+refs/heads/*:refs/heads/*"), myContext.getSettings().getAuthSettings());
     }
     checkRepositoryCanBeUsedForUrl(result, url);
     return result;

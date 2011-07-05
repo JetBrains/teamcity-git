@@ -68,7 +68,9 @@ public class CleanerTest extends BaseTestCase {
       allowing(server).getVcsManager(); will(returnValue(myVcsManager));
     }});
     PluginConfig config = new PluginConfigImpl(myServerPaths);
-    mySupport = new GitVcsSupport(config, null, null);
+    TransportFactory transportFactory = new TransportFactoryImpl(config, null);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
+    mySupport = new GitVcsSupport(config, transportFactory, fetchCommand, null);
     myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), config, mySupport);
   }
 
@@ -84,7 +86,10 @@ public class CleanerTest extends BaseTestCase {
       myConfigBuilder.setPathToGit(System.getenv(Constants.GIT_PATH_ENV));
 
     final VcsRoot root = GitTestUtil.getVcsRoot();
-    GitVcsSupport vcsSupport = new GitVcsSupport(myConfigBuilder.build(), null, null);
+    final PluginConfig config = myConfigBuilder.build();
+    TransportFactory transportFactory = new TransportFactoryImpl(config, null);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
+    GitVcsSupport vcsSupport = new GitVcsSupport(config, transportFactory, fetchCommand, null);
     vcsSupport.getCurrentVersion(root);//it will create dir in cache directory
     File repositoryDir = getRepositoryDir(root);
     File gitCacheDir = new File(myServerPaths.getCachesDir(), "git");

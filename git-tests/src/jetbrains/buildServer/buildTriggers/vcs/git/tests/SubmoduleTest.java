@@ -17,10 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import org.eclipse.jgit.lib.BlobBasedConfig;
@@ -65,7 +62,10 @@ public class SubmoduleTest {
   public void setUp() throws IOException {
     File teamcitySystemDir = myTempFiles.createTempDir();
     myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
-    myGitSupport = new GitVcsSupport(new PluginConfigImpl(myServerPaths), null, null);
+    final PluginConfigImpl config = new PluginConfigImpl(myServerPaths);
+    TransportFactory transportFactory = new TransportFactoryImpl(config, null);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
+    myGitSupport = new GitVcsSupport(config, transportFactory, fetchCommand, null);
   }
 
   @AfterMethod
