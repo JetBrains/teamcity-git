@@ -201,7 +201,7 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public Map<String, String> getBranchesRevisions(@NotNull VcsRoot root) throws VcsException {
     final Map<String, String> result = new HashMap<String, String>();
-    for (Ref ref : getRemoteRefs(root)) {
+    for (Ref ref : getRemoteRefs(root).values()) {
       result.put(ref.getName(), ref.getObjectId().name());
     }
     return result;
@@ -982,8 +982,11 @@ public class GitVcsSupport extends ServerVcsSupport
     Settings s = context.getSettings();
     try {
       Repository r = context.getRepository();
-      fetchBranchData(s, r);
       String refName = GitUtils.expandRef(s.getRef());
+
+      if (isRemoteRefUpdated(root, s, refName))
+        fetchBranchData(s, r);
+
       Ref branchRef = r.getRef(refName);
       if (branchRef == null) {
         throw new VcsException("The ref '" + refName + "' could not be resolved");
@@ -1010,6 +1013,18 @@ public class GitVcsSupport extends ServerVcsSupport
       context.close();
     }
   }
+
+
+  private boolean isRemoteRefUpdated(VcsRoot root, Settings s, String refName) throws VcsException {
+    Map<String, Ref> remoteRefs = getRemoteRefs(root);
+    Ref remoteRef = remoteRefs.get(refName);
+    if (remoteRef == null)
+      return true;
+
+    String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getRef());
+    return cachedCurrentVersion == null || !remoteRef.getObjectId().name().equals(GitUtils.versionRevision(cachedCurrentVersion));
+  }
+
 
   /**
    * Return cached current version for branch in repository in specified dir, or null if no cache version found.
@@ -1319,7 +1334,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   public List<String> getRemoteBranches(@NotNull final VcsRoot root, @NotNull final String pattern) throws VcsException {
-    Collection<Ref> remotes = getRemoteRefs(root);
+    Collection<Ref> remotes = getRemoteRefs(root).values();
     Pattern p = Pattern.compile(pattern);
     List<String> result = new ArrayList<String>();
     for (Ref ref : remotes) {
@@ -1331,7 +1346,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  Collection<Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
+  Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
     OperationContext context = createContext(root, "list remote refs");
     Settings s = context.getSettings();
     File tmpDir = null;
@@ -1344,7 +1359,7 @@ public class GitVcsSupport extends ServerVcsSupport
       try {
         transport = myTransportFactory.createTransport(db, s.getRepositoryFetchURL(), s.getAuthSettings());
         connection = transport.openFetch();
-        return connection.getRefs();
+        return connection.getRefsMap();
       } catch (NotSupportedException nse) {
         throw friendlyNotSupportedException(root, s, nse);
       } catch (TransportException te) {
