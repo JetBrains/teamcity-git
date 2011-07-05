@@ -16,15 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
-import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ExtensionHolder;
-import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
-import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
@@ -41,8 +37,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
-import org.eclipse.jgit.storage.file.FileRepository;
-import org.eclipse.jgit.storage.file.LockFile;
 import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
@@ -107,15 +101,18 @@ public class GitVcsSupport extends ServerVcsSupport
   private volatile String myDisplayName = null;
   private final PluginConfig myConfig;
   private final TransportFactory myTransportFactory;
+  private final FetchCommand myFetchCommand;
 
 
   public GitVcsSupport(@NotNull final PluginConfig config,
                        @NotNull final TransportFactory transportFactory,
+                       @NotNull final FetchCommand fetchCommand,
                        @Nullable final ExtensionHolder extensionHolder) {
     myConfig = config;
     myCacheDir = config.getCachesDir();
     myExtensionHolder = extensionHolder;
     myTransportFactory = transportFactory;
+    myFetchCommand = fetchCommand;
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(myConfig.getCurrentVersionCacheSize());
     setStreamFileThreshold();
   }
@@ -1042,31 +1039,25 @@ public class GitVcsSupport extends ServerVcsSupport
   private void fetchBranchData(Settings settings, Repository repository) throws Exception {
     final String refName = GitUtils.expandRef(settings.getRef());
     RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
-    fetch(repository, settings.getAuthSettings(), settings.getRepositoryFetchURL(), spec);
+    fetch(repository, settings.getRepositoryFetchURL(), spec, settings.getAuthSettings());
   }
 
   /**
    * Make fetch into local repository (it.s getDirectory() should be != null)
    *
    * @param db repository
-   * @param auth auth settings
    * @param fetchURI uri to fetch
    * @param refspec refspec
+   * @param auth auth settings
    */
-  public void fetch(Repository db, Settings.AuthSettings auth, URIish fetchURI, RefSpec refspec)
-    throws NotSupportedException, VcsException, TransportException {
+  public void fetch(Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
     Lock rmLock = getRmLock(repositoryDir).readLock();
     rmLock.lock();
     try {
       synchronized (getWriteLock(repositoryDir)) {
-        unlockRefs(db);
-        if (myConfig.isSeparateProcessForFetch()) {
-          fetchInSeparateProcess(db, auth, fetchURI, refspec);
-        } else {
-          fetchInSameProcess(db, auth, fetchURI, refspec);
-        }
+        myFetchCommand.fetch(db, fetchURI, refspec, auth);
       }
     } finally {
       rmLock.unlock();
@@ -1128,164 +1119,6 @@ public class GitVcsSupport extends ServerVcsSupport
       }
     } finally {
       rmLock.unlock();
-    }
-  }
-
-
-  private void fetchInSameProcess(final Repository db, final Settings.AuthSettings auth, final URIish uri, final RefSpec refSpec)
-    throws NotSupportedException, VcsException, TransportException {
-    final String debugInfo = " (" + (db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"")
-                             + uri.toString() + "#" + refSpec.toString() + ")";
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Fetch in server process: " + debugInfo);
-    }
-    final long fetchStart = System.currentTimeMillis();
-    final Transport tn = myTransportFactory.createTransport(db, uri, auth);
-    try {
-      FetchResult result = tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(refSpec));
-      GitServerUtil.checkFetchSuccessful(result);
-    } catch (OutOfMemoryError oom) {
-      LOG.warn("There is not enough memory for git fetch, try to run fetch in a separate process.");
-      clean(db);
-    } finally {
-      tn.close();
-      if (PERFORMANCE_LOG.isDebugEnabled()) {
-        PERFORMANCE_LOG.debug("[fetch in server process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
-      }
-    }
-  }
-
-  private void unlockRefs(Repository db) throws VcsException{
-    try {
-      Map<String, Ref> refMap = db.getRefDatabase().getRefs(org.eclipse.jgit.lib.Constants.R_HEADS);
-      for (Ref ref : refMap.values()) {
-        unlockRef(db, ref);
-      }
-    } catch (Exception e) {
-      throw new VcsException(e);
-    }
-  }
-
-
-  private void unlockRef(Repository db, Ref ref) throws IOException, InterruptedException {
-    File refFile = new File(db.getDirectory(), ref.getName());
-    File refLockFile = new File(db.getDirectory(), ref.getName() + ".lock");
-    LockFile lock = new LockFile(refFile, FS.DETECTED);
-    try {
-      if (!lock.lock()) {
-        LOG.warn("Cannot lock the ref " + ref.getName() + ", will wait and try again");
-        Thread.sleep(5000);
-        if (lock.lock()) {
-          LOG.warn("Successfully lock the ref " + ref.getName());
-        } else {
-          if (FileUtil.delete(refLockFile)) {
-            LOG.warn("Remove ref lock " + refLockFile.getAbsolutePath());
-          } else {
-            LOG.warn("Cannot remove ref lock " + refLockFile.getAbsolutePath() + ", fetch will probably fail. Please remove lock manually.");
-          }
-        }
-      }
-    } finally {
-      lock.unlock();
-    }
-  }
-
-
-  /**
-   * Fetch data for the branch in separate process
-   *
-   * @param settings   settings for the root
-   * @param repository the repository
-   * @throws Exception if there is a problem with fetching data
-   */
-  private void fetchInSeparateProcess(final Repository repository, final Settings.AuthSettings settings, final URIish uri, final RefSpec spec)
-    throws VcsException {
-    final long fetchStart = System.currentTimeMillis();
-    final String debugInfo = " (" + (repository.getDirectory() != null? repository.getDirectory().getAbsolutePath() + ", ":"")
-                             + uri.toString() + "#" + spec.toString() + ")";
-    GeneralCommandLine cl = new GeneralCommandLine();
-    cl.setWorkingDirectory(repository.getDirectory());
-    cl.setExePath(myConfig.getFetchProcessJavaPath());
-    cl.addParameters("-Xmx" + myConfig.getFetchProcessMaxMemory(), "-cp", myConfig.getFetchClasspath(), myConfig.getFetcherClassName(),
-                     uri.toString());//last parameter is not used in Fetcher, but is useful to distinguish fetch processes
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Start fetch process for " + debugInfo);
-    }
-    final List<Exception> errors = new ArrayList<Exception>();
-    ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.RunCommandEvents() {
-      public void onProcessStarted(Process ps) {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Fetch process for " + debugInfo + " started");
-        }
-        OutputStream processInput = ps.getOutputStream();
-        try {
-          Map<String, String> properties = new HashMap<String, String>(settings.toMap());
-          properties.put(Constants.REPOSITORY_DIR_PROPERTY_NAME, repository.getDirectory().getCanonicalPath());
-          properties.put(Constants.FETCH_URL, uri.toString());
-          properties.put(Constants.REFSPEC, spec.toString());
-          properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
-          processInput.write(VcsRootImpl.propertiesToString(properties).getBytes("UTF-8"));
-          processInput.flush();
-        } catch (IOException e) {
-          errors.add(e);
-        } finally {
-          try {
-            processInput.close();
-          } catch (IOException e) {
-            //ignore
-          }
-        }
-      }
-
-      public void onProcessFinished(Process ps) {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Fetch process for " + debugInfo + " finished");
-        }
-      }
-
-      public Integer getOutputIdleSecondsTimeout() {
-        return myConfig.getFetchTimeout();
-      }
-    });
-
-    if (PERFORMANCE_LOG.isDebugEnabled()) {
-      PERFORMANCE_LOG.debug("[fetch in separate process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
-    }
-    if (!errors.isEmpty()) {
-      throw new VcsException("Separate process fetch error", errors.get(0));
-    }
-    VcsException commandError = CommandLineUtil.getCommandLineError("git fetch", result);
-    if (commandError != null) {
-      if (isOutOfMemoryError(result)) {
-        LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + myConfig.getFetchProcessMaxMemory() + ", try to increase it.");
-        clean(repository);
-      }
-      throw commandError;
-    }
-    if (result.getStderr().length() > 0) {
-      LOG.warn("Error output produced by git fetch");
-      LOG.warn(result.getStderr());
-    }
-  }
-
-  private boolean isOutOfMemoryError(ExecResult result) {
-    return result.getStderr().contains("java.lang.OutOfMemoryError");
-  }
-
-  /**
-   * Clean out garbage in case of errors
-   * @param db repository
-   */
-  private void clean(Repository db) {
-    //When jgit loads new pack into repository, it first writes it to file
-    //incoming_xxx.pack. When it tries to open such pack we can run out of memory.
-    //In this case incoming_xxx.pack files will waste disk space.
-    //See TW-13450 for details
-    File objectsDir = ((FileRepository) db).getObjectsDirectory();
-    for (File f : objectsDir.listFiles()) {
-      if (f.isFile() && f.getName().startsWith("incoming_") && f.getName().endsWith(".pack")) {
-        FileUtil.delete(f);
-      }
     }
   }
 

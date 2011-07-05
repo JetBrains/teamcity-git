@@ -184,7 +184,8 @@ public class GitVcsSupportTest extends PatchTestCase {
   private GitVcsSupport getSupport(ExtensionHolder holder) {
     PluginConfig config = myConfigBuilder.build();
     TransportFactory transportFactory = new TransportFactoryImpl(config, null);
-    return new GitVcsSupport(config, transportFactory, holder);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
+    return new GitVcsSupport(config, transportFactory, fetchCommand, holder);
   }
 
 

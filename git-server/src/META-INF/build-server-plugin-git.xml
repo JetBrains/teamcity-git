@@ -20,6 +20,7 @@
 <beans default-autowire="constructor">
   <bean id="config" class="jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl"/>
   <bean id="transport" class="jetbrains.buildServer.buildTriggers.vcs.git.TransportFactoryImpl"/>
+  <bean id="fetchCommand" class="jetbrains.buildServer.buildTriggers.vcs.git.FetchCommandImpl"/>
   <bean id="jetbrainsGitServer" class="jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport"/>
   <bean id="cleaner" class="jetbrains.buildServer.buildTriggers.vcs.git.Cleaner"/>
   <bean id="urlSupport" class="jetbrains.buildServer.buildTriggers.vcs.git.GitUrlSupport"/>
