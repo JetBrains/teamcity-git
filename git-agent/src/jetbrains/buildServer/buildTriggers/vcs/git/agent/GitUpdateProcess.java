@@ -43,6 +43,8 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Set;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isAnonymousGitWithUsername;
+
 /**
  * The agent support for VCS.
  */
@@ -377,6 +379,7 @@ public abstract class GitUpdateProcess {
     }
     myLogger.message("The .git directory is missing in '" + myDirectory + "'. Running 'git init'...");
     init();
+    validateUrls();
     addRemote("origin", mySettings.getRepositoryFetchURL());
     if (myUseLocalMirrors) setUseLocalMirror();
     URIish url = mySettings.getRepositoryPushURL();
@@ -385,6 +388,18 @@ public abstract class GitUpdateProcess {
       setConfigProperty("remote.origin.pushurl", pushUrl);
     }
   }
+
+
+  private void validateUrls() {
+    URIish fetch = mySettings.getRepositoryFetchURL();
+    if (isAnonymousGitWithUsername(fetch))
+      LOG.warn("Fetch URL '" + fetch.toString() + "' for root " + myRoot.getName() + " uses an anonymous git protocol and contains a username, fetch will probably fail");
+    URIish push  = mySettings.getRepositoryPushURL();
+    if (!fetch.equals(push) && isAnonymousGitWithUsername(push))
+      LOG.warn("Push URL '" + push.toString() + "'for root " + myRoot.getName() + " uses an anonymous git protocol and contains a username, push will probably fail");
+  }
+
+
 
   /**
    * Get the destination directory creating it if it is missing

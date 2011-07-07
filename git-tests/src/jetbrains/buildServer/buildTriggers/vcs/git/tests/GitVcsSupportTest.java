@@ -196,11 +196,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     return dataFile().getPath();
   }
 
-  /**
-   * The connection test
-   *
-   * @throws Exception in case of IO problem
-   */
+
   @Test
   public void testConnection() throws Exception {
     GitVcsSupport support = getSupport();
@@ -211,9 +207,51 @@ public class GitVcsSupportTest extends PatchTestCase {
       support.testConnection(root);
       fail("The connection should have failed");
     } catch (VcsException ex) {
-      // test successful
+      assertTrue(true);
     }
   }
+
+
+  /**
+   * Test work-around for http://youtrack.jetbrains.net/issue/TW-9933.
+   */
+  @Test
+  public void test_not_existing_local_repository() {
+    File notExisting = new File(myTmpDir, "not-existing");
+    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
+    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(notExisting));
+    try {
+      getSupport().testConnection(root);
+      fail("Should throw an exception for not-existing repository");
+    } catch (VcsException e) {
+      assertTrue(e.getMessage().contains("Cannot access repository"));
+      assertFalse(e.getMessage().endsWith("\n"));
+    }
+  }
+
+
+  @Test
+  public void testConnection_should_throw_exception_for_anonymous_git_url_with_username() throws Exception {
+    String url = "git://git@some.org/repository";
+    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
+    root.addProperty(Constants.FETCH_URL, url);
+    try {
+      getSupport().testConnection(root);
+      fail("should fail, because native git fails for such url");
+    } catch (VcsException e) {
+      assertTrue(e.getMessage().contains("Incorrect url " + url + ": anonymous git url should not contain a username"));
+    }
+
+    //other operations should fail with another error message,
+    //that means old roots that have such urls and use server-side checkout will still work
+    try {
+      getSupport().collectChanges(root, MERGE_VERSION, AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION, CheckoutRules.DEFAULT);
+      fail("should fail, because no such root exists");
+    } catch (VcsException e) {
+      assertFalse(e.getMessage().contains("Incorrect url " + url + ": anonymous git url should not contain a username"));
+    }
+  }
+
 
   /**
    * The current version test
@@ -982,24 +1020,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     }});
     GitVcsSupport jetbrainsPlugin = getSupport(holder);
     assertEquals(jetbrainsPlugin.getDisplayName(), "Git");
-  }
-
-
-  /**
-   * Test work-around for http://youtrack.jetbrains.net/issue/TW-9933.
-   */
-  @Test
-  public void test_not_existing_local_repository() {
-    File notExisting = new File(myTmpDir, "not-existing");
-    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
-    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(notExisting));
-    try {
-      getSupport().testConnection(root);
-      fail("Should throw an exception for not-existing repository");
-    } catch (VcsException e) {
-      assertTrue(e.getMessage().contains("Cannot access repository"));
-      assertFalse(e.getMessage().endsWith("\n"));
-    }
   }
 
 

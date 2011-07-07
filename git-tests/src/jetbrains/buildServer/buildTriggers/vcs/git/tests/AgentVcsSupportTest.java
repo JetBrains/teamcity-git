@@ -28,7 +28,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.vcs.CheckoutRules;
-import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -46,7 +45,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -63,47 +61,17 @@ import static jetbrains.buildServer.util.FileUtil.writeFile;
 @Test
 public class AgentVcsSupportTest extends BaseTestCase {
 
-  /**
-   * Temporary files
-   */
   protected static TempFiles myTempFiles = new TempFiles();
-  /**
-   * Main repository dir
-   */
   private File myMainRepo;
-  /**
-   * Submodules repository dir
-   */
   private File mySubmoduleRepo;
-  /**
-   * Another submodule repository dir
-   */
   private File mySubmoduleRepo2;
-  /**
-   * Directory where we clone main repository
-   */
   private File myCheckoutDir;
-
-  /**
-   * Agent temp directory
-   */
   private File agentConfigurationTempDirectory;
-
-  /**
-   * VcsRoot for tests
-   */
   private VcsRootImpl myRoot;
-
   private BuildAgentConfiguration myAgentConfiguration;
-
   private Mockery myMockery;
-
   private int myBuildId = 0;
-
   private int myVcsRootId = 0;
-  /**
-   * Mocks of objects provided by TeamCity server
-   */
   private GitAgentVcsSupport myVcsSupport;
   private BuildProgressLogger myLogger;
   private AgentRunningBuild myBuild;
