@@ -27,7 +27,6 @@ import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
-import org.eclipse.jgit.JGitText;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.errors.AmbiguousObjectException;
 import org.eclipse.jgit.errors.NotSupportedException;
@@ -50,7 +49,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
-import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,6 +57,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
 
 
 /**
@@ -1140,68 +1141,16 @@ public class GitVcsSupport extends ServerVcsSupport
 
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
     OperationContext context = createContext(vcsRoot, "connection test");
-    Settings s = context.getSettings();
-    File repositoryTempDir = null;
+    TestConnectionCommand command = new TestConnectionCommand(myTransportFactory);
     try {
-      repositoryTempDir = FileUtil.createTempDirectory("git-testcon", "");
-      s.setUserDefinedRepositoryPath(repositoryTempDir);
-      Repository r = context.getRepository();
-      try {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Opening connection for " + s.debugInfo());
-        }
-        final Transport tn = myTransportFactory.createTransport(r, s.getRepositoryFetchURL(), s.getAuthSettings());
-        try {
-          final FetchConnection c = tn.openFetch();
-          try {
-            if (LOG.isDebugEnabled()) {
-              LOG.debug("Checking references... " + s.debugInfo());
-            }
-            String refName = GitUtils.expandRef(s.getRef());
-            boolean refFound = false;
-            for (final Ref ref : c.getRefs()) {
-              if (refName.equals(ref.getName())) {
-                LOG.info("Found the ref " + refName + "=" + ref.getObjectId() + " for " + s.debugInfo());
-                refFound = true;
-                break;
-              }
-            }
-            if (!refFound) {
-              throw new VcsException("The ref '" + refName + "' was not found in the repository " + s.getRepositoryFetchURL().toString());
-            }
-          } finally {
-            c.close();
-          }
-        } finally {
-          tn.close();
-        }
-        if (!s.getRepositoryFetchURL().equals(s.getRepositoryPushURL())) {
-          final Transport push = myTransportFactory.createTransport(r, s.getRepositoryPushURL(), s.getAuthSettings());
-          try {
-            final PushConnection c = push.openPush();
-            try {
-              c.getRefs();
-            } finally {
-              c.close();
-            }
-          } finally {
-            tn.close();
-          }
-        }
-        return null;
-      } catch (NotSupportedException nse) {
-        throw friendlyNotSupportedException(vcsRoot, s, nse);
-      } catch (TransportException te) {
-        throw friendlyTransportException(te);
-      }
+      return command.testConnection(context);
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
       context.close();
-      if (repositoryTempDir != null)
-        FileUtil.delete(repositoryTempDir);
     }
   }
+
 
   @Override
   public TestConnectionSupport getTestConnectionSupport() {
@@ -1381,27 +1330,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return myCacheDir;
   }
 
-  private Exception friendlyTransportException(TransportException te) {
-    if (GitServerUtil.isUnknownHostKeyError(te)) {
-      String originalMessage = te.getMessage();
-      String message = originalMessage + ". Add this host to a known hosts database or check option 'Ignore Known Hosts Database'.";
-      return new VcsException(message, te);
-    } else {
-      return te;
-    }
-  }
-
-  private NotSupportedException friendlyNotSupportedException(VcsRoot root, Settings s, NotSupportedException nse)  {
-    URIish fetchURI = s.getRepositoryFetchURL();
-    if (GitServerUtil.isRedundantColon(fetchURI)) {
-      //url with username looks like ssh://username/hostname:/path/to/repo - it will
-      //confuse user even further, so show url without user name
-      return new NotSupportedException(MessageFormat.format(JGitText.get().URINotSupported, root.getProperty(Constants.FETCH_URL)) +
-                                      ". Make sure you don't have a colon after the host name.");
-    } else {
-      return nse;
-    }
-  }
 
   /** Git change type */
   private enum ChangeType {

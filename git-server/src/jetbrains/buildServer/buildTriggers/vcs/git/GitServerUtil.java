@@ -19,7 +19,10 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRoot;
+import org.eclipse.jgit.JGitText;
 import org.eclipse.jgit.errors.ConfigInvalidException;
+import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -31,6 +34,7 @@ import org.eclipse.jgit.util.FS;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.MessageFormat;
 
 /**
  * Utilities for server part of the plugin
@@ -180,6 +184,37 @@ public class GitServerUtil {
     return version.substring(0, DISPLAY_VERSION_AMOUNT);
   }
 
+
+  public static Exception friendlyTransportException(TransportException te) {
+    if (isUnknownHostKeyError(te)) {
+      String originalMessage = te.getMessage();
+      String message = originalMessage + ". Add this host to a known hosts database or check option 'Ignore Known Hosts Database'.";
+      return new VcsException(message, te);
+    } else {
+      return te;
+    }
+  }
+
+
+  public static NotSupportedException friendlyNotSupportedException(VcsRoot root, Settings s, NotSupportedException nse)  {
+    URIish fetchURI = s.getRepositoryFetchURL();
+    if (isRedundantColon(fetchURI)) {
+      //url with username looks like ssh://username/hostname:/path/to/repo - it will
+      //confuse user even further, so show url without user name
+      return new NotSupportedException(MessageFormat.format(JGitText.get().URINotSupported, root.getProperty(Constants.FETCH_URL)) +
+                                      ". Make sure you don't have a colon after the host name.");
+    } else {
+      return nse;
+    }
+  }
+
+
+  private static boolean isUnknownHostKeyError(TransportException error) {
+    String message = error.getMessage();
+    return message != null && message.contains("UnknownHostKey") && message.contains("key fingerprint is");
+  }
+
+
   /**
    * Test if uri contains a common error -- redundant colon after hostname.
    *
@@ -196,15 +231,10 @@ public class GitServerUtil {
    * @param uri uri to check
    * @return true if uri contains this error
    */
-  public static boolean isRedundantColon(URIish uri) {
+  private static boolean isRedundantColon(URIish uri) {
     return uri.getScheme().equals("ssh") &&
            uri.getHost() == null &&
            uri.getPath().contains(":");
-  }
-
-  public static boolean isUnknownHostKeyError(TransportException error) {
-    String message = error.getMessage();
-    return message != null && message.contains("UnknownHostKey") && message.contains("key fingerprint is");
   }
 
 

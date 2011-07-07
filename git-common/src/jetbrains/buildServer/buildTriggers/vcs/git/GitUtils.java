@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -205,5 +206,10 @@ public class GitUtils {
       rc.append(pc[fi]);
     }
     return rc.toString();
+  }
+
+
+  public static boolean isAnonymousGitWithUsername(@NotNull URIish uri) {
+    return "git".equals(uri.getScheme()) && uri.getUser() != null;
   }
 }
