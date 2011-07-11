@@ -63,7 +63,7 @@ public class SubmoduleTest {
     File teamcitySystemDir = myTempFiles.createTempDir();
     myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
     final PluginConfigImpl config = new PluginConfigImpl(myServerPaths);
-    TransportFactory transportFactory = new TransportFactoryImpl(config, null);
+    TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     myGitSupport = new GitVcsSupport(config, transportFactory, fetchCommand, null);
   }

@@ -33,26 +33,15 @@ public class GitAgentSSHService extends GitSSHService {
 
   private final static Logger LOG = Logger.getLogger(GitAgentSSHService.class);
 
-  /**
-   * The configuration for the build agent
-   */
-  final BuildAgentConfiguration myAgentConfiguration;
-  /**
-   * The agent service
-   */
-  final BuildAgent myAgent;
+  private final BuildAgent myAgent;
+  private final BuildAgentConfiguration myAgentConfiguration;
   private final PluginDescriptor myPluginDescriptor;
 
-  /**
-   * The constructor
-   *
-   * @param myAgent              the agent to use
-   * @param myAgentConfiguration the agent configuration to use
-   */
-  public GitAgentSSHService(BuildAgent myAgent, BuildAgentConfiguration myAgentConfiguration, PluginDescriptor pluginDescriptor) {
-    this.myAgent = myAgent;
-    this.myAgentConfiguration = myAgentConfiguration;
-    this.myPluginDescriptor = pluginDescriptor;
+
+  public GitAgentSSHService(BuildAgent agent, BuildAgentConfiguration agentConfiguration, PluginDescriptor pluginDescriptor) {
+    myAgent = agent;
+    myAgentConfiguration = agentConfiguration;
+    myPluginDescriptor = pluginDescriptor;
   }
 
   @Override

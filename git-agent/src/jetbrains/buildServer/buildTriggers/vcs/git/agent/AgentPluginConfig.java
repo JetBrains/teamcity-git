@@ -14,59 +14,21 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git;
+package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
 
 /**
  * @author dmitry.neverov
  */
-public interface PluginConfig {
+public interface AgentPluginConfig extends PluginConfig {
+
+  boolean isUseNativeSSH();
+
+  boolean isUseLocalMirrors();
 
   @NotNull
-  File getCachesDir();
+  GitVersion getGitVersion();
 
-
-  int getCurrentVersionCacheSize();
-
-
-  int getStreamFileThreshold();
-
-
-  int getFetchTimeout();
-
-
-  int getCloneTimeout();
-
-
-  boolean isPrintDebugInfoOnEachCommit();
-
-
-  String getFetchProcessJavaPath();
-
-
-  String getFetchProcessMaxMemory();
-
-
-  boolean isSeparateProcessForFetch();
-
-
-  boolean isRunNativeGC();
-
-
-  String getPathToGit();
-
-
-  int getNativeGCQuotaMinutes();
-
-
-  String getFetchClasspath();
-
-
-  String getFetcherClassName();
-
-
-  int getFixedSubmoduleCommitSearchDepth();
 }

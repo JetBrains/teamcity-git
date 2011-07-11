@@ -16,7 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
+import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import org.jetbrains.annotations.NotNull;
@@ -40,14 +40,15 @@ public class PluginConfigBuilder {
   private String  myFetchClassPath;
   private String  myFetcherClassName;
   private Integer myFixedSubmoduleCommitSearchDepth;
+  private Integer myIdleTimeoutSeconds;
 
   public PluginConfigBuilder(@NotNull ServerPaths paths) {
     myDelegate = new PluginConfigImpl(paths);
   }
 
 
-  public PluginConfig build() {
-    return new PluginConfig() {
+  public ServerPluginConfig build() {
+    return new ServerPluginConfig() {
       @NotNull
       public File getCachesDir() {
         return myDelegate.getCachesDir();
@@ -107,6 +108,10 @@ public class PluginConfigBuilder {
 
       public int getFixedSubmoduleCommitSearchDepth() {
         return myFixedSubmoduleCommitSearchDepth != null ? myFixedSubmoduleCommitSearchDepth : myDelegate.getFixedSubmoduleCommitSearchDepth();
+      }
+
+      public int getIdleTimeoutSeconds() {
+        return myIdleTimeoutSeconds != null ? myIdleTimeoutSeconds : myDelegate.getIdleTimeoutSeconds();
       }
     };
   }
@@ -189,6 +194,12 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setFixedSubmoduleCommitSearchDepth(Integer depth) {
     myFixedSubmoduleCommitSearchDepth = depth;
+    return this;
+  }
+
+
+  public PluginConfigBuilder setIdleTimeoutSeconds(int timeout) {
+    myIdleTimeoutSeconds = timeout;
     return this;
   }
 }

@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.AgentRunningBuild;
-import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
@@ -41,37 +40,28 @@ import java.util.regex.Matcher;
  * The update process that uses C git.
  */
 public class GitCommandUpdateProcess extends GitUpdateProcess {
-  /**
-   * The ssh service to use
-   */
-  final GitAgentSSHService mySshService;
 
+  /** Git version which supports --progress option in the fetch command */
+  private final static GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
+  private static final int SILENT_TIMEOUT = 24 * 60 * 60; //24 hours
 
-  public GitCommandUpdateProcess(@NotNull BuildAgentConfiguration agentConfiguration,
-                                 @NotNull SmartDirectoryCleaner directoryCleaner,
+  private final GitAgentSSHService mySshService;
+  private final AgentPluginConfig myPluginConfig;
+
+  public GitCommandUpdateProcess(@NotNull SmartDirectoryCleaner directoryCleaner,
                                  @NotNull GitAgentSSHService sshService,
-                                 @NotNull String pathToGit,
                                  @NotNull VcsRoot root,
                                  @NotNull CheckoutRules checkoutRules,
                                  @NotNull String toVersion,
                                  @NotNull File checkoutDirectory,
-                                 @NotNull AgentRunningBuild build)
+                                 @NotNull AgentRunningBuild build,
+                                 @NotNull AgentPluginConfig pluginConfig)
     throws VcsException {
-    super(agentConfiguration, directoryCleaner, root, checkoutRules, toVersion, checkoutDirectory, build.getBuildLogger(),
-          pathToGit, isUseNativeSSH(build), isUseLocalMirrors(build));
+    super(directoryCleaner, root, checkoutRules, toVersion, checkoutDirectory, build.getBuildLogger(), pluginConfig);
     mySshService = sshService;
+    myPluginConfig = pluginConfig;
   }
 
-
-  private static boolean isUseNativeSSH(AgentRunningBuild runningBuild) {
-    String value = runningBuild.getSharedConfigParameters().get("teamcity.git.use.native.ssh");
-    return "true".equals(value);
-  }
-
-  private static boolean isUseLocalMirrors(AgentRunningBuild runningBuild) {
-    String value = runningBuild.getSharedConfigParameters().get("teamcity.git.use.local.mirrors");
-    return "true".equals(value);
-  }
 
   protected void addRemote(final String name, final URIish fetchUrl) throws VcsException {
     new RemoteCommand(mySettings).add(name, fetchUrl.toString());
@@ -105,11 +95,6 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
     new ConfigCommand(mySettings).set(propertyName, value);
   }
 
-  @Override
-  protected void setConfigPropertyBare(String propertyName, String value) throws VcsException {
-    new ConfigCommand(mySettings, mySettings.getRepositoryDir().getAbsolutePath()).set(propertyName, value);
-  }
-
 
   protected void hardReset() throws VcsException {
     new ResetCommand(mySettings).hardReset(myRevision);
@@ -137,28 +122,32 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   }
 
   protected void fetch() throws VcsException {
-    new FetchCommand(mySettings, mySshService).fetch();
+    boolean silent = isSilentFetch();
+    int timeout = getTimeout(silent);
+    new FetchCommand(mySettings, mySshService, timeout).fetch(silent);
   }
 
   @Override
   protected void fetchBare() throws VcsException {
-    new FetchCommand(mySettings, mySshService, mySettings.getRepositoryDir().getAbsolutePath()).fetch();
+    boolean silent = isSilentFetch();
+    int timeout = getTimeout(silent);
+    new FetchCommand(mySettings, mySshService, mySettings.getRepositoryDir().getAbsolutePath(), timeout).fetch(silent);
+  }
+
+  private boolean isSilentFetch() {
+    GitVersion version = myPluginConfig.getGitVersion();
+    return GIT_WITH_PROGRESS_VERSION.isGreaterThan(version);
   }
 
   protected String checkRevision(final String revision, String... errorsLogLevel) {
     return new LogCommand(mySettings).checkRevision(revision, errorsLogLevel);
   }
 
-  @Override
-  protected String checkRevisionBare(String revision, String... errorsLogLevel) {
-    return new LogCommand(mySettings, mySettings.getRepositoryDir().getAbsolutePath()).checkRevision(revision, errorsLogLevel);
-  }
-
   protected void doSubmoduleUpdate(File directory) throws VcsException {
     File gitmodules = new File(directory, ".gitmodules");
     if (gitmodules.exists()) {
       myLogger.message("Checkout submodules in " + directory);
-      SubmoduleCommand submoduleCommand = new SubmoduleCommand(mySettings, mySshService, directory.getAbsolutePath());
+      SubmoduleCommand submoduleCommand = new SubmoduleCommand(mySettings, mySshService, directory.getAbsolutePath(), SILENT_TIMEOUT);
       submoduleCommand.init();
       submoduleCommand.update();
 
@@ -185,5 +174,12 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   private boolean recursiveSubmoduleCheckout() {
     return SubmodulesCheckoutPolicy.CHECKOUT.equals(mySettings.getSubmodulesCheckoutPolicy()) ||
            SubmodulesCheckoutPolicy.CHECKOUT_IGNORING_ERRORS.equals(mySettings.getSubmodulesCheckoutPolicy());
+  }
+
+  private int getTimeout(boolean silentFetch) {
+    if (silentFetch)
+      return SILENT_TIMEOUT;
+    else
+      return myPluginConfig.getIdleTimeoutSeconds();
   }
 }

@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.SystemInfo;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
@@ -54,7 +55,7 @@ public class GitDetectorImpl implements GitDetector {
 
 
   @NotNull
-  public String getPathToGit(@NotNull VcsRoot root, @NotNull BuildAgentConfiguration config, @NotNull AgentRunningBuild build) throws VcsException {
+  public Pair<String, GitVersion> getGitPathAndVersion(@NotNull VcsRoot root, @NotNull BuildAgentConfiguration config, @NotNull AgentRunningBuild build) throws VcsException {
     String path = getPathFromRoot(root, config);
     if (path != null) {
       Loggers.VCS.info("Using vcs root's git: " + path);
@@ -67,8 +68,10 @@ public class GitDetectorImpl implements GitDetector {
         Loggers.VCS.info("Using default git: " + path);
       }
     }
-    checkCanRun(path);
-    return path;
+    GitVersion version = getGitVersion(path);
+    checkVersionIsSupported(path, version);
+
+    return Pair.create(path, version);
   }
 
 
@@ -81,23 +84,19 @@ public class GitDetectorImpl implements GitDetector {
   }
 
 
-  /**
-   * Check if the git could be run
-   *
-   * @param path the path to use
-   * @throws VcsException if there is a problem with running git or git has invalid version
-   */
-  private void checkCanRun(@NotNull String path) throws VcsException {
-    GitVersion v;
+  private GitVersion getGitVersion(String path) throws VcsException {
     try {
-      v = new VersionCommand(path).version();
+      return new VersionCommand(path).version();
     } catch (VcsException e) {
       throw new VcsException("Unable to run git at path " + path, e);
     }
-    if (!GitVersion.MIN.isLessOrEqual(v)) {
-      throw new VcsException("TeamCity supports Git version 1.6.4.0 or higher, found Git ("+ path +") has version " + v +
+  }
+
+
+  private void checkVersionIsSupported(String path, GitVersion version) throws VcsException {
+    if (!version.isSupported())
+      throw new VcsException("TeamCity supports Git version " + GitVersion.MIN + " or higher, found Git ("+ path +") has version " + version +
                              ". Please upgrade Git or use server-side checkout.");
-    }
   }
 
   /**

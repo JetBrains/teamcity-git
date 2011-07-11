@@ -74,14 +74,13 @@ public class CommandUtil {
     return runCommand(cli, DEFAULT_COMMAND_TIMEOUT_SEC, errorsLogLevel);
   }
 
-  public static ExecResult runCommand(@NotNull GeneralCommandLine cli, final int executionTimeout,
-                                      final String... errorsLogLevel) throws VcsException {
+  public static ExecResult runCommand(@NotNull GeneralCommandLine cli, final int timeout, final String... errorsLogLevel) throws VcsException {
     String cmdStr = cli.getCommandLineString();
-    Loggers.VCS.debug("Run command: " + cmdStr);
+    Loggers.VCS.info("Run command: " + cmdStr);
     ExecResult res = SimpleCommandLineProcessRunner.runCommand(cli, null, new SimpleCommandLineProcessRunner.RunCommandEventsAdapter() {
       @Override
       public Integer getOutputIdleSecondsTimeout() {
-        return executionTimeout;
+        return timeout;
       }
     });
     CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);

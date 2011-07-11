@@ -99,7 +99,7 @@ public class BranchSupportTest {
 
   private GitVcsSupport getSupport() {
     PluginConfigImpl config = new PluginConfigImpl(myServerPaths);
-    TransportFactory transportFactory = new TransportFactoryImpl(config, null);
+    TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     return new GitVcsSupport(config, transportFactory, fetchCommand, null);
   }

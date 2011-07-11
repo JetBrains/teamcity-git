@@ -69,7 +69,7 @@ public class Fetcher {
     final String refspec = vcsRootProperties.get(Constants.REFSPEC);
     Settings.AuthSettings auth = new Settings.AuthSettings(vcsRootProperties);
     PluginConfigImpl config = new PluginConfigImpl(new ServerPaths());
-    TransportFactory transportFactory = new TransportFactoryImpl(config, null);
+    TransportFactory transportFactory = new TransportFactoryImpl(config);
     Transport tn = null;
     try {
       //This method should be called with repository creation lock, but Fetcher is ran in separate process, so

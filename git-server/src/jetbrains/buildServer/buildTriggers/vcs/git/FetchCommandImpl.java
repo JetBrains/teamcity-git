@@ -51,11 +51,11 @@ public class FetchCommandImpl implements FetchCommand {
   private static Logger LOG = Logger.getInstance(FetchCommandImpl.class.getName());
   private static Logger PERFORMANCE_LOG = Logger.getInstance(FetchCommandImpl.class.getName() + ".Performance");
 
-  private final PluginConfig myConfig;
+  private final ServerPluginConfig myConfig;
   private final TransportFactory myTransportFactory;
 
 
-  public FetchCommandImpl(@NotNull PluginConfig config, @NotNull TransportFactory transportFactory) {
+  public FetchCommandImpl(@NotNull ServerPluginConfig config, @NotNull TransportFactory transportFactory) {
     myConfig = config;
     myTransportFactory = transportFactory;
   }
@@ -152,7 +152,11 @@ public class FetchCommandImpl implements FetchCommand {
       }
 
       public Integer getOutputIdleSecondsTimeout() {
-        return myConfig.getFetchTimeout();
+        /* Idle timeout is set in the transport used by separate process fetcher.
+         * Transport will throw an exception with idle time > timeout and process will be finished.
+         * So there is no need to use command line idle timeout.
+         */
+        return null;
       }
     });
 

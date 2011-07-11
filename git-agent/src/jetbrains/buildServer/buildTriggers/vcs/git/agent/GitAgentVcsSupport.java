@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.AgentRunningBuild;
-import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.agent.vcs.AgentVcsSupport;
 import jetbrains.buildServer.agent.vcs.UpdateByCheckoutRules2;
@@ -34,36 +33,17 @@ import java.io.File;
  * The agent support for VCS.
  */
 public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheckoutRules2 {
-  /**
-   * The configuration for the agent
-   */
-  final BuildAgentConfiguration myAgentConfiguration;
-  /**
-   * The directory cleaner instance
-   */
-  final SmartDirectoryCleaner myDirectoryCleaner;
-  /**
-   * The ssh service to use
-   */
-  final GitAgentSSHService mySshService;
-  final private GitDetector myGitDetector;
 
-  /**
-   * The constructor
-   *
-   * @param agentConfiguration the configuration for this agent
-   * @param directoryCleaner   the directory cleaner
-   * @param sshService         the used ssh service
-   * @param gitDetector        detector of path to git on agent
-   */
-  public GitAgentVcsSupport(BuildAgentConfiguration agentConfiguration,
-                            SmartDirectoryCleaner directoryCleaner,
+  private final SmartDirectoryCleaner myDirectoryCleaner;
+  private final GitAgentSSHService mySshService;
+  private final PluginConfigFactory myConfigFactory;
+
+  public GitAgentVcsSupport(SmartDirectoryCleaner directoryCleaner,
                             GitAgentSSHService sshService,
-                            GitDetector gitDetector) {
-    myAgentConfiguration = agentConfiguration;
+                            PluginConfigFactory configFactory) {
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
-    myGitDetector = gitDetector;
+    myConfigFactory = configFactory;
   }
 
 
@@ -87,15 +67,14 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull File checkoutDirectory,
                             @NotNull AgentRunningBuild build,
                             boolean cleanCheckoutRequested) throws VcsException {
-    String pathToGit = myGitDetector.getPathToGit(root, myAgentConfiguration, build);
-    new GitCommandUpdateProcess(myAgentConfiguration,
-                                myDirectoryCleaner,
+    AgentPluginConfig config = myConfigFactory.createConfig(build, root);
+    new GitCommandUpdateProcess(myDirectoryCleaner,
                                 mySshService,
-                                pathToGit,
                                 root,
                                 checkoutRules,
                                 toVersion,
                                 checkoutDirectory,
-                                build).updateSources();
+                                build,
+                                config).updateSources();
   }
 }

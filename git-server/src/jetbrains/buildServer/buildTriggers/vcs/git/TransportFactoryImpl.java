@@ -40,7 +40,7 @@ import java.io.File;
 */
 public class TransportFactoryImpl implements TransportFactory {
 
-  private final PluginConfig myConfig;
+  private final ServerPluginConfig myConfig;
   /**
    * The default SSH session factory used for not explicitly configured host
    * It fails when user is prompted for some information.
@@ -52,7 +52,12 @@ public class TransportFactoryImpl implements TransportFactory {
   private final RefreshableSshConfigSessionFactory mySshSessionFactoryKnownHostsIgnored;
 
 
-  public TransportFactoryImpl(@NotNull PluginConfig config, @Nullable final EventDispatcher<BuildServerListener> dispatcher) {
+  public TransportFactoryImpl(@NotNull ServerPluginConfig config) {
+    this(config, null);
+  }
+
+
+  public TransportFactoryImpl(@NotNull ServerPluginConfig config, @Nullable final EventDispatcher<BuildServerListener> dispatcher) {
     myConfig = config;
     final boolean monitorSshConfigs = dispatcher != null; //dispatcher is null in tests and when invoked from the Fetcher
     mySshSessionFactory = new RefreshableSshConfigSessionFactory(monitorSshConfigs);
@@ -85,7 +90,7 @@ public class TransportFactoryImpl implements TransportFactory {
       SshTransport ssh = (SshTransport)t;
       ssh.setSshSessionFactory(getSshSessionFactory(authSettings, url));
     }
-    t.setTimeout(myConfig.getCloneTimeout());
+    t.setTimeout(myConfig.getIdleTimeoutSeconds());
     return t;
   }
 

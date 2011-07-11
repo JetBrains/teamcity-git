@@ -100,12 +100,12 @@ public class GitVcsSupport extends ServerVcsSupport
   private final ConcurrentMap<File, ReadWriteLock> myRmLocks = new ConcurrentHashMap<File, ReadWriteLock>();
   private final ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
-  private final PluginConfig myConfig;
+  private final ServerPluginConfig myConfig;
   private final TransportFactory myTransportFactory;
   private final FetchCommand myFetchCommand;
 
 
-  public GitVcsSupport(@NotNull final PluginConfig config,
+  public GitVcsSupport(@NotNull final ServerPluginConfig config,
                        @NotNull final TransportFactory transportFactory,
                        @NotNull final FetchCommand fetchCommand,
                        @Nullable final ExtensionHolder extensionHolder) {

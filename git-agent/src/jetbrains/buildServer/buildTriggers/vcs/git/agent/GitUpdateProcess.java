@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
@@ -35,7 +34,6 @@ import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,96 +43,47 @@ import java.util.Set;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isAnonymousGitWithUsername;
 
-/**
- * The agent support for VCS.
- */
 public abstract class GitUpdateProcess {
 
-  /**
-   * The logger class
-   */
   private final static Logger LOG = Logger.getLogger(GitUpdateProcess.class);
-  /**
-   * The configuration for the agent
-   */
-  final BuildAgentConfiguration myAgentConfiguration;
-  /**
-   * The directory cleaner instance
-   */
   final SmartDirectoryCleaner myDirectoryCleaner;
-  /**
-   * Vcs root
-   */
   protected final VcsRoot myRoot;
-  /**
-   * Checkout rules
-   */
   protected final CheckoutRules myCheckoutRules;
-  /**
-   * The version to update to
-   */
-  protected final String myToVersion;
-  /**
-   * The directory where sources should be checked out
-   */
-  protected final File myCheckoutDirectory;
-  /**
-   * The logger for update process
-   */
   protected final BuildProgressLogger myLogger;
-  /**
-   * The vcs settings
-   */
   protected final AgentSettings mySettings;
-  /**
-   * The actual directory
-   */
+  /** The directory where sources should be checked out */
+  protected final File myCheckoutDirectory;
+  /** The actual directory (according to checkout rules) */
   protected final File myDirectory;
-  /**
-   * The git revision
-   */
+  /** The version to update to */
+  protected final String myToVersion;
+  /** The git revision */
   protected final String myRevision;
-  private boolean myUseLocalMirrors;
+  private final AgentPluginConfig myPluginConfig;
 
-  /**
-   * The constructor
-   *
-   * @param agentConfiguration the configuration for this agent
-   * @param directoryCleaner   the directory cleaner
-   * @param root               the vcs root
-   * @param checkoutRules      the checkout rules
-   * @param toVersion          the version to update to
-   * @param checkoutDirectory  the checkout directory
-   * @param logger             the logger
-   * @param gitPath            the path to git
-   * @throws VcsException if there is problem with starting the process
-   */
-  public GitUpdateProcess(@NotNull BuildAgentConfiguration agentConfiguration,
-                          @NotNull SmartDirectoryCleaner directoryCleaner,
+
+  public GitUpdateProcess(@NotNull SmartDirectoryCleaner directoryCleaner,
                           @NotNull VcsRoot root,
                           @NotNull CheckoutRules checkoutRules,
                           @NotNull String toVersion,
                           @NotNull File checkoutDirectory,
                           @NotNull BuildProgressLogger logger,
-                          @Nullable String gitPath,
-                          boolean useNativeSSH,
-                          boolean useLocalMirrors) throws VcsException {
-    myAgentConfiguration = agentConfiguration;
+                          @NotNull AgentPluginConfig pluginConfig) throws VcsException {
     myDirectoryCleaner = directoryCleaner;
     myRoot = root;
     myCheckoutRules = checkoutRules;
-    myToVersion = toVersion;
-    myCheckoutDirectory = checkoutDirectory;
     myLogger = logger;
+    myToVersion = toVersion;
     myRevision = GitUtils.versionRevision(toVersion);
+    myCheckoutDirectory = checkoutDirectory;
     myDirectory = findDirectory();
-    myUseLocalMirrors = useLocalMirrors;
-    mySettings = new AgentSettings(agentConfiguration.getCacheDirectory("git"), gitPath, myDirectory, root, useNativeSSH);
+    myPluginConfig = pluginConfig;
+    mySettings = new AgentSettings(myPluginConfig, myDirectory, root);
   }
 
 
   public void updateSources() throws VcsException {
-    if (myUseLocalMirrors)
+    if (myPluginConfig.isUseLocalMirrors())
       updateLocalMirror();
     LOG.info("Starting update of root " + myRoot.getName() + " in " + myCheckoutDirectory + " to revision " + myToVersion);
     if (LOG.isDebugEnabled()) {
@@ -152,9 +101,9 @@ public abstract class GitUpdateProcess {
         firstFetch = true;
       } else {
         try {
-          if (myUseLocalMirrors && !isRepositoryUseLocalMirror()) {
+          if (myPluginConfig.isUseLocalMirrors() && !isRepositoryUseLocalMirror()) {
             setUseLocalMirror();
-          } else if (!myUseLocalMirrors && isRepositoryUseLocalMirror()) {
+          } else if (!myPluginConfig.isUseLocalMirrors() && isRepositoryUseLocalMirror()) {
             setNotUseLocalMirror();
           }
         } catch (Exception e) {
@@ -381,7 +330,7 @@ public abstract class GitUpdateProcess {
     init();
     validateUrls();
     addRemote("origin", mySettings.getRepositoryFetchURL());
-    if (myUseLocalMirrors) setUseLocalMirror();
+    if (myPluginConfig.isUseLocalMirrors()) setUseLocalMirror();
     URIish url = mySettings.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();
     if (pushUrl != null && !pushUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
@@ -498,8 +447,6 @@ public abstract class GitUpdateProcess {
    */
   protected abstract void setConfigProperty(String propertyName, String value) throws VcsException;
 
-  protected abstract void setConfigPropertyBare(String propertyName, String value) throws VcsException;
-
   /**
    * Hard reset to the specified revision
    *
@@ -553,8 +500,6 @@ public abstract class GitUpdateProcess {
    * @return a short revision information or null if revision is not found
    */
   protected abstract String checkRevision(final String revision, final String... errorsLogLevel);
-
-  protected abstract String checkRevisionBare(final String revision, final String... errorsLogLevel);
 
   /**
    * Make submodule init and submodule update
