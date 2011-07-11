@@ -23,16 +23,10 @@ import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 
 import java.io.File;
 
-/**
- * Utilities for th testing
- */
-public class GitTestUtil {
-  /**
-   * The private constructor for the test class
-   */
-  private GitTestUtil() {
 
-  }
+public class GitTestUtil {
+
+  private GitTestUtil() {}
 
   /**
    * Test data file
@@ -53,10 +47,14 @@ public class GitTestUtil {
   }
 
   public static VcsRoot getVcsRoot(String repositoryName) {
+    return getVcsRoot(dataFile(repositoryName));
+  }
+
+
+  public static VcsRootImpl getVcsRoot(File repositoryDir) {
     VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
-    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(dataFile(repositoryName)));
+    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(repositoryDir));
     root.addProperty(Constants.BRANCH_NAME, "master");
     return root;
   }
-
 }

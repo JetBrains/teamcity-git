@@ -14,22 +14,24 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent;
+package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import com.intellij.openapi.util.Pair;
-import jetbrains.buildServer.agent.AgentRunningBuild;
-import jetbrains.buildServer.agent.BuildAgentConfiguration;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
+
 /**
- * Detects git on agent
  * @author dmitry.neverov
  */
-public interface GitDetector {
+public interface PluginConfig {
+
+  static int DEFAULT_IDLE_TIMEOUT = 600;
 
   @NotNull
-  public Pair<String, GitVersion> getGitPathAndVersion(@NotNull VcsRoot root, @NotNull BuildAgentConfiguration config, @NotNull AgentRunningBuild build) throws VcsException;
+  File getCachesDir();
+
+  int getIdleTimeoutSeconds();
+
+  String getPathToGit();
 
 }

@@ -185,8 +185,8 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   private GitVcsSupport getSupport(ExtensionHolder holder) {
-    PluginConfig config = myConfigBuilder.build();
-    TransportFactory transportFactory = new TransportFactoryImpl(config, null);
+    ServerPluginConfig config = myConfigBuilder.build();
+    TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     return new GitVcsSupport(config, transportFactory, fetchCommand, holder);
   }
@@ -1014,9 +1014,12 @@ public class GitVcsSupportTest extends PatchTestCase {
     final VcsSupportContext anotherVcsPlugin = context.mock(VcsSupportContext.class);
     final VcsSupportCore anotherVcsPluginCore = context.mock(VcsSupportCore.class);
     context.checking(new Expectations() {{
-      allowing(holder).getServices(VcsSupportContext.class); will(returnValue(Arrays.asList(anotherVcsPlugin)));
-      allowing(anotherVcsPlugin).getCore(); will(returnValue(anotherVcsPluginCore));
-      allowing(anotherVcsPluginCore).getName(); will(returnValue("hg"));
+      allowing(holder).getServices(VcsSupportContext.class);
+      will(returnValue(Arrays.asList(anotherVcsPlugin)));
+      allowing(anotherVcsPlugin).getCore();
+      will(returnValue(anotherVcsPluginCore));
+      allowing(anotherVcsPluginCore).getName();
+      will(returnValue("hg"));
     }});
     GitVcsSupport jetbrainsPlugin = getSupport(holder);
     assertEquals(jetbrainsPlugin.getDisplayName(), "Git");
@@ -1244,8 +1247,8 @@ public class GitVcsSupportTest extends PatchTestCase {
   //TW-17435
   @Test
   public void getCurrentVersion_should_not_do_fetch_if_remote_ref_not_changed() throws Exception {
-    PluginConfig config = myConfigBuilder.build();
-    TransportFactory transportFactory = new TransportFactoryImpl(config, null);
+    ServerPluginConfig config = myConfigBuilder.build();
+    TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = new GitVcsSupport(config, transportFactory, fetchCounter, null);

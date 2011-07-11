@@ -16,20 +16,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.agent.AgentRunningBuild;
-import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
-import org.jetbrains.annotations.NotNull;
 
 /**
- * Detects git on agent
  * @author dmitry.neverov
  */
-public interface GitDetector {
+public interface PluginConfigFactory {
 
-  @NotNull
-  public Pair<String, GitVersion> getGitPathAndVersion(@NotNull VcsRoot root, @NotNull BuildAgentConfiguration config, @NotNull AgentRunningBuild build) throws VcsException;
+  AgentPluginConfig createConfig(AgentRunningBuild build, VcsRoot root) throws VcsException;
 
 }

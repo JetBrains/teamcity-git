@@ -14,22 +14,48 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent;
-
-import com.intellij.openapi.util.Pair;
-import jetbrains.buildServer.agent.AgentRunningBuild;
-import jetbrains.buildServer.agent.BuildAgentConfiguration;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
-import org.jetbrains.annotations.NotNull;
+package jetbrains.buildServer.buildTriggers.vcs.git;
 
 /**
- * Detects git on agent
  * @author dmitry.neverov
  */
-public interface GitDetector {
+public interface ServerPluginConfig extends PluginConfig {
 
-  @NotNull
-  public Pair<String, GitVersion> getGitPathAndVersion(@NotNull VcsRoot root, @NotNull BuildAgentConfiguration config, @NotNull AgentRunningBuild build) throws VcsException;
+  int getCurrentVersionCacheSize();
 
+
+  int getStreamFileThreshold();
+
+
+  int getFetchTimeout();
+
+
+  int getCloneTimeout();
+
+
+  boolean isPrintDebugInfoOnEachCommit();
+
+
+  String getFetchProcessJavaPath();
+
+
+  String getFetchProcessMaxMemory();
+
+
+  boolean isSeparateProcessForFetch();
+
+
+  boolean isRunNativeGC();
+
+
+  int getNativeGCQuotaMinutes();
+
+
+  String getFetchClasspath();
+
+
+  String getFetcherClassName();
+
+
+  int getFixedSubmoduleCommitSearchDepth();
 }

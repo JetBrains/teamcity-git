@@ -117,15 +117,15 @@ public class AgentVcsSupportTest extends BaseTestCase {
       allowing(resolver).resolveGitPath(with(any(BuildAgentConfiguration.class)), with(any(String.class))); will(returnValue(pathToGit));
     }});
     myAgentConfiguration = createBuildAgentConfiguration();
-    myVcsSupport = new GitAgentVcsSupport(myAgentConfiguration,
-                                          createSmartDirectoryCleaner(),
+    PluginConfigFactory configFactory = new PluginConfigFactoryImpl(myAgentConfiguration, detector);
+    myVcsSupport = new GitAgentVcsSupport(createSmartDirectoryCleaner(),
                                           new GitAgentSSHService(createBuildAgent(), myAgentConfiguration, new PluginDescriptor() {
                                             @NotNull
                                             public File getPluginRoot() {
                                               return new File("jetbrains.git");
                                             }
                                           }),
-                                          detector);
+                                          configFactory);
 
     myLogger = createLogger();
     myBuild = createRunningBuild(true);

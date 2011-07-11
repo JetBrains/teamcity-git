@@ -36,13 +36,9 @@ public final class GitVersion implements Comparable<GitVersion> {
   @NonNls private static final MessageFormat FORMAT_3 =
     new MessageFormat("git version {0,number,integer}.{1,number,integer}.{2,number,integer}", Locale.US);
   /**
-   * Invalid version number
-   */
-  public static final GitVersion INVALID = new GitVersion(0, 0, 0, 0);
-  /**
    * The minimal supported version
    */
-  public static final GitVersion MIN = new GitVersion(1, 6, 0, 0);
+  public static final GitVersion MIN = new GitVersion(1, 6, 4, 0);
 
   /**
    * Major version number
@@ -113,25 +109,19 @@ public final class GitVersion implements Comparable<GitVersion> {
     return compareTo(MIN) >= 0;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+
   @Override
   public boolean equals(final Object obj) {
     return obj instanceof GitVersion && compareTo((GitVersion)obj) == 0;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+
   @Override
   public int hashCode() {
     return ((myMajor * 17 + myMinor) * 17 + myRevision) * 17 + myPatchLevel;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+
   public int compareTo(final GitVersion o) {
     int d = myMajor - o.myMajor;
     if (d != 0) {
@@ -148,22 +138,15 @@ public final class GitVersion implements Comparable<GitVersion> {
     return myPatchLevel - o.myPatchLevel;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+
   @Override
   public String toString() {
     //noinspection ConcatenationWithEmptyString
     return "" + myMajor + "." + myMinor + "." + myRevision + "." + myPatchLevel;
   }
 
-  /**
-   * Compare version number
-   *
-   * @param gitVersion a git revision to compare with
-   * @return the comparison result
-   */
-  public boolean isLessOrEqual(final GitVersion gitVersion) {
-    return gitVersion != null && compareTo(gitVersion) <= 0;
+
+  public boolean isGreaterThan(final GitVersion other) {
+    return compareTo(other) > 0;
   }
 }

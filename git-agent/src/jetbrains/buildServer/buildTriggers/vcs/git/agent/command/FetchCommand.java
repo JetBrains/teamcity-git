@@ -27,63 +27,57 @@ import org.jetbrains.annotations.NotNull;
  * The "git fetch" command
  */
 public class FetchCommand extends RepositoryCommand {
-  /**
-   * The fetch timeout (24 hours)
-   */
-  static final int TIMEOUT = 24 * 60 * 60;
-  /**
-   * Agent's SSH service
-   */
+
+  private final int myTimeout;
   private final GitAgentSSHService mySsh;
-  /**
-   * Do fetch into branches with same spec as in remote repository. Used for bare repositories which we use as a mirrors of remotes.
-   */
   private final boolean myMirror;
 
-  /**
-   * The constructor
-   *
-   * @param settings the settings object
-   * @param ssh      the SSH service
-   */
-  public FetchCommand(@NotNull final AgentSettings settings, @NotNull final GitAgentSSHService ssh) {
+  public FetchCommand(@NotNull final AgentSettings settings, @NotNull final GitAgentSSHService ssh, final int timeout) {
     super(settings);
     mySsh = ssh;
     myMirror = false;
+    myTimeout = timeout;
   }
 
-  public FetchCommand(@NotNull final AgentSettings settings, @NotNull final GitAgentSSHService ssh, String bareRepositoryDir) {
+  public FetchCommand(@NotNull final AgentSettings settings, @NotNull final GitAgentSSHService ssh, String bareRepositoryDir, final int timeout) {
     super(settings, bareRepositoryDir);
     mySsh = ssh;
     myMirror = true;
+    myTimeout = timeout;
   }
 
 
-  /**
-   * Perform fetch operation according to settings
-   *
-   * @throws VcsException the VCS exception
-   */
-  public void fetch() throws VcsException {
+  public void fetch(boolean silent) throws VcsException {
     GeneralCommandLine cmd = createCommandLine();
     cmd.addParameter("fetch");
-    cmd.addParameters("-q", "origin");
+    addOptions(cmd, silent);
+    cmd.addParameter("origin");
     cmd.addParameter(getRefSpec());
     if (mySettings.isUseNativeSSH()) {
-      runCommand(cmd, TIMEOUT);
+      runCommand(cmd, myTimeout);
     } else {
       SshHandler h = new SshHandler(mySsh, cmd);
       try {
-        runCommand(cmd, TIMEOUT);
+        runCommand(cmd, myTimeout);
       } finally {
         h.unregister();
       }
     }
   }
 
+
+  private void addOptions(GeneralCommandLine cmd, boolean silent) {
+    if (silent)
+      cmd.addParameter("-q");
+    else
+      cmd.addParameter("--progress");
+  }
+
+
   private String getRefSpec() {
     AgentSettings s = getSettings();
     if (myMirror) {
+      //do fetch into branches with same spec as in remote repository.
       return "+" + GitUtils.expandRef(s.getRef()) + ":" + GitUtils.expandRef(s.getRef());
     } else {
       return "+" + GitUtils.expandRef(s.getRef()) + ":" + GitUtils.createRemoteRef(s.getRef());

@@ -29,19 +29,14 @@ import org.jetbrains.annotations.NotNull;
  */
 public class SubmoduleCommand extends RepositoryCommand {
 
-  /**
-   * Agent's SSH service
-   */
+  private final int myTimeout;
   private final GitAgentSSHService mySsh;
 
-  public SubmoduleCommand(@NotNull final AgentSettings mySettings, @NotNull final GitAgentSSHService ssh) {
-    super(mySettings);
-    mySsh = ssh;
-  }
 
-  public SubmoduleCommand(@NotNull final AgentSettings mySettings, @NotNull final GitAgentSSHService ssh, String workingDirectory) {
+  public SubmoduleCommand(@NotNull final AgentSettings mySettings, @NotNull final GitAgentSSHService ssh, String workingDirectory, final int timeout) {
     super(mySettings, workingDirectory);
     mySsh = ssh;
+    myTimeout = timeout;
   }
 
   /**
@@ -67,11 +62,11 @@ public class SubmoduleCommand extends RepositoryCommand {
     cmd.addParameter("submodule");
     cmd.addParameter("update");
     if (mySettings.isUseNativeSSH()) {
-      runCommand(cmd, FetchCommand.TIMEOUT);
+      runCommand(cmd, myTimeout);
     } else {
       SshHandler h = new SshHandler(mySsh, cmd);
       try {
-        runCommand(cmd, FetchCommand.TIMEOUT);
+        runCommand(cmd, myTimeout);
       } finally {
         h.unregister();
       }

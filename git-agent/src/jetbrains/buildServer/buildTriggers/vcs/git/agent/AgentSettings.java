@@ -52,25 +52,17 @@ public class AgentSettings extends Settings {
 
   private final boolean useNativeSSH;
 
-  /**
-   * The constructor
-   *
-   * @param cacheDir dir where bare repositories are stored
-   * @param gitCommandPath     the path to the git
-   * @param localRepositoryDir the local directory
-   * @param root               the VCS root to get settings from
-   * @throws VcsException if there is a configuration problem
-   */
-  public AgentSettings(File cacheDir, String gitCommandPath, File localRepositoryDir, VcsRoot root, boolean useNativeSSH) throws VcsException {
-    super(root, cacheDir);
-    this.gitCommandPath = gitCommandPath;
+
+  public AgentSettings(AgentPluginConfig pluginConfig, File localRepositoryDir, VcsRoot root) throws VcsException {
+    super(root, pluginConfig.getCachesDir());
+    this.gitCommandPath = pluginConfig.getPathToGit();
     this.localRepositoryDir = localRepositoryDir;
     this.rootName = root.getName();
     String clean = root.getProperty(Constants.AGENT_CLEAN_POLICY);
     this.cleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);
     String cleanFiles = root.getProperty(Constants.AGENT_CLEAN_FILES_POLICY);
     this.cleanFilesPolicy = cleanFiles == null ? AgentCleanFilesPolicy.ALL_UNTRACKED : AgentCleanFilesPolicy.valueOf(cleanFiles);
-    this.useNativeSSH = useNativeSSH;
+    this.useNativeSSH = pluginConfig.isUseNativeSSH();
   }
 
   /**

@@ -35,7 +35,7 @@ import java.io.File;
 /**
  * @author dmitry.neverov
  */
-public class PluginConfigImpl implements PluginConfig {
+public class PluginConfigImpl implements ServerPluginConfig {
 
   private final File myCachesDir;
 
@@ -132,5 +132,9 @@ public class PluginConfigImpl implements PluginConfig {
 
   public int getFixedSubmoduleCommitSearchDepth() {
     return TeamCityProperties.getInteger("teamcity.server.git.fixed.submodule.commit.search.depth", 100);
+  }
+
+  public int getIdleTimeoutSeconds() {
+    return TeamCityProperties.getInteger("teamcity.git.idle.timeout.seconds", DEFAULT_IDLE_TIMEOUT);
   }
 }

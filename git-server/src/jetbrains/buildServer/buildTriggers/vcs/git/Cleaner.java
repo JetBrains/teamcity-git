@@ -47,11 +47,11 @@ public class Cleaner extends BuildServerAdapter {
 
   private final SBuildServer myServer;
   private final GitVcsSupport myGitVcsSupport;
-  private final PluginConfig myConfig;
+  private final ServerPluginConfig myConfig;
 
   public Cleaner(@NotNull final SBuildServer server,
                  @NotNull final EventDispatcher<BuildServerListener> dispatcher,
-                 @NotNull final PluginConfig config,
+                 @NotNull final ServerPluginConfig config,
                  @NotNull final GitVcsSupport gitSupport) {
     myServer = server;
     myConfig = config;

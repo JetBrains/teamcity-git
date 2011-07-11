@@ -26,6 +26,8 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsPropertiesProcessorTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitUtilsTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitServerUtilTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ServerPluginConfigTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentConfigPluginTest"/>
     </classes>
   </test>
 </suite>
