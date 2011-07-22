@@ -140,19 +140,6 @@ public class GitServerUtil {
     return GitUtils.makeVersion(c.getId().name(), c.getCommitterIdent().getWhen().getTime());
   }
 
-  public static String getParentVersion(RevCommit commit, String defaultParentVersion) {
-    RevCommit[] parents = commit.getParents();
-    if (parents.length == 0) {
-      return GitUtils.makeVersion(ObjectId.zeroId().name(), 0);
-    } else {
-      if (commit.getParent(0).getRawBuffer() == null) {
-        return defaultParentVersion;
-      } else {
-        return GitServerUtil.makeVersion(commit.getParents()[0]);
-      }
-    }
-  }
-
   public static String getUser(Settings s, RevCommit c) {
     return getUser(c.getAuthorIdent(), s);
   }

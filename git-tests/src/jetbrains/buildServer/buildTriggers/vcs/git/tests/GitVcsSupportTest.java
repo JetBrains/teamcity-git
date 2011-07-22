@@ -371,48 +371,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     // check the case with broken commit
     String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), GitUtils.versionTime(CUD1_VERSION));
     final List<ModificationData> mms2 = support.collectChanges(root, missing, MERGE_VERSION, new CheckoutRules(""));
-    assertEquals(4, mms2.size());
-    ModificationData mb3 = mms2.get(3);
-    assertEquals(GitServerUtil.SYSTEM_USER, mb3.getUserName());
-    assertEquals(0, mb3.getChanges().size());
-  }
-
-  /**
-   * Test collecting build changes respects checkout rules
-   *    master
-   *      o 2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6 (merge commit with no changed files)
-   *     /|
-   *    / |
-   *   o 2494559261ab85e92b1780860b34f876b5e6bce6 (commit from other branch) changes file readme.txt (not in dir/)
-   *      |
-   *      |
-   *      o 3b9fbfbb43e7edfad018b482e15e7f93cca4e69f (no changes in dir/)
-   */
-  @Test
-  public void test_merge_commit_without_interesting_changes_can_be_ignored() throws Exception {
-    GitVcsSupport support = getSupport();
-    VcsRoot root = getRoot("master");
-    final List<ModificationData> mds = support.collectChanges(root,
-                                                              GitUtils.makeVersion("3b9fbfbb43e7edfad018b482e15e7f93cca4e69f", 1283497225000L),
-                                                              GitUtils.makeVersion("2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", 1286183770000L),
-                                                              new CheckoutRules("+:dir=>."));
-    //we can ignore checkout rules during collecting changes, TeamCity will apply them later,
-    //but we should not set canBeIgnored = false for modifications, otherwise TeamCity won't exclude them
-    for (ModificationData md : mds) {
-      assertTrue(md.isCanBeIgnored());
-    }
-  }
-
-  @Test
-  public void merge_commit_with_interesting_changes_cannot_be_ignored() throws Exception {
-    GitVcsSupport support = getSupport();
-    VcsRoot root = getRoot("master");
-    final List<ModificationData> mds = support.collectChanges(root,
-                                                              GitUtils.makeVersion("2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", 1289483376000L),
-                                                              GitUtils.makeVersion("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", 1289483394000L),
-                                                              new CheckoutRules("+:dir=>."));
-    ModificationData mergeCommit = mds.get(0);
-    assertFalse(mergeCommit.isCanBeIgnored());
+    assertEquals(3, mms2.size());
   }
 
   /**
@@ -514,10 +473,7 @@ public class GitVcsSupportTest extends PatchTestCase {
           final VcsRoot root = getRoot("master");
           String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), GitUtils.versionTime(CUD1_VERSION));
           final List<ModificationData> mms2 = support.collectChanges(root, missing, MERGE_VERSION, new CheckoutRules(""));
-          assertEquals(4, mms2.size());
-          ModificationData mb3 = mms2.get(3);
-          assertEquals(GitServerUtil.SYSTEM_USER, mb3.getUserName());
-          assertEquals(0, mb3.getChanges().size());
+          assertEquals(3, mms2.size());
         } catch (Throwable e) {
           errors.add(e);
         }
@@ -1221,6 +1177,34 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport support = getSupport();
     PersonalBranchDescription description = support.getPersonalBranchDescription(root, "master");
     assertNull(description);
+  }
+
+
+  @Test
+  public void all_changes_should_have_parents() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("master");
+
+    //Every git commit (except initial commit) has at least one parent.
+    //The only way to get initial commit in the results of collectChanges method
+    //is to give it missing commit as fromVersion (in this case we collect changes
+    //based on the date). To make handling parents easier - assign zeroId as a parent
+    //version of initial commit.
+
+    String unknownSHA = "2b9fbfbb43e7edfad018b482e15e7f93cca4e69f";
+    Long firstCommitTime = 1237391915000L;
+    String unknownCommit = GitUtils.makeVersion(unknownSHA, firstCommitTime - 1);
+
+    List<ModificationData> mds = support.collectChanges(root, unknownCommit, MERGE_BRANCH_VERSION, CheckoutRules.DEFAULT);
+    Map<String, String> child2parent = new HashMap<String, String>();
+    for (ModificationData md : mds) {
+      assertEquals(md.getParentRevisions().size(), 1);
+      child2parent.put(md.getVersion(), md.getParentRevisions().get(0));
+    }
+    assertEquals(child2parent.get(MERGE_BRANCH_VERSION), CUD1_VERSION);
+    assertEquals(child2parent.get(CUD1_VERSION), GitUtils.makeVersion("97442a720324a0bd092fb9235f72246dc8b345bc", 1238069951000L));
+    assertEquals(child2parent.get(GitUtils.makeVersion("97442a720324a0bd092fb9235f72246dc8b345bc", 1238069951000L)), VERSION_TEST_HEAD);
+    assertEquals(child2parent.get(VERSION_TEST_HEAD),  "0000000000000000000000000000000000000000@0");
   }
 
 

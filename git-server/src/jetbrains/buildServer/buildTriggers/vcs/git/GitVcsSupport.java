@@ -19,7 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.ExtensionHolder;
-import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.util.FileUtil;
@@ -71,10 +70,6 @@ public class GitVcsSupport extends ServerVcsSupport
 
   private static Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   private static Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
-  /**
-   * Random number generator used to generate artificial versions
-   */
-  private final Random myRandom = new Random();
   /**
    * Current version cache (Pair<bare repository dir, branch name> -> current version).
    */
@@ -134,7 +129,7 @@ public class GitVcsSupport extends ServerVcsSupport
     OperationContext context = createContext(root, "collecting changes");
     try {
       Repository r = context.getRepository();
-      RevWalk revs = new RevWalk(r);
+      ModificationDataRevWalk revs = new ModificationDataRevWalk(context, myConfig.getFixedSubmoduleCommitSearchDepth());
       try {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + context.getSettings().debugInfo());
@@ -148,12 +143,11 @@ public class GitVcsSupport extends ServerVcsSupport
         final ObjectId fromId = ObjectId.fromString(from);
         if (r.hasObject(fromId)) {
           final RevCommit fromRev = revs.parseCommit(fromId);
-          String firstUninterestingVersion = GitServerUtil.makeVersion(fromRev);
           revs.markUninteresting(fromRev);
           RevCommit c;
           boolean lastCommit = true;
           while ((c = revs.next()) != null) {
-            result.add(createModificationData(context, c, r, !lastCommit, firstUninterestingVersion, checkoutRules));
+            result.add(revs.createModificationData(c, !lastCommit));
             lastCommit = false;
           }
         } else {
@@ -165,22 +159,10 @@ public class GitVcsSupport extends ServerVcsSupport
             if (c.getCommitTime() * 1000L <= limitTime) {
               revs.markUninteresting(c);
             } else {
-              result.add(createModificationData(context, c, r, !lastCommit, null, checkoutRules));
+              result.add(revs.createModificationData(c, !lastCommit));
             }
             lastCommit = false;
           }
-          // add revision with warning text and random number as version
-          byte[] idBytes = new byte[20];
-          myRandom.nextBytes(idBytes);
-          String version = GitUtils.makeVersion(ObjectId.fromRaw(idBytes).name(), limitTime);
-          result.add(new ModificationData(new Date(currentRev.getCommitTime()),
-                                      new ArrayList<VcsChange>(),
-                                      "The previous version was removed from repository, " +
-                                      "getting changes using date. The changes reported might be not accurate.",
-                                      GitServerUtil.SYSTEM_USER,
-                                      root,
-                                      version,
-                                      GitServerUtil.displayVersion(version)));
         }
       } finally {
         revs.release();
@@ -308,305 +290,6 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  private ModificationData createModificationData(final OperationContext context,
-                                                  final RevCommit commit,
-                                                  final Repository db,
-                                                  final boolean ignoreSubmodulesErrors,
-                                                  final String firstUninterestingVersion,
-                                                  final CheckoutRules checkoutRules) throws IOException, VcsException {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Collecting changes in commit " + commit.getId().name() + ":" + commit.getShortMessage() +
-                " (" + commit.getCommitterIdent().getWhen() + ") for " + context.getSettings().debugInfo());
-    }
-    String currentVersion = GitServerUtil.makeVersion(commit);
-    String parentVersion = GitServerUtil.getParentVersion(commit, firstUninterestingVersion);
-    List<VcsChange> changes = getCommitChanges(context, db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
-    ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
-                                                   GitServerUtil.getUser(context.getSettings(), commit), context.getRoot(), currentVersion, commit.getId().name());
-    if (isMergeCommit(commit) && changes.isEmpty()) {
-      boolean hasInterestingChanges = hasInterestingChanges(context, db, commit, ignoreSubmodulesErrors, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion));
-      if (hasInterestingChanges) {
-        result.setCanBeIgnored(false);
-      }
-    }
-    return result;
-  }
-
-  private boolean isMergeCommit(RevCommit commit) {
-    return commit.getParents().length > 1;
-  }
-
-  private boolean hasInterestingChanges(final OperationContext context,
-                                        final Repository db,
-                                        final RevCommit mergeCommit,
-                                        final boolean ignoreSubmodulesErrors,
-                                        final CheckoutRules rules,
-                                        final String firstUninterestingSHA)
-    throws IOException, VcsException {
-    RevWalk walk = new RevWalk(db);
-    List<RevCommit> start = new ArrayList<RevCommit>();
-    for (RevCommit c : mergeCommit.getParents()) {
-      start.add(walk.parseCommit(c));
-    }
-    walk.markStart(start);
-    walk.markUninteresting(walk.parseCommit(ObjectId.fromString(firstUninterestingSHA)));
-    walk.sort(RevSort.TOPO);
-    try {
-      RevCommit c;
-      while ((c = walk.next()) != null) {
-        TreeWalk tw = new TreeWalk(db);
-        tw.setRecursive(true);
-        tw.setFilter(TreeFilter.ANY_DIFF);
-        try {
-          context.addTree(tw, db, c, ignoreSubmodulesErrors);
-          tw.addTree(c.getTree().getId());
-          for (RevCommit parent : c.getParents()) {
-            context.addTree(tw, db, parent, ignoreSubmodulesErrors);
-          }
-          while (tw.next()) {
-            String path = tw.getPathString();
-            if (rules.shouldInclude(path)) {
-              return true;
-            }
-          }
-        } finally {
-          tw.release();
-        }
-      }
-    } finally {
-      walk.release();
-    }
-    return false;
-  }
-
-  /**
-   * Get changes for the commit
-   *
-   * @param context context of current operation
-   * @param r repository
-   * @param commit current commit
-   * @param currentVersion teamcity version of current commit (sha@time)
-   * @param parentVersion parent version to use in VcsChange objects
-   * @param ignoreSubmodulesErrors should method ignore errors in submodules or not
-   * @return the commit changes
-   * @throws IOException
-   * @throws VcsException
-   */
-  private List<VcsChange> getCommitChanges(final OperationContext context,
-                                           final Repository r,
-                                           final RevCommit commit,
-                                           final String currentVersion,
-                                           final String parentVersion,
-                                           final boolean ignoreSubmodulesErrors) throws IOException, VcsException {
-    List<VcsChange> changes = new ArrayList<VcsChange>();
-    TreeWalk tw = new TreeWalk(r);
-    try {
-      IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(context.getSettings());
-      tw.setFilter(filter);
-      tw.setRecursive(true);
-      context.addTree(tw, r, commit, ignoreSubmodulesErrors);
-      for (RevCommit parentCommit : commit.getParents()) {
-        context.addTree(tw, r, parentCommit, true);
-      }
-      String repositoryDebugInfo = context.getSettings().debugInfo();
-      RevCommit commitWithFix = null;
-      Map<String, RevCommit> commitsWithFix = new HashMap<String, RevCommit>();
-      while (tw.next()) {
-        String path = tw.getPathString();
-        if (context.getSettings().isCheckoutSubmodules()) {
-          if (filter.isBrokenSubmoduleEntry(path)) {
-            commitWithFix = getPreviousCommitWithFixedSubmodule(context, r, commit, path);
-            commitsWithFix.put(path, commitWithFix);
-            if (commitWithFix != null) {
-              TreeWalk tw2 = new TreeWalk(r);
-              try {
-                tw2.setFilter(TreeFilter.ANY_DIFF);
-                tw2.setRecursive(true);
-                context.addTree(tw2, r, commit, true);
-                context.addTree(tw2, r, commitWithFix, true);
-                while (tw2.next()) {
-                  if (tw2.getPathString().equals(path)) {
-                    addVcsChange(changes, currentVersion, GitServerUtil.makeVersion(commitWithFix), tw2, repositoryDebugInfo, path);
-                  }
-                }
-              } finally {
-                tw2.release();
-              }
-            } else {
-              addVcsChange(changes, currentVersion, parentVersion, tw, repositoryDebugInfo, path);
-            }
-          } else if (filter.isChildOfBrokenSubmoduleEntry(path)) {
-            String brokenSubmodulePath = filter.getSubmodulePathForChildPath(path);
-            commitWithFix = commitsWithFix.get(brokenSubmodulePath);
-            if (commitWithFix != null) {
-              TreeWalk tw2 = new TreeWalk(r);
-              try {
-                tw2.setFilter(TreeFilter.ANY_DIFF);
-                tw2.setRecursive(true);
-                context.addTree(tw2, r, commit, true);
-                context.addTree(tw2, r, commitWithFix, true);
-                while (tw2.next()) {
-                  if (tw2.getPathString().equals(path)) {
-                    addVcsChange(changes, currentVersion, GitServerUtil.makeVersion(commitWithFix), tw2, repositoryDebugInfo, path);
-                  }
-                }
-              } finally {
-                tw2.release();
-              }
-            } else {
-              addVcsChange(changes, currentVersion, parentVersion, tw, repositoryDebugInfo, path);
-            }
-          } else {
-            addVcsChange(changes, currentVersion, parentVersion, tw, repositoryDebugInfo, path);
-          }
-        } else {
-          addVcsChange(changes, currentVersion, parentVersion, tw, repositoryDebugInfo, path);
-        }
-      }
-      return changes;
-    } finally {
-      tw.release();
-    }
-  }
-
-  private void addVcsChange(List<VcsChange> changes, String currentVersion, String parentVersion, TreeWalk tw, String repositoryDebugInfo, String path) {
-    VcsChange change = getVcsChange(tw, path, currentVersion, parentVersion, repositoryDebugInfo);
-    if (change != null)
-      changes.add(change);
-  }
-
-  private VcsChange getVcsChange(TreeWalk treeWalk, String path, String commitSHA, String parentCommitSHA, String repositoryDebugInfo) {
-    final ChangeType gitChangeType = classifyChange(treeWalk);
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Processing change " + treeWalkInfo(treeWalk) + " as " + gitChangeType + " " + repositoryDebugInfo);
-    }
-    VcsChange.Type type = getChangeType(gitChangeType, treeWalk, path);
-    if (type == VcsChange.Type.NOT_CHANGED) {
-      return null;
-    } else {
-      String description = gitChangeType == ChangeType.FILE_MODE_CHANGED ? "File mode changed" : null;
-      return new VcsChange(type, description, path, path, parentCommitSHA, commitSHA);
-    }
-  }
-
-  private VcsChange.Type getChangeType(ChangeType gitChangeType, TreeWalk treeWalk, String path) {
-    switch (gitChangeType) {
-      case UNCHANGED:
-        return VcsChange.Type.NOT_CHANGED;
-      case ADDED:
-        return VcsChange.Type.ADDED;
-      case DELETED:
-        if (((IgnoreSubmoduleErrorsTreeFilter) treeWalk.getFilter()).getBrokenSubmodulePathsInRestTrees().contains(path)) {
-          return VcsChange.Type.NOT_CHANGED;
-        } else {
-          return VcsChange.Type.REMOVED;
-        }
-      case MODIFIED:
-        return VcsChange.Type.CHANGED;
-      case FILE_MODE_CHANGED:
-        return VcsChange.Type.CHANGED;
-      default:
-        throw new IllegalStateException("Unknown change type");
-    }
-  }
-
-  private RevCommit getPreviousCommitWithFixedSubmodule(OperationContext context, Repository db, RevCommit fromCommit, String submodulePath)
-    throws IOException, VcsException {
-    int searchDepth = myConfig.getFixedSubmoduleCommitSearchDepth();
-    if (searchDepth == 0)
-      return null;
-
-    RevWalk revWalk = new RevWalk(db);
-    try {
-      final RevCommit fromRev = revWalk.parseCommit(fromCommit.getId());
-      revWalk.markStart(fromRev);
-      revWalk.sort(RevSort.TOPO);
-
-      RevCommit result = null;
-      RevCommit prevRev;
-      revWalk.next();
-      int depth = 0;
-      while (result == null && depth < searchDepth && (prevRev = revWalk.next()) != null) {
-        depth++;
-        TreeWalk prevTreeWalk = new TreeWalk(db);
-        try {
-          prevTreeWalk.setFilter(TreeFilter.ALL);
-          prevTreeWalk.setRecursive(true);
-          context.addTree(prevTreeWalk, db, prevRev, true, false);
-          while(prevTreeWalk.next()) {
-            if (prevTreeWalk.getPathString().startsWith(submodulePath)) {
-              SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
-              if (!iter.isSubmoduleError() && iter.getParent().isOnSubmodule()) {
-                result = prevRev;
-                break;
-              }
-            }
-          }
-        } finally {
-          prevTreeWalk.release();
-        }
-      }
-      return result;
-    } finally {
-      revWalk.release();
-    }
-  }
-
-  /**
-   * Classify change in tree walker. The first tree is assumed to be a current commit and other
-   * trees are assumed to be parent commits. In the case of multiple changes, the changes that
-   * come from at lease one parent commit are assumed to be reported in the parent commit.
-   *
-   * @param tw     tree walker to examine
-   * @return change type
-   */
-  @NotNull
-  private static ChangeType classifyChange(@NotNull TreeWalk tw) {
-    final FileMode mode0 = tw.getFileMode(0);
-    if (FileMode.MISSING.equals(mode0)) {
-      for (int i = 1; i < tw.getTreeCount(); i++) {
-        if (FileMode.MISSING.equals(tw.getFileMode(i))) {
-          // the delete merge
-          return ChangeType.UNCHANGED;
-        }
-      }
-      return ChangeType.DELETED;
-    }
-    boolean fileAdded = true;
-    for (int i = 1; i < tw.getTreeCount(); i++) {
-      if (!FileMode.MISSING.equals(tw.getFileMode(i))) {
-        fileAdded = false;
-        break;
-      }
-    }
-    if (fileAdded) {
-      return ChangeType.ADDED;
-    }
-    boolean fileModified = true;
-    for (int i = 1; i < tw.getTreeCount(); i++) {
-      if (tw.idEqual(0, i)) {
-        fileModified = false;
-        break;
-      }
-    }
-    if (fileModified) {
-      return ChangeType.MODIFIED;
-    }
-    int modeBits0 = mode0.getBits();
-    boolean fileModeModified = true;
-    for (int i = 1; i < tw.getTreeCount(); i++) {
-      int modeBits = tw.getFileMode(i).getBits();
-      if (modeBits == modeBits0) {
-        fileModeModified = false;
-        break;
-      }
-    }
-    if (fileModeModified) {
-      return ChangeType.FILE_MODE_CHANGED;
-    }
-    return ChangeType.UNCHANGED;
-  }
-
   public void buildPatch(@NotNull VcsRoot root,
                          @Nullable final String fromVersion,
                          @NotNull String toVersion,
@@ -617,13 +300,13 @@ public class GitVcsSupport extends ServerVcsSupport
     final boolean debugInfoOnEachCommit = myConfig.isPrintDebugInfoOnEachCommit();
     try {
       final Repository r = context.getRepository();
-      TreeWalk tw = null;
+      VcsChangeTreeWalk tw = null;
       try {
         RevCommit toCommit = ensureRevCommitLoaded(context, context.getSettings(), GitUtils.versionRevision(toVersion));
         if (toCommit == null) {
           throw new VcsException("Missing commit for version: " + toVersion);
         }
-        tw = new TreeWalk(r);
+        tw = new VcsChangeTreeWalk(r, context.getSettings().debugInfo());
         tw.setFilter(TreeFilter.ANY_DIFF);
         tw.setRecursive(true);
         context.addTree(tw, r, toCommit, false);
@@ -650,9 +333,9 @@ public class GitVcsSupport extends ServerVcsSupport
             continue;
           }
           if (debugFlag && debugInfoOnEachCommit) {
-            LOG.debug("File found " + treeWalkInfo(tw) + " for " + context.getSettings().debugInfo());
+            LOG.debug("File found " + tw.treeWalkInfo(path) + " for " + context.getSettings().debugInfo());
           }
-          switch (classifyChange(tw)) {
+          switch (tw.classifyChange()) {
             case UNCHANGED:
               // change is ignored
               continue;
@@ -660,7 +343,9 @@ public class GitVcsSupport extends ServerVcsSupport
             case ADDED:
             case FILE_MODE_CHANGED:
               if (!FileMode.GITLINK.equals(tw.getFileMode(0))) {
-                final String mode = getModeDiff(tw);
+                final String mode = tw.getModeDiff();
+                if (mode != null && LOG.isDebugEnabled())
+                  LOG.debug("The mode change " + mode + " is detected for " + tw.treeWalkInfo(path));
                 final ObjectId id = tw.getObjectId(0);
                 final Repository objRep = getRepository(r, tw, 0);
                 final Callable<Void> action = new Callable<Void>() {
@@ -715,60 +400,6 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  /**
-   * Get debug info for treewalk (used in logging)
-   *
-   * @param tw tree walk object
-   * @return debug info about tree walk
-   */
-  private static String treeWalkInfo(TreeWalk tw) {
-    StringBuilder b = new StringBuilder();
-    b.append(tw.getPathString());
-    b.append('(');
-    final int n = tw.getTreeCount();
-    for (int i = 0; i < n; i++) {
-      if (i != 0) {
-        b.append(", ");
-      }
-      b.append(tw.getObjectId(i).name());
-      b.append(String.format("%04o", tw.getFileMode(i).getBits()));
-    }
-    b.append(')');
-    return b.toString();
-  }
-
-  /**
-   * Get difference in the file mode (passed to chmod), null if there is no difference
-   *
-   * @param tw the tree walker to check
-   * @return the mode difference or null if there is no different
-   */
-  private static String getModeDiff(TreeWalk tw) {
-    boolean cExec = isExecutable(tw.getFileMode(0));
-    boolean pExec = isExecutable(tw.getFileMode(1));
-    String mode;
-    if (cExec & !pExec) {
-      mode = "a+x";
-    } else if (!cExec & pExec) {
-      mode = "a-x";
-    } else {
-      mode = null;
-    }
-    if (mode != null && LOG.isDebugEnabled()) {
-      LOG.debug("The mode change " + mode + " is detected for " + treeWalkInfo(tw));
-    }
-    return mode;
-  }
-
-  /**
-   * Check if the file mode is executable
-   *
-   * @param m file mode to check
-   * @return true if the file is executable
-   */
-  private static boolean isExecutable(FileMode m) {
-    return (m.getBits() & (1 << 6)) != 0;
-  }
 
   @NotNull
   public byte[] getContent(@NotNull VcsModification vcsModification,
@@ -1330,20 +961,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return myCacheDir;
   }
 
-
-  /** Git change type */
-  private enum ChangeType {
-    /** the file is added */
-    ADDED,
-    /** the file is deleted */
-    DELETED,
-    /** the file content (or content+mode) changed */
-    MODIFIED,
-    /** the file mode only changed */
-    FILE_MODE_CHANGED,
-    /** no change detected */
-    UNCHANGED,
-  }
 
   @NotNull
   private ObjectId getVcsRootGitId(final @NotNull VcsRoot root) throws VcsException{
