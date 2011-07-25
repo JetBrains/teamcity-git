@@ -32,3 +32,27 @@ repo_for_fetch.3:
 
 
 
+repo.git, branch master:
+465ad9f630e451b9f2b782ffb09804c6a98c4bb9@1289483394000 *   v1.0 origin/master origin/HEAD master Merge branch 'feature-branch2'
+                                                       |\
+5711cbfe566b6c92e331f95d4b236483f4532eed@1289483376000 | * add file
+                                                       |/
+2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6@1286183770000 *   v0.5 Merge branch 'feature-branch'
+                                                       |\
+2494559261ab85e92b1780860b34f876b5e6bce6@1286183753000 | * add feature
+                                                       |/
+3b9fbfbb43e7edfad018b482e15e7f93cca4e69f@1283497225000 * change 1
+f3f826ce85d6dad25156b2d7550cedeb1a422f4c@1238086450000 *   merge commit
+                                                       |\
+6fce8fe45550eb72796704a919dad68dc44be44a@1238085196000 | * a-mod, c-rm
+ee886e4adb70fbe3bdc6f3f6393598b3f02e8009@1238085489000 * | b-mod, d-add
+                                                       |/
+ad4528ed5c84092fdbe9e0502163cf8d6e6141e7@1238072086000 * more changes
+97442a720324a0bd092fb9235f72246dc8b345bc@1238069951000 * The second commit
+2276eaf76a658f96b5cf3eb25f3e1fda90f6b653@1237391915000 * origin/version-test first commit
+
+repo.git, branch personal-branch2:
+3df61e6f11a5a9b919cb3f786a83fdd09f058617@1311593583000 * origin/personal-branch2 personal-branch2 change the author of commit
+e7f491963fbc5c96a27e4169b97746a5a7f83870@1283502933000 * change 3
+1391281d33a83a7205f2f05d3eb64c349c636e87@1283497288000 * origin/personal-branch1 change 2
+f3f826ce85d6dad25156b2d7550cedeb1a422f4c@1238086450000 * merge commit (from master
