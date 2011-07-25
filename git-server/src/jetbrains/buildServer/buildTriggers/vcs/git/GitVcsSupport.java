@@ -235,8 +235,10 @@ public class GitVcsSupport extends ServerVcsSupport
       String lastCommitUser = null;
       RevCommit c;
       while ((c = walk.next()) != null) {
-        if (lastCommit)
+        if (lastCommit) {
           lastCommitUser = GitServerUtil.getUser(context.getSettings(), c);
+          lastCommit = false;
+        }
         firstCommitInBranch = c.name();
       }
       if (firstCommitInBranch != null && lastCommitUser != null)

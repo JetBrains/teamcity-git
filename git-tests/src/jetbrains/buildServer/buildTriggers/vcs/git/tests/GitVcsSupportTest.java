@@ -1211,7 +1211,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     PersonalBranchDescription description = support.getPersonalBranchDescription(root, "personal-branch2");
     assertNotNull(description);
     assertEquals(description.getBranchId(), "1391281d33a83a7205f2f05d3eb64c349c636e87");
-    assertEquals(description.getUsername(), "dmitry.neverov");
+    assertEquals(description.getUsername(), "other.user");
   }
 
 
