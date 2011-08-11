@@ -22,6 +22,7 @@ import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * @author dmitry.neverov
@@ -31,6 +32,7 @@ public interface FetchCommand {
   /**
    * Make fetch into local repository (db.getDirectory() should be not null)
    *
+   *
    * @param db repository
    * @param fetchURI uri to fetch
    * @param refspec refspec
@@ -39,6 +41,6 @@ public interface FetchCommand {
    * @throws TransportException
    * @throws VcsException
    */
-  public void fetch(Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, TransportException, VcsException;
+  public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull RefSpec refspec, @NotNull Settings.AuthSettings auth) throws NotSupportedException, TransportException, VcsException;
 
 }

@@ -61,7 +61,6 @@ public class Cleaner extends BuildServerAdapter {
 
   @Override
   public void cleanupStarted() {
-    super.cleanupFinished();
     myServer.getExecutor().submit(new Runnable() {
       public void run() {
         clean();
