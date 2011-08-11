@@ -40,6 +40,7 @@ import org.eclipse.jgit.storage.file.LockFile;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.FS;
+import org.jetbrains.annotations.NotNull;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
@@ -1085,6 +1086,32 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  //TW-17910
+  @Test
+  public void fetch_process_should_respect_fetch_timeout() throws Exception {
+    //MockFetcher waits for 10 seconds
+    //set teamcity.execution.timeout = 2, we should not get TimeoutException
+    Properties beforeTestProperties = System.getProperties();
+    final String defaultProcessExecutionTimeoutProperty = "teamcity.execution.timeout";
+    System.setProperty(defaultProcessExecutionTimeoutProperty, "2");
+    try {
+      String classpath = myConfigBuilder.build().getFetchClasspath() + File.pathSeparator +
+                         ClasspathUtil.composeClasspath(new Class[]{MockFetcher.class}, null, null);
+      myConfigBuilder.setSeparateProcessForFetch(true)
+        .setFetchClasspath(classpath)
+        .setFetcherClassName(MockFetcher.class.getName());
+
+      final GitVcsSupport support = getSupport();
+      final VcsRootImpl root = (VcsRootImpl) getRoot("master");
+      support.collectChanges(root, VERSION_TEST_HEAD, MERGE_BRANCH_VERSION, CheckoutRules.DEFAULT);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    } finally {
+      System.setProperties(beforeTestProperties);
+    }
+  }
+
+
   @Test
   public void collecting_changes_should_not_block_IDE_requests() throws Exception {
     String classpath = myConfigBuilder.build().getFetchClasspath() + File.pathSeparator +
@@ -1275,7 +1302,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       myDelegate = delegate;
     }
 
-    public void fetch(Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+    public void fetch(@NotNull Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
       myDelegate.fetch(db, fetchURI, refspec, auth);
       inc();
     }

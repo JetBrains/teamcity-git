@@ -61,7 +61,8 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
 
-  public void fetch(Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+  public void fetch(@NotNull final Repository db, @NotNull final URIish fetchURI,
+                    @NotNull final RefSpec refspec, @NotNull final Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     unlockRefs(db);
     if (myConfig.isSeparateProcessForFetch()) {
       fetchInSeparateProcess(db, auth, fetchURI, refspec);
@@ -107,70 +108,28 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
 
-  private void fetchInSeparateProcess(final Repository repository, final Settings.AuthSettings settings, final URIish uri, final RefSpec spec) throws VcsException {
+  private void fetchInSeparateProcess(@NotNull final Repository repository, @NotNull final Settings.AuthSettings settings,
+                                      @NotNull final URIish uri, @NotNull final RefSpec spec) throws VcsException {
     final long fetchStart = System.currentTimeMillis();
-    final String debugInfo = " (" + (repository.getDirectory() != null? repository.getDirectory().getAbsolutePath() + ", ":"")
-                             + uri.toString() + "#" + spec.toString() + ")";
-    GeneralCommandLine cl = new GeneralCommandLine();
-    cl.setWorkingDirectory(repository.getDirectory());
-    cl.setExePath(myConfig.getFetchProcessJavaPath());
-    cl.addParameters("-Xmx" + myConfig.getFetchProcessMaxMemory(), "-cp", myConfig.getFetchClasspath(), myConfig.getFetcherClassName(),
-                     uri.toString());//last parameter is not used in Fetcher, but is useful to distinguish fetch processes
-    if (LOG.isDebugEnabled()) {
+    final String debugInfo = getDebugInfo(repository, uri, spec);
+
+    GeneralCommandLine cl = createFetcherCommandLine(repository, uri);
+    if (LOG.isDebugEnabled())
       LOG.debug("Start fetch process for " + debugInfo);
-    }
-    final List<Exception> errors = new ArrayList<Exception>();
-    ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.RunCommandEvents() {
-      public void onProcessStarted(Process ps) {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Fetch process for " + debugInfo + " started");
-        }
-        OutputStream processInput = ps.getOutputStream();
-        try {
-          Map<String, String> properties = new HashMap<String, String>(settings.toMap());
-          properties.put(Constants.REPOSITORY_DIR_PROPERTY_NAME, repository.getDirectory().getCanonicalPath());
-          properties.put(Constants.FETCH_URL, uri.toString());
-          properties.put(Constants.REFSPEC, spec.toString());
-          properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
-          processInput.write(VcsRootImpl.propertiesToString(properties).getBytes("UTF-8"));
-          processInput.flush();
-        } catch (IOException e) {
-          errors.add(e);
-        } finally {
-          try {
-            processInput.close();
-          } catch (IOException e) {
-            //ignore
-          }
-        }
-      }
 
-      public void onProcessFinished(Process ps) {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Fetch process for " + debugInfo + " finished");
-        }
-      }
+    FetcherEventHandler processEventHandler = new FetcherEventHandler(debugInfo, settings, repository.getDirectory(), uri, spec);
+    ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, processEventHandler);
 
-      public Integer getOutputIdleSecondsTimeout() {
-        /* Idle timeout is set in the transport used by separate process fetcher.
-         * Transport will throw an exception with idle time > timeout and process will be finished.
-         * So there is no need to use command line idle timeout.
-         */
-        return null;
-      }
-    });
-
-    if (PERFORMANCE_LOG.isDebugEnabled()) {
+    if (PERFORMANCE_LOG.isDebugEnabled())
       PERFORMANCE_LOG.debug("[fetch in separate process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
-    }
-    if (!errors.isEmpty()) {
-      throw new VcsException("Separate process fetch error", errors.get(0));
-    }
+
+    if (processEventHandler.hasErrors())
+      processEventHandler.throwWrappedException();
+
     VcsException commandError = CommandLineUtil.getCommandLineError("git fetch", result);
     if (commandError != null) {
       if (isOutOfMemoryError(result)) {
-        LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + myConfig
-          .getFetchProcessMaxMemory() + ", try to increase it.");
+        LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + myConfig.getFetchProcessMaxMemory() + ", try to increase it.");
         clean(repository);
       }
       throw commandError;
@@ -182,9 +141,21 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
 
-  private void fetchInSameProcess(final Repository db, final Settings.AuthSettings auth, final URIish uri, final RefSpec refSpec) throws NotSupportedException, VcsException, TransportException {
-    final String debugInfo = " (" + (db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"")
-                             + uri.toString() + "#" + refSpec.toString() + ")";
+  private GeneralCommandLine createFetcherCommandLine(@NotNull final Repository repository, @NotNull final URIish uri) {
+    GeneralCommandLine cl = new GeneralCommandLine();
+    cl.setWorkingDirectory(repository.getDirectory());
+    cl.setExePath(myConfig.getFetchProcessJavaPath());
+    cl.addParameters("-Xmx" + myConfig.getFetchProcessMaxMemory(),
+                     "-cp", myConfig.getFetchClasspath(),
+                     myConfig.getFetcherClassName(),
+                     uri.toString());//last parameter is not used in Fetcher, but is useful to distinguish fetch processes
+    return cl;
+  }
+
+
+  private void fetchInSameProcess(@NotNull final Repository db, @NotNull final Settings.AuthSettings auth,
+                                  @NotNull final URIish uri, @NotNull final RefSpec refSpec) throws NotSupportedException, VcsException, TransportException {
+    final String debugInfo = getDebugInfo(db, uri, refSpec);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Fetch in server process: " + debugInfo);
     }
@@ -202,6 +173,10 @@ public class FetchCommandImpl implements FetchCommand {
         PERFORMANCE_LOG.debug("[fetch in server process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
       }
     }
+  }
+
+  private String getDebugInfo(Repository db, URIish uri, RefSpec refSpec) {
+    return " (" + (db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"") + uri.toString() + "#" + refSpec.toString() + ")";
   }
 
 
@@ -224,6 +199,68 @@ public class FetchCommandImpl implements FetchCommand {
       if (f.isFile() && f.getName().startsWith("incoming_") && f.getName().endsWith(".pack")) {
         FileUtil.delete(f);
       }
+    }
+  }
+
+
+  private class FetcherEventHandler implements SimpleCommandLineProcessRunner.RunCommandEvents {
+    private final String myRepositoryDebugInfo;
+    private final Settings.AuthSettings myAuthSettings;
+    private final File myRepositoryDir;
+    private final URIish myUri;
+    private final RefSpec mySpec;
+    private final List<Exception> myErrors = new ArrayList<Exception>();
+
+    FetcherEventHandler(@NotNull final String repositoryDebugInfo,
+                        @NotNull final Settings.AuthSettings authSettings,
+                        @NotNull final File repositoryDir,
+                        @NotNull final URIish uri,
+                        @NotNull final RefSpec spec) {
+      myRepositoryDebugInfo = repositoryDebugInfo;
+      myAuthSettings = authSettings;
+      myRepositoryDir = repositoryDir;
+      myUri = uri;
+      mySpec = spec;
+    }
+
+    public void onProcessStarted(Process ps) {
+      if (LOG.isDebugEnabled())
+        LOG.debug("Fetch process for " + myRepositoryDebugInfo + " started");
+      OutputStream processInput = ps.getOutputStream();
+      try {
+        Map<String, String> properties = new HashMap<String, String>(myAuthSettings.toMap());
+        properties.put(Constants.REPOSITORY_DIR_PROPERTY_NAME, myRepositoryDir.getCanonicalPath());
+        properties.put(Constants.FETCH_URL, myUri.toString());
+        properties.put(Constants.REFSPEC, mySpec.toString());
+        properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
+        processInput.write(VcsRootImpl.propertiesToString(properties).getBytes("UTF-8"));
+        processInput.flush();
+      } catch (IOException e) {
+        myErrors.add(e);
+      } finally {
+        try {
+          processInput.close();
+        } catch (IOException e) {
+          //ignore
+        }
+      }
+    }
+
+    public void onProcessFinished(Process ps) {
+      if (LOG.isDebugEnabled())
+        LOG.debug("Fetch process for " + myRepositoryDebugInfo + " finished");
+    }
+
+    public Integer getOutputIdleSecondsTimeout() {
+      return myConfig.getFetchTimeout();
+    }
+
+    boolean hasErrors() {
+      return !myErrors.isEmpty();
+    }
+
+    void throwWrappedException() throws VcsException {
+      throw new VcsException("Separate process fetch error", myErrors.get(0));
     }
   }
 }
