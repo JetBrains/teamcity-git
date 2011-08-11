@@ -40,10 +40,8 @@
       </td>
     </tr>
     <tr>
-      <th><label for="branch">Ref name: </label></th>
-      <td><props:textProperty name="branch"/>
-        <div class="smallNote" style="margin: 0;">If blank, the branch "master" is used.</div>
-      </td>
+      <th><label for="branch">Ref name: <l:star/></label></th>
+      <td><props:textProperty name="branch"/></td>
     </tr>
     <tr>
       <th><label for="path">Clone repository to: </label></th>
