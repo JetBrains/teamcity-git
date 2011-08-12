@@ -16,10 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
-import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanPolicy;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 
@@ -53,8 +50,8 @@ public class AgentSettings extends Settings {
   private final boolean useNativeSSH;
 
 
-  public AgentSettings(AgentPluginConfig pluginConfig, File localRepositoryDir, VcsRoot root) throws VcsException {
-    super(root, pluginConfig.getCachesDir());
+  public AgentSettings(AgentPluginConfig pluginConfig, MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root) throws VcsException {
+    super(mirrorManager, root);
     this.gitCommandPath = pluginConfig.getPathToGit();
     this.localRepositoryDir = localRepositoryDir;
     this.rootName = root.getName();

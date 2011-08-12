@@ -17,19 +17,18 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.BaseTestCase;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUrlSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsUrl;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.transport.URIish;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
@@ -42,11 +41,21 @@ import java.util.Map;
  */
 public class GitUrlSupportTest extends BaseTestCase {
 
-  GitUrlSupport mySupport;
+  private TempFiles myTempFiles = new TempFiles();
+  private GitUrlSupport mySupport;
+  private MirrorManager myMirrorManager;
 
   @BeforeMethod
   public void setUp() throws IOException {
     mySupport = new GitUrlSupport();
+    ServerPaths paths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
+    PluginConfig config = new PluginConfigBuilder(paths).build();
+    myMirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+  }
+
+  @AfterMethod
+  public void tearDown() {
+    myTempFiles.cleanup();
   }
 
   @Test
@@ -138,6 +147,6 @@ public class GitUrlSupportTest extends BaseTestCase {
   private Settings toSettings(VcsUrl url) throws VcsException {
     Map<String, String> properties = mySupport.convertToVcsRootProperties(url);
     VcsRootImpl myRoot = new VcsRootImpl(1, properties);
-    return new Settings(myRoot, new File("path/that/doesn't/matter"));
+    return new Settings(myMirrorManager, myRoot);
   }
 }

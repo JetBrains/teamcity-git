@@ -46,13 +46,15 @@ public class OperationContext {
   private static Logger LOG = Logger.getInstance(OperationContext.class.getName());
 
   private final GitVcsSupport mySupport;
+  private final MirrorManager myMirrorManager;
   private final VcsRoot myRoot;
   private final String myOperation;
   private final Map<Long, Settings> myRootSettings = new HashMap<Long, Settings>(); //root id -> settings
   private final Map<String, Repository> myRepositories = new HashMap<String, Repository>(); //repository path -> repository
 
-  public OperationContext(GitVcsSupport support, VcsRoot root, String operation) {
+  public OperationContext(GitVcsSupport support, MirrorManager mirrorManager, VcsRoot root, String operation) {
     mySupport = support;
+    myMirrorManager = mirrorManager;
     myRoot = root;
     myOperation = operation;
   }
@@ -62,16 +64,8 @@ public class OperationContext {
     return myRoot;
   }
 
-  public String getOperation() {
-    return myOperation;
-  }
-
   public GitVcsSupport getSupport() {
     return mySupport;
-  }
-
-  public Map<String, Repository> getRepositories() {
-    return myRepositories;
   }
 
   public Repository getRepository() throws VcsException {
@@ -109,7 +103,7 @@ public class OperationContext {
   }
 
   private Settings createSettings(VcsRoot root) throws VcsException {
-    return new Settings(root, mySupport.getCachesDir());
+    return new Settings(myMirrorManager, root);
   }
 
   public VcsException wrapException(Exception ex) {
@@ -165,7 +159,7 @@ public class OperationContext {
   public void addTree(TreeWalk tw, Repository db, RevCommit commit, boolean ignoreSubmodulesErrors, boolean logSubmoduleErrors) throws IOException, VcsException {
     Settings s = getSettings();
     if (getSettings().isCheckoutSubmodules()) {
-      SubmoduleResolver submoduleResolver = new TeamCitySubmoduleResolver(this, db, commit);
+      SubmoduleResolver submoduleResolver = new TeamCitySubmoduleResolver(this, myMirrorManager, db, commit);
       SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(s.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
       tw.addTree(create(db, commit, submoduleResolver, s.getRepositoryFetchURL().toString(), "", checkoutPolicy, logSubmoduleErrors));
     } else {

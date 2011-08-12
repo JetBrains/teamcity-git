@@ -21,6 +21,7 @@ import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefCommand;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -68,7 +69,8 @@ public abstract class GitUpdateProcess {
                           @NotNull String toVersion,
                           @NotNull File checkoutDirectory,
                           @NotNull BuildProgressLogger logger,
-                          @NotNull AgentPluginConfig pluginConfig) throws VcsException {
+                          @NotNull AgentPluginConfig pluginConfig,
+                          @NotNull MirrorManager mirrorManager) throws VcsException {
     myDirectoryCleaner = directoryCleaner;
     myRoot = root;
     myCheckoutRules = checkoutRules;
@@ -78,7 +80,7 @@ public abstract class GitUpdateProcess {
     myCheckoutDirectory = checkoutDirectory;
     myDirectory = findDirectory();
     myPluginConfig = pluginConfig;
-    mySettings = new AgentSettings(myPluginConfig, myDirectory, root);
+    mySettings = new AgentSettings(myPluginConfig, mirrorManager, myDirectory, root);
   }
 
 

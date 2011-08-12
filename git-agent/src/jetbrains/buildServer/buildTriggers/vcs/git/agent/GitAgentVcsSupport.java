@@ -22,6 +22,9 @@ import jetbrains.buildServer.agent.vcs.AgentVcsSupport;
 import jetbrains.buildServer.agent.vcs.UpdateByCheckoutRules2;
 import jetbrains.buildServer.agent.vcs.UpdatePolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.HashCalculator;
+import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
+import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -37,13 +40,16 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private final SmartDirectoryCleaner myDirectoryCleaner;
   private final GitAgentSSHService mySshService;
   private final PluginConfigFactory myConfigFactory;
+  private final HashCalculator myHashCalculator;
 
-  public GitAgentVcsSupport(SmartDirectoryCleaner directoryCleaner,
-                            GitAgentSSHService sshService,
-                            PluginConfigFactory configFactory) {
+  public GitAgentVcsSupport(@NotNull final SmartDirectoryCleaner directoryCleaner,
+                            @NotNull final GitAgentSSHService sshService,
+                            @NotNull final PluginConfigFactory configFactory,
+                            @NotNull final HashCalculator hashCalculator) {
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
     myConfigFactory = configFactory;
+    myHashCalculator = hashCalculator;
   }
 
 
@@ -68,6 +74,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull AgentRunningBuild build,
                             boolean cleanCheckoutRequested) throws VcsException {
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
+    MirrorManager mirrorManager = new MirrorManagerImpl(config, myHashCalculator);
     new GitCommandUpdateProcess(myDirectoryCleaner,
                                 mySshService,
                                 root,
@@ -75,6 +82,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                                 toVersion,
                                 checkoutDirectory,
                                 build,
-                                config).updateSources();
+                                config,
+                                mirrorManager).updateSources();
   }
 }

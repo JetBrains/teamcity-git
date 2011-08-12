@@ -20,6 +20,7 @@ import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.util.FileUtil;
@@ -55,9 +56,10 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
                                  @NotNull String toVersion,
                                  @NotNull File checkoutDirectory,
                                  @NotNull AgentRunningBuild build,
-                                 @NotNull AgentPluginConfig pluginConfig)
+                                 @NotNull AgentPluginConfig pluginConfig,
+                                 @NotNull MirrorManager mirrorManager)
     throws VcsException {
-    super(directoryCleaner, root, checkoutRules, toVersion, checkoutDirectory, build.getBuildLogger(), pluginConfig);
+    super(directoryCleaner, root, checkoutRules, toVersion, checkoutDirectory, build.getBuildLogger(), pluginConfig, mirrorManager);
     mySshService = sshService;
     myPluginConfig = pluginConfig;
   }

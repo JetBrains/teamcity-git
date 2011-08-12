@@ -101,6 +101,7 @@ public class BranchSupportTest {
     PluginConfigImpl config = new PluginConfigImpl(myServerPaths);
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    return new GitVcsSupport(config, transportFactory, fetchCommand, null);
+    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    return new GitVcsSupport(config, transportFactory, fetchCommand, mirrorManager, null);
   }
 }

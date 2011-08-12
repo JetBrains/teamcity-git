@@ -17,12 +17,15 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
+import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,29 +45,27 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    */
   private final String myPathFromRoot;
   private final OperationContext myContext;
+  private final MirrorManager myMirrorManager;
 
-  /**
-   * The resolver constructor
-   *
-   * @param context current operation context
-   * @param commit                the commit this resolves handles
-   */
-  public TeamCitySubmoduleResolver(OperationContext context, Repository db, RevCommit commit) {
-    this(context, db, commit, "");
+  public TeamCitySubmoduleResolver(@NotNull final OperationContext context,
+                                   @NotNull final MirrorManager mirrorManager,
+                                   Repository db,
+                                   RevCommit commit) {
+    this(context, mirrorManager, db, commit, "");
   }
 
-  /**
-   * The resolver constructor
-   *
-   * @param context current operation context
-   * @param basePath              the base path
-   * @param commit                the commit this resolves handles
-   */
-  private TeamCitySubmoduleResolver(OperationContext context, Repository db, RevCommit commit, String basePath) {
+
+  private TeamCitySubmoduleResolver(@NotNull final OperationContext context,
+                                    @NotNull final MirrorManager mirrorManager,
+                                    Repository db,
+                                    RevCommit commit,
+                                    String basePath) {
     super(context.getSupport(), db, commit);
+    myMirrorManager = mirrorManager;
     myContext = context;
     myPathFromRoot = basePath;
   }
+
 
   protected Repository resolveRepository(String path, String url) throws IOException, VcsException, URISyntaxException {
     if (LOG.isDebugEnabled())
@@ -73,7 +74,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
     if (isRelative(url)) {
       url = resolveRelativeUrl(url);
     }
-    File repositoryDir = myContext.getSettings().getRepositoryDirForUrl(url);
+    File repositoryDir = myMirrorManager.getMirrorDir(url);
 
     if (LOG.isDebugEnabled())
       LOG.debug("Cache dir for repository '" + url + "' is '" + repositoryDir.getAbsolutePath() + "'");
@@ -120,7 +121,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
       //exception means path does not contain submodule, use current repository
       db = getRepository();
     }
-    return new TeamCitySubmoduleResolver(myContext, db, commit, fullPath(path));
+    return new TeamCitySubmoduleResolver(myContext, myMirrorManager, db, commit, fullPath(path));
   }
 
   /**

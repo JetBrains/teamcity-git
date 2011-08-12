@@ -189,7 +189,8 @@ public class GitVcsSupportTest extends PatchTestCase {
     ServerPluginConfig config = myConfigBuilder.build();
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    return new GitVcsSupport(config, transportFactory, fetchCommand, holder);
+    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    return new GitVcsSupport(config, transportFactory, fetchCommand, mirrorManager, holder);
   }
 
 
@@ -394,8 +395,10 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master");
     final List<ModificationData> mds = support.collectChanges(root,
-                                                              GitUtils.makeVersion("3b9fbfbb43e7edfad018b482e15e7f93cca4e69f", 1283497225000L),
-                                                              GitUtils.makeVersion("2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", 1286183770000L),
+                                                              GitUtils
+                                                                .makeVersion("3b9fbfbb43e7edfad018b482e15e7f93cca4e69f", 1283497225000L),
+                                                              GitUtils
+                                                                .makeVersion("2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", 1286183770000L),
                                                               new CheckoutRules("+:dir=>."));
     //we can ignore checkout rules during collecting changes, TeamCity will apply them later,
     //but we should not set canBeIgnored = false for modifications, otherwise TeamCity won't exclude them
@@ -1278,7 +1281,8 @@ public class GitVcsSupportTest extends PatchTestCase {
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
-    GitVcsSupport git = new GitVcsSupport(config, transportFactory, fetchCounter, null);
+    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    GitVcsSupport git = new GitVcsSupport(config, transportFactory, fetchCounter, mirrorManager, null);
 
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
     FileUtil.copyDir(dataFile("repo_for_fetch.1"), remoteRepositoryDir);

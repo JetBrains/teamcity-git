@@ -33,6 +33,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.Executors;
@@ -42,6 +43,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author dmitry.neverov
  */
+@Test
 public class CleanerTest extends BaseTestCase {
 
   private static final TempFiles ourTempFiles = new TempFiles();
@@ -51,6 +53,7 @@ public class CleanerTest extends BaseTestCase {
   private VcsManager myVcsManager;
   private Mockery myContext;
   private GitVcsSupport mySupport;
+  private MirrorManager myMirrorManager;
   private PluginConfigBuilder myConfigBuilder;
 
   @BeforeMethod
@@ -72,8 +75,9 @@ public class CleanerTest extends BaseTestCase {
     ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    mySupport = new GitVcsSupport(config, transportFactory, fetchCommand, null);
-    myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), config, mySupport);
+    myMirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    mySupport = new GitVcsSupport(config, transportFactory, fetchCommand, myMirrorManager, null);
+    myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), config, myMirrorManager, mySupport);
   }
 
   @AfterMethod
@@ -82,20 +86,23 @@ public class CleanerTest extends BaseTestCase {
   }
 
 
-  @Test
   public void test_clean() throws VcsException, InterruptedException {
     final VcsRoot root = GitTestUtil.getVcsRoot();
     mySupport.getCurrentVersion(root);//it will create dir in cache directory
     File repositoryDir = getRepositoryDir(root);
-    File gitCacheDir = new File(myServerPaths.getCachesDir(), "git");
-    generateGarbage(gitCacheDir);
+    File baseMirrorsDir = myMirrorManager.getBaseMirrorsDir();
+    generateGarbage(baseMirrorsDir);
 
     myContext.checking(new Expectations() {{
       allowing(myVcsManager).findRootsByVcsName(Constants.VCS_NAME); will(returnValue(Collections.singleton(root)));
     }});
     invokeClean();
 
-    File[] files = gitCacheDir.listFiles();
+    File[] files = baseMirrorsDir.listFiles(new FileFilter() {
+      public boolean accept(File f) {
+        return f.isDirectory();
+      }
+    });
     assertEquals(1, files.length);
     assertEquals(repositoryDir, files[0]);
 
@@ -107,19 +114,22 @@ public class CleanerTest extends BaseTestCase {
   //if any usable VCS roots have fetch url with unresolved parameters we should not
   //remove unused directories, otherwise we will delete a directory of a usable
   //VCS root with resolved parameters
-  @Test
   public void should_not_remove_unused_dirs_if_root_url_has_parameters() throws Exception {
     final VcsRoot root = new VcsRootBuilder().fetchUrl("%repository.url%").build();
 
-    File gitCacheDir = new File(myServerPaths.getCachesDir(), "git");
-    generateGarbage(gitCacheDir);
+    File baseMirrorsDir = myMirrorManager.getBaseMirrorsDir();
+    generateGarbage(baseMirrorsDir);
 
     myContext.checking(new Expectations() {{
       allowing(myVcsManager).findRootsByVcsName(Constants.VCS_NAME); will(returnValue(Collections.singleton(root)));
     }});
     invokeClean();
 
-    File[] files = gitCacheDir.listFiles();
+    File[] files = baseMirrorsDir.listFiles(new FileFilter() {
+      public boolean accept(File f) {
+        return f.isDirectory();
+      }
+    });
     assertEquals(10, files.length);
   }
 
@@ -131,7 +141,7 @@ public class CleanerTest extends BaseTestCase {
   }
 
   private File getRepositoryDir(VcsRoot root) throws VcsException {
-    Settings settings = new Settings(root, mySupport.getCachesDir());
+    Settings settings = new Settings(myMirrorManager, root);
     return settings.getRepositoryDir();
   }
 

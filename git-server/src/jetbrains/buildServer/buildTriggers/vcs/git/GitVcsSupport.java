@@ -80,7 +80,6 @@ public class GitVcsSupport extends ServerVcsSupport
    * Current version cache (Pair<bare repository dir, branch name> -> current version).
    */
   private final RecentEntriesCache<Pair<File, String>, String> myCurrentVersionCache;
-  private final File myCacheDir;
   /**
    * During repository creation jgit checks existence of some files and directories. When several threads
    * try to create repository concurrently some of them could see it in inconsistent state. This map contains
@@ -104,17 +103,19 @@ public class GitVcsSupport extends ServerVcsSupport
   private final ServerPluginConfig myConfig;
   private final TransportFactory myTransportFactory;
   private final FetchCommand myFetchCommand;
+  private final MirrorManager myMirrorManager;
 
 
   public GitVcsSupport(@NotNull final ServerPluginConfig config,
                        @NotNull final TransportFactory transportFactory,
                        @NotNull final FetchCommand fetchCommand,
+                       @NotNull final MirrorManager mirrorManager,
                        @Nullable final ExtensionHolder extensionHolder) {
     myConfig = config;
-    myCacheDir = config.getCachesDir();
     myExtensionHolder = extensionHolder;
     myTransportFactory = transportFactory;
     myFetchCommand = fetchCommand;
+    myMirrorManager = mirrorManager;
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(myConfig.getCurrentVersionCacheSize());
     setStreamFileThreshold();
   }
@@ -1158,7 +1159,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   public OperationContext createContext(VcsRoot root, String operation) {
-    return new OperationContext(this, root, operation);
+    return new OperationContext(this, myMirrorManager, root, operation);
   }
 
   public LabelingSupport getLabelingSupport() {
@@ -1325,11 +1326,6 @@ public class GitVcsSupport extends ServerVcsSupport
         FileUtil.delete(tmpDir);
     }
   }
-
-  public File getCachesDir() {
-    return myCacheDir;
-  }
-
 
   /** Git change type */
   private enum ChangeType {

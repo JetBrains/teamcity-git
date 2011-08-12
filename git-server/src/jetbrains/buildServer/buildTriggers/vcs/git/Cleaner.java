@@ -48,15 +48,18 @@ public class Cleaner extends BuildServerAdapter {
 
   private final SBuildServer myServer;
   private final GitVcsSupport myGitVcsSupport;
+  private final MirrorManager myMirrorManager;
   private final ServerPluginConfig myConfig;
 
   public Cleaner(@NotNull final SBuildServer server,
                  @NotNull final EventDispatcher<BuildServerListener> dispatcher,
                  @NotNull final ServerPluginConfig config,
+                 @NotNull final MirrorManager mirrorManager,
                  @NotNull final GitVcsSupport gitSupport) {
     myServer = server;
     myConfig = config;
     myGitVcsSupport = gitSupport;
+    myMirrorManager = mirrorManager;
     dispatcher.addListener(this);
   }
 
@@ -111,7 +114,8 @@ public class Cleaner extends BuildServerAdapter {
     List<File> repositoryDirs = getAllRepositoryDirs();
     for (VcsRoot root : roots) {
       try {
-        File usedRootDir = Settings.getRepositoryDir(myGitVcsSupport.getCachesDir(), root);
+        Settings settings = new Settings(myMirrorManager, root);
+        File usedRootDir = settings.getRepositoryDir();
         repositoryDirs.remove(usedRootDir);
       } catch (Exception e) {
         LOG.warn("Get repository path error", e);
@@ -138,7 +142,7 @@ public class Cleaner extends BuildServerAdapter {
   }
 
   private List<File> getAllRepositoryDirs() {
-    return new ArrayList<File>(FileUtil.getSubDirectories(myGitVcsSupport.getCachesDir()));
+    return new ArrayList<File>(FileUtil.getSubDirectories(myMirrorManager.getBaseMirrorsDir()));
   }
 
   private long minutes2Milliseconds(int quotaInMinutes) {

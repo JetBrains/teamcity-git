@@ -17,8 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -38,12 +37,15 @@ public class SettingsTest extends TestCase {
 
   private static final TempFiles ourTempFiles = new TempFiles();
   private ServerPaths myServerPaths;
+  private MirrorManager myMirrorManager;
 
 
   @BeforeMethod
   public void setUp() throws IOException {
     String dotBuildServerPath = ourTempFiles.createTempDir().getAbsolutePath();
     myServerPaths = new ServerPaths(dotBuildServerPath, dotBuildServerPath, dotBuildServerPath);
+    PluginConfig config = new PluginConfigBuilder(myServerPaths).build();
+    myMirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
   }
 
 
@@ -63,7 +65,7 @@ public class SettingsTest extends TestCase {
   public void bare_repository_located_directly_under_provide_caches_dir() throws VcsException {
     VcsRoot root = createRoot();
     File gitCachesDir = new File(myServerPaths.getCachesDir(), "git");
-    Settings settings = new Settings(root, gitCachesDir);
+    Settings settings = new Settings(myMirrorManager, root);
     File bareRepositoryDir = settings.getRepositoryDir();
     assertEquals(gitCachesDir.getAbsolutePath(), bareRepositoryDir.getParentFile().getAbsolutePath());
   }

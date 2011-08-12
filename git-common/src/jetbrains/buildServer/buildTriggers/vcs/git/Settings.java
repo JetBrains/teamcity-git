@@ -23,6 +23,7 @@ import org.eclipse.jgit.errors.UnsupportedCredentialItem;
 import org.eclipse.jgit.transport.CredentialItem;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.net.URISyntaxException;
@@ -35,25 +36,25 @@ import java.util.Map;
  */
 public class Settings {
 
-  final private URIish repositoryFetchURL;
-  final private URIish repositoryPushURL;
-  final private String ref;
-  final private UserNameStyle usernameStyle;
-  final private SubmodulesCheckoutPolicy submodulePolicy;
-  final private File cachesDirectory;
-  final private AuthSettings myAuthSettings;
-  private File userDefinedRepositoryPath;
+  private final MirrorManager myMirrorManager;
+  private final URIish myRepositoryFetchURL;
+  private final URIish myRepositoryPushURL;
+  private final String myRef;
+  private final UserNameStyle myUsernameStyle;
+  private final SubmodulesCheckoutPolicy mySubmodulePolicy;
+  private final AuthSettings myAuthSettings;
+  private File myUserDefinedRepositoryPath;
 
-  public Settings(VcsRoot root, File cacheDir) throws VcsException {
-    cachesDirectory = cacheDir;
-    userDefinedRepositoryPath = readPath(root);
-    ref = root.getProperty(Constants.BRANCH_NAME);
-    usernameStyle = readUserNameStyle(root);
-    submodulePolicy = readSubmodulesPolicy(root);
+  public Settings(@NotNull final MirrorManager mirrorManager, final VcsRoot root) throws VcsException {
+    myMirrorManager = mirrorManager;
+    myUserDefinedRepositoryPath = readPath(root);
+    myRef = root.getProperty(Constants.BRANCH_NAME);
+    myUsernameStyle = readUserNameStyle(root);
+    mySubmodulePolicy = readSubmodulesPolicy(root);
     myAuthSettings = new AuthSettings(root.getProperties());
-    repositoryFetchURL = myAuthSettings.createAuthURI(root.getProperty(Constants.FETCH_URL));
+    myRepositoryFetchURL = myAuthSettings.createAuthURI(root.getProperty(Constants.FETCH_URL));
     final String pushUrl = root.getProperty(Constants.PUSH_URL);
-    repositoryPushURL = StringUtil.isEmpty(pushUrl) ? repositoryFetchURL : myAuthSettings.createAuthURI(pushUrl);
+    myRepositoryPushURL = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURL : myAuthSettings.createAuthURI(pushUrl);
   }
 
   private static File readPath(VcsRoot root) {
@@ -83,47 +84,23 @@ public class Settings {
    * @return true if submodules should be checked out
    */
   public boolean isCheckoutSubmodules() {
-    return submodulePolicy == SubmodulesCheckoutPolicy.CHECKOUT ||
-           submodulePolicy == SubmodulesCheckoutPolicy.CHECKOUT_IGNORING_ERRORS ||
-           submodulePolicy == SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT ||
-           submodulePolicy == SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT_IGNORING_ERRORS;
+    return mySubmodulePolicy == SubmodulesCheckoutPolicy.CHECKOUT ||
+           mySubmodulePolicy == SubmodulesCheckoutPolicy.CHECKOUT_IGNORING_ERRORS ||
+           mySubmodulePolicy == SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT ||
+           mySubmodulePolicy == SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT_IGNORING_ERRORS;
   }
 
   public SubmodulesCheckoutPolicy getSubmodulesCheckoutPolicy() {
-    return submodulePolicy;
+    return mySubmodulePolicy;
   }
 
   public UserNameStyle getUsernameStyle() {
-    return usernameStyle;
+    return myUsernameStyle;
   }
 
   public File getRepositoryDir() {
-    if (userDefinedRepositoryPath == null) {
-      return getRepositoryDirForUrl(getRepositoryFetchURL().toString());
-    } else {
-      return userDefinedRepositoryPath;
-    }
-  }
-
-  public static File getRepositoryDir(File cacheDir, VcsRoot root) throws VcsException {
-    File userDefinedPath = readPath(root);
-    if (userDefinedPath == null) {
-      AuthSettings auth = new AuthSettings(root.getProperties());
-      URIish fetchUrl = auth.createAuthURI(root.getProperty(Constants.FETCH_URL));
-      return getRepositoryDirForUrl(cacheDir, fetchUrl.toString());
-    } else {
-      return userDefinedPath;
-    }
-  }
-
-  public File getRepositoryDirForUrl(String url) {
-    return getRepositoryDirForUrl(cachesDirectory, url);
-  }
-
-  private static File getRepositoryDirForUrl(File cacheDir, String url) {
-    // TODO consider using a better hash in order to reduce a chance for conflict
-    String name = String.format("git-%08X.git", url.hashCode() & 0xFFFFFFFFL);
-    return new File(cacheDir, name);
+    String fetchUrl = getRepositoryFetchURL().toString();
+    return myUserDefinedRepositoryPath != null ? myUserDefinedRepositoryPath : myMirrorManager.getMirrorDir(fetchUrl);
   }
 
   /**
@@ -132,21 +109,21 @@ public class Settings {
    * @param file the path to set
    */
   public void setUserDefinedRepositoryPath(File file) {
-    userDefinedRepositoryPath = file;
+    myUserDefinedRepositoryPath = file;
   }
 
   /**
    * @return the URL for the repository
    */
   public URIish getRepositoryFetchURL() {
-    return repositoryFetchURL;
+    return myRepositoryFetchURL;
   }
 
   /**
    * @return the branch name
    */
   public String getRef() {
-    return StringUtil.isEmptyOrSpaces(ref) ? "master" : ref;
+    return StringUtil.isEmptyOrSpaces(myRef) ? "master" : myRef;
   }
 
   /**
@@ -160,7 +137,7 @@ public class Settings {
    * @return the push URL for the repository
    */
   public URIish getRepositoryPushURL() {
-    return repositoryPushURL;
+    return myRepositoryPushURL;
   }
 
   public AuthSettings getAuthSettings() {
