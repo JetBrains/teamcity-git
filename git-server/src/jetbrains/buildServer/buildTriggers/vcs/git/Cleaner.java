@@ -183,15 +183,11 @@ public class Cleaner extends BuildServerAdapter {
 
       ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.RunCommandEvents() {
         public void onProcessStarted(Process ps) {
-          if (LOG.isDebugEnabled()) {
-            LOG.info("Start 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
-          }
+          LOG.info("Start 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
         }
         public void onProcessFinished(Process ps) {
-          if (LOG.isDebugEnabled()) {
-            final long finish = System.currentTimeMillis();
-            LOG.info("Finish 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc', it took " + (finish - start) + "ms");
-          }
+          final long finish = System.currentTimeMillis();
+          LOG.info("Finish 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc', it took " + (finish - start) + "ms");
         }
         public Integer getOutputIdleSecondsTimeout() {
           return 3 * 60 * 60;//3 hours
