@@ -26,7 +26,6 @@ import jetbrains.buildServer.serverSide.BuildServerListener;
 import jetbrains.buildServer.serverSide.SBuildServer;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
@@ -78,7 +77,7 @@ public class Cleaner extends BuildServerAdapter {
   }
 
   private void removeUnusedRepositories() {
-    Collection<? extends SVcsRoot> gitRoots = getAllGitRoots();
+    Collection<? extends VcsRoot> gitRoots = getAllGitRoots();
     List<File> unusedDirs = getUnusedDirs(gitRoots);
     LOG.debug("Remove unused repositories started");
     for (File dir : unusedDirs) {
@@ -95,11 +94,11 @@ public class Cleaner extends BuildServerAdapter {
     LOG.debug("Remove unused repositories finished");
   }
 
-  private Collection<? extends SVcsRoot> getAllGitRoots() {
+  private Collection<? extends VcsRoot> getAllGitRoots() {
     return myServer.getVcsManager().findRootsByVcsName(Constants.VCS_NAME);
   }
 
-  private List<File> getUnusedDirs(Collection<? extends SVcsRoot> roots) {
+  private List<File> getUnusedDirs(Collection<? extends VcsRoot> roots) {
     List<File> repositoryDirs = getAllRepositoryDirs();
     for (VcsRoot root : roots) {
       try {

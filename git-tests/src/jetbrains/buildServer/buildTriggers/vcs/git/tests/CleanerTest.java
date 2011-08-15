@@ -23,7 +23,6 @@ import jetbrains.buildServer.serverSide.BuildServerListener;
 import jetbrains.buildServer.serverSide.SBuildServer;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.EventDispatcher;
-import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsManager;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -59,6 +58,9 @@ public class CleanerTest extends BaseTestCase {
     File dotBuildServer = ourTempFiles.createTempDir();
     myServerPaths = new ServerPaths(dotBuildServer.getAbsolutePath(), dotBuildServer.getAbsolutePath(), dotBuildServer.getAbsolutePath());
     myConfigBuilder = new PluginConfigBuilder(myServerPaths);
+    myConfigBuilder.setRunNativeGC(true);
+    if (System.getenv(Constants.GIT_PATH_ENV) != null)
+      myConfigBuilder.setPathToGit(System.getenv(Constants.GIT_PATH_ENV));
     myCleanExecutor = Executors.newSingleThreadScheduledExecutor();
     myContext = new Mockery();
     final SBuildServer server = myContext.mock(SBuildServer.class);
@@ -81,23 +83,14 @@ public class CleanerTest extends BaseTestCase {
 
   @Test
   public void test_clean() throws VcsException, InterruptedException {
-    myConfigBuilder.setRunNativeGC(true);
-    if (System.getenv(Constants.GIT_PATH_ENV) != null)
-      myConfigBuilder.setPathToGit(System.getenv(Constants.GIT_PATH_ENV));
-
     final VcsRoot root = GitTestUtil.getVcsRoot();
-    final ServerPluginConfig config = myConfigBuilder.build();
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    GitVcsSupport vcsSupport = new GitVcsSupport(config, transportFactory, fetchCommand, null);
-    vcsSupport.getCurrentVersion(root);//it will create dir in cache directory
+    mySupport.getCurrentVersion(root);//it will create dir in cache directory
     File repositoryDir = getRepositoryDir(root);
     File gitCacheDir = new File(myServerPaths.getCachesDir(), "git");
     generateGarbage(gitCacheDir);
 
-    final SVcsRoot usedRoot = createSVcsRootFor(root);
     myContext.checking(new Expectations() {{
-      allowing(myVcsManager).findRootsByVcsName(Constants.VCS_NAME); will(returnValue(Collections.singleton(usedRoot)));
+      allowing(myVcsManager).findRootsByVcsName(Constants.VCS_NAME); will(returnValue(Collections.singleton(root)));
     }});
     invokeClean();
 
@@ -105,7 +98,7 @@ public class CleanerTest extends BaseTestCase {
     assertEquals(1, files.length);
     assertEquals(repositoryDir, files[0]);
 
-    vcsSupport.getCurrentVersion(root);//check that repository is fine after git gc
+    mySupport.getCurrentVersion(root);//check that repository is fine after git gc
   }
 
   private void invokeClean() throws InterruptedException {
@@ -123,18 +116,5 @@ public class CleanerTest extends BaseTestCase {
     for (int i = 0; i < 10; i++) {
       new File(dir, "git-AHAHAHA"+i+".git").mkdir();
     }
-  }
-
-  private SVcsRoot createSVcsRootFor(final VcsRoot root) {
-    final SVcsRoot result = myContext.mock(SVcsRoot.class);
-    myContext.checking(new Expectations() {{
-      allowing(myVcsManager).findRootsByVcsName(Constants.VCS_NAME); will(returnValue(Collections.singleton(result)));
-      allowing(result).getProperty(Constants.PATH); will(returnValue(root.getProperty(Constants.PATH)));
-      allowing(result).getProperty(Constants.AUTH_METHOD); will(returnValue(root.getProperty(Constants.AUTH_METHOD)));
-      allowing(result).getProperty(Constants.FETCH_URL); will(returnValue(root.getProperty(Constants.FETCH_URL)));
-      allowing(result).getProperty(Constants.IGNORE_KNOWN_HOSTS); will(returnValue(root.getProperty(Constants.IGNORE_KNOWN_HOSTS)));
-      allowing(result).getProperties(); will(returnValue(root.getProperties()));
-    }});
-    return result;
   }
 }
