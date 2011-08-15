@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -52,9 +51,9 @@ public class GitTestUtil {
 
 
   public static VcsRootImpl getVcsRoot(File repositoryDir) {
-    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
-    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(repositoryDir));
-    root.addProperty(Constants.BRANCH_NAME, "master");
-    return root;
+    return new VcsRootBuilder()
+      .fetchUrl(GitUtils.toURL(repositoryDir))
+      .branchName("master")
+      .build();
   }
 }

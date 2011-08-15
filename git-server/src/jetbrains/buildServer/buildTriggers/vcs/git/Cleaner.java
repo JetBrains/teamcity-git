@@ -21,6 +21,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.parameters.ReferencesResolverUtil;
 import jetbrains.buildServer.serverSide.BuildServerAdapter;
 import jetbrains.buildServer.serverSide.BuildServerListener;
 import jetbrains.buildServer.serverSide.SBuildServer;
@@ -33,6 +34,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 
@@ -94,11 +96,18 @@ public class Cleaner extends BuildServerAdapter {
     LOG.debug("Remove unused repositories finished");
   }
 
+  @NotNull
   private Collection<? extends VcsRoot> getAllGitRoots() {
     return myServer.getVcsManager().findRootsByVcsName(Constants.VCS_NAME);
   }
 
-  private List<File> getUnusedDirs(Collection<? extends VcsRoot> roots) {
+  @NotNull
+  private List<File> getUnusedDirs(@NotNull Collection<? extends VcsRoot> roots) {
+    if (anyRootHaveFetchUrlWithParam(roots)) {
+      LOG.debug("At least one of usable VCS roots has parameter in a fetch url, consider all directories as usable");
+      return Collections.emptyList();
+    }
+
     List<File> repositoryDirs = getAllRepositoryDirs();
     for (VcsRoot root : roots) {
       try {
@@ -109,6 +118,23 @@ public class Cleaner extends BuildServerAdapter {
       }
     }
     return repositoryDirs;
+  }
+
+  private boolean anyRootHaveFetchUrlWithParam(@NotNull Collection<? extends VcsRoot> roots) {
+    for (VcsRoot root : roots) {
+      if (isFetchUrlWithParam(root))
+        return true;
+    }
+    return false;
+  }
+
+  private boolean isFetchUrlWithParam(@NotNull final VcsRoot root) {
+    final String fetchUrl = getFetchUrl(root);
+    return ReferencesResolverUtil.containsReference(fetchUrl);
+  }
+
+  private String getFetchUrl(@NotNull final VcsRoot root) {
+    return root.getProperty(Constants.FETCH_URL);
   }
 
   private List<File> getAllRepositoryDirs() {

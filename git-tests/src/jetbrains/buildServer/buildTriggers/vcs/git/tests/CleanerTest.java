@@ -81,6 +81,7 @@ public class CleanerTest extends BaseTestCase {
     ourTempFiles.cleanup();
   }
 
+
   @Test
   public void test_clean() throws VcsException, InterruptedException {
     final VcsRoot root = GitTestUtil.getVcsRoot();
@@ -101,6 +102,28 @@ public class CleanerTest extends BaseTestCase {
     mySupport.getCurrentVersion(root);//check that repository is fine after git gc
   }
 
+
+  //TW-10401
+  //if any usable VCS roots have fetch url with unresolved parameters we should not
+  //remove unused directories, otherwise we will delete a directory of a usable
+  //VCS root with resolved parameters
+  @Test
+  public void should_not_remove_unused_dirs_if_root_url_has_parameters() throws Exception {
+    final VcsRoot root = new VcsRootBuilder().fetchUrl("%repository.url%").build();
+
+    File gitCacheDir = new File(myServerPaths.getCachesDir(), "git");
+    generateGarbage(gitCacheDir);
+
+    myContext.checking(new Expectations() {{
+      allowing(myVcsManager).findRootsByVcsName(Constants.VCS_NAME); will(returnValue(Collections.singleton(root)));
+    }});
+    invokeClean();
+
+    File[] files = gitCacheDir.listFiles();
+    assertEquals(10, files.length);
+  }
+
+
   private void invokeClean() throws InterruptedException {
     myCleaner.cleanupStarted();
     myCleanExecutor.shutdown();
@@ -113,6 +136,7 @@ public class CleanerTest extends BaseTestCase {
   }
 
   private void generateGarbage(File dir) {
+    dir.mkdirs();
     for (int i = 0; i < 10; i++) {
       new File(dir, "git-AHAHAHA"+i+".git").mkdir();
     }
