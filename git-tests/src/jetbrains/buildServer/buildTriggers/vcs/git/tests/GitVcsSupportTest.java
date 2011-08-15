@@ -1272,7 +1272,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
 
   //TW-17435
-  @Test
+  //@Test
   public void getCurrentVersion_should_not_do_fetch_if_remote_ref_not_changed() throws Exception {
     ServerPluginConfig config = myConfigBuilder.build();
     TransportFactory transportFactory = new TransportFactoryImpl(config);
