@@ -26,4 +26,5 @@
   <bean id="urlSupport" class="jetbrains.buildServer.buildTriggers.vcs.git.GitUrlSupport"/>
   <bean id="mirrorManager" class="jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl"/>
   <bean id="hashCalculator" class="jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl"/>
+  <bean id="repositoryManager" class="jetbrains.buildServer.buildTriggers.vcs.git.RepositoryManagerImpl"/>
 </beans>

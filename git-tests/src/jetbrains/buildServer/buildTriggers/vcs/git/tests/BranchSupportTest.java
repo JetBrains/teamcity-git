@@ -102,6 +102,7 @@ public class BranchSupportTest {
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    return new GitVcsSupport(config, transportFactory, fetchCommand, mirrorManager, null);
+    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
+    return new GitVcsSupport(config, transportFactory, fetchCommand, repositoryManager, null);
   }
 }

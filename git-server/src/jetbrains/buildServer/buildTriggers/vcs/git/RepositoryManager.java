@@ -16,35 +16,32 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
 
 /**
- * Manages local mirror dirs of remote repositories
  * @author dmitry.neverov
  */
-public interface MirrorManager {
+public interface RepositoryManager extends MirrorManager {
 
-  /**
-   * @return parent dir of local repositories
-   */
   @NotNull
-  public File getBaseMirrorsDir();
+  List<File> getExpiredDirs();
 
-  /**
-   * Get default directory for remote repository with specified url
-   * @param repositoryUrl remote repository url
-   * @return see above
-   */
   @NotNull
-  public File getMirrorDir(@NotNull String repositoryUrl);
+  Repository getRepository(@NotNull final URIish fetchUrl) throws VcsException;
 
-  /**
-   * Mark dir as invalid, urls mapped to this dir will get another mapping
-   * on subsequent call to getMirrorDir()
-   * @param dir dir of interest
-   */
-  public void invalidate(@NotNull File dir);
+  @NotNull
+  Repository getRepository(@NotNull final File dir, @NotNull final URIish fetchUrl) throws VcsException;
 
+  @NotNull
+  public Object getWriteLock(@NotNull File dir);
+
+  @NotNull
+  public ReadWriteLock getRmLock(@NotNull File dir);
 }

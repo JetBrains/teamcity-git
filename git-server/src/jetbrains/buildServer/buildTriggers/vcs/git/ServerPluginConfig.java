@@ -58,4 +58,7 @@ public interface ServerPluginConfig extends PluginConfig {
 
 
   int getFixedSubmoduleCommitSearchDepth();
+
+
+  long getMirrorExpirationTimeoutMillis();
 }

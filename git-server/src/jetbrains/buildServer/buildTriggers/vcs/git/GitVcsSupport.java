@@ -45,18 +45,13 @@ import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilterGroup;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
-import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
@@ -80,45 +75,29 @@ public class GitVcsSupport extends ServerVcsSupport
    * Current version cache (Pair<bare repository dir, branch name> -> current version).
    */
   private final RecentEntriesCache<Pair<File, String>, String> myCurrentVersionCache;
-  /**
-   * During repository creation jgit checks existence of some files and directories. When several threads
-   * try to create repository concurrently some of them could see it in inconsistent state. This map contains
-   * locks for repository creation, so only one thread at a time will create repository at give dir.
-   */
-  private final ConcurrentMap<File, Object> myCreateLocks = new ConcurrentHashMap<File, Object>();
-  /**
-   * In the past jgit has some concurrency problems, in order to fix them we do only one fetch at a time.
-   * Also several concurrent fetches in single repository does not make sense since only one of them succeed.
-   * This map contains locks used for fetch and push operations.
-   */
-  private final ConcurrentMap<File, Object> myWriteLocks = new ConcurrentHashMap<File, Object>();
-  /**
-   * During cleanup unused bare repositories are removed. This map contains rw locks for repository removal.
-   * Fetch/push/create operations should be done with read lock hold, remove operation is done with write lock hold.
-   * @see Cleaner
-   */
-  private final ConcurrentMap<File, ReadWriteLock> myRmLocks = new ConcurrentHashMap<File, ReadWriteLock>();
+
   private final ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
   private final ServerPluginConfig myConfig;
   private final TransportFactory myTransportFactory;
   private final FetchCommand myFetchCommand;
-  private final MirrorManager myMirrorManager;
+  private final RepositoryManager myRepositoryManager;
 
 
   public GitVcsSupport(@NotNull final ServerPluginConfig config,
                        @NotNull final TransportFactory transportFactory,
                        @NotNull final FetchCommand fetchCommand,
-                       @NotNull final MirrorManager mirrorManager,
+                       @NotNull final RepositoryManager repositoryManager,
                        @Nullable final ExtensionHolder extensionHolder) {
     myConfig = config;
     myExtensionHolder = extensionHolder;
     myTransportFactory = transportFactory;
     myFetchCommand = fetchCommand;
-    myMirrorManager = mirrorManager;
+    myRepositoryManager = repositoryManager;
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(myConfig.getCurrentVersionCacheSize());
     setStreamFileThreshold();
   }
+
 
   private void setStreamFileThreshold() {
     WindowCacheConfig cfg = new WindowCacheConfig();
@@ -1070,69 +1049,11 @@ public class GitVcsSupport extends ServerVcsSupport
   public void fetch(Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
-    Lock rmLock = getRmLock(repositoryDir).readLock();
+    Lock rmLock = myRepositoryManager.getRmLock(repositoryDir).readLock();
     rmLock.lock();
     try {
-      synchronized (getWriteLock(repositoryDir)) {
+      synchronized (myRepositoryManager.getWriteLock(repositoryDir)) {
         myFetchCommand.fetch(db, fetchURI, refspec, auth);
-      }
-    } finally {
-      rmLock.unlock();
-    }
-  }
-
-
-  @NotNull
-  private Object getCreateLock(File dir) {
-    return getOrCreate(myCreateLocks, dir, new Object());
-  }
-
-
-  @NotNull
-  public Object getWriteLock(File dir) {
-    return getOrCreate(myWriteLocks, dir, new Object());
-  }
-
-
-  @NotNull
-  public ReadWriteLock getRmLock(File dir) {
-    return getOrCreate(myRmLocks, dir, new ReentrantReadWriteLock());
-  }
-
-
-  private <K, V> V getOrCreate(ConcurrentMap<K, V> map, K key, V value) {
-    V existing = map.putIfAbsent(key, value);
-    if (existing != null)
-      return existing;
-    else
-      return value;
-  }
-
-
-  @NotNull
-  Repository getRepository(@NotNull File dir, URIish fetchUrl) throws VcsException {
-    try {
-      Repository r = RepositoryCache.open(RepositoryCache.FileKey.exact(dir, FS.DETECTED), true);
-      final StoredConfig config = r.getConfig();
-      final String existingRemote = config.getString("teamcity", null, "remote");
-      if (existingRemote == null || !fetchUrl.toString().equals(existingRemote)) {
-        r = createRepository(dir, fetchUrl);
-      }
-      return r;
-    } catch (Exception e) {
-      return createRepository(dir, fetchUrl);
-    }
-  }
-
-
-  private Repository createRepository(@NotNull File dir, URIish fetchUrl) throws VcsException {
-    Lock rmLock = getRmLock(dir).readLock();
-    rmLock.lock();
-    try {
-      synchronized (getCreateLock(dir)) {
-        Repository result = GitServerUtil.getRepository(dir, fetchUrl);
-        RepositoryCache.register(result);
-        return result;
       }
     } finally {
       rmLock.unlock();
@@ -1159,7 +1080,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   public OperationContext createContext(VcsRoot root, String operation) {
-    return new OperationContext(this, myMirrorManager, root, operation);
+    return new OperationContext(this, myRepositoryManager, root, operation);
   }
 
   public LabelingSupport getLabelingSupport() {
@@ -1195,7 +1116,7 @@ public class GitVcsSupport extends ServerVcsSupport
       if (LOG.isDebugEnabled()) {
         LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
       }
-      synchronized (getWriteLock(s.getRepositoryDir())) {
+      synchronized (myRepositoryManager.getWriteLock(s.getRepositoryDir())) {
         final Transport tn = myTransportFactory.createTransport(r, s.getRepositoryPushURL(), s.getAuthSettings());
         try {
           final PushConnection c = tn.openPush();

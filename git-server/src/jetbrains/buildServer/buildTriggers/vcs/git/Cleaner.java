@@ -21,20 +21,16 @@ import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.parameters.ReferencesResolverUtil;
 import jetbrains.buildServer.serverSide.BuildServerAdapter;
 import jetbrains.buildServer.serverSide.BuildServerListener;
 import jetbrains.buildServer.serverSide.SBuildServer;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 
@@ -47,19 +43,16 @@ public class Cleaner extends BuildServerAdapter {
   private static Logger LOG = Loggers.CLEANUP;
 
   private final SBuildServer myServer;
-  private final GitVcsSupport myGitVcsSupport;
-  private final MirrorManager myMirrorManager;
+  private final RepositoryManager myRepositoryManager;
   private final ServerPluginConfig myConfig;
 
   public Cleaner(@NotNull final SBuildServer server,
                  @NotNull final EventDispatcher<BuildServerListener> dispatcher,
                  @NotNull final ServerPluginConfig config,
-                 @NotNull final MirrorManager mirrorManager,
-                 @NotNull final GitVcsSupport gitSupport) {
+                 @NotNull final RepositoryManager repositoryManager) {
     myServer = server;
     myConfig = config;
-    myGitVcsSupport = gitSupport;
-    myMirrorManager = mirrorManager;
+    myRepositoryManager = repositoryManager;
     dispatcher.addListener(this);
   }
 
@@ -82,67 +75,35 @@ public class Cleaner extends BuildServerAdapter {
   }
 
   private void removeUnusedRepositories() {
-    Collection<? extends VcsRoot> gitRoots = getAllGitRoots();
-    List<File> unusedDirs = getUnusedDirs(gitRoots);
+    List<File> unusedDirs = getUnusedDirs();
     LOG.debug("Remove unused repositories started");
     for (File dir : unusedDirs) {
       LOG.info("Remove unused dir " + dir.getAbsolutePath());
-      Lock rmLock = myGitVcsSupport.getRmLock(dir).writeLock();
+      Lock rmLock = myRepositoryManager.getRmLock(dir).writeLock();
       rmLock.lock();
+      boolean deleted = false;
       try {
-        FileUtil.delete(dir);
+        deleted = FileUtil.delete(dir);
       } finally {
         rmLock.unlock();
       }
-      LOG.debug("Remove unused dir " + dir.getAbsolutePath() + " finished");
+      if (deleted) {
+        LOG.debug("Remove unused dir " + dir.getAbsolutePath() + " finished");
+      } else {
+        LOG.error("Cannot delete unused dir " + dir.getAbsolutePath());
+        myRepositoryManager.invalidate(dir);
+      }
     }
     LOG.debug("Remove unused repositories finished");
   }
 
   @NotNull
-  private Collection<? extends VcsRoot> getAllGitRoots() {
-    return myServer.getVcsManager().findRootsByVcsName(Constants.VCS_NAME);
-  }
-
-  @NotNull
-  private List<File> getUnusedDirs(@NotNull Collection<? extends VcsRoot> roots) {
-    if (anyRootHaveFetchUrlWithParam(roots)) {
-      LOG.debug("At least one of usable VCS roots has parameter in a fetch url, consider all directories as usable");
-      return Collections.emptyList();
-    }
-
-    List<File> repositoryDirs = getAllRepositoryDirs();
-    for (VcsRoot root : roots) {
-      try {
-        Settings settings = new Settings(myMirrorManager, root);
-        File usedRootDir = settings.getRepositoryDir();
-        repositoryDirs.remove(usedRootDir);
-      } catch (Exception e) {
-        LOG.warn("Get repository path error", e);
-      }
-    }
-    return repositoryDirs;
-  }
-
-  private boolean anyRootHaveFetchUrlWithParam(@NotNull Collection<? extends VcsRoot> roots) {
-    for (VcsRoot root : roots) {
-      if (isFetchUrlWithParam(root))
-        return true;
-    }
-    return false;
-  }
-
-  private boolean isFetchUrlWithParam(@NotNull final VcsRoot root) {
-    final String fetchUrl = getFetchUrl(root);
-    return ReferencesResolverUtil.containsReference(fetchUrl);
-  }
-
-  private String getFetchUrl(@NotNull final VcsRoot root) {
-    return root.getProperty(Constants.FETCH_URL);
+  private List<File> getUnusedDirs() {
+    return myRepositoryManager.getExpiredDirs();
   }
 
   private List<File> getAllRepositoryDirs() {
-    return new ArrayList<File>(FileUtil.getSubDirectories(myMirrorManager.getBaseMirrorsDir()));
+    return new ArrayList<File>(FileUtil.getSubDirectories(myRepositoryManager.getBaseMirrorsDir()));
   }
 
   private long minutes2Milliseconds(int quotaInMinutes) {
@@ -156,7 +117,7 @@ public class Cleaner extends BuildServerAdapter {
     List<File> allDirs = getAllRepositoryDirs();
     int runGCCounter = 0;
     for (File gitDir : allDirs) {
-      synchronized (myGitVcsSupport.getWriteLock(gitDir)) {
+      synchronized (myRepositoryManager.getWriteLock(gitDir)) {
         runNativeGC(gitDir);
       }
       runGCCounter++;

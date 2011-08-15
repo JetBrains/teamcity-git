@@ -31,6 +31,7 @@ import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.TrackingRefUpdate;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.FS;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -59,9 +60,9 @@ public class GitServerUtil {
    * @param dir    the path to the directory to init
    * @param remote the remote URL
    * @return a connection to repository
-   * @throws jetbrains.buildServer.vcs.VcsException if the there is a problem with accessing VCS
+   * @throws VcsException if the there is a problem with accessing VCS
    */
-  public static Repository getRepository(File dir, URIish remote) throws VcsException {
+  public static Repository getRepository(@NotNull final File dir, @NotNull final URIish remote) throws VcsException {
     if (dir.exists() && !dir.isDirectory()) {
       throw new VcsException("The specified path is not a directory: " + dir);
     }

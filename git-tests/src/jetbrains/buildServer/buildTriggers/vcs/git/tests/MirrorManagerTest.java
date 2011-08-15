@@ -94,6 +94,29 @@ public class MirrorManagerTest {
   }
 
 
+  public void should_give_different_dirs_for_same_url_if_dir_was_invalidated() {
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl());
+    String url = "git://some.org/repository.git";
+    File dir1 = mirrorManager.getMirrorDir(url);
+    mirrorManager.invalidate(dir1);
+    File dir2 = mirrorManager.getMirrorDir(url);
+    assertFalse(dir1.equals(dir2));
+  }
+
+
+  public void should_remember_invalidated_dirs_after_restart() {
+    String url1 = "git://some.org/repository1.git";
+    String url2 = "git://some.org/repository2.git";
+    HashCalculator clashingHash = new ClashingHashCalculator(Arrays.asList(url1, url2));
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, clashingHash);
+    File dir1 = mirrorManager.getMirrorDir(url1);
+    mirrorManager.invalidate(dir1);
+    mirrorManager = new MirrorManagerImpl(myConfig, clashingHash); //restart
+    File dir2 = mirrorManager.getMirrorDir(url2);
+    assertFalse(dir1.equals(dir2));
+  }
+
+
   private void createRepositories(File baseDir, Map<String, String> url2dir) throws Exception {
     for (Map.Entry<String, String> entry : url2dir.entrySet()) {
       String url = entry.getKey();

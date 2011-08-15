@@ -18,7 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
@@ -27,7 +26,6 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 
@@ -45,23 +43,20 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
    */
   private final String myPathFromRoot;
   private final OperationContext myContext;
-  private final MirrorManager myMirrorManager;
+
 
   public TeamCitySubmoduleResolver(@NotNull final OperationContext context,
-                                   @NotNull final MirrorManager mirrorManager,
                                    Repository db,
                                    RevCommit commit) {
-    this(context, mirrorManager, db, commit, "");
+    this(context, db, commit, "");
   }
 
 
   private TeamCitySubmoduleResolver(@NotNull final OperationContext context,
-                                    @NotNull final MirrorManager mirrorManager,
                                     Repository db,
                                     RevCommit commit,
                                     String basePath) {
     super(context.getSupport(), db, commit);
-    myMirrorManager = mirrorManager;
     myContext = context;
     myPathFromRoot = basePath;
   }
@@ -74,27 +69,14 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
     if (isRelative(url)) {
       url = resolveRelativeUrl(url);
     }
-    File repositoryDir = myMirrorManager.getMirrorDir(url);
 
+    final URIish uri = new URIish(url);
+    Repository result = myContext.getRepositoryFor(uri);
     if (LOG.isDebugEnabled())
-      LOG.debug("Cache dir for repository '" + url + "' is '" + repositoryDir.getAbsolutePath() + "'");
+      LOG.debug("Fetching submodule " + url + " used at " + path + " for " + myContext.getSettings().debugInfo());
+    myGitSupport.fetch(result, uri, new RefSpec("+refs/heads/*:refs/heads/*"), myContext.getSettings().getAuthSettings());
 
-    Repository result = myContext.getRepositoryFor(repositoryDir);
-    if (result == null) {
-      final URIish uri = new URIish(url);
-      result = myContext.getRepository(repositoryDir, uri);
-      if (LOG.isDebugEnabled())
-        LOG.debug("Fetching submodule " + url + " used at " + path + " for " + myContext.getSettings().debugInfo());
-      myGitSupport.fetch(result, uri, new RefSpec("+refs/heads/*:refs/heads/*"), myContext.getSettings().getAuthSettings());
-    }
-    checkRepositoryCanBeUsedForUrl(result, url);
     return result;
-  }
-
-  private void checkRepositoryCanBeUsedForUrl(Repository result, String url) {
-    String teamcityRemote = result.getConfig().getString("teamcity", null, "remote");
-    if (teamcityRemote != null && !url.equals(teamcityRemote))
-      LOG.warn("Directory '" + result.getDirectory().getAbsolutePath() + "' is used for 2 different repositories: '" + url + "' and '" + teamcityRemote + "'");
   }
 
   private boolean isRelative(String url) {
@@ -121,7 +103,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
       //exception means path does not contain submodule, use current repository
       db = getRepository();
     }
-    return new TeamCitySubmoduleResolver(myContext, myMirrorManager, db, commit, fullPath(path));
+    return new TeamCitySubmoduleResolver(myContext, db, commit, fullPath(path));
   }
 
   /**

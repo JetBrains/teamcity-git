@@ -27,12 +27,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.*;
 
 /**
  * @author dmitry.neverov
@@ -43,8 +38,10 @@ public class MirrorManagerImpl implements MirrorManager {
 
   private final File myBaseMirrorsDir;
   private final File myMapFile;
+  private final File myInvalidDirsFile;
   /*url -> dir name*/
-  private final ConcurrentMap<String, String> myMirrorMap = new ConcurrentHashMap<String, String>();
+  private final Map<String, String> myMirrorMap = new HashMap<String, String>();
+  private final Set<String> myInvalidDirNames = new HashSet<String>();
   private final Object myLock = new Object();
   private final HashCalculator myHashCalculator;
 
@@ -53,6 +50,8 @@ public class MirrorManagerImpl implements MirrorManager {
     myHashCalculator = hash;
     myBaseMirrorsDir = config.getCachesDir();
     myMapFile = new File(myBaseMirrorsDir, "map");
+    myInvalidDirsFile = new File(myBaseMirrorsDir, "invalid");
+    loadInvalidDirs();
     loadMappings();
   }
 
@@ -69,6 +68,34 @@ public class MirrorManagerImpl implements MirrorManager {
   }
 
 
+  public void invalidate(@NotNull final File dir) {
+    synchronized (myLock) {
+      List<String> urlsMappedToDir = getUrlsMappedToDir(dir);
+      for (String url : urlsMappedToDir) {
+        String dirName = myMirrorMap.remove(url);
+        myInvalidDirNames.add(dirName);
+      }
+      saveMappingToFile();
+      saveInvalidDirsToFile();
+    }
+  }
+
+
+  @NotNull
+  private List<String> getUrlsMappedToDir(@NotNull final File dir) {
+    synchronized (myLock) {
+      List<String> urlsMappedToDir = new ArrayList<String>();
+      for (Map.Entry<String, String> entry : myMirrorMap.entrySet()) {
+        String url = entry.getKey();
+        String dirName = entry.getValue();
+        if (dir.equals(new File(myBaseMirrorsDir, dirName)))
+          urlsMappedToDir.add(url);
+      }
+      return urlsMappedToDir;
+    }
+  }
+
+
   /**
    * Returns repository dir name for specified url. Every url gets unique dir name.
    * @param url url of interest
@@ -76,13 +103,10 @@ public class MirrorManagerImpl implements MirrorManager {
    */
   @NotNull
   private String getDirNameForUrl(@NotNull final String url) {
-    String dirName = myMirrorMap.get(url);
-    if (dirName != null)
-      return dirName;
     synchronized (myLock) {
-      String existing = myMirrorMap.get(url);
-      if (existing != null)
-        return existing;
+      String dirName = myMirrorMap.get(url);
+      if (dirName != null)
+        return dirName;
       dirName = getUniqueDirNameForUrl(url);
       myMirrorMap.put(url, dirName);
       saveMappingToFile();
@@ -96,7 +120,7 @@ public class MirrorManagerImpl implements MirrorManager {
     String dirName = calculateDirNameForUrl(url);
     int i = 0;
     synchronized (myLock) {
-      while(isOccupiedDirName(dirName)) {
+      while (isOccupiedDirName(dirName) || isInvalidDirName(dirName)) {
         dirName = calculateDirNameForUrl(url + i);
         i++;
       }
@@ -112,20 +136,55 @@ public class MirrorManagerImpl implements MirrorManager {
 
 
   private boolean isOccupiedDirName(@NotNull final String dirName) {
-    return myMirrorMap.values().contains(dirName) || new File(myBaseMirrorsDir, dirName).exists();
+    synchronized (myLock) {
+      return myMirrorMap.values().contains(dirName)/* || new File(myBaseMirrorsDir, dirName).exists()*/;
+    }
+  }
+
+
+  private boolean isInvalidDirName(@NotNull final String dirName) {
+    synchronized (myLock) {
+      return myInvalidDirNames.contains(dirName);
+    }
   }
 
 
   private void saveMappingToFile() {
-    LOG.debug("Save mapping to " + myMapFile.getAbsolutePath());
-    StringBuilder sb = new StringBuilder();
-    for (Map.Entry<String, String> mirror : myMirrorMap.entrySet()) {
-      String url = mirror.getKey();
-      String dir = mirror.getValue();
-      sb.append(url).append(" = ").append(dir).append("\n");
-    }
     synchronized (myLock) {
+      LOG.debug("Save mapping to " + myMapFile.getAbsolutePath());
+      StringBuilder sb = new StringBuilder();
+      for (Map.Entry<String, String> mirror : myMirrorMap.entrySet()) {
+        String url = mirror.getKey();
+        String dir = mirror.getValue();
+        sb.append(url).append(" = ").append(dir).append("\n");
+      }
       FileUtil.writeFile(myMapFile, sb.toString());
+    }
+  }
+
+
+  private void saveInvalidDirsToFile() {
+    synchronized (myLock) {
+      LOG.debug("Save invalid dirs to " + myInvalidDirsFile.getAbsolutePath());
+      StringBuilder sb = new StringBuilder();
+      for (String dirName : myInvalidDirNames) {
+        sb.append(dirName).append("\n");
+      }
+      FileUtil.writeFile(myInvalidDirsFile, sb.toString());
+    }
+  }
+
+
+  private void loadInvalidDirs() {
+    synchronized (myLock) {
+      LOG.debug("Parse invalid dirs file " + myInvalidDirsFile.getAbsolutePath());
+      if (myInvalidDirsFile.exists()) {
+        for (String line : readLines(myInvalidDirsFile)) {
+          String dirName = line.trim();
+          if (dirName.length() > 0)
+            myInvalidDirNames.add(dirName);
+        }
+      }
     }
   }
 
@@ -144,7 +203,7 @@ public class MirrorManagerImpl implements MirrorManager {
 
   private void readMappings() {
     synchronized (myLock) {
-      for (String line : readLines()) {
+      for (String line : readLines(myMapFile)) {
         int separatorIndex = line.lastIndexOf(" = ");
         if (separatorIndex == -1) {
           if (!line.equals(""))
@@ -163,12 +222,12 @@ public class MirrorManagerImpl implements MirrorManager {
   }
 
 
-  private List<String> readLines() {
+  private List<String> readLines(@NotNull final File file) {
     synchronized (myLock) {
       try {
-        return FileUtil.readFile(myMapFile);
+        return FileUtil.readFile(file);
       } catch (IOException e) {
-        LOG.error("Error while reading a mapping file at " + myMapFile.getAbsolutePath() + " starting with empty mapping", e);
+        LOG.error("Error while reading file " + file.getAbsolutePath() + " assume it is empty", e);
         return new ArrayList<String>();
       }
     }
@@ -186,7 +245,7 @@ public class MirrorManagerImpl implements MirrorManager {
             restoreMapFile();
           } else {
             LOG.warn("Someone else creates a mapping file " + myMapFile.getAbsolutePath() + ", will use it");
-            readLines();
+            readMappings();
           }
         } catch (IOException e) {
           LOG.error("Cannot create a mapping file at " + myMapFile.getAbsolutePath() + ", start with empty mapping", e);
@@ -197,10 +256,12 @@ public class MirrorManagerImpl implements MirrorManager {
 
 
   private void restoreMapFile() {
-    LOG.info("Restore mapping from existing repositories");
-    Map<String, String> restoredMappings = restoreMappings();
-    myMirrorMap.putAll(restoredMappings);
-    saveMappingToFile();
+    synchronized (myLock) {
+      LOG.info("Restore mapping from existing repositories");
+      Map<String, String> restoredMappings = restoreMappings();
+      myMirrorMap.putAll(restoredMappings);
+      saveMappingToFile();
+    }
   }
 
 
