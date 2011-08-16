@@ -21,7 +21,6 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVcsSupportTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SubmoduleTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CleanerTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SettingsTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitUrlSupportTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsPropertiesProcessorTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitUtilsTest"/>
