@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.jetbrains.annotations.NotNull;
 
@@ -28,6 +29,7 @@ public class VcsRootBuilder {
   private Integer myId;
   private String myFetchUrl;
   private String myBranchName;
+  private SubmodulesCheckoutPolicy mySubmodulePolicy;
 
   @NotNull
   public VcsRootImpl build() {
@@ -35,6 +37,8 @@ public class VcsRootBuilder {
     VcsRootImpl result = new VcsRootImpl(id, Constants.VCS_NAME);
     result.addProperty(Constants.FETCH_URL, myFetchUrl);
     result.addProperty(Constants.BRANCH_NAME, myBranchName);
+    if (mySubmodulePolicy != null)
+      result.addProperty(Constants.SUBMODULES_CHECKOUT, mySubmodulePolicy.name());
     return result;
   }
 
@@ -51,6 +55,12 @@ public class VcsRootBuilder {
 
   public VcsRootBuilder branchName(String myBranchName) {
     this.myBranchName = myBranchName;
+    return this;
+  }
+
+
+  public VcsRootBuilder submodulePolicy(SubmodulesCheckoutPolicy policy) {
+    mySubmodulePolicy = policy;
     return this;
   }
 }
