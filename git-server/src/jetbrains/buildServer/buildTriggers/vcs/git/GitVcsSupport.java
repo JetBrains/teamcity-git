@@ -498,7 +498,8 @@ public class GitVcsSupport extends ServerVcsSupport
       case ADDED:
         return VcsChange.Type.ADDED;
       case DELETED:
-        if (((IgnoreSubmoduleErrorsTreeFilter) treeWalk.getFilter()).getBrokenSubmodulePathsInRestTrees().contains(path)) {
+        TreeFilter filter = treeWalk.getFilter();
+        if (filter instanceof IgnoreSubmoduleErrorsTreeFilter && ((IgnoreSubmoduleErrorsTreeFilter) treeWalk.getFilter()).getBrokenSubmodulePathsInRestTrees().contains(path)) {
           return VcsChange.Type.NOT_CHANGED;
         } else {
           return VcsChange.Type.REMOVED;
