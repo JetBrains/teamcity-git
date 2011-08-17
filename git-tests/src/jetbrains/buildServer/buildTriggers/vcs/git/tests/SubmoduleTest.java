@@ -65,7 +65,9 @@ public class SubmoduleTest {
     final PluginConfigImpl config = new PluginConfigImpl(myServerPaths);
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    myGitSupport = new GitVcsSupport(config, transportFactory, fetchCommand, null);
+    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
+    myGitSupport = new GitVcsSupport(config, transportFactory, fetchCommand, repositoryManager, null);
   }
 
   @AfterMethod

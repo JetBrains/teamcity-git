@@ -41,6 +41,7 @@ public class PluginConfigBuilder {
   private String  myFetcherClassName;
   private Integer myFixedSubmoduleCommitSearchDepth;
   private Integer myIdleTimeoutSeconds;
+  private Long myMirrorExpirationTimeoutMillis;
 
   public PluginConfigBuilder(@NotNull ServerPaths paths) {
     myDelegate = new PluginConfigImpl(paths);
@@ -112,6 +113,10 @@ public class PluginConfigBuilder {
 
       public int getIdleTimeoutSeconds() {
         return myIdleTimeoutSeconds != null ? myIdleTimeoutSeconds : myDelegate.getIdleTimeoutSeconds();
+      }
+
+      public long getMirrorExpirationTimeoutMillis() {
+        return myMirrorExpirationTimeoutMillis != null ? myMirrorExpirationTimeoutMillis : myDelegate.getMirrorExpirationTimeoutMillis();
       }
     };
   }
@@ -200,6 +205,12 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setIdleTimeoutSeconds(int timeout) {
     myIdleTimeoutSeconds = timeout;
+    return this;
+  }
+
+
+  public PluginConfigBuilder setMirrorExpirationTimeoutMillis(long timeoutMillis) {
+    myMirrorExpirationTimeoutMillis = timeoutMillis;
     return this;
   }
 }

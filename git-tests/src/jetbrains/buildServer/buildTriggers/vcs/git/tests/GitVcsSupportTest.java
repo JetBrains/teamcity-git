@@ -189,7 +189,9 @@ public class GitVcsSupportTest extends PatchTestCase {
     ServerPluginConfig config = myConfigBuilder.build();
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    return new GitVcsSupport(config, transportFactory, fetchCommand, holder);
+    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
+    return new GitVcsSupport(config, transportFactory, fetchCommand, repositoryManager, holder);
   }
 
 
@@ -1262,7 +1264,9 @@ public class GitVcsSupportTest extends PatchTestCase {
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
-    GitVcsSupport git = new GitVcsSupport(config, transportFactory, fetchCounter, null);
+    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
+    GitVcsSupport git = new GitVcsSupport(config, transportFactory, fetchCounter, repositoryManager, null);
 
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
     FileUtil.copyDir(dataFile("repo_for_fetch.1"), remoteRepositoryDir);

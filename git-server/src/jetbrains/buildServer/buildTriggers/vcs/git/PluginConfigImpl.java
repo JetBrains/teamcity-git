@@ -37,6 +37,12 @@ import java.io.File;
  */
 public class PluginConfigImpl implements ServerPluginConfig {
 
+  private final static long SECOND = 1000L;
+  private final static long MINUTE = 60 * SECOND;
+  private final static long HOUR = 60 * MINUTE;
+  private final static long DAY = 24 * HOUR;
+
+
   private final File myCachesDir;
 
 
@@ -136,5 +142,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   public int getIdleTimeoutSeconds() {
     return TeamCityProperties.getInteger("teamcity.git.idle.timeout.seconds", DEFAULT_IDLE_TIMEOUT);
+  }
+
+
+  public long getMirrorExpirationTimeoutMillis() {
+    int days = TeamCityProperties.getInteger("teamcity.git.mirror.expiration.timeout.days", 7);
+    return days * DAY;
   }
 }

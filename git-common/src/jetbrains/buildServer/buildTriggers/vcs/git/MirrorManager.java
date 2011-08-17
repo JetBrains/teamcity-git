@@ -16,49 +16,35 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
+
 /**
+ * Manages local mirror dirs of remote repositories
  * @author dmitry.neverov
  */
-public interface ServerPluginConfig extends PluginConfig {
+public interface MirrorManager {
 
-  int getCurrentVersionCacheSize();
+  /**
+   * @return parent dir of local repositories
+   */
+  @NotNull
+  public File getBaseMirrorsDir();
 
+  /**
+   * Get default directory for remote repository with specified url
+   * @param repositoryUrl remote repository url
+   * @return see above
+   */
+  @NotNull
+  public File getMirrorDir(@NotNull String repositoryUrl);
 
-  int getStreamFileThreshold();
+  /**
+   * Mark dir as invalid, urls mapped to this dir will get another mapping
+   * on subsequent call to getMirrorDir()
+   * @param dir dir of interest
+   */
+  public void invalidate(@NotNull File dir);
 
-
-  int getFetchTimeout();
-
-
-  int getCloneTimeout();
-
-
-  boolean isPrintDebugInfoOnEachCommit();
-
-
-  String getFetchProcessJavaPath();
-
-
-  String getFetchProcessMaxMemory();
-
-
-  boolean isSeparateProcessForFetch();
-
-
-  boolean isRunNativeGC();
-
-
-  int getNativeGCQuotaMinutes();
-
-
-  String getFetchClasspath();
-
-
-  String getFetcherClassName();
-
-
-  int getFixedSubmoduleCommitSearchDepth();
-
-
-  long getMirrorExpirationTimeoutMillis();
 }

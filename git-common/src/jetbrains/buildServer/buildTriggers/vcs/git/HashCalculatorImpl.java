@@ -16,49 +16,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
  * @author dmitry.neverov
  */
-public interface ServerPluginConfig extends PluginConfig {
+public class HashCalculatorImpl implements HashCalculator {
 
-  int getCurrentVersionCacheSize();
+  public long getHash(@NotNull String value) {
+    return value.hashCode();
+  }
 
-
-  int getStreamFileThreshold();
-
-
-  int getFetchTimeout();
-
-
-  int getCloneTimeout();
-
-
-  boolean isPrintDebugInfoOnEachCommit();
-
-
-  String getFetchProcessJavaPath();
-
-
-  String getFetchProcessMaxMemory();
-
-
-  boolean isSeparateProcessForFetch();
-
-
-  boolean isRunNativeGC();
-
-
-  int getNativeGCQuotaMinutes();
-
-
-  String getFetchClasspath();
-
-
-  String getFetcherClassName();
-
-
-  int getFixedSubmoduleCommitSearchDepth();
-
-
-  long getMirrorExpirationTimeoutMillis();
 }

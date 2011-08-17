@@ -17,14 +17,15 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 
@@ -43,28 +44,23 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
   private final String myPathFromRoot;
   private final OperationContext myContext;
 
-  /**
-   * The resolver constructor
-   *
-   * @param context current operation context
-   * @param commit                the commit this resolves handles
-   */
-  public TeamCitySubmoduleResolver(OperationContext context, Repository db, RevCommit commit) {
+
+  public TeamCitySubmoduleResolver(@NotNull final OperationContext context,
+                                   Repository db,
+                                   RevCommit commit) {
     this(context, db, commit, "");
   }
 
-  /**
-   * The resolver constructor
-   *
-   * @param context current operation context
-   * @param basePath              the base path
-   * @param commit                the commit this resolves handles
-   */
-  private TeamCitySubmoduleResolver(OperationContext context, Repository db, RevCommit commit, String basePath) {
+
+  private TeamCitySubmoduleResolver(@NotNull final OperationContext context,
+                                    Repository db,
+                                    RevCommit commit,
+                                    String basePath) {
     super(context.getSupport(), db, commit);
     myContext = context;
     myPathFromRoot = basePath;
   }
+
 
   protected Repository resolveRepository(String path, String url) throws IOException, VcsException, URISyntaxException {
     if (LOG.isDebugEnabled())
@@ -73,27 +69,14 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
     if (isRelative(url)) {
       url = resolveRelativeUrl(url);
     }
-    File repositoryDir = myContext.getSettings().getRepositoryDirForUrl(url);
 
+    final URIish uri = new URIish(url);
+    Repository result = myContext.getRepositoryFor(uri);
     if (LOG.isDebugEnabled())
-      LOG.debug("Cache dir for repository '" + url + "' is '" + repositoryDir.getAbsolutePath() + "'");
+      LOG.debug("Fetching submodule " + url + " used at " + path + " for " + myContext.getSettings().debugInfo());
+    myGitSupport.fetch(result, uri, new RefSpec("+refs/heads/*:refs/heads/*"), myContext.getSettings().getAuthSettings());
 
-    Repository result = myContext.getRepositoryFor(repositoryDir);
-    if (result == null) {
-      final URIish uri = new URIish(url);
-      result = myContext.getRepository(repositoryDir, uri);
-      if (LOG.isDebugEnabled())
-        LOG.debug("Fetching submodule " + url + " used at " + path + " for " + myContext.getSettings().debugInfo());
-      myGitSupport.fetch(result, uri, new RefSpec("+refs/heads/*:refs/heads/*"), myContext.getSettings().getAuthSettings());
-    }
-    checkRepositoryCanBeUsedForUrl(result, url);
     return result;
-  }
-
-  private void checkRepositoryCanBeUsedForUrl(Repository result, String url) {
-    String teamcityRemote = result.getConfig().getString("teamcity", null, "remote");
-    if (teamcityRemote != null && !url.equals(teamcityRemote))
-      LOG.warn("Directory '" + result.getDirectory().getAbsolutePath() + "' is used for 2 different repositories: '" + url + "' and '" + teamcityRemote + "'");
   }
 
   private boolean isRelative(String url) {

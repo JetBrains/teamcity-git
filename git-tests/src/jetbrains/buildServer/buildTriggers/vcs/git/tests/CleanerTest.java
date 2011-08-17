@@ -24,7 +24,6 @@ import jetbrains.buildServer.serverSide.SBuildServer;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsManager;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
@@ -33,8 +32,8 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -42,38 +41,40 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author dmitry.neverov
  */
+@Test
 public class CleanerTest extends BaseTestCase {
 
   private static final TempFiles ourTempFiles = new TempFiles();
-  private ServerPaths myServerPaths;
   private Cleaner myCleaner;
   private ScheduledExecutorService myCleanExecutor;
-  private VcsManager myVcsManager;
-  private Mockery myContext;
   private GitVcsSupport mySupport;
-  private PluginConfigBuilder myConfigBuilder;
+  private RepositoryManager myRepositoryManager;
+  private ServerPluginConfig myConfig;
 
   @BeforeMethod
   public void setUp() throws IOException {
     File dotBuildServer = ourTempFiles.createTempDir();
-    myServerPaths = new ServerPaths(dotBuildServer.getAbsolutePath(), dotBuildServer.getAbsolutePath(), dotBuildServer.getAbsolutePath());
-    myConfigBuilder = new PluginConfigBuilder(myServerPaths);
-    myConfigBuilder.setRunNativeGC(true);
+    ServerPaths myServerPaths = new ServerPaths(dotBuildServer.getAbsolutePath());
+    PluginConfigBuilder myConfigBuilder = new PluginConfigBuilder(myServerPaths)
+      .setRunNativeGC(true)
+      .setMirrorExpirationTimeoutMillis(4000);
     if (System.getenv(Constants.GIT_PATH_ENV) != null)
       myConfigBuilder.setPathToGit(System.getenv(Constants.GIT_PATH_ENV));
+
+    Mockery myContext = new Mockery();
     myCleanExecutor = Executors.newSingleThreadScheduledExecutor();
-    myContext = new Mockery();
     final SBuildServer server = myContext.mock(SBuildServer.class);
-    myVcsManager = myContext.mock(VcsManager.class);
     myContext.checking(new Expectations() {{
-      allowing(server).getExecutor(); will(returnValue(myCleanExecutor));
-      allowing(server).getVcsManager(); will(returnValue(myVcsManager));
+      allowing(server).getExecutor();
+      will(returnValue(myCleanExecutor));
     }});
-    ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    mySupport = new GitVcsSupport(config, transportFactory, fetchCommand, null);
-    myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), config, mySupport);
+    myConfig = myConfigBuilder.build();
+    TransportFactory transportFactory = new TransportFactoryImpl(myConfig);
+    FetchCommand fetchCommand = new FetchCommandImpl(myConfig, transportFactory);
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl());
+    myRepositoryManager = new RepositoryManagerImpl(myConfig, mirrorManager);
+    mySupport = new GitVcsSupport(myConfig, transportFactory, fetchCommand, myRepositoryManager, null);
+    myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), myConfig, myRepositoryManager);
   }
 
   @AfterMethod
@@ -82,45 +83,27 @@ public class CleanerTest extends BaseTestCase {
   }
 
 
-  @Test
   public void test_clean() throws VcsException, InterruptedException {
+    File baseMirrorsDir = myRepositoryManager.getBaseMirrorsDir();
+    generateGarbage(baseMirrorsDir);
+
+    Thread.sleep(myConfig.getMirrorExpirationTimeoutMillis());
+
     final VcsRoot root = GitTestUtil.getVcsRoot();
     mySupport.getCurrentVersion(root);//it will create dir in cache directory
     File repositoryDir = getRepositoryDir(root);
-    File gitCacheDir = new File(myServerPaths.getCachesDir(), "git");
-    generateGarbage(gitCacheDir);
 
-    myContext.checking(new Expectations() {{
-      allowing(myVcsManager).findRootsByVcsName(Constants.VCS_NAME); will(returnValue(Collections.singleton(root)));
-    }});
     invokeClean();
 
-    File[] files = gitCacheDir.listFiles();
+    File[] files = baseMirrorsDir.listFiles(new FileFilter() {
+      public boolean accept(File f) {
+        return f.isDirectory();
+      }
+    });
     assertEquals(1, files.length);
     assertEquals(repositoryDir, files[0]);
 
     mySupport.getCurrentVersion(root);//check that repository is fine after git gc
-  }
-
-
-  //TW-10401
-  //if any usable VCS roots have fetch url with unresolved parameters we should not
-  //remove unused directories, otherwise we will delete a directory of a usable
-  //VCS root with resolved parameters
-  @Test
-  public void should_not_remove_unused_dirs_if_root_url_has_parameters() throws Exception {
-    final VcsRoot root = new VcsRootBuilder().fetchUrl("%repository.url%").build();
-
-    File gitCacheDir = new File(myServerPaths.getCachesDir(), "git");
-    generateGarbage(gitCacheDir);
-
-    myContext.checking(new Expectations() {{
-      allowing(myVcsManager).findRootsByVcsName(Constants.VCS_NAME); will(returnValue(Collections.singleton(root)));
-    }});
-    invokeClean();
-
-    File[] files = gitCacheDir.listFiles();
-    assertEquals(10, files.length);
   }
 
 
@@ -131,7 +114,7 @@ public class CleanerTest extends BaseTestCase {
   }
 
   private File getRepositoryDir(VcsRoot root) throws VcsException {
-    Settings settings = new Settings(root, mySupport.getCachesDir());
+    Settings settings = new Settings(myRepositoryManager, root);
     return settings.getRepositoryDir();
   }
 

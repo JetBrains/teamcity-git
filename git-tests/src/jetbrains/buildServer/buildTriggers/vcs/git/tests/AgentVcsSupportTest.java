@@ -22,10 +22,8 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.XmlRpcHandlerManager;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.plugins.beans.PluginDescriptor;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
-import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -43,6 +41,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
@@ -75,7 +74,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
   private GitAgentVcsSupport myVcsSupport;
   private BuildProgressLogger myLogger;
   private AgentRunningBuild myBuild;
-
+  private PluginConfigFactory myConfigFactory;
 
   static {
     Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
@@ -117,7 +116,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
       allowing(resolver).resolveGitPath(with(any(BuildAgentConfiguration.class)), with(any(String.class))); will(returnValue(pathToGit));
     }});
     myAgentConfiguration = createBuildAgentConfiguration();
-    PluginConfigFactory configFactory = new PluginConfigFactoryImpl(myAgentConfiguration, detector);
+    myConfigFactory = new PluginConfigFactoryImpl(myAgentConfiguration, detector);
     myVcsSupport = new GitAgentVcsSupport(createSmartDirectoryCleaner(),
                                           new GitAgentSSHService(createBuildAgent(), myAgentConfiguration, new PluginDescriptor() {
                                             @NotNull
@@ -125,7 +124,8 @@ public class AgentVcsSupportTest extends BaseTestCase {
                                               return new File("jetbrains.git");
                                             }
                                           }),
-                                          configFactory);
+                                          myConfigFactory,
+                                          new HashCalculatorImpl());
 
     myLogger = createLogger();
     myBuild = createRunningBuild(true);
@@ -240,12 +240,18 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
 
   public void should_create_bare_repository_in_caches_dir() throws Exception {
-    File gitCacheDir = myAgentConfiguration.getCacheDirectory("git");
-    assertTrue(gitCacheDir.listFiles().length == 0);
-    Settings settings = new Settings(myRoot, gitCacheDir);
+    File mirrorsDir = myAgentConfiguration.getCacheDirectory("git");
+    assertTrue(mirrorsDir.listFiles(new FileFilter() {
+      public boolean accept(File f) {
+        return f.isDirectory();
+      }
+    }).length == 0);
+
     myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
+    Settings settings = new Settings(mirrorManager, myRoot);
     File bareRepositoryDir = settings.getRepositoryDir();
     assertTrue(bareRepositoryDir.exists());
     //check some dirs that should be present in the bare repository:
@@ -268,8 +274,8 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
 
   public void old_cloned_repository_should_use_local_mirror() throws Exception {
-    File gitCacheDir = myAgentConfiguration.getCacheDirectory("git");
-    Settings settings = new Settings(myRoot, gitCacheDir);
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
+    Settings settings = new Settings(mirrorManager, myRoot);
     File bareRepositoryDir = settings.getRepositoryDir();
 
     //emulate old cloned repository (it has no config option 'url.<URL>.insteadOf')
@@ -321,9 +327,9 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
 
   public void stop_use_any_mirror_if_agent_property_changed_to_false() throws Exception {
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
     AgentRunningBuild build2 = createRunningBuild(false);
-    File gitCacheDir = myAgentConfiguration.getCacheDirectory("git");
-    Settings settings = new Settings(myRoot, gitCacheDir);
+    Settings settings = new Settings(mirrorManager, myRoot);
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
 
     //add some mirror

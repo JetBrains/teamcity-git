@@ -27,6 +27,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.treewalk.TreeWalk;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -46,13 +47,18 @@ public class OperationContext {
   private static Logger LOG = Logger.getInstance(OperationContext.class.getName());
 
   private final GitVcsSupport mySupport;
+  private final RepositoryManager myRepositoryManager;
   private final VcsRoot myRoot;
   private final String myOperation;
   private final Map<Long, Settings> myRootSettings = new HashMap<Long, Settings>(); //root id -> settings
   private final Map<String, Repository> myRepositories = new HashMap<String, Repository>(); //repository path -> repository
 
-  public OperationContext(GitVcsSupport support, VcsRoot root, String operation) {
+  public OperationContext(@NotNull final GitVcsSupport support,
+                          @NotNull final RepositoryManager repositoryManager,
+                          @NotNull final VcsRoot root,
+                          @NotNull final String operation) {
     mySupport = support;
+    myRepositoryManager = repositoryManager;
     myRoot = root;
     myOperation = operation;
   }
@@ -62,16 +68,8 @@ public class OperationContext {
     return myRoot;
   }
 
-  public String getOperation() {
-    return myOperation;
-  }
-
   public GitVcsSupport getSupport() {
     return mySupport;
-  }
-
-  public Map<String, Repository> getRepositories() {
-    return myRepositories;
   }
 
   public Repository getRepository() throws VcsException {
@@ -85,14 +83,19 @@ public class OperationContext {
   public Repository getRepository(File repositoryDir, URIish fetchUrl) throws VcsException {
     Repository result = myRepositories.get(repositoryDir.getPath());
     if (result == null) {
-      result = mySupport.getRepository(repositoryDir, fetchUrl);
+      result = myRepositoryManager.getRepository(repositoryDir, fetchUrl);
       myRepositories.put(repositoryDir.getPath(), result);
     }
     return result;
   }
 
-  public Repository getRepositoryFor(File dir) {
-    return myRepositories.get(dir.getPath());
+  @NotNull
+  public Repository getRepositoryFor(@NotNull final URIish uri) throws VcsException {
+    File dir = myRepositoryManager.getMirrorDir(uri.toString());
+    Repository result = myRepositories.get(dir.getPath());
+    if (result != null)
+      return result;
+    return getRepository(dir, uri);
   }
 
   public Settings getSettings() throws VcsException {
@@ -109,7 +112,7 @@ public class OperationContext {
   }
 
   private Settings createSettings(VcsRoot root) throws VcsException {
-    return new Settings(root, mySupport.getCachesDir());
+    return new Settings(myRepositoryManager, root);
   }
 
   public VcsException wrapException(Exception ex) {
