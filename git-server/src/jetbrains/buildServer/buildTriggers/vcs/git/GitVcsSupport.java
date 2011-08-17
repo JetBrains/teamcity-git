@@ -22,6 +22,7 @@ import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
+import jetbrains.buildServer.serverSide.impl.LogUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.vcs.*;
@@ -269,12 +270,8 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @NotNull VcsRoot branchRoot,
                                                @Nullable String  branchRootVersion,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
-    if (LOG.isDebugEnabled()) {
-      OperationContext context = createContext(branchRoot, "collecting changes");
-      Settings originalSettings = context.getSettings(originalRoot);
-      Settings branchSettings = context.getSettings();
-      LOG.debug("Collecting changes [" + originalSettings.debugInfo() + "-" + originalRootVersion + "]..[" + branchSettings.debugInfo() + "-" + branchRootVersion + "]");
-    }
+    LOG.debug("Collecting changes [" +LogUtil.describe(originalRoot) + "-" + originalRootVersion + "].." +
+              "[" + LogUtil.describe(branchRoot) + "-" + branchRootVersion + "]");
     String forkPoint = getLastCommonVersion(originalRoot, originalRootVersion, branchRoot, branchRootVersion);
     return collectChanges(branchRoot, forkPoint, branchRootVersion, checkoutRules);
   }
@@ -283,6 +280,8 @@ public class GitVcsSupport extends ServerVcsSupport
     OperationContext context = createContext(tipRoot, "find fork version");
     Settings baseSettings = context.getSettings(baseRoot);
     Settings tipSettings = context.getSettings();
+    LOG.debug("Find last common version between [" + baseSettings.debugInfo() + "-" + baseVersion + "].." +
+              "[" + tipSettings.debugInfo() + "-" + tipVersion + "]");
     RevWalk walk = null;
     try {
       RevCommit baseCommit = ensureCommitLoaded(context, baseSettings, baseVersion);
@@ -294,9 +293,7 @@ public class GitVcsSupport extends ServerVcsSupport
       walk.markStart(walk.parseCommit(tipCommit.getId()));
       final RevCommit base = walk.next();
       String result = GitServerUtil.makeVersion(base);
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Last common revision between " + baseSettings.debugInfo() + " and " + tipSettings.debugInfo() + " is " + result);
-      }
+      LOG.debug("Last common revision between " + baseSettings.debugInfo() + " and " + tipSettings.debugInfo() + " is " + result);
       return result;
     } catch (Exception e) {
       throw context.wrapException(e);
