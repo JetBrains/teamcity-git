@@ -1052,7 +1052,10 @@ public class GitVcsSupport extends ServerVcsSupport
     Lock rmLock = myRepositoryManager.getRmLock(repositoryDir).readLock();
     rmLock.lock();
     try {
+      final long start = System.currentTimeMillis();
       synchronized (myRepositoryManager.getWriteLock(repositoryDir)) {
+        final long finish = System.currentTimeMillis();
+        PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + (finish - start) + "ms");
         myFetchCommand.fetch(db, fetchURI, refspec, auth);
       }
     } finally {
