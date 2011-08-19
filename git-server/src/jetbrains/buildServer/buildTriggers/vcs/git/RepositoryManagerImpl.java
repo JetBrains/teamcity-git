@@ -222,10 +222,11 @@ public final class RepositoryManagerImpl implements RepositoryManager {
 
   @NotNull
   private URIish getCanonicalURI(@NotNull final URIish uri) {
-    return new URIish()
-      .setScheme(uri.getScheme())
-      .setHost(uri.getHost())
-      .setPort(uri.getPort())
-      .setPath(uri.getPath());
+    return uri;
+//    return new URIish()
+//      .setScheme(uri.getScheme())
+//      .setHost(uri.getHost())
+//      .setPort(uri.getPort())
+//      .setPath(uri.getPath());
   }
 }
