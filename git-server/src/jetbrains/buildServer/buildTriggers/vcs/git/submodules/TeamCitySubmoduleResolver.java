@@ -62,25 +62,29 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
   }
 
 
-  protected Repository resolveRepository(String path, String url) throws IOException, VcsException, URISyntaxException {
+  protected Repository resolveRepository(String path, String submoduleUrl) throws IOException, VcsException, URISyntaxException {
+    LOG.debug("Resolve repository for URL: " + submoduleUrl);
+    final URIish uri = resolveUrl(submoduleUrl);
+    Repository r = myContext.getRepositoryFor(uri);
+    LOG.debug("Repository dir for submodule " + submoduleUrl + " is " + r.getDirectory().getAbsolutePath());
+    return r;
+  }
+
+  @Override
+  protected void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
     if (LOG.isDebugEnabled())
-      LOG.debug("Resolve repository for URL: " + url);
-
-    if (isRelative(url)) {
-      url = resolveRelativeUrl(url);
-    }
-
-    final URIish uri = new URIish(url);
-    Repository result = myContext.getRepositoryFor(uri);
-    if (LOG.isDebugEnabled())
-      LOG.debug("Fetching submodule " + url + " used at " + path + " for " + myContext.getSettings().debugInfo());
-    myGitSupport.fetch(result, uri, new RefSpec("+refs/heads/*:refs/heads/*"), myContext.getSettings().getAuthSettings());
-
-    return result;
+      LOG.debug("Fetching submodule " + submoduleUrl + " used at " + submodulePath + " for " + myContext.getSettings().debugInfo());
+    URIish uri = resolveUrl(submoduleUrl);
+    myGitSupport.fetch(r, uri, new RefSpec("+refs/heads/*:refs/heads/*"), myContext.getSettings().getAuthSettings());
   }
 
   private boolean isRelative(String url) {
     return url.startsWith(".");
+  }
+
+  private URIish resolveUrl(String url) throws URISyntaxException {
+    String uri = isRelative(url) ? resolveRelativeUrl(url) : url;
+    return new URIish(uri);
   }
 
   private String resolveRelativeUrl(String relativeUrl) throws URISyntaxException {
