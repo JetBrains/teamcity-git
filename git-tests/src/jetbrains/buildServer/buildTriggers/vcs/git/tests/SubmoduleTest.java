@@ -20,6 +20,7 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
@@ -36,6 +37,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIteratorFactory.create;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
@@ -225,11 +227,13 @@ public class SubmoduleTest {
       myDb = db;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     protected Repository resolveRepository(String path, String url) {
       return myReferencedRepository;
+    }
+
+    @Override
+    protected void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
+      //do nothing, it was already fetched
     }
 
     @Override
@@ -237,6 +241,10 @@ public class SubmoduleTest {
       return new SubmoduleResolver(myGitSupport, myReferencedRepository, commit) {
         protected Repository resolveRepository(String path, String url) throws IOException {
           throw new IOException("Repository not found");
+        }
+        @Override
+        protected void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
+          throw new UnsupportedOperationException("");
         }
         public SubmoduleResolver getSubResolver(RevCommit commit, String path) {
           throw new RuntimeException("There are no submodules");

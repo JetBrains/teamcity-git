@@ -25,6 +25,7 @@ import org.eclipse.jgit.lib.BlobBasedConfig;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -71,6 +72,8 @@ public abstract class SubmoduleResolver {
       throw new CorruptObjectException(String.format(msg, mainRepositoryUrl, myCommit.getId().name(), path, commit.name()));
     }
     Repository r = resolveRepository(path, submodule.getUrl());
+    if (!isCommitExist(r, commit))
+      fetch(r, path, submodule.getUrl());
     final RevCommit c = myGitSupport.getCommit(r, commit);
     if (c == null) {
       String msg = "Repository '%1$s' has submodule in commit '%2$s' at path '%3$s', but tracked submodule commit '%4$s' is not found in repository '%5$s'. Forget to push it?";
@@ -79,17 +82,29 @@ public abstract class SubmoduleResolver {
     return c;
   }
 
+  private boolean isCommitExist(final Repository r, final ObjectId commit) {
+    RevWalk walk = new RevWalk(r);
+    try {
+      walk.parseCommit(commit);
+      return true;
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
   /**
    * Get repository by the URL. Note that the repository is retrieved but not cleaned up. This should be done by implementer of this component at later time.
    *
    * @param path the local path within repository
-   * @param url  the URL to resolve  @return the resolved repository
+   * @param submoduleUrl the URL to resolve
    * @return the resolved repository
    * @throws IOException if repository could not be resolved
    * @throws VcsAuthenticationException in case of authentication problems
    * @throws URISyntaxException if there are errors in submodule repository URI
    */
-  protected abstract Repository resolveRepository(String path, String url) throws IOException, VcsException, URISyntaxException;
+  protected abstract Repository resolveRepository(String path, String submoduleUrl) throws IOException, VcsException, URISyntaxException;
+
+  protected abstract void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException;
 
   /**
    * Get submodule resolver for the path
