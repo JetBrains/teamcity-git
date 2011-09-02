@@ -909,4 +909,9 @@ public class GitVcsSupport extends ServerVcsSupport
     final ObjectId gitObjId = getVcsRootGitId(root);
     return Collections.singletonList(new VcsClientMapping(String.format("%s||%s", gitObjId.name(), rule.getFrom()), rule.getTo()));
   }
+
+  @Override
+  public boolean isDAGBasedVcs() {
+    return true;
+  }
 }
