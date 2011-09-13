@@ -43,10 +43,12 @@ public class TestConnectionCommand {
   private static Logger LOG = Logger.getInstance(TestConnectionCommand.class.getName());
 
   private final TransportFactory myTransportFactory;
+  private final RepositoryManager myRepositoryManager;
 
 
-  public TestConnectionCommand(TransportFactory transportFactory) {
+  public TestConnectionCommand(TransportFactory transportFactory, RepositoryManager repositoryManager) {
     myTransportFactory = transportFactory;
+    myRepositoryManager = repositoryManager;
   }
 
 
@@ -69,8 +71,10 @@ public class TestConnectionCommand {
         throw friendlyTransportException(te);
       }
     } finally {
-      if (repositoryTempDir != null)
+      if (repositoryTempDir != null) {
+        myRepositoryManager.cleanLocksFor(repositoryTempDir);
         FileUtil.delete(repositoryTempDir);
+      }
     }
   }
 

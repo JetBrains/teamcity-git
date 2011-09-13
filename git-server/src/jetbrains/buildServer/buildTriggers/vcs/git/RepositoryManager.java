@@ -44,4 +44,6 @@ public interface RepositoryManager extends MirrorManager {
 
   @NotNull
   public ReadWriteLock getRmLock(@NotNull File dir);
+
+  void cleanLocksFor(@NotNull File dir);
 }

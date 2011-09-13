@@ -25,7 +25,11 @@ import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.io.File;
+import java.util.concurrent.locks.ReadWriteLock;
+
 import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertSame;
 
 /**
  * @author dmitry.neverov
@@ -60,6 +64,14 @@ public class RepositoryManagerTest {
     assertEquals(path, getRepositoryPath("ssh://name:pass@some.org/repository.git"));
     assertEquals(path, getRepositoryPath("ssh://other-name@some.org/repository.git"));
     assertEquals(path, getRepositoryPath("ssh://other-name:pass@some.org/repository.git"));
+  }
+
+
+  public void should_return_same_lock_for_files_point_to_same_dir() throws Exception {
+    File dir1 = new File(".");
+    ReadWriteLock rmLock1 = myRepositoryManager.getRmLock(dir1);
+    ReadWriteLock rmLock2 = myRepositoryManager.getRmLock(new File(".." + File.separator + dir1.getCanonicalFile().getName()));
+    assertSame(rmLock1, rmLock2);
   }
 
 
