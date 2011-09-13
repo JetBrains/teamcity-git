@@ -226,6 +226,17 @@ public final class RepositoryManagerImpl implements RepositoryManager {
   }
 
 
+  public void cleanLocksFor(@NotNull final File dir) {
+    try {
+      File canonical = dir.getCanonicalFile();
+      myWriteLocks.remove(canonical);
+      myCreateLocks.remove(canonical);
+      myRmLocks.remove(canonical);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   private <K, V> V getOrCreate(ConcurrentMap<K, V> map, K key, V value) {
     V existing = map.putIfAbsent(key, value);
     if (existing != null)

@@ -1066,7 +1066,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
     OperationContext context = createContext(vcsRoot, "connection test");
-    TestConnectionCommand command = new TestConnectionCommand(myTransportFactory);
+    TestConnectionCommand command = new TestConnectionCommand(myTransportFactory, myRepositoryManager);
     try {
       return command.testConnection(context);
     } catch (Exception e) {
@@ -1246,8 +1246,10 @@ public class GitVcsSupport extends ServerVcsSupport
       throw context.wrapException(e);
     } finally {
       context.close();
-      if (tmpDir != null)
+      if (tmpDir != null) {
+        myRepositoryManager.cleanLocksFor(tmpDir);
         FileUtil.delete(tmpDir);
+      }
     }
   }
 
