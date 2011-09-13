@@ -195,19 +195,34 @@ public final class RepositoryManagerImpl implements RepositoryManager {
 
   @NotNull
   public Object getWriteLock(@NotNull final File dir) {
-    return getOrCreate(myWriteLocks, dir, new Object());
+    try {
+      File canonical = dir.getCanonicalFile();
+      return getOrCreate(myWriteLocks, canonical, new Object());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
 
   @NotNull
   public ReadWriteLock getRmLock(@NotNull final File dir) {
-    return getOrCreate(myRmLocks, dir, new ReentrantReadWriteLock());
+    try {
+      File canonical = dir.getCanonicalFile();
+      return getOrCreate(myRmLocks, canonical, new ReentrantReadWriteLock());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
 
   @NotNull
   public Object getCreateLock(File dir) {
-    return getOrCreate(myCreateLocks, dir, new Object());
+    try {
+      File canonical = dir.getCanonicalFile();
+      return getOrCreate(myCreateLocks, canonical, new Object());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
 
