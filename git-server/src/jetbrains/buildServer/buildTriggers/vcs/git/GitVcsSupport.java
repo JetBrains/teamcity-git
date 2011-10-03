@@ -61,7 +61,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendly
  * Git VCS support
  */
 public class GitVcsSupport extends ServerVcsSupport
-  implements VcsPersonalSupport, LabelingSupport, VcsFileContentProvider, CollectChangesByCheckoutRules, BuildPatchByCheckoutRules,
+  implements VcsPersonalSupport, LabelingSupport, VcsFileContentProvider, CollectChangesBetweenRoots, BuildPatchByCheckoutRules,
              TestConnectionSupport, BranchSupport, IncludeRuleBasedMappingProvider {
 
   private static Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
