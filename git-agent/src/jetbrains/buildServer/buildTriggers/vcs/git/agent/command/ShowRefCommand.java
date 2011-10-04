@@ -17,14 +17,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
-import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentSettings;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitUpdateProcess;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;

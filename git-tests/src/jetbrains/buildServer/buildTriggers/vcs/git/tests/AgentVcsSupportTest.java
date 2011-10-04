@@ -16,15 +16,16 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
-import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.XmlRpcHandlerManager;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.plugins.beans.PluginDescriptor;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
+import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.lib.Ref;
@@ -50,20 +51,18 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
-import static com.intellij.openapi.util.io.FileUtil.delete;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
+import static org.testng.AssertJUnit.*;
 
 /**
  * @author dmitry.neverov
  */
 @Test
-public class AgentVcsSupportTest extends BaseTestCase {
+public class AgentVcsSupportTest {
 
-  protected static TempFiles myTempFiles = new TempFiles();
+  private TempFiles myTempFiles;
   private File myMainRepo;
-  private File mySubmoduleRepo;
-  private File mySubmoduleRepo2;
   private File myCheckoutDir;
   private File agentConfigurationTempDirectory;
   private VcsRootImpl myRoot;
@@ -77,37 +76,29 @@ public class AgentVcsSupportTest extends BaseTestCase {
   private PluginConfigFactory myConfigFactory;
 
   static {
-    Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-      public void run() {
-        myTempFiles.cleanup();
-      }
-    }));
+    Logger.setFactory(new Log4jFactory());
   }
 
   @BeforeMethod
   public void setUp() throws Exception {
-    super.setUp();
+    myTempFiles = new TempFiles();
+
+    File repositoriesDir = myTempFiles.createTempDir();
 
     File masterRep = dataFile("repo.git");
-    myMainRepo = myTempFiles.createTempDir();
+    myMainRepo = new File(repositoriesDir, "repo.git");
     copyRepository(masterRep, myMainRepo);
 
     File submoduleRep = dataFile("submodule.git");
-    mySubmoduleRepo = new File(myMainRepo.getParentFile(), "submodule.git");
-    delete(mySubmoduleRepo);
-    copyRepository(submoduleRep, mySubmoduleRepo);
+    copyRepository(submoduleRep, new File(repositoriesDir, "submodule.git"));
 
     File submoduleRep2 = dataFile("sub-submodule.git");
-    mySubmoduleRepo2 = new File(myMainRepo.getParentFile(), "sub-submodule.git");
-    delete(mySubmoduleRepo2);
-    copyRepository(submoduleRep2, mySubmoduleRepo2);
+    copyRepository(submoduleRep2, new File(repositoriesDir, "sub-submodule.git"));
 
     myCheckoutDir = myTempFiles.createTempDir();
-
     agentConfigurationTempDirectory = myTempFiles.createTempDir();
 
     myMockery = new Mockery();
-
     final GitPathResolver resolver = myMockery.mock(GitPathResolver.class);
     final GitDetector detector = new GitDetectorImpl(resolver);
     final String pathToGit = getGitPath();
@@ -117,16 +108,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     }});
     myAgentConfiguration = createBuildAgentConfiguration();
     myConfigFactory = new PluginConfigFactoryImpl(myAgentConfiguration, detector);
-    myVcsSupport = new GitAgentVcsSupport(createSmartDirectoryCleaner(),
-                                          new GitAgentSSHService(createBuildAgent(), myAgentConfiguration, new PluginDescriptor() {
-                                            @NotNull
-                                            public File getPluginRoot() {
-                                              return new File("jetbrains.git");
-                                            }
-                                          }),
-                                          myConfigFactory,
-                                          new HashCalculatorImpl());
-
+    myVcsSupport = new GitAgentVcsSupport(createSmartDirectoryCleaner(), new GitAgentSSHService(createBuildAgent(), myAgentConfiguration, new GitPluginDescriptor()), myConfigFactory, new HashCalculatorImpl());
     myLogger = createLogger();
     myBuild = createRunningBuild(true);
 
@@ -139,18 +121,12 @@ public class AgentVcsSupportTest extends BaseTestCase {
     }});
   }
 
+
   @AfterMethod
-  @Override
   protected void tearDown() throws Exception {
-    super.tearDown();
-    FileUtil.delete(myMainRepo);
-    FileUtil.delete(mySubmoduleRepo);
-    FileUtil.delete(mySubmoduleRepo2);
-    FileUtil.delete(myCheckoutDir);
-    FileUtil.delete(agentConfigurationTempDirectory);
-    FileUtil.delete(myAgentConfiguration.getCacheDirectory("git"));
     myTempFiles.cleanup();
   }
+
 
   /**
    * Test work normally if .git/index.lock file exists
@@ -519,5 +495,13 @@ public class AgentVcsSupportTest extends BaseTestCase {
   private void copyRepository(File src, File dst) throws IOException {
     copyDir(src, dst);
     new File(dst, "refs" + File.separator + "heads").mkdirs();
+  }
+
+
+  private class GitPluginDescriptor implements PluginDescriptor {
+    @NotNull
+    public File getPluginRoot() {
+      return new File("jetbrains.git");
+    }
   }
 }

@@ -26,6 +26,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.HashCalculator;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
 import jetbrains.buildServer.vcs.CheckoutRules;
+import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
@@ -68,21 +69,66 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
 
 
   public void updateSources(@NotNull VcsRoot root,
-                            @NotNull CheckoutRules checkoutRules,
+                            @NotNull CheckoutRules rules,
                             @NotNull String toVersion,
                             @NotNull File checkoutDirectory,
                             @NotNull AgentRunningBuild build,
                             boolean cleanCheckoutRequested) throws VcsException {
+    validateCheckoutRules(root, rules);
+    File targetDir = getTargetDir(root, rules, checkoutDirectory);
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, myHashCalculator);
-    new GitCommandUpdateProcess(myDirectoryCleaner,
-                                mySshService,
-                                root,
-                                checkoutRules,
-                                toVersion,
-                                checkoutDirectory,
-                                build,
-                                config,
-                                mirrorManager).updateSources();
+    GitFacade git = new NativeGitFacade(config, mySshService, build.getBuildLogger());
+    Updater updater = new UpdaterImpl(config, mirrorManager, myDirectoryCleaner, git, build.getBuildLogger(), root, toVersion, targetDir);
+    updater.update();
+  }
+
+
+  /**
+   * Check if specified checkout rules are supported
+   * @param root root for which rules are checked
+   * @param rules rules to check
+   * @throws VcsException rules are not supported
+   */
+  private void validateCheckoutRules(@NotNull final VcsRoot root, @NotNull final CheckoutRules rules) throws VcsException {
+    if (rules.getExcludeRules().size() != 0) {
+      throw new VcsException("The exclude rules are not supported for agent checkout for the git (" + rules.getExcludeRules().size() +
+                             " rule(s) detected) for VCS Root " + root.getName());
+    }
+    if (rules.getIncludeRules().size() > 1) {
+      throw new VcsException("At most one include rule is supported for agent checkout for the git (" + rules.getIncludeRules().size() +
+                             " rule(s) detected) for VCS Root " + root.getName());
+    }
+    if (rules.getIncludeRules().size() == 1) {
+      IncludeRule ir = rules.getIncludeRules().get(0);
+      if (!".".equals(ir.getFrom()) && ir.getFrom().length() != 0) {
+        throw new VcsException("Agent checkout for the git supports only include rule of form '. => subdir', rule " + ir.toDescriptiveString() +
+                               " for VCS Root " + root.getName() + " is not supported");
+      }
+    }
+  }
+
+
+  /**
+   * Get the destination directory creating it if it is missing
+   * @param root VCS root
+   * @param rules checkout rules
+   * @param checkoutDirectory checkout directory for the build
+   * @return the directory where vcs root should be checked out according to checkout rules
+   * @throws VcsException if the directory could not be located or created
+   */
+  private File getTargetDir(@NotNull final VcsRoot root, @NotNull final CheckoutRules rules, @NotNull final File checkoutDirectory) throws VcsException {
+    String path = rules.map("");
+    if (path == null)
+      throw new VcsException("The root path could not be mapped for " + root.getName());
+
+    File directory = path.length() == 0 ? checkoutDirectory : new File(checkoutDirectory, path.replace('/', File.separatorChar));
+    if (!directory.exists()) {
+      //noinspection ResultOfMethodCallIgnored
+      directory.mkdirs();
+      if (!directory.exists())
+        throw new VcsException("The destination directory '" + directory + "' could not be created.");
+    }
+    return directory;
   }
 }
