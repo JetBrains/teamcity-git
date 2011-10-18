@@ -14,20 +14,27 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
+package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
+import com.intellij.execution.configurations.GeneralCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleInitCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 /**
  * @author dmitry.neverov
  */
-public interface CleanCommand {
-  
-  @NotNull
-  CleanCommand setCleanPolicy(@NotNull AgentCleanFilesPolicy policy);
+public class SubmoduleInitCommandImpl implements SubmoduleInitCommand {
 
-  void call() throws VcsException;
+  private final GeneralCommandLine myCmd;
 
+  public SubmoduleInitCommandImpl(@NotNull GeneralCommandLine cmd) {
+    myCmd = cmd;
+  }
+
+  public void call() throws VcsException {
+    myCmd.addParameter("submodule");
+    myCmd.addParameter("init");
+    CommandUtil.runCommand(myCmd);
+  }
 }

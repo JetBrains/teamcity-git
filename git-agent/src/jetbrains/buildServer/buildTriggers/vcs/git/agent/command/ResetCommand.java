@@ -16,33 +16,20 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * The 'git reset' command
+ * @author dmitry.neverov
  */
-public class ResetCommand extends RepositoryCommand {
-  /**
-   * The constructor
-   *
-   * @param settings the settings object
-   */
-  public ResetCommand(@NotNull final AgentSettings settings) {
-    super(settings);
-  }
+public interface ResetCommand {
+  
+  @NotNull
+  ResetCommand setHard(boolean doHard);
+  
+  @NotNull
+  ResetCommand setRevision(@NotNull String revision);
 
-  /**
-   * Hard reset to the specified revision
-   *
-   * @param revision the revision to reset to
-   * @throws VcsException if there is a problem with running git
-   */
-  public void hardReset(String revision) throws VcsException {
-    GeneralCommandLine cmd = createCommandLine();
-    cmd.addParameters("reset", "--hard", revision);
-    runCommand(cmd);
-  }
+  void call() throws VcsException;
+  
 }

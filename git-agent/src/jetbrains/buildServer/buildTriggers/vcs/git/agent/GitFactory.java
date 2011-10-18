@@ -14,20 +14,18 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
+package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
-import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
 
 /**
  * @author dmitry.neverov
  */
-public interface CleanCommand {
-  
-  @NotNull
-  CleanCommand setCleanPolicy(@NotNull AgentCleanFilesPolicy policy);
+public interface GitFactory {
 
-  void call() throws VcsException;
+  @NotNull
+  GitFacade create(@NotNull File repositoryDir);
 
 }

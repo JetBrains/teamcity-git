@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
+package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
@@ -86,5 +86,10 @@ public class CommandUtil {
     CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
     Loggers.VCS.debug(res.getStdout().trim());
     return res;
+  }
+
+  public static void failIfNotEmptyStdErr(@NotNull GeneralCommandLine cli, @NotNull ExecResult res, String... errorsLogLevel) throws VcsException {
+    if (!StringUtil.isEmpty(res.getStderr()))
+      CommandUtil.commandFailed(cli.getCommandLineString(), res, errorsLogLevel);
   }
 }

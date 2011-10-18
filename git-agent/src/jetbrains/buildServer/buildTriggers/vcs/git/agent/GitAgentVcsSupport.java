@@ -78,8 +78,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     File targetDir = getTargetDir(root, rules, checkoutDirectory);
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, myHashCalculator);
-    GitFacade git = new NativeGitFacade(config, mySshService, build.getBuildLogger());
-    Updater updater = new UpdaterImpl(config, mirrorManager, myDirectoryCleaner, git, build.getBuildLogger(), root, toVersion, targetDir);
+    GitFactory gitFactory = new GitFactoryImpl(mySshService, config);
+    Updater updater = new UpdaterImpl(config, mirrorManager, myDirectoryCleaner, gitFactory, build.getBuildLogger(), root, toVersion, targetDir);
     updater.update();
   }
 

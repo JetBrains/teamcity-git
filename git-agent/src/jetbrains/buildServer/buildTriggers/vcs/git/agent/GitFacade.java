@@ -16,124 +16,63 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.transport.URIish;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
 
 /**
  * @author dmitry.neverov
  */
 public interface GitFacade {
 
-  /**
-   * Add remote to the repository
-   *
-   * @param name     the remote name
-   * @param fetchUrl the fetch URL
-   * @throws jetbrains.buildServer.vcs.VcsException if repository cannot be accessed
-   */
-  void addRemote(@NotNull AgentSettings settings, String name, URIish fetchUrl) throws VcsException;
+  @NotNull
+  InitCommand init();
 
-  void addRemoteBare(@NotNull AgentSettings settings, String name, URIish fetchUrl) throws VcsException;
+  @NotNull
+  CreateBranchCommand createBranch();
+  
+  @NotNull
+  DeleteBranchCommand deleteBranch();
 
-  /**
-   * Init repository
-   *
-   * @throws VcsException if repository cannot be accessed
-   */
-  void init(@NotNull AgentSettings settings) throws VcsException;
+  @NotNull
+  AddRemoteCommand addRemote();
 
-  void initBare(@NotNull AgentSettings settings) throws VcsException;
+  @NotNull
+  CleanCommand clean();
 
+  @NotNull
+  ResetCommand reset();
 
-  /**
-   * Create branch
-   *
-   * @param branch the branch name
-   * @return information about the branch
-   * @throws VcsException if branch information could not be retrieved
-   */
-  BranchInfo getBranchInfo(@NotNull AgentSettings settings, String branch) throws VcsException;
+  @NotNull
+  UpdateRefCommand updateRef();
 
-  /**
-   * Get configuration property
-   *
-   * @param propertyName the property name
-   * @return the property value
-   * @throws VcsException if there is problem with getting property
-   */
-  String getConfigProperty(@NotNull AgentSettings settings, String propertyName) throws VcsException;
+  @NotNull
+  CheckoutCommand checkout();
 
-  /**
-   * Set configuration property value
-   *
-   * @param propertyName the property name
-   * @param value        the property value
-   * @throws VcsException if the property could not be set
-   */
-  void setConfigProperty(@NotNull AgentSettings settings, String propertyName, String value) throws VcsException;
+  @NotNull
+  BranchCommand branch();
 
-  /**
-   * Hard reset to the specified revision
-   *
-   * @throws VcsException if there is a problem with accessing repository
-   */
-  void hardReset(@NotNull AgentSettings settings, @NotNull String revision) throws VcsException;
+  @NotNull
+  GetConfigCommand getConfig();
 
-  /**
-   * Perform clean according to the settings
-   *
-   * @param branchInfo the branch information to use
-   * @throws VcsException if there is a problem with accessing repository
-   */
-  void clean(@NotNull AgentSettings settings, BranchInfo branchInfo) throws VcsException;
+  @NotNull
+  SetConfigCommand setConfig();
 
-  /**
-   * Force checkout of the branch removing files that are no more under VCS
-   *
-   * @throws VcsException if there is a problem with accessing repository
-   */
-  void forceCheckout(@NotNull AgentSettings settings, @NotNull String ref) throws VcsException;
+  @NotNull
+  FetchCommand fetch();
 
-  /**
-   * Set commit on non-active branch
-   *
-   * @throws VcsException if there is a problem with accessing repository
-   */
-  void setBranchCommit(@NotNull AgentSettings settings, @NotNull String branchRef, @NotNull String revision) throws VcsException;
+  @NotNull
+  LogCommand log();
 
-  /**
-   * Create branch
-   *
-   * @throws VcsException if there is a problem with accessing repository
-   */
-  void createBranch(@NotNull AgentSettings settings, @NotNull String branchRef) throws VcsException;
+  @NotNull
+  SubmoduleInitCommand submoduleInit();
 
-  /**
-   * Perform fetch operation
-   *
-   * @throws VcsException if there is a problem with accessing repository
-   */
-  void fetch(@NotNull AgentSettings settings) throws VcsException;
+  @NotNull
+  SubmoduleUpdateCommand submoduleUpdate();
 
-  void fetchBare(@NotNull AgentSettings settings) throws VcsException;
+  @NotNull
+  ShowRefCommand showRef();
 
-  /**
-   * Check the specified revision
-   *
-   * @param revision       the revision expression to check
-   * @param errorsLogLevel log level to use for reporting errors of native git command
-   * @return a short revision information or null if revision is not found
-   */
-  String checkRevision(@NotNull AgentSettings settings, final String revision, final String... errorsLogLevel);
-
-  /**
-   * Make submodule init and submodule update
-   *
-   * @throws VcsException
-   */
-  void doSubmoduleUpdate(@NotNull AgentSettings settings, File dir) throws VcsException;
+  @NotNull
+  VersionCommand version();
 
 }

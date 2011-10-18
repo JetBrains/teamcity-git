@@ -16,18 +16,20 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 /**
  * @author dmitry.neverov
  */
-public interface CleanCommand {
+public interface SetConfigCommand {
   
   @NotNull
-  CleanCommand setCleanPolicy(@NotNull AgentCleanFilesPolicy policy);
-
+  SetConfigCommand setPropertyName(@NotNull String name);
+  
+  @NotNull
+  SetConfigCommand setValue(@NotNull String value);
+  
   void call() throws VcsException;
-
+  
 }

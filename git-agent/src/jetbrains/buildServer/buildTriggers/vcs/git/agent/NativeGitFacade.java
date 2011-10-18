@@ -16,156 +16,125 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import jetbrains.buildServer.agent.BuildProgressLogger;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
+import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
-import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.errors.ConfigInvalidException;
-import org.eclipse.jgit.lib.Config;
-import org.eclipse.jgit.transport.URIish;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.Set;
-import java.util.regex.Matcher;
 
 /**
- * The update process that uses C git.
+ * @author dmitry.neverov
  */
 public class NativeGitFacade implements GitFacade {
 
-  /** Git version which supports --progress option in the fetch command */
-  private final static GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
-  private static final int SILENT_TIMEOUT = 24 * 60 * 60; //24 hours
+  private final GitAgentSSHService mySsh;
+  private final String myGitPath;
+  private final String myRepositoryPath;
 
-  private final AgentPluginConfig myPluginConfig;
-  private final GitAgentSSHService mySshService;
-  protected final BuildProgressLogger myLogger;
-
-  public NativeGitFacade(@NotNull AgentPluginConfig pluginConfig,
-                         @NotNull GitAgentSSHService sshService,
-                         @NotNull BuildProgressLogger logger) throws VcsException {
-    myPluginConfig = pluginConfig;
-    mySshService = sshService;
-    myLogger = logger;
+  public NativeGitFacade(@NotNull GitAgentSSHService ssh, @NotNull String gitPath, @NotNull String repositoryPath) {
+    mySsh = ssh;
+    myGitPath = gitPath;
+    myRepositoryPath = repositoryPath;
+  }
+  
+  public NativeGitFacade(@NotNull String gitPath) {
+    mySsh = null;
+    myGitPath = gitPath;
+    myRepositoryPath = new File(".").getAbsolutePath();
   }
 
 
-  public void addRemote(@NotNull final AgentSettings settings, final String name, final URIish fetchUrl) throws VcsException {
-    new RemoteCommand(settings).add(name, fetchUrl.toString());
+  @NotNull
+  public InitCommand init() {
+    return new InitCommandImpl(createCommandLine());
   }
 
-  public void addRemoteBare(@NotNull final AgentSettings settings, String name, URIish fetchUrl) throws VcsException {
-    new RemoteCommand(settings, settings.getRepositoryDir().getAbsolutePath()).add(name, fetchUrl.toString());
+  @NotNull
+  public CreateBranchCommand createBranch() {
+    return new CreateBranchCommandImpl(createCommandLine());
   }
 
-  public void init(@NotNull final AgentSettings settings) throws VcsException {
-    new InitCommand(settings).init();
+  @NotNull
+  public DeleteBranchCommand deleteBranch() {
+    return new DeleteBranchCommandImpl(createCommandLine());
   }
 
-  public void initBare(@NotNull final AgentSettings settings) throws VcsException {
-    File bareRepositoryDir = settings.getRepositoryDir();
-    new InitCommand(settings).initBare(bareRepositoryDir.getAbsolutePath());
+  @NotNull
+  public AddRemoteCommand addRemote() {
+    return new AddRemoteCommandImpl(createCommandLine());
   }
 
-  public BranchInfo getBranchInfo(@NotNull final AgentSettings settings, final String branch) throws VcsException {
-    return new BranchCommand(settings).branchInfo(branch);
+  @NotNull
+  public CleanCommand clean() {
+    return new CleanCommandImpl(createCommandLine());
   }
 
-
-  public String getConfigProperty(@NotNull final AgentSettings settings, final String propertyName) throws VcsException {
-    return new ConfigCommand(settings).get(propertyName);
+  @NotNull
+  public ResetCommand reset() {
+    return new ResetCommandImpl(createCommandLine());
   }
 
-
-  public void setConfigProperty(@NotNull final AgentSettings settings, final String propertyName, final String value) throws VcsException {
-    new ConfigCommand(settings).set(propertyName, value);
+  @NotNull
+  public UpdateRefCommand updateRef() {
+    return new UpdateRefCommandImpl(createCommandLine());
   }
 
-
-  public void hardReset(@NotNull final AgentSettings settings, @NotNull final String revision) throws VcsException {
-    new ResetCommand(settings).hardReset(revision);
+  @NotNull
+  public CheckoutCommand checkout() {
+    return new CheckoutCommandImpl(createCommandLine());
   }
 
-
-  public void clean(@NotNull final AgentSettings settings, BranchInfo branchInfo) throws VcsException {
-    new CleanCommand(settings).clean();
+  @NotNull
+  public BranchCommand branch() {
+    return new BranchCommandImpl(createCommandLine());
   }
 
-  public void forceCheckout(@NotNull final AgentSettings settings, @NotNull final String ref) throws VcsException {
-    new BranchCommand(settings).forceCheckout(ref);
+  @NotNull
+  public GetConfigCommand getConfig() {
+    return new GetConfigCommandImpl(createCommandLine());
   }
 
-  public void setBranchCommit(@NotNull final AgentSettings settings, @NotNull final String branchRef, @NotNull final String revision) throws VcsException {
-    new BranchCommand(settings).setBranchCommit(branchRef, revision);
+  @NotNull
+  public SetConfigCommand setConfig() {
+    return new SetConfigCommandImpl(createCommandLine());
   }
 
-  public void createBranch(@NotNull final AgentSettings settings, @NotNull final String branchRef) throws VcsException {
-    new BranchCommand(settings).createBranch(settings.getRef(), GitUtils.createRemoteRef(settings.getRef()));
+  @NotNull
+  public FetchCommand fetch() {
+    return new FetchCommandImpl(createCommandLine(), mySsh);
   }
 
-  public void fetch(@NotNull final AgentSettings settings) throws VcsException {
-    boolean silent = isSilentFetch();
-    int timeout = getTimeout(silent);
-    FetchCommand command = new FetchCommand(settings, mySshService, timeout);
-    command.fetch(silent);
+  @NotNull
+  public LogCommand log() {
+    return new LogCommandImpl(createCommandLine());
   }
 
-  public void fetchBare(@NotNull final AgentSettings settings) throws VcsException {
-    boolean silent = isSilentFetch();
-    int timeout = getTimeout(silent);
-    new FetchCommand(settings, mySshService, settings.getRepositoryDir().getAbsolutePath(), timeout).fetch(silent);
+  @NotNull
+  public SubmoduleInitCommand submoduleInit() {
+    return new SubmoduleInitCommandImpl(createCommandLine());
   }
 
-  private boolean isSilentFetch() {
-    GitVersion version = myPluginConfig.getGitVersion();
-    return GIT_WITH_PROGRESS_VERSION.isGreaterThan(version);
+  @NotNull
+  public SubmoduleUpdateCommand submoduleUpdate() {
+    return new SubmoduleUpdateCommandImpl(createCommandLine(), mySsh);
   }
 
-  public String checkRevision(@NotNull final AgentSettings settings, final String revision, String... errorsLogLevel) {
-    return new LogCommand(settings).checkRevision(revision, errorsLogLevel);
+  @NotNull
+  public ShowRefCommand showRef() {
+    return new ShowRefCommandImpl(createCommandLine());
   }
 
-  public void doSubmoduleUpdate(@NotNull final AgentSettings settings, File directory) throws VcsException {
-    File gitmodules = new File(directory, ".gitmodules");
-    if (gitmodules.exists()) {
-      myLogger.message("Checkout submodules in " + directory);
-      SubmoduleCommand submoduleCommand = new SubmoduleCommand(settings, mySshService, directory.getAbsolutePath(), SILENT_TIMEOUT);
-      submoduleCommand.init();
-      submoduleCommand.update();
-
-      if (recursiveSubmoduleCheckout(settings)) {
-        try {
-          String gitmodulesContents = FileUtil.readText(gitmodules);
-          Config config = new Config();
-          config.fromText(gitmodulesContents);
-
-          Set<String> submodules = config.getSubsections("submodule");
-          for (String submoduleName : submodules) {
-            String submodulePath = config.getString("submodule", submoduleName, "path");
-            doSubmoduleUpdate(settings, new File(directory, submodulePath.replaceAll("/", Matcher.quoteReplacement(File.separator))));
-          }
-        } catch (IOException e) {
-          throw new VcsException("Error while reading " + gitmodules, e);
-        } catch (ConfigInvalidException e) {
-          throw new VcsException("Error while parsing " + gitmodules, e);
-        }
-      }
-    }
+  @NotNull
+  public VersionCommand version() {
+    return new VersionCommandImpl(createCommandLine());
   }
 
-  private boolean recursiveSubmoduleCheckout(@NotNull final AgentSettings settings) {
-    return SubmodulesCheckoutPolicy.CHECKOUT.equals(settings.getSubmodulesCheckoutPolicy()) ||
-           SubmodulesCheckoutPolicy.CHECKOUT_IGNORING_ERRORS.equals(settings.getSubmodulesCheckoutPolicy());
-  }
-
-  private int getTimeout(boolean silentFetch) {
-    if (silentFetch)
-      return SILENT_TIMEOUT;
-    else
-      return myPluginConfig.getIdleTimeoutSeconds();
+  @NotNull
+  private GeneralCommandLine createCommandLine() {
+    GeneralCommandLine cmd = new GeneralCommandLine();
+    cmd.setExePath(myGitPath);
+    cmd.setWorkDirectory(myRepositoryPath);
+    return cmd;
   }
 }

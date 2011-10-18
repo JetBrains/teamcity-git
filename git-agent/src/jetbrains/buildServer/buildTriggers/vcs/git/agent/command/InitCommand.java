@@ -16,47 +16,17 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
-import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentSettings;
 import jetbrains.buildServer.vcs.VcsException;
+import org.jetbrains.annotations.NotNull;
 
 /**
- * The "git init" command
+ * @author dmitry.neverov
  */
-public class InitCommand extends RepositoryCommand {
-  /**
-   * The constructor
-   *
-   * @param s the settings object
-   */
-  public InitCommand(AgentSettings s) {
-    super(s);
-  }
-
-  /**
-   * Initialize git directory
-   *
-   * @throws VcsException if initializing fails
-   */
-  public void init() throws VcsException {
-    GeneralCommandLine cmd = createCommandLine();
-    cmd.addParameter("init");
-    ExecResult r = runCommand(cmd);
-    failIfNotEmptyStdErr(cmd, r);
-  }
-
-
-  /**
-   * Init bare repository at specified path
-   * @param bareRepositoryPath path where bare repository will be created
-   */
-  public void initBare(String bareRepositoryPath) throws VcsException {
-    GeneralCommandLine cmd = createCommandLine();
-    cmd.addParameter("init");
-    cmd.addParameter("--bare");
-    cmd.addParameter(bareRepositoryPath);
-    ExecResult r = runCommand(cmd);
-    failIfNotEmptyStdErr(cmd, r);
-  }
+public interface InitCommand {
+  
+  @NotNull
+  InitCommand setBare(boolean bare);
+  
+  void call() throws VcsException;
+  
 }

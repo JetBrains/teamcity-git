@@ -14,18 +14,31 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
+package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
+import com.intellij.execution.configurations.GeneralCommandLine;
+import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.VersionCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 /**
  * @author dmitry.neverov
  */
-public interface VersionCommand {
+public class VersionCommandImpl implements VersionCommand {
+
+  private final GeneralCommandLine myCmd;
+  
+  public VersionCommandImpl(@NotNull GeneralCommandLine cmd) {
+    myCmd = cmd;
+  }
 
   @NotNull
-  GitVersion call() throws VcsException;
-
+  public GitVersion call() throws VcsException {
+    myCmd.addParameter("version");
+    ExecResult r = CommandUtil.runCommand(myCmd);
+    CommandUtil.failIfNotEmptyStdErr(myCmd, r);
+    return GitVersion.parse(r.getStdout());
+  }
 }

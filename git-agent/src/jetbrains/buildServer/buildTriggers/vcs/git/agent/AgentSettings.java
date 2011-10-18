@@ -39,27 +39,19 @@ public class AgentSettings extends Settings {
    */
   private final AgentCleanFilesPolicy cleanFilesPolicy;
   /**
-   * The path to the git command
-   */
-  private final String gitCommandPath;
-  /**
    * Local repository directory
    */
   private final File localRepositoryDir;
 
-  private final boolean useNativeSSH;
 
-
-  public AgentSettings(AgentPluginConfig pluginConfig, MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root) throws VcsException {
+  public AgentSettings(MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root) throws VcsException {
     super(mirrorManager, root);
-    this.gitCommandPath = pluginConfig.getPathToGit();
     this.localRepositoryDir = localRepositoryDir;
     this.rootName = root.getName();
     String clean = root.getProperty(Constants.AGENT_CLEAN_POLICY);
     this.cleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);
     String cleanFiles = root.getProperty(Constants.AGENT_CLEAN_FILES_POLICY);
     this.cleanFilesPolicy = cleanFiles == null ? AgentCleanFilesPolicy.ALL_UNTRACKED : AgentCleanFilesPolicy.valueOf(cleanFiles);
-    this.useNativeSSH = pluginConfig.isUseNativeSSH();
   }
 
   /**
@@ -81,17 +73,6 @@ public class AgentSettings extends Settings {
    */
   public File getLocalRepositoryDir() {
     return localRepositoryDir;
-  }
-
-  /**
-   * @return the path to the command line git
-   */
-  public String getGitCommandPath() {
-    return gitCommandPath;
-  }
-
-  public boolean isUseNativeSSH() {
-    return useNativeSSH;
   }
 
   /**

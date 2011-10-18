@@ -21,7 +21,6 @@ import com.intellij.openapi.util.SystemInfo;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.VersionCommand;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -86,7 +85,7 @@ public class GitDetectorImpl implements GitDetector {
 
   private GitVersion getGitVersion(String path) throws VcsException {
     try {
-      return new VersionCommand(path).version();
+      return new NativeGitFacade(path).version().call();
     } catch (VcsException e) {
       throw new VcsException("Unable to run git at path " + path, e);
     }

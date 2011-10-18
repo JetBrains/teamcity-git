@@ -16,18 +16,23 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
+import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 /**
  * @author dmitry.neverov
  */
-public interface CleanCommand {
+public interface SubmoduleUpdateCommand {
+
+  @NotNull
+  SubmoduleUpdateCommand setUseNativeSsh(boolean useNativeSsh);
+
+  @NotNull
+  SubmoduleUpdateCommand setAuthSettings(@NotNull Settings.AuthSettings settings);
   
   @NotNull
-  CleanCommand setCleanPolicy(@NotNull AgentCleanFilesPolicy policy);
+  SubmoduleUpdateCommand setTimeout(int timeout);
 
   void call() throws VcsException;
-
 }

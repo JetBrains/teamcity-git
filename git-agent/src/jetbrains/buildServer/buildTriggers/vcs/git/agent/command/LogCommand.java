@@ -16,54 +16,24 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
-import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentSettings;
-import jetbrains.buildServer.vcs.VcsException;
-import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
- * The "git log" command
+ * @author dmitry.neverov
  */
-public class LogCommand extends RepositoryCommand {
-  /**
-   * The logger class
-   */
-  private final static Logger LOG = Logger.getLogger(LogCommand.class);
+public interface LogCommand {
+  
+  @NotNull
+  LogCommand setStartPoint(@NotNull String startPoint);
 
-  /**
-   * The constructor
-   *
-   * @param settings the git settings
-   */
-  public LogCommand(@NotNull final AgentSettings settings) {
-    super(settings);
-  }
+  @NotNull
+  LogCommand setCommitsNumber(int commitsNumber);
 
-  public LogCommand(AgentSettings settings, String bareRepositoryDir) {
-    super(settings, bareRepositoryDir);
-  }
+  @NotNull
+  LogCommand setPrettyFormat(@NotNull String format);
 
-  /**
-   * Check if the revision is already available
-   *
-   * @param revision the revision to check
-   * @param errorsLogLevel log level to use for reporting errors of native git command
-   * @return A string describing revision, or null if revision is not found
-   */
-  public String checkRevision(String revision, String... errorsLogLevel) {
-    try {
-      GeneralCommandLine cmd = createCommandLine();
-      cmd.addParameters("log", "-n1", "--pretty=format:%H%x20%s", revision, "--");
-      ExecResult r = runCommand(cmd, errorsLogLevel);
-      failIfNotEmptyStdErr(cmd, r);
-      return r.getStdout();
-    } catch (VcsException e) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Failed to retrieve revision " + revision + " from " + getSettings().debugInfo());
-      }
-      return null;
-    }
-  }
+  
+  @Nullable
+  String call();
 }

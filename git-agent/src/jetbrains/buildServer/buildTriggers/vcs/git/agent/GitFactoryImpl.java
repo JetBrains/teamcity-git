@@ -14,20 +14,33 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
+package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
-import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
+import java.io.IOException;
 
 /**
  * @author dmitry.neverov
  */
-public interface CleanCommand {
-  
+public class GitFactoryImpl implements GitFactory {
+
+  private final GitAgentSSHService mySsh;
+  private final AgentPluginConfig myPluginConfig;
+
+  public GitFactoryImpl(@NotNull GitAgentSSHService ssh, @NotNull AgentPluginConfig pluginConfig) {
+    mySsh = ssh;
+    myPluginConfig = pluginConfig;
+  }
+
+
   @NotNull
-  CleanCommand setCleanPolicy(@NotNull AgentCleanFilesPolicy policy);
-
-  void call() throws VcsException;
-
+  public GitFacade create(@NotNull File repositoryDir) {
+    try {
+      return new NativeGitFacade(mySsh, myPluginConfig.getPathToGit(), repositoryDir.getCanonicalPath());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
 }
