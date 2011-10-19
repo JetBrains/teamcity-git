@@ -128,10 +128,9 @@ public class FetchCommandImpl implements FetchCommand {
 
     VcsException commandError = CommandLineUtil.getCommandLineError("git fetch", result);
     if (commandError != null) {
-      if (isOutOfMemoryError(result)) {
+      if (isOutOfMemoryError(result))
         LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + myConfig.getFetchProcessMaxMemory() + ", try to increase it.");
-        clean(repository);
-      }
+      clean(repository);
       throw commandError;
     }
     if (result.getStderr().length() > 0) {
@@ -166,6 +165,8 @@ public class FetchCommandImpl implements FetchCommand {
       GitServerUtil.checkFetchSuccessful(result);
     } catch (OutOfMemoryError oom) {
       LOG.warn("There is not enough memory for git fetch, try to run fetch in a separate process.");
+      clean(db);
+    } catch (Exception e) {
       clean(db);
     } finally {
       tn.close();
