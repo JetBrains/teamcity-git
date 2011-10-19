@@ -36,6 +36,7 @@ public class FetchCommandImpl implements FetchCommand {
   private boolean myQuite;
   private boolean myShowProgress;
   private Settings.AuthSettings myAuthSettings;
+  private Integer myDepth;
 
   public FetchCommandImpl(@NotNull GeneralCommandLine cmd, @NotNull GitAgentSSHService ssh) {
     myCmd = cmd;
@@ -79,12 +80,20 @@ public class FetchCommandImpl implements FetchCommand {
     return this;
   }
 
+  @NotNull
+  public FetchCommand setDepth(int depth) {
+    myDepth = depth;
+    return this;
+  }
+
   public void call() throws VcsException {
     myCmd.addParameter("fetch");
     if (myQuite)
       myCmd.addParameter("-q");
     if (myShowProgress)
       myCmd.addParameter("--progress");
+    if (myDepth != null)
+      myCmd.addParameter("--depth=" + myDepth);
     myCmd.addParameter("origin");
     myCmd.addParameter(myRefspec);
     if (myUseNativeSsh) {

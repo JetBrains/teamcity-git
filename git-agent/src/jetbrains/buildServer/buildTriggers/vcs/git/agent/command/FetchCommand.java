@@ -42,6 +42,9 @@ public interface FetchCommand {
 
   @NotNull
   FetchCommand setAuthSettings(@NotNull Settings.AuthSettings settings);
+  
+  @NotNull
+  FetchCommand setDepth(int depth);
 
   void call() throws VcsException;
   

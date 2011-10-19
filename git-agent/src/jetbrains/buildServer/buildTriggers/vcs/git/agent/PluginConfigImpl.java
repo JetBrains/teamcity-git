@@ -27,6 +27,11 @@ import java.io.File;
  */
 public class PluginConfigImpl implements AgentPluginConfig {
 
+  public static final String IDLE_TIMEOUT = "teamcity.git.idle.timeout.seconds";
+  public static final String USE_NATIVE_SSH = "teamcity.git.use.native.ssh";
+  public static final String USE_MIRRORS = "teamcity.git.use.local.mirrors";
+  public static final String USE_SHALLOW_CLONE = "teamcity.git.use.shallow.clone";
+
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
   private final String myPathToGit;
@@ -51,7 +56,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
 
   public int getIdleTimeoutSeconds() {
-    String valueFromBuild = myBuild.getSharedConfigParameters().get("teamcity.git.idle.timeout.seconds");
+    String valueFromBuild = myBuild.getSharedConfigParameters().get(IDLE_TIMEOUT);
     if (valueFromBuild != null)
       return parseTimeout(valueFromBuild);
     else
@@ -66,14 +71,25 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
 
   public boolean isUseNativeSSH() {
-    String value = myBuild.getSharedConfigParameters().get("teamcity.git.use.native.ssh");
+    String value = myBuild.getSharedConfigParameters().get(USE_NATIVE_SSH);
     return "true".equals(value);
   }
 
 
   public boolean isUseLocalMirrors() {
-    String value = myBuild.getSharedConfigParameters().get("teamcity.git.use.local.mirrors");
+    String value = myBuild.getSharedConfigParameters().get(USE_MIRRORS);
     return "true".equals(value);
+  }
+
+
+  public boolean isUseShallowClone() {
+    String valueFromBuildConfiguration = myBuild.getSharedConfigParameters().get(USE_SHALLOW_CLONE);
+    if (valueFromBuildConfiguration != null) {
+      return "true".equals(valueFromBuildConfiguration);
+    } else {
+      String valueFromAgentConfig = myAgentConfig.getConfigurationParameters().get(USE_SHALLOW_CLONE);
+      return "true".equals(valueFromAgentConfig);
+    }
   }
 
 

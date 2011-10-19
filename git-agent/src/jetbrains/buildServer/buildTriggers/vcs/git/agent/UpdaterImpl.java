@@ -21,6 +21,7 @@ import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefCommand;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -293,7 +294,7 @@ public class UpdaterImpl implements Updater {
       }
     }
     if (fetchRequired)
-      fetch(mySettings.getRepositoryDir(), "+" + GitUtils.expandRef(mySettings.getRef()) + ":" + GitUtils.expandRef(mySettings.getRef()));
+      fetch(mySettings.getRepositoryDir(), "+" + GitUtils.expandRef(mySettings.getRef()) + ":" + GitUtils.expandRef(mySettings.getRef()), false);
   }
 
 
@@ -349,7 +350,16 @@ public class UpdaterImpl implements Updater {
       if (!firstFetch) {
         previousHead = getRevision(myTargetDirectory, GitUtils.createRemoteRef(mySettings.getRef()));
       }
-      fetch(myTargetDirectory, "+" + GitUtils.expandRef(mySettings.getRef()) + ":" + GitUtils.createRemoteRef(mySettings.getRef()));
+      if (myPluginConfig.isUseLocalMirrors() && myPluginConfig.isUseShallowClone()) {
+        File mirrorRepositoryDir = mySettings.getRepositoryDir();
+        String tmpBranchName = createTmpBranch(mirrorRepositoryDir, myRevision);
+        String tmpBranchRef = "refs/heads/" + tmpBranchName;
+        String refspec = "+" + tmpBranchRef + ":" + GitUtils.createRemoteRef(mySettings.getRef());
+        fetch(myTargetDirectory, refspec, true);
+        myGitFactory.create(mirrorRepositoryDir).deleteBranch().setName(tmpBranchName).call();
+      } else {
+        fetch(myTargetDirectory, "+" + GitUtils.expandRef(mySettings.getRef()) + ":" + GitUtils.createRemoteRef(mySettings.getRef()), false);
+      }
       String newHead = getRevision(myTargetDirectory, GitUtils.createRemoteRef(mySettings.getRef()));
       if (newHead == null) {
         throw new VcsException("Failed to fetch data for " + mySettings.debugInfo());
@@ -363,6 +373,28 @@ public class UpdaterImpl implements Updater {
     return revInfo;
   }
 
+  private String createTmpBranch(@NotNull File repositoryDir, @NotNull String branchStartingPoint) throws VcsException {
+    String tmpBranchName = getUnusedBranchName(repositoryDir);
+    myGitFactory.create(repositoryDir)
+      .createBranch()
+      .setName(tmpBranchName)
+      .setStartPoint(branchStartingPoint)
+      .call();
+    return tmpBranchName;
+  }
+  
+  private String getUnusedBranchName(@NotNull File repositoryDir) {
+    final String tmpBranchName = "tmp_branch_for_build";
+    String branchName = tmpBranchName;
+    ShowRefCommand showRef = myGitFactory.create(repositoryDir).showRef();
+    int i = 1;
+    while (!showRef.setPattern(branchName).call().isEmpty()) {
+      branchName = tmpBranchName + i;
+      i++;
+    }
+    return branchName;
+  }
+
   private String getRevision(@NotNull File repositoryDir, @NotNull String revision) {
     return myGitFactory.create(repositoryDir).log()
       .setCommitsNumber(1)
@@ -371,7 +403,7 @@ public class UpdaterImpl implements Updater {
       .call();
   }
 
-  private void fetch(@NotNull File repositoryDir, @NotNull String refspec) throws VcsException {
+  private void fetch(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone) throws VcsException {
     boolean silent = isSilentFetch();
     int timeout = getTimeout(silent);
 
@@ -385,6 +417,9 @@ public class UpdaterImpl implements Updater {
       fetch.setQuite(true);
     else
       fetch.setShowProgress(true);
+
+    if (shallowClone)
+      fetch.setDepth(1);
 
     fetch.call();
   }

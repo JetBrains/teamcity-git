@@ -25,6 +25,7 @@ import jetbrains.buildServer.agent.plugins.beans.PluginDescriptor;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -386,6 +387,17 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(masterRoot, new CheckoutRules(""), "d47dda159b27b9a8c4cee4ce98e4435eb5b17168@1303829462000", myCheckoutDir, build, false);
   }
 
+
+  @Test
+  public void test_shallow_clone() throws Exception {
+    AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.USE_MIRRORS, "true");
+      put(PluginConfigImpl.USE_SHALLOW_CLONE, "true");
+    }});
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+  }
+
+
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
     myVcsRootId++;
     return new VcsRootImpl(myVcsRootId, new HashMap<String, String>() {{
@@ -467,7 +479,12 @@ public class AgentVcsSupportTest {
 
   private AgentRunningBuild createRunningBuild(boolean useLocalMirrors) {
     final Map<String, String> sharedConfigParameters = new HashMap<String, String>();
-    sharedConfigParameters.put("teamcity.git.use.local.mirrors", String.valueOf(useLocalMirrors));
+    sharedConfigParameters.put(PluginConfigImpl.USE_MIRRORS, String.valueOf(useLocalMirrors));
+    return createRunningBuild(sharedConfigParameters);
+  }
+
+
+  private AgentRunningBuild createRunningBuild(final Map<String, String> sharedConfigParameters) {
     final AgentRunningBuild build = myMockery.mock(AgentRunningBuild.class, "build"+myBuildId++);
     myMockery.checking(new Expectations() {{
       allowing(build).getBuildLogger(); will(returnValue(myLogger));
