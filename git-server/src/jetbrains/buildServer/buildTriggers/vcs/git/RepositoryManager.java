@@ -34,10 +34,12 @@ public interface RepositoryManager extends MirrorManager {
   List<File> getExpiredDirs();
 
   @NotNull
-  Repository getRepository(@NotNull final URIish fetchUrl) throws VcsException;
+  Repository openRepository(@NotNull URIish fetchUrl) throws VcsException;
 
   @NotNull
-  Repository getRepository(@NotNull final File dir, @NotNull final URIish fetchUrl) throws VcsException;
+  Repository openRepository(@NotNull File dir, @NotNull URIish fetchUrl) throws VcsException;
+  
+  void closeRepository(@NotNull Repository repository);
 
   @NotNull
   public Object getWriteLock(@NotNull File dir);
