@@ -125,15 +125,15 @@ public final class RepositoryManagerImpl implements RepositoryManager {
 
 
   @NotNull
-  public Repository getRepository(@NotNull final URIish fetchUrl) throws VcsException {
+  public Repository openRepository(@NotNull final URIish fetchUrl) throws VcsException {
     final URIish canonicalURI = getCanonicalURI(fetchUrl);
     final File dir = getMirrorDir(canonicalURI.toString());
-    return getRepository(dir, canonicalURI);
+    return openRepository(dir, canonicalURI);
   }
 
 
   @NotNull
-  public Repository getRepository(@NotNull final File dir, @NotNull final URIish fetchUrl) throws VcsException {
+  public Repository openRepository(@NotNull final File dir, @NotNull final URIish fetchUrl) throws VcsException {
     final URIish canonicalURI = getCanonicalURI(fetchUrl);
     if (isDefaultMirrorDir(dir))
       updateLastUsedTime(dir);
@@ -150,6 +150,11 @@ public final class RepositoryManagerImpl implements RepositoryManager {
     }
   }
 
+
+  public void closeRepository(@NotNull Repository repository) {
+    RepositoryCache.close(repository);
+    repository.close();
+  }
 
   @NotNull
   private Repository createRepository(@NotNull final File dir, @NotNull final URIish fetchUrl) throws VcsException {

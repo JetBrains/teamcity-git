@@ -83,7 +83,7 @@ public class OperationContext {
   public Repository getRepository(File repositoryDir, URIish fetchUrl) throws VcsException {
     Repository result = myRepositories.get(repositoryDir.getPath());
     if (result == null) {
-      result = myRepositoryManager.getRepository(repositoryDir, fetchUrl);
+      result = myRepositoryManager.openRepository(repositoryDir, fetchUrl);
       myRepositories.put(repositoryDir.getPath(), result);
     }
     return result;
@@ -146,7 +146,7 @@ public class OperationContext {
     RuntimeException e = null;
     for (Repository r : myRepositories.values()) {
       try {
-        r.close();
+        myRepositoryManager.closeRepository(r);
       } catch (RuntimeException ex) {
         LOG.error("Exception during closing repository: " + r, ex);
         e = ex;

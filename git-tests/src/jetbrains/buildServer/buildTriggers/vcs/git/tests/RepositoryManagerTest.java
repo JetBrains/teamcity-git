@@ -57,7 +57,7 @@ public class RepositoryManagerTest {
 
 
   private void should_use_same_dir_for_same_urls() throws Exception {
-    Repository noAuthRepository = myRepositoryManager.getRepository(new URIish("ssh://some.org/repository.git"));
+    Repository noAuthRepository = myRepositoryManager.openRepository(new URIish("ssh://some.org/repository.git"));
     String path = noAuthRepository.getDirectory().getCanonicalPath();
     assertEquals(path, getRepositoryPath("ssh://some.org/repository.git"));
     assertEquals(path, getRepositoryPath("ssh://name@some.org/repository.git"));
@@ -76,7 +76,7 @@ public class RepositoryManagerTest {
 
 
   private String getRepositoryPath(@NotNull final String url) throws Exception {
-    Repository repository = myRepositoryManager.getRepository(new URIish(url));
+    Repository repository = myRepositoryManager.openRepository(new URIish(url));
     return repository.getDirectory().getCanonicalPath();
   }
 }
