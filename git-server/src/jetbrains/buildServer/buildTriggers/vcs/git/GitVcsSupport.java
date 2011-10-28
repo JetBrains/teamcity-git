@@ -25,6 +25,7 @@ import jetbrains.buildServer.serverSide.impl.LogUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.vcs.*;
+import jetbrains.buildServer.vcs.RepositoryState;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.eclipse.jgit.api.Git;
@@ -163,12 +164,12 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  public Map<String, String> getBranchesRevisions(@NotNull VcsRoot root) throws VcsException {
-    final Map<String, String> result = new HashMap<String, String>();
+  public RepositoryState getCurrentState(@NotNull VcsRoot root) throws VcsException {
+    RepositoryState state = new RepositoryState();
     for (Ref ref : getRemoteRefs(root).values()) {
-      result.put(ref.getName(), ref.getObjectId().name());
+      state.addBranch(ref.getName(), ref.getObjectId().name());
     }
-    return result;
+    return state;
   }
 
   @NotNull
