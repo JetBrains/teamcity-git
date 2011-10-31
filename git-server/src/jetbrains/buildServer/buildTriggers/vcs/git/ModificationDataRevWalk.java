@@ -22,6 +22,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTree
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.errors.IncorrectObjectTypeException;
+import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -29,6 +31,7 @@ import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -46,7 +49,10 @@ class ModificationDataRevWalk extends RevWalk {
   private final OperationContext myContext;
   private final Repository myRepository;
   private final int mySearchDepth;
-
+  private int myNextCallCount = 0;
+  private RevCommit myCurrentCommit;
+  private long myCommitTimeLowerBound = -1;
+  
 
   ModificationDataRevWalk(OperationContext context, int fixedSubmoduleSearchDepth) throws VcsException {
     super(context.getRepository());
@@ -56,18 +62,37 @@ class ModificationDataRevWalk extends RevWalk {
   }
 
 
-  ModificationData createModificationData(final RevCommit commit, final boolean ignoreSubmodulesErrors) throws IOException, VcsException {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Collecting changes in commit " + commit.getId().name() + ":" + commit.getShortMessage() +
-                " (" + commit.getCommitterIdent().getWhen() + ") for " + myContext.getSettings().debugInfo());
+  @Override
+  public RevCommit next() throws MissingObjectException, IncorrectObjectTypeException, IOException {
+    myCurrentCommit = super.next();
+    if (myCurrentCommit != null && shouldLimitByCommitTime() && isExceedCommitTimeBound(myCurrentCommit)) {
+      myCurrentCommit = null;
     }
-    String currentVersion = GitServerUtil.makeVersion(commit);
-    String parentVersion = getFirstParentVersion(commit);
-    List<VcsChange> changes = getCommitChanges(commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
-    ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
-                                                   GitServerUtil.getUser(myContext.getSettings(), commit), myContext.getRoot(), currentVersion, commit.getId().name());
-    if (commit.getParentCount() > 0) {
-      for (RevCommit parent : commit.getParents()) {
+    myNextCallCount++;
+    return myCurrentCommit;
+  }
+  
+  
+  public void limitByCommitTime(final long commitTimeLowerBound) {
+    myCommitTimeLowerBound = commitTimeLowerBound;
+  }
+  
+  
+  public ModificationData createModificationData() throws IOException, VcsException {
+    if (myCurrentCommit == null)
+      throw new IllegalStateException("Current commit is null");
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Collecting changes in commit " + myCurrentCommit.getId().name() + ":" + myCurrentCommit.getShortMessage() +
+                " (" + myCurrentCommit.getCommitterIdent().getWhen() + ") for " + myContext.getSettings().debugInfo());
+    }
+    String currentVersion = GitServerUtil.makeVersion(myCurrentCommit);
+    String parentVersion = getFirstParentVersion(myCurrentCommit);
+    List<VcsChange> changes = getCommitChanges(myCurrentCommit, currentVersion, parentVersion);
+    ModificationData result = new ModificationData(myCurrentCommit.getAuthorIdent().getWhen(), changes, myCurrentCommit.getFullMessage(),
+                                                   GitServerUtil.getUser(myContext.getSettings(), myCurrentCommit), myContext.getRoot(), currentVersion, myCurrentCommit.getId().name());
+    if (myCurrentCommit.getParentCount() > 0) {
+      for (RevCommit parent : myCurrentCommit.getParents()) {
         parseBody(parent);
         result.addParentRevision(GitServerUtil.makeVersion(parent));
       }
@@ -75,6 +100,21 @@ class ModificationDataRevWalk extends RevWalk {
       result.addParentRevision(GitUtils.makeVersion(ObjectId.zeroId().name(), 0));
     }
     return result;
+  }
+  
+  
+  private boolean shouldLimitByCommitTime() {
+    return myCommitTimeLowerBound != -1;
+  }
+  
+  
+  private boolean isExceedCommitTimeBound(@NotNull final RevCommit commit) {
+    return commit.getCommitTime() * 1000L <= myCommitTimeLowerBound;
+  }
+  
+
+  private boolean shouldIgnoreSubmodulesErrors() {
+    return myNextCallCount > 1;//ignore submodule errors for all commits excluding the first one
   }
 
 
@@ -96,13 +136,11 @@ class ModificationDataRevWalk extends RevWalk {
    * @param commit current commit
    * @param currentVersion teamcity version of current commit (sha@time)
    * @param parentVersion parent version to use in VcsChange objects
-   * @param ignoreSubmodulesErrors should method ignore errors in submodules or not
    * @return the commit changes
    */
   private List<VcsChange> getCommitChanges(final RevCommit commit,
                                            final String currentVersion,
-                                           final String parentVersion,
-                                           final boolean ignoreSubmodulesErrors) throws IOException, VcsException {
+                                           final String parentVersion) throws IOException, VcsException {
     List<VcsChange> changes = new ArrayList<VcsChange>();
     String repositoryDebugInfo = myContext.getSettings().debugInfo();
     VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myRepository, repositoryDebugInfo);
@@ -110,7 +148,7 @@ class ModificationDataRevWalk extends RevWalk {
       IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(myContext.getSettings());
       tw.setFilter(filter);
       tw.setRecursive(true);
-      myContext.addTree(tw, myRepository, commit, ignoreSubmodulesErrors);
+      myContext.addTree(tw, myRepository, commit, shouldIgnoreSubmodulesErrors());
       for (RevCommit parentCommit : commit.getParents()) {
         myContext.addTree(tw, myRepository, parentCommit, true);
       }

@@ -103,6 +103,18 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   @NotNull
+  public List<ModificationData> collectChanges(@NotNull VcsRoot originalRoot,
+                                               @NotNull String  originalRootVersion,
+                                               @NotNull VcsRoot branchRoot,
+                                               @Nullable String  branchRootVersion,
+                                               @NotNull CheckoutRules checkoutRules) throws VcsException {
+    LOG.debug("Collecting changes [" +LogUtil.describe(originalRoot) + "-" + originalRootVersion + "].." +
+              "[" + LogUtil.describe(branchRoot) + "-" + branchRootVersion + "]");
+    String forkPoint = getLastCommonVersion(originalRoot, originalRootVersion, branchRoot, branchRootVersion);
+    return collectChanges(branchRoot, forkPoint, branchRootVersion, checkoutRules);
+  }
+
+  @NotNull
   public List<ModificationData> collectChanges(@NotNull VcsRoot root,
                                                @NotNull String fromVersion,
                                                @Nullable String currentVersion,
@@ -110,51 +122,41 @@ public class GitVcsSupport extends ServerVcsSupport
     List<ModificationData> result = new ArrayList<ModificationData>();
     OperationContext context = createContext(root, "collecting changes");
     try {
+      LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + context.getSettings().debugInfo());
+      String upperBoundSHA = GitUtils.versionRevision(currentVersion);
+      ensureRevCommitLoaded(context, context.getSettings(), upperBoundSHA);
+      String lowerBoundSHA = GitUtils.versionRevision(fromVersion);
       Repository r = context.getRepository();
-      ModificationDataRevWalk revs = new ModificationDataRevWalk(context, myConfig.getFixedSubmoduleCommitSearchDepth());
-      try {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + context.getSettings().debugInfo());
-        }
-        final String current = GitUtils.versionRevision(currentVersion);
-        ensureRevCommitLoaded(context, context.getSettings(), current);
-        final String from = GitUtils.versionRevision(fromVersion);
-        final RevCommit currentRev = revs.parseCommit(ObjectId.fromString(current));
-        revs.markStart(currentRev);
-        revs.sort(RevSort.TOPO);
-        final ObjectId fromId = ObjectId.fromString(from);
-        if (r.hasObject(fromId)) {
-          final RevCommit fromRev = revs.parseCommit(fromId);
-          revs.markUninteresting(fromRev);
-          RevCommit c;
-          boolean lastCommit = true;
-          while ((c = revs.next()) != null) {
-            result.add(revs.createModificationData(c, !lastCommit));
-            lastCommit = false;
-          }
-        } else {
-          LOG.warn("From version " + fromVersion + " is not found, collecting changes based on commit date and time " + context.getSettings().debugInfo());
-          RevCommit c;
-          long limitTime = GitUtils.versionTime(fromVersion);
-          boolean lastCommit = true;
-          while ((c = revs.next()) != null) {
-            if (c.getCommitTime() * 1000L <= limitTime) {
-              revs.markUninteresting(c);
-            } else {
-              result.add(revs.createModificationData(c, !lastCommit));
-            }
-            lastCommit = false;
-          }
-        }
-      } finally {
-        revs.release();
-      }
+      result.addAll(getModifications(context, r, upperBoundSHA, lowerBoundSHA, GitUtils.versionTime(fromVersion)));
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
       context.close();
     }
     return result;
+  }
+  
+  
+  private List<ModificationData> getModifications(@NotNull final OperationContext context, @NotNull final Repository r, @NotNull final String upperBoundSHA, @NotNull final String lowerBoundSHA, final long timeLowerBound) throws VcsException, IOException {
+    List<ModificationData> modifications = new ArrayList<ModificationData>();
+    ModificationDataRevWalk revWalk = new ModificationDataRevWalk(context, myConfig.getFixedSubmoduleCommitSearchDepth());
+    revWalk.sort(RevSort.TOPO);
+    try {
+      revWalk.markStart(revWalk.parseCommit(ObjectId.fromString(upperBoundSHA)));
+      ObjectId lowerBoundId = ObjectId.fromString(lowerBoundSHA);
+      if (r.hasObject(lowerBoundId)) {
+        revWalk.markUninteresting(revWalk.parseCommit(lowerBoundId));
+      } else {
+        LOG.warn("From version " + lowerBoundSHA + " is not found, collecting changes based on commit time " + context.getSettings().debugInfo());
+        revWalk.limitByCommitTime(timeLowerBound);
+      }
+      while (revWalk.next() != null) {
+        modifications.add(revWalk.createModificationData());
+      }
+      return modifications;
+    } finally {
+      revWalk.release();
+    }    
   }
 
 
@@ -225,18 +227,6 @@ public class GitVcsSupport extends ServerVcsSupport
     result.addAllProperties(original.getProperties());
     result.addProperty(Constants.BRANCH_NAME, branchName);
     return result;
-  }
-
-  @NotNull
-  public List<ModificationData> collectChanges(@NotNull VcsRoot originalRoot,
-                                               @NotNull String  originalRootVersion,
-                                               @NotNull VcsRoot branchRoot,
-                                               @Nullable String  branchRootVersion,
-                                               @NotNull CheckoutRules checkoutRules) throws VcsException {
-    LOG.debug("Collecting changes [" +LogUtil.describe(originalRoot) + "-" + originalRootVersion + "].." +
-              "[" + LogUtil.describe(branchRoot) + "-" + branchRootVersion + "]");
-    String forkPoint = getLastCommonVersion(originalRoot, originalRootVersion, branchRoot, branchRootVersion);
-    return collectChanges(branchRoot, forkPoint, branchRootVersion, checkoutRules);
   }
 
   private String getLastCommonVersion(VcsRoot baseRoot, String baseVersion, VcsRoot tipRoot, String tipVersion) throws VcsException {
