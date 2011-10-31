@@ -110,6 +110,10 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     LOG.debug("Collecting changes [" +LogUtil.describe(originalRoot) + "-" + originalRootVersion + "].." +
               "[" + LogUtil.describe(branchRoot) + "-" + branchRootVersion + "]");
+    if (branchRootVersion == null) {
+      LOG.warn("Branch root version is null for " + LogUtil.describe(branchRoot) + ", return empty list of changes");
+      return Collections.emptyList();
+    }
     String forkPoint = getLastCommonVersion(originalRoot, originalRootVersion, branchRoot, branchRootVersion);
     return collectChanges(branchRoot, forkPoint, branchRootVersion, checkoutRules);
   }
@@ -123,6 +127,10 @@ public class GitVcsSupport extends ServerVcsSupport
     OperationContext context = createContext(root, "collecting changes");
     try {
       LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + context.getSettings().debugInfo());
+      if (currentVersion == null) {
+        LOG.warn("Current version is null for " + context.getSettings().debugInfo() + ", return empty list of changes");
+        return result;
+      }
       String upperBoundSHA = GitUtils.versionRevision(currentVersion);
       ensureRevCommitLoaded(context, context.getSettings(), upperBoundSHA);
       String lowerBoundSHA = GitUtils.versionRevision(fromVersion);
