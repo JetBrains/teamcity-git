@@ -28,6 +28,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 
 /**
  * The resolver for submodules that uses TeamCity repository mapping.
@@ -75,7 +76,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
     if (LOG.isDebugEnabled())
       LOG.debug("Fetching submodule " + submoduleUrl + " used at " + submodulePath + " for " + myContext.getSettings().debugInfo());
     URIish uri = resolveUrl(submoduleUrl);
-    myGitSupport.fetch(r, uri, new RefSpec("+refs/heads/*:refs/heads/*"), myContext.getSettings().getAuthSettings());
+    myGitSupport.fetch(r, uri, Arrays.asList(new RefSpec("+refs/heads/*:refs/heads/*"), new RefSpec("+refs/tags/*:refs/tags/*")), myContext.getSettings().getAuthSettings());
   }
 
   private boolean isRelative(String url) {

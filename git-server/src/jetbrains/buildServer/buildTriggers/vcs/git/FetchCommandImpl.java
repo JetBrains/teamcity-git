@@ -62,12 +62,12 @@ public class FetchCommandImpl implements FetchCommand {
 
 
   public void fetch(@NotNull final Repository db, @NotNull final URIish fetchURI,
-                    @NotNull final RefSpec refspec, @NotNull final Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+                    @NotNull final Collection<RefSpec> refspecs, @NotNull final Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     unlockRefs(db);
     if (myConfig.isSeparateProcessForFetch()) {
-      fetchInSeparateProcess(db, auth, fetchURI, refspec);
+      fetchInSeparateProcess(db, auth, fetchURI, refspecs);
     } else {
-      fetchInSameProcess(db, auth, fetchURI, refspec);
+      fetchInSameProcess(db, auth, fetchURI, refspecs);
     }
   }
 
@@ -109,15 +109,15 @@ public class FetchCommandImpl implements FetchCommand {
 
 
   private void fetchInSeparateProcess(@NotNull final Repository repository, @NotNull final Settings.AuthSettings settings,
-                                      @NotNull final URIish uri, @NotNull final RefSpec spec) throws VcsException {
+                                      @NotNull final URIish uri, @NotNull final Collection<RefSpec> specs) throws VcsException {
     final long fetchStart = System.currentTimeMillis();
-    final String debugInfo = getDebugInfo(repository, uri, spec);
+    final String debugInfo = getDebugInfo(repository, uri, specs);
 
     GeneralCommandLine cl = createFetcherCommandLine(repository, uri);
     if (LOG.isDebugEnabled())
       LOG.debug("Start fetch process for " + debugInfo);
 
-    FetcherEventHandler processEventHandler = new FetcherEventHandler(debugInfo, settings, repository.getDirectory(), uri, spec);
+    FetcherEventHandler processEventHandler = new FetcherEventHandler(debugInfo, settings, repository.getDirectory(), uri, specs);
     ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, processEventHandler);
 
     if (PERFORMANCE_LOG.isDebugEnabled())
@@ -153,15 +153,15 @@ public class FetchCommandImpl implements FetchCommand {
 
 
   private void fetchInSameProcess(@NotNull final Repository db, @NotNull final Settings.AuthSettings auth,
-                                  @NotNull final URIish uri, @NotNull final RefSpec refSpec) throws NotSupportedException, VcsException, TransportException {
-    final String debugInfo = getDebugInfo(db, uri, refSpec);
+                                  @NotNull final URIish uri, @NotNull final Collection<RefSpec> refSpecs) throws NotSupportedException, VcsException, TransportException {
+    final String debugInfo = getDebugInfo(db, uri, refSpecs);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Fetch in server process: " + debugInfo);
     }
     final long fetchStart = System.currentTimeMillis();
     final Transport tn = myTransportFactory.createTransport(db, uri, auth);
     try {
-      FetchResult result = tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(refSpec));
+      FetchResult result = tn.fetch(NullProgressMonitor.INSTANCE, refSpecs);
       GitServerUtil.checkFetchSuccessful(result);
     } catch (OutOfMemoryError oom) {
       LOG.warn("There is not enough memory for git fetch, try to run fetch in a separate process.");
@@ -176,8 +176,12 @@ public class FetchCommandImpl implements FetchCommand {
     }
   }
 
-  private String getDebugInfo(Repository db, URIish uri, RefSpec refSpec) {
-    return " (" + (db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"") + uri.toString() + "#" + refSpec.toString() + ")";
+  private String getDebugInfo(Repository db, URIish uri, Collection<RefSpec> refSpecs) {
+    StringBuilder sb = new StringBuilder();
+    for (RefSpec spec : refSpecs) {
+      sb.append(spec).append(" ");
+    }
+    return " (" + (db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"") + uri.toString() + "#" + sb.toString() + ")";
   }
 
 
@@ -209,19 +213,19 @@ public class FetchCommandImpl implements FetchCommand {
     private final Settings.AuthSettings myAuthSettings;
     private final File myRepositoryDir;
     private final URIish myUri;
-    private final RefSpec mySpec;
+    private final Collection<RefSpec> mySpecs;
     private final List<Exception> myErrors = new ArrayList<Exception>();
 
     FetcherEventHandler(@NotNull final String repositoryDebugInfo,
                         @NotNull final Settings.AuthSettings authSettings,
                         @NotNull final File repositoryDir,
                         @NotNull final URIish uri,
-                        @NotNull final RefSpec spec) {
+                        @NotNull final Collection<RefSpec> specs) {
       myRepositoryDebugInfo = repositoryDebugInfo;
       myAuthSettings = authSettings;
       myRepositoryDir = repositoryDir;
       myUri = uri;
-      mySpec = spec;
+      mySpecs = specs;
     }
 
     public void onProcessStarted(Process ps) {
@@ -232,7 +236,7 @@ public class FetchCommandImpl implements FetchCommand {
         Map<String, String> properties = new HashMap<String, String>(myAuthSettings.toMap());
         properties.put(Constants.REPOSITORY_DIR_PROPERTY_NAME, myRepositoryDir.getCanonicalPath());
         properties.put(Constants.FETCH_URL, myUri.toString());
-        properties.put(Constants.REFSPEC, mySpec.toString());
+        properties.put(Constants.REFSPEC, serializeSpecs());
         properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
         processInput.write(VcsRootImpl.propertiesToString(properties).getBytes("UTF-8"));
         processInput.flush();
@@ -262,6 +266,18 @@ public class FetchCommandImpl implements FetchCommand {
 
     void throwWrappedException() throws VcsException {
       throw new VcsException("Separate process fetch error", myErrors.get(0));
+    }
+
+    private String serializeSpecs() {
+      StringBuilder sb = new StringBuilder();
+      Iterator<RefSpec> iter = mySpecs.iterator();
+      while (iter.hasNext()) {
+        RefSpec spec = iter.next();
+        sb.append(spec);
+        if (iter.hasNext())
+          sb.append(",");
+      }
+      return sb.toString();
     }
   }
 }

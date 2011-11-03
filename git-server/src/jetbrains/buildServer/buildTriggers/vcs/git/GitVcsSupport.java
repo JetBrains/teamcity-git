@@ -1038,15 +1038,8 @@ public class GitVcsSupport extends ServerVcsSupport
     fetch(repository, settings.getRepositoryFetchURL(), spec, settings.getAuthSettings());
   }
 
-  /**
-   * Make fetch into local repository (it.s getDirectory() should be != null)
-   *
-   * @param db repository
-   * @param fetchURI uri to fetch
-   * @param refspec refspec
-   * @param auth auth settings
-   */
-  public void fetch(Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+
+  public void fetch(Repository db, URIish fetchURI, Collection<RefSpec> refspecs, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
     Lock rmLock = myRepositoryManager.getRmLock(repositoryDir).readLock();
@@ -1056,11 +1049,22 @@ public class GitVcsSupport extends ServerVcsSupport
       synchronized (myRepositoryManager.getWriteLock(repositoryDir)) {
         final long finish = System.currentTimeMillis();
         PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + (finish - start) + "ms");
-        myFetchCommand.fetch(db, fetchURI, refspec, auth);
+        myFetchCommand.fetch(db, fetchURI, refspecs, auth);
       }
     } finally {
       rmLock.unlock();
     }
+  }
+  /**
+   * Make fetch into local repository (it.s getDirectory() should be != null)
+   *
+   * @param db repository
+   * @param fetchURI uri to fetch
+   * @param refspec refspec
+   * @param auth auth settings
+   */
+  public void fetch(Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+    fetch(db, fetchURI, Collections.singletonList(refspec), auth);
   }
 
 

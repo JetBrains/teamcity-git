@@ -24,6 +24,8 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Collection;
+
 /**
  * @author dmitry.neverov
  */
@@ -35,12 +37,12 @@ public interface FetchCommand {
    *
    * @param db repository
    * @param fetchURI uri to fetch
-   * @param refspec refspec
+   * @param refspecs refspecs
    * @param auth auth settings
    * @throws NotSupportedException
    * @throws TransportException
    * @throws VcsException
    */
-  public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull RefSpec refspec, @NotNull Settings.AuthSettings auth) throws NotSupportedException, TransportException, VcsException;
+  public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull Settings.AuthSettings auth) throws NotSupportedException, TransportException, VcsException;
 
 }

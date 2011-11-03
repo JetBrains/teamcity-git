@@ -752,6 +752,18 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void should_support_submodule_on_tag(boolean fetchInSeparateProcess) throws Exception {
+    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("submodule-on-tag", true);
+    support.collectChanges(root,
+                           GitUtils.makeVersion("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", 1289483394000L),
+                           GitUtils.makeVersion("f61e30ce576e76bff877ddf1d00acf22c5c1b07a", 1320317743000L),
+                           CheckoutRules.DEFAULT);
+  }
+
+
   private void checkCollectBuildChangesSubSubmodules(boolean fetchInSeparateProcess, boolean recursiveSubmoduleCheckout)
     throws IOException, VcsException {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
@@ -1308,8 +1320,8 @@ public class GitVcsSupportTest extends PatchTestCase {
       myDelegate = delegate;
     }
 
-    public void fetch(@NotNull Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
-      myDelegate.fetch(db, fetchURI, refspec, auth);
+    public void fetch(@NotNull Repository db, URIish fetchURI, Collection<RefSpec> refspecs, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+      myDelegate.fetch(db, fetchURI, refspecs, auth);
       inc();
     }
 

@@ -28,8 +28,7 @@ import org.eclipse.jgit.transport.URIish;
 
 import java.io.*;
 import java.net.URISyntaxException;
-import java.util.Collections;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Method main of this class is supposed to be run in separate process to avoid OutOfMemoryExceptions in server's process
@@ -66,7 +65,7 @@ public class Fetcher {
    */
   private static void fetch(final File repositoryDir, Map<String, String> vcsRootProperties) throws IOException, VcsException, URISyntaxException {
     final String fetchUrl = vcsRootProperties.get(Constants.FETCH_URL);
-    final String refspec = vcsRootProperties.get(Constants.REFSPEC);
+    final String refspecs = vcsRootProperties.get(Constants.REFSPEC);
     Settings.AuthSettings auth = new Settings.AuthSettings(vcsRootProperties);
     PluginConfigImpl config = new PluginConfigImpl(new ServerPaths());
     TransportFactory transportFactory = new TransportFactoryImpl(config);
@@ -77,8 +76,7 @@ public class Fetcher {
       Repository repository = GitServerUtil.getRepository(repositoryDir, new URIish(fetchUrl));
       workaroundRacyGit();
       tn = transportFactory.createTransport(repository, new URIish(fetchUrl), auth);
-      RefSpec spec = new RefSpec(refspec).setForceUpdate(true);
-      FetchResult result = tn.fetch(NullProgressMonitor.INSTANCE, Collections.singletonList(spec));
+      FetchResult result = tn.fetch(NullProgressMonitor.INSTANCE, parseRefspecs(refspecs));
       GitServerUtil.checkFetchSuccessful(result);
     } finally {
       if (tn != null)
@@ -123,5 +121,14 @@ public class Fetcher {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
+  }
+
+  private static Collection<RefSpec> parseRefspecs(String refspecs) {
+    String[] specs = refspecs.split(",");
+    List<RefSpec> result = new ArrayList<RefSpec>();
+    for (String spec : specs) {
+      result.add(new RefSpec(spec).setForceUpdate(true));
+    }
+    return result;
   }
 }
