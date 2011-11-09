@@ -965,7 +965,7 @@ public class GitVcsSupport extends ServerVcsSupport
       Repository r = context.getRepository();
       String refName = GitUtils.expandRef(s.getRef());
 
-      if (isRemoteRefUpdated(root, r, s, refName))
+      if (!myConfig.isSeparateProcessForFetch() || isRemoteRefUpdated(root, r, s, refName))
         fetchBranchData(s, r);
 
       Ref branchRef = r.getRef(refName);
