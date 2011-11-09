@@ -1075,7 +1075,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     File configFile = new File(customRootDir, "config");
     String config = FileUtil.readText(configFile);
-    Pattern pattern = Pattern.compile("(.*)\\[teamcity\\]\\s+remote = " + GitUtils.toURL(myMainRepositoryDir) + "\\s*(.*)", Pattern.DOTALL);
+    Pattern pattern = Pattern.compile("(.*)\\[teamcity\\]\\s+remote = " + Pattern.quote(GitUtils.toURL(myMainRepositoryDir)) + "\\s*(.*)", Pattern.DOTALL);
     Matcher matcher = pattern.matcher(config);
     assertTrue(matcher.matches(), "config is " + config);
 

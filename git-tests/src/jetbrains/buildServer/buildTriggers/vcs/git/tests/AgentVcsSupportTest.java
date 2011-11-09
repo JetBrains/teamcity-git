@@ -286,7 +286,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     File gitConfigFile = new File(myCheckoutDir, ".git" + File.separator + "config");
     String config = FileUtil.loadTextAndClose(new FileReader(gitConfigFile));
     String localMirrorUrl = new URIish(bareRepositoryDir.toURI().toASCIIString()).toString();
-    Pattern pattern = Pattern.compile("(.*)\\[url \"" + localMirrorUrl + "\"\\]\\s+insteadOf = " +
+    Pattern pattern = Pattern.compile("(.*)\\[url \"" + Pattern.quote(localMirrorUrl) + "\"\\]\\s+insteadOf = " +
                                       Pattern.quote(settings.getRepositoryFetchURL().toString()) +
                                       "\\s*(.*)", Pattern.DOTALL);
     Matcher matcher = pattern.matcher(config);
