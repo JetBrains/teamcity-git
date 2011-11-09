@@ -965,7 +965,7 @@ public class GitVcsSupport extends ServerVcsSupport
       Repository r = context.getRepository();
       String refName = GitUtils.expandRef(s.getRef());
 
-      if (isRemoteRefUpdated(root, s, refName))
+      if (isRemoteRefUpdated(root, r, s, refName))
         fetchBranchData(s, r);
 
       Ref branchRef = r.getRef(refName);
@@ -996,8 +996,8 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
 
-  private boolean isRemoteRefUpdated(VcsRoot root, Settings s, String refName) throws VcsException {
-    Map<String, Ref> remoteRefs = getRemoteRefs(root);
+  private boolean isRemoteRefUpdated(@NotNull VcsRoot root, @NotNull Repository db, @NotNull Settings s, @NotNull String refName) throws Exception {
+    Map<String, Ref> remoteRefs = getRemoteRefs(root, db, s);
     Ref remoteRef = remoteRefs.get(refName);
     if (remoteRef == null)
       return true;
@@ -1224,7 +1224,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
+  private Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
     OperationContext context = createContext(root, "list remote refs");
     Settings s = context.getSettings();
     File tmpDir = null;
@@ -1232,20 +1232,7 @@ public class GitVcsSupport extends ServerVcsSupport
       tmpDir = FileUtil.createTempDirectory("git-ls-remote", "");
       s.setUserDefinedRepositoryPath(tmpDir);
       Repository db = context.getRepository();
-      Transport transport = null;
-      FetchConnection connection = null;
-      try {
-        transport = myTransportFactory.createTransport(db, s.getRepositoryFetchURL(), s.getAuthSettings());
-        connection = transport.openFetch();
-        return connection.getRefsMap();
-      } catch (NotSupportedException nse) {
-        throw friendlyNotSupportedException(root, s, nse);
-      } catch (TransportException te) {
-        throw friendlyTransportException(te);
-      } finally {
-        if (connection != null) connection.close();
-        if (transport != null) transport.close();
-      }
+      return getRemoteRefs(root, db, s);
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
@@ -1254,6 +1241,25 @@ public class GitVcsSupport extends ServerVcsSupport
         myRepositoryManager.cleanLocksFor(tmpDir);
         FileUtil.delete(tmpDir);
       }
+    }
+  }
+
+
+  @NotNull
+  private Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root, @NotNull Repository db, @NotNull Settings s) throws Exception {
+    Transport transport = null;
+    FetchConnection connection = null;
+    try {
+      transport = myTransportFactory.createTransport(db, s.getRepositoryFetchURL(), s.getAuthSettings());
+      connection = transport.openFetch();
+      return connection.getRefsMap();
+    } catch (NotSupportedException nse) {
+      throw friendlyNotSupportedException(root, s, nse);
+    } catch (TransportException te) {
+      throw friendlyTransportException(te);
+    } finally {
+      if (connection != null) connection.close();
+      if (transport != null) transport.close();
     }
   }
 
