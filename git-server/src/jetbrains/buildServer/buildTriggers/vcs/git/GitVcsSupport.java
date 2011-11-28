@@ -143,8 +143,8 @@ public class GitVcsSupport extends ServerVcsSupport
     }
     return result;
   }
-  
-  
+
+
   private List<ModificationData> getModifications(@NotNull final OperationContext context, @NotNull final Repository r, @NotNull final String upperBoundSHA, @NotNull final String lowerBoundSHA, final long timeLowerBound) throws VcsException, IOException {
     List<ModificationData> modifications = new ArrayList<ModificationData>();
     ModificationDataRevWalk revWalk = new ModificationDataRevWalk(context, myConfig.getFixedSubmoduleCommitSearchDepth());
@@ -164,7 +164,7 @@ public class GitVcsSupport extends ServerVcsSupport
       return modifications;
     } finally {
       revWalk.release();
-    }    
+    }
   }
 
 
@@ -175,9 +175,9 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public RepositoryState getCurrentState(@NotNull VcsRoot root) throws VcsException {
-    RepositoryState state = new RepositoryState();
+    RepositoryState state = new RepositoryStateImpl();
     for (Ref ref : getRemoteRefs(root).values()) {
-      state.addBranch(ref.getName(), ref.getObjectId().name());
+      state.setBranchRevision(ref.getName(), ref.getObjectId().name());
     }
     return state;
   }
