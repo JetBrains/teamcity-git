@@ -29,7 +29,6 @@ import jetbrains.buildServer.vcs.RepositoryState;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.errors.AmbiguousObjectException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
@@ -893,32 +892,15 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  @NotNull
-  private ObjectId getVcsRootGitId(final @NotNull VcsRoot root) throws VcsException{
+  public Collection<VcsClientMapping> getClientMapping(final @NotNull VcsRoot root, final @NotNull IncludeRule rule) throws VcsException {
     final OperationContext context = createContext(root, "client-mapping");
     try {
-      final Settings gitSettings = context.getSettings(root);
-      final Repository gitRepo = context.getRepository(gitSettings);
-      if(gitRepo == null){
-        throw new VcsException(String.format("Could not find Git Repository for '%s'", root.getName()));
-      }
-      final ObjectId objectId = gitRepo.resolve(gitSettings.getRef());
-      if(objectId == null){
-        throw new VcsException(String.format("Could not resolve Git Reference '%s'", gitSettings.getRef()));
-      }
-      return objectId;
-    } catch (AmbiguousObjectException e) {
-      throw new VcsException(e);
-    } catch (IOException e) {
-      throw new VcsException(e);
+      Settings s = context.getSettings();
+      URIish uri = s.getRepositoryFetchURL();
+      return Collections.singletonList(new VcsClientMapping(String.format("|%s|%s", uri.toString(), rule.getFrom()), rule.getTo()));
     } finally {
       context.close();
     }
-  }
-
-  public Collection<VcsClientMapping> getClientMapping(final @NotNull VcsRoot root, final @NotNull IncludeRule rule) throws VcsException {
-    final ObjectId gitObjId = getVcsRootGitId(root);
-    return Collections.singletonList(new VcsClientMapping(String.format("%s||%s", gitObjId.name(), rule.getFrom()), rule.getTo()));
   }
 
   @Override
