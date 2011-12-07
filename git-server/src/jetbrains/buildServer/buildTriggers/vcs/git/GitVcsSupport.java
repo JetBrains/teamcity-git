@@ -302,60 +302,13 @@ public class GitVcsSupport extends ServerVcsSupport
     List<VcsChange> changes = getCommitChanges(context, db, commit, currentVersion, parentVersion, ignoreSubmodulesErrors);
     ModificationData result = new ModificationData(commit.getAuthorIdent().getWhen(), changes, commit.getFullMessage(),
                                                    GitServerUtil.getUser(context.getSettings(), commit), context.getRoot(), currentVersion, commit.getId().name());
-    if (isMergeCommit(commit) && changes.isEmpty()) {
-      boolean hasInterestingChanges = hasInterestingChanges(context, db, commit, ignoreSubmodulesErrors, checkoutRules, GitUtils.versionRevision(firstUninterestingVersion));
-      if (hasInterestingChanges) {
-        result.setCanBeIgnored(false);
-      }
-    }
+    if (isMergeCommit(commit))
+      result.setCanBeIgnored(false);
     return result;
   }
 
   private boolean isMergeCommit(RevCommit commit) {
     return commit.getParents().length > 1;
-  }
-
-  private boolean hasInterestingChanges(final OperationContext context,
-                                        final Repository db,
-                                        final RevCommit mergeCommit,
-                                        final boolean ignoreSubmodulesErrors,
-                                        final CheckoutRules rules,
-                                        final String firstUninterestingSHA)
-    throws IOException, VcsException {
-    RevWalk walk = new RevWalk(db);
-    List<RevCommit> start = new ArrayList<RevCommit>();
-    for (RevCommit c : mergeCommit.getParents()) {
-      start.add(walk.parseCommit(c));
-    }
-    walk.markStart(start);
-    walk.markUninteresting(walk.parseCommit(ObjectId.fromString(firstUninterestingSHA)));
-    walk.sort(RevSort.TOPO);
-    try {
-      RevCommit c;
-      while ((c = walk.next()) != null) {
-        TreeWalk tw = new TreeWalk(db);
-        tw.setRecursive(true);
-        tw.setFilter(TreeFilter.ANY_DIFF);
-        try {
-          context.addTree(tw, db, c, ignoreSubmodulesErrors);
-          tw.addTree(c.getTree().getId());
-          for (RevCommit parent : c.getParents()) {
-            context.addTree(tw, db, parent, ignoreSubmodulesErrors);
-          }
-          while (tw.next()) {
-            String path = tw.getPathString();
-            if (rules.shouldInclude(path)) {
-              return true;
-            }
-          }
-        } finally {
-          tw.release();
-        }
-      }
-    } finally {
-      walk.release();
-    }
-    return false;
   }
 
   /**
