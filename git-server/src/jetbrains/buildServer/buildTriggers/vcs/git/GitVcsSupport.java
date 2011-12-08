@@ -854,6 +854,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   private Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
+    final long start = System.currentTimeMillis();
     OperationContext context = createContext(root, "list remote refs");
     Settings s = context.getSettings();
     File tmpDir = null;
@@ -870,12 +871,15 @@ public class GitVcsSupport extends ServerVcsSupport
         myRepositoryManager.cleanLocksFor(tmpDir);
         FileUtil.delete(tmpDir);
       }
+      final long finish = System.currentTimeMillis();
+      PERFORMANCE_LOG.debug("[getRemoteRefs] repository: " + LogUtil.describe(root) + ", took " + (finish - start) + "ms");
     }
   }
 
 
   @NotNull
   private Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root, @NotNull Repository db, @NotNull Settings s) throws Exception {
+    final long start = System.currentTimeMillis();
     Transport transport = null;
     FetchConnection connection = null;
     try {
@@ -889,6 +893,8 @@ public class GitVcsSupport extends ServerVcsSupport
     } finally {
       if (connection != null) connection.close();
       if (transport != null) transport.close();
+      final long finish = System.currentTimeMillis();
+      PERFORMANCE_LOG.debug("[getRemoteRefs transport] repository: " + LogUtil.describe(root) + ", took " + (finish - start) + "ms");
     }
   }
 
