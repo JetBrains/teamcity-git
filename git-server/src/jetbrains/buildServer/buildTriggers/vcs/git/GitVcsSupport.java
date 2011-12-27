@@ -469,7 +469,7 @@ public class GitVcsSupport extends ServerVcsSupport
           while(prevTreeWalk.next()) {
             if (prevTreeWalk.getPathString().startsWith(submodulePath)) {
               SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
-              if (!iter.isSubmoduleError() && iter.getParent().isOnSubmodule()) {
+              if (iter != null && !iter.isSubmoduleError() && iter.getParent().isOnSubmodule()) {
                 result = prevRev;
                 break;
               }
