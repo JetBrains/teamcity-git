@@ -656,6 +656,17 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  //TW-19544
+  @Test
+  public void testCollectChangesWithBrokenSubmoduleOnLastCommitAndUsualFileInsteadOfSubmoduleInPreviousCommit() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("wrong-submodule", true);
+    String fromCommit = GitUtils.makeVersion("f5bdd3819df0358a43d9a8f94eaf96bb306e19fe", 1282636308000L);
+    String lastCommit = GitUtils.makeVersion("39679cc440c83671fbf6ad8083d92517f9602300", 1324998585000L);
+    support.collectChanges(root, fromCommit, lastCommit, CheckoutRules.DEFAULT);
+  }
+
+
   @Test
   public void should_not_traverse_history_deeper_than_specified_limit() throws Exception {
     myConfigBuilder.setFixedSubmoduleCommitSearchDepth(0);//do no search submodule commit with fix at all

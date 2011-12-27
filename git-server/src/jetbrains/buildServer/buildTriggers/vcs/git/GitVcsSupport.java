@@ -467,9 +467,11 @@ public class GitVcsSupport extends ServerVcsSupport
           prevTreeWalk.setRecursive(true);
           context.addTree(prevTreeWalk, db, prevRev, true, false);
           while(prevTreeWalk.next()) {
-            if (prevTreeWalk.getPathString().startsWith(submodulePath)) {
+            String path = prevTreeWalk.getPathString();
+            if (path.startsWith(submodulePath + "/")) {
               SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
-              if (iter != null && !iter.isSubmoduleError() && iter.getParent().isOnSubmodule()) {
+              SubmoduleAwareTreeIterator parentIter = iter.getParent();
+              if (iter != null && !iter.isSubmoduleError() && parentIter != null && parentIter.isOnSubmodule()) {
                 result = prevRev;
                 break;
               }
