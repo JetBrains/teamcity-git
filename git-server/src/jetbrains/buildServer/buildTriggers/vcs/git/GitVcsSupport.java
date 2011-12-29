@@ -174,11 +174,11 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public RepositoryState getCurrentState(@NotNull VcsRoot root) throws VcsException {
-    RepositoryState state = new RepositoryStateImpl();
+    Map<String, String> branchRevisions = new HashMap<String, String>();
     for (Ref ref : getRemoteRefs(root).values()) {
-      state.setBranchRevision(ref.getName(), ref.getObjectId().name());
+      branchRevisions.put(ref.getName(), ref.getObjectId().name());
     }
-    return state;
+    return RepositoryStateFactory.createRepositoryState(branchRevisions);
   }
 
   @NotNull
