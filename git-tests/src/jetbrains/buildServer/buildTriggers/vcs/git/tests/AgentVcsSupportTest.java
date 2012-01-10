@@ -449,7 +449,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     final XmlRpcHandlerManager manager = myMockery.mock(XmlRpcHandlerManager.class);
     myMockery.checking(new Expectations() {{
       allowing(agent).getXmlRpcHandlerManager(); will(returnValue(manager));
-      allowing(manager).addHandler(with(any(String.class)), with(any(Object.class)));
+      ignoring(manager);
     }});
     return agent;
   }
@@ -482,8 +482,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
   private BuildProgressLogger createLogger() {
     final BuildProgressLogger logger = myMockery.mock(BuildProgressLogger.class);
     myMockery.checking(new Expectations(){{
-      allowing(logger).message(with(any(String.class)));
-      allowing(logger).warning(with(any(String.class)));
+      ignoring(logger);
     }});
     return logger;
   }
