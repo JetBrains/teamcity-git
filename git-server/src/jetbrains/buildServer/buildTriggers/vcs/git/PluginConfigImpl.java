@@ -31,6 +31,10 @@ import org.eclipse.jgit.lib.ProgressMonitor;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
 /**
  * @author dmitry.neverov
@@ -148,5 +152,46 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public long getMirrorExpirationTimeoutMillis() {
     int days = TeamCityProperties.getInteger("teamcity.git.mirror.expiration.timeout.days", 7);
     return days * DAY;
+  }
+
+  @NotNull
+  public List<String> getProxySettingsForSeparateProcess() {
+    List<String> proxySettings = new ArrayList<String>();
+    addHttpProxyHost(proxySettings);
+    addHttpProxyPort(proxySettings);
+    addHttpNonProxyHosts(proxySettings);
+    addHttpsProxyHost(proxySettings);
+    addHttpsProxyPort(proxySettings);
+    return proxySettings;
+  }
+
+  private void addHttpProxyHost(@NotNull final List<String> proxySettings) {
+    String httpProxyHost = TeamCityProperties.getProperty("http.proxyHost");
+    if (!isEmpty(httpProxyHost))
+      proxySettings.add("-Dhttp.proxyHost=" + httpProxyHost);
+  }
+
+  private void addHttpProxyPort(List<String> proxySettings) {
+    int httpProxyPort = TeamCityProperties.getInteger("http.proxyPort", -1);
+    if (httpProxyPort != -1)
+      proxySettings.add("-Dhttp.proxyPort=" + httpProxyPort);
+  }
+
+  private void addHttpNonProxyHosts(List<String> proxySettings) {
+    String httpNonProxyHosts = TeamCityProperties.getProperty("http.nonProxyHosts");
+    if (!isEmpty(httpNonProxyHosts))
+      proxySettings.add("-Dhttp.nonProxyHosts=\"" + httpNonProxyHosts + "\"");
+  }
+
+  private void addHttpsProxyHost(List<String> proxySettings) {
+    String httpsProxyHost = TeamCityProperties.getProperty("https.proxyHost");
+    if (!isEmpty(httpsProxyHost))
+      proxySettings.add("-Dhttps.proxyHost=" + httpsProxyHost);
+  }
+
+  private void addHttpsProxyPort(List<String> proxySettings) {
+    int httpsProxyPort = TeamCityProperties.getInteger("https.proxyPort", -1);
+    if (httpsProxyPort != -1)
+      proxySettings.add("-Dhttps.proxyPort=" + httpsProxyPort);
   }
 }
