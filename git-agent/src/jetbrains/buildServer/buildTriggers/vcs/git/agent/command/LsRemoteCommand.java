@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,15 +24,11 @@ import java.util.List;
 /**
  * @author dmitry.neverov
  */
-public interface ShowRefCommand {
+public interface LsRemoteCommand {
+
+  public LsRemoteCommand showTags();
 
   @NotNull
-  ShowRefCommand setPattern(@NotNull String pattern);
-
-  @NotNull
-  ShowRefCommand showTags();
-
-  @NotNull
-  List<Ref> call();
+  public List<Ref> call();
 
 }

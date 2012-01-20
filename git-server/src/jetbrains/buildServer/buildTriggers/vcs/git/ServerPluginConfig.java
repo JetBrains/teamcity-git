@@ -16,6 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
+
 /**
  * @author dmitry.neverov
  */
@@ -61,4 +65,7 @@ public interface ServerPluginConfig extends PluginConfig {
 
 
   long getMirrorExpirationTimeoutMillis();
+
+  @NotNull
+  List<String> getProxySettingsForSeparateProcess();
 }

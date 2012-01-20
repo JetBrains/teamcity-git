@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 
+import static java.util.Arrays.asList;
 import static org.testng.AssertJUnit.assertEquals;
 
 /**
@@ -84,5 +85,27 @@ public class ServerPluginConfigTest {
     System.setProperty("teamcity.git.idle.timeout.seconds", "60");
     ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
     assertEquals(60, config.getIdleTimeoutSeconds());
+  }
+
+
+  public void test_proxy_settings() {
+    final String httpProxyHost = "some.org";
+    final String httpProxyPort = "3128";
+    final String httpNonProxyHosts = "localhost|*.mydomain.com";
+    final String httpsProxyPort = "3129";
+    final String httpsProxyHost = "other.org";
+    System.setProperty("http.proxyHost", httpProxyHost);
+    System.setProperty("http.proxyPort", httpProxyPort);
+    System.setProperty("http.nonProxyHosts", httpNonProxyHosts);
+    System.setProperty("https.proxyHost", httpsProxyHost);
+    System.setProperty("https.proxyPort", httpsProxyPort);
+
+    ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
+    assertEquals(asList("-Dhttp.proxyHost=" + httpProxyHost,
+                        "-Dhttp.proxyPort=" + httpProxyPort,
+                        "-Dhttp.nonProxyHosts=\"" + httpNonProxyHosts + "\"",
+                        "-Dhttps.proxyHost=" + httpsProxyHost,
+                        "-Dhttps.proxyPort=" + httpsProxyPort),
+                 config.getProxySettingsForSeparateProcess());
   }
 }

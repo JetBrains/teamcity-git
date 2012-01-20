@@ -16,12 +16,14 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * @author dmitry.neverov
@@ -117,6 +119,11 @@ public class PluginConfigBuilder {
 
       public long getMirrorExpirationTimeoutMillis() {
         return myMirrorExpirationTimeoutMillis != null ? myMirrorExpirationTimeoutMillis : myDelegate.getMirrorExpirationTimeoutMillis();
+      }
+
+      @NotNull
+      public List<String> getProxySettingsForSeparateProcess() {
+        return Collections.emptyList();
       }
     };
   }

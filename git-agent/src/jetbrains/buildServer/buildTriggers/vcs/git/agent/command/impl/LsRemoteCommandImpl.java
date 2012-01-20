@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
@@ -27,39 +27,32 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
+import static com.intellij.openapi.util.text.StringUtil.splitByLines;
+
 /**
  * @author dmitry.neverov
  */
-public class ShowRefCommandImpl implements ShowRefCommand {
+public class LsRemoteCommandImpl implements LsRemoteCommand {
 
-  private final GeneralCommandLine myCmd;
-  private String myPattern;
-  private boolean myShowTags;
+  private GeneralCommandLine myCmd;
+  private boolean myShowTags = false;
 
-  public ShowRefCommandImpl(@NotNull GeneralCommandLine cmd) {
+  public LsRemoteCommandImpl(@NotNull GeneralCommandLine cmd) {
     myCmd = cmd;
   }
 
-  @NotNull
-  public ShowRefCommand setPattern(@NotNull String pattern) {
-    myPattern = pattern;
-    return this;
-  }
-
-  @NotNull
-  public ShowRefCommand showTags() {
+  public LsRemoteCommand showTags() {
     myShowTags = true;
     return this;
   }
 
-
   @NotNull
   public List<Ref> call() {
-    myCmd.addParameter("show-ref");
-    if (myPattern != null)
-      myCmd.addParameters(myPattern);
+    myCmd.addParameter("ls-remote");
     if (myShowTags)
       myCmd.addParameter("--tags");
+    myCmd.addParameter("origin");
     try {
       ExecResult result = CommandUtil.runCommand(myCmd);
       return parse(result.getStdout());
@@ -68,14 +61,15 @@ public class ShowRefCommandImpl implements ShowRefCommand {
     }
   }
 
-  private List<Ref> parse(String str) {
-    List<Ref> result = new ArrayList<Ref>();
-    for (String line : str.split("\n")) {
-      String commit = line.substring(0, 40);
-      String ref = line.substring(41, line.length());
-      result.add(new RefImpl(ref, commit));
+  private List<Ref> parse(@NotNull final String str) {
+    List<Ref> refs = new ArrayList<Ref>();
+    for (String line : splitByLines(str)) {
+      if (isEmpty(line))
+        continue;
+      String objectId = line.substring(0, 40);
+      String name = line.substring(40, line.length()).trim();
+      refs.add(new RefImpl(name, objectId));
     }
-    return result;
+    return refs;
   }
-
 }

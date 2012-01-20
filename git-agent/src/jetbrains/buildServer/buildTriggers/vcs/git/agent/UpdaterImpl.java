@@ -20,8 +20,7 @@ import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -284,13 +283,14 @@ public class UpdaterImpl implements Updater {
       git.init().setBare(true).call();
       git.addRemote().setName("origin").setUrl(mySettings.getRepositoryFetchURL().toString()).call();
     } else {
-      LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
-      Ref ref = getRef(bareRepositoryDir, GitUtils.expandRef(mySettings.getRef()));
-      if (ref != null && myRevision.equals(ref.getObjectId().name())) {
-        LOG.info("No fetch required for revision '" + myRevision + "' in " + mirrorDescription);
-        fetchRequired = false;
-      } else {
-        fetchRequired = true;
+      boolean outdatedTagsFound = removeOutdatedTags(bareRepositoryDir);
+      if (!outdatedTagsFound) {
+        LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
+        Ref ref = getRef(bareRepositoryDir, GitUtils.expandRef(mySettings.getRef()));
+        if (ref != null && myRevision.equals(ref.getObjectId().name())) {
+          LOG.info("No fetch required for revision '" + myRevision + "' in " + mirrorDescription);
+          fetchRequired = false;
+        }
       }
     }
     if (fetchRequired)
@@ -335,12 +335,16 @@ public class UpdaterImpl implements Updater {
   private String doFetch(boolean firstFetch) throws VcsException {
     String revInfo = null;
     Ref ref = null;
+    boolean outdatedTagsFound = false;
     if (!firstFetch) {
-      LOG.debug("Try to find revision " + myRevision);      
-      revInfo = getRevision(myTargetDirectory, myRevision);
-      ref = getRef(myTargetDirectory, GitUtils.expandRef(mySettings.getRef()));
+      outdatedTagsFound = removeOutdatedTags(myTargetDirectory);
+      if (!outdatedTagsFound) {
+        LOG.debug("Try to find revision " + myRevision);
+        revInfo = getRevision(myTargetDirectory, myRevision);
+        ref = getRef(myTargetDirectory, GitUtils.expandRef(mySettings.getRef()));
+      }
     }
-    if (revInfo != null && ref != null) {//commit and branch exist
+    if (!outdatedTagsFound && revInfo != null && ref != null) {//commit and branch exist
       LOG.info("No fetch needed for revision '" + myRevision + "' in " + mySettings.getLocalRepositoryDir());
     } else {
       checkAuthMethodIsSupported();
@@ -483,5 +487,44 @@ public class UpdaterImpl implements Updater {
     URIish push  = mySettings.getRepositoryPushURL();
     if (!fetch.equals(push) && isAnonymousGitWithUsername(push))
       LOG.warn("Push URL '" + push.toString() + "'for root " + myRoot.getName() + " uses an anonymous git protocol and contains a username, push will probably fail");
+  }
+
+
+  /**
+   * Remove outdated tags
+   * @param workingDir repository dir
+   * @return true if any tags were removed
+   */
+  private boolean removeOutdatedTags(@NotNull File workingDir) {
+    boolean outdatedTagsRemoved = false;
+    Tags localTags = getLocalTags(workingDir);
+    Tags remoteTags = getRemoteTags(workingDir);
+    for (Ref localTag : localTags.list()) {
+      if (remoteTags.isOutdated(localTag)) {
+        deleteTag(workingDir, localTag.getName());
+        outdatedTagsRemoved = true;
+      }
+    }
+    return outdatedTagsRemoved;
+  }
+
+
+  private void deleteTag(@NotNull File workingDir, @NotNull String tagFullName) {
+    GitFacade git = myGitFactory.create(workingDir);
+    try {
+      git.deleteTag().setName(tagFullName).call();
+    } catch (VcsException e) {
+      LOG.warn("Cannot delete tag " + tagFullName, e);
+    }
+  }
+
+  private Tags getLocalTags(@NotNull File workingDir) {
+    GitFacade git = myGitFactory.create(workingDir);
+    return new Tags(git.showRef().showTags().call());
+  }
+
+  private Tags getRemoteTags(@NotNull File workingDir) {
+    GitFacade git = myGitFactory.create(workingDir);
+    return new Tags(git.lsRemote().showTags().call());
   }
 }

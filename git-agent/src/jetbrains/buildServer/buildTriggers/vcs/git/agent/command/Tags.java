@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,20 +19,31 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * @author dmitry.neverov
+ * Collection of tags in a repository
  */
-public interface ShowRefCommand {
+public class Tags {
 
-  @NotNull
-  ShowRefCommand setPattern(@NotNull String pattern);
+  private final Map<String, Ref> myTags = new HashMap<String, Ref>();
 
-  @NotNull
-  ShowRefCommand showTags();
+  public Tags(@NotNull final List<Ref> tags) {
+    for (Ref r : tags)
+      myTags.put(r.getName(), r);
+  }
 
-  @NotNull
-  List<Ref> call();
+  public boolean isOutdated(@NotNull Ref tag) {
+    Ref myTag = myTags.get(tag.getName());
+    if (myTag == null)
+      return true;
+    return !myTag.getObjectId().equals(tag.getObjectId());
+  }
 
+  public Collection<Ref> list() {
+    return myTags.values();
+  }
 }
