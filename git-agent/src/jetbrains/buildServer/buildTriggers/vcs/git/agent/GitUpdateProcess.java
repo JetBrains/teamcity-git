@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@ import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.DeleteTagCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefCommand;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -39,14 +41,14 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isAnonymousGitWithUsername;
 
 public abstract class GitUpdateProcess {
 
   private final static Logger LOG = Logger.getLogger(GitUpdateProcess.class);
+  private static final int TAG_PREFIX_LENGTH = "refs/tags/".length();
   final SmartDirectoryCleaner myDirectoryCleaner;
   protected final VcsRoot myRoot;
   protected final CheckoutRules myCheckoutRules;
@@ -226,11 +228,16 @@ public abstract class GitUpdateProcess {
       initBare();
       addRemoteBare("origin", mySettings.getRepositoryFetchURL());
     } else {
-      LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
-      Ref ref = getRef(GitUtils.expandRef(mySettings.getRef()));
-      if (ref != null && myRevision.equals(ref.getObjectId().name())) {
-        LOG.info("No fetch required for revision '" + myRevision + "' in " + mirrorDescription);
-        fetchRequired = false;
+      boolean outdatedTagsFound = removeOutdatedTags(bareRepositoryDir);
+      if (!outdatedTagsFound) {
+        LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
+        Ref ref = getRef(GitUtils.expandRef(mySettings.getRef()));
+        if (ref != null && myRevision.equals(ref.getObjectId().name())) {
+          LOG.info("No fetch required for revision '" + myRevision + "' in " + mirrorDescription);
+          fetchRequired = false;
+        } else {
+          fetchRequired = true;
+        }
       } else {
         fetchRequired = true;
       }
@@ -277,12 +284,16 @@ public abstract class GitUpdateProcess {
   private String doFetch(boolean firstFetch) throws VcsException {
     String revInfo = null;
     Ref ref = null;
+    boolean outdatedTagsFound = false;
     if (!firstFetch) {
-      LOG.debug("Try to find revision " + myRevision);
-      revInfo = checkRevision(myRevision, "debug");
-      ref = getRef(GitUtils.expandRef(mySettings.getRef()));
+      outdatedTagsFound = removeOutdatedTags(myCheckoutDirectory);
+      if (!outdatedTagsFound) {
+        LOG.debug("Try to find revision " + myRevision);
+        revInfo = checkRevision(myRevision, "debug");
+        ref = getRef(GitUtils.expandRef(mySettings.getRef()));
+      }
     }
-    if (revInfo != null && ref != null) {//commit and branch exist
+    if (!outdatedTagsFound && revInfo != null && ref != null) {//commit and branch exist
       LOG.info("No fetch needed for revision '" + myRevision + "' in " + mySettings.getLocalRepositoryDir());
     } else {
       checkAuthMethodIsSupported();
@@ -304,6 +315,47 @@ public abstract class GitUpdateProcess {
       }
     }
     return revInfo;
+  }
+
+  /**
+   * Remove outdated tags
+   * @param workingDir repository dir
+   * @return true if any tags were removed
+   */
+  private boolean removeOutdatedTags(@NotNull File workingDir) {
+    boolean outdatedTagsFound = false;
+    Tags localTags = getLocalTags(workingDir);
+    Tags remoteTags = getRemoteTags(workingDir);
+    for (Ref localTag : localTags.list()) {
+      if (remoteTags.isOutdated(localTag)) {
+        deleteTag(workingDir, localTag.getName());
+        outdatedTagsFound = true;
+      }
+    }
+    return outdatedTagsFound;
+  }
+
+  private void deleteTag(@NotNull File workingDir, @NotNull String tagFullName) {
+    DeleteTagCommand deleteTag = new DeleteTagCommand(mySettings, workingDir.getAbsolutePath());
+    deleteTag.setTagName(tagFullName.substring(TAG_PREFIX_LENGTH));
+    try {
+      deleteTag.execute();
+    } catch (VcsException e) {
+      LOG.warn("Cannot delete tag " + tagFullName, e);
+    }
+  }
+
+  private Tags getLocalTags(@NotNull File workingDir) {
+    ShowRefCommand showRef = new ShowRefCommand(mySettings, workingDir.getAbsolutePath());
+    showRef.showTags();
+    return new Tags(showRef.execute());
+  }
+
+  private Tags getRemoteTags(@NotNull File workingDir) {
+    LsRemoteCommand lsRemote = new LsRemoteCommand(mySettings, workingDir.getAbsolutePath());
+    lsRemote.showTags();
+    lsRemote.execute();
+    return new Tags(lsRemote.execute());
   }
 
   private void checkAuthMethodIsSupported() throws VcsException {
@@ -532,6 +584,27 @@ public abstract class GitUpdateProcess {
     public BranchInfo(boolean exists, boolean current) {
       isExists = exists;
       isCurrent = current;
+    }
+  }
+
+  private static class Tags {
+
+    private final Map<String, Ref> myTags = new HashMap<String, Ref>();
+
+    private Tags(@NotNull final List<Ref> tags) {
+      for (Ref r : tags)
+        myTags.put(r.getName(), r);
+    }
+
+    boolean isOutdated(@NotNull Ref tag) {
+      Ref myTag = myTags.get(tag.getName());
+      if (myTag == null)
+        return true;
+      return !myTag.getObjectId().equals(tag.getObjectId());
+    }
+
+    Collection<Ref> list() {
+      return myTags.values();
     }
   }
 }

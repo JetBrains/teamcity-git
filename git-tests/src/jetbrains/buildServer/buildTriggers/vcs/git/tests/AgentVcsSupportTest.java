@@ -134,6 +134,7 @@ public class AgentVcsSupportTest extends BaseTestCase {
     myRoot = new VcsRootImpl(1, new HashMap<String, String>() {{
       put(VcsRootImpl.VCS_NAME_PROP, Constants.VCS_NAME);
       put(VcsRootImpl.VCS_ROOT_NAME_PROP, "test");
+      put(Constants.BRANCH_NAME, "master");
       put(Constants.FETCH_URL, GitUtils.toURL(myMainRepo));
       put(Constants.AGENT_GIT_PATH, pathToGit);
     }});
@@ -156,8 +157,6 @@ public class AgentVcsSupportTest extends BaseTestCase {
    * Test work normally if .git/index.lock file exists
    */
   public void testRecoverIndexLock() throws Exception {
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
-
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD,
                                myCheckoutDir, myBuild, false);
 
@@ -173,7 +172,6 @@ public class AgentVcsSupportTest extends BaseTestCase {
    * Test work normally if .git/refs/heads/<branch>.lock file exists
    */
   public void testRecoverRefLock() throws Exception {
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
     String firstCommitInPatchTests = GitUtils.makeVersion("a894d7d58ffde625019a9ecf8267f5f1d1e5c341", 1245766034000L);
@@ -247,7 +245,6 @@ public class AgentVcsSupportTest extends BaseTestCase {
       }
     }).length == 0);
 
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
     MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
@@ -279,7 +276,6 @@ public class AgentVcsSupportTest extends BaseTestCase {
     File bareRepositoryDir = settings.getRepositoryDir();
 
     //emulate old cloned repository (it has no config option 'url.<URL>.insteadOf')
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
     //cut off 'url.<URL>.insteadOf option:
@@ -305,7 +301,6 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
   public void do_not_use_mirror_if_agent_property_set_to_false() throws Exception {
     AgentRunningBuild build2 = createRunningBuild(false);
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
     File gitConfigFile = new File(myCheckoutDir, ".git" + File.separator + "config");
     String config = FileUtil.loadTextAndClose(new FileReader(gitConfigFile));
@@ -314,7 +309,6 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
 
   public void stop_use_mirror_if_agent_property_changed_to_false() throws Exception {
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
     AgentRunningBuild build2 = createRunningBuild(false);
@@ -379,14 +373,60 @@ public class AgentVcsSupportTest extends BaseTestCase {
 
 
   public void should_checkout_tags_reachable_from_branch() throws Exception {
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
-
-    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
-    assertNotNull(r.getRef("refs/tags/v0.5"));
-    assertNotNull(r.getRef("refs/tags/v1.0"));
+    assertTagExists("refs/tags/v0.5");
+    assertTagExists("refs/tags/v1.0");
   }
 
+
+  @Test(dataProvider = "mirrors")
+  public void deleted_tag_in_remote_repository_should_be_deleted_in_local_repository(Boolean useMirrors) throws Exception {
+    AgentRunningBuild build = createRunningBuild(useMirrors);
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+    removeTag(myMainRepo, "refs/tags/v0.5");
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+    assertNoTagExist("refs/tags/v0.5");
+  }
+
+
+  @Test(dataProvider = "mirrors")
+  public void updated_tag_in_remote_repository_should_be_updated_in_local_repository(Boolean useMirrors) throws Exception {
+    AgentRunningBuild build = createRunningBuild(useMirrors);
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+
+    final String newCommit = "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6";
+    updateTag(myMainRepo, "refs/tags/v1.0", newCommit);
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+    assertTagExists("refs/tags/v1.0");
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    Ref tag = r.getRef("refs/tags/v1.0");
+    assertEquals("Local tag is not updated", newCommit, tag.getObjectId().name());
+  }
+
+  private void removeTag(@NotNull File dotGitDir, @NotNull String tagName) {
+    delete(tagFile(dotGitDir, tagName));
+  }
+
+  private void updateTag(@NotNull File dotGitDir, @NotNull String tagName, @NotNull String commit) throws IOException {
+    File tagFile = tagFile(dotGitDir, tagName);
+    FileUtil.writeToFile(tagFile, commit.getBytes());
+  }
+
+  private File tagFile(@NotNull File dotGitDir, @NotNull String tagName) {
+    return new File(dotGitDir, tagName.replaceAll("/", File.separator));
+  }
+
+  private void assertNoTagExist(String tag) throws IOException {
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    assertNull("tag \'" + tag + "\' exists", r.getRef(tag));
+  }
+
+  private void assertTagExists(String tag) throws IOException {
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    assertNotNull("tag \'" + tag + "\' doesn't exist", r.getRef(tag));
+  }
 
   @DataProvider(name = "mirrors")
   public Object[][] mirrors() {

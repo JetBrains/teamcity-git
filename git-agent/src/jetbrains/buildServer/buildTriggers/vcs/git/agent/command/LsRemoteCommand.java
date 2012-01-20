@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,42 +21,44 @@ import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
+import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
+import static com.intellij.openapi.util.text.StringUtil.splitByLines;
+
 /**
- * git show-ref
+ * @author dmitry.neverov
  */
-public class ShowRefCommand extends RepositoryCommand {
+public class LsRemoteCommand extends RepositoryCommand {
 
-  private String myRef;
+  private String myRemoteName = "origin";
   private boolean myShowTags = false;
+  private File myGitDir;
 
-  public ShowRefCommand(AgentSettings settings) {
-    super(settings);
+  public LsRemoteCommand(AgentSettings mySettings) {
+    super(mySettings);
   }
 
-  public ShowRefCommand(AgentSettings settings, String bareRepositoryPath) {
-    super(settings, bareRepositoryPath);
-  }
-
-  public void setRef(String ref) {
-    myRef = ref;
+  public LsRemoteCommand(AgentSettings mySettings, String workDirectory) {
+    super(mySettings, workDirectory);
   }
 
   public void showTags() {
     myShowTags = true;
   }
 
+  @NotNull
   public List<Ref> execute() {
     GeneralCommandLine cmd = createCommandLine();
-    cmd.addParameter("show-ref");
-    if (myRef != null)
-      cmd.addParameters(myRef);
+    cmd.addParameter("ls-remote");
     if (myShowTags)
       cmd.addParameter("--tags");
+    cmd.addParameter(myRemoteName);
     try {
       ExecResult result = runCommand(cmd);
       return parse(result.getStdout());
@@ -65,14 +67,15 @@ public class ShowRefCommand extends RepositoryCommand {
     }
   }
 
-
-  private List<Ref> parse(String str) {
-    List<Ref> result = new ArrayList<Ref>();
-    for (String line : str.split("\n")) {
-      String commit = line.substring(0, 40);
-      String ref = line.substring(41, line.length());
-      result.add(new RefImpl(ref, commit));
+  private List<Ref> parse(@NotNull final String str) {
+    List<Ref> refs = new ArrayList<Ref>();
+    for (String line : splitByLines(str)) {
+      if (isEmpty(line))
+        continue;
+      String objectId = line.substring(0, 40);
+      String name = line.substring(40, line.length()).trim();
+      refs.add(new RefImpl(name, objectId));
     }
-    return result;
+    return refs;
   }
 }
