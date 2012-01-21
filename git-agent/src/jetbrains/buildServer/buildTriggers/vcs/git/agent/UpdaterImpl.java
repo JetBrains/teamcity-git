@@ -79,12 +79,16 @@ public class UpdaterImpl implements Updater {
     if (myPluginConfig.isUseLocalMirrors())
       updateLocalMirror();
 
-    LOG.info("Starting update of root " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);
-    LOG.debug("Updating " + mySettings.debugInfo());
+    logStartUpdating();
 
     boolean firstFetch = initGitRepository();
     doFetch(firstFetch);
     updateSources();
+  }
+
+  private void logStartUpdating() {
+    LOG.info("Starting update of root " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);
+    LOG.debug("Updating " + mySettings.debugInfo());
   }
 
 
@@ -348,12 +352,8 @@ public class UpdaterImpl implements Updater {
       LOG.info("No fetch needed for revision '" + myRevision + "' in " + mySettings.getLocalRepositoryDir());
     } else {
       checkAuthMethodIsSupported();
-      LOG.info("Fetching in repository " + mySettings.debugInfo());
-      myLogger.message("Fetching data for '" + myRoot.getName() + "'...");
-      String previousHead = null;
-      if (!firstFetch) {
-        previousHead = getRevision(myTargetDirectory, GitUtils.createRemoteRef(mySettings.getRef()));
-      }
+      logStartFetching();
+      String previousHead = getPreviousHead(firstFetch);
       if (myPluginConfig.isUseLocalMirrors() && myPluginConfig.isUseShallowClone()) {
         File mirrorRepositoryDir = mySettings.getRepositoryDir();
         String tmpBranchName = createTmpBranch(mirrorRepositoryDir, myRevision);
@@ -375,6 +375,17 @@ public class UpdaterImpl implements Updater {
       }
     }
     return revInfo;
+  }
+
+  private String getPreviousHead(boolean firstFetch) {
+    if (firstFetch)
+      return null;
+    return getRevision(myTargetDirectory, GitUtils.createRemoteRef(mySettings.getRef()));
+  }
+
+  private void logStartFetching() {
+    LOG.info("Fetching in repository " + mySettings.debugInfo());
+    myLogger.message("Fetching data for '" + myRoot.getName() + "'...");
   }
 
   private String createTmpBranch(@NotNull File repositoryDir, @NotNull String branchStartingPoint) throws VcsException {
