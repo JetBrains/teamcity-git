@@ -18,6 +18,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Proxy;
+import com.jcraft.jsch.ProxyHTTP;
 import gnu.trove.TObjectHashingStrategy;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -163,6 +165,14 @@ public class PluginConfigImpl implements ServerPluginConfig {
     addHttpsProxyHost(proxySettings);
     addHttpsProxyPort(proxySettings);
     return proxySettings;
+  }
+
+  public Proxy getJschProxy() {
+    String httpProxyHost = TeamCityProperties.getProperty("http.proxyHost");
+    int httpProxyPort = TeamCityProperties.getInteger("http.proxyPort", ProxyHTTP.getDefaultPort());
+    if (isEmpty(httpProxyHost))
+      return null;
+    return new ProxyHTTP(httpProxyHost, httpProxyPort);
   }
 
   private void addHttpProxyHost(@NotNull final List<String> proxySettings) {

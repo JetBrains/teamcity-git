@@ -17,8 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -31,6 +31,7 @@ import java.util.Set;
 
 import static java.util.Arrays.asList;
 import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertNotNull;
 
 /**
  * @author dmitry.neverov
@@ -107,5 +108,6 @@ public class ServerPluginConfigTest {
                         "-Dhttps.proxyHost=" + httpsProxyHost,
                         "-Dhttps.proxyPort=" + httpsProxyPort),
                  config.getProxySettingsForSeparateProcess());
+    assertNotNull(config.getJschProxy());
   }
 }

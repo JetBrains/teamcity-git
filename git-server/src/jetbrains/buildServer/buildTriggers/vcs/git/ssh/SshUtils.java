@@ -18,7 +18,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.ssh;
 
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Proxy;
 import com.jcraft.jsch.Session;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Some common functionality for SSH
@@ -39,12 +41,14 @@ public class SshUtils {
    * @return the configured session
    * @throws JSchException if session could not be created
    */
-  static Session createSession(JSch sch, String user, String host, int port) throws JSchException {
+  static Session createSession(JSch sch, @Nullable Proxy proxy, String user, String host, int port) throws JSchException {
     if (port <= 0) {
       port = SSH_PORT;
     }
     final Session session = sch.getSession(user, host, port);
     session.setConfig("StrictHostKeyChecking", "no");
+    if (proxy != null)
+      session.setProxy(proxy);
     return session;
   }
 }

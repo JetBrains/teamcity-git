@@ -16,10 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import com.jcraft.jsch.Proxy;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.Collections;
@@ -124,6 +126,11 @@ public class PluginConfigBuilder {
       @NotNull
       public List<String> getProxySettingsForSeparateProcess() {
         return Collections.emptyList();
+      }
+
+      @Nullable
+      public Proxy getJschProxy() {
+        return null;
       }
     };
   }

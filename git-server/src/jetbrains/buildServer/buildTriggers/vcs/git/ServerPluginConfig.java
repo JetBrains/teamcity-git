@@ -16,7 +16,9 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.jcraft.jsch.Proxy;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -68,4 +70,10 @@ public interface ServerPluginConfig extends PluginConfig {
 
   @NotNull
   List<String> getProxySettingsForSeparateProcess();
+
+  /**
+   * @return proxy for jsch of null if no proxy required
+   */
+  @Nullable
+  Proxy getJschProxy();
 }
