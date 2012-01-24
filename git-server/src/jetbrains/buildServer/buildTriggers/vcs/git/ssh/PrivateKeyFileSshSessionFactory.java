@@ -19,32 +19,34 @@ package jetbrains.buildServer.buildTriggers.vcs.git.ssh;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.util.FS;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * The SSH session factory that uses explicitly specified private key file
  * for authentication.
  */
 public class PrivateKeyFileSshSessionFactory extends SshSessionFactory {
-  /**
-   * SSH instance with registered identity
-   */
-  private final JSch sch;
+  //SSH instance with registered identity
+  private final JSch mySch;
+  private final ServerPluginConfig myConfig;
 
-  public PrivateKeyFileSshSessionFactory(Settings.AuthSettings settings) throws VcsException {
+  public PrivateKeyFileSshSessionFactory(@NotNull ServerPluginConfig config, @NotNull Settings.AuthSettings settings) throws VcsException {
+    myConfig = config;
     final String privateKeyPath = settings.getPrivateKeyFilePath();
     final String passphrase = settings.getPassphrase();
     if(privateKeyPath == null || privateKeyPath.length() == 0) {
       throw new VcsAuthenticationException("The private key path is not specified");
     }
-    this.sch = new JSch();
+    this.mySch = new JSch();
     try {
-      sch.addIdentity(privateKeyPath, passphrase);
+      mySch.addIdentity(privateKeyPath, passphrase);
     } catch (JSchException e) {
       throw new VcsAuthenticationException("Unable to load identity file: " + privateKeyPath + (passphrase != null ? " (passphrase protected)" : ""), e);
     }
@@ -53,6 +55,6 @@ public class PrivateKeyFileSshSessionFactory extends SshSessionFactory {
   @Override
   public Session getSession(String user, String pass, String host, int port, CredentialsProvider credentialsProvider, FS fs)
     throws JSchException {
-    return SshUtils.createSession(sch, user, host, port);
+    return SshUtils.createSession(mySch, myConfig.getJschProxy(), user, host, port);
   }
 }

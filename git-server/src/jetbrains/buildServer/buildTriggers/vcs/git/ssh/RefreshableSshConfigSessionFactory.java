@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.ssh;
 import com.intellij.openapi.diagnostic.Logger;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.configuration.ChangeListener;
 import jetbrains.buildServer.configuration.FilesWatcher;
 import jetbrains.buildServer.util.FileUtil;
@@ -50,11 +51,10 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
    */
   private final Object delegateLock = new Object();
   private final FilesWatcher myWatcher;
+  private final ServerPluginConfig myConfig;
 
-  /**
-   * A constructor
-   */
-  public RefreshableSshConfigSessionFactory(final boolean monitorDotSshChanges) {
+  public RefreshableSshConfigSessionFactory(@NotNull final ServerPluginConfig config, final boolean monitorDotSshChanges) {
+    myConfig = config;
     if (monitorDotSshChanges) {
       final File sshDir = new File(System.getProperty("user.home"), ".ssh");
       myWatcher = new FilesWatcher(new FilesWatcher.WatchedFilesProvider() {
@@ -87,7 +87,7 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
     synchronized (delegateLock) {
       if (myDelegate == null) {
         LOG.info("Reloading SSH configuration information for Git plugin");
-        myDelegate = new HeadlessSshSessionFactory();
+        myDelegate = new HeadlessSshSessionFactory(myConfig);
       }
       return myDelegate;
     }
