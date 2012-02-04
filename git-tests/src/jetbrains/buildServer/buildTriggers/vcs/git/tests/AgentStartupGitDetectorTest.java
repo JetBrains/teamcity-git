@@ -67,7 +67,7 @@ public class AgentStartupGitDetectorTest {
     myContext.assertIsSatisfied();
   }
 
-  public void should_set_path_to_detected_git_if_not_set_by_user() {
+  private void should_set_path_to_detected_git_if_not_set_by_user() {
     final BuildAgent agent = myContext.mock(BuildAgent.class);
     myContext.checking(new Expectations() {{
       BuildAgentConfiguration config = myContext.mock(BuildAgentConfiguration.class);
