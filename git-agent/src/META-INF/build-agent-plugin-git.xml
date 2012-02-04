@@ -6,6 +6,7 @@
   <bean id="gitAgent" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport" />
   <bean id="gitPathResolver" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.GitPathResolverImpl"/>
   <bean id="gitDetector" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.GitDetectorImpl"/>
+  <bean id="agentStratupGitDetector" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentStartupGitDetector"/>
   <bean id="configFactory" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigFactoryImpl"/>
   <bean id="hashCalculator" class="jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl"/>
 </beans>

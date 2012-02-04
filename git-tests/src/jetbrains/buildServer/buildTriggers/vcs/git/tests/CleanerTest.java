@@ -58,8 +58,8 @@ public class CleanerTest extends BaseTestCase {
     PluginConfigBuilder myConfigBuilder = new PluginConfigBuilder(myServerPaths)
       .setRunNativeGC(true)
       .setMirrorExpirationTimeoutMillis(4000);
-    if (System.getenv(Constants.GIT_PATH_ENV) != null)
-      myConfigBuilder.setPathToGit(System.getenv(Constants.GIT_PATH_ENV));
+    if (System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH) != null)
+      myConfigBuilder.setPathToGit(System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH));
 
     Mockery myContext = new Mockery();
     myCleanExecutor = Executors.newSingleThreadScheduledExecutor();

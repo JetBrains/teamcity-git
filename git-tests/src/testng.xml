@@ -29,6 +29,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentConfigPluginTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.MirrorManagerTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RepositoryManagerTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentStartupGitDetectorTest"/>
     </classes>
   </test>
 </suite>

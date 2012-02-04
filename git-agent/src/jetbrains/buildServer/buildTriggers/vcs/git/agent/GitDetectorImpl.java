@@ -24,29 +24,14 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
-import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
 
 /**
  * @author dmitry.neverov
  */
 public class GitDetectorImpl implements GitDetector {
 
-  /** the default windows git executable paths */
-  @NonNls private static final String[] DEFAULT_WINDOWS_PATHS =
-    {"C:\\Program Files\\Git\\bin", "C:\\Program Files (x86)\\Git\\bin", "C:\\cygwin\\bin"};
-  /** Default UNIX paths */
-  @NonNls private static final String[] DEFAULT_UNIX_PATHS = {"/usr/local/bin", "/usr/bin", "/opt/local/bin", "/opt/bin"};
-  /** windows executable name */
-  @NonNls private static final String DEFAULT_WINDOWS_GIT = "git.exe";
-  /** UNIX executable name */
-  @NonNls private static final String DEFAULT_UNIX_GIT = "git";
-
-
   private final GitPathResolver myResolver;
-
 
   public GitDetectorImpl(@NotNull GitPathResolver resolver) {
     myResolver = resolver;
@@ -59,9 +44,9 @@ public class GitDetectorImpl implements GitDetector {
     if (path != null) {
       Loggers.VCS.info("Using vcs root's git: " + path);
     } else {
-      path = build.getSharedBuildParameters().getEnvironmentVariables().get(Constants.GIT_PATH_ENV);
+      path = build.getSharedBuildParameters().getEnvironmentVariables().get(Constants.TEAMCITY_AGENT_GIT_PATH);
       if (path != null) {
-        Loggers.VCS.info("Using git specified by " + Constants.GIT_PATH_ENV + ": " + path);
+        Loggers.VCS.info("Using git specified by " + Constants.TEAMCITY_AGENT_GIT_PATH + ": " + path);
       } else {
         path = defaultGit();
         Loggers.VCS.info("Using default git: " + path);
@@ -98,29 +83,7 @@ public class GitDetectorImpl implements GitDetector {
                              ". Please upgrade Git or use server-side checkout.");
   }
 
-  /**
-   * @return the default executable name depending on the platform
-   */
   private String defaultGit() {
-    String[] paths;
-    String program;
-    if (SystemInfo.isWindows) {
-      program = DEFAULT_WINDOWS_GIT;
-      paths = DEFAULT_WINDOWS_PATHS;
-    } else {
-      program = DEFAULT_UNIX_GIT;
-      paths = DEFAULT_UNIX_PATHS;
-    }
-    for (String p : paths) {
-      File f = new File(p, program);
-      Loggers.VCS.info("Trying default git location: " + f.getPath());
-      if (f.exists()) {
-        return f.getAbsolutePath();
-      }
-    }
-    Loggers.VCS.info(String.format("The git has not been found in default locations. Will use '%s' command without specified path.",
-                                   SystemInfo.isWindows ? DEFAULT_WINDOWS_GIT : DEFAULT_UNIX_GIT));
-    return SystemInfo.isWindows ? DEFAULT_WINDOWS_GIT : DEFAULT_UNIX_GIT;
+    return SystemInfo.isWindows ? AgentStartupGitDetector.WIN_EXECUTABLE_NAME: AgentStartupGitDetector.UNIX_EXECUTABLE_NAME;
   }
-
 }

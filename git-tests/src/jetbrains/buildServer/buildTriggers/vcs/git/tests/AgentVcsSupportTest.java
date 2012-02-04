@@ -540,7 +540,7 @@ public class AgentVcsSupportTest {
    * @throws IOException
    */
   private String getGitPath() throws IOException {
-    String providedGit = System.getenv(Constants.GIT_PATH_ENV);
+    String providedGit = System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH);
     if (providedGit != null) {
       return providedGit;
     } else {

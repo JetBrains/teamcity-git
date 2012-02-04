@@ -19,7 +19,7 @@
   --%>
 
 <jsp:useBean id="propertiesBean" scope="request" type="jetbrains.buildServer.controllers.BasePropertiesBean"/>
-<c:set var="gitPathEnv" value="<%= Constants.GIT_PATH_ENV %>"/>
+<c:set var="gitPathEnv" value="<%= Constants.TEAMCITY_AGENT_GIT_PATH %>"/>
 <table class="runnerFormTable">
   <c:set var="userHome"
          value='<%=new File(System.getProperty("user.home"), ".ssh"+File.separator+"config").getAbsolutePath() %>'/>
@@ -134,9 +134,7 @@
       <td><props:textProperty name="agentGitPath" className="longField"/>
         <div class="smallNote" style="margin: 0;">Provide path to a git executable
         to be used on agent. If the path is not specified, TeamCity will use
-        the location set up in ${gitPathEnv} environment  variable. If this
-        variable is  not specified, a heuristic is used to detect git at
-        the default locations.
+        the location set up in ${gitPathEnv} environment  variable.
         </div>
       </td>
     </tr>
