@@ -46,6 +46,7 @@ public class PluginConfigBuilder {
   private Integer myFixedSubmoduleCommitSearchDepth;
   private Integer myIdleTimeoutSeconds;
   private Long myMirrorExpirationTimeoutMillis;
+  private int myNumberOfCommitsWhenFromVersionNotFound = -1;
 
   public PluginConfigBuilder(@NotNull ServerPaths paths) {
     myDelegate = new PluginConfigImpl(paths);
@@ -131,6 +132,10 @@ public class PluginConfigBuilder {
       @Nullable
       public Proxy getJschProxy() {
         return null;
+      }
+
+      public int getNumberOfCommitsWhenFromVersionNotFound() {
+        return myNumberOfCommitsWhenFromVersionNotFound != -1 ? myNumberOfCommitsWhenFromVersionNotFound : myDelegate.getNumberOfCommitsWhenFromVersionNotFound();
       }
     };
   }
@@ -225,6 +230,12 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setMirrorExpirationTimeoutMillis(long timeoutMillis) {
     myMirrorExpirationTimeoutMillis = timeoutMillis;
+    return this;
+  }
+
+
+  public PluginConfigBuilder setNumberOfCommitsWhenFromVersionNotFound(int numberOfCommits) {
+    myNumberOfCommitsWhenFromVersionNotFound = numberOfCommits;
     return this;
   }
 }

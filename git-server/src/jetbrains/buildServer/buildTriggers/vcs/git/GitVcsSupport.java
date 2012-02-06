@@ -134,7 +134,7 @@ public class GitVcsSupport extends ServerVcsSupport
       ensureRevCommitLoaded(context, context.getSettings(), upperBoundSHA);
       String lowerBoundSHA = GitUtils.versionRevision(fromVersion);
       Repository r = context.getRepository();
-      result.addAll(getModifications(context, r, upperBoundSHA, lowerBoundSHA, GitUtils.versionTime(fromVersion)));
+      result.addAll(getModifications(context, r, upperBoundSHA, lowerBoundSHA));
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
@@ -144,7 +144,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
 
-  private List<ModificationData> getModifications(@NotNull final OperationContext context, @NotNull final Repository r, @NotNull final String upperBoundSHA, @NotNull final String lowerBoundSHA, final long timeLowerBound) throws VcsException, IOException {
+  private List<ModificationData> getModifications(@NotNull final OperationContext context, @NotNull final Repository r, @NotNull final String upperBoundSHA, @NotNull final String lowerBoundSHA) throws VcsException, IOException {
     List<ModificationData> modifications = new ArrayList<ModificationData>();
     ModificationDataRevWalk revWalk = new ModificationDataRevWalk(context, myConfig.getFixedSubmoduleCommitSearchDepth());
     revWalk.sort(RevSort.TOPO);
@@ -154,8 +154,8 @@ public class GitVcsSupport extends ServerVcsSupport
       if (r.hasObject(lowerBoundId)) {
         revWalk.markUninteresting(revWalk.parseCommit(lowerBoundId));
       } else {
-        LOG.warn("From version " + lowerBoundSHA + " is not found, collecting changes based on commit time " + context.getSettings().debugInfo());
-        revWalk.limitByCommitTime(timeLowerBound);
+        LOG.warn("From version " + lowerBoundSHA + " is not found, collect last " + myConfig.getNumberOfCommitsWhenFromVersionNotFound() + " commits");
+        revWalk.limitByNumberOfCommits(myConfig.getNumberOfCommitsWhenFromVersionNotFound());
       }
       while (revWalk.next() != null) {
         modifications.add(revWalk.createModificationData());

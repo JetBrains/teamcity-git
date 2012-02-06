@@ -167,6 +167,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return proxySettings;
   }
 
+  public int getNumberOfCommitsWhenFromVersionNotFound() {
+    return TeamCityProperties.getInteger("teamcity.git.from.version.not.found.commits.number", 10);
+  }
+
   public Proxy getJschProxy() {
     String httpProxyHost = TeamCityProperties.getProperty("http.proxyHost");
     int httpProxyPort = TeamCityProperties.getInteger("http.proxyPort", ProxyHTTP.getDefaultPort());

@@ -51,7 +51,7 @@ class ModificationDataRevWalk extends RevWalk {
   private final int mySearchDepth;
   private int myNextCallCount = 0;
   private RevCommit myCurrentCommit;
-  private long myCommitTimeLowerBound = -1;
+  private int myNumberOfCommitsToVisit = -1;
   
 
   ModificationDataRevWalk(OperationContext context, int fixedSubmoduleSearchDepth) throws VcsException {
@@ -65,16 +65,16 @@ class ModificationDataRevWalk extends RevWalk {
   @Override
   public RevCommit next() throws MissingObjectException, IncorrectObjectTypeException, IOException {
     myCurrentCommit = super.next();
-    if (myCurrentCommit != null && shouldLimitByCommitTime() && isExceedCommitTimeBound(myCurrentCommit)) {
+    myNextCallCount++;
+    if (myCurrentCommit != null && shouldLimitByNumberOfCommits() && myNextCallCount > myNumberOfCommitsToVisit) {
       myCurrentCommit = null;
     }
-    myNextCallCount++;
     return myCurrentCommit;
   }
   
   
-  public void limitByCommitTime(final long commitTimeLowerBound) {
-    myCommitTimeLowerBound = commitTimeLowerBound;
+  public void limitByNumberOfCommits(final int numberOfCommitsToVisit) {
+    myNumberOfCommitsToVisit = numberOfCommitsToVisit;
   }
   
   
@@ -103,16 +103,11 @@ class ModificationDataRevWalk extends RevWalk {
   }
   
   
-  private boolean shouldLimitByCommitTime() {
-    return myCommitTimeLowerBound != -1;
+  private boolean shouldLimitByNumberOfCommits() {
+    return myNumberOfCommitsToVisit != -1;
   }
   
   
-  private boolean isExceedCommitTimeBound(@NotNull final RevCommit commit) {
-    return commit.getCommitTime() * 1000L <= myCommitTimeLowerBound;
-  }
-  
-
   private boolean shouldIgnoreSubmodulesErrors() {
     return myNextCallCount > 1;//ignore submodule errors for all commits excluding the first one
   }

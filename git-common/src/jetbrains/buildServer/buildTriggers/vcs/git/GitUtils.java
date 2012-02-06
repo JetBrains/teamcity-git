@@ -48,8 +48,7 @@ public class GitUtils {
    */
   public static final Comparator<String> VERSION_COMPARATOR = new Comparator<String>() {
     public int compare(String o1, String o2) {
-      long r = versionTime(o1) - versionTime(o2);
-      return r < 0 ? -1 : r > 0 ? 1 : 0;
+      return o1.compareTo(o2);
     }
   };
 
@@ -74,24 +73,9 @@ public class GitUtils {
   @NotNull
   public static String versionRevision(@NotNull String version) {
     int i = version.indexOf('@');
-    if (i == -1) {
-      throw new IllegalArgumentException("Invalid format of version: " + version);
-    }
+    if (i == -1)
+      return version;
     return version.substring(0, i);
-  }
-
-  /**
-   * Extract revision number from the version
-   *
-   * @param version string
-   * @return the revision number
-   */
-  public static long versionTime(@NotNull String version) {
-    int i = version.indexOf('@');
-    if (i == -1) {
-      throw new IllegalArgumentException("Invalid format of version: " + version);
-    }
-    return Long.parseLong(version.substring(i + 1), 16);
   }
 
   /**

@@ -317,6 +317,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testCollectBuildChanges(boolean fetchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
+    myConfigBuilder.setNumberOfCommitsWhenFromVersionNotFound(3);
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master");
     // ensure that all revisions reachable from master are fetched
@@ -372,9 +373,9 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals("a-mod, c-rm\n", md3.getDescription());
     assertEquals(2, md3.getChanges().size());
     // check the case with broken commit
-    String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), GitUtils.versionTime(CUD1_VERSION));
+    String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), 1238072086000L);
     final List<ModificationData> mms2 = support.collectChanges(root, missing, MERGE_VERSION, new CheckoutRules(""));
-    assertEquals(3, mms2.size());
+    assertEquals(mms2.size(), 3);
   }
 
   /**
@@ -383,7 +384,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testConcurrentCollectBuildChanges(boolean fetchInSeparateProcess) throws Throwable {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
-
+    myConfigBuilder.setNumberOfCommitsWhenFromVersionNotFound(3);
     final GitVcsSupport support = getSupport();
     final List<Throwable> errors = Collections.synchronizedList(new ArrayList<Throwable>());
 
@@ -474,9 +475,9 @@ public class GitVcsSupportTest extends PatchTestCase {
         try {
           // check the case with broken commit
           final VcsRoot root = getRoot("master");
-          String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), GitUtils.versionTime(CUD1_VERSION));
+          String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), 1238072086000L);
           final List<ModificationData> mms2 = support.collectChanges(root, missing, MERGE_VERSION, new CheckoutRules(""));
-          assertEquals(3, mms2.size());
+          assertEquals(mms2.size(), 3);
         } catch (Throwable e) {
           errors.add(e);
         }
@@ -1277,6 +1278,16 @@ public class GitVcsSupportTest extends PatchTestCase {
     } finally {
       System.setProperty("user.home", original);
     }
+  }
+
+
+  @Test
+  public void collect_changes_should_work_with_revisions_with_and_without_time() throws Exception {
+    VcsRoot root = getRoot("master");
+    GitVcsSupport support = getSupport();
+    List<ModificationData> withTime = support.collectChanges(root, CUD1_VERSION, MERGE_VERSION, CheckoutRules.DEFAULT);
+    List<ModificationData> withoutTime = support.collectChanges(root, GitUtils.versionRevision(CUD1_VERSION), GitUtils.versionRevision(MERGE_VERSION), CheckoutRules.DEFAULT);
+    assertEquals(withoutTime, withTime);
   }
 
 
