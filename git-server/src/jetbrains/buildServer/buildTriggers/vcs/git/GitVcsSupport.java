@@ -751,7 +751,7 @@ public class GitVcsSupport extends ServerVcsSupport
       String commitSHA = GitUtils.versionRevision(version);
       RevCommit commit = ensureRevCommitLoaded(context, s, commitSHA);
       Git git = new Git(r);
-      git.tag().setName(label).setObjectId(commit).call();
+      git.tag().setTagger(s.getTagger(r)).setName(label).setObjectId(commit).call();
       String tagRef = GitUtils.tagName(label);
       if (LOG.isDebugEnabled()) {
         LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());

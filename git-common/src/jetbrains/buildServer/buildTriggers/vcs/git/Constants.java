@@ -95,4 +95,6 @@ public interface Constants {
    */
   public static final String REFSPEC = "REFSPEC";
   public static final String VCS_DEBUG_ENABLED = "VCS_DEBUG_ENABLED";
+
+  public static final String USERNAME_FOR_TAGS = "userForTags";
 }

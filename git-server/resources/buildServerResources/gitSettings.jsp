@@ -75,11 +75,15 @@
         </div>
       </td>
     </tr>
+    <tr id="userForTags">
+      <th><label for="userForTags">Username for tags:</label></th>
+      <td>
+        <props:textProperty name="userForTags"/>
+        <div class="smallNote" style="margin: 0">Format: User Name &lt;email&gt;</div>
+      </td>
+    </tr>
   </l:settingsGroup>
   <l:settingsGroup title="Authentication settings">
-    <tr>
-      <td colspan="2">Authorization settings can be required if the repository is password protected.</td>
-    </tr>
     <tr>
       <th><label for="authMethod">Authentication Method:</label></th>
       <td><props:selectProperty name="authMethod" onchange="gitSelectAuthentication()">

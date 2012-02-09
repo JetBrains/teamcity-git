@@ -32,6 +32,7 @@ import jetbrains.buildServer.vcs.patches.PatchTestCase;
 import org.apache.log4j.Level;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
+import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
@@ -59,6 +60,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 
 /**
@@ -171,15 +173,11 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   private VcsRootImpl getRoot(String branchName, boolean enableSubmodules, File repositoryDir) {
-    VcsRootImpl myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
-    myRoot.addProperty(Constants.FETCH_URL, GitUtils.toURL(repositoryDir));
-    if (branchName != null) {
-      myRoot.addProperty(Constants.BRANCH_NAME, branchName);
-    }
-    if (enableSubmodules) {
-      myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
-    }
-    return myRoot;
+    return vcsRoot().withId(1)
+      .withFetchUrl(GitUtils.toURL(repositoryDir))
+      .withBranch(branchName)
+      .withSubmodulePolicy(enableSubmodules ? SubmodulesCheckoutPolicy.CHECKOUT : SubmodulesCheckoutPolicy.IGNORE)
+      .build();
   }
 
   private GitVcsSupport getSupport() {
@@ -848,13 +846,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     checkPatchResult(output.toByteArray());
   }
 
-  /**
-   * Test label implementation
-   *
-   * @throws IOException        in case of test failure
-   * @throws VcsException       in case of test failure
-   * @throws URISyntaxException in case of test failure
-   */
+
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testLabels(boolean fetchInSeparateProcess) throws IOException, VcsException, URISyntaxException {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
@@ -872,6 +864,31 @@ public class GitVcsSupportTest extends PatchTestCase {
       r.close();
     }
   }
+
+
+  @Test
+  public void tag_with_specified_username() throws Exception {
+    VcsRoot root = vcsRoot()
+      .withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
+      .withUsernameForTags("John Doe <john.doe@some.org>")
+      .build();
+    GitVcsSupport git = getSupport();
+    git.label("label_with_specified_username", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", root, CheckoutRules.DEFAULT);
+
+    Repository r = new RepositoryBuilder().setGitDir(new File(new URIish(root.getProperty(Constants.FETCH_URL)).getPath())).build();
+    RevWalk revWalk = new RevWalk(r);
+    try {
+      Ref tagRef = r.getTags().get("label_with_specified_username");
+      RevTag t = revWalk.parseTag(tagRef.getObjectId());
+      PersonIdent tagger = t.getTaggerIdent();
+      assertEquals(tagger.getName(), "John Doe");
+      assertEquals(tagger.getEmailAddress(), "john.doe@some.org");
+    } finally {
+      revWalk.release();
+      r.close();
+    }
+  }
+
 
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testMapFullPath(boolean fetchInSeparateProcess) throws Exception {

@@ -20,6 +20,8 @@ import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.errors.UnsupportedCredentialItem;
+import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.CredentialItem;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.URIish;
@@ -43,6 +45,7 @@ public class Settings {
   private final UserNameStyle myUsernameStyle;
   private final SubmodulesCheckoutPolicy mySubmodulePolicy;
   private final AuthSettings myAuthSettings;
+  private final String myUsernameForTags;
   private File myUserDefinedRepositoryPath;
 
   public Settings(@NotNull final MirrorManager mirrorManager, final VcsRoot root) throws VcsException {
@@ -55,6 +58,14 @@ public class Settings {
     myRepositoryFetchURL = myAuthSettings.createAuthURI(root.getProperty(Constants.FETCH_URL));
     final String pushUrl = root.getProperty(Constants.PUSH_URL);
     myRepositoryPushURL = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURL : myAuthSettings.createAuthURI(pushUrl);
+    myUsernameForTags = root.getProperty(Constants.USERNAME_FOR_TAGS);
+  }
+
+  @NotNull
+  public PersonIdent getTagger(@NotNull Repository r) {
+    if (myUsernameForTags == null)
+      return new PersonIdent(r);
+    return parseIdent();
   }
 
   private static File readPath(VcsRoot root) {
@@ -289,5 +300,17 @@ public class Settings {
      * Name and Email (John Smith &ltjsmith@example.org&gt)
      */
     FULL
+  }
+
+  private PersonIdent parseIdent() {
+    int emailStartIdx = myUsernameForTags.indexOf("<");
+    if (emailStartIdx == -1)
+      return new PersonIdent(myUsernameForTags, "");
+    int emailEndIdx = myUsernameForTags.lastIndexOf(">");
+    if (emailEndIdx < emailStartIdx)
+      return new PersonIdent(myUsernameForTags, "");
+    String username = myUsernameForTags.substring(0, emailStartIdx).trim();
+    String email = myUsernameForTags.substring(emailStartIdx + 1, emailEndIdx);
+    return new PersonIdent(username, email);
   }
 }

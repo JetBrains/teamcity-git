@@ -52,8 +52,8 @@ public class GitTestUtil {
 
   public static VcsRootImpl getVcsRoot(File repositoryDir) {
     return new VcsRootBuilder()
-      .fetchUrl(GitUtils.toURL(repositoryDir))
-      .branchName("master")
+      .withFetchUrl(GitUtils.toURL(repositoryDir))
+      .withBranch("master")
       .build();
   }
 }

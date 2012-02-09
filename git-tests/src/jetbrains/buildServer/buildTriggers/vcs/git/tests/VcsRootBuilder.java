@@ -30,6 +30,13 @@ public class VcsRootBuilder {
   private String myFetchUrl;
   private String myBranchName;
   private SubmodulesCheckoutPolicy mySubmodulePolicy;
+  private String myUsernameForTags;
+
+
+  public static VcsRootBuilder vcsRoot() {
+    return new VcsRootBuilder();
+  }
+
 
   @NotNull
   public VcsRootImpl build() {
@@ -37,30 +44,37 @@ public class VcsRootBuilder {
     VcsRootImpl result = new VcsRootImpl(id, Constants.VCS_NAME);
     result.addProperty(Constants.FETCH_URL, myFetchUrl);
     result.addProperty(Constants.BRANCH_NAME, myBranchName);
+    result.addProperty(Constants.USERNAME_FOR_TAGS, myUsernameForTags);
     if (mySubmodulePolicy != null)
       result.addProperty(Constants.SUBMODULES_CHECKOUT, mySubmodulePolicy.name());
     return result;
   }
 
 
-  public VcsRootBuilder setMyId(int myId) {
+  public VcsRootBuilder withId(int myId) {
     this.myId = myId;
     return this;
   }
 
-  public VcsRootBuilder fetchUrl(String myFetchUrl) {
+  public VcsRootBuilder withFetchUrl(String myFetchUrl) {
     this.myFetchUrl = myFetchUrl;
     return this;
   }
 
-  public VcsRootBuilder branchName(String myBranchName) {
+  public VcsRootBuilder withBranch(String myBranchName) {
     this.myBranchName = myBranchName;
     return this;
   }
 
 
-  public VcsRootBuilder submodulePolicy(SubmodulesCheckoutPolicy policy) {
+  public VcsRootBuilder withSubmodulePolicy(SubmodulesCheckoutPolicy policy) {
     mySubmodulePolicy = policy;
+    return this;
+  }
+
+
+  public VcsRootBuilder withUsernameForTags(String username) {
+    myUsernameForTags = username;
     return this;
   }
 }
