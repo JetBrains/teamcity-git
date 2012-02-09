@@ -24,6 +24,7 @@ import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.impl.LogUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
+import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.RepositoryState;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -80,6 +81,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   public GitVcsSupport(@NotNull final ServerPluginConfig config,
+                       @NotNull final ResetCacheRegister resetCacheManager,
                        @NotNull final TransportFactory transportFactory,
                        @NotNull final FetchCommand fetchCommand,
                        @NotNull final RepositoryManager repositoryManager,
@@ -91,6 +93,7 @@ public class GitVcsSupport extends ServerVcsSupport
     myRepositoryManager = repositoryManager;
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(myConfig.getCurrentVersionCacheSize());
     setStreamFileThreshold();
+    resetCacheManager.registerHandler(new GitResetCacheHandler(repositoryManager));
   }
 
 

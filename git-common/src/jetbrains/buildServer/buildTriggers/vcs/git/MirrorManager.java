@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.Map;
 
 /**
  * Manages local mirror dirs of remote repositories
@@ -47,4 +48,6 @@ public interface MirrorManager {
    */
   public void invalidate(@NotNull File dir);
 
+
+  public Map<String, File> getMappings();
 }

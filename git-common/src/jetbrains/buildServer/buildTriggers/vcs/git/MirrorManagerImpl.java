@@ -81,6 +81,21 @@ public class MirrorManagerImpl implements MirrorManager {
   }
 
 
+  public Map<String, File> getMappings() {
+    Map<String, String> mirrorMapSnapshot;
+    synchronized (myLock) {
+      mirrorMapSnapshot = new HashMap<String, String>(myMirrorMap);
+    }
+    Map<String, File> result = new HashMap<String, File>();
+    for (Map.Entry<String, String> entry : mirrorMapSnapshot.entrySet()) {
+      String url = entry.getKey();
+      String dir = entry.getValue();
+      result.put(url, new File(myBaseMirrorsDir, dir));
+    }
+    return result;
+  }
+
+
   @NotNull
   private List<String> getUrlsMappedToDir(@NotNull final File dir) {
     synchronized (myLock) {

@@ -24,6 +24,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
@@ -191,7 +192,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    return new GitVcsSupport(config, transportFactory, fetchCommand, repositoryManager, holder);
+    return new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCommand, repositoryManager, holder);
   }
 
 
@@ -1300,7 +1301,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    GitVcsSupport git = new GitVcsSupport(config, transportFactory, fetchCounter, repositoryManager, null);
+    GitVcsSupport git = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCounter, repositoryManager, null);
 
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
     FileUtil.copyDir(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
