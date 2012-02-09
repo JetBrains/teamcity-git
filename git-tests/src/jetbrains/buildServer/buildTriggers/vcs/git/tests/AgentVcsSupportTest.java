@@ -393,7 +393,7 @@ public class AgentVcsSupportTest {
   }
 
   private File tagFile(@NotNull File dotGitDir, @NotNull String tagName) {
-    return new File(dotGitDir, tagName.replaceAll("/", File.separator));
+    return new File(dotGitDir, tagName.replaceAll("/", Matcher.quoteReplacement(File.separator)));
   }
 
   private void assertNoTagExist(String tag) throws IOException {
