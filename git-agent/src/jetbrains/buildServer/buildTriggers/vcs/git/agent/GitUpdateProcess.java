@@ -153,7 +153,9 @@ public abstract class GitUpdateProcess {
 
   private void setUseLocalMirror() throws VcsException {
     String localMirrorUrl = getLocalMirrorUrl();
-    setConfigProperty("url." + localMirrorUrl + ".insteadOf", mySettings.getRepositoryFetchURL().toString());
+    String remoteUrl = mySettings.getRepositoryFetchURL().toString();
+    setConfigProperty("url." + localMirrorUrl + ".insteadOf", remoteUrl);
+    setConfigProperty("url." + remoteUrl + ".pushInsteadOf", remoteUrl);
   }
 
   private void setNotUseLocalMirror() throws VcsException {
