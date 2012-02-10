@@ -213,10 +213,16 @@ public class UpdaterImpl implements Updater {
 
 
   private void setUseLocalMirror() throws VcsException {
+    String remoteUrl = mySettings.getRepositoryFetchURL().toString();
     String localMirrorUrl = getLocalMirrorUrl();
-    myGitFactory.create(myTargetDirectory).setConfig()
+    GitFacade git = myGitFactory.create(myTargetDirectory);
+    git.setConfig()
       .setPropertyName("url." + localMirrorUrl + ".insteadOf")
-      .setValue(mySettings.getRepositoryFetchURL().toString())
+      .setValue(remoteUrl)
+      .call();
+    git.setConfig()
+      .setPropertyName("url." + remoteUrl + ".pushInsteadOf")
+      .setValue(remoteUrl)
       .call();
   }
 
@@ -397,7 +403,7 @@ public class UpdaterImpl implements Updater {
       .call();
     return tmpBranchName;
   }
-  
+
   private String getUnusedBranchName(@NotNull File repositoryDir) {
     final String tmpBranchName = "tmp_branch_for_build";
     String branchName = tmpBranchName;
