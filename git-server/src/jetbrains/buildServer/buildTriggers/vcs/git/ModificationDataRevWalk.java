@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ class ModificationDataRevWalk extends RevWalk {
   private int myNextCallCount = 0;
   private RevCommit myCurrentCommit;
   private int myNumberOfCommitsToVisit = -1;
-  
+
 
   ModificationDataRevWalk(OperationContext context, int fixedSubmoduleSearchDepth) throws VcsException {
     super(context.getRepository());
@@ -71,13 +71,13 @@ class ModificationDataRevWalk extends RevWalk {
     }
     return myCurrentCommit;
   }
-  
-  
+
+
   public void limitByNumberOfCommits(final int numberOfCommitsToVisit) {
     myNumberOfCommitsToVisit = numberOfCommitsToVisit;
   }
-  
-  
+
+
   public ModificationData createModificationData() throws IOException, VcsException {
     if (myCurrentCommit == null)
       throw new IllegalStateException("Current commit is null");
@@ -101,13 +101,13 @@ class ModificationDataRevWalk extends RevWalk {
     }
     return result;
   }
-  
-  
+
+
   private boolean shouldLimitByNumberOfCommits() {
     return myNumberOfCommitsToVisit != -1;
   }
-  
-  
+
+
   private boolean shouldIgnoreSubmodulesErrors() {
     return myNextCallCount > 1;//ignore submodule errors for all commits excluding the first one
   }

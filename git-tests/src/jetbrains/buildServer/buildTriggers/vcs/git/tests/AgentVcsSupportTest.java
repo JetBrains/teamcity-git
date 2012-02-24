@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -411,7 +411,8 @@ public class AgentVcsSupportTest {
     FileUtil.delete(remote);
     copyRepository(dataFile("repo_for_fetch.2"), remote);
 
-    myVcsSupport.updateSources(masterRoot, new CheckoutRules(""), "d47dda159b27b9a8c4cee4ce98e4435eb5b17168@1303829462000", myCheckoutDir, build, false);
+    myVcsSupport.updateSources(masterRoot, new CheckoutRules(""), "d47dda159b27b9a8c4cee4ce98e4435eb5b17168@1303829462000", myCheckoutDir,
+                               build, false);
   }
 
 
@@ -483,7 +484,8 @@ public class AgentVcsSupportTest {
     final BuildAgent agent = myMockery.mock(BuildAgent.class);
     final XmlRpcHandlerManager manager = myMockery.mock(XmlRpcHandlerManager.class);
     myMockery.checking(new Expectations() {{
-      allowing(agent).getXmlRpcHandlerManager(); will(returnValue(manager));
+      allowing(agent).getXmlRpcHandlerManager();
+      will(returnValue(manager));
       ignoring(manager);
     }});
     return agent;
