@@ -76,6 +76,8 @@ public class UpdaterImpl implements Updater {
 
 
   public void update() throws VcsException {
+    checkAuthMethodIsSupported();
+
     if (myPluginConfig.isUseLocalMirrors())
       updateLocalMirror();
 
@@ -357,7 +359,6 @@ public class UpdaterImpl implements Updater {
     if (!outdatedTagsFound && revInfo != null && ref != null) {//commit and branch exist
       LOG.info("No fetch needed for revision '" + myRevision + "' in " + mySettings.getLocalRepositoryDir());
     } else {
-      checkAuthMethodIsSupported();
       logStartFetching();
       String previousHead = getPreviousHead(firstFetch);
       if (myPluginConfig.isUseLocalMirrors() && myPluginConfig.isUseShallowClone()) {
@@ -459,11 +460,21 @@ public class UpdaterImpl implements Updater {
 
 
   private void checkAuthMethodIsSupported() throws VcsException {
-    if (!"git".equals(mySettings.getRepositoryFetchURL().getScheme()) &&
-        (mySettings.getAuthSettings().getAuthMethod() == AuthenticationMethod.PASSWORD ||
-         mySettings.getAuthSettings().getAuthMethod() == AuthenticationMethod.PRIVATE_KEY_FILE)) {
-      throw new VcsException("TeamCity doesn't support authentication method " + mySettings.getAuthSettings().getAuthMethod().uiName() + " with agent checkout. " +
-      "Please use '" + AuthenticationMethod.ANONYMOUS.uiName() + "' or '" + AuthenticationMethod.PRIVATE_KEY_DEFAULT.uiName() + "' methods.");
+    Settings.AuthSettings authSettings = mySettings.getAuthSettings();
+    AuthenticationMethod authMethod = authSettings.getAuthMethod();
+    switch (authMethod) {
+      case PASSWORD:
+        GitVersion actualVersion = myPluginConfig.getGitVersion();
+        GitVersion requiredVersion = new GitVersion(1, 7, 2);
+        if (actualVersion.isLessThan(requiredVersion))
+          throw new VcsException("Password authentication requires git " + requiredVersion.toString() + "+, found git version is " + actualVersion + ". " +
+                                 "Please install newer git or use '" + AuthenticationMethod.ANONYMOUS.uiName() +
+                                 "' or '" + AuthenticationMethod.PRIVATE_KEY_DEFAULT.uiName() + "' authentication methods.");
+        break;
+      case PRIVATE_KEY_FILE:
+        throw new VcsException("TeamCity doesn't support authentication method " + authMethod.uiName() + " with agent checkout. " +
+                               "Please use '" + AuthenticationMethod.ANONYMOUS.uiName() + "', '" + AuthenticationMethod.PASSWORD.uiName() +
+                               "' or '" + AuthenticationMethod.PRIVATE_KEY_DEFAULT.uiName() + "' authentication methods.");
     }
   }
 

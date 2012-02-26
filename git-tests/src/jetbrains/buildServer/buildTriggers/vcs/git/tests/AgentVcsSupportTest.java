@@ -19,17 +19,26 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
+import com.sun.net.httpserver.BasicAuthenticator;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.XmlRpcHandlerManager;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.plugins.beans.PluginDescriptor;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.log.Log4jFactory;
+import jetbrains.buildServer.parameters.ProcessingResult;
+import jetbrains.buildServer.parameters.ValueResolver;
+import jetbrains.buildServer.parameters.impl.ProcessingResultImpl;
 import jetbrains.buildServer.vcs.CheckoutRules;
+import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Ref;
@@ -50,6 +59,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -57,6 +67,8 @@ import java.util.regex.Matcher;
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.getGitPath;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.AssertJUnit.*;
 
 /**
@@ -78,6 +90,7 @@ public class AgentVcsSupportTest {
   private BuildProgressLogger myLogger;
   private AgentRunningBuild myBuild;
   private PluginConfigFactory myConfigFactory;
+  private String myPathToGit;
 
   static {
     Logger.setFactory(new Log4jFactory());
@@ -103,13 +116,10 @@ public class AgentVcsSupportTest {
     agentConfigurationTempDirectory = myTempFiles.createTempDir();
 
     myMockery = new Mockery();
-    final GitPathResolver resolver = myMockery.mock(GitPathResolver.class);
+    final GitPathResolver resolver = new GitPathResolverImpl();
     final GitDetector detector = new GitDetectorImpl(resolver);
-    final String pathToGit = getGitPath();
+    myPathToGit = getGitPath();
 
-    myMockery.checking(new Expectations() {{
-      allowing(resolver).resolveGitPath(with(any(BuildAgentConfiguration.class)), with(any(String.class))); will(returnValue(pathToGit));
-    }});
     myAgentConfiguration = createBuildAgentConfiguration();
     myConfigFactory = new PluginConfigFactoryImpl(myAgentConfiguration, detector);
     myVcsSupport = new GitAgentVcsSupport(createSmartDirectoryCleaner(), new GitAgentSSHService(createBuildAgent(), myAgentConfiguration, new GitPluginDescriptor()), myConfigFactory, new HashCalculatorImpl());
@@ -122,7 +132,7 @@ public class AgentVcsSupportTest {
       put(VcsRootImpl.VCS_ROOT_NAME_PROP, "test");
       put(Constants.BRANCH_NAME, "master");
       put(Constants.FETCH_URL, GitUtils.toURL(myMainRepo));
-      put(Constants.AGENT_GIT_PATH, pathToGit);
+      put(Constants.AGENT_GIT_PATH, myPathToGit);
     }});
   }
 
@@ -445,6 +455,55 @@ public class AgentVcsSupportTest {
   }
 
 
+  //TW-18711
+  public void http_password_authentication() throws Exception {
+    GitVersion requiredVersion = new GitVersion(1, 7, 2, 0);
+    GitVersion version = new NativeGitFacade(myPathToGit).version().call();
+
+    final String username = "username";
+    final String password = "pass";
+
+    class HttpGit implements HttpHandler {
+      public void handle(final HttpExchange t) throws IOException {
+        t.getHttpContext().setAuthenticator(new BasicAuthenticator("") {
+          @Override
+          public boolean checkCredentials(String user, String pwd) {
+            return user.equals(username) && pwd.equals(password);
+          }
+        });
+        String path = t.getRequestURI().getPath().substring(1);//strip first '/'
+        File f = new File(myMainRepo, path);
+        byte[] response = FileUtil.loadFileBytes(f);
+        t.sendResponseHeaders(200, response.length);
+        t.getResponseBody().write(response);
+        t.getResponseBody().close();
+      }
+    }
+
+    HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 8000), 8000);
+    server.createContext("/", new HttpGit());
+    server.start();
+
+    VcsRoot root = vcsRoot().withPathToGit(myPathToGit)
+      .withAuthMethod(AuthenticationMethod.PASSWORD)
+      .withUsername(username)
+      .withPassword(password)
+      .withFetchUrl("http://localhost:8000/")
+      .build();
+
+    try {
+      myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, myBuild, false);
+    } catch (VcsException e) {
+      if (version.isLessThan(requiredVersion)) {
+        assertEquals(e.getMessage(),
+                     "Password authentication requires git " + requiredVersion.toString() + "+, found git version is " + version + ". " +
+                     "Please install newer git or use '" + AuthenticationMethod.ANONYMOUS.uiName() + "' or '" + AuthenticationMethod.PRIVATE_KEY_DEFAULT.uiName() + "' authentication methods.");
+      } else {
+        throw e;
+      }
+    }
+  }
+
 
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
     myVcsRootId++;
@@ -502,6 +561,7 @@ public class AgentVcsSupportTest {
       allowing(configuration).getTempDirectory(); will(returnValue(agentConfigurationTempDirectory));
       allowing(configuration).getConfigurationParameters(); will(returnValue(new HashMap<String, String>()));
       allowing(configuration).getCacheDirectory("git"); will(returnValue(cacheDir));
+      allowing(configuration).getParametersResolver(); will(returnValue(new EchoValueResolver()));
     }});
     return configuration;
   }
@@ -542,21 +602,6 @@ public class AgentVcsSupportTest {
   }
 
 
-  /**
-   * Get path to git executable.
-   * @return return value of environment variable TEAMCITY_GIT_PATH, or "git" if variable is not set.
-   * @throws IOException
-   */
-  private String getGitPath() throws IOException {
-    String providedGit = System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH);
-    if (providedGit != null) {
-      return providedGit;
-    } else {
-      return "git";
-    }
-  }
-
-
   private void copyRepository(File src, File dst) throws IOException {
     copyDir(src, dst);
     new File(dst, "refs" + File.separator + "heads").mkdirs();
@@ -578,6 +623,19 @@ public class AgentVcsSupportTest {
       cmd.setWorkDirectory(workDirectory);
       cmd.addParameters("push", "origin", "master");
       CommandUtil.runCommand(cmd);
+    }
+  }
+
+  private class EchoValueResolver implements ValueResolver {
+
+    @NotNull
+    public ProcessingResult resolve(@NotNull String value) {
+      return new ProcessingResultImpl(value, false, true);
+    }
+
+    @NotNull
+    public Map<String, String> resolve(@NotNull Map<String, String> unresolved) {
+      return unresolved;
     }
   }
 }
