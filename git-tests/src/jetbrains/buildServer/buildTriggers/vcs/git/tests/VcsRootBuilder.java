@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -31,7 +32,10 @@ public class VcsRootBuilder {
   private String myBranchName;
   private SubmodulesCheckoutPolicy mySubmodulePolicy;
   private String myUsernameForTags;
-
+  private AuthenticationMethod myAuthMethod;
+  private String myPathToGit;
+  private String myUsername;
+  private String myPassword;
 
   public static VcsRootBuilder vcsRoot() {
     return new VcsRootBuilder();
@@ -47,6 +51,14 @@ public class VcsRootBuilder {
     result.addProperty(Constants.USERNAME_FOR_TAGS, myUsernameForTags);
     if (mySubmodulePolicy != null)
       result.addProperty(Constants.SUBMODULES_CHECKOUT, mySubmodulePolicy.name());
+    if (myAuthMethod != null)
+      result.addProperty(Constants.AUTH_METHOD, myAuthMethod.name());
+    if (myPathToGit != null)
+      result.addProperty(Constants.AGENT_GIT_PATH, myPathToGit);
+    if (myUsername != null)
+      result.addProperty(Constants.USERNAME, myUsername);
+    if (myPassword != null)
+      result.addProperty(Constants.PASSWORD, myPassword);
     return result;
   }
 
@@ -75,6 +87,27 @@ public class VcsRootBuilder {
 
   public VcsRootBuilder withUsernameForTags(String username) {
     myUsernameForTags = username;
+    return this;
+  }
+
+
+  public VcsRootBuilder withAuthMethod(@NotNull AuthenticationMethod auth) {
+    myAuthMethod = auth;
+    return this;
+  }
+
+  public VcsRootBuilder withPathToGit(@NotNull String path) {
+    myPathToGit = path;
+    return this;
+  }
+
+  public VcsRootBuilder withUsername(@NotNull String username) {
+    myUsername = username;
+    return this;
+  }
+
+  public VcsRootBuilder withPassword(@NotNull String password) {
+    myPassword = password;
     return this;
   }
 }

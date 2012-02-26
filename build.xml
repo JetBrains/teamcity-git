@@ -7,7 +7,7 @@
   <tstamp>
     <format property="timestamp" pattern="yyyyMMddhhmmss"/>
   </tstamp>
-  <property name="snapshot.build.number" value="SNAPSHOT-${timestamp}"/>    
+  <property name="snapshot.build.number" value="SNAPSHOT-${timestamp}"/>
   <property name="build.vcs.number" value=""/>
 
   <condition property="plugin.version" value="${snapshot.build.number}" else="${build.number}">
@@ -84,6 +84,7 @@
 
       <xmlfileset dir="${basedir}/git-tests/src">
         <include name="testng.xml"/>
+        <include name="native-git-testng.xml"/>
       </xmlfileset>
     </testng>
   </target>
@@ -117,4 +118,4 @@
 
 </project>
 
-        
+
