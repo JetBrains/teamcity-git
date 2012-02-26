@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.lib.NullProgressMonitor;
@@ -28,7 +27,10 @@ import org.eclipse.jgit.transport.URIish;
 
 import java.io.*;
 import java.net.URISyntaxException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Method main of this class is supposed to be run in separate process to avoid OutOfMemoryExceptions in server's process
@@ -67,7 +69,7 @@ public class Fetcher {
     final String fetchUrl = vcsRootProperties.get(Constants.FETCH_URL);
     final String refspecs = vcsRootProperties.get(Constants.REFSPEC);
     Settings.AuthSettings auth = new Settings.AuthSettings(vcsRootProperties);
-    PluginConfigImpl config = new PluginConfigImpl(new ServerPaths());
+    PluginConfigImpl config = new PluginConfigImpl();
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     Transport tn = null;
     try {

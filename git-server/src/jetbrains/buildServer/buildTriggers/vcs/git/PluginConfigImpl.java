@@ -48,17 +48,22 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private final static long HOUR = 60 * MINUTE;
   private final static long DAY = 24 * HOUR;
 
-
   private final File myCachesDir;
 
 
-  public PluginConfigImpl(@NotNull  final ServerPaths serverPaths) {
+  public PluginConfigImpl() {
+    myCachesDir = null;
+  }
+
+  public PluginConfigImpl(@NotNull final ServerPaths serverPaths) {
     myCachesDir = new File(serverPaths.getCachesDir(), "git");
   }
 
 
   @NotNull
   public File getCachesDir() {
+    if (myCachesDir == null)
+      throw new IllegalStateException("Caches dir is not initialized");
     return myCachesDir;
   }
 
