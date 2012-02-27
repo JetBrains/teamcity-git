@@ -55,6 +55,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
   }
 
 
+  @NotNull
+  public File getTempDir() {
+    return myAgentConfig.getTempDirectory();
+  }
+
+
   public int getIdleTimeoutSeconds() {
     String valueFromBuild = myBuild.getSharedConfigParameters().get(IDLE_TIMEOUT);
     if (valueFromBuild != null)
