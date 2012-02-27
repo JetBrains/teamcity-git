@@ -16,12 +16,17 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentPluginConfig;
 import org.jetbrains.annotations.NotNull;
 
 /**
  * @author dmitry.neverov
  */
 public class WinAskPassGenerator extends AskPassGenerator {
+
+  public WinAskPassGenerator(@NotNull AgentPluginConfig config) {
+    super(config);
+  }
 
   @NotNull
   @Override

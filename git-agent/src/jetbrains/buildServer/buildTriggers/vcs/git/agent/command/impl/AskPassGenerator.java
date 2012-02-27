@@ -16,26 +16,35 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentPluginConfig;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * @author dmitry.neverov
  */
 public abstract class AskPassGenerator {
 
-  private final TempFiles myTempFiles = new TempFiles();
+  private final AgentPluginConfig myConfig;
+  private final List<File> myFiles = new ArrayList<File>();
+
+  protected AskPassGenerator(@NotNull AgentPluginConfig config) {
+    myConfig = config;
+  }
 
   public final String generateScriptFor(@NotNull String password) throws VcsException {
     try {
-      File passFile = myTempFiles.createTempFile(password);
-      File askPass = new File(myTempFiles.createTempDir(), getScriptName());
-      FileUtil.writeFile(askPass, getScriptContent(passFile.getCanonicalPath()));
-      FileUtil.setExectuableAttribute(askPass.getAbsolutePath(), true);
+      File passFile = createPassFile(password);
+      File askPass = createAskPass(passFile);
+      myFiles.add(passFile);
+      myFiles.add(askPass);
       return askPass.getCanonicalPath();
     } catch (Exception e) {
       throw new VcsException("Error while generating askpass script", e);
@@ -43,10 +52,28 @@ public abstract class AskPassGenerator {
   }
 
   public void cleanup() {
-    myTempFiles.cleanup();
+    Iterator<File> iter = myFiles.iterator();
+    while (iter.hasNext()) {
+      File f = iter.next();
+      FileUtil.delete(f);
+      iter.remove();
+    }
   }
 
   @NotNull abstract String getScriptName();
 
   @NotNull abstract String getScriptContent(@NotNull String passwordPath);
+
+  private File createPassFile(@NotNull String password) throws IOException {
+    File passFile = FileUtil.createTempFile(myConfig.getTempDir(), "tc", "pass", true);
+    FileUtil.writeFile(passFile, password);
+    return passFile;
+  }
+
+  private File createAskPass(@NotNull File passFile) throws IOException {
+    File askPass = FileUtil.createTempFile(myConfig.getTempDir(), "", getScriptName(), true);
+    FileUtil.writeFile(askPass, getScriptContent(passFile.getCanonicalPath()));
+    FileUtil.setExectuableAttribute(askPass.getAbsolutePath(), true);
+    return askPass;
+  }
 }

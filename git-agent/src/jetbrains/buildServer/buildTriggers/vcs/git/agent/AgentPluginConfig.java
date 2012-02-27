@@ -19,10 +19,15 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
+
 /**
  * @author dmitry.neverov
  */
 public interface AgentPluginConfig extends PluginConfig {
+
+  @NotNull
+  File getTempDir();
 
   boolean isUseNativeSSH();
 

@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
-import com.intellij.openapi.util.SystemInfo;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import org.jetbrains.annotations.NotNull;
@@ -35,15 +34,15 @@ public class NativeGitFacade implements GitFacade {
   private final String myRepositoryPath;
   private final AskPassGenerator myAskPassGenerator;
 
-  public NativeGitFacade(@Nullable GitAgentSSHService ssh, @NotNull String gitPath, @NotNull String repositoryPath) {
+  public NativeGitFacade(@Nullable GitAgentSSHService ssh, @Nullable AskPassGenerator askPassGenerator, @NotNull String gitPath, @NotNull String repositoryPath) {
     mySsh = ssh;
     myGitPath = gitPath;
     myRepositoryPath = repositoryPath;
-    myAskPassGenerator = SystemInfo.isWindows ? new WinAskPassGenerator() : new UnixAskPassGenerator();
+    myAskPassGenerator = askPassGenerator;
   }
 
   public NativeGitFacade(@NotNull String gitPath) {
-    this(null, gitPath, new File(".").getAbsolutePath());
+    this(null, null, gitPath, new File(".").getAbsolutePath());
   }
 
   @NotNull
