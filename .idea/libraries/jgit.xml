@@ -1,0 +1,14 @@
+<component name="libraryTable">
+  <library name="jgit">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/common/jsch-0.1.44.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-0.11.3.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit-0.11.3-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.44.zip!/jsch-0.1.44/src" />
+      <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.44.zip!/jsch-0.1.44/examples" />
+    </SOURCES>
+  </library>
+</component>

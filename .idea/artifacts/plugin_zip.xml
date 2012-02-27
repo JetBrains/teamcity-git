@@ -1,0 +1,18 @@
+<component name="ArtifactManager">
+  <artifact name="plugin zip">
+    <output-path>$PROJECT_DIR$/dist</output-path>
+    <root id="root">
+      <element id="archive" name="jetbrains.git.zip">
+        <element id="directory" name="server">
+          <element id="artifact" artifact-name="git-server:jar" />
+        </element>
+        <element id="directory" name="agent">
+          <element id="artifact" artifact-name="agent plugin zip" />
+        </element>
+        <element id="directory" name="license">
+          <element id="dir-copy" path="$PROJECT_DIR$/license" />
+        </element>
+      </element>
+    </root>
+  </artifact>
+</component>

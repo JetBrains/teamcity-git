@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<module relativePaths="true" type="JAVA_MODULE" version="4">
+<module type="JAVA_MODULE" version="4">
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
@@ -7,19 +7,18 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="TeamCity Open API common" level="project" />
     <orderEntry type="library" name="TestLibs" level="project" />
     <orderEntry type="module" module-name="git-server" />
-    <orderEntry type="library" name="TeamCity Open API agent" level="project" />
-    <orderEntry type="library" name="TeamCity Open API server" level="project" />
-    <orderEntry type="library" name="TeamCity Third-Party" level="project" />
-    <orderEntry type="library" name="Tomcat" level="project" />
-    <orderEntry type="library" name="TeamCity Tests" level="project" />
     <orderEntry type="module" module-name="git-common" />
     <orderEntry type="module" module-name="git-agent" />
-    <orderEntry type="library" name="TeamCity Agent" level="project" />
+    <orderEntry type="library" name="TeamCity Open API agent" level="project" />
+    <orderEntry type="library" name="TeamCity Open API common" level="project" />
+    <orderEntry type="library" name="TeamCity Open API server" level="project" />
     <orderEntry type="library" name="TeamCity server" level="project" />
-    <orderEntry type="library" name="JGit-0.11.3" level="project" />
+    <orderEntry type="library" name="jgit" level="project" />
+    <orderEntry type="library" name="TeamCity Third-Party" level="project" />
+    <orderEntry type="library" name="TeamCity Tests" level="project" />
+    <orderEntry type="library" name="log4j" level="project" />
   </component>
 </module>
 

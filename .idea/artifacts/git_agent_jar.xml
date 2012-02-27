@@ -1,0 +1,22 @@
+<component name="ArtifactManager">
+  <artifact name="git-agent:jar">
+    <output-path>$PROJECT_DIR$/dist/artifacts/agent</output-path>
+    <root id="root">
+      <element id="directory" name="ssh">
+        <element id="library" level="project" name="Trilead SSH" />
+      </element>
+      <element id="library" level="project" name="jgit" />
+      <element id="archive" name="git-common.jar">
+        <element id="module-output" name="git-common" />
+      </element>
+      <element id="archive" name="git_agent.jar">
+        <element id="directory" name="META-INF">
+          <element id="file-copy" path="$PROJECT_DIR$/git-agent/src/META-INF/MANIFEST.MF" />
+        </element>
+        <element id="module-output" name="git-agent" />
+        <element id="module-output" name="git-server" />
+        <element id="module-output" name="git-common" />
+      </element>
+    </root>
+  </artifact>
+</component>

@@ -1,0 +1,18 @@
+<component name="ArtifactManager">
+  <artifact name="git-server:jar">
+    <output-path>$PROJECT_DIR$/dist/artifacts/server</output-path>
+    <root id="root">
+      <element id="library" level="project" name="jgit" />
+      <element id="archive" name="git-common.jar">
+        <element id="module-output" name="git-common" />
+      </element>
+      <element id="archive" name="git_server.jar">
+        <element id="directory" name="META-INF">
+          <element id="file-copy" path="$PROJECT_DIR$/git-server/src/META-INF/MANIFEST.MF" />
+        </element>
+        <element id="module-output" name="git-server" />
+        <element id="module-output" name="git-common" />
+      </element>
+    </root>
+  </artifact>
+</component>

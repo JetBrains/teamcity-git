@@ -1,0 +1,15 @@
+<component name="libraryTable">
+  <library name="TestLibs">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/git-tests/lib" />
+      <root url="file://$PROJECT_DIR$/git-tests/lib" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$PROJECT_DIR$/git-tests/lib" />
+      <root url="file://$PROJECT_DIR$/git-tests/lib" />
+    </SOURCES>
+    <jarDirectory url="file://$PROJECT_DIR$/git-tests/lib" recursive="false" />
+    <jarDirectory url="file://$PROJECT_DIR$/git-tests/lib" recursive="false" type="SOURCES" />
+  </library>
+</component>

@@ -1,10 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="JAVA_MODULE" version="4">
-  <component name="FacetManager">
-    <facet type="Spring" name="Spring">
-      <configuration />
-    </facet>
-  </component>
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
@@ -12,13 +7,37 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../lib/ssh/trilead-ssh2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/../lib/agent/trilead-ssh2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module" module-name="git-server" />
     <orderEntry type="module" module-name="git-common" />
+    <orderEntry type="library" name="TeamCity Agent" level="project" />
     <orderEntry type="library" name="TeamCity Open API agent" level="project" />
     <orderEntry type="library" name="TeamCity Open API common" level="project" />
-    <orderEntry type="library" name="TeamCity Third-Party" level="project" />
+    <orderEntry type="library" name="TestLibs" level="project" />
     <orderEntry type="library" name="Trilead SSH" level="project" />
-    <orderEntry type="library" name="TeamCity Agent" level="project" />
-    <orderEntry type="library" name="JGit-0.11.3" level="project" />
+    <orderEntry type="library" name="jgit" level="project" />
+    <orderEntry type="library" name="TeamCity Third-Party" level="project" />
+    <orderEntry type="library" name="trove4j" level="project" />
+    <orderEntry type="library" name="commons-codec" level="project" />
+    <orderEntry type="library" name="log4j" level="project" />
+    <orderEntry type="library" name="xmlrpc" level="project" />
   </component>
 </module>
 
