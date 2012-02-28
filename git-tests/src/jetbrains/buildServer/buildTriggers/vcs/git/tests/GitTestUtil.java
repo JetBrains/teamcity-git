@@ -16,13 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 
 import java.io.File;
-import java.io.IOException;
 
 
 public class GitTestUtil {
@@ -57,19 +55,5 @@ public class GitTestUtil {
       .withFetchUrl(GitUtils.toURL(repositoryDir))
       .withBranch("master")
       .build();
-  }
-
-
-  /**
-   * Get path to git executable.
-   * @return return value of environment variable TEAMCITY_GIT_PATH, or "git" if variable is not set.
-   */
-  public static String getGitPath() throws IOException {
-    String providedGit = System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH);
-    if (providedGit != null) {
-      return providedGit;
-    } else {
-      return "git";
-    }
   }
 }

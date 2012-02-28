@@ -20,7 +20,6 @@ import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 
@@ -32,18 +31,19 @@ public class NativeGitFacade implements GitFacade {
   private final GitAgentSSHService mySsh;
   private final String myGitPath;
   private final String myRepositoryPath;
-  private final AskPassGenerator myAskPassGenerator;
 
-  public NativeGitFacade(@Nullable GitAgentSSHService ssh, @Nullable AskPassGenerator askPassGenerator, @NotNull String gitPath, @NotNull String repositoryPath) {
+  public NativeGitFacade(@NotNull GitAgentSSHService ssh, @NotNull String gitPath, @NotNull String repositoryPath) {
     mySsh = ssh;
     myGitPath = gitPath;
     myRepositoryPath = repositoryPath;
-    myAskPassGenerator = askPassGenerator;
   }
 
   public NativeGitFacade(@NotNull String gitPath) {
-    this(null, null, gitPath, new File(".").getAbsolutePath());
+    mySsh = null;
+    myGitPath = gitPath;
+    myRepositoryPath = new File(".").getAbsolutePath();
   }
+
 
   @NotNull
   public InitCommand init() {
@@ -107,7 +107,7 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   public FetchCommand fetch() {
-    return new FetchCommandImpl(createCommandLine(), mySsh, myAskPassGenerator);
+    return new FetchCommandImpl(createCommandLine(), mySsh);
   }
 
   @NotNull
@@ -122,7 +122,7 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   public SubmoduleUpdateCommand submoduleUpdate() {
-    return new SubmoduleUpdateCommandImpl(createCommandLine(), mySsh, myAskPassGenerator);
+    return new SubmoduleUpdateCommandImpl(createCommandLine(), mySsh);
   }
 
   @NotNull

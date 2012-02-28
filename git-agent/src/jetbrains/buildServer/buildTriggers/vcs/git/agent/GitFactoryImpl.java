@@ -16,10 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.intellij.openapi.util.SystemInfo;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.AskPassGenerator;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.UnixAskPassGenerator;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.WinAskPassGenerator;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -42,14 +38,9 @@ public class GitFactoryImpl implements GitFactory {
   @NotNull
   public GitFacade create(@NotNull File repositoryDir) {
     try {
-      AskPassGenerator askPassGen = createAskPassGenerator();
-      return new NativeGitFacade(mySsh, askPassGen, myPluginConfig.getPathToGit(), repositoryDir.getCanonicalPath());
+      return new NativeGitFacade(mySsh, myPluginConfig.getPathToGit(), repositoryDir.getCanonicalPath());
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  private AskPassGenerator createAskPassGenerator() {
-    return SystemInfo.isWindows ? new WinAskPassGenerator(myPluginConfig) : new UnixAskPassGenerator(myPluginConfig);
   }
 }

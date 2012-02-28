@@ -73,10 +73,6 @@ public final class GitVersion implements Comparable<GitVersion> {
     myPatchLevel = patchLevel;
   }
 
-  public GitVersion(int major, int minor, int revision) {
-    this(major, minor, revision, 0);
-  }
-
   /**
    * Parse output of "git version" command
    *
@@ -147,15 +143,11 @@ public final class GitVersion implements Comparable<GitVersion> {
   @Override
   public String toString() {
     //noinspection ConcatenationWithEmptyString
-    return "" + myMajor + "." + myMinor + "." + myRevision + ((myPatchLevel == 0) ? "" : "." + myPatchLevel);
+    return "" + myMajor + "." + myMinor + "." + myRevision + "." + myPatchLevel;
   }
 
 
   public boolean isGreaterThan(final GitVersion other) {
     return compareTo(other) > 0;
-  }
-
-  public boolean isLessThan(final GitVersion other) {
-    return compareTo(other) < 0;
   }
 }

@@ -17,14 +17,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleUpdateCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.HashMap;
 
 /**
  * @author dmitry.neverov
@@ -33,15 +30,13 @@ public class SubmoduleUpdateCommandImpl implements SubmoduleUpdateCommand {
 
   private final GeneralCommandLine myCmd;
   private final GitAgentSSHService mySsh;
-  private final AskPassGenerator myAskPassGenerator;
   private boolean myUseNativeSsh;
   private Settings.AuthSettings myAuthSettings;
   private int myTimeout;
 
-  public SubmoduleUpdateCommandImpl(@NotNull GeneralCommandLine cmd, @NotNull GitAgentSSHService ssh, @NotNull AskPassGenerator askPassGenerator) {
+  public SubmoduleUpdateCommandImpl(@NotNull GeneralCommandLine cmd, @NotNull GitAgentSSHService ssh) {
     myCmd = cmd;
     mySsh = ssh;
-    myAskPassGenerator = askPassGenerator;
   }
 
   @NotNull
@@ -65,25 +60,15 @@ public class SubmoduleUpdateCommandImpl implements SubmoduleUpdateCommand {
   public void call() throws VcsException {
     myCmd.addParameter("submodule");
     myCmd.addParameter("update");
-    if (myAuthSettings.getAuthMethod() == AuthenticationMethod.PASSWORD) {
-      final String askPassScript = myAskPassGenerator.generateScriptFor(myAuthSettings.getPassword());
-      myCmd.setEnvParams(new HashMap<String, String>() {{
-        put("GIT_ASKPASS", askPassScript);
-      }});
-    }
-    try {
-      if (myUseNativeSsh) {
+    if (myUseNativeSsh) {
+      CommandUtil.runCommand(myCmd, myTimeout);
+    } else {
+      SshHandler h = new SshHandler(mySsh, myAuthSettings, myCmd);
+      try {
         CommandUtil.runCommand(myCmd, myTimeout);
-      } else {
-        SshHandler h = new SshHandler(mySsh, myAuthSettings, myCmd);
-        try {
-          CommandUtil.runCommand(myCmd, myTimeout);
-        } finally {
-          h.unregister();
-        }
+      } finally {
+        h.unregister();
       }
-    } finally {
-      myAskPassGenerator.cleanup();
     }
   }
 }
