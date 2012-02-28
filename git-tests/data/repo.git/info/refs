@@ -1,13 +1,4 @@
-465ad9f630e451b9f2b782ffb09804c6a98c4bb9	refs/heads/master
+f3f826ce85d6dad25156b2d7550cedeb1a422f4c	refs/heads/master
 d1a88fd33c516c1b607db75eb62244b2ea495c42	refs/heads/patch-tests
-1391281d33a83a7205f2f05d3eb64c349c636e87	refs/heads/personal-branch1
-3df61e6f11a5a9b919cb3f786a83fdd09f058617	refs/heads/personal-branch2
 2eed4ae6732536f76a65136a606f635e8ada63b9	refs/heads/rename-test
-ce6044093939bb47283439d97a1c80f759669ff5	refs/heads/sub-submodule
-f61e30ce576e76bff877ddf1d00acf22c5c1b07a	refs/heads/submodule-on-tag
 2276eaf76a658f96b5cf3eb25f3e1fda90f6b653	refs/heads/version-test
-39679cc440c83671fbf6ad8083d92517f9602300	refs/heads/wrong-submodule
-8f018e5e8427f6fc5afc4bf89a66c2d2bd21b955	refs/tags/v0.5
-2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6	refs/tags/v0.5^{}
-44f5d50fbf5bd4b2640bd61c5157f4add83f5d0f	refs/tags/v1.0
-465ad9f630e451b9f2b782ffb09804c6a98c4bb9	refs/tags/v1.0^{}

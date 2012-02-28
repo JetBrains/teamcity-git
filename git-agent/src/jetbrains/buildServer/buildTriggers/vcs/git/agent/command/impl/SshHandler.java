@@ -52,8 +52,7 @@ public class SshHandler implements GitSSHService.Handler {
   public SshHandler(GitSSHService ssh, Settings.AuthSettings authSettings, GeneralCommandLine cmd) throws VcsException {
     mySsh = ssh;
     myAuthSettings = authSettings;
-    final Map<String, String> existingEnvironment = cmd.getEnvParams() != null ? cmd.getEnvParams() : new HashMap<String, String>();
-    Map<String, String> env = new HashMap<String, String>(existingEnvironment);
+    Map<String, String> env = new HashMap<String, String>(System.getenv());
     env.put(GitSSHHandler.SSH_PORT_ENV, Integer.toString(mySsh.getXmlRcpPort()));
     if (myAuthSettings.isIgnoreKnownHosts()) {
       env.put(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV, "true");

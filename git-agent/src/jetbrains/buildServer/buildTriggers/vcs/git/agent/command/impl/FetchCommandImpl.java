@@ -17,15 +17,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.HashMap;
 
 /**
  * @author dmitry.neverov
@@ -34,7 +30,6 @@ public class FetchCommandImpl implements FetchCommand {
 
   private final GeneralCommandLine myCmd;
   private final GitAgentSSHService mySsh;
-  private final AskPassGenerator myAskPassGenerator;
   private boolean myUseNativeSsh;
   private int myTimeout;
   private String myRefspec;
@@ -43,10 +38,9 @@ public class FetchCommandImpl implements FetchCommand {
   private Settings.AuthSettings myAuthSettings;
   private Integer myDepth;
 
-  public FetchCommandImpl(@NotNull GeneralCommandLine cmd, @Nullable GitAgentSSHService ssh, @NotNull AskPassGenerator askPassGenerator) {
+  public FetchCommandImpl(@NotNull GeneralCommandLine cmd, @NotNull GitAgentSSHService ssh) {
     myCmd = cmd;
     mySsh = ssh;
-    myAskPassGenerator = askPassGenerator;
   }
 
 
@@ -93,9 +87,6 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
   public void call() throws VcsException {
-    if (!myUseNativeSsh && mySsh == null)
-      throw new IllegalStateException("Ssh service is not set");
-
     myCmd.addParameter("fetch");
     if (myQuite)
       myCmd.addParameter("-q");
@@ -105,25 +96,15 @@ public class FetchCommandImpl implements FetchCommand {
       myCmd.addParameter("--depth=" + myDepth);
     myCmd.addParameter("origin");
     myCmd.addParameter(myRefspec);
-    if (myAuthSettings.getAuthMethod() == AuthenticationMethod.PASSWORD) {
-      final String askPassScript = myAskPassGenerator.generateScriptFor(myAuthSettings.getPassword());
-      myCmd.setEnvParams(new HashMap<String, String>() {{
-        put("GIT_ASKPASS", askPassScript);
-      }});
-    }
-    try {
-      if (myUseNativeSsh) {
+    if (myUseNativeSsh) {
+      CommandUtil.runCommand(myCmd, myTimeout);
+    } else {
+      SshHandler h = new SshHandler(mySsh, myAuthSettings, myCmd);
+      try {
         CommandUtil.runCommand(myCmd, myTimeout);
-      } else {
-        SshHandler h = new SshHandler(mySsh, myAuthSettings, myCmd);
-        try {
-          CommandUtil.runCommand(myCmd, myTimeout);
-        } finally {
-          h.unregister();
-        }
+      } finally {
+        h.unregister();
       }
-    } finally {
-      myAskPassGenerator.cleanup();
     }
   }
 }

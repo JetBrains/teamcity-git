@@ -193,10 +193,6 @@ public class Settings {
       return myPrivateKeyFilePath;
     }
 
-    public String getPassword() {
-      return myPassword;
-    }
-
     public URIish createAuthURI(String uri) throws VcsException {
       URIish result;
       try {
