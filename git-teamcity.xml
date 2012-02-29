@@ -124,6 +124,7 @@
   
   <path id="library.teamcity_tests.classpath">
     <pathelement location="${path.variable.teamcitydistribution}/devPackage/tests/patches-test.jar"/>
+    <pathelement location="${path.variable.teamcitydistribution}/devPackage/tests/tests-support.jar"/>
     <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/patches-impl.jar"/>
   </path>
   
