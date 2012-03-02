@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,16 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
+import com.jcraft.jsch.Proxy;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * @author dmitry.neverov
@@ -42,6 +46,7 @@ public class PluginConfigBuilder {
   private Integer myFixedSubmoduleCommitSearchDepth;
   private Integer myIdleTimeoutSeconds;
   private Long myMirrorExpirationTimeoutMillis;
+  private int myNumberOfCommitsWhenFromVersionNotFound = -1;
 
   public PluginConfigBuilder(@NotNull ServerPaths paths) {
     myDelegate = new PluginConfigImpl(paths);
@@ -117,6 +122,20 @@ public class PluginConfigBuilder {
 
       public long getMirrorExpirationTimeoutMillis() {
         return myMirrorExpirationTimeoutMillis != null ? myMirrorExpirationTimeoutMillis : myDelegate.getMirrorExpirationTimeoutMillis();
+      }
+
+      @NotNull
+      public List<String> getProxySettingsForSeparateProcess() {
+        return Collections.emptyList();
+      }
+
+      @Nullable
+      public Proxy getJschProxy() {
+        return null;
+      }
+
+      public int getNumberOfCommitsWhenFromVersionNotFound() {
+        return myNumberOfCommitsWhenFromVersionNotFound != -1 ? myNumberOfCommitsWhenFromVersionNotFound : myDelegate.getNumberOfCommitsWhenFromVersionNotFound();
       }
     };
   }
@@ -211,6 +230,12 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setMirrorExpirationTimeoutMillis(long timeoutMillis) {
     myMirrorExpirationTimeoutMillis = timeoutMillis;
+    return this;
+  }
+
+
+  public PluginConfigBuilder setNumberOfCommitsWhenFromVersionNotFound(int numberOfCommits) {
+    myNumberOfCommitsWhenFromVersionNotFound = numberOfCommits;
     return this;
   }
 }

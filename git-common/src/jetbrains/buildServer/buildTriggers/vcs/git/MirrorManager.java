@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.Map;
 
 /**
  * Manages local mirror dirs of remote repositories
@@ -47,4 +48,6 @@ public interface MirrorManager {
    */
   public void invalidate(@NotNull File dir);
 
+
+  public Map<String, File> getMappings();
 }

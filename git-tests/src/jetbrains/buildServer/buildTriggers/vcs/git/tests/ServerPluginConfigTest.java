@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -29,7 +29,9 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 
+import static java.util.Arrays.asList;
 import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertNotNull;
 
 /**
  * @author dmitry.neverov
@@ -84,5 +86,28 @@ public class ServerPluginConfigTest {
     System.setProperty("teamcity.git.idle.timeout.seconds", "60");
     ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
     assertEquals(60, config.getIdleTimeoutSeconds());
+  }
+
+
+  public void test_proxy_settings() {
+    final String httpProxyHost = "some.org";
+    final String httpProxyPort = "3128";
+    final String httpNonProxyHosts = "localhost|*.mydomain.com";
+    final String httpsProxyPort = "3129";
+    final String httpsProxyHost = "other.org";
+    System.setProperty("http.proxyHost", httpProxyHost);
+    System.setProperty("http.proxyPort", httpProxyPort);
+    System.setProperty("http.nonProxyHosts", httpNonProxyHosts);
+    System.setProperty("https.proxyHost", httpsProxyHost);
+    System.setProperty("https.proxyPort", httpsProxyPort);
+
+    ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
+    assertEquals(asList("-Dhttp.proxyHost=" + httpProxyHost,
+                        "-Dhttp.proxyPort=" + httpProxyPort,
+                        "-Dhttp.nonProxyHosts=\"" + httpNonProxyHosts + "\"",
+                        "-Dhttps.proxyHost=" + httpsProxyHost,
+                        "-Dhttps.proxyPort=" + httpsProxyPort),
+                 config.getProxySettingsForSeparateProcess());
+    assertNotNull(config.getJschProxy());
   }
 }

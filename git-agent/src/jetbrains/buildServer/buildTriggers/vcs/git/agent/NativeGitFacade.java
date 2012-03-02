@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ public class NativeGitFacade implements GitFacade {
     myGitPath = gitPath;
     myRepositoryPath = repositoryPath;
   }
-  
+
   public NativeGitFacade(@NotNull String gitPath) {
     mySsh = null;
     myGitPath = gitPath;
@@ -58,6 +58,11 @@ public class NativeGitFacade implements GitFacade {
   @NotNull
   public DeleteBranchCommand deleteBranch() {
     return new DeleteBranchCommandImpl(createCommandLine());
+  }
+
+  @NotNull
+  public DeleteTagCommand deleteTag() {
+    return new DeleteTagCommandImpl(createCommandLine());
   }
 
   @NotNull
@@ -128,6 +133,10 @@ public class NativeGitFacade implements GitFacade {
   @NotNull
   public VersionCommand version() {
     return new VersionCommandImpl(createCommandLine());
+  }
+
+  public LsRemoteCommand lsRemote() {
+    return new LsRemoteCommandImpl(createCommandLine());
   }
 
   @NotNull

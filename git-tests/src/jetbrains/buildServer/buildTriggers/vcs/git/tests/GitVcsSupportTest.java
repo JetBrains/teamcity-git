@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
@@ -31,6 +32,7 @@ import jetbrains.buildServer.vcs.patches.PatchTestCase;
 import org.apache.log4j.Level;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
+import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
@@ -58,6 +60,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 
 /**
@@ -170,15 +173,11 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   private VcsRootImpl getRoot(String branchName, boolean enableSubmodules, File repositoryDir) {
-    VcsRootImpl myRoot = new VcsRootImpl(1, Constants.VCS_NAME);
-    myRoot.addProperty(Constants.FETCH_URL, GitUtils.toURL(repositoryDir));
-    if (branchName != null) {
-      myRoot.addProperty(Constants.BRANCH_NAME, branchName);
-    }
-    if (enableSubmodules) {
-      myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
-    }
-    return myRoot;
+    return vcsRoot().withId(1)
+      .withFetchUrl(GitUtils.toURL(repositoryDir))
+      .withBranch(branchName)
+      .withSubmodulePolicy(enableSubmodules ? SubmodulesCheckoutPolicy.CHECKOUT : SubmodulesCheckoutPolicy.IGNORE)
+      .build();
   }
 
   private GitVcsSupport getSupport() {
@@ -191,7 +190,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    return new GitVcsSupport(config, transportFactory, fetchCommand, repositoryManager, holder);
+    return new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCommand, repositoryManager, holder);
   }
 
 
@@ -317,6 +316,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testCollectBuildChanges(boolean fetchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
+    myConfigBuilder.setNumberOfCommitsWhenFromVersionNotFound(3);
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master");
     // ensure that all revisions reachable from master are fetched
@@ -372,9 +372,9 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals("a-mod, c-rm\n", md3.getDescription());
     assertEquals(2, md3.getChanges().size());
     // check the case with broken commit
-    String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), GitUtils.versionTime(CUD1_VERSION));
+    String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), 1238072086000L);
     final List<ModificationData> mms2 = support.collectChanges(root, missing, MERGE_VERSION, new CheckoutRules(""));
-    assertEquals(3, mms2.size());
+    assertEquals(mms2.size(), 3);
   }
 
   /**
@@ -383,7 +383,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testConcurrentCollectBuildChanges(boolean fetchInSeparateProcess) throws Throwable {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
-
+    myConfigBuilder.setNumberOfCommitsWhenFromVersionNotFound(3);
     final GitVcsSupport support = getSupport();
     final List<Throwable> errors = Collections.synchronizedList(new ArrayList<Throwable>());
 
@@ -474,9 +474,9 @@ public class GitVcsSupportTest extends PatchTestCase {
         try {
           // check the case with broken commit
           final VcsRoot root = getRoot("master");
-          String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), GitUtils.versionTime(CUD1_VERSION));
+          String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), 1238072086000L);
           final List<ModificationData> mms2 = support.collectChanges(root, missing, MERGE_VERSION, new CheckoutRules(""));
-          assertEquals(3, mms2.size());
+          assertEquals(mms2.size(), 3);
         } catch (Throwable e) {
           errors.add(e);
         }
@@ -635,6 +635,17 @@ public class GitVcsSupportTest extends PatchTestCase {
     for (ModificationData md : mds) {
       assertEquals(md.getChanges().size(), 1); //this means we don't report remove and add of all submodule files
     }
+  }
+
+
+  //TW-19544
+  @Test
+  public void testCollectChangesWithBrokenSubmoduleOnLastCommitAndUsualFileInsteadOfSubmoduleInPreviousCommit() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("wrong-submodule", true);
+    String fromCommit = GitUtils.makeVersion("f5bdd3819df0358a43d9a8f94eaf96bb306e19fe", 1282636308000L);
+    String lastCommit = GitUtils.makeVersion("39679cc440c83671fbf6ad8083d92517f9602300", 1324998585000L);
+    support.collectChanges(root, fromCommit, lastCommit, CheckoutRules.DEFAULT);
   }
 
 
@@ -835,13 +846,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     checkPatchResult(output.toByteArray());
   }
 
-  /**
-   * Test label implementation
-   *
-   * @throws IOException        in case of test failure
-   * @throws VcsException       in case of test failure
-   * @throws URISyntaxException in case of test failure
-   */
+
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testLabels(boolean fetchInSeparateProcess) throws IOException, VcsException, URISyntaxException {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
@@ -859,6 +864,31 @@ public class GitVcsSupportTest extends PatchTestCase {
       r.close();
     }
   }
+
+
+  @Test
+  public void tag_with_specified_username() throws Exception {
+    VcsRoot root = vcsRoot()
+      .withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
+      .withUsernameForTags("John Doe <john.doe@some.org>")
+      .build();
+    GitVcsSupport git = getSupport();
+    git.label("label_with_specified_username", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", root, CheckoutRules.DEFAULT);
+
+    Repository r = new RepositoryBuilder().setGitDir(new File(new URIish(root.getProperty(Constants.FETCH_URL)).getPath())).build();
+    RevWalk revWalk = new RevWalk(r);
+    try {
+      Ref tagRef = r.getTags().get("label_with_specified_username");
+      RevTag t = revWalk.parseTag(tagRef.getObjectId());
+      PersonIdent tagger = t.getTaggerIdent();
+      assertEquals(tagger.getName(), "John Doe");
+      assertEquals(tagger.getEmailAddress(), "john.doe@some.org");
+    } finally {
+      revWalk.release();
+      r.close();
+    }
+  }
+
 
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testMapFullPath(boolean fetchInSeparateProcess) throws Exception {
@@ -1269,6 +1299,16 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  @Test
+  public void collect_changes_should_work_with_revisions_with_and_without_time() throws Exception {
+    VcsRoot root = getRoot("master");
+    GitVcsSupport support = getSupport();
+    List<ModificationData> withTime = support.collectChanges(root, CUD1_VERSION, MERGE_VERSION, CheckoutRules.DEFAULT);
+    List<ModificationData> withoutTime = support.collectChanges(root, GitUtils.versionRevision(CUD1_VERSION), GitUtils.versionRevision(MERGE_VERSION), CheckoutRules.DEFAULT);
+    assertEquals(withoutTime, withTime);
+  }
+
+
   //TW-17435
   @Test
   public void getCurrentVersion_should_not_do_fetch_if_remote_ref_not_changed() throws Exception {
@@ -1278,7 +1318,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    GitVcsSupport git = new GitVcsSupport(config, transportFactory, fetchCounter, repositoryManager, null);
+    GitVcsSupport git = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCounter, repositoryManager, null);
 
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
     FileUtil.copyDir(dataFile("repo_for_fetch.1"), remoteRepositoryDir);

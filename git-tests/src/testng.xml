@@ -29,6 +29,8 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentConfigPluginTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.MirrorManagerTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RepositoryManagerTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentStartupGitDetectorTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitResetCacheHandlerTest"/>
     </classes>
   </test>
 </suite>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,8 +51,8 @@ class ModificationDataRevWalk extends RevWalk {
   private final int mySearchDepth;
   private int myNextCallCount = 0;
   private RevCommit myCurrentCommit;
-  private long myCommitTimeLowerBound = -1;
-  
+  private int myNumberOfCommitsToVisit = -1;
+
 
   ModificationDataRevWalk(OperationContext context, int fixedSubmoduleSearchDepth) throws VcsException {
     super(context.getRepository());
@@ -65,19 +65,19 @@ class ModificationDataRevWalk extends RevWalk {
   @Override
   public RevCommit next() throws MissingObjectException, IncorrectObjectTypeException, IOException {
     myCurrentCommit = super.next();
-    if (myCurrentCommit != null && shouldLimitByCommitTime() && isExceedCommitTimeBound(myCurrentCommit)) {
+    myNextCallCount++;
+    if (myCurrentCommit != null && shouldLimitByNumberOfCommits() && myNextCallCount > myNumberOfCommitsToVisit) {
       myCurrentCommit = null;
     }
-    myNextCallCount++;
     return myCurrentCommit;
   }
-  
-  
-  public void limitByCommitTime(final long commitTimeLowerBound) {
-    myCommitTimeLowerBound = commitTimeLowerBound;
+
+
+  public void limitByNumberOfCommits(final int numberOfCommitsToVisit) {
+    myNumberOfCommitsToVisit = numberOfCommitsToVisit;
   }
-  
-  
+
+
   public ModificationData createModificationData() throws IOException, VcsException {
     if (myCurrentCommit == null)
       throw new IllegalStateException("Current commit is null");
@@ -101,17 +101,12 @@ class ModificationDataRevWalk extends RevWalk {
     }
     return result;
   }
-  
-  
-  private boolean shouldLimitByCommitTime() {
-    return myCommitTimeLowerBound != -1;
+
+
+  private boolean shouldLimitByNumberOfCommits() {
+    return myNumberOfCommitsToVisit != -1;
   }
-  
-  
-  private boolean isExceedCommitTimeBound(@NotNull final RevCommit commit) {
-    return commit.getCommitTime() * 1000L <= myCommitTimeLowerBound;
-  }
-  
+
 
   private boolean shouldIgnoreSubmodulesErrors() {
     return myNextCallCount > 1;//ignore submodule errors for all commits excluding the first one
@@ -242,9 +237,11 @@ class ModificationDataRevWalk extends RevWalk {
           prevTreeWalk.setRecursive(true);
           myContext.addTree(prevTreeWalk, myRepository, prevRev, true, false);
           while(prevTreeWalk.next()) {
-            if (prevTreeWalk.getPathString().startsWith(submodulePath)) {
+            String path = prevTreeWalk.getPathString();
+            if (path.startsWith(submodulePath + "/")) {
               SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
-              if (!iter.isSubmoduleError() && iter.getParent().isOnSubmodule()) {
+              SubmoduleAwareTreeIterator parentIter = iter.getParent();
+              if (iter != null && !iter.isSubmoduleError() && parentIter != null && parentIter.isOnSubmodule()) {
                 result = prevRev;
                 break;
               }

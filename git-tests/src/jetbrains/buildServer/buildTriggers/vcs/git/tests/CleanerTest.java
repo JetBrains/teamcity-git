@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import jetbrains.buildServer.serverSide.BuildServerListener;
 import jetbrains.buildServer.serverSide.SBuildServer;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.EventDispatcher;
+import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jmock.Expectations;
@@ -58,8 +59,8 @@ public class CleanerTest extends BaseTestCase {
     PluginConfigBuilder myConfigBuilder = new PluginConfigBuilder(myServerPaths)
       .setRunNativeGC(true)
       .setMirrorExpirationTimeoutMillis(4000);
-    if (System.getenv(Constants.GIT_PATH_ENV) != null)
-      myConfigBuilder.setPathToGit(System.getenv(Constants.GIT_PATH_ENV));
+    if (System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH) != null)
+      myConfigBuilder.setPathToGit(System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH));
 
     Mockery myContext = new Mockery();
     myCleanExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -73,7 +74,7 @@ public class CleanerTest extends BaseTestCase {
     FetchCommand fetchCommand = new FetchCommandImpl(myConfig, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl());
     myRepositoryManager = new RepositoryManagerImpl(myConfig, mirrorManager);
-    mySupport = new GitVcsSupport(myConfig, transportFactory, fetchCommand, myRepositoryManager, null);
+    mySupport = new GitVcsSupport(myConfig, new ResetCacheRegister(), transportFactory, fetchCommand, myRepositoryManager, null);
     myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), myConfig, myRepositoryManager);
   }
 

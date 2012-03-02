@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,6 +51,8 @@ public class TransportFactoryImpl implements TransportFactory {
    */
   private final RefreshableSshConfigSessionFactory mySshSessionFactoryKnownHostsIgnored;
 
+  private final SshSessionFactory myPasswordSshSessionFactory;
+
 
   public TransportFactoryImpl(@NotNull ServerPluginConfig config) {
     this(config, null);
@@ -60,8 +62,8 @@ public class TransportFactoryImpl implements TransportFactory {
   public TransportFactoryImpl(@NotNull ServerPluginConfig config, @Nullable final EventDispatcher<BuildServerListener> dispatcher) {
     myConfig = config;
     final boolean monitorSshConfigs = dispatcher != null; //dispatcher is null in tests and when invoked from the Fetcher
-    mySshSessionFactory = new RefreshableSshConfigSessionFactory(monitorSshConfigs);
-    mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory(monitorSshConfigs) {
+    mySshSessionFactory = new RefreshableSshConfigSessionFactory(myConfig, monitorSshConfigs);
+    mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory(myConfig, monitorSshConfigs) {
       // note that different instance is used because JSch cannot be shared with strict host checking
       public Session getSession(String user, String pass, String host, int port, CredentialsProvider credentialsProvider, FS fs) throws JSchException {
         final Session session = super.getSession(user, pass, host, port, credentialsProvider, fs);
@@ -69,6 +71,7 @@ public class TransportFactoryImpl implements TransportFactory {
         return session;
       }
     };
+    myPasswordSshSessionFactory = new PasswordSshSessionFactory(myConfig);
     if (monitorSshConfigs) {
       dispatcher.addListener(new BuildServerAdapter() {
         @Override
@@ -138,13 +141,13 @@ public class TransportFactoryImpl implements TransportFactory {
         return authSettings.isIgnoreKnownHosts() ? mySshSessionFactoryKnownHostsIgnored : mySshSessionFactory;
       case PRIVATE_KEY_FILE:
         try {
-          return new PrivateKeyFileSshSessionFactory(authSettings);
+          return new PrivateKeyFileSshSessionFactory(myConfig, authSettings);
         } catch (VcsAuthenticationException e) {
           //add url to exception
           throw new VcsAuthenticationException(url.toString(), e.getMessage());
         }
       case PASSWORD:
-        return PasswordSshSessionFactory.INSTANCE;
+        return myPasswordSshSessionFactory;
       default:
         throw new VcsAuthenticationException(url.toString(), "The authentication method " + authSettings.getAuthMethod() + " is not supported for SSH");
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,11 +30,11 @@ public class BranchCommandImpl implements BranchCommand {
 
   private final GeneralCommandLine myCmd;
   private String myBranch;
-  
+
   public BranchCommandImpl(@NotNull GeneralCommandLine cmd) {
     myCmd = cmd;
   }
-  
+
   @NotNull
   public BranchCommand setBranch(@NotNull String branch) {
     myBranch = branch;
@@ -48,15 +48,15 @@ public class BranchCommandImpl implements BranchCommand {
     CommandUtil.failIfNotEmptyStdErr(myCmd, r);
     return parseOutput(r.getStdout());
   }
-  
+
   @NotNull
   private BranchInfo parseOutput(String out) {
     for (String line : out.split("\n")) {
       if (line.length() < 2)
         continue;
       String b = line.substring(2).trim();
-      if (b.equals(myBranch)) 
-        return new BranchInfo(true, line.charAt(0) == '*');      
+      if (b.equals(myBranch))
+        return new BranchInfo(true, line.charAt(0) == '*');
     }
     return new BranchInfo(false, false);
   }

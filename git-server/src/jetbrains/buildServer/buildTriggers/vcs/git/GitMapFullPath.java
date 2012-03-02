@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +53,8 @@ class GitMapFullPath {
   private final int myLastSep;
 
   private String myGitRevision;
+  private String myRepositoryUrl;
+  private Collection<String> myMappedPaths;
 
   public GitMapFullPath(final OperationContext context, final GitVcsSupport gitSupport, final VcsRootEntry rootEntry, final String fullPath) throws VcsException {
     myGitSupport = gitSupport;
@@ -68,27 +70,19 @@ class GitMapFullPath {
   public Collection<String> mapFullPath() throws VcsException {
     if (invalidFormat())
       return Collections.emptySet();
-
-    initRevision();
-
-    if (fullPathHasRevision()) {
-      if (!repositoryContainsRevision()) return Collections.emptySet();
-    } else {
-      if (!matchRepositoryByUrl(repositoryUrlWithBranch())) return Collections.emptySet();
-    }
-
-    return returnPathAsMapped();
+    init();
+    if (fullPathContainsRevision() && repositoryContainsRevision())
+      return myMappedPaths;
+    if (!fullPathContainsRevision() && urlsMatch())
+      return myMappedPaths;
+    return Collections.emptySet();
   }
 
-  private void initRevision() {
+  private void init() {
     myGitRevision = myFullPath.substring(0, myFirstSep).trim();
+    myRepositoryUrl = myFullPath.substring(myFirstSep + 1, myLastSep).trim();
+    myMappedPaths = Collections.singleton(myFullPath.substring(myLastSep + 1).trim());
   }
-
-  private Collection<String> returnPathAsMapped() {
-    final String path = myFullPath.substring(myLastSep + 1).trim();
-    return Collections.singleton(path);
-  }
-
 
   private boolean repositoryContainsRevision() throws VcsException {
     RepositoryRevisionCache repositoryCache = ourCache.getRepositoryCache(myRootEntry.getVcsRoot());
@@ -119,11 +113,7 @@ class GitMapFullPath {
   }
 
 
-  private String repositoryUrlWithBranch() {
-    return myFullPath.substring(myFirstSep + 1, myLastSep).trim();
-  }
-
-  private boolean fullPathHasRevision() {
+  private boolean fullPathContainsRevision() {
     return myGitRevision.length() > 0;
   }
 
@@ -131,49 +121,34 @@ class GitMapFullPath {
     return myFirstSep < 0 || myLastSep == myFirstSep;
   }
 
-  private boolean matchRepositoryByUrl(@NotNull final String repositoryUrlWithBranch) {
-    final int branchSep = repositoryUrlWithBranch.indexOf("#");
+  private boolean urlsMatch() {
+    String url = removeBranch(myRepositoryUrl);
 
-    final URIish url;
-    final String branch;
-
-    if (branchSep < 0) {
-      try {
-        url = new URIish(repositoryUrlWithBranch);
-      } catch (final URISyntaxException e) {
-        LOG.error(e);
-        return false;
-      }
-      branch = null;
-    }
-    else {
-      try {
-        url = new URIish(repositoryUrlWithBranch.substring(0, branchSep).trim());
-      } catch (final URISyntaxException e) {
-        LOG.error(e);
-        return false;
-      }
-      branch = getNullIfEmpty(repositoryUrlWithBranch.substring(branchSep + 1));
+    final URIish uri;
+    try {
+      uri = new URIish(url);
+    } catch (final URISyntaxException e) {
+      LOG.error(e);
+      return false;
     }
 
     final URIish settingsUrl = mySettings.getRepositoryFetchURL();
-    if (settingsUrl == null) return false;
-    if (!url.getHost().equals(settingsUrl.getHost())) return false;
-    if (url.getPort() != settingsUrl.getPort()) return false;
-    if (!url.getPath().equals(settingsUrl.getPath())) return false;
-
-    final String settingsBranch = getNullIfEmpty(mySettings.getRef());
-    if (branch != null && settingsBranch != null && !branch.equals(settingsBranch)) return false;
+    if (settingsUrl == null)
+      return false;
+    if (uri.getHost() == null && settingsUrl.getHost() != null || uri.getHost() != null && !uri.getHost().equals(settingsUrl.getHost()))
+      return false;
+    if (uri.getPort() != settingsUrl.getPort())
+      return false;
+    if (uri.getPath() == null && settingsUrl.getPath() != null || uri.getPath() != null && !uri.getPath().equals(settingsUrl.getPath()))
+      return false;
 
     return true;
   }
 
-  @Nullable
-  private static String getNullIfEmpty(@NotNull final String string) {
-    final String trimmedString = string.trim();
-    return trimmedString.length() > 0 ? trimmedString : null;
+  private String removeBranch(@NotNull final String url) {
+    int branchSeparatorIndex = url.indexOf("#");
+    return (branchSeparatorIndex > 0) ? url.substring(0, branchSeparatorIndex) : url;
   }
-
 
   public static void invalidateRevisionsCache(VcsRoot root) {
     ourCache.invalidateCache(root);

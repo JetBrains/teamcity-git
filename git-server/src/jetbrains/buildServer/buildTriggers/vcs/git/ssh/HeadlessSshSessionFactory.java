@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.ssh;
 
+import com.jcraft.jsch.Proxy;
 import com.jcraft.jsch.Session;
+import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import org.eclipse.jgit.transport.OpenSshConfig;
 import org.eclipse.jgit.transport.SshConfigSessionFactory;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * A headless SSH session factory that is based on ~/.ssh/config settings.
@@ -26,10 +29,16 @@ import org.eclipse.jgit.transport.SshConfigSessionFactory;
  * should be used.
  */
 public class HeadlessSshSessionFactory extends SshConfigSessionFactory {
-  /**
-   * {@inheritDoc}
-   */
+
+  private final ServerPluginConfig myConfig;
+
+  public HeadlessSshSessionFactory(@NotNull final ServerPluginConfig config) {
+    myConfig = config;
+  }
+
   protected void configure(OpenSshConfig.Host hc, Session session) {
-    // do nothing, UserInfo will not be set and opening connection will fail
+    Proxy proxy = myConfig.getJschProxy();
+    if (proxy != null)
+      session.setProxy(proxy);
   }
 }

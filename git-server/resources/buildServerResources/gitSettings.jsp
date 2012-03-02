@@ -3,7 +3,7 @@
 <%@include file="/include.jsp" %>
 <%@ taglib prefix="props" tagdir="/WEB-INF/tags/props" %>
 <%--
-  ~ Copyright 2000-2009 JetBrains s.r.o.
+  ~ Copyright 2000-2012 JetBrains s.r.o.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
   --%>
 
 <jsp:useBean id="propertiesBean" scope="request" type="jetbrains.buildServer.controllers.BasePropertiesBean"/>
-<c:set var="gitPathEnv" value="<%= Constants.GIT_PATH_ENV %>"/>
+<c:set var="gitPathEnv" value="<%= Constants.TEAMCITY_AGENT_GIT_PATH %>"/>
 <table class="runnerFormTable">
   <c:set var="userHome"
          value='<%=new File(System.getProperty("user.home"), ".ssh"+File.separator+"config").getAbsolutePath() %>'/>
@@ -75,11 +75,15 @@
         </div>
       </td>
     </tr>
+    <tr id="userForTags">
+      <th><label for="userForTags">Username for tags:</label></th>
+      <td>
+        <props:textProperty name="userForTags"/>
+        <div class="smallNote" style="margin: 0">Format: User Name &lt;email&gt;</div>
+      </td>
+    </tr>
   </l:settingsGroup>
   <l:settingsGroup title="Authentication settings">
-    <tr>
-      <td colspan="2">Authorization settings can be required if the repository is password protected.</td>
-    </tr>
     <tr>
       <th><label for="authMethod">Authentication Method:</label></th>
       <td><props:selectProperty name="authMethod" onchange="gitSelectAuthentication()">
@@ -134,9 +138,7 @@
       <td><props:textProperty name="agentGitPath" className="longField"/>
         <div class="smallNote" style="margin: 0;">Provide path to a git executable
         to be used on agent. If the path is not specified, TeamCity will use
-        the location set up in ${gitPathEnv} environment  variable. If this
-        variable is  not specified, a heuristic is used to detect git at
-        the default locations.
+        the location set up in ${gitPathEnv} environment  variable.
         </div>
       </td>
     </tr>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ public class ShowRefCommandImpl implements ShowRefCommand {
 
   private final GeneralCommandLine myCmd;
   private String myPattern;
+  private boolean myShowTags;
 
   public ShowRefCommandImpl(@NotNull GeneralCommandLine cmd) {
     myCmd = cmd;
@@ -46,10 +47,19 @@ public class ShowRefCommandImpl implements ShowRefCommand {
   }
 
   @NotNull
+  public ShowRefCommand showTags() {
+    myShowTags = true;
+    return this;
+  }
+
+
+  @NotNull
   public List<Ref> call() {
     myCmd.addParameter("show-ref");
     if (myPattern != null)
       myCmd.addParameters(myPattern);
+    if (myShowTags)
+      myCmd.addParameter("--tags");
     try {
       ExecResult result = CommandUtil.runCommand(myCmd);
       return parse(result.getStdout());

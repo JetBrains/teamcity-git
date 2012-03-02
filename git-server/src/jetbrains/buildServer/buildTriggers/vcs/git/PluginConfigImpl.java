@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Proxy;
+import com.jcraft.jsch.ProxyHTTP;
 import gnu.trove.TObjectHashingStrategy;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -31,6 +33,10 @@ import org.eclipse.jgit.lib.ProgressMonitor;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
 /**
  * @author dmitry.neverov
@@ -42,17 +48,22 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private final static long HOUR = 60 * MINUTE;
   private final static long DAY = 24 * HOUR;
 
-
   private final File myCachesDir;
 
 
-  public PluginConfigImpl(@NotNull  final ServerPaths serverPaths) {
+  public PluginConfigImpl() {
+    myCachesDir = null;
+  }
+
+  public PluginConfigImpl(@NotNull final ServerPaths serverPaths) {
     myCachesDir = new File(serverPaths.getCachesDir(), "git");
   }
 
 
   @NotNull
   public File getCachesDir() {
+    if (myCachesDir == null)
+      throw new IllegalStateException("Caches dir is not initialized");
     return myCachesDir;
   }
 
@@ -148,5 +159,58 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public long getMirrorExpirationTimeoutMillis() {
     int days = TeamCityProperties.getInteger("teamcity.git.mirror.expiration.timeout.days", 7);
     return days * DAY;
+  }
+
+  @NotNull
+  public List<String> getProxySettingsForSeparateProcess() {
+    List<String> proxySettings = new ArrayList<String>();
+    addHttpProxyHost(proxySettings);
+    addHttpProxyPort(proxySettings);
+    addHttpNonProxyHosts(proxySettings);
+    addHttpsProxyHost(proxySettings);
+    addHttpsProxyPort(proxySettings);
+    return proxySettings;
+  }
+
+  public int getNumberOfCommitsWhenFromVersionNotFound() {
+    return TeamCityProperties.getInteger("teamcity.git.from.version.not.found.commits.number", 10);
+  }
+
+  public Proxy getJschProxy() {
+    String httpProxyHost = TeamCityProperties.getProperty("http.proxyHost");
+    int httpProxyPort = TeamCityProperties.getInteger("http.proxyPort", ProxyHTTP.getDefaultPort());
+    if (isEmpty(httpProxyHost))
+      return null;
+    return new ProxyHTTP(httpProxyHost, httpProxyPort);
+  }
+
+  private void addHttpProxyHost(@NotNull final List<String> proxySettings) {
+    String httpProxyHost = TeamCityProperties.getProperty("http.proxyHost");
+    if (!isEmpty(httpProxyHost))
+      proxySettings.add("-Dhttp.proxyHost=" + httpProxyHost);
+  }
+
+  private void addHttpProxyPort(List<String> proxySettings) {
+    int httpProxyPort = TeamCityProperties.getInteger("http.proxyPort", -1);
+    if (httpProxyPort != -1)
+      proxySettings.add("-Dhttp.proxyPort=" + httpProxyPort);
+  }
+
+  private void addHttpNonProxyHosts(List<String> proxySettings) {
+    String httpNonProxyHosts = TeamCityProperties.getProperty("http.nonProxyHosts");
+    if (!isEmpty(httpNonProxyHosts))
+      proxySettings.add("-Dhttp.nonProxyHosts=\"" + httpNonProxyHosts + "\"");
+  }
+
+  private void addHttpsProxyHost(List<String> proxySettings) {
+    String httpsProxyHost = TeamCityProperties.getProperty("https.proxyHost");
+    if (!isEmpty(httpsProxyHost))
+      proxySettings.add("-Dhttps.proxyHost=" + httpsProxyHost);
+  }
+
+  private void addHttpsProxyPort(List<String> proxySettings) {
+    int httpsProxyPort = TeamCityProperties.getInteger("https.proxyPort", -1);
+    if (httpsProxyPort != -1)
+      proxySettings.add("-Dhttps.proxyPort=" + httpsProxyPort);
   }
 }

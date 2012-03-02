@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ public class SubmoduleUpdateCommandImpl implements SubmoduleUpdateCommand {
   private boolean myUseNativeSsh;
   private Settings.AuthSettings myAuthSettings;
   private int myTimeout;
-  
+
   public SubmoduleUpdateCommandImpl(@NotNull GeneralCommandLine cmd, @NotNull GitAgentSSHService ssh) {
     myCmd = cmd;
     mySsh = ssh;

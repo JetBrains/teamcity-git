@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
@@ -87,6 +88,10 @@ public final class RepositoryManagerImpl implements RepositoryManager {
     myMirrorManager.invalidate(dir);
   }
 
+
+  public Map<String, File> getMappings() {
+    return myMirrorManager.getMappings();
+  }
 
   @NotNull
   public List<File> getExpiredDirs() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,6 +78,21 @@ public class MirrorManagerImpl implements MirrorManager {
       saveMappingToFile();
       saveInvalidDirsToFile();
     }
+  }
+
+
+  public Map<String, File> getMappings() {
+    Map<String, String> mirrorMapSnapshot;
+    synchronized (myLock) {
+      mirrorMapSnapshot = new HashMap<String, String>(myMirrorMap);
+    }
+    Map<String, File> result = new HashMap<String, File>();
+    for (Map.Entry<String, String> entry : mirrorMapSnapshot.entrySet()) {
+      String url = entry.getKey();
+      String dir = entry.getValue();
+      result.put(url, new File(myBaseMirrorsDir, dir));
+    }
+    return result;
   }
 
 

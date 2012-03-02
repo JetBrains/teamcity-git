@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.TempFiles;
@@ -26,13 +27,16 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jmock.Expectations;
@@ -49,11 +53,10 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
+import static com.intellij.openapi.util.io.FileUtil.delete;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
-import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static org.testng.AssertJUnit.*;
 
 /**
@@ -117,6 +120,7 @@ public class AgentVcsSupportTest {
     myRoot = new VcsRootImpl(1, new HashMap<String, String>() {{
       put(VcsRootImpl.VCS_NAME_PROP, Constants.VCS_NAME);
       put(VcsRootImpl.VCS_ROOT_NAME_PROP, "test");
+      put(Constants.BRANCH_NAME, "master");
       put(Constants.FETCH_URL, GitUtils.toURL(myMainRepo));
       put(Constants.AGENT_GIT_PATH, pathToGit);
     }});
@@ -133,8 +137,6 @@ public class AgentVcsSupportTest {
    * Test work normally if .git/index.lock file exists
    */
   public void testRecoverIndexLock() throws Exception {
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
-
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD,
                                myCheckoutDir, myBuild, false);
 
@@ -150,7 +152,6 @@ public class AgentVcsSupportTest {
    * Test work normally if .git/refs/heads/<branch>.lock file exists
    */
   public void testRecoverRefLock() throws Exception {
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
     String firstCommitInPatchTests = GitUtils.makeVersion("a894d7d58ffde625019a9ecf8267f5f1d1e5c341", 1245766034000L);
@@ -224,7 +225,6 @@ public class AgentVcsSupportTest {
       }
     }).length == 0);
 
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
     MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
@@ -251,38 +251,20 @@ public class AgentVcsSupportTest {
 
 
   public void old_cloned_repository_should_use_local_mirror() throws Exception {
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
+    AgentRunningBuild buildBeforeUsingMirrors = createRunningBuild(false);
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildBeforeUsingMirrors, false);
+    AgentRunningBuild buildWithMirrorsEnabled = createRunningBuild(true);
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(buildWithMirrorsEnabled, myRoot), new HashCalculatorImpl());
     Settings settings = new Settings(mirrorManager, myRoot);
-    File bareRepositoryDir = settings.getRepositoryDir();
-
-    //emulate old cloned repository (it has no config option 'url.<URL>.insteadOf')
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
-
-    //cut off 'url.<URL>.insteadOf option:
-    File gitConfigFile = new File(myCheckoutDir, ".git" + File.separator + "config");
-    String config = FileUtil.loadTextAndClose(new FileReader(gitConfigFile));
-    String localMirrorUrl = new URIish(bareRepositoryDir.toURI().toASCIIString()).toString();
-    Pattern pattern = Pattern.compile("(.*)\\[url \"" + Pattern.quote(localMirrorUrl) + "\"\\]\\s+insteadOf = " +
-                                      Pattern.quote(settings.getRepositoryFetchURL().toString()) +
-                                      "\\s*(.*)", Pattern.DOTALL);
-    Matcher matcher = pattern.matcher(config);
-    assertTrue("config is " + config, matcher.matches());
-    String newConfig = matcher.group(1) + matcher.group(2);
-    writeFile(gitConfigFile, newConfig);
-
-    //at this point cloned repository do not use local mirror, after second call to updateSources it should start using it
-
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
-    config = FileUtil.loadTextAndClose(new FileReader(gitConfigFile));
-    matcher = pattern.matcher(config);
-    assertTrue(matcher.matches());
+    String localMirrorUrl = new URIish(settings.getRepositoryDir().toURI().toASCIIString()).toString();
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    assertEquals(settings.getRepositoryFetchURL().toString(), r.getConfig().getString("url", localMirrorUrl, "insteadOf"));
   }
 
 
   public void do_not_use_mirror_if_agent_property_set_to_false() throws Exception {
     AgentRunningBuild build2 = createRunningBuild(false);
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
     File gitConfigFile = new File(myCheckoutDir, ".git" + File.separator + "config");
     String config = FileUtil.loadTextAndClose(new FileReader(gitConfigFile));
@@ -291,7 +273,6 @@ public class AgentVcsSupportTest {
 
 
   public void stop_use_mirror_if_agent_property_changed_to_false() throws Exception {
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
     AgentRunningBuild build2 = createRunningBuild(false);
@@ -356,14 +337,60 @@ public class AgentVcsSupportTest {
 
 
   public void should_checkout_tags_reachable_from_branch() throws Exception {
-    myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
-
-    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
-    assertNotNull(r.getRef("refs/tags/v0.5"));
-    assertNotNull(r.getRef("refs/tags/v1.0"));
+    assertTagExists("refs/tags/v0.5");
+    assertTagExists("refs/tags/v1.0");
   }
 
+
+  @Test(dataProvider = "mirrors")
+  public void deleted_tag_in_remote_repository_should_be_deleted_in_local_repository(Boolean useMirrors) throws Exception {
+    AgentRunningBuild build = createRunningBuild(useMirrors);
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+    removeTag(myMainRepo, "refs/tags/v0.5");
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+    assertNoTagExist("refs/tags/v0.5");
+  }
+
+
+  @Test(dataProvider = "mirrors")
+  public void updated_tag_in_remote_repository_should_be_updated_in_local_repository(Boolean useMirrors) throws Exception {
+    AgentRunningBuild build = createRunningBuild(useMirrors);
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+
+    final String newCommit = "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6";
+    updateTag(myMainRepo, "refs/tags/v1.0", newCommit);
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+    assertTagExists("refs/tags/v1.0");
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    Ref tag = r.getRef("refs/tags/v1.0");
+    assertEquals("Local tag is not updated", newCommit, tag.getObjectId().name());
+  }
+
+  private void removeTag(@NotNull File dotGitDir, @NotNull String tagName) {
+    delete(tagFile(dotGitDir, tagName));
+  }
+
+  private void updateTag(@NotNull File dotGitDir, @NotNull String tagName, @NotNull String commit) throws IOException {
+    File tagFile = tagFile(dotGitDir, tagName);
+    FileUtil.writeToFile(tagFile, commit.getBytes());
+  }
+
+  private File tagFile(@NotNull File dotGitDir, @NotNull String tagName) {
+    return new File(dotGitDir, tagName.replaceAll("/", Matcher.quoteReplacement(File.separator)));
+  }
+
+  private void assertNoTagExist(String tag) throws IOException {
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    assertNull("tag \'" + tag + "\' exists", r.getRef(tag));
+  }
+
+  private void assertTagExists(String tag) throws IOException {
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    assertNotNull("tag \'" + tag + "\' doesn't exist", r.getRef(tag));
+  }
 
   @DataProvider(name = "mirrors")
   public Object[][] mirrors() {
@@ -384,7 +411,8 @@ public class AgentVcsSupportTest {
     FileUtil.delete(remote);
     copyRepository(dataFile("repo_for_fetch.2"), remote);
 
-    myVcsSupport.updateSources(masterRoot, new CheckoutRules(""), "d47dda159b27b9a8c4cee4ce98e4435eb5b17168@1303829462000", myCheckoutDir, build, false);
+    myVcsSupport.updateSources(masterRoot, new CheckoutRules(""), "d47dda159b27b9a8c4cee4ce98e4435eb5b17168@1303829462000", myCheckoutDir,
+                               build, false);
   }
 
 
@@ -396,6 +424,26 @@ public class AgentVcsSupportTest {
     }});
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
   }
+
+
+  //TW-20165
+  public void push_with_local_mirrors_should_go_to_original_repository() throws Exception {
+    AgentRunningBuild build = createRunningBuild(true);
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitUtils.makeVersion("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", 1289483394000L), myCheckoutDir, build, false);
+
+    final File fileToChange = new File(myCheckoutDir, "file");
+    FileUtil.writeToFile(fileToChange, "text".getBytes());
+
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    Git git = new Git(r);
+    git.add().addFilepattern("file").call();
+    RevCommit commitDuringTheBuild = git.commit().setMessage("Commit during the build").call();
+    new PushCommand().run(getGitPath(), myCheckoutDir.getAbsolutePath());//push using native git, seems like jgit doesn't respect url.insteadOf settings
+
+    Repository remote = new RepositoryBuilder().setGitDir(myMainRepo).build();
+    assertTrue("Push didn't go to the remote repository", remote.hasObject(commitDuringTheBuild));
+  }
+
 
 
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
@@ -436,8 +484,9 @@ public class AgentVcsSupportTest {
     final BuildAgent agent = myMockery.mock(BuildAgent.class);
     final XmlRpcHandlerManager manager = myMockery.mock(XmlRpcHandlerManager.class);
     myMockery.checking(new Expectations() {{
-      allowing(agent).getXmlRpcHandlerManager(); will(returnValue(manager));
-      allowing(manager).addHandler(with(any(String.class)), with(any(Object.class)));
+      allowing(agent).getXmlRpcHandlerManager();
+      will(returnValue(manager));
+      ignoring(manager);
     }});
     return agent;
   }
@@ -469,9 +518,8 @@ public class AgentVcsSupportTest {
 
   private BuildProgressLogger createLogger() {
     final BuildProgressLogger logger = myMockery.mock(BuildProgressLogger.class);
-    myMockery.checking(new Expectations(){{
-      allowing(logger).message(with(any(String.class)));
-      allowing(logger).warning(with(any(String.class)));
+    myMockery.checking(new Expectations() {{
+      ignoring(logger);
     }});
     return logger;
   }
@@ -485,7 +533,7 @@ public class AgentVcsSupportTest {
 
 
   private AgentRunningBuild createRunningBuild(final Map<String, String> sharedConfigParameters) {
-    final AgentRunningBuild build = myMockery.mock(AgentRunningBuild.class, "build"+myBuildId++);
+    final AgentRunningBuild build = myMockery.mock(AgentRunningBuild.class, "build" + myBuildId++);
     myMockery.checking(new Expectations() {{
       allowing(build).getBuildLogger(); will(returnValue(myLogger));
       allowing(build).getSharedConfigParameters(); will(returnValue(sharedConfigParameters));
@@ -500,7 +548,7 @@ public class AgentVcsSupportTest {
    * @throws IOException
    */
   private String getGitPath() throws IOException {
-    String providedGit = System.getenv(Constants.GIT_PATH_ENV);
+    String providedGit = System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH);
     if (providedGit != null) {
       return providedGit;
     } else {
@@ -519,6 +567,17 @@ public class AgentVcsSupportTest {
     @NotNull
     public File getPluginRoot() {
       return new File("jetbrains.git");
+    }
+  }
+
+
+  private class PushCommand {
+    void run(String gitPath, String workDirectory) throws Exception {
+      GeneralCommandLine cmd = new GeneralCommandLine();
+      cmd.setExePath(gitPath);
+      cmd.setWorkDirectory(workDirectory);
+      cmd.addParameters("push", "origin", "master");
+      CommandUtil.runCommand(cmd);
     }
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2011 JetBrains s.r.o.
+ * Copyright 2000-2012 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,8 +52,8 @@ public class GitTestUtil {
 
   public static VcsRootImpl getVcsRoot(File repositoryDir) {
     return new VcsRootBuilder()
-      .fetchUrl(GitUtils.toURL(repositoryDir))
-      .branchName("master")
+      .withFetchUrl(GitUtils.toURL(repositoryDir))
+      .withBranch("master")
       .build();
   }
 }
