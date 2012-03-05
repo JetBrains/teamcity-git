@@ -220,9 +220,9 @@ public class GitServerUtil {
    * @return true if uri contains this error
    */
   private static boolean isRedundantColon(URIish uri) {
-    return uri.getScheme().equals("ssh") &&
+    return "ssh".equals(uri.getScheme()) &&
            uri.getHost() == null &&
-           uri.getPath().contains(":");
+           uri.getPath() != null && uri.getPath().contains(":");
   }
 
 

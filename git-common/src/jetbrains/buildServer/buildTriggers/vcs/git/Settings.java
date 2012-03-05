@@ -205,7 +205,7 @@ public class Settings {
 
     public URIish createAuthURI(final URIish uri) {
       URIish result = uri;
-      if (!"git".equals(result.getScheme())) {
+      if (requiresCredentials(result)) {
         if (!StringUtil.isEmptyOrSpaces(myUserName)) {
           result = result.setUser(myUserName);
         }
@@ -214,6 +214,12 @@ public class Settings {
         }
       }
       return result;
+    }
+
+    private boolean requiresCredentials(URIish result) {
+      String scheme = result.getScheme();
+      return result.getHost() != null ||
+             scheme != null && !scheme.equals("git");
     }
 
     public Map<String, String> toMap() {
