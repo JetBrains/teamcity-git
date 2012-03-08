@@ -18,6 +18,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
@@ -36,14 +39,31 @@ import static com.intellij.openapi.util.text.StringUtil.splitByLines;
 public class LsRemoteCommandImpl implements LsRemoteCommand {
 
   private GeneralCommandLine myCmd;
+  private GitAgentSSHService mySsh;
   private boolean myShowTags = false;
+  private Settings.AuthSettings myAuthSettings;
+  private boolean myUseNativeSsh = false;
 
-  public LsRemoteCommandImpl(@NotNull GeneralCommandLine cmd) {
+  public LsRemoteCommandImpl(@NotNull GeneralCommandLine cmd, @NotNull GitAgentSSHService ssh) {
     myCmd = cmd;
+    mySsh = ssh;
   }
 
+  @NotNull
   public LsRemoteCommand showTags() {
     myShowTags = true;
+    return this;
+  }
+
+  @NotNull
+  public LsRemoteCommand setAuthSettings(@NotNull Settings.AuthSettings authSettings) {
+    myAuthSettings = authSettings;
+    return this;
+  }
+
+  @NotNull
+  public LsRemoteCommand setUseNativeSsh(boolean useNativeSsh) {
+    myUseNativeSsh = useNativeSsh;
     return this;
   }
 
@@ -53,9 +73,20 @@ public class LsRemoteCommandImpl implements LsRemoteCommand {
     if (myShowTags)
       myCmd.addParameter("--tags");
     myCmd.addParameter("origin");
+
     try {
-      ExecResult result = CommandUtil.runCommand(myCmd);
-      return parse(result.getStdout());
+      if (myUseNativeSsh) {
+        ExecResult result = CommandUtil.runCommand(myCmd);
+        return parse(result.getStdout());
+      } else {
+        SshHandler h = new SshHandler(mySsh, myAuthSettings, myCmd);
+        try {
+          ExecResult result = CommandUtil.runCommand(myCmd);
+          return parse(result.getStdout());
+        } finally {
+          h.unregister();
+        }
+      }      
     } catch (VcsException e) {
       return Collections.emptyList();
     }
