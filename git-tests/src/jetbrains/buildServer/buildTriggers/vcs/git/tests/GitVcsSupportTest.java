@@ -24,6 +24,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -43,6 +44,7 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
@@ -184,7 +186,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     return getSupport(null);
   }
 
-  private GitVcsSupport getSupport(ExtensionHolder holder) {
+  private GitVcsSupport getSupport(@Nullable ExtensionHolder holder) {
     ServerPluginConfig config = myConfigBuilder.build();
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
@@ -214,9 +216,8 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  /**
-   * Test work-around for http://youtrack.jetbrains.net/issue/TW-9933.
-   */
+  // Tests work-around for TW-9933.
+  @TestFor(issues = "TW-9933")
   @Test
   public void test_not_existing_local_repository() {
     File notExisting = new File(myTmpDir, "not-existing");
@@ -255,11 +256,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  /**
-   * The current version test
-   *
-   * @throws Exception in case of IO problem
-   */
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testCurrentVersion(boolean fetchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
@@ -269,11 +265,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(VERSION_TEST_HEAD, version);
   }
 
-  /**
-   * Test get content for the file
-   *
-   * @throws Exception in case of bug
-   */
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testGetContent(boolean fetchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
@@ -291,11 +282,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     }
   }
 
-  /**
-   * Test get content for the file
-   *
-   * @throws Exception in case of bug
-   */
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testGetContentSubmodules(boolean fetchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
@@ -308,11 +294,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  /**
-   * Test getting changes for the build
-   *
-   * @throws Exception in case of IO problem
-   */
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testCollectBuildChanges(boolean fetchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
@@ -377,9 +358,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(mms2.size(), 3);
   }
 
-  /**
-   * Test getting changes for the build concurrently. Copy of previous test but with several threads collecting changes
-   */
+  //Test getting changes for the build concurrently. Copy of previous test but with several threads collecting changes
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testConcurrentCollectBuildChanges(boolean fetchInSeparateProcess) throws Throwable {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
@@ -491,11 +470,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  /**
-   * Test getting changes for the build with submodules ignored
-   *
-   * @throws Exception in case of IO problem
-   */
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testCollectBuildChangesSubmodulesIgnored(boolean fetchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
@@ -524,11 +498,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(VcsChange.Type.CHANGED, ch21.getType());
   }
 
-  /**
-   * Test getting changes for the build
-   *
-   * @throws Exception in case of IO problem
-   */
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testCollectBuildChangesSubmodules(boolean fetchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
@@ -558,9 +527,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  /**
-   * TW-13127
-   *
+  /*
    * o fix submodule entry again but track newer revision | e6b15b1f4741199857e2fa744eaadfe5a9d9aede
    * |                                                    |
    * |                                                    |
@@ -596,6 +563,7 @@ public class GitVcsSupportTest extends PatchTestCase {
    * o no submodules                                      | f3f826ce85d6dad25156b2d7550cedeb1a422f4c (merge_version)
    *
    */
+  @TestFor(issues = "TW-13127")
   @Test
   public void testCollectBuildChangesWithBrokenSubmoduleOnLastCommit() throws Exception {
     GitVcsSupport support = getSupport();
@@ -638,7 +606,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  //TW-19544
+  @TestFor(issues = "TW-19544")
   @Test
   public void testCollectChangesWithBrokenSubmoduleOnLastCommitAndUsualFileInsteadOfSubmoduleInPreviousCommit() throws Exception {
     GitVcsSupport support = getSupport();
@@ -689,31 +657,21 @@ public class GitVcsSupportTest extends PatchTestCase {
     VcsRoot root = getRoot("wrong-submodule", true);
     String beforeSubmodWithDirCommit = GitUtils.makeVersion("e6b15b1f4741199857e2fa744eaadfe5a9d9aede", 1282822922000L);
     String submodWithDirCommit = GitUtils.makeVersion("6cf3cb6a87091d17466607858c699c35edf30d3b", 1289297786000L);
-    List<ModificationData> mds = support.collectChanges(root, beforeSubmodWithDirCommit, submodWithDirCommit, new CheckoutRules(""));
+    support.collectChanges(root, beforeSubmodWithDirCommit, submodWithDirCommit, CheckoutRules.DEFAULT);
   }
 
 
-  /**
-   * Test collecting changes with non-recursive submodule checkout: only first level submodule files are checked out
-   *
-   * @param fetchInSeparateProcess
-   * @throws Exception
-   */
+  // Test collecting changes with non-recursive submodule checkout: only first level submodule files are checked out
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testCollectBuildChangesSubSubmodulesNonRecursive(boolean fetchInSeparateProcess) throws Exception {
     checkCollectBuildChangesSubSubmodules(fetchInSeparateProcess, false);
   }
 
 
-  /**
-   * Test collecting changes with recursive submodule checkout: submodules of submodules are checked out
-   *
-   * @param fetchInSeparateProcess
-   * @throws Exception
-   */
+  // Test collecting changes with recursive submodule checkout: submodules of submodules are checked out
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testCollectBuildChangesSubSubmodulesRecursive(boolean fetchInSeparateProcess) throws Exception {
-    checkCollectBuildChangesSubSubmodules(false, true);
+    checkCollectBuildChangesSubSubmodules(fetchInSeparateProcess, true);
   }
 
 
@@ -767,12 +725,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  /**
-   * Test patches
-   *
-   * @throws IOException  in case of test failure
-   * @throws VcsException in case of test failure
-   */
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testPatches(boolean fetchInSeparateProcess) throws IOException, VcsException {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
@@ -788,12 +740,7 @@ public class GitVcsSupportTest extends PatchTestCase {
                GitUtils.makeVersion("2eed4ae6732536f76a65136a606f635e8ada63b9", 1247581803000L), true);
   }
 
-  /**
-   * Test patches
-   *
-   * @throws IOException  in case of test failure
-   * @throws VcsException in case of test failure
-   */
+
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testSubmodulePatches(boolean fetchInSeparateProcess) throws IOException, VcsException {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
@@ -815,7 +762,7 @@ public class GitVcsSupportTest extends PatchTestCase {
    * @throws IOException  in case of test failure
    * @throws VcsException in case of test failure
    */
-  private void checkPatch(final String name, final String fromVersion, final String toVersion) throws IOException, VcsException {
+  private void checkPatch(final String name, @Nullable final String fromVersion, final String toVersion) throws IOException, VcsException {
     checkPatch(name, "patch-tests", fromVersion, toVersion, false);
   }
 
@@ -968,11 +915,11 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  /**
-   * TW-13330
-   * Test reproduces bug in Fetcher code: Fetcher worked only if all parameters of VcsRoot
+  /*
+   * Test reproduces a bug in Fetcher code: Fetcher worked only if all parameters of VcsRoot
    * sent to process input as string were smaller than 512 bytes (most of the cases) or size mod 512 = 0.
    */
+  @TestFor(issues = "TW-13330")
   @Test
   public void test_long_input_for_fetcher_process() throws IOException, VcsException {
     myConfigBuilder.setSeparateProcessForFetch(true);
@@ -1027,9 +974,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  /**
-   * TW-14813
-   */
+  @TestFor(issues = "TW-14813")
   @Test
   public void test_logging() {
     myConfigBuilder.setSeparateProcessForFetch(true);
@@ -1045,10 +990,11 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  /**
-   * TW-15564: repository cloned by hand could have no teamcity.remote config, we should create it otherwise we can see 'null' as remote url in error messages
+  /*
+   * Repository cloned by hand could have no teamcity.remote config, we should create it otherwise we can see 'null' as remote url in error messages
    * (see log in the issue for details).
    */
+  @TestFor(issues = "TW-15564")
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void should_create_teamcity_config_in_root_with_custom_path(boolean fetchInSeparateProcess) throws IOException, VcsException {
     System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
@@ -1086,8 +1032,8 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  //TW-17910
   @Test
+  @TestFor(issues = "TW-17910")
   public void fetch_process_should_respect_fetch_timeout() throws Exception {
     //MockFetcher waits for 10 seconds
     //set teamcity.execution.timeout = 2, we should not get TimeoutException
@@ -1182,7 +1128,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  //TW-16351
+  @TestFor(issues = "TW-16351")
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void should_update_local_ref_when_it_locked(boolean fetchInSeparateProcess) throws Exception {
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
@@ -1207,7 +1153,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  //TW-16351
+  @TestFor(issues = "TW-16351")
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void test_non_fast_forward_update(boolean fetchInSeparateProcess) throws Exception {
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
@@ -1279,7 +1225,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  //TW-16530
+  @TestFor(issues = "TW-16530")
 //  @Test
   public void test_crlf() throws Exception {
     String original = System.getProperty("user.home");
@@ -1309,7 +1255,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  //TW-17435
+  @TestFor(issues = "TW-17435")
   @Test
   public void getCurrentVersion_should_not_do_fetch_if_remote_ref_not_changed() throws Exception {
     ServerPluginConfig config = myConfigBuilder.build();
@@ -1342,7 +1288,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       myDelegate = delegate;
     }
 
-    public void fetch(@NotNull Repository db, URIish fetchURI, Collection<RefSpec> refspecs, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+    public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
       myDelegate.fetch(db, fetchURI, refspecs, auth);
       inc();
     }
