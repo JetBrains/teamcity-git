@@ -25,6 +25,7 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
+import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -123,6 +124,7 @@ public class GitVcsSupportTest extends PatchTestCase {
    * Temporary files
    */
   protected static TempFiles myTempFiles = new TempFiles();
+  private ResetCacheRegister myResetCacheManager;
 
   static {
     Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
@@ -144,6 +146,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     FileUtil.copyDir(dataFile("submodule.git"), new File(myTmpDir, "submodule"));
     FileUtil.copyDir(dataFile("submodule.git"), new File(myTmpDir, "submodule.git"));
     FileUtil.copyDir(dataFile("sub-submodule.git"), new File(myTmpDir, "sub-submodule.git"));
+    myResetCacheManager = new ResetCacheRegister();
   }
 
   @AfterMethod
@@ -192,7 +195,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    return new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCommand, repositoryManager, holder);
+    return new GitVcsSupport(config, myResetCacheManager, transportFactory, fetchCommand, repositoryManager, holder);
   }
 
 
@@ -1252,6 +1255,26 @@ public class GitVcsSupportTest extends PatchTestCase {
     List<ModificationData> withTime = support.collectChanges(root, CUD1_VERSION, MERGE_VERSION, CheckoutRules.DEFAULT);
     List<ModificationData> withoutTime = support.collectChanges(root, GitUtils.versionRevision(CUD1_VERSION), GitUtils.versionRevision(MERGE_VERSION), CheckoutRules.DEFAULT);
     assertEquals(withoutTime, withTime);
+  }
+
+
+  @Test
+  public void collect_changes_after_cache_reset() throws Exception {
+    GitVcsSupport git = getSupport();
+    VcsRoot root = getRoot("master");
+    git.getCurrentVersion(root);
+
+    //reset git caches:
+    for (ResetCacheHandler handler : myResetCacheManager.getHandlers()) {
+      for (String cache : handler.listCaches())
+        handler.resetCache(cache);
+    }
+
+    try {
+      git.getCurrentVersion(root);
+    } catch (VcsException e) {
+      fail("Reset of caches breaks repository");
+    }
   }
 
 
