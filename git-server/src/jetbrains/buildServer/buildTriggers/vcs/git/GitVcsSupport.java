@@ -93,7 +93,7 @@ public class GitVcsSupport extends ServerVcsSupport
     myRepositoryManager = repositoryManager;
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(myConfig.getCurrentVersionCacheSize());
     setStreamFileThreshold();
-    resetCacheManager.registerHandler(new GitResetCacheHandler(repositoryManager));
+    resetCacheManager.registerHandler(new GitResetCacheHandler(this, repositoryManager));
   }
 
 
@@ -642,6 +642,9 @@ public class GitVcsSupport extends ServerVcsSupport
 
   /**
    * Return cached current version for branch in repository in specified dir, or null if no cache version found.
+   * @param repositoryDir cloned repository dir
+   * @param branchName branch name of interest
+   * @return see above
    */
   private String getCachedCurrentVersion(File repositoryDir, String branchName) {
     return myCurrentVersionCache.get(Pair.create(repositoryDir, branchName));
@@ -649,10 +652,29 @@ public class GitVcsSupport extends ServerVcsSupport
 
   /**
    * Save current version for branch of repository in cache.
+   * @param repositoryDir cloned repository dir
+   * @param branchName branch name of interest
+   * @param currentVersion current branch revision
    */
   private void setCachedCurrentVersion(File repositoryDir, String branchName, String currentVersion) {
     myCurrentVersionCache.put(Pair.create(repositoryDir, branchName), currentVersion);
   }
+
+
+  /**
+   * Resets all caches for current versions of branches for specified mirror dir
+   * @param mirrorDir mirror dir of interest
+   */
+  public void resetCachedCurrentVersions(@NotNull File mirrorDir) {
+    synchronized (myCurrentVersionCache) {
+      for (Pair<File, String> k : myCurrentVersionCache.keySet()) {
+        File dir = k.first;
+        if (mirrorDir.equals(dir))
+          myCurrentVersionCache.remove(k);
+      }
+    }
+  }
+
 
   public boolean sourcesUpdatePossibleIfChangesNotFound(@NotNull VcsRoot root) {
     return true;
