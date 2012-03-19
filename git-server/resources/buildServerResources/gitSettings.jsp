@@ -75,10 +75,9 @@
         </div>
       </td>
     </tr>
-    <tr id="userForTags">
+    <tr>
       <th><label for="userForTags">Username for tags:</label></th>
-      <td>
-        <props:textProperty name="userForTags"/>
+      <td><props:textProperty name="userForTags"/>
         <div class="smallNote" style="margin: 0">Format: User Name &lt;email&gt;</div>
       </td>
     </tr>
