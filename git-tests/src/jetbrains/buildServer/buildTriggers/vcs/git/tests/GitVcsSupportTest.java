@@ -729,18 +729,22 @@ public class GitVcsSupportTest extends PatchTestCase {
 
 
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void testPatches(boolean fetchInSeparateProcess) throws IOException, VcsException {
+  public void check_buildPatch_understands_revisions_with_timestamps(boolean fetchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
     checkPatch("cleanPatch1", null, GitUtils.makeVersion("a894d7d58ffde625019a9ecf8267f5f1d1e5c341", 1237391915000L));
-    checkPatch("patch1", GitUtils.makeVersion("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", 1238420977000L),
-               GitUtils.makeVersion("0dd03338d20d2e8068fbac9f24899d45d443df38", 1238421020000L));
-    checkPatch("patch2", GitUtils.makeVersion("7e916b0edd394d0fca76456af89f4ff7f7f65049", 1238421159000L),
-               GitUtils.makeVersion("049a98762a29677da352405b27b3d910cb94eb3b", 1238421214000L));
-    checkPatch("patch3", null, GitUtils.makeVersion("1837cf38309496165054af8bf7d62a9fe8997202", 1238421349000L));
-    checkPatch("patch4", GitUtils.makeVersion("1837cf38309496165054af8bf7d62a9fe8997202", 1238421349000L),
-               GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L));
-    checkPatch("patch-case", "rename-test", GitUtils.makeVersion("cbf1073bd3f938e7d7d85718dbc6c3bee10360d9", 1247581634000L),
-               GitUtils.makeVersion("2eed4ae6732536f76a65136a606f635e8ada63b9", 1247581803000L), true);
+    checkPatch("patch1", GitUtils.makeVersion("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", 1238420977000L), GitUtils.makeVersion("0dd03338d20d2e8068fbac9f24899d45d443df38", 1238421020000L));
+  }
+
+
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void testPatches(boolean fetchInSeparateProcess) throws IOException, VcsException {
+    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
+    checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
+    checkPatch("patch1", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", "0dd03338d20d2e8068fbac9f24899d45d443df38");
+    checkPatch("patch2", "7e916b0edd394d0fca76456af89f4ff7f7f65049", "049a98762a29677da352405b27b3d910cb94eb3b");
+    checkPatch("patch3", null, "1837cf38309496165054af8bf7d62a9fe8997202");
+    checkPatch("patch4", "1837cf38309496165054af8bf7d62a9fe8997202", "592c5bcee6d906482177a62a6a44efa0cff9bbc7");
+    checkPatch("patch-case", "rename-test", "cbf1073bd3f938e7d7d85718dbc6c3bee10360d9", "2eed4ae6732536f76a65136a606f635e8ada63b9", true);
   }
 
 
@@ -756,15 +760,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  /**
-   * Check single patch
-   *
-   * @param name        the name of patch
-   * @param fromVersion from version
-   * @param toVersion   to version
-   * @throws IOException  in case of test failure
-   * @throws VcsException in case of test failure
-   */
   private void checkPatch(final String name, @Nullable final String fromVersion, final String toVersion) throws IOException, VcsException {
     checkPatch(name, "patch-tests", fromVersion, toVersion, false);
   }
@@ -780,12 +775,7 @@ public class GitVcsSupportTest extends PatchTestCase {
    * @throws IOException  in case of test failure
    * @throws VcsException in case of test failure
    */
-  private void checkPatch(final String name,
-                          final String branchName, final String fromVersion,
-                          final String toVersion,
-                          boolean enableSubmodules
-  )
-    throws IOException, VcsException {
+  private void checkPatch(String name, String branchName, String fromVersion, String toVersion, boolean enableSubmodules) throws IOException, VcsException {
     setName(name);
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot(branchName, enableSubmodules);
