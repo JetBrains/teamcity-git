@@ -70,75 +70,30 @@ import static jetbrains.buildServer.util.FileUtil.writeFile;
  * The tests for version detection functionality
  */
 public class GitVcsSupportTest extends PatchTestCase {
-  /**
-   * The version of "version-test" HEAD
-   */
-  public static final String VERSION_TEST_HEAD = GitUtils.makeVersion("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", 1237391915000L);
-  /**
-   * The version that contains add/remove/update changes
-   */
-  public static final String CUD1_VERSION = GitUtils.makeVersion("ad4528ed5c84092fdbe9e0502163cf8d6e6141e7", 1238072086000L);
-  /**
-   * The merge head version
-   */
-  private static final String MERGE_VERSION = GitUtils.makeVersion("f3f826ce85d6dad25156b2d7550cedeb1a422f4c", 1238086450000L);
-  /**
-   * The merge branch version
-   */
-  private static final String MERGE_BRANCH_VERSION = GitUtils.makeVersion("ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", 1238085489000L);
-  /**
-   * The merge branch version
-   */
-  public static final String SUBMODULE_MODIFIED_VERSION = GitUtils.makeVersion("37c371a6db0acefc77e3be99d16a44413e746591", 1245773817000L);
-  /**
-   * The merge branch version
-   */
-  public static final String SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", 1245766034000L);
-  /**
-   * The merge branch version
-   */
-  public static final String SUBMODULE_TXT_ADDED_VERSION = GitUtils.makeVersion("d1a88fd33c516c1b607db75eb62244b2ea495c42", 1246534153000L);
-  /**
-   * The merge branch version
-   */
-  public static final String BEFORE_SUBMODULE_ADDED_VERSION =
-    GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L);
-  /**
-   * Version before submodule which itselft contains submodules added
-   */
-  public static final String BEFORE_FIRST_LEVEL_SUBMODULE_ADDED_VERSION =
-    GitUtils.makeVersion("f3f826ce85d6dad25156b2d7550cedeb1a422f4c", 1238421437000L);
-  /**
-   * Version after submodule which itself contains submodules added
-   */
-  public static final String AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION =
-    GitUtils.makeVersion("ce6044093939bb47283439d97a1c80f759669ff5", 1238421437000L);
-  /**
-   * The source directory
-   */
-  protected File myMainRepositoryDir;
-  private File myTmpDir;
-  private ServerPaths myServerPaths;
-  private PluginConfigBuilder myConfigBuilder;
-  /**
-   * Temporary files
-   */
-  protected static TempFiles myTempFiles = new TempFiles();
-  private ResetCacheRegister myResetCacheManager;
 
-  static {
-    Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-      public void run() {
-        myTempFiles.cleanup();
-      }
-    }));
-  }
+  public static final String VERSION_TEST_HEAD = GitUtils.makeVersion("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", 1237391915000L);
+  public static final String CUD1_VERSION = GitUtils.makeVersion("ad4528ed5c84092fdbe9e0502163cf8d6e6141e7", 1238072086000L);
+  private static final String MERGE_VERSION = GitUtils.makeVersion("f3f826ce85d6dad25156b2d7550cedeb1a422f4c", 1238086450000L);
+  private static final String MERGE_BRANCH_VERSION = GitUtils.makeVersion("ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", 1238085489000L);
+  public static final String SUBMODULE_MODIFIED_VERSION = GitUtils.makeVersion("37c371a6db0acefc77e3be99d16a44413e746591", 1245773817000L);
+  public static final String SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", 1245766034000L);
+  public static final String SUBMODULE_TXT_ADDED_VERSION = GitUtils.makeVersion("d1a88fd33c516c1b607db75eb62244b2ea495c42", 1246534153000L);
+  public static final String BEFORE_SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L);
+  public static final String BEFORE_FIRST_LEVEL_SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("f3f826ce85d6dad25156b2d7550cedeb1a422f4c", 1238421437000L);
+  public static final String AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("ce6044093939bb47283439d97a1c80f759669ff5", 1238421437000L);
+
+  private File myMainRepositoryDir;
+  private File myTmpDir;
+  private PluginConfigBuilder myConfigBuilder;
+  private TempFiles myTempFiles;
+  private ResetCacheRegister myResetCacheManager;
 
   @BeforeMethod
   public void setUp() throws IOException {
+    myTempFiles = new TempFiles();
     File teamcitySystemDir = myTempFiles.createTempDir();
-    myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
-    myConfigBuilder = new PluginConfigBuilder(myServerPaths);
+    ServerPaths paths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
+    myConfigBuilder = new PluginConfigBuilder(paths);
     File masterRep = dataFile("repo.git");
     myTmpDir = myTempFiles.createTempDir();
     myMainRepositoryDir = new File(myTmpDir, "repo.git");
@@ -571,10 +526,8 @@ public class GitVcsSupportTest extends PatchTestCase {
   public void testCollectBuildChangesWithBrokenSubmoduleOnLastCommit() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("wrong-submodule", true);
-
-    String brokenSubmoduleCommit = GitUtils.makeVersion("78cbbed3561de3417467ee819b1795ba14c03dfb", 1282637672000L);
     try {
-      support.collectChanges(root, MERGE_VERSION, brokenSubmoduleCommit, new CheckoutRules(""));
+      support.collectChanges(root, MERGE_VERSION, "78cbbed3561de3417467ee819b1795ba14c03dfb", CheckoutRules.DEFAULT);
       fail("We should throw exception if submodules in the last commit are broken");
     } catch (Exception e) {
       assertTrue(true);
@@ -586,9 +539,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   public void testCollectBuildChangesWithFixedSubmoduleOnLastCommit() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("wrong-submodule", true);
-
-    String fixedSubmoduleCommit = GitUtils.makeVersion("f5bdd3819df0358a43d9a8f94eaf96bb306e19fe", 1282636308000L);
-    List<ModificationData> mds = support.collectChanges(root, MERGE_VERSION, fixedSubmoduleCommit, new CheckoutRules(""));
+    List<ModificationData> mds = support.collectChanges(root, MERGE_VERSION, "f5bdd3819df0358a43d9a8f94eaf96bb306e19fe", CheckoutRules.DEFAULT);
     assertEquals(mds.size(), 4);
     assertEquals(mds.get(0).getChanges().size(), 2);
   }
@@ -598,11 +549,10 @@ public class GitVcsSupportTest extends PatchTestCase {
   public void testCollectBuildChangesWithFixedBrokenFixedSubmodule() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("wrong-submodule", true);
-    String fixedSubmoduleCommit = GitUtils.makeVersion("f5bdd3819df0358a43d9a8f94eaf96bb306e19fe", 1282636308000L);
-    String submoduleFixedAgainCommit = GitUtils.makeVersion("92112555d9eb3e433eaa91fe32ec001ae8fe3c52", 1282736040000L);
-    List<ModificationData> mds = support.collectChanges(root, fixedSubmoduleCommit, submoduleFixedAgainCommit, new CheckoutRules(""));
+    String fixedSubmoduleCommit = "f5bdd3819df0358a43d9a8f94eaf96bb306e19fe";
+    String submoduleFixedAgainCommit = "92112555d9eb3e433eaa91fe32ec001ae8fe3c52";
+    List<ModificationData> mds = support.collectChanges(root, fixedSubmoduleCommit, submoduleFixedAgainCommit, CheckoutRules.DEFAULT);
     assertEquals(2, mds.size());
-
     for (ModificationData md : mds) {
       assertEquals(md.getChanges().size(), 1); //this means we don't report remove and add of all submodule files
     }
@@ -614,8 +564,8 @@ public class GitVcsSupportTest extends PatchTestCase {
   public void testCollectChangesWithBrokenSubmoduleOnLastCommitAndUsualFileInsteadOfSubmoduleInPreviousCommit() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("wrong-submodule", true);
-    String fromCommit = GitUtils.makeVersion("f5bdd3819df0358a43d9a8f94eaf96bb306e19fe", 1282636308000L);
-    String lastCommit = GitUtils.makeVersion("39679cc440c83671fbf6ad8083d92517f9602300", 1324998585000L);
+    String fromCommit = "f5bdd3819df0358a43d9a8f94eaf96bb306e19fe";
+    String lastCommit = "39679cc440c83671fbf6ad8083d92517f9602300";
     support.collectChanges(root, fromCommit, lastCommit, CheckoutRules.DEFAULT);
   }
 
@@ -625,11 +575,10 @@ public class GitVcsSupportTest extends PatchTestCase {
     myConfigBuilder.setFixedSubmoduleCommitSearchDepth(0);//do no search submodule commit with fix at all
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("wrong-submodule", true);
-    String fixedSubmoduleCommit = GitUtils.makeVersion("f5bdd3819df0358a43d9a8f94eaf96bb306e19fe", 1282636308000L);
-    String submoduleFixedAgainCommit = GitUtils.makeVersion("92112555d9eb3e433eaa91fe32ec001ae8fe3c52", 1282736040000L);
-    List<ModificationData> mds = support.collectChanges(root, fixedSubmoduleCommit, submoduleFixedAgainCommit, new CheckoutRules(""));
+    String fixedSubmoduleCommit = "f5bdd3819df0358a43d9a8f94eaf96bb306e19fe";
+    String submoduleFixedAgainCommit = "92112555d9eb3e433eaa91fe32ec001ae8fe3c52";
+    List<ModificationData> mds = support.collectChanges(root, fixedSubmoduleCommit, submoduleFixedAgainCommit, CheckoutRules.DEFAULT);
     assertEquals(2, mds.size());
-
     assertEquals(2, mds.get(0).getChanges().size());//that means we did not try to find commit with fixed submodule
     //we report add of all files from submodule repository, so the first change is the change to .gitmodules,
     //and the second - is the addition of file.txt from submodule
@@ -895,23 +844,16 @@ public class GitVcsSupportTest extends PatchTestCase {
     Runnable mapFullPath = new Runnable() {
       public void run() {
         try {
+          final VcsRootEntry rootEntry = new VcsRootEntry(root, CheckoutRules.DEFAULT);
           for (int i = 0; i < 5; i++) {
-            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
-                                GitUtils.versionRevision(VERSION_TEST_HEAD) + "|" + repositoryUrl + "|readme.txt");
-            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
-                                "ad4528ed5c84092fdbe9e0502163cf8d6e6141e8|" + repositoryUrl + "|readme.txt");
-            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
-                                GitUtils.versionRevision(MERGE_VERSION) + "|" + repositoryUrl + "|readme.txt");
-            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
-                                "ad4528ed5c84092fdbe9e0502163cf8d6e6141e9|" + repositoryUrl + "|readme.txt");
-            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
-                                GitUtils.versionRevision(MERGE_BRANCH_VERSION) + "|" + repositoryUrl + "|readme.txt");
-            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
-                                "ad4528ed5c84092fdbe9e0502163cf8d6e6141f0|" + repositoryUrl + "|readme.txt");
-            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
-                                GitUtils.versionRevision(CUD1_VERSION) + "|" + repositoryUrl + "|readme.txt");
-            support.mapFullPath(new VcsRootEntry(root, new CheckoutRules("")),
-                                "ad4528ed5c84092fdbe9e0502163cf8d6e6141f1|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(rootEntry, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(rootEntry, "ad4528ed5c84092fdbe9e0502163cf8d6e6141e8|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(rootEntry, "f3f826ce85d6dad25156b2d7550cedeb1a422f4c|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(rootEntry, "ad4528ed5c84092fdbe9e0502163cf8d6e6141e9|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(rootEntry, "ee886e4adb70fbe3bdc6f3f6393598b3f02e8009|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(rootEntry, "ad4528ed5c84092fdbe9e0502163cf8d6e6141f0|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(rootEntry, "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7|" + repositoryUrl + "|readme.txt");
+            support.mapFullPath(rootEntry, "ad4528ed5c84092fdbe9e0502163cf8d6e6141f1|" + repositoryUrl + "|readme.txt");
           }
         } catch (Exception e) {
           errors.add(e);
