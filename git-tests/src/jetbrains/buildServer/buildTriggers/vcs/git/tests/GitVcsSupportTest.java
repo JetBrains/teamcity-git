@@ -748,6 +748,34 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  @Test
+  public void build_patch_from_later_revision_to_earlier() throws Exception {
+    checkPatch("patch5", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46");
+  }
+
+
+  //Due to changes in the logic of choosing checkout directory on the agent (builds
+  //from the same repository go to the same dir even if the branches are different), git-plugin
+  //should be able to decide if it can build an incremental patch, or full patch is required.
+  //There are 2 possible cases: revision from which we build the patch is found in the local clone
+  //of repository on the server or not. If revision is not found - git-plugin should build a full patch.
+  //2 following tests test this behaviour
+
+  @Test
+  public void build_patch_between_unrelated_revisions_when_from_version_is_fetched() throws Exception {
+    //fetches fromRevision (592c5bcee6d906482177a62a6a44efa0cff9bbc7) into a repository clone on the server:
+    getSupport().getCurrentVersion(getRoot("patch-tests"));
+    checkPatch("patch6", "rename-test", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9", false);
+  }
+
+
+  @Test
+  public void build_patch_between_unrelated_revisions_when_from_version_is_not_fetched() throws Exception {
+    //fromRevision (592c5bcee6d906482177a62a6a44efa0cff9bbc7) is not found in a repository clone on the server:
+    checkPatch("patch7", "rename-test", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9", false);
+  }
+
+
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testSubmodulePatches(boolean fetchInSeparateProcess) throws IOException, VcsException {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);

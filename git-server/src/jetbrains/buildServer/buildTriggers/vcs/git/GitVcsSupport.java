@@ -295,11 +295,14 @@ public class GitVcsSupport extends ServerVcsSupport
           if (debugFlag) {
             LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + context.getSettings().debugInfo());
           }
-          RevCommit fromCommit = getCommit(r, GitUtils.versionRevision(fromVersion));
+          RevCommit fromCommit = findCommit(r, GitUtils.versionRevision(fromVersion));
           if (fromCommit == null) {
-            throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not available in the repository");
+            LOG.info("The commit " + fromCommit + " is not available in the repository, build a clean patch");
+            tw.addTree(new EmptyTreeIterator());
+            builder.deleteDirectory(new File(""), true);//delete everything from checkout dir
+          } else {
+            context.addTree(tw, r, fromCommit, true);
           }
-          context.addTree(tw, r, fromCommit, true);
         } else {
           if (debugFlag) {
             LOG.debug("Creating clean patch " + toVersion + " for " + context.getSettings().debugInfo());
@@ -506,6 +509,14 @@ public class GitVcsSupport extends ServerVcsSupport
       }
     }
     return result;
+  }
+
+  private RevCommit findCommit(@NotNull Repository r, String sha) {
+    try {
+      return getCommit(r, sha);
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   RevCommit getCommit(Repository repository, String commitSHA) throws IOException {
