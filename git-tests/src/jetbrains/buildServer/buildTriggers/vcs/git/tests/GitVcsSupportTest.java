@@ -772,9 +772,9 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test
   public void build_patch_between_unrelated_revisions_when_from_version_is_not_fetched() throws Exception {
     //fromRevision (592c5bcee6d906482177a62a6a44efa0cff9bbc7) is not found in a repository clone on the server:
-    checkPatch("patch7", "rename-test", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9", false);
+    VcsRoot root = getRoot("rename-test");
+    checkPatch(root, "patch7", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9", new CheckoutRules("+:.=>path"));
   }
-
 
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testSubmodulePatches(boolean fetchInSeparateProcess) throws IOException, VcsException {
@@ -810,6 +810,16 @@ public class GitVcsSupportTest extends PatchTestCase {
     final ByteArrayOutputStream output = new ByteArrayOutputStream();
     final PatchBuilderImpl builder = new PatchBuilderImpl(output);
     support.buildPatch(root, fromVersion, toVersion, builder, new CheckoutRules(""));
+    builder.close();
+    checkPatchResult(output.toByteArray());
+  }
+
+  private void checkPatch(@NotNull VcsRoot root, String name, String fromVersion, String toVersion, CheckoutRules rules) throws IOException, VcsException {
+    setName(name);
+    GitVcsSupport support = getSupport();
+    final ByteArrayOutputStream output = new ByteArrayOutputStream();
+    final PatchBuilderImpl builder = new PatchBuilderImpl(output);
+    support.buildPatch(root, fromVersion, toVersion, builder, rules);
     builder.close();
     checkPatchResult(output.toByteArray());
   }

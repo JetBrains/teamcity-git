@@ -17,7 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 /** Git change type */
-enum ChangeType {
+public enum ChangeType {
   /** the file is added */
   ADDED,
   /** the file is deleted */

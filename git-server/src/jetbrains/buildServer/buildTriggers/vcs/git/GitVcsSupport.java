@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.ExtensionHolder;
+import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilder;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.impl.LogUtil;
@@ -41,16 +42,13 @@ import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
-import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilterGroup;
-import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
 import java.util.regex.Pattern;
 
@@ -272,111 +270,17 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   public void buildPatch(@NotNull VcsRoot root,
-                         @Nullable final String fromVersion,
+                         @Nullable String fromVersion,
                          @NotNull String toVersion,
-                         @NotNull final PatchBuilder builder,
+                         @NotNull PatchBuilder builder,
                          @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
-    final OperationContext context = createContext(root, "patch building");
-    final boolean debugFlag = LOG.isDebugEnabled();
-    final boolean debugInfoOnEachCommit = myConfig.isPrintDebugInfoOnEachCommit();
+    OperationContext context = createContext(root, "patch building");
+    String fromRevision = fromVersion != null ? GitUtils.versionRevision(fromVersion) : null;
+    String toRevision = GitUtils.versionRevision(toVersion);
+    GitPatchBuilder gitPatchBuilder = new GitPatchBuilder(myConfig, context, builder, fromRevision, toRevision, checkoutRules);
     try {
-      final Repository r = context.getRepository();
-      VcsChangeTreeWalk tw = null;
-      try {
-        RevCommit toCommit = ensureRevCommitLoaded(context, context.getSettings(), GitUtils.versionRevision(toVersion));
-        if (toCommit == null) {
-          throw new VcsException("Missing commit for version: " + toVersion);
-        }
-        tw = new VcsChangeTreeWalk(r, context.getSettings().debugInfo());
-        tw.setFilter(TreeFilter.ANY_DIFF);
-        tw.setRecursive(true);
-        context.addTree(tw, r, toCommit, false);
-        if (fromVersion != null) {
-          if (debugFlag) {
-            LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + context.getSettings().debugInfo());
-          }
-          RevCommit fromCommit = findCommit(r, GitUtils.versionRevision(fromVersion));
-          if (fromCommit == null) {
-            LOG.info("The commit " + fromCommit + " is not available in the repository, build a clean patch");
-            tw.addTree(new EmptyTreeIterator());
-            builder.deleteDirectory(new File(""), true);//delete everything from checkout dir
-          } else {
-            context.addTree(tw, r, fromCommit, true);
-          }
-        } else {
-          if (debugFlag) {
-            LOG.debug("Creating clean patch " + toVersion + " for " + context.getSettings().debugInfo());
-          }
-          tw.addTree(new EmptyTreeIterator());
-        }
-        final List<Callable<Void>> actions = new LinkedList<Callable<Void>>();
-        while (tw.next()) {
-          final String path = tw.getPathString();
-          final String mapped = checkoutRules.map(path);
-          if (mapped == null) {
-            continue;
-          }
-          if (debugFlag && debugInfoOnEachCommit) {
-            LOG.debug("File found " + tw.treeWalkInfo(path) + " for " + context.getSettings().debugInfo());
-          }
-          switch (tw.classifyChange()) {
-            case UNCHANGED:
-              // change is ignored
-              continue;
-            case MODIFIED:
-            case ADDED:
-            case FILE_MODE_CHANGED:
-              if (!FileMode.GITLINK.equals(tw.getFileMode(0))) {
-                final String mode = tw.getModeDiff();
-                if (mode != null && LOG.isDebugEnabled())
-                  LOG.debug("The mode change " + mode + " is detected for " + tw.treeWalkInfo(path));
-                final ObjectId id = tw.getObjectId(0);
-                final Repository objRep = getRepository(r, tw, 0);
-                final Callable<Void> action = new Callable<Void>() {
-                  public Void call() throws Exception {
-                    InputStream objectStream = null;
-                    try {
-                      final ObjectLoader loader = objRep.open(id);
-                      if (loader == null) {
-                        throw new IOException("Unable to find blob " + id + (path == null ? "" : "(" + path + ")") + " in repository " + r);
-                      }
-                      objectStream = loader.isLarge() ? loader.openStream() : new ByteArrayInputStream(loader.getCachedBytes());
-                      builder.changeOrCreateBinaryFile(GitUtils.toFile(mapped), mode, objectStream, loader.getSize());
-                    } catch (Error e) {
-                      LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + context.getSettings().debugInfo());
-                      throw e;
-                    } catch (Exception e) {
-                      LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + context.getSettings().debugInfo());
-                      throw e;
-                    } finally {
-                      if (objectStream != null) objectStream.close();
-                    }
-                    return null;
-                  }
-                };
-                if (fromVersion == null) {
-                  // clean patch, we aren't going to see any deletes
-                  action.call();
-                } else {
-                  actions.add(action);
-                }
-              }
-              break;
-            case DELETED:
-              if (!FileMode.GITLINK.equals(tw.getFileMode(0))) {
-                builder.deleteFile(GitUtils.toFile(mapped), true);
-              }
-              break;
-            default:
-              throw new IllegalStateException("Unknown change type");
-          }
-        }
-        for (Callable<Void> a : actions) {
-          a.call();
-        }
-      } finally {
-        if (tw != null) tw.release();
-      }
+      ensureRevCommitLoaded(context, context.getSettings(), toRevision);
+      gitPatchBuilder.buildPatch();
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
@@ -478,11 +382,13 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
+  @NotNull
   private RevCommit ensureCommitLoaded(OperationContext context, Settings rootSettings, String commitWithDate) throws Exception {
     final String commit = GitUtils.versionRevision(commitWithDate);
     return ensureRevCommitLoaded(context, rootSettings, commit);
   }
 
+  @NotNull
   private RevCommit ensureRevCommitLoaded(OperationContext context, Settings settings, String commitSHA) throws Exception {
     Repository db = context.getRepository(settings);
     RevCommit result = null;
@@ -511,15 +417,7 @@ public class GitVcsSupport extends ServerVcsSupport
     return result;
   }
 
-  private RevCommit findCommit(@NotNull Repository r, String sha) {
-    try {
-      return getCommit(r, sha);
-    } catch (Exception e) {
-      return null;
-    }
-  }
-
-  RevCommit getCommit(Repository repository, String commitSHA) throws IOException {
+  public RevCommit getCommit(Repository repository, String commitSHA) throws IOException {
     return getCommit(repository, ObjectId.fromString(commitSHA));
   }
 
