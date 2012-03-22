@@ -124,7 +124,7 @@ public class BrowserSupportTest {
 
   private void assertFile(@NotNull Element f, @NotNull String name, @NotNull String fullName) {
     assertThat(f.getName(), equalTo(name));
-    assertThat(f.getFullName(), equalTo(fullName));
+    assertThat(f.getFullName(), equalTo(fullName.replaceAll("/", File.separator)));
     assertTrue(f.isLeaf());
     assertTrue(f.isContentAvailable());
     assertThat(f, hasContentAsInRepository());
@@ -132,7 +132,7 @@ public class BrowserSupportTest {
 
   private void assertDir(@NotNull Element dir, @NotNull String name, @NotNull String fullName) throws IOException {
     assertThat(dir.getName(), equalTo(name));
-    assertThat(dir.getFullName(), equalTo(fullName));
+    assertThat(dir.getFullName(), equalTo(fullName.replaceAll("/", File.separator)));
     assertThat(dir, is(directory()));
     assertThat(dir, doesNotSupportInputStream());
     assertThat(dir, doesNotSupportSize());
