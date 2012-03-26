@@ -24,10 +24,10 @@ import org.testng.annotations.DataProvider;
  */
 public class FetchOptionsDataProvider {
   @DataProvider(name = "doFetchInSeparateProcess")
-    public static Object[][] createData() {
-      return new Object[][] {
-        new Object[] { Boolean.TRUE },
-        new Object[] { Boolean.FALSE }
-      };
-    }
+  public static Object[][] createData() {
+    return new Object[][] {
+      new Object[] { Boolean.TRUE },
+      new Object[] { Boolean.FALSE }
+    };
+  }
 }

@@ -92,18 +92,18 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
    */
   private void validateCheckoutRules(@NotNull final VcsRoot root, @NotNull final CheckoutRules rules) throws VcsException {
     if (rules.getExcludeRules().size() != 0) {
-      throw new VcsException("The exclude rules are not supported for agent checkout for the git (" + rules.getExcludeRules().size() +
-                             " rule(s) detected) for VCS Root " + root.getName());
+      throw new VcsException("Exclude rules are not supported for agent checkout for the git (" + rules.getExcludeRules().size() +
+                             " rule(s) detected) for VCS Root '" + root.getName() + "'");
     }
     if (rules.getIncludeRules().size() > 1) {
       throw new VcsException("At most one include rule is supported for agent checkout for the git (" + rules.getIncludeRules().size() +
-                             " rule(s) detected) for VCS Root " + root.getName());
+                             " rule(s) detected) for VCS Root '" + root.getName() + "'");
     }
     if (rules.getIncludeRules().size() == 1) {
       IncludeRule ir = rules.getIncludeRules().get(0);
       if (!".".equals(ir.getFrom()) && ir.getFrom().length() != 0) {
-        throw new VcsException("Agent checkout for the git supports only include rule of form '. => subdir', rule " + ir.toDescriptiveString() +
-                               " for VCS Root " + root.getName() + " is not supported");
+        throw new VcsException("Agent checkout for the git supports only include rule of form '. => subdir', rule '" + ir.toDescriptiveString() +
+                               "' for VCS Root '" + root.getName() + "' is not supported");
       }
     }
   }
@@ -120,7 +120,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private File getTargetDir(@NotNull final VcsRoot root, @NotNull final CheckoutRules rules, @NotNull final File checkoutDirectory) throws VcsException {
     String path = rules.map("");
     if (path == null)
-      throw new VcsException("The root path could not be mapped for " + root.getName());
+      throw new VcsException("The root path could not be mapped for VCS root '" + root.getName() + "'");
 
     File directory = path.length() == 0 ? checkoutDirectory : new File(checkoutDirectory, path.replace('/', File.separatorChar));
     if (!directory.exists()) {

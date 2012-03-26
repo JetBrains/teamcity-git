@@ -135,8 +135,9 @@ public class NativeGitFacade implements GitFacade {
     return new VersionCommandImpl(createCommandLine());
   }
 
+  @NotNull
   public LsRemoteCommand lsRemote() {
-    return new LsRemoteCommandImpl(createCommandLine());
+    return new LsRemoteCommandImpl(createCommandLine(), mySsh);
   }
 
   @NotNull

@@ -29,7 +29,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * @author dmitry.neverov
  */
-class VcsChangeTreeWalk extends TreeWalk {
+public class VcsChangeTreeWalk extends TreeWalk {
 
   private static Logger LOG = Logger.getInstance(VcsChangeTreeWalk.class.getName());
 
@@ -67,7 +67,7 @@ class VcsChangeTreeWalk extends TreeWalk {
    * @return change type
    */
   @NotNull
-  ChangeType classifyChange() {
+  public ChangeType classifyChange() {
     final FileMode mode0 = getFileMode(0);
     if (FileMode.MISSING.equals(mode0)) {
       for (int i = 1; i < getTreeCount(); i++) {
@@ -137,7 +137,7 @@ class VcsChangeTreeWalk extends TreeWalk {
   }
 
 
-  String treeWalkInfo(final String path) {
+  public String treeWalkInfo(final String path) {
     StringBuilder b = new StringBuilder();
     b.append(path);
     b.append('(');
@@ -158,7 +158,7 @@ class VcsChangeTreeWalk extends TreeWalk {
    * Get difference in the file mode (passed to chmod), null if there is no difference
    * @return see above
    */
-  String getModeDiff() {
+  public String getModeDiff() {
     boolean cExec = isExecutable(getFileMode(0));
     boolean pExec = isExecutable(getFileMode(1));
     String mode;

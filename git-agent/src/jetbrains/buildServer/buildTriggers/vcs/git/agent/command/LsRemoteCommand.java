@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
+import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
@@ -26,7 +27,14 @@ import java.util.List;
  */
 public interface LsRemoteCommand {
 
-  public LsRemoteCommand showTags();
+  @NotNull
+  LsRemoteCommand showTags();
+
+  @NotNull
+  LsRemoteCommand setAuthSettings(@NotNull Settings.AuthSettings authSettings);
+
+  @NotNull
+  LsRemoteCommand setUseNativeSsh(boolean useNativeSsh);
 
   @NotNull
   public List<Ref> call();

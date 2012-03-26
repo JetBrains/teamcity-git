@@ -78,5 +78,6 @@ public interface GitFacade {
   @NotNull
   VersionCommand version();
 
+  @NotNull
   LsRemoteCommand lsRemote();
 }

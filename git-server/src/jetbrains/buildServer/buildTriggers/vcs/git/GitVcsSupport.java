@@ -19,11 +19,15 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.ExtensionHolder;
+import jetbrains.buildServer.buildTriggers.vcs.git.browse.EmptyBrowser;
+import jetbrains.buildServer.buildTriggers.vcs.git.browse.GitBrowser;
+import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilder;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.impl.LogUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
+import jetbrains.buildServer.util.browser.BrowserException;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.RepositoryState;
@@ -41,16 +45,15 @@ import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
-import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilterGroup;
-import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
 import java.util.regex.Pattern;
 
@@ -63,7 +66,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendly
  */
 public class GitVcsSupport extends ServerVcsSupport
   implements VcsPersonalSupport, LabelingSupport, VcsFileContentProvider, CollectChangesBetweenRoots, BuildPatchByCheckoutRules,
-             TestConnectionSupport, BranchSupport, IncludeRuleBasedMappingProvider {
+             TestConnectionSupport, BranchSupport, IncludeRuleBasedMappingProvider, BrowseSupport {
 
   private static Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   private static Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
@@ -93,7 +96,7 @@ public class GitVcsSupport extends ServerVcsSupport
     myRepositoryManager = repositoryManager;
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(myConfig.getCurrentVersionCacheSize());
     setStreamFileThreshold();
-    resetCacheManager.registerHandler(new GitResetCacheHandler(repositoryManager));
+    resetCacheManager.registerHandler(new GitResetCacheHandler(this, repositoryManager));
   }
 
 
@@ -272,108 +275,17 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   public void buildPatch(@NotNull VcsRoot root,
-                         @Nullable final String fromVersion,
+                         @Nullable String fromVersion,
                          @NotNull String toVersion,
-                         @NotNull final PatchBuilder builder,
+                         @NotNull PatchBuilder builder,
                          @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
-    final OperationContext context = createContext(root, "patch building");
-    final boolean debugFlag = LOG.isDebugEnabled();
-    final boolean debugInfoOnEachCommit = myConfig.isPrintDebugInfoOnEachCommit();
+    OperationContext context = createContext(root, "patch building");
+    String fromRevision = fromVersion != null ? GitUtils.versionRevision(fromVersion) : null;
+    String toRevision = GitUtils.versionRevision(toVersion);
+    GitPatchBuilder gitPatchBuilder = new GitPatchBuilder(myConfig, context, builder, fromRevision, toRevision, checkoutRules);
     try {
-      final Repository r = context.getRepository();
-      VcsChangeTreeWalk tw = null;
-      try {
-        RevCommit toCommit = ensureRevCommitLoaded(context, context.getSettings(), GitUtils.versionRevision(toVersion));
-        if (toCommit == null) {
-          throw new VcsException("Missing commit for version: " + toVersion);
-        }
-        tw = new VcsChangeTreeWalk(r, context.getSettings().debugInfo());
-        tw.setFilter(TreeFilter.ANY_DIFF);
-        tw.setRecursive(true);
-        context.addTree(tw, r, toCommit, false);
-        if (fromVersion != null) {
-          if (debugFlag) {
-            LOG.debug("Creating patch " + fromVersion + ".." + toVersion + " for " + context.getSettings().debugInfo());
-          }
-          RevCommit fromCommit = getCommit(r, GitUtils.versionRevision(fromVersion));
-          if (fromCommit == null) {
-            throw new IncrementalPatchImpossibleException("The form commit " + fromVersion + " is not available in the repository");
-          }
-          context.addTree(tw, r, fromCommit, true);
-        } else {
-          if (debugFlag) {
-            LOG.debug("Creating clean patch " + toVersion + " for " + context.getSettings().debugInfo());
-          }
-          tw.addTree(new EmptyTreeIterator());
-        }
-        final List<Callable<Void>> actions = new LinkedList<Callable<Void>>();
-        while (tw.next()) {
-          final String path = tw.getPathString();
-          final String mapped = checkoutRules.map(path);
-          if (mapped == null) {
-            continue;
-          }
-          if (debugFlag && debugInfoOnEachCommit) {
-            LOG.debug("File found " + tw.treeWalkInfo(path) + " for " + context.getSettings().debugInfo());
-          }
-          switch (tw.classifyChange()) {
-            case UNCHANGED:
-              // change is ignored
-              continue;
-            case MODIFIED:
-            case ADDED:
-            case FILE_MODE_CHANGED:
-              if (!FileMode.GITLINK.equals(tw.getFileMode(0))) {
-                final String mode = tw.getModeDiff();
-                if (mode != null && LOG.isDebugEnabled())
-                  LOG.debug("The mode change " + mode + " is detected for " + tw.treeWalkInfo(path));
-                final ObjectId id = tw.getObjectId(0);
-                final Repository objRep = getRepository(r, tw, 0);
-                final Callable<Void> action = new Callable<Void>() {
-                  public Void call() throws Exception {
-                    InputStream objectStream = null;
-                    try {
-                      final ObjectLoader loader = objRep.open(id);
-                      if (loader == null) {
-                        throw new IOException("Unable to find blob " + id + (path == null ? "" : "(" + path + ")") + " in repository " + r);
-                      }
-                      objectStream = loader.isLarge() ? loader.openStream() : new ByteArrayInputStream(loader.getCachedBytes());
-                      builder.changeOrCreateBinaryFile(GitUtils.toFile(mapped), mode, objectStream, loader.getSize());
-                    } catch (Error e) {
-                      LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + context.getSettings().debugInfo());
-                      throw e;
-                    } catch (Exception e) {
-                      LOG.error("Unable to load file: " + path + "(" + id.name() + ") from: " + context.getSettings().debugInfo());
-                      throw e;
-                    } finally {
-                      if (objectStream != null) objectStream.close();
-                    }
-                    return null;
-                  }
-                };
-                if (fromVersion == null) {
-                  // clean patch, we aren't going to see any deletes
-                  action.call();
-                } else {
-                  actions.add(action);
-                }
-              }
-              break;
-            case DELETED:
-              if (!FileMode.GITLINK.equals(tw.getFileMode(0))) {
-                builder.deleteFile(GitUtils.toFile(mapped), true);
-              }
-              break;
-            default:
-              throw new IllegalStateException("Unknown change type");
-          }
-        }
-        for (Callable<Void> a : actions) {
-          a.call();
-        }
-      } finally {
-        if (tw != null) tw.release();
-      }
+      ensureRevCommitLoaded(context, context.getSettings(), toRevision);
+      gitPatchBuilder.buildPatch();
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
@@ -475,11 +387,13 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
+  @NotNull
   private RevCommit ensureCommitLoaded(OperationContext context, Settings rootSettings, String commitWithDate) throws Exception {
     final String commit = GitUtils.versionRevision(commitWithDate);
     return ensureRevCommitLoaded(context, rootSettings, commit);
   }
 
+  @NotNull
   private RevCommit ensureRevCommitLoaded(OperationContext context, Settings settings, String commitSHA) throws Exception {
     Repository db = context.getRepository(settings);
     RevCommit result = null;
@@ -508,7 +422,7 @@ public class GitVcsSupport extends ServerVcsSupport
     return result;
   }
 
-  RevCommit getCommit(Repository repository, String commitSHA) throws IOException {
+  public RevCommit getCommit(Repository repository, String commitSHA) throws IOException {
     return getCommit(repository, ObjectId.fromString(commitSHA));
   }
 
@@ -642,6 +556,9 @@ public class GitVcsSupport extends ServerVcsSupport
 
   /**
    * Return cached current version for branch in repository in specified dir, or null if no cache version found.
+   * @param repositoryDir cloned repository dir
+   * @param branchName branch name of interest
+   * @return see above
    */
   private String getCachedCurrentVersion(File repositoryDir, String branchName) {
     return myCurrentVersionCache.get(Pair.create(repositoryDir, branchName));
@@ -649,10 +566,29 @@ public class GitVcsSupport extends ServerVcsSupport
 
   /**
    * Save current version for branch of repository in cache.
+   * @param repositoryDir cloned repository dir
+   * @param branchName branch name of interest
+   * @param currentVersion current branch revision
    */
   private void setCachedCurrentVersion(File repositoryDir, String branchName, String currentVersion) {
     myCurrentVersionCache.put(Pair.create(repositoryDir, branchName), currentVersion);
   }
+
+
+  /**
+   * Resets all caches for current versions of branches for specified mirror dir
+   * @param mirrorDir mirror dir of interest
+   */
+  public void resetCachedCurrentVersions(@NotNull File mirrorDir) {
+    synchronized (myCurrentVersionCache) {
+      for (Pair<File, String> k : myCurrentVersionCache.keySet()) {
+        File dir = k.first;
+        if (mirrorDir.equals(dir))
+          myCurrentVersionCache.remove(k);
+      }
+    }
+  }
+
 
   public boolean sourcesUpdatePossibleIfChangesNotFound(@NotNull VcsRoot root) {
     return true;
@@ -916,5 +852,22 @@ public class GitVcsSupport extends ServerVcsSupport
   @Override
   public boolean isDAGBasedVcs() {
     return true;
+  }
+
+
+  @NotNull
+  public VcsBrowser getBrowserForRoot(@NotNull VcsRoot root) throws BrowserException {
+    OperationContext context = createContext(root, "list files");
+    try {
+      Settings s = context.getSettings();
+      String currentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getRef());
+      if (currentVersion != null)
+        return new GitBrowser(this, root, GitUtils.versionRevision(currentVersion));
+      return new EmptyBrowser();
+    } catch (VcsException e) {
+      throw new BrowserException(e);
+    } finally {
+      context.close();
+    }
   }
 }

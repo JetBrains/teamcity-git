@@ -28,6 +28,7 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -173,6 +174,15 @@ public class OperationContext {
       tw.addTree(create(db, commit, submoduleResolver, s.getRepositoryFetchURL().toString(), "", checkoutPolicy, logSubmoduleErrors));
     } else {
       tw.addTree(commit.getTree().getId());
+    }
+  }
+
+  @Nullable
+  public RevCommit findCommit(@NotNull Repository r, String sha) {
+    try {
+      return mySupport.getCommit(r, sha);
+    } catch (Exception e) {
+      return null;
     }
   }
 }

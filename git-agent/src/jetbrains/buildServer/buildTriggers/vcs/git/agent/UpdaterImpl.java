@@ -542,6 +542,10 @@ public class UpdaterImpl implements Updater {
 
   private Tags getRemoteTags(@NotNull File workingDir) {
     GitFacade git = myGitFactory.create(workingDir);
-    return new Tags(git.lsRemote().showTags().call());
+    List<Ref> refs = git.lsRemote().setAuthSettings(mySettings.getAuthSettings())
+      .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
+      .showTags()
+      .call();
+    return new Tags(refs);
   }
 }

@@ -44,8 +44,8 @@ public class CommandUtil {
     String stderr = res.getStderr().trim();
     String stdout = res.getStdout().trim();
     final String message = "'" + cmdName + "' command failed." +
-            (!StringUtil.isEmpty(stderr) ? "\n" + "stderr: " + stderr : "") +
             (!StringUtil.isEmpty(stdout) ? "\n" + "stdout: " + stdout : "") +
+            (!StringUtil.isEmpty(stderr) ? "\n" + "stderr: " + stderr : "") +
             (exception != null ?  "\n" + "exception: " + exception.getLocalizedMessage() : "");
     logMessage(message, errorsLogLevel);
     throw new VcsException(message);
