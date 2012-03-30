@@ -875,6 +875,7 @@ public class GitVcsSupport extends ServerVcsSupport
   public Map<String, String> getVcsRepositoryProperties(@NotNull VcsRoot root) throws VcsException {
     Map<String, String> properties = new HashMap<String, String>(root.getProperties());
     properties.remove(Constants.PUSH_URL);
+    properties.remove(Constants.BRANCH_NAME);
     properties.remove(Constants.PATH);
     properties.remove(Constants.AGENT_GIT_PATH);
     properties.remove(Constants.AUTH_METHOD);
