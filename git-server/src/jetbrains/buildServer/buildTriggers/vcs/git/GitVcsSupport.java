@@ -854,7 +854,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return true;
   }
 
-
   @NotNull
   public VcsBrowser getBrowserForRoot(@NotNull VcsRoot root) throws BrowserException {
     OperationContext context = createContext(root, "list files");
@@ -869,5 +868,23 @@ public class GitVcsSupport extends ServerVcsSupport
     } finally {
       context.close();
     }
+  }
+
+  @NotNull
+  @Override
+  public Map<String, String> getVcsRepositoryProperties(@NotNull VcsRoot root) throws VcsException {
+    Map<String, String> properties = new HashMap<String, String>(root.getProperties());
+    properties.remove(Constants.PUSH_URL);
+    properties.remove(Constants.PATH);
+    properties.remove(Constants.AGENT_GIT_PATH);
+    properties.remove(Constants.AUTH_METHOD);
+    properties.remove(Constants.USERNAME_STYLE);
+    properties.remove(Constants.IGNORE_KNOWN_HOSTS);
+    properties.remove(Constants.PRIVATE_KEY_PATH);
+    properties.remove(Constants.USERNAME);
+    properties.remove(Constants.PASSWORD);
+    properties.remove(Constants.PASSPHRASE);
+    properties.remove(Constants.USERNAME_FOR_TAGS);
+    return properties;
   }
 }
