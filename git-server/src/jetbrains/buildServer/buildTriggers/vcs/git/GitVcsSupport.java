@@ -546,11 +546,24 @@ public class GitVcsSupport extends ServerVcsSupport
   private boolean isRemoteRefUpdated(@NotNull VcsRoot root, @NotNull Repository db, @NotNull Settings s, @NotNull String refName) throws Exception {
     Map<String, Ref> remoteRefs = getRemoteRefs(root, db, s);
     Ref remoteRef = remoteRefs.get(refName);
-    if (remoteRef == null)
+    if (remoteRef == null) {
+      LOG.debug("Remote ref updated: repository " + LogUtil.describe(root) + ", ref '" + refName + "' no remote revision found");
       return true;
+    }
 
     String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getRef());
-    return cachedCurrentVersion == null || !remoteRef.getObjectId().name().equals(GitUtils.versionRevision(cachedCurrentVersion));
+    if (cachedCurrentVersion == null) {
+      LOG.debug("Remote ref updated: repository " + LogUtil.describe(root) + ", ref '" + refName + "' local revision not found, remote revision " + remoteRef.getObjectId().name());
+      return true;
+    }
+
+    String sha = GitUtils.versionRevision(cachedCurrentVersion);
+    if (!remoteRef.getObjectId().name().equals(sha)) {
+      LOG.debug("Remote ref updated: repository " + LogUtil.describe(root) + ", ref '" + refName + "' local revision " + sha + ", remote revision " + remoteRef.getObjectId().name());
+      return true;
+    }
+
+    return false;
   }
 
 
@@ -794,7 +807,6 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   private Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
-    final long start = System.currentTimeMillis();
     OperationContext context = createContext(root, "list remote refs");
     Settings s = context.getSettings();
     File tmpDir = null;
@@ -811,8 +823,6 @@ public class GitVcsSupport extends ServerVcsSupport
         myRepositoryManager.cleanLocksFor(tmpDir);
         FileUtil.delete(tmpDir);
       }
-      final long finish = System.currentTimeMillis();
-      PERFORMANCE_LOG.debug("[getRemoteRefs] repository: " + LogUtil.describe(root) + ", took " + (finish - start) + "ms");
     }
   }
 
@@ -831,10 +841,12 @@ public class GitVcsSupport extends ServerVcsSupport
     } catch (TransportException te) {
       throw friendlyTransportException(te);
     } finally {
-      if (connection != null) connection.close();
-      if (transport != null) transport.close();
+      if (connection != null)
+        connection.close();
+      if (transport != null)
+        transport.close();
       final long finish = System.currentTimeMillis();
-      PERFORMANCE_LOG.debug("[getRemoteRefs transport] repository: " + LogUtil.describe(root) + ", took " + (finish - start) + "ms");
+      PERFORMANCE_LOG.debug("[getRemoteRefs] repository: " + LogUtil.describe(root) + ", took " + (finish - start) + "ms");
     }
   }
 
