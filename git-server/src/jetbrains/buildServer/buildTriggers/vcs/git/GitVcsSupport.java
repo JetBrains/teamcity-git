@@ -544,8 +544,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   private boolean isRemoteRefUpdated(@NotNull VcsRoot root, @NotNull Repository db, @NotNull Settings s, @NotNull String refName) throws Exception {
-    Map<String, Ref> remoteRefs = getRemoteRefs(root, db, s);
-    Ref remoteRef = remoteRefs.get(refName);
+    Ref remoteRef = getRemoteRef(root, db, s, refName);
     if (remoteRef == null) {
       LOG.debug("Remote ref updated: repository " + LogUtil.describe(root) + ", ref '" + refName + "' no remote revision found");
       return true;
@@ -849,6 +848,30 @@ public class GitVcsSupport extends ServerVcsSupport
       PERFORMANCE_LOG.debug("[getRemoteRefs] repository: " + LogUtil.describe(root) + ", took " + (finish - start) + "ms");
     }
   }
+
+  @Nullable
+  private Ref getRemoteRef(@NotNull VcsRoot root, @NotNull Repository db, @NotNull Settings s, @NotNull String refName) throws Exception {
+    final long start = System.currentTimeMillis();
+    Transport transport = null;
+    FetchConnection connection = null;
+    try {
+      transport = myTransportFactory.createTransport(db, s.getRepositoryFetchURL(), s.getAuthSettings());
+      connection = transport.openFetch();
+      return connection.getRef(refName);
+    } catch (NotSupportedException nse) {
+      throw friendlyNotSupportedException(root, s, nse);
+    } catch (TransportException te) {
+      throw friendlyTransportException(te);
+    } finally {
+      if (connection != null)
+        connection.close();
+      if (transport != null)
+        transport.close();
+      final long finish = System.currentTimeMillis();
+      PERFORMANCE_LOG.debug("[getRemoteRef] repository: " + LogUtil.describe(root) + ", ref: '" + refName + "', took " + (finish - start) + "ms");
+    }
+  }
+
 
   public Collection<VcsClientMapping> getClientMapping(final @NotNull VcsRoot root, final @NotNull IncludeRule rule) throws VcsException {
     final OperationContext context = createContext(root, "client-mapping");
