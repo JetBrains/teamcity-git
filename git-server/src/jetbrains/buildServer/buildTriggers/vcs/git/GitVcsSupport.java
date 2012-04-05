@@ -19,15 +19,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.ExtensionHolder;
-import jetbrains.buildServer.buildTriggers.vcs.git.browse.EmptyBrowser;
-import jetbrains.buildServer.buildTriggers.vcs.git.browse.GitBrowser;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilder;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.impl.LogUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
-import jetbrains.buildServer.util.browser.BrowserException;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.RepositoryState;
@@ -66,7 +63,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendly
  */
 public class GitVcsSupport extends ServerVcsSupport
   implements VcsPersonalSupport, LabelingSupport, VcsFileContentProvider, CollectChangesBetweenRoots, BuildPatchByCheckoutRules,
-             TestConnectionSupport, BranchSupport, IncludeRuleBasedMappingProvider, BrowseSupport {
+             TestConnectionSupport, BranchSupport, IncludeRuleBasedMappingProvider {
 
   private static Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   private static Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
@@ -889,20 +886,9 @@ public class GitVcsSupport extends ServerVcsSupport
     return true;
   }
 
-  @NotNull
-  public VcsBrowser getBrowserForRoot(@NotNull VcsRoot root) throws BrowserException {
-    OperationContext context = createContext(root, "list files");
-    try {
-      Settings s = context.getSettings();
-      String currentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getRef());
-      if (currentVersion != null)
-        return new GitBrowser(this, root, GitUtils.versionRevision(currentVersion));
-      return new EmptyBrowser();
-    } catch (VcsException e) {
-      throw new BrowserException(e);
-    } finally {
-      context.close();
-    }
+  @Override
+  public ListFilesPolicy getListFilesPolicy(@NotNull VcsRoot root) {
+    return new GitListFilesSupport(this, root);
   }
 
   @NotNull
