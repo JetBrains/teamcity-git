@@ -137,6 +137,15 @@ public class PluginConfigBuilder {
       public int getNumberOfCommitsWhenFromVersionNotFound() {
         return myNumberOfCommitsWhenFromVersionNotFound != -1 ? myNumberOfCommitsWhenFromVersionNotFound : myDelegate.getNumberOfCommitsWhenFromVersionNotFound();
       }
+
+      @NotNull
+      public String getMonitoringDirName() {
+        return myDelegate.getMonitoringDirName();
+      }
+
+      public int getMonitoringExpirationTimeoutHours() {
+        return myDelegate.getMonitoringExpirationTimeoutHours();
+      }
     };
   }
 
