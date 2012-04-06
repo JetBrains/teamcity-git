@@ -17,18 +17,27 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.util.DiagnosticUtil;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
-import org.eclipse.jgit.lib.NullProgressMonitor;
+import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.net.URISyntaxException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Method main of this class is supposed to be run in separate process to avoid OutOfMemoryExceptions in server's process
@@ -39,11 +48,18 @@ public class Fetcher {
 
   public static void main(String[] args) throws IOException, VcsException, URISyntaxException {
     boolean debug = false;
+    ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
     try {
       Map<String, String> properties = VcsRootImpl.stringToProperties(readInput());
+      String threadDumpFilePath = properties.remove(Constants.THREAD_DUMP_FILE);
       String repositoryPath = properties.remove(Constants.REPOSITORY_DIR_PROPERTY_NAME);
       debug = "true".equals(properties.remove(Constants.VCS_DEBUG_ENABLED));
-      fetch(new File(repositoryPath), properties);
+
+      ByteArrayOutputStream output = new ByteArrayOutputStream();
+      FetchProgressMonitor progress = new FetchProgressMonitor(new PrintStream(output));
+      exec.scheduleAtFixedRate(new Monitoring(threadDumpFilePath, output), 10, 10, TimeUnit.SECONDS);
+      fetch(new File(repositoryPath), properties, progress);
+      FileUtil.delete(new File(threadDumpFilePath));
     } catch (Throwable t) {
       if (debug || isImportant(t)) {
         t.printStackTrace(System.err);
@@ -51,6 +67,8 @@ public class Fetcher {
         System.err.println(t.getMessage());
       }
       System.exit(1);
+    } finally {
+      exec.shutdown();
     }
   }
 
@@ -63,7 +81,7 @@ public class Fetcher {
    * @throws VcsException
    * @throws URISyntaxException
    */
-  private static void fetch(final File repositoryDir, Map<String, String> vcsRootProperties) throws IOException, VcsException, URISyntaxException {
+  private static void fetch(final File repositoryDir, Map<String, String> vcsRootProperties, @NotNull ProgressMonitor progressMonitor) throws IOException, VcsException, URISyntaxException {
     final String fetchUrl = vcsRootProperties.get(Constants.FETCH_URL);
     final String refspecs = vcsRootProperties.get(Constants.REFSPEC);
     Settings.AuthSettings auth = new Settings.AuthSettings(vcsRootProperties);
@@ -76,7 +94,7 @@ public class Fetcher {
       Repository repository = GitServerUtil.getRepository(repositoryDir, new URIish(fetchUrl));
       workaroundRacyGit();
       tn = transportFactory.createTransport(repository, new URIish(fetchUrl), auth);
-      FetchResult result = tn.fetch(NullProgressMonitor.INSTANCE, parseRefspecs(refspecs));
+      FetchResult result = tn.fetch(progressMonitor, parseRefspecs(refspecs));
       GitServerUtil.checkFetchSuccessful(result);
     } finally {
       if (tn != null)
@@ -104,7 +122,10 @@ public class Fetcher {
 
 
   private static boolean isImportant(Throwable t) {
-    return t instanceof NullPointerException || t instanceof Error;
+    return t instanceof NullPointerException ||
+           t instanceof Error ||
+           t instanceof InterruptedException ||
+           t instanceof InterruptedIOException;
   }
 
   /**
@@ -130,5 +151,22 @@ public class Fetcher {
       result.add(new RefSpec(spec).setForceUpdate(true));
     }
     return result;
+  }
+
+  private static class Monitoring implements Runnable {
+
+    private final File myFile;
+    private final ByteArrayOutputStream myGitOutput;
+
+    Monitoring(@NotNull String threadDumpFilePath, @NotNull ByteArrayOutputStream gitOutput) {
+      myFile = new File(threadDumpFilePath);
+      myGitOutput = gitOutput;
+    }
+
+    public void run() {
+      String threadDump = DiagnosticUtil.threadDumpToString();
+      String gitProgress = myGitOutput.toString();
+      FileUtil.writeFile(myFile, threadDump + "\ngit progress:\n" + gitProgress);
+    }
   }
 }

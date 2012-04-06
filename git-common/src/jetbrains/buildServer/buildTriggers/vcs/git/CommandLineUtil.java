@@ -20,6 +20,7 @@ import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * @author dmitry.neverov
@@ -29,15 +30,17 @@ public final class CommandLineUtil {
   private CommandLineUtil() {}
 
 
+  @Nullable
   public static VcsException getCommandLineError(@NotNull String cmdName, @NotNull ExecResult res) {
-    if (res.getExitCode() != 0 || res.getException() != null) {
-      Throwable exception = res.getException();
+    //noinspection ThrowableResultOfMethodCallIgnored
+    Throwable exception = res.getException();
+    if (res.getExitCode() != 0 || exception != null) {
       String stderr = res.getStderr();
       String stdout = res.getStdout();
       final String message = "'" + cmdName + "' command failed." +
               (!StringUtil.isEmpty(stderr) ? "\nstderr: " + stderr.trim() : "") +
               (!StringUtil.isEmpty(stdout) ? "\nstdout: " + stdout.trim() : "") +
-              (exception != null ? "\nexception: " + exception.getLocalizedMessage() : "");
+              (exception != null ? "\nexception: " + exception.getMessage() : "");
       return new VcsException(message);
     } else {
       return null;

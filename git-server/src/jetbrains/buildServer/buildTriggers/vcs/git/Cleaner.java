@@ -24,13 +24,13 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.BuildServerAdapter;
 import jetbrains.buildServer.serverSide.BuildServerListener;
 import jetbrains.buildServer.serverSide.SBuildServer;
+import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 
@@ -68,6 +68,7 @@ public class Cleaner extends BuildServerAdapter {
   private void clean() {
     LOG.debug("Clean started");
     removeUnusedRepositories();
+    cleanupMonitoringData();
     if (myConfig.isRunNativeGC()) {
       runNativeGC();
     }
@@ -103,11 +104,34 @@ public class Cleaner extends BuildServerAdapter {
   }
 
   private List<File> getAllRepositoryDirs() {
-    return new ArrayList<File>(FileUtil.getSubDirectories(myRepositoryManager.getBaseMirrorsDir()));
+    return FileUtil.getSubDirectories(myRepositoryManager.getBaseMirrorsDir());
   }
 
   private long minutes2Milliseconds(int quotaInMinutes) {
     return quotaInMinutes * 60 * 1000L;
+  }
+
+  private void cleanupMonitoringData() {
+    LOG.debug("Start cleaning monitoring data");
+    for (File repository : getAllRepositoryDirs()) {
+      File monitoring = new File(repository, myConfig.getMonitoringDirName());
+      File[] files = monitoring.listFiles();
+      if (files != null) {
+        for (File monitoringData : files) {
+          if (isExpired(monitoringData)) {
+            LOG.debug("Remove old monitoring data " + monitoringData.getAbsolutePath());
+            FileUtil.delete(monitoringData);
+          }
+        }
+      }
+    }
+    LOG.debug("Finish cleaning monitoring data");
+  }
+
+  private boolean isExpired(@NotNull File f) {
+    long age = System.currentTimeMillis() - f.lastModified();
+    long ageHours = age / Dates.ONE_HOUR;
+    return ageHours > myConfig.getMonitoringExpirationTimeoutHours();
   }
 
   private void runNativeGC() {

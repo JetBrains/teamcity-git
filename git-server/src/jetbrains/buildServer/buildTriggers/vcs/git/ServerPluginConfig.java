@@ -76,4 +76,9 @@ public interface ServerPluginConfig extends PluginConfig {
    */
   @Nullable
   Proxy getJschProxy();
+
+  @NotNull
+  String getMonitoringDirName();
+
+  int getMonitoringExpirationTimeoutHours();
 }

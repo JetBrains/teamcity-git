@@ -132,6 +132,15 @@ public class PluginConfigBuilder {
       public Proxy getJschProxy() {
         return null;
       }
+
+      @NotNull
+      public String getMonitoringDirName() {
+        return myDelegate.getMonitoringDirName();
+      }
+
+      public int getMonitoringExpirationTimeoutHours() {
+        return myDelegate.getMonitoringExpirationTimeoutHours();
+      }
     };
   }
 
