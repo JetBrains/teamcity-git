@@ -230,7 +230,7 @@
   
   <target name="compile.module.git-common.production" description="Compile module git-common; production classes">
     <mkdir dir="${git-common.output.dir}"/>
-    <javac destdir="${git-common.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-common}/javac">
+    <javac destdir="${git-common.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-common}/javac" target="1.5">
       <compilerarg line="${compiler.args.git-common}"/>
       <bootclasspath refid="git-common.module.bootclasspath"/>
       <classpath refid="git-common.module.production.classpath"/>
@@ -402,7 +402,7 @@
   
   <target name="compile.module.git-agent.production" depends="compile.module.git-common" description="Compile module git-agent; production classes">
     <mkdir dir="${git-agent.output.dir}"/>
-    <javac destdir="${git-agent.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-agent}/javac">
+    <javac destdir="${git-agent.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-agent}/javac" target="1.5">
       <compilerarg line="${compiler.args.git-agent}"/>
       <bootclasspath refid="git-agent.module.bootclasspath"/>
       <classpath refid="git-agent.module.production.classpath"/>
@@ -517,7 +517,7 @@
   
   <target name="compile.module.git-server.production" depends="compile.module.git-common" description="Compile module git-server; production classes">
     <mkdir dir="${git-server.output.dir}"/>
-    <javac destdir="${git-server.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-server}/javac">
+    <javac destdir="${git-server.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-server}/javac" target="1.5">
       <compilerarg line="${compiler.args.git-server}"/>
       <bootclasspath refid="git-server.module.bootclasspath"/>
       <classpath refid="git-server.module.production.classpath"/>
@@ -665,7 +665,7 @@
   
   <target name="compile.module.git-tests.production" depends="compile.module.git-server,compile.module.git-common,compile.module.git-agent" description="Compile module git-tests; production classes">
     <mkdir dir="${git-tests.output.dir}"/>
-    <javac destdir="${git-tests.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-tests}/javac">
+    <javac destdir="${git-tests.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-tests}/javac" target="1.5">
       <compilerarg line="${compiler.args.git-tests}"/>
       <bootclasspath refid="git-tests.module.bootclasspath"/>
       <classpath refid="git-tests.module.production.classpath"/>
