@@ -17,21 +17,16 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.SystemInfo;
+import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
-import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
-import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
-import jetbrains.buildServer.buildTriggers.vcs.git.ssh.RefreshableSshConfigSessionFactory;
-import jetbrains.buildServer.serverSide.BuildServerAdapter;
-import jetbrains.buildServer.serverSide.BuildServerListener;
-import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.NotSupportedException;
+import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 
@@ -41,60 +36,27 @@ import java.io.File;
 public class TransportFactoryImpl implements TransportFactory {
 
   private final ServerPluginConfig myConfig;
-  /**
-   * The default SSH session factory used for not explicitly configured host
-   * It fails when user is prompted for some information.
-   */
-  private final RefreshableSshConfigSessionFactory mySshSessionFactory;
-  /**
-   * This factory is used when known host database is specified to be ignored
-   */
-  private final RefreshableSshConfigSessionFactory mySshSessionFactoryKnownHostsIgnored;
-
-  private final SshSessionFactory myPasswordSshSessionFactory;
-
 
   public TransportFactoryImpl(@NotNull ServerPluginConfig config) {
-    this(config, null);
-  }
-
-
-  public TransportFactoryImpl(@NotNull ServerPluginConfig config, @Nullable final EventDispatcher<BuildServerListener> dispatcher) {
     myConfig = config;
-    final boolean monitorSshConfigs = dispatcher != null; //dispatcher is null in tests and when invoked from the Fetcher
-    mySshSessionFactory = new RefreshableSshConfigSessionFactory(myConfig, monitorSshConfigs);
-    mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory(myConfig, monitorSshConfigs) {
-      // note that different instance is used because JSch cannot be shared with strict host checking
-      public Session getSession(String user, String pass, String host, int port, CredentialsProvider credentialsProvider, FS fs) throws JSchException {
-        final Session session = super.getSession(user, pass, host, port, credentialsProvider, fs);
-        session.setConfig("StrictHostKeyChecking", "no");
-        return session;
-      }
-    };
-    myPasswordSshSessionFactory = new PasswordSshSessionFactory(myConfig);
-    if (monitorSshConfigs) {
-      dispatcher.addListener(new BuildServerAdapter() {
-        @Override
-        public void serverShutdown() {
-          mySshSessionFactory.stopMonitoringConfigs();
-          mySshSessionFactoryKnownHostsIgnored.stopMonitoringConfigs();
-        }
-      });
-    }
   }
 
 
-  public Transport createTransport(Repository r, URIish url, Settings.AuthSettings authSettings) throws NotSupportedException, VcsException {
-    final URIish authUrl = authSettings.createAuthURI(url);
-    checkUrl(url);
-    final Transport t = Transport.open(r, authUrl);
-    t.setCredentialsProvider(authSettings.toCredentialsProvider());
-    if (t instanceof SshTransport) {
-      SshTransport ssh = (SshTransport)t;
-      ssh.setSshSessionFactory(getSshSessionFactory(authSettings, url));
+  public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull Settings.AuthSettings authSettings) throws NotSupportedException, VcsException {
+    try {
+      final URIish authUrl = authSettings.createAuthURI(url);
+      checkUrl(url);
+      final Transport t = Transport.open(r, authUrl);
+      t.setCredentialsProvider(authSettings.toCredentialsProvider());
+      if (t instanceof SshTransport) {
+        SshTransport ssh = (SshTransport)t;
+        ssh.setSshSessionFactory(getSshSessionFactory(authSettings, url));
+      }
+      t.setTimeout(myConfig.getIdleTimeoutSeconds());
+      return t;
+    } catch (TransportException e) {
+      throw new VcsException("Cannot create transport", e);
     }
-    t.setTimeout(myConfig.getIdleTimeoutSeconds());
-    return t;
   }
 
 
@@ -138,19 +100,64 @@ public class TransportFactoryImpl implements TransportFactory {
   private SshSessionFactory getSshSessionFactory(Settings.AuthSettings authSettings, URIish url) throws VcsException {
     switch (authSettings.getAuthMethod()) {
       case PRIVATE_KEY_DEFAULT:
-        return authSettings.isIgnoreKnownHosts() ? mySshSessionFactoryKnownHostsIgnored : mySshSessionFactory;
+        return new DefaultJschConfigSessionFactory(myConfig, authSettings);
       case PRIVATE_KEY_FILE:
-        try {
-          return new PrivateKeyFileSshSessionFactory(myConfig, authSettings);
-        } catch (VcsAuthenticationException e) {
-          //add url to exception
-          throw new VcsAuthenticationException(url.toString(), e.getMessage());
-        }
+          return new CustomPrivateKeySessionFactory(myConfig, authSettings);
       case PASSWORD:
-        return myPasswordSshSessionFactory;
+        return new PasswordJschConfigSessionFactory(myConfig, authSettings);
       default:
         throw new VcsAuthenticationException(url.toString(), "The authentication method " + authSettings.getAuthMethod() + " is not supported for SSH");
     }
   }
 
+
+  private static class DefaultJschConfigSessionFactory extends JschConfigSessionFactory {
+    protected final ServerPluginConfig myConfig;
+    protected final Settings.AuthSettings myAuthSettings;
+
+    private DefaultJschConfigSessionFactory(@NotNull ServerPluginConfig config, @NotNull Settings.AuthSettings authSettings) {
+      myConfig = config;
+      myAuthSettings = authSettings;
+    }
+
+    @Override
+    protected void configure(OpenSshConfig.Host hc, Session session) {
+      session.setProxy(myConfig.getJschProxy());//null proxy is allowed
+      if (myAuthSettings.isIgnoreKnownHosts())
+        session.setConfig("StrictHostKeyChecking", "no");
+    }
+  }
+
+  private static class PasswordJschConfigSessionFactory extends DefaultJschConfigSessionFactory {
+
+    private PasswordJschConfigSessionFactory(@NotNull ServerPluginConfig config, @NotNull Settings.AuthSettings authSettings) {
+      super(config, authSettings);
+    }
+
+    @Override
+    protected void configure(OpenSshConfig.Host hc, Session session) {
+      super.configure(hc, session);
+      session.setPassword(myAuthSettings.getPassword());
+    }
+  }
+
+
+  private static class CustomPrivateKeySessionFactory extends DefaultJschConfigSessionFactory {
+
+    private CustomPrivateKeySessionFactory(@NotNull ServerPluginConfig config, @NotNull Settings.AuthSettings authSettings) {
+      super(config, authSettings);
+    }
+
+    @Override
+    protected JSch getJSch(OpenSshConfig.Host hc, FS fs) throws JSchException {
+      return createDefaultJSch(fs);
+    }
+
+    @Override
+    protected JSch createDefaultJSch(FS fs) throws JSchException {
+      final JSch jsch = new JSch();
+      jsch.addIdentity(myAuthSettings.getPrivateKeyFilePath(), myAuthSettings.getPassphrase());
+      return jsch;
+    }
+  }
 }
