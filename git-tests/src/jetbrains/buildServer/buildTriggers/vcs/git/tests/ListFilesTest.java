@@ -109,8 +109,7 @@ public class ListFilesTest {
 
 
   public void list_files_in_dir_which_contains_only_dirs() throws Exception {
-    ListDirectChildrenPolicy policy = (ListDirectChildrenPolicy) myGit.getListFilesPolicy(myRoot);
-    assert policy != null;
+    ListDirectChildrenPolicy policy = getListFilesPolicy(myRoot);
     List<VcsFileData> files = policy.listFiles("dir/subdir");
     assertThat(files, hasItems(vcsDir("b"), vcsDir("c"), vcsDir("d")));
   }
