@@ -23,9 +23,7 @@ import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * @author dmitry.neverov
@@ -54,7 +52,7 @@ public class ShowRefCommandImpl implements ShowRefCommand {
 
 
   @NotNull
-  public List<Ref> call() {
+  public Map<String, Ref> call() {
     myCmd.addParameter("show-ref");
     if (myPattern != null)
       myCmd.addParameters(myPattern);
@@ -64,16 +62,16 @@ public class ShowRefCommandImpl implements ShowRefCommand {
       ExecResult result = CommandUtil.runCommand(myCmd);
       return parse(result.getStdout());
     } catch (VcsException e) {
-      return Collections.emptyList();
+      return Collections.emptyMap();
     }
   }
 
-  private List<Ref> parse(String str) {
-    List<Ref> result = new ArrayList<Ref>();
+  private Map<String, Ref> parse(String str) {
+    Map<String, Ref> result = new HashMap<String, Ref>();
     for (String line : str.split("\n")) {
       String commit = line.substring(0, 40);
       String ref = line.substring(41, line.length());
-      result.add(new RefImpl(ref, commit));
+      result.put(ref, new RefImpl(ref, commit));
     }
     return result;
   }

@@ -20,7 +20,8 @@ import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Tags;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -35,6 +36,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 
@@ -276,8 +278,8 @@ public class UpdaterImpl implements Updater {
 
   @Nullable
   private Ref getRef(@NotNull File repositoryDir, @NotNull String ref) {
-    List<Ref> refs = myGitFactory.create(repositoryDir).showRef().setPattern(ref).call();
-    return refs.isEmpty() ? null : refs.get(0);
+    Map<String, Ref> refs = myGitFactory.create(repositoryDir).showRef().setPattern(ref).call();
+    return refs.isEmpty() ? null : refs.get(ref);
   }
 
 
@@ -407,9 +409,9 @@ public class UpdaterImpl implements Updater {
   private String getUnusedBranchName(@NotNull File repositoryDir) {
     final String tmpBranchName = "tmp_branch_for_build";
     String branchName = tmpBranchName;
-    ShowRefCommand showRef = myGitFactory.create(repositoryDir).showRef();
-    int i = 1;
-    while (!showRef.setPattern(branchName).call().isEmpty()) {
+    Map<String, Ref> existingRefs = myGitFactory.create(repositoryDir).showRef().call();
+    int i = 0;
+    while (existingRefs.containsKey(branchName)) {
       branchName = tmpBranchName + i;
       i++;
     }

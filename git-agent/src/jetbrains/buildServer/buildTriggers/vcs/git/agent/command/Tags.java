@@ -36,6 +36,10 @@ public class Tags {
       myTags.put(r.getName(), r);
   }
 
+  public Tags(@NotNull Map<String, Ref> tagMap) {
+    myTags.putAll(tagMap);
+  }
+
   public boolean isOutdated(@NotNull Ref tag) {
     Ref myTag = myTags.get(tag.getName());
     if (myTag == null)

@@ -19,7 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.List;
+import java.util.Map;
 
 /**
  * @author dmitry.neverov
@@ -33,6 +33,6 @@ public interface ShowRefCommand {
   ShowRefCommand showTags();
 
   @NotNull
-  List<Ref> call();
+  Map<String, Ref> call();
 
 }
