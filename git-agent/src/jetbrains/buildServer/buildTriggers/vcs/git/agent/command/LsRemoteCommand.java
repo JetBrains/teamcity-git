@@ -19,11 +19,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,14 +38,11 @@ public class LsRemoteCommand extends RepositoryCommand {
 
   private String myRemoteName = "origin";
   private boolean myShowTags = false;
-  private File myGitDir;
+  private final GitAgentSSHService mySsh;
 
-  public LsRemoteCommand(AgentSettings mySettings) {
-    super(mySettings);
-  }
-
-  public LsRemoteCommand(AgentSettings mySettings, String workDirectory) {
+  public LsRemoteCommand(AgentSettings mySettings, String workDirectory, GitAgentSSHService ssh) {
     super(mySettings, workDirectory);
+    mySsh = ssh;
   }
 
   public void showTags() {
@@ -60,7 +57,17 @@ public class LsRemoteCommand extends RepositoryCommand {
       cmd.addParameter("--tags");
     cmd.addParameter(myRemoteName);
     try {
-      ExecResult result = runCommand(cmd);
+      ExecResult result;
+      if (mySettings.isUseNativeSSH()) {
+        result = runCommand(cmd);
+      } else {
+        SshHandler h = new SshHandler(mySsh, cmd);
+        try {
+          result = runCommand(cmd);
+        } finally {
+          h.unregister();
+        }
+      }
       return parse(result.getStdout());
     } catch (VcsException e) {
       return Collections.emptyList();

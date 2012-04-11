@@ -29,11 +29,13 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.Config;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 
@@ -139,6 +141,14 @@ public class GitCommandUpdateProcess extends GitUpdateProcess {
   private boolean isSilentFetch() {
     GitVersion version = myPluginConfig.getGitVersion();
     return GIT_WITH_PROGRESS_VERSION.isGreaterThan(version);
+  }
+
+  @Override
+  protected List<Ref> lsRemote(@NotNull File workingDir) {
+    LsRemoteCommand lsRemote = new LsRemoteCommand(mySettings, workingDir.getAbsolutePath(), mySshService);
+    lsRemote.showTags();
+    lsRemote.execute();
+    return lsRemote.execute();
   }
 
   protected String checkRevision(final String revision, String... errorsLogLevel) {

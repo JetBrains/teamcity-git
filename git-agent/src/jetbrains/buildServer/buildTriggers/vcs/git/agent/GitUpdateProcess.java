@@ -23,7 +23,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.DeleteTagCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefCommand;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -354,10 +353,7 @@ public abstract class GitUpdateProcess {
   }
 
   private Tags getRemoteTags(@NotNull File workingDir) {
-    LsRemoteCommand lsRemote = new LsRemoteCommand(mySettings, workingDir.getAbsolutePath());
-    lsRemote.showTags();
-    lsRemote.execute();
-    return new Tags(lsRemote.execute());
+    return new Tags(lsRemote(workingDir));
   }
 
   private void checkAuthMethodIsSupported() throws VcsException {
@@ -547,6 +543,8 @@ public abstract class GitUpdateProcess {
   protected abstract void fetch() throws VcsException;
 
   protected abstract void fetchBare() throws VcsException;
+
+  protected abstract List<Ref> lsRemote(@NotNull File workingDir);
 
   /**
    * Check the specified revision
