@@ -25,6 +25,8 @@ import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Map;
+
 /**
  * A simple session factory used for password authentication.
  * It assume that password was passed in URL to ssh.
@@ -33,10 +35,12 @@ public class PasswordSshSessionFactory extends SshSessionFactory {
   //An ssh instance with no keys registered
   private final JSch mySch;
   private final ServerPluginConfig myConfig;
-
-  public PasswordSshSessionFactory(@NotNull final ServerPluginConfig config) {
+  private final Map<String, String> myJschOptions;
+  
+  public PasswordSshSessionFactory(@NotNull final ServerPluginConfig config, @NotNull Map<String, String> jschOptions) {
     mySch = new JSch();
     myConfig = config;
+    myJschOptions = jschOptions;
   }
 
   @Override
@@ -44,6 +48,11 @@ public class PasswordSshSessionFactory extends SshSessionFactory {
     throws JSchException {
     final Session session = SshUtils.createSession(mySch, myConfig.getJschProxy(), user, host, port);
     session.setPassword(pass);
+    if (!myConfig.alwaysCheckCiphers()) {
+      for (Map.Entry<String, String> entry : myJschOptions.entrySet()) {
+        session.setConfig(entry.getKey(), entry.getValue());
+      }
+    }
     return session;
   }
 }

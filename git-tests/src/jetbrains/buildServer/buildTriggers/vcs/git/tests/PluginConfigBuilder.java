@@ -146,6 +146,14 @@ public class PluginConfigBuilder {
       public int getMonitoringExpirationTimeoutHours() {
         return myDelegate.getMonitoringExpirationTimeoutHours();
       }
+
+      public boolean alwaysDoFetchOnGetCurrentVersion() {
+        return false;
+      }
+
+      public boolean alwaysCheckCiphers() {
+        return false;
+      }
     };
   }
 

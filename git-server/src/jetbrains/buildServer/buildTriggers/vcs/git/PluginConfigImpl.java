@@ -221,4 +221,12 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public int getMonitoringExpirationTimeoutHours() {
     return TeamCityProperties.getInteger("teamcity.git.monitoring.expiration.timeout.hours", 24);
   }
+
+  public boolean alwaysDoFetchOnGetCurrentVersion() {
+    return TeamCityProperties.getBoolean("teamcity.git.always.do.fetch.on.get.current.version");
+  }
+
+  public boolean alwaysCheckCiphers() {
+    return TeamCityProperties.getBoolean("teamcity.git.always.check.ciphers");
+  }
 }

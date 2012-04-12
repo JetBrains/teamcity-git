@@ -28,6 +28,8 @@ import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Map;
+
 /**
  * The SSH session factory that uses explicitly specified private key file
  * for authentication.
@@ -36,9 +38,13 @@ public class PrivateKeyFileSshSessionFactory extends SshSessionFactory {
   //SSH instance with registered identity
   private final JSch mySch;
   private final ServerPluginConfig myConfig;
+  private final Map<String, String> myJschOptions;
 
-  public PrivateKeyFileSshSessionFactory(@NotNull ServerPluginConfig config, @NotNull Settings.AuthSettings settings) throws VcsException {
+  public PrivateKeyFileSshSessionFactory(@NotNull ServerPluginConfig config,
+                                         @NotNull Settings.AuthSettings settings,
+                                         @NotNull Map<String, String> jschOptions) throws VcsException {
     myConfig = config;
+    myJschOptions = jschOptions;
     final String privateKeyPath = settings.getPrivateKeyFilePath();
     final String passphrase = settings.getPassphrase();
     if(privateKeyPath == null || privateKeyPath.length() == 0) {
@@ -55,6 +61,12 @@ public class PrivateKeyFileSshSessionFactory extends SshSessionFactory {
   @Override
   public Session getSession(String user, String pass, String host, int port, CredentialsProvider credentialsProvider, FS fs)
     throws JSchException {
-    return SshUtils.createSession(mySch, myConfig.getJschProxy(), user, host, port);
+    final Session session = SshUtils.createSession(mySch, myConfig.getJschProxy(), user, host, port);
+    if (!myConfig.alwaysCheckCiphers()) {
+      for (Map.Entry<String, String> entry : myJschOptions.entrySet()) {
+        session.setConfig(entry.getKey(), entry.getValue());
+      }
+    }
+    return session;
   }
 }

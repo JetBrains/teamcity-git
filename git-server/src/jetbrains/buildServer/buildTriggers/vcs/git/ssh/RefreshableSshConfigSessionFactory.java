@@ -31,6 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -52,9 +53,11 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
   private final Object delegateLock = new Object();
   private final FilesWatcher myWatcher;
   private final ServerPluginConfig myConfig;
-
-  public RefreshableSshConfigSessionFactory(@NotNull final ServerPluginConfig config, final boolean monitorDotSshChanges) {
+  private final Map<String, String> myJschOptions;
+  
+  public RefreshableSshConfigSessionFactory(@NotNull final ServerPluginConfig config, final boolean monitorDotSshChanges, @NotNull Map<String, String> jschOptions) {
     myConfig = config;
+    myJschOptions = jschOptions;
     if (monitorDotSshChanges) {
       final File sshDir = new File(System.getProperty("user.home"), ".ssh");
       myWatcher = new FilesWatcher(new FilesWatcher.WatchedFilesProvider() {
@@ -115,6 +118,12 @@ public class RefreshableSshConfigSessionFactory extends SshSessionFactory {
   @Override
   public Session getSession(String user, String pass, String host, int port, CredentialsProvider credentialsProvider, FS fs)
     throws JSchException {
-    return delegate().getSession(user, pass, host, port, credentialsProvider, fs);
+    Session session = delegate().getSession(user, pass, host, port, credentialsProvider, fs);
+    if (!myConfig.alwaysCheckCiphers()) {
+      for (Map.Entry<String, String> entry : myJschOptions.entrySet()) {
+        session.setConfig(entry.getKey(), entry.getValue());
+      }
+    }
+    return session;
   }
 }
