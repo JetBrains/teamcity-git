@@ -81,4 +81,8 @@ public interface ServerPluginConfig extends PluginConfig {
   String getMonitoringDirName();
 
   int getMonitoringExpirationTimeoutHours();
+
+  boolean alwaysDoFetchOnGetCurrentVersion();
+
+  boolean alwaysCheckCiphers();
 }
