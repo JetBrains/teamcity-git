@@ -17,8 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.SystemInfo;
-import com.jcraft.jsch.JSchException;
-import com.jcraft.jsch.Session;
+import com.jcraft.jsch.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PasswordSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.PrivateKeyFileSshSessionFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.ssh.RefreshableSshConfigSessionFactory;
@@ -34,6 +33,11 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.util.*;
+
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 
 /**
 * @author dmitry.neverov
@@ -53,7 +57,6 @@ public class TransportFactoryImpl implements TransportFactory {
 
   private final SshSessionFactory myPasswordSshSessionFactory;
 
-
   public TransportFactoryImpl(@NotNull ServerPluginConfig config) {
     this(config, null);
   }
@@ -61,9 +64,10 @@ public class TransportFactoryImpl implements TransportFactory {
 
   public TransportFactoryImpl(@NotNull ServerPluginConfig config, @Nullable final EventDispatcher<BuildServerListener> dispatcher) {
     myConfig = config;
+    Map<String, String> jschOptions = initJSchSessionOptions();
     final boolean monitorSshConfigs = dispatcher != null; //dispatcher is null in tests and when invoked from the Fetcher
-    mySshSessionFactory = new RefreshableSshConfigSessionFactory(myConfig, monitorSshConfigs);
-    mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory(myConfig, monitorSshConfigs) {
+    mySshSessionFactory = new RefreshableSshConfigSessionFactory(myConfig, monitorSshConfigs, jschOptions);
+    mySshSessionFactoryKnownHostsIgnored = new RefreshableSshConfigSessionFactory(myConfig, monitorSshConfigs, jschOptions) {
       // note that different instance is used because JSch cannot be shared with strict host checking
       public Session getSession(String user, String pass, String host, int port, CredentialsProvider credentialsProvider, FS fs) throws JSchException {
         final Session session = super.getSession(user, pass, host, port, credentialsProvider, fs);
@@ -71,7 +75,7 @@ public class TransportFactoryImpl implements TransportFactory {
         return session;
       }
     };
-    myPasswordSshSessionFactory = new PasswordSshSessionFactory(myConfig);
+    myPasswordSshSessionFactory = new PasswordSshSessionFactory(myConfig, jschOptions);
     if (monitorSshConfigs) {
       dispatcher.addListener(new BuildServerAdapter() {
         @Override
@@ -153,4 +157,75 @@ public class TransportFactoryImpl implements TransportFactory {
     }
   }
 
+
+  private Map<String, String> initJSchSessionOptions() {
+    try {
+      JSch jsch = new JSch();
+      Session session = jsch.getSession("", "");
+
+      String cipherc2s = session.getConfig("cipher.c2s");
+      String ciphers2c = session.getConfig("cipher.s2c");
+      
+      Set<String> not_available = checkCiphers(session);      
+      if (!not_available.isEmpty()) {
+        cipherc2s = diffString(cipherc2s, not_available);
+        ciphers2c = diffString(ciphers2c, not_available);
+        if (isEmpty(cipherc2s) || isEmpty(ciphers2c)) {
+          return new HashMap<String, String>();
+        }
+      }
+
+      Map<String, String> options = new HashMap<String, String>();
+      options.put("cipher.c2s", cipherc2s);
+      options.put("cipher.s2c", ciphers2c);
+      options.put("CheckCiphers", "");
+      return options;
+    } catch (JSchException e) {
+      return new HashMap<String, String>();
+    }
+  }
+
+  private Set<String> checkCiphers(@NotNull Session session) {
+    String ciphers = session.getConfig("CheckCiphers");
+    if (isEmpty(ciphers))
+      return emptySet();
+
+    Set<String> result = new HashSet<String>();
+    String[] _ciphers = ciphers.split(",");
+    for (String cipher : _ciphers) {
+      if (!checkCipher(session.getConfig(cipher)))
+        result.add(cipher);
+    }
+
+    return result;
+  }
+
+  private boolean checkCipher(String cipherClassName){
+    try {
+      Class klass = Class.forName(cipherClassName);
+      Cipher cipher = (Cipher)(klass.newInstance());
+      cipher.init(Cipher.ENCRYPT_MODE,
+                  new byte[cipher.getBlockSize()],
+                  new byte[cipher.getIVSize()]);
+      return true;
+    } catch(Exception e){
+      return false;
+    }
+  }
+  
+  private String diffString(@NotNull String str, @NotNull Set<String> notAvailable) {
+    List<String> ciphers = new ArrayList<String>(Arrays.asList(str.split(",")));
+    ciphers.removeAll(notAvailable);
+
+    StringBuilder builder = new StringBuilder();
+    Iterator<String> iter = ciphers.iterator();
+    while (iter.hasNext()) {
+      String cipher = iter.next();
+      builder.append(cipher);
+      if (iter.hasNext())
+        builder.append(",");
+    }
+    return builder.toString();
+  }
+  
 }
