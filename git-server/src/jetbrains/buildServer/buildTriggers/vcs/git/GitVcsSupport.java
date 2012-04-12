@@ -927,6 +927,7 @@ public class GitVcsSupport extends ServerVcsSupport
       if (branchRef == null) {
         throw new VcsException("The ref '" + refName + "' could not be resolved");
       }
+
       String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getRef());
       if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
         return cachedCurrentVersion;
@@ -962,8 +963,11 @@ public class GitVcsSupport extends ServerVcsSupport
     if (remoteRef == null)
       return true;
 
-    String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getRef());
-    return cachedCurrentVersion == null || !remoteRef.getObjectId().name().equals(GitUtils.versionRevision(cachedCurrentVersion));
+    Ref localRef = db.getRef(refName);
+    if (localRef == null)
+      return true;
+
+    return !remoteRef.getObjectId().name().equals(localRef.getObjectId().name());
   }
 
 
