@@ -509,13 +509,14 @@ public class GitVcsSupport extends ServerVcsSupport
       Repository r = context.getRepository();
       String refName = GitUtils.expandRef(s.getRef());
 
-      if (!myConfig.isSeparateProcessForFetch() || isRemoteRefUpdated(root, r, s, refName))
+      if (alwaysDoFetchOnGetCurrentVersion() || isRemoteRefUpdated(root, r, s, refName))
         fetchBranchData(s, r);
 
       Ref branchRef = r.getRef(refName);
       if (branchRef == null) {
         throw new VcsException("The ref '" + refName + "' could not be resolved");
       }
+
       String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getRef());
       if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
         return cachedCurrentVersion;
@@ -540,6 +541,11 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
 
+  private boolean alwaysDoFetchOnGetCurrentVersion() {
+    return myConfig.alwaysDoFetchOnGetCurrentVersion();
+  }
+
+
   private boolean isRemoteRefUpdated(@NotNull VcsRoot root, @NotNull Repository db, @NotNull Settings s, @NotNull String refName) throws Exception {
     Ref remoteRef = getRemoteRef(root, db, s, refName);
     if (remoteRef == null) {
@@ -547,19 +553,11 @@ public class GitVcsSupport extends ServerVcsSupport
       return true;
     }
 
-    String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getRef());
-    if (cachedCurrentVersion == null) {
-      LOG.debug("Remote ref updated: repository " + LogUtil.describe(root) + ", ref '" + refName + "' local revision not found, remote revision " + remoteRef.getObjectId().name());
+    Ref localRef = db.getRef(refName);
+    if (localRef == null)
       return true;
-    }
 
-    String sha = GitUtils.versionRevision(cachedCurrentVersion);
-    if (!remoteRef.getObjectId().name().equals(sha)) {
-      LOG.debug("Remote ref updated: repository " + LogUtil.describe(root) + ", ref '" + refName + "' local revision " + sha + ", remote revision " + remoteRef.getObjectId().name());
-      return true;
-    }
-
-    return false;
+    return !remoteRef.getObjectId().name().equals(localRef.getObjectId().name());
   }
 
 

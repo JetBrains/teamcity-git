@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2012 JetBrains s.r.o.
+ * Copyright 2000-2011 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,11 @@ import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.storage.file.WindowCache;
+import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.Transport;
@@ -85,6 +88,8 @@ public class Fetcher {
     final String refspecs = vcsRootProperties.get(Constants.REFSPEC);
     Settings.AuthSettings auth = new Settings.AuthSettings(vcsRootProperties);
     PluginConfigImpl config = new PluginConfigImpl();
+
+    configureStreamFileThreshold();
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     Transport tn = null;
     try {
@@ -99,6 +104,14 @@ public class Fetcher {
       if (tn != null)
         tn.close();
     }
+  }
+
+  private static void configureStreamFileThreshold() {
+    Config rc = new Config();
+    rc.setLong("core", null, "streamfilethreshold", Integer.MAX_VALUE);
+    WindowCacheConfig cfg = new WindowCacheConfig();
+    cfg.fromConfig(rc);
+    WindowCache.reconfigure(cfg);
   }
 
   /**
