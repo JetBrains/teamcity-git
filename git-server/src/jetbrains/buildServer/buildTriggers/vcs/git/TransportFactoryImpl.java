@@ -181,6 +181,12 @@ public class TransportFactoryImpl implements TransportFactory {
       jsch.addIdentity(myAuthSettings.getPrivateKeyFilePath(), myAuthSettings.getPassphrase());
       return jsch;
     }
+
+    @Override
+    protected void configure(OpenSshConfig.Host hc, Session session) {
+      super.configure(hc, session);
+      session.setConfig("StrictHostKeyChecking", "no");
+    }
   }
 
 
