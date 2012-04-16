@@ -27,6 +27,7 @@ import org.testng.annotations.Test;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertNull;
 
 /**
  * @author dmitry.neverov
@@ -51,6 +52,13 @@ public class SettingsTest {
       .build();
     Settings s = new Settings(myMirrorManager, root);
     assertEquals(new URIish(pathInLocalFS), s.getRepositoryFetchURL());
+  }
+
+  public void cred_prod() throws Exception {
+    VcsRoot root = vcsRoot().withFetchUrl("git://git@some.org/repository.git").build();
+    Settings s = new Settings(myMirrorManager, root);
+    assertNull("User is not stripped from the url with anonymous protocol", s.getRepositoryFetchURL().getUser());
+    assertEquals("git", s.getRepositoryFetchURL().getUser());
   }
 
 }

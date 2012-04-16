@@ -80,8 +80,8 @@ public class TestConnectionCommand {
 
 
   private void checkFetchConnection(Settings s, Repository r) throws NotSupportedException, VcsException, TransportException {
-    validate(s.getRepositoryFetchURL());
-    final Transport tn = myTransportFactory.createTransport(r, s.getRepositoryFetchURL(), s.getAuthSettings());
+    validate(s.getRepositoryFetchURLNoFixedErrors());
+    final Transport tn = myTransportFactory.createTransport(r, s.getRepositoryFetchURLNoFixedErrors(), s.getAuthSettings());
     FetchConnection c = null;
     try {
       c = tn.openFetch();
@@ -97,9 +97,9 @@ public class TestConnectionCommand {
 
 
   private void checkPushConnection(Settings s, Repository r) throws NotSupportedException, VcsException, TransportException {
-    if (!s.getRepositoryFetchURL().equals(s.getRepositoryPushURL())) {
-      validate(s.getRepositoryPushURL());
-      final Transport push = myTransportFactory.createTransport(r, s.getRepositoryPushURL(), s.getAuthSettings());
+    if (!s.getRepositoryFetchURLNoFixedErrors().equals(s.getRepositoryPushURLNoFixedErrors())) {
+      validate(s.getRepositoryPushURLNoFixedErrors());
+      final Transport push = myTransportFactory.createTransport(r, s.getRepositoryPushURLNoFixedErrors(), s.getAuthSettings());
       PushConnection c = null;
       try {
         c = push.openPush();

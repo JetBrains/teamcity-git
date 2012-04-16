@@ -40,7 +40,9 @@ public class Settings {
 
   private final MirrorManager myMirrorManager;
   private final URIish myRepositoryFetchURL;
+  private final URIish myRepositoryFetchURLNoFixErrors;
   private final URIish myRepositoryPushURL;
+  private final URIish myRepositoryPushURLNoFixErrors;
   private final String myRef;
   private final UserNameStyle myUsernameStyle;
   private final SubmodulesCheckoutPolicy mySubmodulePolicy;
@@ -56,8 +58,10 @@ public class Settings {
     mySubmodulePolicy = readSubmodulesPolicy(root);
     myAuthSettings = new AuthSettings(root.getProperties());
     myRepositoryFetchURL = myAuthSettings.createAuthURI(root.getProperty(Constants.FETCH_URL));
+    myRepositoryFetchURLNoFixErrors = myAuthSettings.createAuthURI(root.getProperty(Constants.FETCH_URL), false);
     final String pushUrl = root.getProperty(Constants.PUSH_URL);
     myRepositoryPushURL = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURL : myAuthSettings.createAuthURI(pushUrl);
+    myRepositoryPushURLNoFixErrors = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURLNoFixErrors : myAuthSettings.createAuthURI(pushUrl, false);
     myUsernameForTags = root.getProperty(Constants.USERNAME_FOR_TAGS);
   }
 
@@ -130,6 +134,10 @@ public class Settings {
     return myRepositoryFetchURL;
   }
 
+  public URIish getRepositoryFetchURLNoFixedErrors() {
+    return myRepositoryFetchURLNoFixErrors;
+  }
+
   /**
    * @return the branch name
    */
@@ -149,6 +157,10 @@ public class Settings {
    */
   public URIish getRepositoryPushURL() {
     return myRepositoryPushURL;
+  }
+
+  public URIish getRepositoryPushURLNoFixedErrors() {
+    return myRepositoryPushURLNoFixErrors;
   }
 
   public AuthSettings getAuthSettings() {
@@ -198,16 +210,24 @@ public class Settings {
     }
 
     public URIish createAuthURI(String uri) throws VcsException {
+      return createAuthURI(uri, true);
+    }
+
+    public URIish createAuthURI(String uri, boolean fixErrors) throws VcsException {
       URIish result;
       try {
         result = new URIish(uri);
       } catch (URISyntaxException e) {
         throw new VcsException("Invalid URI: " + uri);
       }
-      return createAuthURI(result);
+      return createAuthURI(result, fixErrors);
     }
 
     public URIish createAuthURI(final URIish uri) {
+      return createAuthURI(uri, true);
+    }
+
+    public URIish createAuthURI(final URIish uri, boolean fixErrors) {
       URIish result = uri;
       if (requiresCredentials(result)) {
         if (!StringUtil.isEmptyOrSpaces(myUserName)) {
@@ -217,7 +237,14 @@ public class Settings {
           result = result.setPass(myPassword);
         }
       }
+      if (fixErrors && isAnonymousProtocolWithUser(result)) {
+        result = result.setUser(null);
+      }
       return result;
+    }
+
+    private boolean isAnonymousProtocolWithUser(@NotNull URIish uriish) {
+      return "git".equals(uriish.getScheme()) && uriish.getUser() != null;
     }
 
     private boolean requiresCredentials(URIish result) {
