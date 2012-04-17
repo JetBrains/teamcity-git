@@ -56,6 +56,7 @@ import java.util.regex.Pattern;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
+import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
 
 /**
@@ -892,19 +893,14 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   @Override
   public Map<String, String> getVcsRepositoryProperties(@NotNull VcsRoot root) throws VcsException {
-    Map<String, String> properties = new HashMap<String, String>(root.getProperties());
-    properties.remove(Constants.PUSH_URL);
-    properties.remove(Constants.BRANCH_NAME);
-    properties.remove(Constants.PATH);
-    properties.remove(Constants.AGENT_GIT_PATH);
-    properties.remove(Constants.AUTH_METHOD);
-    properties.remove(Constants.USERNAME_STYLE);
-    properties.remove(Constants.IGNORE_KNOWN_HOSTS);
-    properties.remove(Constants.PRIVATE_KEY_PATH);
-    properties.remove(Constants.USERNAME);
-    properties.remove(Constants.PASSWORD);
-    properties.remove(Constants.PASSPHRASE);
-    properties.remove(Constants.USERNAME_FOR_TAGS);
-    return properties;
+    Set<String> repositoryPropertyKeys = setOf(Constants.FETCH_URL,
+                                               Constants.SUBMODULES_CHECKOUT,
+                                               Constants.AGENT_CLEAN_POLICY,
+                                               Constants.AGENT_CLEAN_FILES_POLICY);
+    Map<String, String> rootProperties = root.getProperties();
+    Map<String, String> repositoryProperties = new HashMap<String, String>();
+    for (String key : repositoryPropertyKeys)
+      repositoryProperties.put(key, rootProperties.get(key));
+    return repositoryProperties;
   }
 }
