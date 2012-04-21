@@ -71,7 +71,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
 
   public int getCurrentVersionCacheSize() {
-    return TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
+    return TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 1024);
   }
 
 
