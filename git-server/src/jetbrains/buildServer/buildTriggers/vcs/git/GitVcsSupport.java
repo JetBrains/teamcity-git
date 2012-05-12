@@ -79,6 +79,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private final TransportFactory myTransportFactory;
   private final FetchCommand myFetchCommand;
   private final RepositoryManager myRepositoryManager;
+  private final RepositoryMatcher myRepositoryMatcher;
 
 
   public GitVcsSupport(@NotNull final ServerPluginConfig config,
@@ -86,12 +87,14 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull final TransportFactory transportFactory,
                        @NotNull final FetchCommand fetchCommand,
                        @NotNull final RepositoryManager repositoryManager,
+                       @NotNull final RepositoryMatcher repositoryMatcher,
                        @Nullable final ExtensionHolder extensionHolder) {
     myConfig = config;
     myExtensionHolder = extensionHolder;
     myTransportFactory = transportFactory;
     myFetchCommand = fetchCommand;
     myRepositoryManager = repositoryManager;
+    myRepositoryMatcher = repositoryMatcher;
     myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(myConfig.getCurrentVersionCacheSize());
     setStreamFileThreshold();
     resetCacheManager.registerHandler(new GitResetCacheHandler(this, repositoryManager));
@@ -902,5 +905,10 @@ public class GitVcsSupport extends ServerVcsSupport
     for (String key : repositoryPropertyKeys)
       repositoryProperties.put(key, rootProperties.get(key));
     return repositoryProperties;
+  }
+
+  @Override
+  public RepositoryMatcher getRepositoryMatcher() {
+    return myRepositoryMatcher;
   }
 }

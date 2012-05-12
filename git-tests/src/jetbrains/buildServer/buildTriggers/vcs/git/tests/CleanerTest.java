@@ -24,6 +24,7 @@ import jetbrains.buildServer.serverSide.SBuildServer;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
+import jetbrains.buildServer.vcs.RepositoryMatcher;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jmock.Expectations;
@@ -74,7 +75,8 @@ public class CleanerTest extends BaseTestCase {
     FetchCommand fetchCommand = new FetchCommandImpl(myConfig, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl());
     myRepositoryManager = new RepositoryManagerImpl(myConfig, mirrorManager);
-    mySupport = new GitVcsSupport(myConfig, new ResetCacheRegister(), transportFactory, fetchCommand, myRepositoryManager, null);
+    RepositoryMatcher repositoryMatcher = new GitRepositoryMatcher();
+    mySupport = new GitVcsSupport(myConfig, new ResetCacheRegister(), transportFactory, fetchCommand, myRepositoryManager, repositoryMatcher, null);
     myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), myConfig, myRepositoryManager);
   }
 
