@@ -151,8 +151,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    RepositoryMatcher repositoryMatcher = new GitRepositoryMatcher();
-    return new GitVcsSupport(config, myResetCacheManager, transportFactory, fetchCommand, repositoryManager, repositoryMatcher, holder);
+    return new GitVcsSupport(config, myResetCacheManager, transportFactory, fetchCommand, repositoryManager, holder);
   }
 
 
@@ -1259,8 +1258,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    RepositoryMatcher repositoryMatcher = new GitRepositoryMatcher();
-    GitVcsSupport git = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCounter, repositoryManager, repositoryMatcher, null);
+    GitVcsSupport git = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCounter, repositoryManager, null);
 
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
     copyRepository(dataFile("repo_for_fetch.1"), remoteRepositoryDir);

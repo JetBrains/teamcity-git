@@ -65,8 +65,7 @@ public class ListFilesTest {
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    RepositoryMatcher repositoryMatcher = new GitRepositoryMatcher();
-    myGit = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCommand, repositoryManager, repositoryMatcher, null);
+    myGit = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCommand, repositoryManager, null);
     File remoteRepositoryDir = new File(myTempFiles.createTempDir(), "repo.git");
     FileUtil.copyDir(dataFile("repo.git"), remoteRepositoryDir);
     myRoot = vcsRoot().withFetchUrl(remoteRepositoryDir.getAbsolutePath()).withBranch("patch-tests").build();

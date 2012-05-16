@@ -21,7 +21,10 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
-import jetbrains.buildServer.vcs.*;
+import jetbrains.buildServer.vcs.CheckoutRules;
+import jetbrains.buildServer.vcs.ModificationData;
+import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -101,7 +104,6 @@ public class BranchSupportTest {
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    RepositoryMatcher repositoryMatcher = new GitRepositoryMatcher();
-    return new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCommand, repositoryManager, repositoryMatcher, null);
+    return new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCommand, repositoryManager, null);
   }
 }
