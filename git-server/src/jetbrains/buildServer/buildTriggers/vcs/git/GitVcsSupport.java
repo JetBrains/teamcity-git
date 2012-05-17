@@ -52,7 +52,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
-import java.util.regex.Pattern;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
@@ -182,7 +181,8 @@ public class GitVcsSupport extends ServerVcsSupport
     for (Ref ref : getRemoteRefs(root).values()) {
       branchRevisions.put(ref.getName(), ref.getObjectId().name());
     }
-    return RepositoryStateFactory.createRepositoryState(branchRevisions);
+    GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root);
+    return RepositoryStateFactory.createRepositoryState(branchRevisions, gitRoot.getRef());
   }
 
   @NotNull
@@ -787,18 +787,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return new GitUrlSupport();
   }
 
-
-  public List<String> getRemoteBranches(@NotNull final VcsRoot root, @NotNull final String pattern) throws VcsException {
-    Collection<Ref> remotes = getRemoteRefs(root).values();
-    Pattern p = Pattern.compile(pattern);
-    List<String> result = new ArrayList<String>();
-    for (Ref ref : remotes) {
-      if (p.matcher(ref.getName()).matches()) {
-        result.add(ref.getName());
-      }
-    }
-    return result;
-  }
 
   @NotNull
   private Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
