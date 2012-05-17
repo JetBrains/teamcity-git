@@ -135,7 +135,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
       ProgressMonitor.class,
       VcsPersonalSupport.class,
       Logger.class,
-      Settings.class,
+      GitVcsRoot.class,
       JSch.class,
       Decoder.class,
       TObjectHashingStrategy.class,

@@ -53,20 +53,20 @@ public class TestConnectionCommand {
 
 
   public String testConnection(@NotNull OperationContext context) throws Exception {
-    Settings s = context.getSettings();
+    GitVcsRoot root = context.getGitRoot();
     File repositoryTempDir = null;
     try {
       repositoryTempDir = FileUtil.createTempDirectory("git-testcon", "");
-      s.setUserDefinedRepositoryPath(repositoryTempDir);
+      root.setUserDefinedRepositoryPath(repositoryTempDir);
       Repository r = context.getRepository();
       try {
         if (LOG.isDebugEnabled())
-          LOG.debug("Opening connection for " + s.debugInfo());
-        checkFetchConnection(s, r);
-        checkPushConnection(s, r);
+          LOG.debug("Opening connection for " + root.debugInfo());
+        checkFetchConnection(root, r);
+        checkPushConnection(root, r);
         return null;
       } catch (NotSupportedException nse) {
-        throw friendlyNotSupportedException(context.getRoot(), s, nse);
+        throw friendlyNotSupportedException(root, nse);
       } catch (TransportException te) {
         throw friendlyTransportException(te);
       }
@@ -79,15 +79,15 @@ public class TestConnectionCommand {
   }
 
 
-  private void checkFetchConnection(Settings s, Repository r) throws NotSupportedException, VcsException, TransportException {
-    validate(s.getRepositoryFetchURLNoFixedErrors());
-    final Transport tn = myTransportFactory.createTransport(r, s.getRepositoryFetchURLNoFixedErrors(), s.getAuthSettings());
+  private void checkFetchConnection(GitVcsRoot root, Repository r) throws NotSupportedException, VcsException, TransportException {
+    validate(root.getRepositoryFetchURLNoFixedErrors());
+    final Transport tn = myTransportFactory.createTransport(r, root.getRepositoryFetchURLNoFixedErrors(), root.getAuthSettings());
     FetchConnection c = null;
     try {
       c = tn.openFetch();
       if (LOG.isDebugEnabled())
-        LOG.debug("Checking references... " + s.debugInfo());
-      checkRefExists(s, c);
+        LOG.debug("Checking references... " + root.debugInfo());
+      checkRefExists(root, c);
     } finally {
       if (c != null)
         c.close();
@@ -96,10 +96,10 @@ public class TestConnectionCommand {
   }
 
 
-  private void checkPushConnection(Settings s, Repository r) throws NotSupportedException, VcsException, TransportException {
-    if (!s.getRepositoryFetchURLNoFixedErrors().equals(s.getRepositoryPushURLNoFixedErrors())) {
-      validate(s.getRepositoryPushURLNoFixedErrors());
-      final Transport push = myTransportFactory.createTransport(r, s.getRepositoryPushURLNoFixedErrors(), s.getAuthSettings());
+  private void checkPushConnection(GitVcsRoot root, Repository r) throws NotSupportedException, VcsException, TransportException {
+    if (!root.getRepositoryFetchURLNoFixedErrors().equals(root.getRepositoryPushURLNoFixedErrors())) {
+      validate(root.getRepositoryPushURLNoFixedErrors());
+      final Transport push = myTransportFactory.createTransport(r, root.getRepositoryPushURLNoFixedErrors(), root.getAuthSettings());
       PushConnection c = null;
       try {
         c = push.openPush();
@@ -113,17 +113,17 @@ public class TestConnectionCommand {
   }
 
 
-  private void checkRefExists(Settings s, FetchConnection c) throws VcsException {
-    String refName = GitUtils.expandRef(s.getRef());
-    if (!isRefExist(s, c, refName))
-      throw new VcsException("The ref '" + refName + "' was not found in the repository " + s.getRepositoryFetchURL().toString());
+  private void checkRefExists(@NotNull GitVcsRoot root, @NotNull FetchConnection c) throws VcsException {
+    String refName = GitUtils.expandRef(root.getRef());
+    if (!isRefExist(root, c, refName))
+      throw new VcsException("The ref '" + refName + "' was not found in the repository " + root.getRepositoryFetchURL().toString());
   }
 
 
-  private boolean isRefExist(Settings s, FetchConnection c, String refName) {
+  private boolean isRefExist(@NotNull GitVcsRoot root, @NotNull FetchConnection c, @NotNull String refName) {
     for (final Ref ref : c.getRefs()) {
       if (refName.equals(ref.getName())) {
-        LOG.info("Found the ref " + refName + "=" + ref.getObjectId() + " for " + s.debugInfo());
+        LOG.info("Found the ref " + refName + "=" + ref.getObjectId() + " for " + root.debugInfo());
         return true;
       }
     }

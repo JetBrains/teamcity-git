@@ -129,13 +129,13 @@ public class GitVcsSupport extends ServerVcsSupport
     List<ModificationData> result = new ArrayList<ModificationData>();
     OperationContext context = createContext(root, "collecting changes");
     try {
-      LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + context.getSettings().debugInfo());
+      LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + context.getGitRoot().debugInfo());
       if (currentVersion == null) {
-        LOG.warn("Current version is null for " + context.getSettings().debugInfo() + ", return empty list of changes");
+        LOG.warn("Current version is null for " + context.getGitRoot().debugInfo() + ", return empty list of changes");
         return result;
       }
       String upperBoundSHA = GitUtils.versionRevision(currentVersion);
-      ensureRevCommitLoaded(context, context.getSettings(), upperBoundSHA);
+      ensureRevCommitLoaded(context, context.getGitRoot(), upperBoundSHA);
       String lowerBoundSHA = GitUtils.versionRevision(fromVersion);
       Repository r = context.getRepository();
       result.addAll(getModifications(context, r, upperBoundSHA, lowerBoundSHA));
@@ -213,7 +213,7 @@ public class GitVcsSupport extends ServerVcsSupport
       RevCommit c;
       while ((c = walk.next()) != null) {
         if (lastCommit) {
-          lastCommitUser = GitServerUtil.getUser(context.getSettings(), c);
+          lastCommitUser = GitServerUtil.getUser(context.getGitRoot(), c);
           lastCommit = false;
         }
         firstCommitInBranch = c.name();
@@ -242,22 +242,22 @@ public class GitVcsSupport extends ServerVcsSupport
 
   private String getLastCommonVersion(VcsRoot baseRoot, String baseVersion, VcsRoot tipRoot, String tipVersion) throws VcsException {
     OperationContext context = createContext(tipRoot, "find fork version");
-    Settings baseSettings = context.getSettings(baseRoot);
-    Settings tipSettings = context.getSettings();
-    LOG.debug("Find last common version between [" + baseSettings.debugInfo() + "-" + baseVersion + "].." +
-              "[" + tipSettings.debugInfo() + "-" + tipVersion + "]");
+    GitVcsRoot baseGitRoot = context.getGitRoot(baseRoot);
+    GitVcsRoot tipGitRoot = context.getGitRoot();
+    LOG.debug("Find last common version between [" + baseGitRoot.debugInfo() + "-" + baseVersion + "].." +
+              "[" + tipGitRoot.debugInfo() + "-" + tipVersion + "]");
     RevWalk walk = null;
     try {
-      RevCommit baseCommit = ensureCommitLoaded(context, baseSettings, baseVersion);
-      RevCommit tipCommit = ensureCommitLoaded(context, tipSettings, tipVersion);
-      Repository tipRepository = context.getRepository(tipSettings);
+      RevCommit baseCommit = ensureCommitLoaded(context, baseGitRoot, baseVersion);
+      RevCommit tipCommit = ensureCommitLoaded(context, tipGitRoot, tipVersion);
+      Repository tipRepository = context.getRepository(tipGitRoot);
       walk = new RevWalk(tipRepository);
       walk.setRevFilter(RevFilter.MERGE_BASE);
       walk.markStart(walk.parseCommit(baseCommit.getId()));
       walk.markStart(walk.parseCommit(tipCommit.getId()));
       final RevCommit base = walk.next();
       String result = GitServerUtil.makeVersion(base);
-      LOG.debug("Last common revision between " + baseSettings.debugInfo() + " and " + tipSettings.debugInfo() + " is " + result);
+      LOG.debug("Last common revision between " + baseGitRoot.debugInfo() + " and " + tipGitRoot.debugInfo() + " is " + result);
       return result;
     } catch (Exception e) {
       throw context.wrapException(e);
@@ -282,7 +282,7 @@ public class GitVcsSupport extends ServerVcsSupport
     String toRevision = GitUtils.versionRevision(toVersion);
     GitPatchBuilder gitPatchBuilder = new GitPatchBuilder(myConfig, context, builder, fromRevision, toRevision, checkoutRules);
     try {
-      ensureRevCommitLoaded(context, context.getSettings(), toRevision);
+      ensureRevCommitLoaded(context, context.getGitRoot(), toRevision);
       gitPatchBuilder.buildPatch();
     } catch (Exception e) {
       throw context.wrapException(e);
@@ -314,27 +314,27 @@ public class GitVcsSupport extends ServerVcsSupport
       final TreeWalk tw = new TreeWalk(r);
       try {
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Getting data from " + version + ":" + filePath + " for " + context.getSettings().debugInfo());
+          LOG.debug("Getting data from " + version + ":" + filePath + " for " + context.getGitRoot().debugInfo());
         }
         final String rev = GitUtils.versionRevision(version);
-        RevCommit c = ensureRevCommitLoaded(context, context.getSettings(), rev);
+        RevCommit c = ensureRevCommitLoaded(context, context.getGitRoot(), rev);
         tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
         tw.setRecursive(tw.getFilter().shouldBeRecursive());
         context.addTree(tw, r, c, true);
         if (!tw.next()) {
-          throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + context.getSettings().debugInfo());
+          throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + context.getGitRoot().debugInfo());
         }
         final byte[] data = loadObject(r, tw, 0);
         if (LOG.isDebugEnabled()) {
           LOG.debug(
             "File retrieved " + version + ":" + filePath + " (hash = " + tw.getObjectId(0) + ", length = " + data.length + ") for " +
-            context.getSettings().debugInfo());
+            context.getGitRoot().debugInfo());
         }
         return data;
       } finally {
         final long finish = System.currentTimeMillis();
         if (PERFORMANCE_LOG.isDebugEnabled()) {
-          PERFORMANCE_LOG.debug("[getContent] root=" + context.getSettings().debugInfo() + ", file=" + filePath + ", get object content: " + (finish - start) + "ms");
+          PERFORMANCE_LOG.debug("[getContent] root=" + context.getGitRoot().debugInfo() + ", file=" + filePath + ", get object content: " + (finish - start) + "ms");
         }
         tw.release();
       }
@@ -386,35 +386,35 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  private RevCommit ensureCommitLoaded(OperationContext context, Settings rootSettings, String commitWithDate) throws Exception {
+  private RevCommit ensureCommitLoaded(OperationContext context, GitVcsRoot root, String commitWithDate) throws Exception {
     final String commit = GitUtils.versionRevision(commitWithDate);
-    return ensureRevCommitLoaded(context, rootSettings, commit);
+    return ensureRevCommitLoaded(context, root, commit);
   }
 
   @NotNull
-  private RevCommit ensureRevCommitLoaded(OperationContext context, Settings settings, String commitSHA) throws Exception {
-    Repository db = context.getRepository(settings);
+  private RevCommit ensureRevCommitLoaded(OperationContext context, GitVcsRoot root, String commitSHA) throws Exception {
+    Repository db = context.getRepository(root);
     RevCommit result = null;
     try {
       final long start = System.currentTimeMillis();
       result = getCommit(db, commitSHA);
       final long finish = System.currentTimeMillis();
       if (PERFORMANCE_LOG.isDebugEnabled()) {
-        PERFORMANCE_LOG.debug("[ensureCommitLoaded] root=" + settings.debugInfo() + ", commit=" + commitSHA + ", local commit lookup: " + (finish - start) + "ms");
+        PERFORMANCE_LOG.debug("[ensureCommitLoaded] root=" + root.debugInfo() + ", commit=" + commitSHA + ", local commit lookup: " + (finish - start) + "ms");
       }
     } catch (IOException ex) {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("IO problem for commit " + commitSHA + " in " + settings.debugInfo(), ex);
+        LOG.debug("IO problem for commit " + commitSHA + " in " + root.debugInfo(), ex);
       }
     }
     if (result == null) {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Commit " + commitSHA + " is not in the repository for " + settings.debugInfo() + ", fetching data... ");
+        LOG.debug("Commit " + commitSHA + " is not in the repository for " + root.debugInfo() + ", fetching data... ");
       }
-      fetchBranchData(settings, db);
+      fetchBranchData(root, db);
       result = getCommit(db, commitSHA);
       if (result == null) {
-        throw new VcsException("The version name could not be resolved " + commitSHA + "(" + settings.getRepositoryFetchURL().toString() + "#" + settings.getRef() + ")");
+        throw new VcsException("The version name could not be resolved " + commitSHA + "(" + root.getRepositoryFetchURL().toString() + "#" + root.getRef() + ")");
       }
     }
     return result;
@@ -505,20 +505,20 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public String getCurrentVersion(@NotNull VcsRoot root) throws VcsException {
     OperationContext context = createContext(root, "retrieving current version");
-    Settings s = context.getSettings();
+    GitVcsRoot gitRoot = context.getGitRoot();
     try {
       Repository r = context.getRepository();
-      String refName = GitUtils.expandRef(s.getRef());
+      String refName = GitUtils.expandRef(gitRoot.getRef());
 
-      if (alwaysDoFetchOnGetCurrentVersion() || isRemoteRefUpdated(root, r, s, refName))
-        fetchBranchData(s, r);
+      if (alwaysDoFetchOnGetCurrentVersion() || isRemoteRefUpdated(gitRoot, r, refName))
+        fetchBranchData(gitRoot, r);
 
       Ref branchRef = r.getRef(refName);
       if (branchRef == null) {
         throw new VcsException("The ref '" + refName + "' could not be resolved");
       }
 
-      String cachedCurrentVersion = getCachedCurrentVersion(s.getRepositoryDir(), s.getRef());
+      String cachedCurrentVersion = getCachedCurrentVersion(gitRoot.getRepositoryDir(), gitRoot.getRef());
       if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
         return cachedCurrentVersion;
       } else {
@@ -527,11 +527,11 @@ public class GitVcsSupport extends ServerVcsSupport
           throw new VcsException("The ref '" + refName + "' could not be resolved");
         }
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Current version: " + c.getId().name() + " " + s.debugInfo());
+          LOG.debug("Current version: " + c.getId().name() + " " + gitRoot.debugInfo());
         }
         final String currentVersion = GitServerUtil.makeVersion(c);
-        setCachedCurrentVersion(s.getRepositoryDir(), s.getRef(), currentVersion);
-        GitMapFullPath.invalidateRevisionsCache(root);
+        setCachedCurrentVersion(gitRoot.getRepositoryDir(), gitRoot.getRef(), currentVersion);
+        GitMapFullPath.invalidateRevisionsCache(gitRoot);
         return currentVersion;
       }
     } catch (Exception e) {
@@ -547,8 +547,8 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
 
-  private boolean isRemoteRefUpdated(@NotNull VcsRoot root, @NotNull Repository db, @NotNull Settings s, @NotNull String refName) throws Exception {
-    Ref remoteRef = getRemoteRef(root, db, s, refName);
+  private boolean isRemoteRefUpdated(@NotNull GitVcsRoot root, @NotNull Repository db, @NotNull String refName) throws Exception {
+    Ref remoteRef = getRemoteRef(root, db, refName);
     if (remoteRef == null) {
       LOG.debug("Remote ref updated: repository " + LogUtil.describe(root) + ", ref '" + refName + "' no remote revision found");
       return true;
@@ -605,18 +605,18 @@ public class GitVcsSupport extends ServerVcsSupport
   /**
    * Fetch data for the branch
    *
-   * @param settings   settings for the root
+   * @param root git root
    * @param repository the repository
    * @throws Exception if there is a problem with fetching data
    */
-  private void fetchBranchData(Settings settings, Repository repository) throws Exception {
-    final String refName = GitUtils.expandRef(settings.getRef());
+  private void fetchBranchData(@NotNull GitVcsRoot root, @NotNull Repository repository) throws Exception {
+    final String refName = GitUtils.expandRef(root.getRef());
     RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
-    fetch(repository, settings.getRepositoryFetchURL(), spec, settings.getAuthSettings());
+    fetch(repository, root.getRepositoryFetchURL(), spec, root.getAuthSettings());
   }
 
 
-  public void fetch(Repository db, URIish fetchURI, Collection<RefSpec> refspecs, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+  public void fetch(Repository db, URIish fetchURI, Collection<RefSpec> refspecs, GitVcsRoot.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
     Lock rmLock = myRepositoryManager.getRmLock(repositoryDir).readLock();
@@ -640,7 +640,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * @param refspec refspec
    * @param auth auth settings
    */
-  public void fetch(Repository db, URIish fetchURI, RefSpec refspec, Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+  public void fetch(Repository db, URIish fetchURI, RefSpec refspec, GitVcsRoot.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     fetch(db, fetchURI, Collections.singletonList(refspec), auth);
   }
 
@@ -689,25 +689,25 @@ public class GitVcsSupport extends ServerVcsSupport
   public String label(@NotNull String label, @NotNull String version, @NotNull VcsRoot root, @NotNull CheckoutRules checkoutRules)
     throws VcsException {
     OperationContext context = createContext(root, "labelling");
-    Settings s = context.getSettings();
+    GitVcsRoot gitRoot = context.getGitRoot();
     try {
       Repository r = context.getRepository();
       String commitSHA = GitUtils.versionRevision(version);
-      RevCommit commit = ensureRevCommitLoaded(context, s, commitSHA);
+      RevCommit commit = ensureRevCommitLoaded(context, gitRoot, commitSHA);
       Git git = new Git(r);
-      git.tag().setTagger(s.getTagger(r)).setName(label).setObjectId(commit).call();
+      git.tag().setTagger(gitRoot.getTagger(r)).setName(label).setObjectId(commit).call();
       String tagRef = GitUtils.tagName(label);
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Tag created  " + label + "=" + version + " for " + s.debugInfo());
+        LOG.debug("Tag created  " + label + "=" + version + " for " + gitRoot.debugInfo());
       }
-      synchronized (myRepositoryManager.getWriteLock(s.getRepositoryDir())) {
-        final Transport tn = myTransportFactory.createTransport(r, s.getRepositoryPushURL(), s.getAuthSettings());
+      synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
+        final Transport tn = myTransportFactory.createTransport(r, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings());
         try {
           final PushConnection c = tn.openPush();
           try {
             RemoteRefUpdate ru = new RemoteRefUpdate(r, tagRef, tagRef, false, null, null);
             c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(tagRef, ru));
-            LOG.info("Tag  " + label + "=" + version + " pushed with status " + ru.getStatus() + " for " + s.debugInfo());
+            LOG.info("Tag  " + label + "=" + version + " pushed with status " + ru.getStatus() + " for " + gitRoot.debugInfo());
             switch (ru.getStatus()) {
               case UP_TO_DATE:
               case OK:
@@ -803,13 +803,13 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   private Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
     OperationContext context = createContext(root, "list remote refs");
-    Settings s = context.getSettings();
+    GitVcsRoot gitRoot = context.getGitRoot();
     File tmpDir = null;
     try {
       tmpDir = FileUtil.createTempDirectory("git-ls-remote", "");
-      s.setUserDefinedRepositoryPath(tmpDir);
+      gitRoot.setUserDefinedRepositoryPath(tmpDir);
       Repository db = context.getRepository();
-      return getRemoteRefs(root, db, s);
+      return getRemoteRefs(root, db, gitRoot);
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
@@ -823,16 +823,16 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   @NotNull
-  private Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root, @NotNull Repository db, @NotNull Settings s) throws Exception {
+  private Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root, @NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws Exception {
     final long start = System.currentTimeMillis();
     Transport transport = null;
     FetchConnection connection = null;
     try {
-      transport = myTransportFactory.createTransport(db, s.getRepositoryFetchURL(), s.getAuthSettings());
+      transport = myTransportFactory.createTransport(db, gitRoot.getRepositoryFetchURL(), gitRoot.getAuthSettings());
       connection = transport.openFetch();
       return connection.getRefsMap();
     } catch (NotSupportedException nse) {
-      throw friendlyNotSupportedException(root, s, nse);
+      throw friendlyNotSupportedException(gitRoot, nse);
     } catch (TransportException te) {
       throw friendlyTransportException(te);
     } finally {
@@ -846,16 +846,16 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @Nullable
-  private Ref getRemoteRef(@NotNull VcsRoot root, @NotNull Repository db, @NotNull Settings s, @NotNull String refName) throws Exception {
+  private Ref getRemoteRef(@NotNull GitVcsRoot root, @NotNull Repository db, @NotNull String refName) throws Exception {
     final long start = System.currentTimeMillis();
     Transport transport = null;
     FetchConnection connection = null;
     try {
-      transport = myTransportFactory.createTransport(db, s.getRepositoryFetchURL(), s.getAuthSettings());
+      transport = myTransportFactory.createTransport(db, root.getRepositoryFetchURL(), root.getAuthSettings());
       connection = transport.openFetch();
       return connection.getRef(refName);
     } catch (NotSupportedException nse) {
-      throw friendlyNotSupportedException(root, s, nse);
+      throw friendlyNotSupportedException(root, nse);
     } catch (TransportException te) {
       throw friendlyTransportException(te);
     } finally {
@@ -872,8 +872,8 @@ public class GitVcsSupport extends ServerVcsSupport
   public Collection<VcsClientMapping> getClientMapping(final @NotNull VcsRoot root, final @NotNull IncludeRule rule) throws VcsException {
     final OperationContext context = createContext(root, "client-mapping");
     try {
-      Settings s = context.getSettings();
-      URIish uri = s.getRepositoryFetchURL();
+      GitVcsRoot gitRoot = context.getGitRoot();
+      URIish uri = gitRoot.getRepositoryFetchURL();
       return Collections.singletonList(new VcsClientMapping(String.format("|%s|%s", uri.toString(), rule.getFrom()), rule.getTo()));
     } finally {
       context.close();

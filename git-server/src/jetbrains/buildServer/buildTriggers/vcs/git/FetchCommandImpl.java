@@ -64,7 +64,7 @@ public class FetchCommandImpl implements FetchCommand {
 
 
   public void fetch(@NotNull final Repository db, @NotNull final URIish fetchURI,
-                    @NotNull final Collection<RefSpec> refspecs, @NotNull final Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+                    @NotNull final Collection<RefSpec> refspecs, @NotNull final GitVcsRoot.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     unlockRefs(db);
     if (myConfig.isSeparateProcessForFetch()) {
       fetchInSeparateProcess(db, auth, fetchURI, refspecs);
@@ -110,7 +110,7 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
 
-  private void fetchInSeparateProcess(@NotNull final Repository repository, @NotNull final Settings.AuthSettings settings,
+  private void fetchInSeparateProcess(@NotNull final Repository repository, @NotNull final GitVcsRoot.AuthSettings settings,
                                       @NotNull final URIish uri, @NotNull final Collection<RefSpec> specs) throws VcsException {
     final long fetchStart = System.currentTimeMillis();
     final String debugInfo = getDebugInfo(repository, uri, specs);
@@ -179,7 +179,7 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
 
-  private void fetchInSameProcess(@NotNull final Repository db, @NotNull final Settings.AuthSettings auth,
+  private void fetchInSameProcess(@NotNull final Repository db, @NotNull final GitVcsRoot.AuthSettings auth,
                                   @NotNull final URIish uri, @NotNull final Collection<RefSpec> refSpecs) throws NotSupportedException, VcsException, TransportException {
     final String debugInfo = getDebugInfo(db, uri, refSpecs);
     if (LOG.isDebugEnabled()) {
@@ -243,7 +243,7 @@ public class FetchCommandImpl implements FetchCommand {
 
   private class FetcherEventHandler implements SimpleCommandLineProcessRunner.RunCommandEvents {
     private final String myRepositoryDebugInfo;
-    private final Settings.AuthSettings myAuthSettings;
+    private final GitVcsRoot.AuthSettings myAuthSettings;
     private final File myRepositoryDir;
     private final URIish myUri;
     private final Collection<RefSpec> mySpecs;
@@ -251,7 +251,7 @@ public class FetchCommandImpl implements FetchCommand {
     private final File myThreadDump;
 
     FetcherEventHandler(@NotNull final String repositoryDebugInfo,
-                        @NotNull final Settings.AuthSettings authSettings,
+                        @NotNull final GitVcsRoot.AuthSettings authSettings,
                         @NotNull final File repositoryDir,
                         @NotNull final URIish uri,
                         @NotNull final Collection<RefSpec> specs,

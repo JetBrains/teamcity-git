@@ -52,7 +52,7 @@ public class TransportFactoryImpl implements TransportFactory {
   }
 
 
-  public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull Settings.AuthSettings authSettings) throws NotSupportedException, VcsException {
+  public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull GitVcsRoot.AuthSettings authSettings) throws NotSupportedException, VcsException {
     try {
       final URIish authUrl = authSettings.createAuthURI(url);
       checkUrl(url);
@@ -107,7 +107,7 @@ public class TransportFactoryImpl implements TransportFactory {
    * @return session factory object
    * @throws VcsException in case of problems with creating object
    */
-  private SshSessionFactory getSshSessionFactory(Settings.AuthSettings authSettings, URIish url) throws VcsException {
+  private SshSessionFactory getSshSessionFactory(GitVcsRoot.AuthSettings authSettings, URIish url) throws VcsException {
     switch (authSettings.getAuthMethod()) {
       case PRIVATE_KEY_DEFAULT:
         return new DefaultJschConfigSessionFactory(myConfig, authSettings, myJSchOptions);
@@ -123,11 +123,11 @@ public class TransportFactoryImpl implements TransportFactory {
 
   private static class DefaultJschConfigSessionFactory extends JschConfigSessionFactory {
     protected final ServerPluginConfig myConfig;
-    protected final Settings.AuthSettings myAuthSettings;
+    protected final GitVcsRoot.AuthSettings myAuthSettings;
     private final Map<String,String> myJschOptions;
 
     private DefaultJschConfigSessionFactory(@NotNull ServerPluginConfig config,
-                                            @NotNull Settings.AuthSettings authSettings,
+                                            @NotNull GitVcsRoot.AuthSettings authSettings,
                                             @NotNull Map<String,String> jschOptions) {
       myConfig = config;
       myAuthSettings = authSettings;
@@ -149,7 +149,7 @@ public class TransportFactoryImpl implements TransportFactory {
   private static class PasswordJschConfigSessionFactory extends DefaultJschConfigSessionFactory {
 
     private PasswordJschConfigSessionFactory(@NotNull ServerPluginConfig config,
-                                             @NotNull Settings.AuthSettings authSettings,
+                                             @NotNull GitVcsRoot.AuthSettings authSettings,
                                              @NotNull Map<String,String> jschOptions) {
       super(config, authSettings, jschOptions);
     }
@@ -165,7 +165,7 @@ public class TransportFactoryImpl implements TransportFactory {
   private static class CustomPrivateKeySessionFactory extends DefaultJschConfigSessionFactory {
 
     private CustomPrivateKeySessionFactory(@NotNull ServerPluginConfig config,
-                                           @NotNull Settings.AuthSettings authSettings,
+                                           @NotNull GitVcsRoot.AuthSettings authSettings,
                                            @NotNull Map<String,String> jschOptions) {
       super(config, authSettings, jschOptions);
     }

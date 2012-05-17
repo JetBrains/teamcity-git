@@ -48,7 +48,7 @@ class GitMapFullPath {
   private final String myFullPath;
 
   private OperationContext myContext;
-  private final Settings mySettings;
+  private final GitVcsRoot myRoot;
   private final int myFirstSep;
   private final int myLastSep;
 
@@ -64,7 +64,7 @@ class GitMapFullPath {
     myFirstSep = myFullPath.indexOf("|");
     myLastSep = myFullPath.lastIndexOf("|");
     myContext = context;
-    mySettings = context.getSettings();
+    myRoot = context.getGitRoot();
   }
 
   public Collection<String> mapFullPath() throws VcsException {
@@ -132,7 +132,7 @@ class GitMapFullPath {
       return false;
     }
 
-    final URIish settingsUrl = mySettings.getRepositoryFetchURL();
+    final URIish settingsUrl = myRoot.getRepositoryFetchURL();
     if (settingsUrl == null)
       return false;
     if (uri.getHost() == null && settingsUrl.getHost() != null || uri.getHost() != null && !uri.getHost().equals(settingsUrl.getHost()))

@@ -86,7 +86,7 @@ public class Fetcher {
   private static void fetch(final File repositoryDir, Map<String, String> vcsRootProperties, @NotNull ProgressMonitor progressMonitor) throws IOException, VcsException, URISyntaxException {
     final String fetchUrl = vcsRootProperties.get(Constants.FETCH_URL);
     final String refspecs = vcsRootProperties.get(Constants.REFSPEC);
-    Settings.AuthSettings auth = new Settings.AuthSettings(vcsRootProperties);
+    GitVcsRoot.AuthSettings auth = new GitVcsRoot.AuthSettings(vcsRootProperties);
     PluginConfigImpl config = new PluginConfigImpl();
 
     configureStreamFileThreshold();

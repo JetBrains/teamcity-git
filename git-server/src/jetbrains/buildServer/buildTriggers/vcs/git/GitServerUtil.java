@@ -19,7 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.JGitText;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.errors.NotSupportedException;
@@ -141,12 +140,12 @@ public class GitServerUtil {
     return GitUtils.makeVersion(c.getId().name(), c.getCommitterIdent().getWhen().getTime());
   }
 
-  public static String getUser(Settings s, RevCommit c) {
-    return getUser(c.getAuthorIdent(), s);
+  public static String getUser(GitVcsRoot root, RevCommit c) {
+    return getUser(c.getAuthorIdent(), root);
   }
 
-  private static String getUser(PersonIdent id, Settings s) {
-    switch (s.getUsernameStyle()) {
+  private static String getUser(PersonIdent id, GitVcsRoot root) {
+    switch (root.getUsernameStyle()) {
       case NAME:
         return id.getName();
       case EMAIL:
@@ -158,7 +157,7 @@ public class GitServerUtil {
         final int i = email.lastIndexOf("@");
         return email.substring(0, i > 0 ? i : email.length());
       default:
-        throw new IllegalStateException("Unsupported username style: " + s.getUsernameStyle());
+        throw new IllegalStateException("Unsupported username style: " + root.getUsernameStyle());
     }
   }
 
@@ -184,8 +183,9 @@ public class GitServerUtil {
   }
 
 
-  public static NotSupportedException friendlyNotSupportedException(VcsRoot root, Settings s, NotSupportedException nse)  {
-    URIish fetchURI = s.getRepositoryFetchURL();
+  @NotNull
+  public static NotSupportedException friendlyNotSupportedException(@NotNull GitVcsRoot root, @NotNull NotSupportedException nse)  {
+    URIish fetchURI = root.getRepositoryFetchURL();
     if (isRedundantColon(fetchURI)) {
       //url with username looks like ssh://username/hostname:/path/to/repo - it will
       //confuse user even further, so show url without user name

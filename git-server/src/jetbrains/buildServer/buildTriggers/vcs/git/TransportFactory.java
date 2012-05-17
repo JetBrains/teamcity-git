@@ -39,7 +39,7 @@ public interface TransportFactory {
    * @throws NotSupportedException if transport is not supported
    * @throws VcsException if there is a problem with configuring the transport
    */
-  public Transport createTransport(@NotNull Repository r, @NotNull final URIish url, @NotNull Settings.AuthSettings authSettings)
+  public Transport createTransport(@NotNull Repository r, @NotNull final URIish url, @NotNull GitVcsRoot.AuthSettings authSettings)
     throws NotSupportedException, VcsException, TransportException;
 
 }

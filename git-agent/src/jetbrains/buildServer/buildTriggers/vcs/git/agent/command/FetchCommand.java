@@ -16,7 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -41,7 +41,7 @@ public interface FetchCommand {
   FetchCommand setShowProgress(boolean showProgress);
 
   @NotNull
-  FetchCommand setAuthSettings(@NotNull Settings.AuthSettings settings);
+  FetchCommand setAuthSettings(@NotNull GitVcsRoot.AuthSettings settings);
 
   @NotNull
   FetchCommand setDepth(int depth);

@@ -36,9 +36,10 @@ import java.util.Map;
 /**
  * Git Vcs Settings
  */
-public class Settings {
+public class GitVcsRoot implements VcsRoot {
 
   private final MirrorManager myMirrorManager;
+  private final VcsRoot myDelegate;
   private final URIish myRepositoryFetchURL;
   private final URIish myRepositoryFetchURLNoFixErrors;
   private final URIish myRepositoryPushURL;
@@ -50,19 +51,20 @@ public class Settings {
   private final String myUsernameForTags;
   private File myUserDefinedRepositoryPath;
 
-  public Settings(@NotNull final MirrorManager mirrorManager, final VcsRoot root) throws VcsException {
+  public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root) throws VcsException {
     myMirrorManager = mirrorManager;
-    myUserDefinedRepositoryPath = readPath(root);
-    myRef = root.getProperty(Constants.BRANCH_NAME);
-    myUsernameStyle = readUserNameStyle(root);
-    mySubmodulePolicy = readSubmodulesPolicy(root);
-    myAuthSettings = new AuthSettings(root.getProperties());
-    myRepositoryFetchURL = myAuthSettings.createAuthURI(root.getProperty(Constants.FETCH_URL));
-    myRepositoryFetchURLNoFixErrors = myAuthSettings.createAuthURI(root.getProperty(Constants.FETCH_URL), false);
-    final String pushUrl = root.getProperty(Constants.PUSH_URL);
+    myDelegate = root;
+    myUserDefinedRepositoryPath = getPath();
+    myRef = getProperty(Constants.BRANCH_NAME);
+    myUsernameStyle = readUserNameStyle();
+    mySubmodulePolicy = readSubmodulesPolicy();
+    myAuthSettings = new AuthSettings(getProperties());
+    myRepositoryFetchURL = myAuthSettings.createAuthURI(getProperty(Constants.FETCH_URL));
+    myRepositoryFetchURLNoFixErrors = myAuthSettings.createAuthURI(getProperty(Constants.FETCH_URL), false);
+    String pushUrl = getProperty(Constants.PUSH_URL);
     myRepositoryPushURL = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURL : myAuthSettings.createAuthURI(pushUrl);
     myRepositoryPushURLNoFixErrors = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURLNoFixErrors : myAuthSettings.createAuthURI(pushUrl, false);
-    myUsernameForTags = root.getProperty(Constants.USERNAME_FOR_TAGS);
+    myUsernameForTags = getProperty(Constants.USERNAME_FOR_TAGS);
   }
 
   @NotNull
@@ -72,13 +74,13 @@ public class Settings {
     return parseIdent();
   }
 
-  private static File readPath(VcsRoot root) {
-    String path = root.getProperty(Constants.PATH);
+  private File getPath() {
+    String path = getProperty(Constants.PATH);
     return path == null ? null : new File(path);
   }
 
-  private static UserNameStyle readUserNameStyle(VcsRoot root) {
-    final String style = root.getProperty(Constants.USERNAME_STYLE);
+  private UserNameStyle readUserNameStyle() {
+    final String style = getProperty(Constants.USERNAME_STYLE);
     if (style == null) {
       return UserNameStyle.USERID;
     } else {
@@ -86,8 +88,8 @@ public class Settings {
     }
   }
 
-  private static SubmodulesCheckoutPolicy readSubmodulesPolicy(VcsRoot root) {
-    final String submoduleCheckout = root.getProperty(Constants.SUBMODULES_CHECKOUT);
+  private SubmodulesCheckoutPolicy readSubmodulesPolicy() {
+    final String submoduleCheckout = getProperty(Constants.SUBMODULES_CHECKOUT);
     if (submoduleCheckout == null) {
       return SubmodulesCheckoutPolicy.IGNORE;
     } else {
@@ -349,5 +351,50 @@ public class Settings {
     String username = myUsernameForTags.substring(0, emailStartIdx).trim();
     String email = myUsernameForTags.substring(emailStartIdx + 1, emailEndIdx);
     return new PersonIdent(username, email);
+  }
+
+
+  public String getVcsName() {
+    return myDelegate.getVcsName();
+  }
+
+  public String getProperty(String propertyName) {
+    return myDelegate.getProperty(propertyName);
+  }
+
+  public String getProperty(String propertyName, String defaultValue) {
+    return myDelegate.getProperty(propertyName, defaultValue);
+  }
+
+  public Map<String, String> getProperties() {
+    return myDelegate.getProperties();
+  }
+
+  public String convertToString() {
+    return myDelegate.convertToString();
+  }
+
+  public String convertToPresentableString() {
+    return myDelegate.convertToPresentableString();
+  }
+
+  public long getPropertiesHash() {
+    return myDelegate.getPropertiesHash();
+  }
+
+  public long getVcsRepositoryPropertiesHash() {
+    return myDelegate.getVcsRepositoryPropertiesHash();
+  }
+
+  public String getName() {
+    return myDelegate.getName();
+  }
+
+  public long getId() {
+    return myDelegate.getId();
+  }
+
+  public Map<String, String> getPublicProperties() {
+    return myDelegate.getPublicProperties();
   }
 }
