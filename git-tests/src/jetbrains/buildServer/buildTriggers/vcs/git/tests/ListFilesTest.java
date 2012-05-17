@@ -32,7 +32,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.List;
+import java.util.Collection;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.ListFilesTest.VcsFileDataMatcher.vcsDir;
@@ -79,7 +79,7 @@ public class ListFilesTest {
 
   public void list_files_in_existing_dir() throws Exception {
     ListDirectChildrenPolicy policy = getListFilesPolicy(myRoot);
-    List<VcsFileData> files = policy.listFiles("");
+    Collection<VcsFileData> files = policy.listFiles("");
     assertThat(files, hasItems(vcsDir("dir1"),
                                vcsDir("dir with space"),
                                vcsDir("submodule"),
@@ -110,7 +110,7 @@ public class ListFilesTest {
 
   public void list_files_in_dir_which_contains_only_dirs() throws Exception {
     ListDirectChildrenPolicy policy = getListFilesPolicy(myRoot);
-    List<VcsFileData> files = policy.listFiles("dir/subdir");
+    Collection<VcsFileData> files = policy.listFiles("dir/subdir");
     assertThat(files, hasItems(vcsDir("b"), vcsDir("c"), vcsDir("d")));
   }
 

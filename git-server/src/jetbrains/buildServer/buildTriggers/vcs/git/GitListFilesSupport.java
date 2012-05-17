@@ -28,6 +28,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -44,7 +45,7 @@ public class GitListFilesSupport implements ListDirectChildrenPolicy {
   }
 
   @NotNull
-  public List<VcsFileData> listFiles(@NotNull String path) throws VcsException {
+  public Collection<VcsFileData> listFiles(@NotNull String path) throws VcsException {
     String currentVersion = getRevision();
     OperationContext context = myVcs.createContext(myRoot, "list files");
     ListFilesTreeWalk walk = null;
