@@ -78,46 +78,46 @@ public class ListFilesTest {
 
 
   public void list_files_in_existing_dir() throws Exception {
-    ListDirectChildrenPolicy policy = getListFilesPolicy(myRoot);
-    Collection<VcsFileData> files = policy.listFiles("");
+    ListDirectChildrenPolicy policy = getListFilesPolicy();
+    Collection<VcsFileData> files = policy.listFiles(myRoot, "");
     assertThat(files, hasItems(vcsDir("dir1"),
                                vcsDir("dir with space"),
                                vcsDir("submodule"),
                                vcsFile("file_in_branch.txt"),
                                vcsFile(".gitmodules"),
                                vcsFile("submodule.txt")));
-    files = policy.listFiles("dir1");
+    files = policy.listFiles(myRoot, "dir1");
     assertThat(files, hasItems(vcsDir("subdir"),
                                vcsFile("file1.txt"),
                                vcsFile("file3.txt")));
-    files = policy.listFiles("dir with space");
+    files = policy.listFiles(myRoot, "dir with space");
     assertThat(files, hasItems(vcsFile("file with space.txt")));
   }
 
 
   @Test(expectedExceptions = VcsFileNotFoundException.class)
   public void list_files_not_existing_dir() throws VcsException {
-    ListDirectChildrenPolicy policy = getListFilesPolicy(myRoot);
-    policy.listFiles("not/existing/dir");
+    ListDirectChildrenPolicy policy = getListFilesPolicy();
+    policy.listFiles(myRoot, "not/existing/dir");
   }
 
 
   public void list_submodule_as_empty_dir() throws VcsException {
-    ListDirectChildrenPolicy policy = getListFilesPolicy(myRoot);
-    assertTrue(policy.listFiles("submodule").isEmpty());
+    ListDirectChildrenPolicy policy = getListFilesPolicy();
+    assertTrue(policy.listFiles(myRoot, "submodule").isEmpty());
   }
 
 
   public void list_files_in_dir_which_contains_only_dirs() throws Exception {
-    ListDirectChildrenPolicy policy = getListFilesPolicy(myRoot);
-    Collection<VcsFileData> files = policy.listFiles("dir/subdir");
+    ListDirectChildrenPolicy policy = getListFilesPolicy();
+    Collection<VcsFileData> files = policy.listFiles(myRoot, "dir/subdir");
     assertThat(files, hasItems(vcsDir("b"), vcsDir("c"), vcsDir("d")));
   }
 
 
   @NotNull
-  private ListDirectChildrenPolicy getListFilesPolicy(VcsRoot root) {
-    ListDirectChildrenPolicy policy = (ListDirectChildrenPolicy) myGit.getListFilesPolicy(root);
+  private ListDirectChildrenPolicy getListFilesPolicy() {
+    ListDirectChildrenPolicy policy = (ListDirectChildrenPolicy) myGit.getListFilesPolicy();
     assert policy != null;
     return policy;
   }

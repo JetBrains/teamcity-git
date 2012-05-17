@@ -886,8 +886,8 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @Override
-  public ListFilesPolicy getListFilesPolicy(@NotNull VcsRoot root) {
-    return new GitListFilesSupport(this, root);
+  public ListFilesPolicy getListFilesPolicy() {
+    return new GitListFilesSupport(this);
   }
 
   @NotNull

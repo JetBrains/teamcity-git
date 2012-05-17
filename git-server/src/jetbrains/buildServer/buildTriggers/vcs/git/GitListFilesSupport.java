@@ -37,17 +37,15 @@ import java.util.List;
 public class GitListFilesSupport implements ListDirectChildrenPolicy {
 
   private final GitVcsSupport myVcs;
-  private final VcsRoot myRoot;
 
-  public GitListFilesSupport(@NotNull GitVcsSupport vcs, @NotNull VcsRoot root) {
+  public GitListFilesSupport(@NotNull GitVcsSupport vcs) {
     myVcs = vcs;
-    myRoot = root;
   }
 
   @NotNull
-  public Collection<VcsFileData> listFiles(@NotNull String path) throws VcsException {
-    String currentVersion = getRevision();
-    OperationContext context = myVcs.createContext(myRoot, "list files");
+  public Collection<VcsFileData> listFiles(@NotNull VcsRoot root, @NotNull String path) throws VcsException {
+    String currentVersion = getRevision(root);
+    OperationContext context = myVcs.createContext(root, "list files");
     ListFilesTreeWalk walk = null;
     try {
       walk = getTreeWalk(context, path, currentVersion);
@@ -96,8 +94,8 @@ public class GitListFilesSupport implements ListDirectChildrenPolicy {
   }
 
   @NotNull
-  private String getRevision() throws VcsException {
-    return GitUtils.versionRevision(myVcs.getCurrentVersion(myRoot));
+  private String getRevision(@NotNull VcsRoot root) throws VcsException {
+    return GitUtils.versionRevision(myVcs.getCurrentVersion(root));
   }
 
   private boolean isRootPath(@Nullable String path) {
