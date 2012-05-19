@@ -397,4 +397,9 @@ public class GitVcsRoot implements VcsRoot {
   public Map<String, String> getPublicProperties() {
     return myDelegate.getPublicProperties();
   }
+
+  @Override
+  public String toString() {
+    return myDelegate.toString();
+  }
 }
