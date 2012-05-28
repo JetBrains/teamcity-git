@@ -20,7 +20,8 @@ import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Tags;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -35,6 +36,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 
@@ -51,10 +53,9 @@ public class UpdaterImpl implements Updater {
   private final BuildProgressLogger myLogger;
   private final AgentPluginConfig myPluginConfig;
   private final GitFactory myGitFactory;
-  private final VcsRoot myRoot;
   private final File myTargetDirectory;
   private final String myRevision;
-  private final AgentSettings mySettings;
+  private final AgentGitVcsRoot myRoot;
 
   public UpdaterImpl(@NotNull AgentPluginConfig pluginConfig,
                      @NotNull MirrorManager mirrorManager,
@@ -68,10 +69,9 @@ public class UpdaterImpl implements Updater {
     myDirectoryCleaner = directoryCleaner;
     myGitFactory = gitFactory;
     myLogger = logger;
-    myRoot = root;
     myRevision = GitUtils.versionRevision(version);
     myTargetDirectory = targetDir;
-    mySettings = new AgentSettings(mirrorManager, myTargetDirectory, root);
+    myRoot = new AgentGitVcsRoot(mirrorManager, myTargetDirectory, root);
   }
 
 
@@ -88,7 +88,7 @@ public class UpdaterImpl implements Updater {
 
   private void logStartUpdating() {
     LOG.info("Starting update of root " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);
-    LOG.debug("Updating " + mySettings.debugInfo());
+    LOG.debug("Updating " + myRoot.debugInfo());
   }
 
 
@@ -104,7 +104,7 @@ public class UpdaterImpl implements Updater {
       firstFetch = true;
     } else {
       String remoteUrl = getRemoteUrl();
-      if (!remoteUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
+      if (!remoteUrl.equals(myRoot.getRepositoryFetchURL().toString())) {
         initDirectory();
         firstFetch = true;
       } else {
@@ -128,11 +128,11 @@ public class UpdaterImpl implements Updater {
   private void updateSources() throws VcsException {
     BranchInfo branchInfo = null;
     GitFacade git = myGitFactory.create(myTargetDirectory);
-    if (isTag(GitUtils.expandRef(mySettings.getRef()))) {
+    if (isTag(GitUtils.expandRef(myRoot.getRef()))) {
       branchInfo = new BranchInfo(true, false);//this branchInfo will enforce clean
-      git.checkout().setForce(true).setBranch(mySettings.getRef()).call();
+      git.checkout().setForce(true).setBranch(myRoot.getRef()).call();
     } else {
-      branchInfo = git.branch().setBranch(mySettings.getRef()).call();
+      branchInfo = git.branch().setBranch(myRoot.getRef()).call();
       if (branchInfo.isCurrent) {
         myLogger.message("Resetting " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);
         removeIndexLock();
@@ -140,19 +140,19 @@ public class UpdaterImpl implements Updater {
       } else {
         if (!branchInfo.isExists) {
           git.createBranch()
-            .setName(mySettings.getRef())
-            .setStartPoint(GitUtils.createRemoteRef(mySettings.getRef()))
+            .setName(myRoot.getRef())
+            .setStartPoint(GitUtils.createRemoteRef(myRoot.getRef()))
             .setTrack(true)
             .call();
         }
         removeRefLock();
-        git.updateRef().setRef(GitUtils.expandRef(mySettings.getRef())).setRevision(myRevision).call();
-        myLogger.message("Checking out branch " + mySettings.getRef() + " in " + myRoot.getName() + " in " + myTargetDirectory + " with revision " + myRevision);
-        git.checkout().setForce(true).setBranch(mySettings.getRef()).call();
+        git.updateRef().setRef(GitUtils.expandRef(myRoot.getRef())).setRevision(myRevision).call();
+        myLogger.message("Checking out branch " + myRoot.getRef() + " in " + myRoot.getName() + " in " + myTargetDirectory + " with revision " + myRevision);
+        git.checkout().setForce(true).setBranch(myRoot.getRef()).call();
       }
     }
     doClean(branchInfo);
-    if (mySettings.isCheckoutSubmodules()) {
+    if (myRoot.isCheckoutSubmodules()) {
       checkoutSubmodules(myTargetDirectory);
     }
   }
@@ -165,7 +165,7 @@ public class UpdaterImpl implements Updater {
       GitFacade git = myGitFactory.create(repositoryDir);
       git.submoduleInit().call();
       git.submoduleUpdate()
-        .setAuthSettings(mySettings.getAuthSettings())
+        .setAuthSettings(myRoot.getAuthSettings())
         .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
         .setTimeout(SILENT_TIMEOUT)
         .call();
@@ -192,17 +192,17 @@ public class UpdaterImpl implements Updater {
 
 
   private boolean recursiveSubmoduleCheckout() {
-    return SubmodulesCheckoutPolicy.CHECKOUT.equals(mySettings.getSubmodulesCheckoutPolicy()) ||
-           SubmodulesCheckoutPolicy.CHECKOUT_IGNORING_ERRORS.equals(mySettings.getSubmodulesCheckoutPolicy());
+    return SubmodulesCheckoutPolicy.CHECKOUT.equals(myRoot.getSubmodulesCheckoutPolicy()) ||
+           SubmodulesCheckoutPolicy.CHECKOUT_IGNORING_ERRORS.equals(myRoot.getSubmodulesCheckoutPolicy());
   }
 
 
 
   private void doClean(BranchInfo branchInfo) throws VcsException {
-    if (mySettings.getCleanPolicy() == AgentCleanPolicy.ALWAYS ||
-        (!branchInfo.isCurrent && mySettings.getCleanPolicy() == AgentCleanPolicy.ON_BRANCH_CHANGE)) {
-      myLogger.message("Cleaning " + myRoot.getName() + " in " + myTargetDirectory + " the file set " + mySettings.getCleanFilesPolicy());
-      myGitFactory.create(myTargetDirectory).clean().setCleanPolicy(mySettings.getCleanFilesPolicy()).call();
+    if (myRoot.getCleanPolicy() == AgentCleanPolicy.ALWAYS ||
+        (!branchInfo.isCurrent && myRoot.getCleanPolicy() == AgentCleanPolicy.ON_BRANCH_CHANGE)) {
+      myLogger.message("Cleaning " + myRoot.getName() + " in " + myTargetDirectory + " the file set " + myRoot.getCleanFilesPolicy());
+      myGitFactory.create(myTargetDirectory).clean().setCleanPolicy(myRoot.getCleanFilesPolicy()).call();
     }
   }
 
@@ -213,7 +213,7 @@ public class UpdaterImpl implements Updater {
 
 
   private void setUseLocalMirror() throws VcsException {
-    String remoteUrl = mySettings.getRepositoryFetchURL().toString();
+    String remoteUrl = myRoot.getRepositoryFetchURL().toString();
     String localMirrorUrl = getLocalMirrorUrl();
     GitFacade git = myGitFactory.create(myTargetDirectory);
     git.setConfig()
@@ -244,9 +244,9 @@ public class UpdaterImpl implements Updater {
 
   private String getLocalMirrorUrl() throws VcsException {
     try {
-      return new URIish(mySettings.getRepositoryDir().toURI().toASCIIString()).toString();
+      return new URIish(myRoot.getRepositoryDir().toURI().toASCIIString()).toString();
     } catch (URISyntaxException e) {
-      throw new VcsException("Cannot create uri for local mirror " + mySettings.getRepositoryDir().getAbsolutePath(), e);
+      throw new VcsException("Cannot create uri for local mirror " + myRoot.getRepositoryDir().getAbsolutePath(), e);
     }
   }
 
@@ -276,13 +276,13 @@ public class UpdaterImpl implements Updater {
 
   @Nullable
   private Ref getRef(@NotNull File repositoryDir, @NotNull String ref) {
-    List<Ref> refs = myGitFactory.create(repositoryDir).showRef().setPattern(ref).call();
-    return refs.isEmpty() ? null : refs.get(0);
+    Map<String, Ref> refs = myGitFactory.create(repositoryDir).showRef().setPattern(ref).call();
+    return refs.isEmpty() ? null : refs.get(ref);
   }
 
 
   private void updateLocalMirror() throws VcsException {
-    File bareRepositoryDir = mySettings.getRepositoryDir();
+    File bareRepositoryDir = myRoot.getRepositoryDir();
     String mirrorDescription = "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
     LOG.info("Update " + mirrorDescription);
     boolean fetchRequired = true;
@@ -291,12 +291,12 @@ public class UpdaterImpl implements Updater {
       bareRepositoryDir.mkdirs();
       GitFacade git = myGitFactory.create(bareRepositoryDir);
       git.init().setBare(true).call();
-      git.addRemote().setName("origin").setUrl(mySettings.getRepositoryFetchURL().toString()).call();
+      git.addRemote().setName("origin").setUrl(myRoot.getRepositoryFetchURL().toString()).call();
     } else {
       boolean outdatedTagsFound = removeOutdatedTags(bareRepositoryDir);
       if (!outdatedTagsFound) {
         LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
-        Ref ref = getRef(bareRepositoryDir, GitUtils.expandRef(mySettings.getRef()));
+        Ref ref = getRef(bareRepositoryDir, GitUtils.expandRef(myRoot.getRef()));
         if (ref != null && myRevision.equals(ref.getObjectId().name())) {
           LOG.info("No fetch required for revision '" + myRevision + "' in " + mirrorDescription);
           fetchRequired = false;
@@ -304,7 +304,7 @@ public class UpdaterImpl implements Updater {
       }
     }
     if (fetchRequired)
-      fetch(mySettings.getRepositoryDir(), "+" + GitUtils.expandRef(mySettings.getRef()) + ":" + GitUtils.expandRef(mySettings.getRef()), false);
+      fetch(myRoot.getRepositoryDir(), "+" + GitUtils.expandRef(myRoot.getRef()) + ":" + GitUtils.expandRef(myRoot.getRef()), false);
   }
 
 
@@ -313,7 +313,7 @@ public class UpdaterImpl implements Updater {
    * This method delete such lock file if it exists (with warning message), otherwise git operation will fail.
    */
   private void removeRefLock() {
-    String branchRef = GitUtils.expandRef(mySettings.getRef());
+    String branchRef = GitUtils.expandRef(myRoot.getRef());
     File refLock = new File(myTargetDirectory, ".git" + File.separator + branchRef + ".lock");
     if (refLock.exists()) {
       myLogger.warning("The .git/" + branchRef +
@@ -351,33 +351,33 @@ public class UpdaterImpl implements Updater {
       if (!outdatedTagsFound) {
         LOG.debug("Try to find revision " + myRevision);
         revInfo = getRevision(myTargetDirectory, myRevision);
-        ref = getRef(myTargetDirectory, GitUtils.expandRef(mySettings.getRef()));
+        ref = getRef(myTargetDirectory, GitUtils.expandRef(myRoot.getRef()));
       }
     }
     if (!outdatedTagsFound && revInfo != null && ref != null) {//commit and branch exist
-      LOG.info("No fetch needed for revision '" + myRevision + "' in " + mySettings.getLocalRepositoryDir());
+      LOG.info("No fetch needed for revision '" + myRevision + "' in " + myRoot.getLocalRepositoryDir());
     } else {
       checkAuthMethodIsSupported();
       logStartFetching();
       String previousHead = getPreviousHead(firstFetch);
       if (myPluginConfig.isUseLocalMirrors() && myPluginConfig.isUseShallowClone()) {
-        File mirrorRepositoryDir = mySettings.getRepositoryDir();
+        File mirrorRepositoryDir = myRoot.getRepositoryDir();
         String tmpBranchName = createTmpBranch(mirrorRepositoryDir, myRevision);
         String tmpBranchRef = "refs/heads/" + tmpBranchName;
-        String refspec = "+" + tmpBranchRef + ":" + GitUtils.createRemoteRef(mySettings.getRef());
+        String refspec = "+" + tmpBranchRef + ":" + GitUtils.createRemoteRef(myRoot.getRef());
         fetch(myTargetDirectory, refspec, true);
         myGitFactory.create(mirrorRepositoryDir).deleteBranch().setName(tmpBranchName).call();
       } else {
-        fetch(myTargetDirectory, "+" + GitUtils.expandRef(mySettings.getRef()) + ":" + GitUtils.createRemoteRef(mySettings.getRef()), false);
+        fetch(myTargetDirectory, "+" + GitUtils.expandRef(myRoot.getRef()) + ":" + GitUtils.createRemoteRef(myRoot.getRef()), false);
       }
-      String newHead = getRevision(myTargetDirectory, GitUtils.createRemoteRef(mySettings.getRef()));
+      String newHead = getRevision(myTargetDirectory, GitUtils.createRemoteRef(myRoot.getRef()));
       if (newHead == null) {
-        throw new VcsException("Failed to fetch data for " + mySettings.debugInfo());
+        throw new VcsException("Failed to fetch data for " + myRoot.debugInfo());
       }
       myLogger.message("Fetched revisions " + (previousHead == null ? "up to " : previousHead + "..") + newHead);
       revInfo = getRevision(myTargetDirectory, myRevision);
       if (revInfo == null) {
-        throw new VcsException("The revision " + myRevision + " is not found in the repository after fetch " + mySettings.debugInfo());
+        throw new VcsException("The revision " + myRevision + " is not found in the repository after fetch " + myRoot.debugInfo());
       }
     }
     return revInfo;
@@ -386,11 +386,11 @@ public class UpdaterImpl implements Updater {
   private String getPreviousHead(boolean firstFetch) {
     if (firstFetch)
       return null;
-    return getRevision(myTargetDirectory, GitUtils.createRemoteRef(mySettings.getRef()));
+    return getRevision(myTargetDirectory, GitUtils.createRemoteRef(myRoot.getRef()));
   }
 
   private void logStartFetching() {
-    LOG.info("Fetching in repository " + mySettings.debugInfo());
+    LOG.info("Fetching in repository " + myRoot.debugInfo());
     myLogger.message("Fetching data for '" + myRoot.getName() + "'...");
   }
 
@@ -407,9 +407,9 @@ public class UpdaterImpl implements Updater {
   private String getUnusedBranchName(@NotNull File repositoryDir) {
     final String tmpBranchName = "tmp_branch_for_build";
     String branchName = tmpBranchName;
-    ShowRefCommand showRef = myGitFactory.create(repositoryDir).showRef();
-    int i = 1;
-    while (!showRef.setPattern(branchName).call().isEmpty()) {
+    Map<String, Ref> existingRefs = myGitFactory.create(repositoryDir).showRef().call();
+    int i = 0;
+    while (existingRefs.containsKey(branchName)) {
       branchName = tmpBranchName + i;
       i++;
     }
@@ -429,7 +429,7 @@ public class UpdaterImpl implements Updater {
     int timeout = getTimeout(silent);
 
     FetchCommand fetch = myGitFactory.create(repositoryDir).fetch()
-      .setAuthSettings(mySettings.getAuthSettings())
+      .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
       .setTimeout(timeout)
       .setRefspec(refspec);
@@ -459,10 +459,10 @@ public class UpdaterImpl implements Updater {
 
 
   private void checkAuthMethodIsSupported() throws VcsException {
-    if (!"git".equals(mySettings.getRepositoryFetchURL().getScheme()) &&
-        (mySettings.getAuthSettings().getAuthMethod() == AuthenticationMethod.PASSWORD ||
-         mySettings.getAuthSettings().getAuthMethod() == AuthenticationMethod.PRIVATE_KEY_FILE)) {
-      throw new VcsException("TeamCity doesn't support authentication method " + mySettings.getAuthSettings().getAuthMethod().uiName() + " with agent checkout. " +
+    if (!"git".equals(myRoot.getRepositoryFetchURL().getScheme()) &&
+        (myRoot.getAuthSettings().getAuthMethod() == AuthenticationMethod.PASSWORD ||
+         myRoot.getAuthSettings().getAuthMethod() == AuthenticationMethod.PRIVATE_KEY_FILE)) {
+      throw new VcsException("TeamCity doesn't support authentication method " + myRoot.getAuthSettings().getAuthMethod().uiName() + " with agent checkout. " +
       "Please use '" + AuthenticationMethod.ANONYMOUS.uiName() + "' or '" + AuthenticationMethod.PRIVATE_KEY_DEFAULT.uiName() + "' methods.");
     }
   }
@@ -483,25 +483,25 @@ public class UpdaterImpl implements Updater {
     myLogger.message("The .git directory is missing in '" + myTargetDirectory + "'. Running 'git init'...");
     myGitFactory.create(myTargetDirectory).init().call();
     validateUrls();
-    myGitFactory.create(mySettings.getLocalRepositoryDir())
+    myGitFactory.create(myRoot.getLocalRepositoryDir())
       .addRemote()
       .setName("origin")
-      .setUrl(mySettings.getRepositoryFetchURL().toString())
+      .setUrl(myRoot.getRepositoryFetchURL().toString())
       .call();
     if (myPluginConfig.isUseLocalMirrors()) setUseLocalMirror();
-    URIish url = mySettings.getRepositoryPushURL();
+    URIish url = myRoot.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();
-    if (pushUrl != null && !pushUrl.equals(mySettings.getRepositoryFetchURL().toString())) {
+    if (pushUrl != null && !pushUrl.equals(myRoot.getRepositoryFetchURL().toString())) {
       myGitFactory.create(myTargetDirectory).setConfig().setPropertyName("remote.origin.pushurl").setValue(pushUrl).call();
     }
   }
 
 
   private void validateUrls() {
-    URIish fetch = mySettings.getRepositoryFetchURL();
+    URIish fetch = myRoot.getRepositoryFetchURL();
     if (isAnonymousGitWithUsername(fetch))
       LOG.warn("Fetch URL '" + fetch.toString() + "' for root " + myRoot.getName() + " uses an anonymous git protocol and contains a username, fetch will probably fail");
-    URIish push  = mySettings.getRepositoryPushURL();
+    URIish push  = myRoot.getRepositoryPushURL();
     if (!fetch.equals(push) && isAnonymousGitWithUsername(push))
       LOG.warn("Push URL '" + push.toString() + "'for root " + myRoot.getName() + " uses an anonymous git protocol and contains a username, push will probably fail");
   }
@@ -542,7 +542,7 @@ public class UpdaterImpl implements Updater {
 
   private Tags getRemoteTags(@NotNull File workingDir) {
     GitFacade git = myGitFactory.create(workingDir);
-    List<Ref> refs = git.lsRemote().setAuthSettings(mySettings.getAuthSettings())
+    List<Ref> refs = git.lsRemote().setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
       .showTags()
       .call();

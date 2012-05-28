@@ -74,16 +74,16 @@ public class GitUrlSupportTest extends BaseTestCase {
 
     for (String url : urls) {
       VcsUrl vcsUrl = new VcsUrl(url);
-      Settings s = toSettings(vcsUrl);
-      assertEquals(new URIish(vcsUrl.getProviderSpecificPart()), s.getRepositoryFetchURL());
-      checkAuthMethod(vcsUrl, s);
+      GitVcsRoot root = toGitRoot(vcsUrl);
+      assertEquals(new URIish(vcsUrl.getProviderSpecificPart()), root.getRepositoryFetchURL());
+      checkAuthMethod(vcsUrl, root);
     }
 
     String user = "user";
     String pass = "pass";
     for (String url : urls) {
       VcsUrl vcsUrl = new VcsUrl(url, user, pass);
-      Settings s = toSettings(vcsUrl);
+      GitVcsRoot s = toGitRoot(vcsUrl);
       checkAuthMethod(vcsUrl, s);
     }
   }
@@ -93,7 +93,7 @@ public class GitUrlSupportTest extends BaseTestCase {
   public void should_throw_exception_when_url_incorrect() throws MalformedURLException, VcsException {
     VcsUrl url = new VcsUrl("scm:svn:ssh://svn.repo.com/path_to_repository");
     try {
-      toSettings(url);
+      toGitRoot(url);
       fail("Should fail here");
     } catch (VcsException e) {
       assertTrue(true);
@@ -105,48 +105,48 @@ public class GitUrlSupportTest extends BaseTestCase {
   @Test
   public void convert_scp_like_syntax() throws Exception {
     VcsUrl url = new VcsUrl("scm:git:git@github.com:user/repo.git");
-    Settings s = toSettings(url);
-    assertEquals(new URIish(url.getProviderSpecificPart()), s.getRepositoryFetchURL());
-    assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, s.getAuthSettings().getAuthMethod());
-    assertEquals("git", s.getAuthSettings().toMap().get(Constants.USERNAME));
+    GitVcsRoot root = toGitRoot(url);
+    assertEquals(new URIish(url.getProviderSpecificPart()), root.getRepositoryFetchURL());
+    assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
+    assertEquals("git", root.getAuthSettings().toMap().get(Constants.USERNAME));
   }
 
 
   @Test
   public void convert_scp_like_syntax_with_credentials() throws Exception {
     VcsUrl url = new VcsUrl("scm:git:git@github.com:user/repo.git", "user", "pass");
-    Settings s = toSettings(url);
-    assertEquals(new URIish("user@github.com:user/repo.git"), s.getRepositoryFetchURL());
-    assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, s.getAuthSettings().getAuthMethod());
-    assertEquals("user", s.getAuthSettings().toMap().get(Constants.USERNAME));
-    assertNull(s.getAuthSettings().toMap().get(Constants.PASSWORD));
+    GitVcsRoot root = toGitRoot(url);
+    assertEquals(new URIish("user@github.com:user/repo.git"), root.getRepositoryFetchURL());
+    assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
+    assertEquals("user", root.getAuthSettings().toMap().get(Constants.USERNAME));
+    assertNull(root.getAuthSettings().toMap().get(Constants.PASSWORD));
   }
 
 
-  private void checkAuthMethod(VcsUrl url, Settings s) {
+  private void checkAuthMethod(VcsUrl url, GitVcsRoot root) {
     if (url.getProviderSpecificPart().startsWith("ssh")) {
-      assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, s.getAuthSettings().getAuthMethod());
-      assertTrue(s.getAuthSettings().isIgnoreKnownHosts());
-      assertEquals(url.getUsername(), s.getAuthSettings().toMap().get(Constants.USERNAME));
-      assertNull(s.getAuthSettings().toMap().get(Constants.PASSWORD));
+      assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
+      assertTrue(root.getAuthSettings().isIgnoreKnownHosts());
+      assertEquals(url.getUsername(), root.getAuthSettings().toMap().get(Constants.USERNAME));
+      assertNull(root.getAuthSettings().toMap().get(Constants.PASSWORD));
     } else {
       if (url.getUsername() != null && url.getPassword() != null &&
           !StringUtil.isEmptyOrSpaces(url.getUsername()) &&
           !StringUtil.isEmptyOrSpaces(url.getPassword())) {
-        assertEquals(AuthenticationMethod.PASSWORD, s.getAuthSettings().getAuthMethod());
-        assertEquals(url.getUsername(), s.getAuthSettings().toMap().get(Constants.USERNAME));
-        assertEquals(url.getPassword(), s.getAuthSettings().toMap().get(Constants.PASSWORD));
+        assertEquals(AuthenticationMethod.PASSWORD, root.getAuthSettings().getAuthMethod());
+        assertEquals(url.getUsername(), root.getAuthSettings().toMap().get(Constants.USERNAME));
+        assertEquals(url.getPassword(), root.getAuthSettings().toMap().get(Constants.PASSWORD));
       } else {
-        assertEquals(AuthenticationMethod.ANONYMOUS, s.getAuthSettings().getAuthMethod());
-        assertNull(s.getAuthSettings().toMap().get(Constants.USERNAME));
-        assertNull(s.getAuthSettings().toMap().get(Constants.PASSWORD));
+        assertEquals(AuthenticationMethod.ANONYMOUS, root.getAuthSettings().getAuthMethod());
+        assertNull(root.getAuthSettings().toMap().get(Constants.USERNAME));
+        assertNull(root.getAuthSettings().toMap().get(Constants.PASSWORD));
       }
     }
   }
 
-  private Settings toSettings(VcsUrl url) throws VcsException {
+  private GitVcsRoot toGitRoot(VcsUrl url) throws VcsException {
     Map<String, String> properties = mySupport.convertToVcsRootProperties(url);
     VcsRootImpl myRoot = new VcsRootImpl(1, properties);
-    return new Settings(myMirrorManager, myRoot);
+    return new GitVcsRoot(myMirrorManager, myRoot);
   }
 }

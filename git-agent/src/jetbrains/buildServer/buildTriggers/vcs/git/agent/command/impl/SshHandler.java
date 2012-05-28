@@ -17,7 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.git4idea.ssh.GitSSHHandler;
 import org.jetbrains.git4idea.ssh.GitSSHService;
@@ -39,7 +39,7 @@ public class SshHandler implements GitSSHService.Handler {
    * SSH service
    */
   private final GitSSHService mySsh;
-  private final Settings.AuthSettings myAuthSettings;
+  private final GitVcsRoot.AuthSettings myAuthSettings;
 
   /**
    * The constructor that registers the handler in the SSH service and command line
@@ -49,7 +49,7 @@ public class SshHandler implements GitSSHService.Handler {
    * @param cmd the command line to register with
    * @throws VcsException if there is a problem with registering the handler
    */
-  public SshHandler(GitSSHService ssh, Settings.AuthSettings authSettings, GeneralCommandLine cmd) throws VcsException {
+  public SshHandler(GitSSHService ssh, GitVcsRoot.AuthSettings authSettings, GeneralCommandLine cmd) throws VcsException {
     mySsh = ssh;
     myAuthSettings = authSettings;
     Map<String, String> env = new HashMap<String, String>(System.getenv());

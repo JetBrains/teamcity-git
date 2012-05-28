@@ -18,9 +18,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.NotSupportedException;
+import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * @author dmitry.neverov
@@ -37,6 +39,7 @@ public interface TransportFactory {
    * @throws NotSupportedException if transport is not supported
    * @throws VcsException if there is a problem with configuring the transport
    */
-  public Transport createTransport(Repository r, final URIish url, Settings.AuthSettings authSettings) throws NotSupportedException, VcsException;
+  public Transport createTransport(@NotNull Repository r, @NotNull final URIish url, @NotNull GitVcsRoot.AuthSettings authSettings)
+    throws NotSupportedException, VcsException, TransportException;
 
 }

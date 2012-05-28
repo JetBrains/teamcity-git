@@ -51,7 +51,7 @@ public class OperationContext {
   private final RepositoryManager myRepositoryManager;
   private final VcsRoot myRoot;
   private final String myOperation;
-  private final Map<Long, Settings> myRootSettings = new HashMap<Long, Settings>(); //root id -> settings
+  private final Map<Long, GitVcsRoot> myRootSettings = new HashMap<Long, GitVcsRoot>(); //root id -> settings
   private final Map<String, Repository> myRepositories = new HashMap<String, Repository>(); //repository path -> repository
 
   public OperationContext(@NotNull final GitVcsSupport support,
@@ -74,10 +74,10 @@ public class OperationContext {
   }
 
   public Repository getRepository() throws VcsException {
-    return getRepository(getSettings());
+    return getRepository(getGitRoot());
   }
 
-  public Repository getRepository(Settings settings) throws VcsException {
+  public Repository getRepository(GitVcsRoot settings) throws VcsException {
     return getRepository(settings.getRepositoryDir(), settings.getRepositoryFetchURL());
   }
 
@@ -99,21 +99,21 @@ public class OperationContext {
     return getRepository(dir, uri);
   }
 
-  public Settings getSettings() throws VcsException {
-    return getSettings(myRoot);
+  public GitVcsRoot getGitRoot() throws VcsException {
+    return getGitRoot(myRoot);
   }
 
-  public Settings getSettings(VcsRoot root) throws VcsException {
-    Settings s = myRootSettings.get(root.getId());
-    if (s == null) {
-      s = createSettings(root);
-      myRootSettings.put(root.getId(), s);
+  public GitVcsRoot getGitRoot(@NotNull VcsRoot root) throws VcsException {
+    GitVcsRoot gitRoot = myRootSettings.get(root.getId());
+    if (gitRoot == null) {
+      gitRoot = createGitRoot(root);
+      myRootSettings.put(root.getId(), gitRoot);
     }
-    return s;
+    return gitRoot;
   }
 
-  private Settings createSettings(VcsRoot root) throws VcsException {
-    return new Settings(myRepositoryManager, root);
+  private GitVcsRoot createGitRoot(VcsRoot root) throws VcsException {
+    return new GitVcsRoot(myRepositoryManager, root);
   }
 
   public VcsException wrapException(Exception ex) {
@@ -167,8 +167,8 @@ public class OperationContext {
   }
 
   public void addTree(TreeWalk tw, Repository db, RevCommit commit, boolean ignoreSubmodulesErrors, boolean logSubmoduleErrors) throws IOException, VcsException {
-    Settings s = getSettings();
-    if (getSettings().isCheckoutSubmodules()) {
+    GitVcsRoot s = getGitRoot();
+    if (getGitRoot().isCheckoutSubmodules()) {
       SubmoduleResolver submoduleResolver = new TeamCitySubmoduleResolver(this, db, commit);
       SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(s.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
       tw.addTree(create(db, commit, submoduleResolver, s.getRepositoryFetchURL().toString(), "", checkoutPolicy, logSubmoduleErrors));

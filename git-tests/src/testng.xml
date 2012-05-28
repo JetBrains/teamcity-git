@@ -31,7 +31,8 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RepositoryManagerTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentStartupGitDetectorTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitResetCacheHandlerTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.browser.BrowserSupportTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ListFilesTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVcsRootTest"/>
     </classes>
   </test>
 </suite>

@@ -58,7 +58,7 @@ public class CleanerTest extends BaseTestCase {
     ServerPaths myServerPaths = new ServerPaths(dotBuildServer.getAbsolutePath());
     PluginConfigBuilder myConfigBuilder = new PluginConfigBuilder(myServerPaths)
       .setRunNativeGC(true)
-      .setMirrorExpirationTimeoutMillis(4000);
+      .setMirrorExpirationTimeoutMillis(10000);
     if (System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH) != null)
       myConfigBuilder.setPathToGit(System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH));
 
@@ -115,8 +115,8 @@ public class CleanerTest extends BaseTestCase {
   }
 
   private File getRepositoryDir(VcsRoot root) throws VcsException {
-    Settings settings = new Settings(myRepositoryManager, root);
-    return settings.getRepositoryDir();
+    GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root);
+    return gitRoot.getRepositoryDir();
   }
 
   private void generateGarbage(File dir) {

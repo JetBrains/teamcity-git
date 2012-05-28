@@ -77,8 +77,8 @@ public class TransportFactoryTest {
 
     VcsRootImpl root = getVcsRoot(copy);
     MirrorManager mirrorManager = new MirrorManagerImpl(myConfigBuilder.build(), new HashCalculatorImpl());
-    Settings settings = new Settings(mirrorManager, root);
+    GitVcsRoot gitRoot = new GitVcsRoot(mirrorManager, root);
     Repository repository = new RepositoryBuilder().setGitDir(copy).setBare().build();
-    return factory.createTransport(repository, new URIish(GitUtils.toURL(original)), settings.getAuthSettings());
+    return factory.createTransport(repository, new URIish(GitUtils.toURL(original)), gitRoot.getAuthSettings());
   }
 }

@@ -31,7 +31,6 @@ import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -84,13 +83,13 @@ class ModificationDataRevWalk extends RevWalk {
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("Collecting changes in commit " + myCurrentCommit.getId().name() + ":" + myCurrentCommit.getShortMessage() +
-                " (" + myCurrentCommit.getCommitterIdent().getWhen() + ") for " + myContext.getSettings().debugInfo());
+                " (" + myCurrentCommit.getCommitterIdent().getWhen() + ") for " + myContext.getGitRoot().debugInfo());
     }
     String currentVersion = GitServerUtil.makeVersion(myCurrentCommit);
     String parentVersion = getFirstParentVersion(myCurrentCommit);
     List<VcsChange> changes = getCommitChanges(myCurrentCommit, currentVersion, parentVersion);
     ModificationData result = new ModificationData(myCurrentCommit.getAuthorIdent().getWhen(), changes, myCurrentCommit.getFullMessage(),
-                                                   GitServerUtil.getUser(myContext.getSettings(), myCurrentCommit), myContext.getRoot(), currentVersion, myCurrentCommit.getId().name());
+                                                   GitServerUtil.getUser(myContext.getGitRoot(), myCurrentCommit), myContext.getRoot(), currentVersion, myCurrentCommit.getId().name());
     if (myCurrentCommit.getParentCount() > 0) {
       for (RevCommit parent : myCurrentCommit.getParents()) {
         parseBody(parent);
@@ -137,10 +136,10 @@ class ModificationDataRevWalk extends RevWalk {
                                            final String currentVersion,
                                            final String parentVersion) throws IOException, VcsException {
     List<VcsChange> changes = new ArrayList<VcsChange>();
-    String repositoryDebugInfo = myContext.getSettings().debugInfo();
+    String repositoryDebugInfo = myContext.getGitRoot().debugInfo();
     VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myRepository, repositoryDebugInfo);
     try {
-      IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(myContext.getSettings());
+      IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(myContext.getGitRoot());
       tw.setFilter(filter);
       tw.setRecursive(true);
       myContext.addTree(tw, myRepository, commit, shouldIgnoreSubmodulesErrors());
@@ -151,7 +150,7 @@ class ModificationDataRevWalk extends RevWalk {
       Map<String, RevCommit> commitsWithFix = new HashMap<String, RevCommit>();
       while (tw.next()) {
         String path = tw.getPathString();
-        if (myContext.getSettings().isCheckoutSubmodules()) {
+        if (myContext.getGitRoot().isCheckoutSubmodules()) {
           if (filter.isBrokenSubmoduleEntry(path)) {
             commitWithFix = getPreviousCommitWithFixedSubmodule(commit, path);
             commitsWithFix.put(path, commitWithFix);

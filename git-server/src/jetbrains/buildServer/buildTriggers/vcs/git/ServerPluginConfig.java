@@ -78,4 +78,13 @@ public interface ServerPluginConfig extends PluginConfig {
   Proxy getJschProxy();
 
   int getNumberOfCommitsWhenFromVersionNotFound();
+
+  @NotNull
+  String getMonitoringDirName();
+
+  int getMonitoringExpirationTimeoutHours();
+
+  boolean alwaysDoFetchOnGetCurrentVersion();
+
+  boolean alwaysCheckCiphers();
 }

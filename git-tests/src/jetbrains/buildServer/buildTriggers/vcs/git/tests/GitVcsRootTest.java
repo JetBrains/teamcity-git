@@ -18,7 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.transport.URIish;
 import org.jmock.Mockery;
@@ -27,12 +27,13 @@ import org.testng.annotations.Test;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertNull;
 
 /**
  * @author dmitry.neverov
  */
 @Test
-public class SettingsTest {
+public class GitVcsRootTest {
 
   private MirrorManager myMirrorManager;
 
@@ -49,8 +50,14 @@ public class SettingsTest {
       .withUsername("user")
       .withPassword("pass")
       .build();
-    Settings s = new Settings(myMirrorManager, root);
+    GitVcsRoot s = new GitVcsRoot(myMirrorManager, root);
     assertEquals(new URIish(pathInLocalFS), s.getRepositoryFetchURL());
+  }
+
+  public void cred_prod() throws Exception {
+    VcsRoot root = vcsRoot().withFetchUrl("git://git@some.org/repository.git").build();
+    GitVcsRoot gitRoot = new GitVcsRoot(myMirrorManager, root);
+    assertNull("User is not stripped from the url with anonymous protocol", gitRoot.getRepositoryFetchURL().getUser());
   }
 
 }

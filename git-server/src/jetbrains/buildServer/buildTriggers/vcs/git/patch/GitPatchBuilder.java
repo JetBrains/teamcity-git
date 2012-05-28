@@ -78,10 +78,10 @@ public final class GitPatchBuilder {
   }
 
   public void buildPatch() throws Exception {
-    myLogger = new BuildPatchLogger(LOG, myContext.getSettings().debugInfo(), myConfig);
+    myLogger = new BuildPatchLogger(LOG, myContext.getGitRoot().debugInfo(), myConfig);
     myRepository = myContext.getRepository();
     try {
-      myTreeWalk = new VcsChangeTreeWalk(myRepository, myContext.getSettings().debugInfo());
+      myTreeWalk = new VcsChangeTreeWalk(myRepository, myContext.getGitRoot().debugInfo());
       myTreeWalk.setFilter(TreeFilter.ANY_DIFF);
       myTreeWalk.setRecursive(true);
       addToCommitTree();

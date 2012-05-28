@@ -18,9 +18,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
@@ -41,7 +40,7 @@ public class LsRemoteCommandImpl implements LsRemoteCommand {
   private GeneralCommandLine myCmd;
   private GitAgentSSHService mySsh;
   private boolean myShowTags = false;
-  private Settings.AuthSettings myAuthSettings;
+  private GitVcsRoot.AuthSettings myAuthSettings;
   private boolean myUseNativeSsh = false;
 
   public LsRemoteCommandImpl(@NotNull GeneralCommandLine cmd, @NotNull GitAgentSSHService ssh) {
@@ -56,7 +55,7 @@ public class LsRemoteCommandImpl implements LsRemoteCommand {
   }
 
   @NotNull
-  public LsRemoteCommand setAuthSettings(@NotNull Settings.AuthSettings authSettings) {
+  public LsRemoteCommand setAuthSettings(@NotNull GitVcsRoot.AuthSettings authSettings) {
     myAuthSettings = authSettings;
     return this;
   }
@@ -86,7 +85,7 @@ public class LsRemoteCommandImpl implements LsRemoteCommand {
         } finally {
           h.unregister();
         }
-      }      
+      }
     } catch (VcsException e) {
       return Collections.emptyList();
     }

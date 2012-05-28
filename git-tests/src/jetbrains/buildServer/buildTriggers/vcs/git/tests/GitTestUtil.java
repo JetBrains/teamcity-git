@@ -19,8 +19,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.IOException;
+
+import static com.intellij.openapi.util.io.FileUtil.copyDir;
 
 
 public class GitTestUtil {
@@ -56,4 +60,13 @@ public class GitTestUtil {
       .withBranch("master")
       .build();
   }
+
+  public static void copyRepository(@NotNull File srcDir, @NotNull File destDir) throws IOException {
+    copyDir(srcDir, destDir);
+    File refs = new File(destDir, "refs");
+    if (!refs.isDirectory()) {
+      refs.mkdirs();
+    }
+  }
+
 }

@@ -16,7 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.Settings;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import org.eclipse.jgit.lib.FileMode;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
@@ -30,17 +30,17 @@ import java.util.Set;
  */
 public class IgnoreSubmoduleErrorsTreeFilter extends TreeFilter {
 
-  private final Settings mySettings;
+  private final GitVcsRoot myRoot;
   private final Set<String> myBrokenSubmodulePathsInFirstTree = new HashSet<String>();
   private final Set<String> myBrokenSubmodulePathsInRestTrees = new HashSet<String>();
 
-  public IgnoreSubmoduleErrorsTreeFilter(Settings settings) {
-    mySettings = settings;
+  public IgnoreSubmoduleErrorsTreeFilter(GitVcsRoot settings) {
+    myRoot = settings;
   }
 
   @Override
   public boolean include(TreeWalk walker) throws IOException {
-    if (mySettings.isCheckoutSubmodules()) {
+    if (myRoot.isCheckoutSubmodules()) {
       String path = walker.getPathString();
       if (isFirstTreeHasBrokenSubmodule(walker, path)) {
         myBrokenSubmodulePathsInFirstTree.add(path);

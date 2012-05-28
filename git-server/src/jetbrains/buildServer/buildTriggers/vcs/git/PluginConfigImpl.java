@@ -25,6 +25,8 @@ import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
+import jetbrains.buildServer.util.DiagnosticUtil;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.BranchSupport;
 import jetbrains.buildServer.vcs.VcsPersonalSupport;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -69,7 +71,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
 
   public int getCurrentVersionCacheSize() {
-    return TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 100);
+    return TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 1024);
   }
 
 
@@ -83,12 +85,12 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
 
   public int getFetchTimeout() {
-    return TeamCityProperties.getInteger("teamcity.git.fetch.timeout", 18000);
+    return TeamCityProperties.getInteger("teamcity.git.fetch.timeout", 600);
   }
 
 
   public int getCloneTimeout() {
-    return TeamCityProperties.getInteger("teamcity.git.clone.timeout", 18000);
+    return TeamCityProperties.getInteger("teamcity.git.clone.timeout", 600);
   }
 
 
@@ -133,12 +135,14 @@ public class PluginConfigImpl implements ServerPluginConfig {
       ProgressMonitor.class,
       VcsPersonalSupport.class,
       Logger.class,
-      Settings.class,
+      GitVcsRoot.class,
       JSch.class,
       Decoder.class,
       TObjectHashingStrategy.class,
       BranchSupport.class,
-      EncryptUtil.class
+      EncryptUtil.class,
+      DiagnosticUtil.class,
+      FileUtil.class
     }, null, null);
   }
 
@@ -212,5 +216,22 @@ public class PluginConfigImpl implements ServerPluginConfig {
     int httpsProxyPort = TeamCityProperties.getInteger("https.proxyPort", -1);
     if (httpsProxyPort != -1)
       proxySettings.add("-Dhttps.proxyPort=" + httpsProxyPort);
+  }
+
+  @NotNull
+  public String getMonitoringDirName() {
+    return "monitoring";
+  }
+
+  public int getMonitoringExpirationTimeoutHours() {
+    return TeamCityProperties.getInteger("teamcity.git.monitoring.expiration.timeout.hours", 24);
+  }
+
+  public boolean alwaysDoFetchOnGetCurrentVersion() {
+    return TeamCityProperties.getBoolean("teamcity.git.always.do.fetch.on.get.current.version");
+  }
+
+  public boolean alwaysCheckCiphers() {
+    return TeamCityProperties.getBoolean("teamcity.git.always.check.ciphers");
   }
 }

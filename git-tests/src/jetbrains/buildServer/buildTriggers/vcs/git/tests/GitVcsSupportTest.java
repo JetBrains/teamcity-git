@@ -62,6 +62,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
@@ -97,10 +98,10 @@ public class GitVcsSupportTest extends PatchTestCase {
     File masterRep = dataFile("repo.git");
     myTmpDir = myTempFiles.createTempDir();
     myMainRepositoryDir = new File(myTmpDir, "repo.git");
-    FileUtil.copyDir(masterRep, myMainRepositoryDir);
-    FileUtil.copyDir(dataFile("submodule.git"), new File(myTmpDir, "submodule"));
-    FileUtil.copyDir(dataFile("submodule.git"), new File(myTmpDir, "submodule.git"));
-    FileUtil.copyDir(dataFile("sub-submodule.git"), new File(myTmpDir, "sub-submodule.git"));
+    copyRepository(masterRep, myMainRepositoryDir);
+    copyRepository(dataFile("submodule.git"), new File(myTmpDir, "submodule"));
+    copyRepository(dataFile("submodule.git"), new File(myTmpDir, "submodule.git"));
+    copyRepository(dataFile("sub-submodule.git"), new File(myTmpDir, "sub-submodule.git"));
     myResetCacheManager = new ResetCacheRegister();
   }
 
@@ -1105,7 +1106,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void should_update_local_ref_when_it_locked(boolean fetchInSeparateProcess) throws Exception {
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
-    FileUtil.copyDir(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
+    copyRepository(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
 
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
     GitVcsSupport support = getSupport();
@@ -1116,7 +1117,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     String v1 = GitUtils.versionRevision(support.getCurrentVersion(root));
 
-    FileUtil.copyDir(dataFile("repo_for_fetch.2"), remoteRepositoryDir);//now remote repository contains new commits
+    copyRepository(dataFile("repo_for_fetch.2"), remoteRepositoryDir);//now remote repository contains new commits
 
     File branchLockFile = createBranchLockFile(customRootDir, branch);
     assertTrue(branchLockFile.exists());
@@ -1130,7 +1131,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void test_non_fast_forward_update(boolean fetchInSeparateProcess) throws Exception {
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
-    FileUtil.copyDir(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
+    copyRepository(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
 
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
     GitVcsSupport support = getSupport();
@@ -1139,12 +1140,12 @@ public class GitVcsSupportTest extends PatchTestCase {
     String v1 = GitUtils.versionRevision(support.getCurrentVersion(root));
     assertEquals(v1, "add81050184d3c818560bdd8839f50024c188586");
 
-    FileUtil.copyDir(dataFile("repo_for_fetch.2"), remoteRepositoryDir);//fast-forward update
+    copyRepository(dataFile("repo_for_fetch.2"), remoteRepositoryDir);//fast-forward update
 
     String v2 = GitUtils.versionRevision(support.getCurrentVersion(root));
     assertEquals(v2, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168");
 
-    FileUtil.copyDir(dataFile("repo_for_fetch.3"), remoteRepositoryDir);//non-fast-forward update
+    copyRepository(dataFile("repo_for_fetch.3"), remoteRepositoryDir);//non-fast-forward update
     String v3 = GitUtils.versionRevision(support.getCurrentVersion(root));
     assertEquals("bba7fbcc200b4968e6abd2f7d475dc15306cafc6", v3);
   }
@@ -1260,7 +1261,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport git = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCounter, repositoryManager, null);
 
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
-    FileUtil.copyDir(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
+    copyRepository(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
 
     VcsRootImpl root = getRoot("master", false, remoteRepositoryDir);
 
@@ -1281,7 +1282,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       myDelegate = delegate;
     }
 
-    public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+    public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull GitVcsRoot.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
       myDelegate.fetch(db, fetchURI, refspecs, auth);
       inc();
     }

@@ -228,8 +228,8 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
     MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
-    Settings settings = new Settings(mirrorManager, myRoot);
-    File bareRepositoryDir = settings.getRepositoryDir();
+    GitVcsRoot root = new GitVcsRoot(mirrorManager, myRoot);
+    File bareRepositoryDir = root.getRepositoryDir();
     assertTrue(bareRepositoryDir.exists());
     //check some dirs that should be present in the bare repository:
     File objectsDir = new File(bareRepositoryDir, "objects");
@@ -239,7 +239,7 @@ public class AgentVcsSupportTest {
 
     String config = FileUtil.loadTextAndClose(new FileReader(new File(bareRepositoryDir, "config")));
     assertTrue(config.contains("[remote \"origin\"]"));
-    String remoteUrl = "url = " + settings.getRepositoryFetchURL();
+    String remoteUrl = "url = " + root.getRepositoryFetchURL();
     assertTrue(config.contains(remoteUrl));
 
     File packDir = new File(objectsDir, "pack");
@@ -256,10 +256,10 @@ public class AgentVcsSupportTest {
     AgentRunningBuild buildWithMirrorsEnabled = createRunningBuild(true);
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
     MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(buildWithMirrorsEnabled, myRoot), new HashCalculatorImpl());
-    Settings settings = new Settings(mirrorManager, myRoot);
-    String localMirrorUrl = new URIish(settings.getRepositoryDir().toURI().toASCIIString()).toString();
+    GitVcsRoot root = new GitVcsRoot(mirrorManager, myRoot);
+    String localMirrorUrl = new URIish(root.getRepositoryDir().toURI().toASCIIString()).toString();
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
-    assertEquals(settings.getRepositoryFetchURL().toString(), r.getConfig().getString("url", localMirrorUrl, "insteadOf"));
+    assertEquals(root.getRepositoryFetchURL().toString(), r.getConfig().getString("url", localMirrorUrl, "insteadOf"));
   }
 
 
@@ -287,13 +287,13 @@ public class AgentVcsSupportTest {
   public void stop_use_any_mirror_if_agent_property_changed_to_false() throws Exception {
     MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
     AgentRunningBuild build2 = createRunningBuild(false);
-    Settings settings = new Settings(mirrorManager, myRoot);
+    GitVcsRoot root = new GitVcsRoot(mirrorManager, myRoot);
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
 
     //add some mirror
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
     StoredConfig config = r.getConfig();
-    config.setString("url", "/some/path", "insteadOf", settings.getRepositoryFetchURL().toString());
+    config.setString("url", "/some/path", "insteadOf", root.getRepositoryFetchURL().toString());
     config.save();
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);

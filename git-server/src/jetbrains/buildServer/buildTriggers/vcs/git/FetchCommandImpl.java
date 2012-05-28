@@ -21,6 +21,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -41,6 +42,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -62,7 +64,7 @@ public class FetchCommandImpl implements FetchCommand {
 
 
   public void fetch(@NotNull final Repository db, @NotNull final URIish fetchURI,
-                    @NotNull final Collection<RefSpec> refspecs, @NotNull final Settings.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+                    @NotNull final Collection<RefSpec> refspecs, @NotNull final GitVcsRoot.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     unlockRefs(db);
     if (myConfig.isSeparateProcessForFetch()) {
       fetchInSeparateProcess(db, auth, fetchURI, refspecs);
@@ -108,7 +110,7 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
 
-  private void fetchInSeparateProcess(@NotNull final Repository repository, @NotNull final Settings.AuthSettings settings,
+  private void fetchInSeparateProcess(@NotNull final Repository repository, @NotNull final GitVcsRoot.AuthSettings settings,
                                       @NotNull final URIish uri, @NotNull final Collection<RefSpec> specs) throws VcsException {
     final long fetchStart = System.currentTimeMillis();
     final String debugInfo = getDebugInfo(repository, uri, specs);
@@ -117,7 +119,8 @@ public class FetchCommandImpl implements FetchCommand {
     if (LOG.isDebugEnabled())
       LOG.debug("Start fetch process for " + debugInfo);
 
-    FetcherEventHandler processEventHandler = new FetcherEventHandler(debugInfo, settings, repository.getDirectory(), uri, specs);
+    File threadDump = getThreadDumpFile(repository);
+    FetcherEventHandler processEventHandler = new FetcherEventHandler(debugInfo, settings, repository.getDirectory(), uri, specs, threadDump);
     ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, processEventHandler);
 
     if (PERFORMANCE_LOG.isDebugEnabled())
@@ -130,6 +133,8 @@ public class FetchCommandImpl implements FetchCommand {
     if (commandError != null) {
       if (isOutOfMemoryError(result))
         LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + myConfig.getFetchProcessMaxMemory() + ", try to increase it.");
+      if (isTimeout(result))
+        logTimeout(debugInfo, threadDump);
       clean(repository);
       throw commandError;
     }
@@ -139,6 +144,27 @@ public class FetchCommandImpl implements FetchCommand {
     }
   }
 
+  private void logTimeout(@NotNull String debugInfo, @NotNull File threadDump) {
+    StringBuilder message = new StringBuilder();
+    message.append("Fetch in root ").append(debugInfo)
+      .append(" took more than ")
+      .append(myConfig.getFetchTimeout())
+      .append(" second(s), try increase timeout using teamcity.git.fetch.timeout property.");
+    if (threadDump.exists())
+      message.append(" Fetch progress details can be found in ").append(threadDump.getAbsolutePath());
+    LOG.warn(message.toString());
+  }
+
+  private File getThreadDumpFile(@NotNull Repository repository) {
+    File threadDumpsDir = getMonitoringDir(repository);
+    threadDumpsDir.mkdirs();
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH.mm.ss");
+    return new File(threadDumpsDir, sdf.format(Dates.now()));
+  }
+
+  private File getMonitoringDir(@NotNull Repository repository) {
+    return new File(repository.getDirectory(), myConfig.getMonitoringDirName());
+  }
 
   private GeneralCommandLine createFetcherCommandLine(@NotNull final Repository repository, @NotNull final URIish uri) {
     GeneralCommandLine cl = new GeneralCommandLine();
@@ -153,7 +179,7 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
 
-  private void fetchInSameProcess(@NotNull final Repository db, @NotNull final Settings.AuthSettings auth,
+  private void fetchInSameProcess(@NotNull final Repository db, @NotNull final GitVcsRoot.AuthSettings auth,
                                   @NotNull final URIish uri, @NotNull final Collection<RefSpec> refSpecs) throws NotSupportedException, VcsException, TransportException {
     final String debugInfo = getDebugInfo(db, uri, refSpecs);
     if (LOG.isDebugEnabled()) {
@@ -186,10 +212,16 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
 
-  private boolean isOutOfMemoryError(ExecResult result) {
+  private boolean isOutOfMemoryError(@NotNull ExecResult result) {
     return result.getStderr().contains("java.lang.OutOfMemoryError");
   }
 
+  private boolean isTimeout(@NotNull ExecResult result) {
+    //noinspection ThrowableResultOfMethodCallIgnored
+    final Throwable exception = result.getException();
+    return exception instanceof InterruptedException &&
+           "Timeout exception".equals(exception.getMessage());
+  }
 
   /**
    * Clean out garbage in case of errors
@@ -211,22 +243,25 @@ public class FetchCommandImpl implements FetchCommand {
 
   private class FetcherEventHandler implements SimpleCommandLineProcessRunner.RunCommandEvents {
     private final String myRepositoryDebugInfo;
-    private final Settings.AuthSettings myAuthSettings;
+    private final GitVcsRoot.AuthSettings myAuthSettings;
     private final File myRepositoryDir;
     private final URIish myUri;
     private final Collection<RefSpec> mySpecs;
     private final List<Exception> myErrors = new ArrayList<Exception>();
+    private final File myThreadDump;
 
     FetcherEventHandler(@NotNull final String repositoryDebugInfo,
-                        @NotNull final Settings.AuthSettings authSettings,
+                        @NotNull final GitVcsRoot.AuthSettings authSettings,
                         @NotNull final File repositoryDir,
                         @NotNull final URIish uri,
-                        @NotNull final Collection<RefSpec> specs) {
+                        @NotNull final Collection<RefSpec> specs,
+                        @NotNull final File threadDump) {
       myRepositoryDebugInfo = repositoryDebugInfo;
       myAuthSettings = authSettings;
       myRepositoryDir = repositoryDir;
       myUri = uri;
       mySpecs = specs;
+      myThreadDump = threadDump;
     }
 
     public void onProcessStarted(Process ps) {
@@ -239,6 +274,7 @@ public class FetchCommandImpl implements FetchCommand {
         properties.put(Constants.FETCH_URL, myUri.toString());
         properties.put(Constants.REFSPEC, serializeSpecs());
         properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
+        properties.put(Constants.THREAD_DUMP_FILE, myThreadDump.getAbsolutePath());
         processInput.write(VcsRootImpl.propertiesToString(properties).getBytes("UTF-8"));
         processInput.flush();
       } catch (IOException e) {

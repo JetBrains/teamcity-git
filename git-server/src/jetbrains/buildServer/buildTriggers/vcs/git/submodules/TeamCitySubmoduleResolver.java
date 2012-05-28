@@ -74,9 +74,9 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
   @Override
   protected void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
     if (LOG.isDebugEnabled())
-      LOG.debug("Fetching submodule " + submoduleUrl + " used at " + submodulePath + " for " + myContext.getSettings().debugInfo());
+      LOG.debug("Fetching submodule " + submoduleUrl + " used at " + submodulePath + " for " + myContext.getGitRoot().debugInfo());
     URIish uri = resolveUrl(submoduleUrl);
-    myGitSupport.fetch(r, uri, Arrays.asList(new RefSpec("+refs/heads/*:refs/heads/*"), new RefSpec("+refs/tags/*:refs/tags/*")), myContext.getSettings().getAuthSettings());
+    myGitSupport.fetch(r, uri, Arrays.asList(new RefSpec("+refs/heads/*:refs/heads/*"), new RefSpec("+refs/tags/*:refs/tags/*")), myContext.getGitRoot().getAuthSettings());
   }
 
   private boolean isRelative(String url) {
