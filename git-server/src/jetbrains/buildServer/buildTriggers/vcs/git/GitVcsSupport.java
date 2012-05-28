@@ -880,7 +880,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   @Override
-  public Map<String, String> getVcsRepositoryProperties(@NotNull VcsRoot root) throws VcsException {
+  public Map<String, String> getCheckoutProperties(@NotNull VcsRoot root) throws VcsException {
     Set<String> repositoryPropertyKeys = setOf(Constants.FETCH_URL,
                                                Constants.SUBMODULES_CHECKOUT,
                                                Constants.AGENT_CLEAN_POLICY,
