@@ -1229,6 +1229,30 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  @TestFor(issues = "TW-21747")
+  @Test
+  public void backslash_in_username() throws VcsException {
+    myConfigBuilder.setSeparateProcessForFetch(true);
+    VcsRoot root = vcsRoot().withFetchUrl("ssh://domain\\user@localhost/path/to/repo.git")
+      .withAuthMethod(AuthenticationMethod.PASSWORD)
+      .withPassword("pass")
+      .build();
+    GitVcsSupport git = getSupport();
+    try {
+      git.collectChanges(root,
+                         "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f",//doesn't matter
+                         "3b9fbfbb43e7edfad018b482e15e7f93cca4e69e",//doesn't matter
+                         CheckoutRules.DEFAULT);
+      fail("We try to access non-existing repository");
+    } catch (VcsException e) {
+      final String message = e.getMessage();
+      assertNotNull(message);
+      assertFalse(message.contains("domain/user"),
+                  "backslash in username is replaced");
+    }
+  }
+
+
   @Test
   public void collect_changes_after_cache_reset() throws Exception {
     GitVcsSupport git = getSupport();
