@@ -382,10 +382,6 @@ public class GitVcsRoot implements VcsRoot {
     return myDelegate.getPropertiesHash();
   }
 
-  public long getVcsRepositoryPropertiesHash() {
-    return myDelegate.getVcsRepositoryPropertiesHash();
-  }
-
   public String getName() {
     return myDelegate.getName();
   }
