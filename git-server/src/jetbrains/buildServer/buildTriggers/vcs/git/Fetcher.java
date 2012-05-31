@@ -89,7 +89,6 @@ public class Fetcher {
     final String refspecs = vcsRootProperties.get(Constants.REFSPEC);
     Settings.AuthSettings auth = new Settings.AuthSettings(vcsRootProperties);
     PluginConfigImpl config = new PluginConfigImpl(new ServerPaths());
-    URIish authURI = auth.createAuthURI(fetchUrl);
 
     configureStreamFileThreshold();
     TransportFactory transportFactory = new TransportFactoryImpl(config);
@@ -97,9 +96,9 @@ public class Fetcher {
     try {
       //This method should be called with repository creation lock, but Fetcher is ran in separate process, so
       //locks won't help. Fetcher is ran after we have ensured that repository exists, so we can call it without lock.
-      Repository repository = GitServerUtil.getRepository(repositoryDir, authURI);
+      Repository repository = GitServerUtil.getRepository(repositoryDir, new URIish(fetchUrl));
       workaroundRacyGit();
-      tn = transportFactory.createTransport(repository, authURI, auth);
+      tn = transportFactory.createTransport(repository, new URIish(fetchUrl), auth);
       FetchResult result = tn.fetch(progressMonitor, parseRefspecs(refspecs));
       GitServerUtil.checkFetchSuccessful(result);
     } finally {
