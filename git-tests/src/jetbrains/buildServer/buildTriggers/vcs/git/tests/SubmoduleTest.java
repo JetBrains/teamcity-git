@@ -53,14 +53,6 @@ public class SubmoduleTest {
   private ServerPaths myServerPaths;
   private GitVcsSupport myGitSupport;
 
-  static {
-    Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-      public void run() {
-        myTempFiles.cleanup();
-      }
-    }));
-  }
-
   @BeforeMethod
   public void setUp() throws IOException {
     File teamcitySystemDir = myTempFiles.createTempDir();

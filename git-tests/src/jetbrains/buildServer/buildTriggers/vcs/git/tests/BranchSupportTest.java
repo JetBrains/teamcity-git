@@ -79,8 +79,8 @@ public class BranchSupportTest {
     VcsRoot originalRoot = getVcsRoot("master");
     VcsRoot substitutionRoot = getVcsRoot("personal-branch1");
 
-    final String originalRootVersion = GitUtils.makeVersion("3b9fbfbb43e7edfad018b482e15e7f93cca4e69f", 1283497225000L);
-    final String substitutionRootVersion = GitUtils.makeVersion("1391281d33a83a7205f2f05d3eb64c349c636e87", 1283497288000L);
+    final String originalRootVersion = "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f";
+    final String substitutionRootVersion = "1391281d33a83a7205f2f05d3eb64c349c636e87";
 
     GitVcsSupport vcsSupport = getSupport();
     List<ModificationData> changes = vcsSupport.collectChanges(originalRoot, originalRootVersion, substitutionRoot, substitutionRootVersion, new CheckoutRules(""));

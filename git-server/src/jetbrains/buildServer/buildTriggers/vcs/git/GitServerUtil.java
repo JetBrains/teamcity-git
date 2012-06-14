@@ -130,16 +130,6 @@ public class GitServerUtil {
     return "0".equals(repositoryFormatVersion);
   }
 
-  /**
-   * Make version from commit object
-   *
-   * @param c the commit object
-   * @return the version string
-   */
-  public static String makeVersion(RevCommit c) {
-    return GitUtils.makeVersion(c.getId().name(), c.getCommitterIdent().getWhen().getTime());
-  }
-
   public static String getUser(GitVcsRoot root, RevCommit c) {
     return getUser(c.getAuthorIdent(), root);
   }

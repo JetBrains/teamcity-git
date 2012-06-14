@@ -72,16 +72,16 @@ import static jetbrains.buildServer.util.FileUtil.writeFile;
  */
 public class GitVcsSupportTest extends PatchTestCase {
 
-  public static final String VERSION_TEST_HEAD = GitUtils.makeVersion("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", 1237391915000L);
-  public static final String CUD1_VERSION = GitUtils.makeVersion("ad4528ed5c84092fdbe9e0502163cf8d6e6141e7", 1238072086000L);
-  private static final String MERGE_VERSION = GitUtils.makeVersion("f3f826ce85d6dad25156b2d7550cedeb1a422f4c", 1238086450000L);
-  private static final String MERGE_BRANCH_VERSION = GitUtils.makeVersion("ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", 1238085489000L);
-  public static final String SUBMODULE_MODIFIED_VERSION = GitUtils.makeVersion("37c371a6db0acefc77e3be99d16a44413e746591", 1245773817000L);
-  public static final String SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", 1245766034000L);
-  public static final String SUBMODULE_TXT_ADDED_VERSION = GitUtils.makeVersion("d1a88fd33c516c1b607db75eb62244b2ea495c42", 1246534153000L);
-  public static final String BEFORE_SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("592c5bcee6d906482177a62a6a44efa0cff9bbc7", 1238421437000L);
-  public static final String BEFORE_FIRST_LEVEL_SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("f3f826ce85d6dad25156b2d7550cedeb1a422f4c", 1238421437000L);
-  public static final String AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION = GitUtils.makeVersion("ce6044093939bb47283439d97a1c80f759669ff5", 1238421437000L);
+  public static final String VERSION_TEST_HEAD = "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653";
+  public static final String CUD1_VERSION = "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7";
+  private static final String MERGE_VERSION = "f3f826ce85d6dad25156b2d7550cedeb1a422f4c";
+  private static final String MERGE_BRANCH_VERSION = "ee886e4adb70fbe3bdc6f3f6393598b3f02e8009";
+  public static final String SUBMODULE_MODIFIED_VERSION = "37c371a6db0acefc77e3be99d16a44413e746591";
+  public static final String SUBMODULE_ADDED_VERSION = "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5";
+  public static final String SUBMODULE_TXT_ADDED_VERSION = "d1a88fd33c516c1b607db75eb62244b2ea495c42";
+  public static final String BEFORE_SUBMODULE_ADDED_VERSION = "592c5bcee6d906482177a62a6a44efa0cff9bbc7";
+  public static final String BEFORE_FIRST_LEVEL_SUBMODULE_ADDED_VERSION = "f3f826ce85d6dad25156b2d7550cedeb1a422f4c";
+  public static final String AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION = "ce6044093939bb47283439d97a1c80f759669ff5";
 
   private File myMainRepositoryDir;
   private File myTmpDir;
@@ -598,10 +598,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(mds.get(1).getChanges().size(), 1);//only .gitmodules
 
     assertEquals(mds.get(0).getChanges().size(), 2);//.gitmodules and 1 file inside submodule
-
-    for (VcsChange change : mds.get(0).getChanges()) {
-      assertTrue(change.getBeforeChangeRevisionNumber().contains("@"), "revision should contain time");
-    }
   }
 
   @Test
@@ -682,9 +678,20 @@ public class GitVcsSupportTest extends PatchTestCase {
   public void check_buildPatch_understands_revisions_with_timestamps(boolean fetchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
     checkPatch("cleanPatch1", null, GitUtils.makeVersion("a894d7d58ffde625019a9ecf8267f5f1d1e5c341", 1237391915000L));
-    checkPatch("patch1", GitUtils.makeVersion("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", 1238420977000L), GitUtils.makeVersion("0dd03338d20d2e8068fbac9f24899d45d443df38", 1238421020000L));
+    checkPatch("patch1",
+               GitUtils.makeVersion("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", 1238420977000L),
+               GitUtils.makeVersion("0dd03338d20d2e8068fbac9f24899d45d443df38", 1238421020000L));
   }
 
+  @Test
+  public void collect_changes_should_understand_revisions_with_timestamps() throws Exception {
+    VcsRoot root = getRoot("master");
+    List<ModificationData> changes = getSupport().collectChanges(root,
+                                GitUtils.makeVersion("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", 1237391915000L),
+                                GitUtils.makeVersion("ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", 1238085489000L),
+                                CheckoutRules.DEFAULT);
+    assertEquals(changes.size(), 3);
+  }
 
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testPatches(boolean fetchInSeparateProcess) throws IOException, VcsException {
@@ -1192,10 +1199,10 @@ public class GitVcsSupportTest extends PatchTestCase {
       assertEquals(md.getParentRevisions().size(), 1);
       child2parent.put(md.getVersion(), md.getParentRevisions().get(0));
     }
-    assertEquals(child2parent.get(MERGE_BRANCH_VERSION), CUD1_VERSION);
-    assertEquals(child2parent.get(CUD1_VERSION), GitUtils.makeVersion("97442a720324a0bd092fb9235f72246dc8b345bc", 1238069951000L));
-    assertEquals(child2parent.get(GitUtils.makeVersion("97442a720324a0bd092fb9235f72246dc8b345bc", 1238069951000L)), VERSION_TEST_HEAD);
-    assertEquals(child2parent.get(VERSION_TEST_HEAD),  "0000000000000000000000000000000000000000@0");
+    assertEquals(child2parent.get("ee886e4adb70fbe3bdc6f3f6393598b3f02e8009"), "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7");
+    assertEquals(child2parent.get("ad4528ed5c84092fdbe9e0502163cf8d6e6141e7"), "97442a720324a0bd092fb9235f72246dc8b345bc");
+    assertEquals(child2parent.get("97442a720324a0bd092fb9235f72246dc8b345bc"), "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653");
+    assertEquals(child2parent.get("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653"),  "0000000000000000000000000000000000000000");
   }
 
 

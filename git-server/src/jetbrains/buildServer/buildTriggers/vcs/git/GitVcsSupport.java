@@ -256,7 +256,7 @@ public class GitVcsSupport extends ServerVcsSupport
       walk.markStart(walk.parseCommit(baseCommit.getId()));
       walk.markStart(walk.parseCommit(tipCommit.getId()));
       final RevCommit base = walk.next();
-      String result = GitServerUtil.makeVersion(base);
+      String result = base.getId().name();
       LOG.debug("Last common revision between " + baseGitRoot.debugInfo() + " and " + tipGitRoot.debugInfo() + " is " + result);
       return result;
     } catch (Exception e) {
@@ -529,7 +529,7 @@ public class GitVcsSupport extends ServerVcsSupport
         if (LOG.isDebugEnabled()) {
           LOG.debug("Current version: " + c.getId().name() + " " + gitRoot.debugInfo());
         }
-        final String currentVersion = GitServerUtil.makeVersion(c);
+        final String currentVersion = c.getId().name();
         setCachedCurrentVersion(gitRoot.getRepositoryDir(), gitRoot.getRef(), currentVersion);
         GitMapFullPath.invalidateRevisionsCache(gitRoot);
         return currentVersion;

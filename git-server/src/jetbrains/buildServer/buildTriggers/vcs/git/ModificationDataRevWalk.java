@@ -85,18 +85,19 @@ class ModificationDataRevWalk extends RevWalk {
       LOG.debug("Collecting changes in commit " + myCurrentCommit.getId().name() + ":" + myCurrentCommit.getShortMessage() +
                 " (" + myCurrentCommit.getCommitterIdent().getWhen() + ") for " + myContext.getGitRoot().debugInfo());
     }
-    String currentVersion = GitServerUtil.makeVersion(myCurrentCommit);
+    String currentVersion = myCurrentCommit.getId().name();
     String parentVersion = getFirstParentVersion(myCurrentCommit);
     List<VcsChange> changes = getCommitChanges(myCurrentCommit, currentVersion, parentVersion);
     ModificationData result = new ModificationData(myCurrentCommit.getAuthorIdent().getWhen(), changes, myCurrentCommit.getFullMessage(),
-                                                   GitServerUtil.getUser(myContext.getGitRoot(), myCurrentCommit), myContext.getRoot(), currentVersion, myCurrentCommit.getId().name());
+                                                   GitServerUtil.getUser(myContext.getGitRoot(), myCurrentCommit), myContext.getRoot(),
+                                                   myCurrentCommit.getId().name(), myCurrentCommit.getId().name());
     if (myCurrentCommit.getParentCount() > 0) {
       for (RevCommit parent : myCurrentCommit.getParents()) {
         parseBody(parent);
-        result.addParentRevision(GitServerUtil.makeVersion(parent));
+        result.addParentRevision(parent.getId().name());
       }
     } else {
-      result.addParentRevision(GitUtils.makeVersion(ObjectId.zeroId().name(), 0));
+      result.addParentRevision(ObjectId.zeroId().name());
     }
     return result;
   }
@@ -115,11 +116,11 @@ class ModificationDataRevWalk extends RevWalk {
   private String getFirstParentVersion(RevCommit commit) throws IOException {
     RevCommit[] parents = commit.getParents();
     if (parents.length == 0) {
-      return GitUtils.makeVersion(ObjectId.zeroId().name(), 0);
+      return ObjectId.zeroId().name();
     } else {
       RevCommit parent = parents[0];
       parseBody(parent);
-      return GitServerUtil.makeVersion(parent);
+      return parent.getId().name();
     }
   }
 
@@ -163,7 +164,7 @@ class ModificationDataRevWalk extends RevWalk {
                 myContext.addTree(tw2, myRepository, commitWithFix, true);
                 while (tw2.next()) {
                   if (tw2.getPathString().equals(path)) {
-                    addVcsChange(changes, currentVersion, GitServerUtil.makeVersion(commitWithFix), tw2);
+                    addVcsChange(changes, currentVersion, commitWithFix.getId().name(), tw2);
                   }
                 }
               } finally {
@@ -184,7 +185,7 @@ class ModificationDataRevWalk extends RevWalk {
                 myContext.addTree(tw2, myRepository, commitWithFix, true);
                 while (tw2.next()) {
                   if (tw2.getPathString().equals(path)) {
-                    addVcsChange(changes, currentVersion, GitServerUtil.makeVersion(commitWithFix), tw2);
+                    addVcsChange(changes, currentVersion, commitWithFix.getId().name(), tw2);
                   }
                 }
               } finally {
