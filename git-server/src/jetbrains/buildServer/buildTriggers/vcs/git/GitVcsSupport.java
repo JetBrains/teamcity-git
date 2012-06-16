@@ -28,7 +28,6 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.RepositoryState;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
-import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
@@ -60,7 +59,7 @@ import static jetbrains.buildServer.util.CollectionsUtil.setOf;
  * Git VCS support
  */
 public class GitVcsSupport extends ServerVcsSupport
-  implements VcsPersonalSupport, LabelingSupport, VcsFileContentProvider, CollectChangesBetweenRoots, BuildPatchByCheckoutRules,
+  implements VcsPersonalSupport, VcsFileContentProvider, CollectChangesBetweenRoots, BuildPatchByCheckoutRules,
              TestConnectionSupport, BranchSupport, IncludeRuleBasedMappingProvider {
 
   private static Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
@@ -597,8 +596,9 @@ public class GitVcsSupport extends ServerVcsSupport
     return new OperationContext(this, myRepositoryManager, root, operation);
   }
 
+  @NotNull
   public LabelingSupport getLabelingSupport() {
-    return this;
+    return new GitLabelingSupport(this, myRepositoryManager, myTransportFactory);
   }
 
   @NotNull
@@ -614,50 +614,6 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public BuildPatchPolicy getBuildPatchPolicy() {
     return this;
-  }
-
-  public String label(@NotNull String label, @NotNull String version, @NotNull VcsRoot root, @NotNull CheckoutRules checkoutRules)
-    throws VcsException {
-    OperationContext context = createContext(root, "labelling");
-    GitVcsRoot gitRoot = context.getGitRoot();
-    try {
-      Repository r = context.getRepository();
-      String commitSHA = GitUtils.versionRevision(version);
-      RevCommit commit = ensureRevCommitLoaded(context, gitRoot, commitSHA);
-      Git git = new Git(r);
-      git.tag().setTagger(gitRoot.getTagger(r)).setName(label).setObjectId(commit).call();
-      String tagRef = GitUtils.tagName(label);
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Tag created  " + label + "=" + version + " for " + gitRoot.debugInfo());
-      }
-      synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
-        final Transport tn = myTransportFactory.createTransport(r, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings());
-        try {
-          final PushConnection c = tn.openPush();
-          try {
-            RemoteRefUpdate ru = new RemoteRefUpdate(r, tagRef, tagRef, false, null, null);
-            c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(tagRef, ru));
-            LOG.info("Tag  " + label + "=" + version + " pushed with status " + ru.getStatus() + " for " + gitRoot.debugInfo());
-            switch (ru.getStatus()) {
-              case UP_TO_DATE:
-              case OK:
-                break;
-              default:
-                throw new VcsException("The remote tag was not created (" + ru.getStatus() + "): " + label);
-            }
-          } finally {
-            c.close();
-          }
-          return label;
-        } finally {
-          tn.close();
-        }
-      }
-    } catch (Exception e) {
-      throw context.wrapException(e);
-    } finally {
-      context.close();
-    }
   }
 
   /**

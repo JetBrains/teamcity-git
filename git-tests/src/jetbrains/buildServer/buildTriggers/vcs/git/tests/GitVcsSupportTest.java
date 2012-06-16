@@ -788,7 +788,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master");
     // ensure that all revisions reachable from master are fetched
-    support.label("test_label", VERSION_TEST_HEAD, root, new CheckoutRules(""));
+    support.getLabelingSupport().label("test_label", VERSION_TEST_HEAD, root, new CheckoutRules(""));
     Repository r = new RepositoryBuilder().setGitDir(new File(new URIish(root.getProperty(Constants.FETCH_URL)).getPath())).build();
     RevWalk revWalk = new RevWalk(r);
     try {
@@ -808,7 +808,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       .withUsernameForTags("John Doe <john.doe@some.org>")
       .build();
     GitVcsSupport git = getSupport();
-    git.label("label_with_specified_username", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", root, CheckoutRules.DEFAULT);
+    git.getLabelingSupport().label("label_with_specified_username", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", root, CheckoutRules.DEFAULT);
 
     Repository r = new RepositoryBuilder().setGitDir(new File(new URIish(root.getProperty(Constants.FETCH_URL)).getPath())).build();
     RevWalk revWalk = new RevWalk(r);
