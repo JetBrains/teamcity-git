@@ -17,14 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilder;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.impl.LogUtil;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.RepositoryState;
@@ -67,11 +65,6 @@ public class GitVcsSupport extends ServerVcsSupport
 
   private static Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   private static Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
-  /**
-   * Current version cache (Pair<bare repository dir, branch name> -> current version).
-   */
-  private final RecentEntriesCache<Pair<File, String>, String> myCurrentVersionCache;
-
   private final ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
   private final ServerPluginConfig myConfig;
@@ -91,9 +84,8 @@ public class GitVcsSupport extends ServerVcsSupport
     myTransportFactory = transportFactory;
     myFetchCommand = fetchCommand;
     myRepositoryManager = repositoryManager;
-    myCurrentVersionCache = new RecentEntriesCache<Pair<File, String>, String>(myConfig.getCurrentVersionCacheSize());
     setStreamFileThreshold();
-    resetCacheManager.registerHandler(new GitResetCacheHandler(this, repositoryManager));
+    resetCacheManager.registerHandler(new GitResetCacheHandler(repositoryManager));
   }
 
 
@@ -200,8 +192,11 @@ public class GitVcsSupport extends ServerVcsSupport
     PersonalBranchDescription result = null;
     RevWalk walk = null;
     try {
-      String originalCommit = GitUtils.versionRevision(getCurrentVersion(original));
-      String branchCommit   = GitUtils.versionRevision(getCurrentVersion(branchRoot));
+      String originalCommit = getCurrentVersion(original);
+      String branchCommit   = getCurrentVersion(branchRoot);
+      ensureCommitLoaded(context, context.getGitRoot(original), originalCommit);
+      ensureCommitLoaded(context, context.getGitRoot(branchRoot), branchCommit);
+
       Repository db = context.getRepository();
       walk = new RevWalk(db);
       walk.markStart(walk.parseCommit(ObjectId.fromString(branchCommit)));
@@ -386,8 +381,10 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  private RevCommit ensureCommitLoaded(OperationContext context, GitVcsRoot root, String commitWithDate) throws Exception {
-    final String commit = GitUtils.versionRevision(commitWithDate);
+  RevCommit ensureCommitLoaded(@NotNull OperationContext context,
+                               @NotNull GitVcsRoot root,
+                               @NotNull String revision) throws Exception {
+    final String commit = GitUtils.versionRevision(revision);
     return ensureRevCommitLoaded(context, root, commit);
   }
 
@@ -507,33 +504,16 @@ public class GitVcsSupport extends ServerVcsSupport
     OperationContext context = createContext(root, "retrieving current version");
     GitVcsRoot gitRoot = context.getGitRoot();
     try {
-      Repository r = context.getRepository();
+      Repository db = context.getRepository();
       String refName = GitUtils.expandRef(gitRoot.getRef());
-
-      if (alwaysDoFetchOnGetCurrentVersion() || isRemoteRefUpdated(gitRoot, r, refName))
-        fetchBranchData(gitRoot, r);
-
-      Ref branchRef = r.getRef(refName);
-      if (branchRef == null) {
+      Ref remoteRef = getRemoteRef(gitRoot, db, refName);
+      if (remoteRef == null)
         throw new VcsException("The ref '" + refName + "' could not be resolved");
-      }
 
-      String cachedCurrentVersion = getCachedCurrentVersion(gitRoot.getRepositoryDir(), gitRoot.getRef());
-      if (cachedCurrentVersion != null && GitUtils.versionRevision(cachedCurrentVersion).equals(branchRef.getObjectId().name())) {
-        return cachedCurrentVersion;
-      } else {
-        RevCommit c = getCommit(r, branchRef.getObjectId());
-        if (c == null) {
-          throw new VcsException("The ref '" + refName + "' could not be resolved");
-        }
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Current version: " + c.getId().name() + " " + gitRoot.debugInfo());
-        }
-        final String currentVersion = c.getId().name();
-        setCachedCurrentVersion(gitRoot.getRepositoryDir(), gitRoot.getRef(), currentVersion);
-        GitMapFullPath.invalidateRevisionsCache(gitRoot);
-        return currentVersion;
-      }
+      if (isRemoteRefUpdated(db, remoteRef))
+        GitMapFullPath.invalidateRevisionsCache(root);
+
+      return remoteRef.getObjectId().name();
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
@@ -542,59 +522,9 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
 
-  private boolean alwaysDoFetchOnGetCurrentVersion() {
-    return myConfig.alwaysDoFetchOnGetCurrentVersion();
-  }
-
-
-  private boolean isRemoteRefUpdated(@NotNull GitVcsRoot root, @NotNull Repository db, @NotNull String refName) throws Exception {
-    Ref remoteRef = getRemoteRef(root, db, refName);
-    if (remoteRef == null) {
-      LOG.debug("Remote ref updated: repository " + LogUtil.describe(root) + ", ref '" + refName + "' no remote revision found");
-      return true;
-    }
-
-    Ref localRef = db.getRef(refName);
-    if (localRef == null)
-      return true;
-
-    return !remoteRef.getObjectId().name().equals(localRef.getObjectId().name());
-  }
-
-
-  /**
-   * Return cached current version for branch in repository in specified dir, or null if no cache version found.
-   * @param repositoryDir cloned repository dir
-   * @param branchName branch name of interest
-   * @return see above
-   */
-  private String getCachedCurrentVersion(File repositoryDir, String branchName) {
-    return myCurrentVersionCache.get(Pair.create(repositoryDir, branchName));
-  }
-
-  /**
-   * Save current version for branch of repository in cache.
-   * @param repositoryDir cloned repository dir
-   * @param branchName branch name of interest
-   * @param currentVersion current branch revision
-   */
-  private void setCachedCurrentVersion(File repositoryDir, String branchName, String currentVersion) {
-    myCurrentVersionCache.put(Pair.create(repositoryDir, branchName), currentVersion);
-  }
-
-
-  /**
-   * Resets all caches for current versions of branches for specified mirror dir
-   * @param mirrorDir mirror dir of interest
-   */
-  public void resetCachedCurrentVersions(@NotNull File mirrorDir) {
-    synchronized (myCurrentVersionCache) {
-      for (Pair<File, String> k : myCurrentVersionCache.keySet()) {
-        File dir = k.first;
-        if (mirrorDir.equals(dir))
-          myCurrentVersionCache.remove(k);
-      }
-    }
+  private boolean isRemoteRefUpdated(@NotNull Repository db, @NotNull Ref remoteRef) throws IOException {
+    Ref localRef = db.getRef(remoteRef.getName());
+    return localRef == null || !remoteRef.getObjectId().name().equals(localRef.getObjectId().name());
   }
 
 

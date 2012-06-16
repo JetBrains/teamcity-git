@@ -1007,9 +1007,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(versionTest1, versionTest2);
     String master1 = getSupport().getCurrentVersion(getRoot("master"));
     String master2 = getSupport().getCurrentVersion(getRoot("refs/heads/master"));
-    String master3 = getSupport().getCurrentVersion(getRoot("refs/tags/v1.0"));
     assertEquals(master1, master2);
-    assertEquals(master1, master3);
   }
 
 
@@ -1123,6 +1121,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     root.addProperty(Constants.PATH, customRootDir.getAbsolutePath());
 
     String v1 = GitUtils.versionRevision(support.getCurrentVersion(root));
+    support.collectChanges(root, "a7274ca8e024d98c7d59874f19f21d26ee31d41d", "add81050184d3c818560bdd8839f50024c188586", CheckoutRules.DEFAULT);
 
     copyRepository(dataFile("repo_for_fetch.2"), remoteRepositoryDir);//now remote repository contains new commits
 
@@ -1131,6 +1130,8 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     String v2 = GitUtils.versionRevision(support.getCurrentVersion(root));
     assertFalse(v2.equals(v1));//local repository is updated
+
+    support.collectChanges(root, v1, v2, CheckoutRules.DEFAULT);
   }
 
 
@@ -1282,7 +1283,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @TestFor(issues = "TW-17435")
   @Test
-  public void getCurrentVersion_should_not_do_fetch_if_remote_ref_not_changed() throws Exception {
+  public void getCurrentVersion_should_not_do_fetch() throws Exception {
     ServerPluginConfig config = myConfigBuilder.build();
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
@@ -1297,10 +1298,10 @@ public class GitVcsSupportTest extends PatchTestCase {
     VcsRootImpl root = getRoot("master", false, remoteRepositoryDir);
 
     GitUtils.versionRevision(git.getCurrentVersion(root));
-    assertEquals(1, fetchCounter.getFetchCount());
+    assertEquals(0, fetchCounter.getFetchCount());
 
     GitUtils.versionRevision(git.getCurrentVersion(root));
-    assertEquals(1, fetchCounter.getFetchCount());
+    assertEquals(0, fetchCounter.getFetchCount());
   }
 
 

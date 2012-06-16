@@ -36,12 +36,10 @@ public class GitResetCacheHandler implements ResetCacheHandler {
   private static Logger LOG = Logger.getInstance(GitResetCacheHandler.class.getName());
   private final static String GIT_CACHE_NAME = "git";
 
-  private final GitVcsSupport myGit;
   private final RepositoryManager myRepositoryManager;
   private AtomicBoolean myResetRunning = new AtomicBoolean(false);
 
-  public GitResetCacheHandler(@NotNull GitVcsSupport git, @NotNull RepositoryManager repositoryManager) {
-    myGit = git;
+  public GitResetCacheHandler(@NotNull RepositoryManager repositoryManager) {
     myRepositoryManager = repositoryManager;
   }
 
@@ -80,7 +78,6 @@ public class GitResetCacheHandler implements ResetCacheHandler {
       try {
         lockMirror(url, mirror);
         resetMirror(mirror);
-        myGit.resetCachedCurrentVersions(mirror);
       } finally {
         unlockMirror(url, mirror);
       }

@@ -84,7 +84,5 @@ public interface ServerPluginConfig extends PluginConfig {
 
   int getMonitoringExpirationTimeoutHours();
 
-  boolean alwaysDoFetchOnGetCurrentVersion();
-
   boolean alwaysCheckCiphers();
 }

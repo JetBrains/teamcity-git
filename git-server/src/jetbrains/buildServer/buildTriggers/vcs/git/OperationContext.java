@@ -51,7 +51,6 @@ public class OperationContext {
   private final RepositoryManager myRepositoryManager;
   private final VcsRoot myRoot;
   private final String myOperation;
-  private final Map<Long, GitVcsRoot> myRootSettings = new HashMap<Long, GitVcsRoot>(); //root id -> settings
   private final Map<String, Repository> myRepositories = new HashMap<String, Repository>(); //repository path -> repository
 
   public OperationContext(@NotNull final GitVcsSupport support,
@@ -104,12 +103,7 @@ public class OperationContext {
   }
 
   public GitVcsRoot getGitRoot(@NotNull VcsRoot root) throws VcsException {
-    GitVcsRoot gitRoot = myRootSettings.get(root.getId());
-    if (gitRoot == null) {
-      gitRoot = createGitRoot(root);
-      myRootSettings.put(root.getId(), gitRoot);
-    }
-    return gitRoot;
+    return new GitVcsRoot(myRepositoryManager, root);
   }
 
   private GitVcsRoot createGitRoot(VcsRoot root) throws VcsException {

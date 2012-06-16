@@ -18,7 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitResetCacheHandler;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.RepositoryManager;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import org.jmock.Expectations;
@@ -48,7 +47,6 @@ public class GitResetCacheHandlerTest {
   private File myCachesDir;
   private ResetCacheHandler myCacheHandler;
   private RepositoryManager myRepositoryManager;
-  private GitVcsSupport myGit;
 
   @BeforeMethod
   public void setUp() throws IOException {
@@ -58,8 +56,7 @@ public class GitResetCacheHandlerTest {
     myTempFiles = new TempFiles();
     myCachesDir = myTempFiles.createTempDir();
     myRepositoryManager = myContext.mock(RepositoryManager.class);
-    myGit = myContext.mock(GitVcsSupport.class);
-    myCacheHandler = new GitResetCacheHandler(myGit, myRepositoryManager);
+    myCacheHandler = new GitResetCacheHandler(myRepositoryManager);
   }
 
   @AfterMethod
@@ -112,8 +109,6 @@ public class GitResetCacheHandlerTest {
       atLeast(1).of(myRepositoryManager).getMappings(); will(returnValue(mapping));
       atLeast(1).of(myRepositoryManager).getRmLock(mirror1);
       atLeast(1).of(myRepositoryManager).getRmLock(mirror2);
-      exactly(1).of(myGit).resetCachedCurrentVersions(mirror1);
-      exactly(1).of(myGit).resetCachedCurrentVersions(mirror2);
     }});
 
     myCacheHandler.resetCache("git");

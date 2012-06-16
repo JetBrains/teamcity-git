@@ -66,9 +66,9 @@ public class GitListFilesSupport implements ListDirectChildrenPolicy {
   }
 
   @NotNull
-  private ListFilesTreeWalk getTreeWalk(@NotNull OperationContext context, @NotNull String path, @NotNull String revision) throws IOException, VcsException {
+  private ListFilesTreeWalk getTreeWalk(@NotNull OperationContext context, @NotNull String path, @NotNull String revision) throws Exception {
     Repository r = context.getRepository();
-    RevCommit commit = myVcs.getCommit(r, revision);
+    RevCommit commit = myVcs.ensureCommitLoaded(context, context.getGitRoot(), revision);
     ListFilesTreeWalk walk;
     if (isRootPath(path)) {
       walk = new ListFilesTreeWalk(r);
