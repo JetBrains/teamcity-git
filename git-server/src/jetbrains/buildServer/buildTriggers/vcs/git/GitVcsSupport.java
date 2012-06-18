@@ -112,12 +112,17 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public RepositoryState getCurrentState(@NotNull VcsRoot root) throws VcsException {
+    GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root);
+    String refInRoot = gitRoot.getRef();
+    String fullRef = GitUtils.expandRef(refInRoot);
+    boolean shortRef = !refInRoot.equals(fullRef);
     Map<String, String> branchRevisions = new HashMap<String, String>();
     for (Ref ref : getRemoteRefs(root).values()) {
       branchRevisions.put(ref.getName(), ref.getObjectId().name());
+      if (shortRef && fullRef.equals(ref.getName()))
+        branchRevisions.put(refInRoot, ref.getObjectId().name());
     }
-    GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root);
-    return RepositoryStateFactory.createRepositoryState(branchRevisions, gitRoot.getRef());
+    return RepositoryStateFactory.createRepositoryState(branchRevisions, refInRoot);
   }
 
   @NotNull

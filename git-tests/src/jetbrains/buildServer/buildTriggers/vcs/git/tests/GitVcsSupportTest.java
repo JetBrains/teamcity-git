@@ -66,6 +66,8 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copy
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
+import static jetbrains.buildServer.util.Util.map;
+import static jetbrains.buildServer.vcs.RepositoryStateFactory.createRepositoryState;
 
 /**
  * The tests for version detection functionality
@@ -1294,6 +1296,24 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(0, fetchCounter.getFetchCount());
   }
 
+
+  @Test
+  public void current_state_should_contains_revision_for_ref_in_root() throws VcsException, IOException {
+    VcsRoot root = getRoot("master");
+    RepositoryState state = getSupport().getCurrentState(root);
+    assertNotNull(state.getBranchRevisions().get("master"));
+  }
+
+  @Test
+  public void test_collect_changes_between_states() throws IOException, VcsException {
+    RepositoryState fromState = createRepositoryState(map("master", "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7"), "master");
+    RepositoryState toState = createRepositoryState(map("master", "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f",
+                                                        "personal-branch2", "3df61e6f11a5a9b919cb3f786a83fdd09f058617"),
+                                                    "master");
+    VcsRoot root = getRoot("master", false);
+    List<ModificationData> modifications = getSupport().getCollectChangesPolicy().collectChanges(root, fromState, toState, CheckoutRules.DEFAULT);
+    assertEquals(7, modifications.size());
+  }
 
   private static class FetchCommandCountDecorator implements FetchCommand {
 

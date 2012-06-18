@@ -26,6 +26,7 @@ import org.eclipse.jgit.transport.CredentialItem;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.net.URISyntaxException;
@@ -52,10 +53,14 @@ public class GitVcsRoot implements VcsRoot {
   private File myUserDefinedRepositoryPath;
 
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root) throws VcsException {
+    this(mirrorManager, root, root.getProperty(Constants.BRANCH_NAME));
+  }
+
+  public GitVcsRoot(@NotNull MirrorManager mirrorManager, @NotNull VcsRoot root, @Nullable String ref) throws VcsException {
     myMirrorManager = mirrorManager;
     myDelegate = root;
     myUserDefinedRepositoryPath = getPath();
-    myRef = getProperty(Constants.BRANCH_NAME);
+    myRef = ref;
     myUsernameStyle = readUserNameStyle();
     mySubmodulePolicy = readSubmodulesPolicy();
     myAuthSettings = new AuthSettings(getProperties());
@@ -65,6 +70,10 @@ public class GitVcsRoot implements VcsRoot {
     myRepositoryPushURL = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURL : myAuthSettings.createAuthURI(pushUrl);
     myRepositoryPushURLNoFixErrors = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURLNoFixErrors : myAuthSettings.createAuthURI(pushUrl, false);
     myUsernameForTags = getProperty(Constants.USERNAME_FOR_TAGS);
+  }
+
+  public GitVcsRoot getRootForBranch(@NotNull String branch) throws VcsException {
+    return new GitVcsRoot(myMirrorManager, myDelegate, branch);
   }
 
   @NotNull

@@ -7,7 +7,7 @@ repo_for_fetch.1:
 * a7274ca8e024d98c7d59874f19f21d26ee31d41d@1303829252000 initial commit
 
 
-repo_for_fetch.2.personal: 
+repo_for_fetch.2.personal:
 * d47dda159b27b9a8c4cee4ce98e4435eb5b17168@1303829462000 add d <-personal
 * 252771029d6ac61aaa78d282d5818d210812a4e5@1303829451000 add c
 * add81050184d3c818560bdd8839f50024c188586@1303829295000 add b <-master
@@ -55,4 +55,4 @@ repo.git, branch personal-branch2:
 3df61e6f11a5a9b919cb3f786a83fdd09f058617@1311593583000 * origin/personal-branch2 personal-branch2 change the author of commit
 e7f491963fbc5c96a27e4169b97746a5a7f83870@1283502933000 * change 3
 1391281d33a83a7205f2f05d3eb64c349c636e87@1283497288000 * origin/personal-branch1 change 2
-f3f826ce85d6dad25156b2d7550cedeb1a422f4c@1238086450000 * merge commit (from master
+f3f826ce85d6dad25156b2d7550cedeb1a422f4c@1238086450000 * merge commit (from master)

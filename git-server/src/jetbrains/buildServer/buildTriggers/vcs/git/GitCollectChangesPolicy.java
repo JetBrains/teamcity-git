@@ -32,11 +32,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
 * @author dmitry.neverov
 */
-class GitCollectChangesPolicy implements CollectChangesBetweenRoots {
+public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, CollectChangesBetweenRepositories {
 
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
 
@@ -49,6 +50,84 @@ class GitCollectChangesPolicy implements CollectChangesBetweenRoots {
     myConfig = config;
   }
 
+
+  @NotNull
+  public List<ModificationData> collectChanges(@NotNull VcsRoot fromRoot,
+                                               @NotNull RepositoryState fromState,
+                                               @NotNull VcsRoot toRoot,
+                                               @NotNull RepositoryState toState,
+                                               @NotNull CheckoutRules checkoutRules) throws VcsException {
+    return collectChanges(toRoot, fromState, toState, checkoutRules);
+  }
+
+  @NotNull
+  public List<ModificationData> collectChanges(@NotNull VcsRoot root,
+                                               @NotNull RepositoryState fromState,
+                                               @NotNull RepositoryState toState,
+                                               @NotNull CheckoutRules checkoutRules) throws VcsException {
+    List<ModificationData> changes = new ArrayList<ModificationData>();
+    OperationContext context = myVcs.createContext(root, "collecting changes");
+    try {
+      Repository r = context.getRepository();
+      ModificationDataRevWalk revWalk = new ModificationDataRevWalk(context, myConfig.getFixedSubmoduleCommitSearchDepth());
+      revWalk.sort(RevSort.TOPO);
+      ensureRepositoryStateLoaded(context, toState);
+      markStart(r, revWalk, toState);
+      markUninteresting(r, revWalk, fromState, toState);
+      while (revWalk.next() != null) {
+        changes.add(revWalk.createModificationData());
+      }
+    } catch (Exception e) {
+      throw context.wrapException(e);
+    } finally {
+      context.close();
+    }
+    return changes;
+  }
+
+  private void ensureRepositoryStateLoaded(@NotNull OperationContext context, @NotNull RepositoryState state) throws Exception {
+    GitVcsRoot root = context.getGitRoot();
+    for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
+      String branch = entry.getKey();
+      String revision = entry.getValue();
+      GitVcsRoot branchRoot = root.getRootForBranch(branch);
+      myVcs.ensureCommitLoaded(context, branchRoot, GitUtils.versionRevision(revision));
+    }
+  }
+
+  private void markUninteresting(@NotNull Repository r,
+                                 @NotNull ModificationDataRevWalk walk,
+                                 @NotNull final RepositoryState fromState,
+                                 @NotNull final RepositoryState toState) throws IOException {
+    List<RevCommit> commits = getCommits(fromState, r, walk);
+    if (commits.isEmpty())//if non of fromState revisions found - limit commits by toState
+      commits = getCommits(toState, r, walk);
+    for (RevCommit commit : commits) {
+      walk.markUninteresting(commit);
+    }
+  }
+
+
+  private void markStart(@NotNull Repository r, @NotNull RevWalk walk, @NotNull RepositoryState state) throws IOException {
+    walk.markStart(getCommits(state, r, walk));
+  }
+
+
+  private List<RevCommit> getCommits(@NotNull RepositoryState state, @NotNull Repository r, @NotNull RevWalk walk) throws IOException {
+    List<RevCommit> revisions = new ArrayList<RevCommit>();
+    for (String revision : state.getBranchRevisions().values()) {
+      ObjectId id = ObjectId.fromString(GitUtils.versionRevision(revision));
+      if (r.hasObject(id))
+        revisions.add(walk.parseCommit(id));
+    }
+    return revisions;
+  }
+
+
+  @NotNull
+  public RepositoryState getCurrentState(@NotNull VcsRoot root) throws VcsException {
+    return myVcs.getCurrentState(root);
+  }
 
   @NotNull
   public List<ModificationData> collectChanges(@NotNull VcsRoot fromRoot,
