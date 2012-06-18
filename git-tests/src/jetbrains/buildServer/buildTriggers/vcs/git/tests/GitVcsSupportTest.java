@@ -230,11 +230,11 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("version-test");
     String version = support.getCurrentVersion(root);
-    byte[] data1 = support.getContent("readme.txt", root, version);
+    byte[] data1 = support.getContentProvider().getContent("readme.txt", root, version);
     byte[] data2 = FileUtil.loadFileBytes(dataFile("content", "readme.txt"));
     assertEquals(data1, data2);
     try {
-      support.getContent("non-existing file.txt", root, version);
+      support.getContentProvider().getContent("non-existing file.txt", root, version);
       fail("The file must not be loaded");
     } catch (VcsFileNotFoundException ex) {
       // ignore exception
@@ -247,7 +247,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("patch-tests", true);
     String version = support.getCurrentVersion(root);
-    byte[] data1 = support.getContent("submodule/file.txt", root, version);
+    byte[] data1 = support.getContentProvider().getContent("submodule/file.txt", root, version);
     byte[] data2 = FileUtil.loadFileBytes(dataFile("content", "submodule file.txt"));
     assertEquals(data1, data2);
   }
@@ -1218,7 +1218,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       System.setProperty("user.home", homeDir.getAbsolutePath());
 
       VcsRoot root = getRoot("master");
-      byte[] bytes = getSupport().getContent("readme.txt", root, "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f@1283497225000");
+      byte[] bytes = getSupport().getContentProvider().getContent("readme.txt", root, "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f@1283497225000");
       String content = new String(bytes);
       assertTrue(content.contains("\r\n"));
     } finally {

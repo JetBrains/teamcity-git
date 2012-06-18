@@ -230,4 +230,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public boolean alwaysCheckCiphers() {
     return TeamCityProperties.getBoolean("teamcity.git.always.check.ciphers");
   }
+
+  public boolean verboseGetContentLog() {
+    return TeamCityProperties.getBoolean("teamcity.git.verbose.get.content.log");
+  }
 }

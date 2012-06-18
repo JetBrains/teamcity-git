@@ -150,6 +150,10 @@ public class PluginConfigBuilder {
       public boolean alwaysCheckCiphers() {
         return false;
       }
+
+      public boolean verboseGetContentLog() {
+        return false;
+      }
     };
   }
 

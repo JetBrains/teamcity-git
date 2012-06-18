@@ -19,7 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilder;
-import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.impl.LogUtil;
 import jetbrains.buildServer.util.FileUtil;
@@ -38,13 +37,9 @@ import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
-import org.eclipse.jgit.treewalk.AbstractTreeIterator;
-import org.eclipse.jgit.treewalk.TreeWalk;
-import org.eclipse.jgit.treewalk.filter.PathFilterGroup;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -59,11 +54,11 @@ import static jetbrains.buildServer.util.CollectionsUtil.setOf;
  * Git VCS support
  */
 public class GitVcsSupport extends ServerVcsSupport
-  implements VcsPersonalSupport, VcsFileContentProvider, CollectChangesBetweenRoots, BuildPatchByCheckoutRules,
+  implements VcsPersonalSupport, CollectChangesBetweenRoots, BuildPatchByCheckoutRules,
              TestConnectionSupport, BranchSupport, IncludeRuleBasedMappingProvider {
 
-  private static Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
-  private static Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
+  private static final Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
+  private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
   private final ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
   private final ServerPluginConfig myConfig;
@@ -285,99 +280,6 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-
-  @NotNull
-  public byte[] getContent(@NotNull VcsModification vcsModification,
-                           @NotNull VcsChangeInfo change,
-                           @NotNull VcsChangeInfo.ContentType contentType,
-                           @NotNull VcsRoot vcsRoot)
-    throws VcsException {
-    String version = contentType == VcsChangeInfo.ContentType.BEFORE_CHANGE
-                     ? change.getBeforeChangeRevisionNumber()
-                     : change.getAfterChangeRevisionNumber();
-    String file = change.getRelativeFileName();
-    return getContent(file, vcsRoot, version);
-  }
-
-  @NotNull
-  public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot root, @NotNull String version) throws VcsException {
-    OperationContext context = createContext(root, "retrieving content");
-    try {
-      final long start = System.currentTimeMillis();
-      Repository r = context.getRepository();
-      final TreeWalk tw = new TreeWalk(r);
-      try {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Getting data from " + version + ":" + filePath + " for " + context.getGitRoot().debugInfo());
-        }
-        final String rev = GitUtils.versionRevision(version);
-        RevCommit c = ensureRevCommitLoaded(context, context.getGitRoot(), rev);
-        tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
-        tw.setRecursive(tw.getFilter().shouldBeRecursive());
-        context.addTree(tw, r, c, true);
-        if (!tw.next()) {
-          throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + context.getGitRoot().debugInfo());
-        }
-        final byte[] data = loadObject(r, tw, 0);
-        if (LOG.isDebugEnabled()) {
-          LOG.debug(
-            "File retrieved " + version + ":" + filePath + " (hash = " + tw.getObjectId(0) + ", length = " + data.length + ") for " +
-            context.getGitRoot().debugInfo());
-        }
-        return data;
-      } finally {
-        final long finish = System.currentTimeMillis();
-        if (PERFORMANCE_LOG.isDebugEnabled()) {
-          PERFORMANCE_LOG.debug("[getContent] root=" + context.getGitRoot().debugInfo() + ", file=" + filePath + ", get object content: " + (finish - start) + "ms");
-        }
-        tw.release();
-      }
-    } catch (Exception e) {
-      throw context.wrapException(e);
-    } finally {
-      context.close();
-    }
-  }
-
-  /**
-   * Load bytes that correspond to the position in the tree walker
-   *
-   * @param r   the initial repository
-   * @param tw  the tree walker
-   * @param nth the tree in the tree wailer
-   * @return loaded bytes
-   * @throws IOException if there is an IO error
-   */
-  private byte[] loadObject(Repository r, TreeWalk tw, final int nth) throws IOException {
-    ObjectId id = tw.getObjectId(nth);
-    Repository objRep = getRepository(r, tw, nth);
-    final String path = tw.getPathString();
-    return loadObject(objRep, path, id);
-  }
-
-  /**
-   * Load object by blob ID
-   *
-   * @param r    the repository
-   * @param path the path (might be null)
-   * @param id   the object id
-   * @return the object's bytes
-   * @throws IOException in case of IO problem
-   */
-  private byte[] loadObject(Repository r, String path, ObjectId id) throws IOException {
-    final ObjectLoader loader = r.open(id);
-    if (loader == null) {
-      throw new IOException("Unable to find blob " + id + (path == null ? "" : "(" + path + ")") + " in repository " + r);
-    }
-    if (loader.isLarge()) {
-      assert loader.getSize() < Integer.MAX_VALUE;
-      ByteArrayOutputStream output = new ByteArrayOutputStream((int) loader.getSize());
-      loader.copyTo(output);
-      return output.toByteArray();
-    } else {
-      return loader.getCachedBytes();
-    }
-  }
 
   @NotNull
   RevCommit ensureCommitLoaded(@NotNull OperationContext context,
@@ -603,7 +505,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public VcsFileContentProvider getContentProvider() {
-    return this;
+    return new GitVcsFileContentProvider(this, myConfig);
   }
 
   @NotNull
@@ -614,25 +516,6 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public BuildPatchPolicy getBuildPatchPolicy() {
     return this;
-  }
-
-  /**
-   * Get repository from tree walker
-   *
-   * @param r   the initial repository
-   * @param tw  the tree walker
-   * @param nth the position
-   * @return the actual repository
-   */
-  private Repository getRepository(Repository r, TreeWalk tw, int nth) {
-    Repository objRep;
-    AbstractTreeIterator ti = tw.getTree(nth, AbstractTreeIterator.class);
-    if (ti instanceof SubmoduleAwareTreeIterator) {
-      objRep = ((SubmoduleAwareTreeIterator)ti).getRepository();
-    } else {
-      objRep = r;
-    }
-    return objRep;
   }
 
   @Override
