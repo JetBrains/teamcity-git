@@ -354,6 +354,10 @@ public class GitVcsRoot implements VcsRoot {
   }
 
 
+  public VcsRoot getOriginalRoot() {
+    return myDelegate;
+  }
+
   public String getVcsName() {
     return myDelegate.getVcsName();
   }

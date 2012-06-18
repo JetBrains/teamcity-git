@@ -33,7 +33,6 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
@@ -54,7 +53,7 @@ import static jetbrains.buildServer.util.CollectionsUtil.setOf;
  * Git VCS support
  */
 public class GitVcsSupport extends ServerVcsSupport
-  implements VcsPersonalSupport, CollectChangesBetweenRoots, BuildPatchByCheckoutRules,
+  implements VcsPersonalSupport, BuildPatchByCheckoutRules,
              TestConnectionSupport, BranchSupport, IncludeRuleBasedMappingProvider {
 
   private static final Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
@@ -89,70 +88,20 @@ public class GitVcsSupport extends ServerVcsSupport
     WindowCache.reconfigure(cfg);
   }
 
-
   @NotNull
-  public List<ModificationData> collectChanges(@NotNull VcsRoot originalRoot,
-                                               @NotNull String  originalRootVersion,
-                                               @NotNull VcsRoot branchRoot,
-                                               @Nullable String  branchRootVersion,
+  public List<ModificationData> collectChanges(@NotNull VcsRoot fromRoot,
+                                               @NotNull String fromVersion,
+                                               @NotNull VcsRoot toRoot,
+                                               @Nullable String toVersion,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
-    LOG.debug("Collecting changes [" +LogUtil.describe(originalRoot) + "-" + originalRootVersion + "].." +
-              "[" + LogUtil.describe(branchRoot) + "-" + branchRootVersion + "]");
-    if (branchRootVersion == null) {
-      LOG.warn("Branch root version is null for " + LogUtil.describe(branchRoot) + ", return empty list of changes");
-      return Collections.emptyList();
-    }
-    String forkPoint = getLastCommonVersion(originalRoot, originalRootVersion, branchRoot, branchRootVersion);
-    return collectChanges(branchRoot, forkPoint, branchRootVersion, checkoutRules);
+    return getCollectChangesPolicy().collectChanges(fromRoot, fromVersion, toRoot, toVersion, checkoutRules);
   }
 
-  @NotNull
   public List<ModificationData> collectChanges(@NotNull VcsRoot root,
                                                @NotNull String fromVersion,
                                                @Nullable String currentVersion,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
-    List<ModificationData> result = new ArrayList<ModificationData>();
-    OperationContext context = createContext(root, "collecting changes");
-    try {
-      LOG.debug("Collecting changes " + fromVersion + ".." + currentVersion + " for " + context.getGitRoot().debugInfo());
-      if (currentVersion == null) {
-        LOG.warn("Current version is null for " + context.getGitRoot().debugInfo() + ", return empty list of changes");
-        return result;
-      }
-      String upperBoundSHA = GitUtils.versionRevision(currentVersion);
-      ensureRevCommitLoaded(context, context.getGitRoot(), upperBoundSHA);
-      String lowerBoundSHA = GitUtils.versionRevision(fromVersion);
-      Repository r = context.getRepository();
-      result.addAll(getModifications(context, r, upperBoundSHA, lowerBoundSHA));
-    } catch (Exception e) {
-      throw context.wrapException(e);
-    } finally {
-      context.close();
-    }
-    return result;
-  }
-
-
-  private List<ModificationData> getModifications(@NotNull final OperationContext context, @NotNull final Repository r, @NotNull final String upperBoundSHA, @NotNull final String lowerBoundSHA) throws VcsException, IOException {
-    List<ModificationData> modifications = new ArrayList<ModificationData>();
-    ModificationDataRevWalk revWalk = new ModificationDataRevWalk(context, myConfig.getFixedSubmoduleCommitSearchDepth());
-    revWalk.sort(RevSort.TOPO);
-    try {
-      revWalk.markStart(revWalk.parseCommit(ObjectId.fromString(upperBoundSHA)));
-      ObjectId lowerBoundId = ObjectId.fromString(lowerBoundSHA);
-      if (r.hasObject(lowerBoundId)) {
-        revWalk.markUninteresting(revWalk.parseCommit(lowerBoundId));
-      } else {
-        LOG.warn("From version " + lowerBoundSHA + " is not found, collect last " + myConfig.getNumberOfCommitsWhenFromVersionNotFound() + " commits");
-        revWalk.limitByNumberOfCommits(myConfig.getNumberOfCommitsWhenFromVersionNotFound());
-      }
-      while (revWalk.next() != null) {
-        modifications.add(revWalk.createModificationData());
-      }
-      return modifications;
-    } finally {
-      revWalk.release();
-    }
+    return getCollectChangesPolicy().collectChanges(root, fromVersion, currentVersion, checkoutRules);
   }
 
 
@@ -228,38 +177,6 @@ public class GitVcsSupport extends ServerVcsSupport
     result.addProperty(Constants.BRANCH_NAME, branchName);
     return result;
   }
-
-  private String getLastCommonVersion(VcsRoot baseRoot, String baseVersion, VcsRoot tipRoot, String tipVersion) throws VcsException {
-    OperationContext context = createContext(tipRoot, "find fork version");
-    GitVcsRoot baseGitRoot = context.getGitRoot(baseRoot);
-    GitVcsRoot tipGitRoot = context.getGitRoot();
-    LOG.debug("Find last common version between [" + baseGitRoot.debugInfo() + "-" + baseVersion + "].." +
-              "[" + tipGitRoot.debugInfo() + "-" + tipVersion + "]");
-    RevWalk walk = null;
-    try {
-      RevCommit baseCommit = ensureCommitLoaded(context, baseGitRoot, baseVersion);
-      RevCommit tipCommit = ensureCommitLoaded(context, tipGitRoot, tipVersion);
-      Repository tipRepository = context.getRepository(tipGitRoot);
-      walk = new RevWalk(tipRepository);
-      walk.setRevFilter(RevFilter.MERGE_BASE);
-      walk.markStart(walk.parseCommit(baseCommit.getId()));
-      walk.markStart(walk.parseCommit(tipCommit.getId()));
-      final RevCommit base = walk.next();
-      String result = base.getId().name();
-      LOG.debug("Last common revision between " + baseGitRoot.debugInfo() + " and " + tipGitRoot.debugInfo() + " is " + result);
-      return result;
-    } catch (Exception e) {
-      throw context.wrapException(e);
-    } finally {
-      try {
-        if (walk != null)
-          walk.release();
-      } finally {
-        context.close();
-      }
-    }
-  }
-
 
   public void buildPatch(@NotNull VcsRoot root,
                          @Nullable String fromVersion,
@@ -509,8 +426,8 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  public CollectChangesPolicy getCollectChangesPolicy() {
-    return this;
+  public GitCollectChangesPolicy getCollectChangesPolicy() {
+    return new GitCollectChangesPolicy(this, myConfig);
   }
 
   @NotNull

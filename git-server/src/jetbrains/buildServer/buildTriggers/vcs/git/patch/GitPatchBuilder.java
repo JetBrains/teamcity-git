@@ -17,10 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
-import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
-import jetbrains.buildServer.buildTriggers.vcs.git.VcsChangeTreeWalk;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
@@ -51,6 +48,7 @@ public final class GitPatchBuilder {
 
   private final ServerPluginConfig myConfig;
   private final OperationContext myContext;
+  private final GitVcsRoot myGitRoot;
   private final PatchBuilder myBuilder;
   private final List<Callable<Void>> myActions = new ArrayList<Callable<Void>>();
   private final String myFromRevision;
@@ -69,6 +67,7 @@ public final class GitPatchBuilder {
                          @NotNull CheckoutRules rules) throws VcsException {
     myConfig = config;
     myContext = context;
+    myGitRoot = context.getGitRoot();
     myBuilder = builder;
     myFromRevision = fromRevision;
     myToRevision = toRevision;
@@ -78,10 +77,10 @@ public final class GitPatchBuilder {
   }
 
   public void buildPatch() throws Exception {
-    myLogger = new BuildPatchLogger(LOG, myContext.getGitRoot().debugInfo(), myConfig);
+    myLogger = new BuildPatchLogger(LOG, myGitRoot.debugInfo(), myConfig);
     myRepository = myContext.getRepository();
     try {
-      myTreeWalk = new VcsChangeTreeWalk(myRepository, myContext.getGitRoot().debugInfo());
+      myTreeWalk = new VcsChangeTreeWalk(myRepository, myGitRoot.debugInfo());
       myTreeWalk.setFilter(TreeFilter.ANY_DIFF);
       myTreeWalk.setRecursive(true);
       addToCommitTree();
@@ -96,7 +95,7 @@ public final class GitPatchBuilder {
 
   private void addToCommitTree() throws IOException, VcsException {
     RevCommit toCommit = myContext.findCommit(myRepository, myToRevision);
-    myContext.addTree(myTreeWalk, myRepository, toCommit, false);
+    myContext.addTree(myGitRoot, myTreeWalk, myRepository, toCommit, false);
   }
 
   private void addFromCommitTree() throws IOException, VcsException {
@@ -112,7 +111,7 @@ public final class GitPatchBuilder {
         cleanCheckoutDir();
         myCleanCheckout = true;
       } else {
-        myContext.addTree(myTreeWalk, myRepository, fromCommit, true);
+        myContext.addTree(myGitRoot, myTreeWalk, myRepository, fromCommit, true);
       }
     }
   }

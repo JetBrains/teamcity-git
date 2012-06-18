@@ -156,16 +156,24 @@ public class OperationContext {
    * Adds tree to tree walker.
    * If we should checkout submodules - adds submodule-aware tree iterator
    */
-  public void addTree(TreeWalk tw, Repository db, RevCommit commit, boolean ignoreSubmodulesErrors) throws IOException, VcsException {
-    addTree(tw, db, commit, ignoreSubmodulesErrors, true);
+  public void addTree(@NotNull GitVcsRoot root,
+                      @NotNull TreeWalk tw,
+                      @NotNull Repository db,
+                      @NotNull RevCommit commit,
+                      boolean ignoreSubmodulesErrors) throws IOException, VcsException {
+    addTree(root, tw, db, commit, ignoreSubmodulesErrors, true);
   }
 
-  public void addTree(TreeWalk tw, Repository db, RevCommit commit, boolean ignoreSubmodulesErrors, boolean logSubmoduleErrors) throws IOException, VcsException {
-    GitVcsRoot s = getGitRoot();
-    if (getGitRoot().isCheckoutSubmodules()) {
+  public void addTree(@NotNull GitVcsRoot root,
+                      @NotNull TreeWalk tw,
+                      @NotNull Repository db,
+                      @NotNull RevCommit commit,
+                      boolean ignoreSubmodulesErrors,
+                      boolean logSubmoduleErrors) throws IOException, VcsException {
+    if (root.isCheckoutSubmodules()) {
       SubmoduleResolver submoduleResolver = new TeamCitySubmoduleResolver(this, db, commit);
-      SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(s.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
-      tw.addTree(create(db, commit, submoduleResolver, s.getRepositoryFetchURL().toString(), "", checkoutPolicy, logSubmoduleErrors));
+      SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(root.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
+      tw.addTree(create(db, commit, submoduleResolver, root.getRepositoryFetchURL().toString(), "", checkoutPolicy, logSubmoduleErrors));
     } else {
       tw.addTree(commit.getTree().getId());
     }

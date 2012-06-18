@@ -1227,16 +1227,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  @Test
-  public void collect_changes_should_work_with_revisions_with_and_without_time() throws Exception {
-    VcsRoot root = getRoot("master");
-    GitVcsSupport support = getSupport();
-    List<ModificationData> withTime = support.collectChanges(root, CUD1_VERSION, MERGE_VERSION, CheckoutRules.DEFAULT);
-    List<ModificationData> withoutTime = support.collectChanges(root, GitUtils.versionRevision(CUD1_VERSION), GitUtils.versionRevision(MERGE_VERSION), CheckoutRules.DEFAULT);
-    assertEquals(withoutTime, withTime);
-  }
-
-
   @TestFor(issues = "TW-21747")
   @Test
   public void backslash_in_username() throws VcsException {
