@@ -56,7 +56,7 @@ public final class BuildPatchLogger {
   }
 
   public void logFileModeChanged(@NotNull String modeDiff, @NotNull String fileInfo) {
-    if (myDelegate.isDebugEnabled())
+    if (myDelegate.isDebugEnabled() && myConfig.isPrintDebugInfoOnEachCommit())
       myDelegate.debug("The mode change " + modeDiff + " is detected for " + fileInfo);
   }
 

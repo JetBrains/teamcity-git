@@ -44,8 +44,9 @@ import java.util.Map;
  */
 class ModificationDataRevWalk extends RevWalk {
 
-  private static Logger LOG = Logger.getInstance(ModificationDataRevWalk.class.getName());
+  private static final Logger LOG = Logger.getInstance(ModificationDataRevWalk.class.getName());
 
+  private final ServerPluginConfig myConfig;
   private final OperationContext myContext;
   private final GitVcsRoot myGitRoot;
   private final Repository myRepository;
@@ -55,12 +56,13 @@ class ModificationDataRevWalk extends RevWalk {
   private int myNumberOfCommitsToVisit = -1;
 
 
-  ModificationDataRevWalk(@NotNull OperationContext context, int fixedSubmoduleSearchDepth) throws VcsException {
+  ModificationDataRevWalk(@NotNull ServerPluginConfig config, @NotNull OperationContext context) throws VcsException {
     super(context.getRepository());
+    myConfig = config;
     myContext = context;
     myGitRoot = context.getGitRoot();
     myRepository = context.getRepository();
-    mySearchDepth = fixedSubmoduleSearchDepth;
+    mySearchDepth = myConfig.getFixedSubmoduleCommitSearchDepth();
   }
 
 
@@ -141,7 +143,7 @@ class ModificationDataRevWalk extends RevWalk {
                                            final String parentVersion) throws IOException, VcsException {
     List<VcsChange> changes = new ArrayList<VcsChange>();
     String repositoryDebugInfo = myGitRoot.debugInfo();
-    VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myRepository, repositoryDebugInfo);
+    VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
     try {
       IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(myGitRoot);
       tw.setFilter(filter);
@@ -159,7 +161,7 @@ class ModificationDataRevWalk extends RevWalk {
             commitWithFix = getPreviousCommitWithFixedSubmodule(commit, path);
             commitsWithFix.put(path, commitWithFix);
             if (commitWithFix != null) {
-              VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myRepository, repositoryDebugInfo);
+              VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
               try {
                 tw2.setFilter(TreeFilter.ANY_DIFF);
                 tw2.setRecursive(true);
@@ -180,7 +182,7 @@ class ModificationDataRevWalk extends RevWalk {
             String brokenSubmodulePath = filter.getSubmodulePathForChildPath(path);
             commitWithFix = commitsWithFix.get(brokenSubmodulePath);
             if (commitWithFix != null) {
-              VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myRepository, repositoryDebugInfo);
+              VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
               try {
                 tw2.setFilter(TreeFilter.ANY_DIFF);
                 tw2.setRecursive(true);

@@ -234,4 +234,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public boolean verboseGetContentLog() {
     return TeamCityProperties.getBoolean("teamcity.git.verbose.get.content.log");
   }
+
+  public boolean verboseTreeWalkLog() {
+    return TeamCityProperties.getBoolean("teamcity.git.verbose.tree.walk.log");
+  }
 }

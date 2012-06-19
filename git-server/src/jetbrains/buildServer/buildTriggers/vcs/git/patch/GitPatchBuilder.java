@@ -80,7 +80,7 @@ public final class GitPatchBuilder {
     myLogger = new BuildPatchLogger(LOG, myGitRoot.debugInfo(), myConfig);
     myRepository = myContext.getRepository();
     try {
-      myTreeWalk = new VcsChangeTreeWalk(myRepository, myGitRoot.debugInfo());
+      myTreeWalk = new VcsChangeTreeWalk(myConfig, myRepository, myGitRoot.debugInfo());
       myTreeWalk.setFilter(TreeFilter.ANY_DIFF);
       myTreeWalk.setRecursive(true);
       addToCommitTree();

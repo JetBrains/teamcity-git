@@ -87,4 +87,6 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean alwaysCheckCiphers();
 
   boolean verboseGetContentLog();
+
+  boolean verboseTreeWalkLog();
 }

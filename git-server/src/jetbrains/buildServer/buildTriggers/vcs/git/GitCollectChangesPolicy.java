@@ -69,7 +69,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     OperationContext context = myVcs.createContext(root, "collecting changes");
     try {
       Repository r = context.getRepository();
-      ModificationDataRevWalk revWalk = new ModificationDataRevWalk(context, myConfig.getFixedSubmoduleCommitSearchDepth());
+      ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
       revWalk.sort(RevSort.TOPO);
       ensureRepositoryStateLoaded(context, toState);
       markStart(r, revWalk, toState);
@@ -208,7 +208,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
                                                   @NotNull final String upperBoundSHA,
                                                   @NotNull final String lowerBoundSHA) throws VcsException, IOException {
     List<ModificationData> modifications = new ArrayList<ModificationData>();
-    ModificationDataRevWalk revWalk = new ModificationDataRevWalk(context, myConfig.getFixedSubmoduleCommitSearchDepth());
+    ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
     revWalk.sort(RevSort.TOPO);
     try {
       revWalk.markStart(revWalk.parseCommit(ObjectId.fromString(upperBoundSHA)));

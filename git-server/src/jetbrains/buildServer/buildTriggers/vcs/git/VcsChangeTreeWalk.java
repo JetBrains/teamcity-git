@@ -31,13 +31,17 @@ import org.jetbrains.annotations.Nullable;
  */
 public class VcsChangeTreeWalk extends TreeWalk {
 
-  private static Logger LOG = Logger.getInstance(VcsChangeTreeWalk.class.getName());
+  private static final Logger LOG = Logger.getInstance(VcsChangeTreeWalk.class.getName());
 
+  private final ServerPluginConfig myConfig;
   private final String myRepositoryDebugInfo;
 
 
-  public VcsChangeTreeWalk(Repository repo, String repositoryDebugInfo) {
+  public VcsChangeTreeWalk(@NotNull ServerPluginConfig config,
+                           @NotNull Repository repo,
+                           @NotNull String repositoryDebugInfo) {
     super(repo);
+    myConfig = config;
     myRepositoryDebugInfo = repositoryDebugInfo;
   }
 
@@ -47,7 +51,7 @@ public class VcsChangeTreeWalk extends TreeWalk {
     final String path = getPathString();
     final ChangeType gitChangeType = classifyChange();
 
-    if (LOG.isDebugEnabled())
+    if (LOG.isDebugEnabled() && myConfig.verboseTreeWalkLog())
       LOG.debug("Processing change " + treeWalkInfo(path) + " as " + gitChangeType + " " + myRepositoryDebugInfo);
 
     VcsChange.Type type = getChangeType(gitChangeType, path);

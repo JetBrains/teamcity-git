@@ -154,6 +154,10 @@ public class PluginConfigBuilder {
       public boolean verboseGetContentLog() {
         return false;
       }
+
+      public boolean verboseTreeWalkLog() {
+        return false;
+      }
     };
   }
 
