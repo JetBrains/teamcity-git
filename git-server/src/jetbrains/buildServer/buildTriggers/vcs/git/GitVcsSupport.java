@@ -352,7 +352,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   public boolean sourcesUpdatePossibleIfChangesNotFound(@NotNull VcsRoot root) {
-    return true;
+    return false;
   }
 
   /**
