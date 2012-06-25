@@ -41,6 +41,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isAnonymousGitWithUsername;
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 
 public class UpdaterImpl implements Updater {
 
@@ -204,11 +205,6 @@ public class UpdaterImpl implements Updater {
       myLogger.message("Cleaning " + myRoot.getName() + " in " + myTargetDirectory + " the file set " + myRoot.getCleanFilesPolicy());
       myGitFactory.create(myTargetDirectory).clean().setCleanPolicy(myRoot.getCleanFilesPolicy()).call();
     }
-  }
-
-
-  private boolean isTag(@NotNull String fullRef) {
-    return fullRef.startsWith("refs/tags/");
   }
 
 

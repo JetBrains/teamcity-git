@@ -46,6 +46,7 @@ import java.util.concurrent.locks.Lock;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
 
@@ -118,6 +119,8 @@ public class GitVcsSupport extends ServerVcsSupport
     boolean shortRef = !refInRoot.equals(fullRef);
     Map<String, String> branchRevisions = new HashMap<String, String>();
     for (Ref ref : getRemoteRefs(root).values()) {
+      if (isTag(ref) && !fullRef.equals(ref.getName()))
+        continue;
       branchRevisions.put(ref.getName(), ref.getObjectId().name());
       if (shortRef && fullRef.equals(ref.getName()))
         branchRevisions.put(refInRoot, ref.getObjectId().name());

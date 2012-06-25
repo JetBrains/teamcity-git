@@ -16,6 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
@@ -90,6 +92,14 @@ public class GitUtils {
     } else {
       return "refs/heads/" + ref;
     }
+  }
+
+  public static boolean isTag(@NotNull Ref ref) {
+    return isTag(ref.getName());
+  }
+
+  public static boolean isTag(@NotNull String fullRefName) {
+    return fullRefName.startsWith(Constants.R_TAGS);
   }
 
   /**
