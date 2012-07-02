@@ -1298,10 +1298,12 @@ public class GitVcsSupportTest extends PatchTestCase {
 
 
   @Test
-  public void current_state_should_contains_revision_for_ref_in_root() throws VcsException, IOException {
+  public void current_state_should_contain_revision_for_expanded_ref_in_root() throws VcsException, IOException {
     VcsRoot root = getRoot("master");
     RepositoryState state = getSupport().getCurrentState(root);
-    assertNotNull(state.getBranchRevisions().get("master"));
+    final String expandedRef = GitUtils.expandRef("master");
+    assertNotNull(state.getBranchRevisions().get(expandedRef));
+    assertEquals(state.getDefaultBranchName(), expandedRef);
   }
 
   @Test
@@ -1313,6 +1315,15 @@ public class GitVcsSupportTest extends PatchTestCase {
     VcsRoot root = getRoot("master", false);
     List<ModificationData> modifications = getSupport().getCollectChangesPolicy().collectChanges(root, fromState, toState, CheckoutRules.DEFAULT);
     assertEquals(7, modifications.size());
+  }
+
+  @Test
+  public void start_using_full_branch_name_as_default_branch_name() throws Exception {
+    RepositoryState fromState = createRepositoryState(map("master", "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7"), "master");
+    RepositoryState toState = createRepositoryState(map("refs/heads/master", "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f"), "refs/heads/master");
+    VcsRoot root = getRoot("master", false);
+    List<ModificationData> modifications = getSupport().getCollectChangesPolicy().collectChanges(root, fromState, toState, CheckoutRules.DEFAULT);
+    assertEquals(4, modifications.size());
   }
 
   private static class FetchCommandCountDecorator implements FetchCommand {

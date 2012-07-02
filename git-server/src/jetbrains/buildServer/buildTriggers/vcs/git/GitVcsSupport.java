@@ -116,7 +116,6 @@ public class GitVcsSupport extends ServerVcsSupport
     GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root);
     String refInRoot = gitRoot.getRef();
     String fullRef = GitUtils.expandRef(refInRoot);
-    boolean shortRef = !refInRoot.equals(fullRef);
     Map<String, String> branchRevisions = new HashMap<String, String>();
     for (Ref ref : getRemoteRefs(root).values()) {
       if (!ref.getName().startsWith("ref"))
@@ -124,10 +123,8 @@ public class GitVcsSupport extends ServerVcsSupport
       if (isTag(ref) && !fullRef.equals(ref.getName()))
         continue;
       branchRevisions.put(ref.getName(), ref.getObjectId().name());
-      if (shortRef && fullRef.equals(ref.getName()))
-        branchRevisions.put(refInRoot, ref.getObjectId().name());
     }
-    return RepositoryStateFactory.createRepositoryState(branchRevisions, refInRoot);
+    return RepositoryStateFactory.createRepositoryState(branchRevisions, fullRef);
   }
 
   @NotNull
