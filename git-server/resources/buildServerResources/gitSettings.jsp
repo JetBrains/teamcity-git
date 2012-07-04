@@ -40,8 +40,15 @@
       </td>
     </tr>
     <tr>
-      <th><label for="branch">Ref name: <l:star/></label></th>
+      <th><label for="branch">Branch name: <l:star/></label></th>
       <td><props:textProperty name="branch"/></td>
+    </tr>
+    <tr>
+      <th><label>Branch Specification:</label></th>
+      <td>
+        <props:multilineProperty name="teamcity:branchSpec" value="${vcsPropertiesBean.branchSpec}" rows="3" cols="60" linkTitle="Edit branch specification" expanded="${true}" className="longField"/>
+        <span class="smallNote">Newline-delimited set or rules in the form of <b>+|-:branch name</b> (with optional <b>*</b> placeholder)</span>
+      </td>
     </tr>
     <tr>
       <th><label for="path">Clone repository to: </label></th>
