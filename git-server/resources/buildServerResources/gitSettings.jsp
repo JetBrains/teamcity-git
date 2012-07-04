@@ -95,7 +95,7 @@
           applicable to both fetch and push urls.
         </div>
         <div id="defaultPrivateKeyNote" class="smallNote" style="margin: 0">Uses mapping specified in the file
-          ${userHome} if that that file exists.
+          ${userHome} if that file exists.
         </div>
       </td>
     </tr>
