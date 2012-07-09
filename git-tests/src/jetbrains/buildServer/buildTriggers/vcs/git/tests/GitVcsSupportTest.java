@@ -1326,6 +1326,13 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(4, modifications.size());
   }
 
+
+  @Test
+  public void should_build_patch_on_revision_in_branch_when_cache_is_empty() throws Exception {
+    checkPatch("patch.non.default.branch", "master", null, "3df61e6f11a5a9b919cb3f786a83fdd09f058617", false);
+  }
+
+
   private static class FetchCommandCountDecorator implements FetchCommand {
 
     private final FetchCommand myDelegate;

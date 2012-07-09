@@ -214,32 +214,32 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  private RevCommit ensureRevCommitLoaded(OperationContext context, GitVcsRoot root, String commitSHA) throws Exception {
+  private RevCommit ensureRevCommitLoaded(@NotNull OperationContext context,
+                                          @NotNull GitVcsRoot root,
+                                          @NotNull String commitSHA) throws Exception {
     Repository db = context.getRepository(root);
-    RevCommit result = null;
     try {
-      final long start = System.currentTimeMillis();
-      result = getCommit(db, commitSHA);
-      final long finish = System.currentTimeMillis();
-      if (PERFORMANCE_LOG.isDebugEnabled()) {
-        PERFORMANCE_LOG.debug("[ensureCommitLoaded] root=" + root.debugInfo() + ", commit=" + commitSHA + ", local commit lookup: " + (finish - start) + "ms");
-      }
+      return getCommit(db, commitSHA);
     } catch (IOException ex) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("IO problem for commit " + commitSHA + " in " + root.debugInfo(), ex);
+      //ignore error, will try to fetch
+    }
+
+    LOG.debug("Cannot find commit " + commitSHA + " in repository " + root.debugInfo() + ", fetch branch " + root.getRef());
+    fetchBranchData(root, db);
+
+    try {
+      return getCommit(db, commitSHA);
+    } catch (IOException e) {
+      LOG.debug("Cannot find commit " + commitSHA + " in the branch " + root.getRef() +
+                " of repository " + root.debugInfo() + ", fetch all branches");
+      RefSpec spec = new RefSpec().setSourceDestination("refs/heads/*", "refs/heads/*").setForceUpdate(true);
+      fetch(db, root.getRepositoryFetchURL(), spec, root.getAuthSettings());
+      try {
+        return getCommit(db, commitSHA);
+      } catch (IOException e1) {
+        throw new VcsException("Cannot find commit " + commitSHA + " in repository " + root.debugInfo());
       }
     }
-    if (result == null) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Commit " + commitSHA + " is not in the repository for " + root.debugInfo() + ", fetching data... ");
-      }
-      fetchBranchData(root, db);
-      result = getCommit(db, commitSHA);
-      if (result == null) {
-        throw new VcsException("The version name could not be resolved " + commitSHA + "(" + root.getRepositoryFetchURL().toString() + "#" + root.getRef() + ")");
-      }
-    }
-    return result;
   }
 
   public RevCommit getCommit(Repository repository, String commitSHA) throws IOException {
