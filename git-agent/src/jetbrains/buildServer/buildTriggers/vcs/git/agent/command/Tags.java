@@ -50,4 +50,8 @@ public class Tags {
   public Collection<Ref> list() {
     return myTags.values();
   }
+
+  public boolean isEmpty() {
+    return myTags.isEmpty();
+  }
 }

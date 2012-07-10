@@ -29,6 +29,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.log.Log4jFactory;
+import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.api.Git;
@@ -57,6 +58,7 @@ import java.util.regex.Matcher;
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.util.Util.map;
 import static org.testng.AssertJUnit.*;
 
 /**
@@ -416,6 +418,37 @@ public class AgentVcsSupportTest {
   }
 
 
+  @Test(dataProvider = "mirrors")
+  public void test_update_on_revision_from_feature_branch(Boolean useMirrors) throws Exception {
+    AgentRunningBuild build = createRunningBuild(useMirrors);
+    final File remote = myTempFiles.createTempDir();
+    copyRepository(dataFile("repo_for_fetch.2.personal"), remote);
+    VcsRootImpl root = createRoot(remote, "master");
+    String commitFromFeatureBranch = "d47dda159b27b9a8c4cee4ce98e4435eb5b17168";
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, commitFromFeatureBranch, myCheckoutDir, build, false);
+  }
+
+
+  @Test(dataProvider = "mirrors")
+  public void should_use_branch_specified_in_build_parameter(Boolean useMirrors) throws Exception {
+    final File remote = myTempFiles.createTempDir();
+    copyRepository(dataFile("repo_for_fetch.2.personal"), remote);
+    VcsRootImpl root = createRoot(remote, "master");
+
+    AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, String.valueOf(useMirrors)));
+    String commitFromFeatureBranch = "d47dda159b27b9a8c4cee4ce98e4435eb5b17168";
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, commitFromFeatureBranch, myCheckoutDir, build, false);
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    assertEquals("master", r.getBranch());
+
+    build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, String.valueOf(useMirrors),
+                                   "teamcity.vcsroot." + root.getId() + ".branch", "refs/heads/personal"));
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, commitFromFeatureBranch, myCheckoutDir, build, false);
+    r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    assertEquals("personal", r.getBranch());
+  }
+
+
   @Test
   public void test_shallow_clone() throws Exception {
     AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
@@ -426,7 +459,7 @@ public class AgentVcsSupportTest {
   }
 
 
-  //TW-20165
+  @TestFor(issues = "TW-20165")
   public void push_with_local_mirrors_should_go_to_original_repository() throws Exception {
     AgentRunningBuild build = createRunningBuild(true);
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitUtils.makeVersion("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", 1289483394000L), myCheckoutDir, build, false);

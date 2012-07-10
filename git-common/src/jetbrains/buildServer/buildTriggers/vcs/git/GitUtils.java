@@ -94,12 +94,22 @@ public class GitUtils {
     }
   }
 
+  public static String getShortBranchName(@NotNull String fullRefName) {
+    if (isRegularBranch(fullRefName))
+      return fullRefName.substring(Constants.R_HEADS.length());
+    return fullRefName;
+  }
+
   public static boolean isTag(@NotNull Ref ref) {
     return isTag(ref.getName());
   }
 
   public static boolean isTag(@NotNull String fullRefName) {
     return fullRefName.startsWith(Constants.R_TAGS);
+  }
+
+  public static boolean isRegularBranch(@NotNull String fullRefName) {
+    return fullRefName.startsWith(Constants.R_HEADS);
   }
 
   /**

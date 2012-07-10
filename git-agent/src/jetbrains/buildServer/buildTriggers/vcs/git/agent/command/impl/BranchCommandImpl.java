@@ -18,8 +18,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.BranchInfo;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.BranchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -29,20 +29,13 @@ import org.jetbrains.annotations.NotNull;
 public class BranchCommandImpl implements BranchCommand {
 
   private final GeneralCommandLine myCmd;
-  private String myBranch;
 
   public BranchCommandImpl(@NotNull GeneralCommandLine cmd) {
     myCmd = cmd;
   }
 
   @NotNull
-  public BranchCommand setBranch(@NotNull String branch) {
-    myBranch = branch;
-    return this;
-  }
-
-  @NotNull
-  public BranchInfo call() throws VcsException {
+  public Branches call() throws VcsException {
     myCmd.addParameter("branch");
     ExecResult r = CommandUtil.runCommand(myCmd);
     CommandUtil.failIfNotEmptyStdErr(myCmd, r);
@@ -50,14 +43,14 @@ public class BranchCommandImpl implements BranchCommand {
   }
 
   @NotNull
-  private BranchInfo parseOutput(String out) {
+  private Branches parseOutput(String out) {
+    Branches branches = new Branches();
     for (String line : out.split("\n")) {
       if (line.length() < 2)
         continue;
       String b = line.substring(2).trim();
-      if (b.equals(myBranch))
-        return new BranchInfo(true, line.charAt(0) == '*');
+      branches.addBranch(b, line.charAt(0) == '*');
     }
-    return new BranchInfo(false, false);
+    return branches;
   }
 }
