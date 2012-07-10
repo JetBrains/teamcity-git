@@ -124,6 +124,12 @@ public class GitVcsSupport extends ServerVcsSupport
         continue;
       branchRevisions.put(ref.getName(), ref.getObjectId().name());
     }
+    if (branchRevisions.get(fullRef) == null) {
+      VcsException e = new VcsException("Cannot find revision of the default branch '" +
+              refInRoot + "' of vcs root " + LogUtil.describe(root));
+      e.setRoot(root);
+      throw e;
+    }
     return RepositoryStateFactory.createRepositoryState(branchRevisions, fullRef);
   }
 
