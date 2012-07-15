@@ -40,12 +40,12 @@
       </td>
     </tr>
     <tr>
-      <th><label for="branch">Branch name: <l:star/></label></th>
+      <th><label for="branch">Branch Name: <l:star/></label></th>
       <td><props:textProperty name="branch"/></td>
     </tr>
     <bs:branchSpecTableRow/>
     <tr>
-      <th><label for="path">Clone repository to: </label></th>
+      <th><label for="path">Clone Repository To: </label></th>
       <td><props:textProperty name="path" className="longField"/>
         <div class="smallNote" style="margin: 0;">Provide path to a directory on TeamCity server where a
           bare cloned repository should be created. Leave blank to use default path.
@@ -77,7 +77,7 @@
       </td>
     </tr>
     <tr>
-      <th><label for="userForTags">Username for tags:</label></th>
+      <th><label for="userForTags">Username For Tags:</label></th>
       <td><props:textProperty name="userForTags"/>
         <div class="smallNote" style="margin: 0">Format: User Name &lt;email&gt;</div>
       </td>
@@ -101,7 +101,7 @@
       </td>
     </tr>
     <tr id="gitUsername">
-      <th><label for="username">User name:</label></th>
+      <th><label for="username">User Name:</label></th>
       <td><props:textProperty name="username"/>
         <div class="smallNote" style="margin: 0">Username must be specified if there is no username in the clone URL.
           The user name specified here overrides username from URL.
@@ -134,7 +134,7 @@
       <td colspan="2">Agent-specific settings that are used in case of agent checkout.<bs:help file="Git+(JetBrains)" anchor="agentSettings"/></td>
     </tr>
     <tr>
-      <th><label for="agentGitPath">Path to git: </label></th>
+      <th><label for="agentGitPath">Path To Git: </label></th>
       <td><props:textProperty name="agentGitPath" className="longField"/>
         <div class="smallNote" style="margin: 0;">Provide path to a git executable
         to be used on agent. If the path is not specified, TeamCity will use
