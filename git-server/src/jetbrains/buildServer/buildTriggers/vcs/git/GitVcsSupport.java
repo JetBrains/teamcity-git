@@ -317,7 +317,6 @@ public class GitVcsSupport extends ServerVcsSupport
     final HashMap<String, String> map = new HashMap<String, String>();
     map.put(Constants.BRANCH_NAME, "master");
     map.put(Constants.IGNORE_KNOWN_HOSTS, "true");
-    map.put(Constants.AGENT_GIT_PATH, "%" + Constants.TEAMCITY_AGENT_GIT_PATH_FULL_NAME + "%");
     return map;
   }
 
