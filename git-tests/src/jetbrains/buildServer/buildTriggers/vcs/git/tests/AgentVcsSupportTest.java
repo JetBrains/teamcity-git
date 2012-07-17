@@ -442,7 +442,7 @@ public class AgentVcsSupportTest {
     assertEquals("master", r.getBranch());
 
     build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, String.valueOf(useMirrors),
-                                   "teamcity.vcsroot." + root.getId() + ".branch", "refs/heads/personal"));
+                                   ServerProvidedProperties.TEAMCITY_BUILD_VCS_BRANCH + "." + root.getSimplifiedName(), "refs/heads/personal"));
     myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, commitFromFeatureBranch, myCheckoutDir, build, false);
     r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
     assertEquals("personal", r.getBranch());

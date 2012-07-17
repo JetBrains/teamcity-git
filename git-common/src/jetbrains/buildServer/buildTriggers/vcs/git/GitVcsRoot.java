@@ -411,4 +411,8 @@ public class GitVcsRoot implements VcsRoot {
   public String toString() {
     return myDelegate.toString();
   }
+
+  public String getSimplifiedName() {
+    return myDelegate.getSimplifiedName();
+  }
 }

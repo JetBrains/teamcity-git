@@ -16,10 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import jetbrains.buildServer.agent.AgentRunningBuild;
-import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
-import jetbrains.buildServer.agent.BuildProgressLogger;
-import jetbrains.buildServer.agent.SmartDirectoryCleaner;
+import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
@@ -82,7 +79,8 @@ public class UpdaterImpl implements Updater {
 
   private String getBranch() {
     String defaultBranchName = GitUtils.expandRef(myRoot.getRef());
-    String customBranch = myBuild.getSharedConfigParameters().get("teamcity.vcsroot." + myRoot.getId() + ".branch");
+    String rootBranchParam = ServerProvidedProperties.TEAMCITY_BUILD_VCS_BRANCH + "." + myRoot.getSimplifiedName();
+    String customBranch = myBuild.getSharedConfigParameters().get(rootBranchParam);
     return customBranch != null ? customBranch : defaultBranchName;
   }
 
