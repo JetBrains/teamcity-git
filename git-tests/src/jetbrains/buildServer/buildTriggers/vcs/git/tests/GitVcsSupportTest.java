@@ -68,6 +68,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.v
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
 import static jetbrains.buildServer.vcs.RepositoryStateFactory.createRepositoryState;
+import static jetbrains.buildServer.vcs.RepositoryStateFactory.createSingleVersionRepositoryState;
 
 /**
  * The tests for version detection functionality

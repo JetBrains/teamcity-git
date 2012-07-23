@@ -24,18 +24,22 @@ import jetbrains.buildServer.serverSide.impl.LogUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
-import jetbrains.buildServer.vcs.RepositoryState;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
-import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
-import org.eclipse.jgit.transport.*;
+import org.eclipse.jgit.transport.FetchConnection;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.Transport;
+import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -339,10 +343,6 @@ public class GitVcsSupport extends ServerVcsSupport
       Ref remoteRef = getRemoteRef(gitRoot, db, refName);
       if (remoteRef == null)
         throw new VcsException("The ref '" + refName + "' could not be resolved");
-
-      if (isRemoteRefUpdated(db, remoteRef))
-        GitMapFullPath.invalidateRevisionsCache(root);
-
       return remoteRef.getObjectId().name();
     } catch (Exception e) {
       throw context.wrapException(e);
@@ -387,6 +387,7 @@ public class GitVcsSupport extends ServerVcsSupport
         final long finish = System.currentTimeMillis();
         PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + (finish - start) + "ms");
         myFetchCommand.fetch(db, fetchURI, refspecs, auth);
+        GitMapFullPath.invalidateRevisionsCache(db);
       }
     } finally {
       rmLock.unlock();

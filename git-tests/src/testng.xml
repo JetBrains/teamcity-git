@@ -33,6 +33,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitResetCacheHandlerTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ListFilesTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVcsRootTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.MapFullPathTest"/>
     </classes>
   </test>
 </suite>

@@ -19,7 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.serverSide.impl.LogUtil;
 import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -85,7 +84,7 @@ class GitMapFullPath {
   }
 
   private boolean repositoryContainsRevision() throws VcsException {
-    RepositoryRevisionCache repositoryCache = ourCache.getRepositoryCache(myRootEntry.getVcsRoot());
+    RepositoryRevisionCache repositoryCache = ourCache.getRepositoryCache(myContext.getRepository());
     Boolean result = repositoryCache.hasRevision(myGitRevision);
     if (result != null) {
       LOG.debug("RevisionCache hit: root " + LogUtil.describe(myRootEntry.getVcsRoot()) + (result ? "contains " : "doesn't contain ") + "revision " + myGitRevision);
@@ -150,10 +149,9 @@ class GitMapFullPath {
     return (branchSeparatorIndex > 0) ? url.substring(0, branchSeparatorIndex) : url;
   }
 
-  public static void invalidateRevisionsCache(VcsRoot root) {
-    ourCache.invalidateCache(root);
+  public static void invalidateRevisionsCache(@NotNull Repository db) {
+    ourCache.invalidateCache(db);
   }
-
 
   /**
    * Revisions cache for whole server.
@@ -163,12 +161,12 @@ class GitMapFullPath {
     //repositoryId -> per repository cache
     private final ConcurrentMap<String, RepositoryRevisionCache> myCache = new ConcurrentHashMap<String, RepositoryRevisionCache>();
 
-    void invalidateCache(@NotNull final VcsRoot root) {
-      myCache.remove(getRepositoryId(root));
+    void invalidateCache(@NotNull final Repository db) {
+      myCache.remove(getRepositoryId(db));
     }
 
-    RepositoryRevisionCache getRepositoryCache(@NotNull final VcsRoot root) {
-      String repositoryId = getRepositoryId(root);
+    RepositoryRevisionCache getRepositoryCache(@NotNull final Repository db) {
+      String repositoryId = getRepositoryId(db);
       RepositoryRevisionCache result = myCache.get(repositoryId);
       if (result == null) {
         result = new RepositoryRevisionCache();
@@ -178,12 +176,17 @@ class GitMapFullPath {
       return result;
     }
 
-    private String getRepositoryId(@NotNull final VcsRoot root) {
-      final StringBuilder builder = new StringBuilder();
-      builder.append(root.getId());
-      builder.append('_');
-      builder.append(root.getPropertiesHash());
-      return builder.toString();
+    private String getRepositoryId(@NotNull final Repository db) {
+      try {
+        return db.getDirectory().getCanonicalPath();
+      } catch (IOException e) {
+        return db.getDirectory().getAbsolutePath();
+      }
+    }
+
+    @Override
+    public String toString() {
+      return myCache.toString();
     }
   }
 
@@ -206,6 +209,11 @@ class GitMapFullPath {
 
     void saveRevision(@NotNull String revision, boolean has) {
       myCache.put(revision, has);
+    }
+
+    @Override
+    public String toString() {
+      return myCache.toString();
     }
   }
 }
