@@ -74,7 +74,7 @@ public class CleanerTest extends BaseTestCase {
     FetchCommand fetchCommand = new FetchCommandImpl(myConfig, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl());
     myRepositoryManager = new RepositoryManagerImpl(myConfig, mirrorManager);
-    mySupport = new GitVcsSupport(myConfig, new ResetCacheRegister(), transportFactory, fetchCommand, myRepositoryManager, null);
+    mySupport = new GitVcsSupport(myConfig, new ResetCacheRegister(), transportFactory, fetchCommand, myRepositoryManager, new GitMapFullPath(myConfig), null);
     myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), myConfig, myRepositoryManager);
   }
 

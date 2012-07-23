@@ -68,7 +68,6 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.v
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
 import static jetbrains.buildServer.vcs.RepositoryStateFactory.createRepositoryState;
-import static jetbrains.buildServer.vcs.RepositoryStateFactory.createSingleVersionRepositoryState;
 
 /**
  * The tests for version detection functionality
@@ -154,7 +153,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    return new GitVcsSupport(config, myResetCacheManager, transportFactory, fetchCommand, repositoryManager, holder);
+    return new GitVcsSupport(config, myResetCacheManager, transportFactory, fetchCommand, repositoryManager, new GitMapFullPath(config), holder);
   }
 
 
@@ -1283,7 +1282,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    GitVcsSupport git = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCounter, repositoryManager, null);
+    GitVcsSupport git = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCounter, repositoryManager, new GitMapFullPath(config), null);
 
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
     copyRepository(dataFile("repo_for_fetch.1"), remoteRepositoryDir);

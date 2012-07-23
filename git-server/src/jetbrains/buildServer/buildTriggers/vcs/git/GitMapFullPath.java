@@ -18,6 +18,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.serverSide.impl.LogUtil;
+import jetbrains.buildServer.util.RecentEntriesCache;
+import jetbrains.buildServer.util.filters.Filter;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.eclipse.jgit.lib.Repository;
@@ -33,66 +35,56 @@ import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
+
 /**
 * @author kir
 */
-class GitMapFullPath {
+public class GitMapFullPath {
 
   private static final Logger LOG = Logger.getInstance(GitMapFullPath.class.getName());
+  private final RevisionsCache myCache;
+  private GitVcsSupport myGit;
 
-  private static final RevisionsCache ourCache = new RevisionsCache();
 
-  private final GitVcsSupport myGitSupport;
-  private final VcsRootEntry myRootEntry;
-  private final String myFullPath;
-
-  private OperationContext myContext;
-  private final GitVcsRoot myRoot;
-  private final int myFirstSep;
-  private final int myLastSep;
-
-  private String myGitRevision;
-  private String myRepositoryUrl;
-  private Collection<String> myMappedPaths;
-
-  public GitMapFullPath(final OperationContext context, final GitVcsSupport gitSupport, final VcsRootEntry rootEntry, final String fullPath) throws VcsException {
-    myGitSupport = gitSupport;
-    myRootEntry = rootEntry;
-    myFullPath = fullPath;
-
-    myFirstSep = myFullPath.indexOf("|");
-    myLastSep = myFullPath.lastIndexOf("|");
-    myContext = context;
-    myRoot = context.getGitRoot();
+  public GitMapFullPath(@NotNull ServerPluginConfig config) {
+    myCache = new RevisionsCache(config.getMapFullPathRevisionCacheSize());
   }
 
-  public Collection<String> mapFullPath() throws VcsException {
-    if (invalidFormat())
+
+  public void setGitVcs(@NotNull GitVcsSupport git) {
+    myGit = git;
+  }
+
+
+  public Collection<String> mapFullPath(@NotNull OperationContext context, @NotNull VcsRootEntry rootEntry, @NotNull String path) throws VcsException {
+    GitVcsRoot root = context.getGitRoot();
+    FullPath fullPath = new FullPath(path);
+    if (!fullPath.isValid())
       return Collections.emptySet();
-    init();
-    if (fullPathContainsRevision() && repositoryContainsRevision())
-      return myMappedPaths;
-    if (!fullPathContainsRevision() && urlsMatch())
-      return myMappedPaths;
+
+    String revision = fullPath.getRevision();
+    boolean pathContainsRevision = !isEmpty(revision);
+    if (pathContainsRevision && repositoryContainsRevision(context, rootEntry, revision))
+      return fullPath.getMappedPaths();
+
+    if (!pathContainsRevision && urlsMatch(root, fullPath))
+      return fullPath.getMappedPaths();
+
     return Collections.emptySet();
   }
 
-  private void init() {
-    myGitRevision = myFullPath.substring(0, myFirstSep).trim();
-    myRepositoryUrl = myFullPath.substring(myFirstSep + 1, myLastSep).trim();
-    myMappedPaths = Collections.singleton(myFullPath.substring(myLastSep + 1).trim());
-  }
 
-  private boolean repositoryContainsRevision() throws VcsException {
-    RepositoryRevisionCache repositoryCache = ourCache.getRepositoryCache(myContext.getRepository());
-    Boolean result = repositoryCache.hasRevision(myGitRevision);
+  private boolean repositoryContainsRevision(@NotNull OperationContext context, @NotNull VcsRootEntry rootEntry, @NotNull String revision) throws VcsException {
+    RepositoryRevisionCache repositoryCache = myCache.getRepositoryCache(context.getRepository());
+    Boolean result = repositoryCache.hasRevision(revision);
     if (result != null) {
-      LOG.debug("RevisionCache hit: root " + LogUtil.describe(myRootEntry.getVcsRoot()) + (result ? "contains " : "doesn't contain ") + "revision " + myGitRevision);
+      LOG.debug("RevisionCache hit: root " + LogUtil.describe(rootEntry.getVcsRoot()) + (result ? "contains " : "doesn't contain ") + "revision " + revision);
       return result;
     } else {
-      LOG.debug("RevisionCache miss: root " + LogUtil.describe(myRootEntry.getVcsRoot()) + ", revision " + myGitRevision);
-      result = findCommit() != null;
-      repositoryCache.saveRevision(myGitRevision, result);
+      LOG.debug("RevisionCache miss: root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision);
+      result = findCommit(context, revision) != null;
+      repositoryCache.saveRevision(revision, result);
       return result;
     }
   }
@@ -102,26 +94,18 @@ class GitMapFullPath {
    * @return revCommit or null if repository has not such commit
    */
   @Nullable
-  private RevCommit findCommit() throws VcsException {
-    final Repository repository = myContext.getRepository();
+  private RevCommit findCommit(@NotNull OperationContext context, @NotNull String commit) throws VcsException {
+    final Repository repository = context.getRepository();
     try {
-      return myGitSupport.getCommit(repository, myGitRevision);
+      return myGit.getCommit(repository, commit);
     } catch (IOException e) {
       return null;
     }
   }
 
 
-  private boolean fullPathContainsRevision() {
-    return myGitRevision.length() > 0;
-  }
-
-  private boolean invalidFormat() {
-    return myFirstSep < 0 || myLastSep == myFirstSep;
-  }
-
-  private boolean urlsMatch() {
-    String url = removeBranch(myRepositoryUrl);
+  private boolean urlsMatch(@NotNull GitVcsRoot root, @NotNull FullPath fullPath) {
+    String url = removeBranch(fullPath.getRepositoryUrl());
 
     final URIish uri;
     try {
@@ -131,15 +115,19 @@ class GitMapFullPath {
       return false;
     }
 
-    final URIish settingsUrl = myRoot.getRepositoryFetchURL();
-    if (settingsUrl == null)
+    final URIish settingsUrl = root.getRepositoryFetchURL();
+    if (settingsUrl == null) {
       return false;
-    if (uri.getHost() == null && settingsUrl.getHost() != null || uri.getHost() != null && !uri.getHost().equals(settingsUrl.getHost()))
+    }
+    if (uri.getHost() == null && settingsUrl.getHost() != null || uri.getHost() != null && !uri.getHost().equals(settingsUrl.getHost())) {
       return false;
-    if (uri.getPort() != settingsUrl.getPort())
+    }
+    if (uri.getPort() != settingsUrl.getPort()) {
       return false;
-    if (uri.getPath() == null && settingsUrl.getPath() != null || uri.getPath() != null && !uri.getPath().equals(settingsUrl.getPath()))
+    }
+    if (uri.getPath() == null && settingsUrl.getPath() != null || uri.getPath() != null && !uri.getPath().equals(settingsUrl.getPath())) {
       return false;
+    }
 
     return true;
   }
@@ -149,8 +137,8 @@ class GitMapFullPath {
     return (branchSeparatorIndex > 0) ? url.substring(0, branchSeparatorIndex) : url;
   }
 
-  public static void invalidateRevisionsCache(@NotNull Repository db) {
-    ourCache.invalidateCache(db);
+  public void invalidateRevisionsCache(@NotNull Repository db) {
+    myCache.invalidateCache(db);
   }
 
   /**
@@ -160,16 +148,24 @@ class GitMapFullPath {
   private final static class RevisionsCache {
     //repositoryId -> per repository cache
     private final ConcurrentMap<String, RepositoryRevisionCache> myCache = new ConcurrentHashMap<String, RepositoryRevisionCache>();
+    private final int myRepositoryCacheSize;
+
+    private RevisionsCache(int repositoryCacheSize) {
+      myRepositoryCacheSize = repositoryCacheSize;
+    }
 
     void invalidateCache(@NotNull final Repository db) {
-      myCache.remove(getRepositoryId(db));
+      String repositoryId = getRepositoryId(db);
+      RepositoryRevisionCache repositoryCache = myCache.get(repositoryId);
+      if (repositoryCache != null)
+        repositoryCache.removeNegativeEntries();
     }
 
     RepositoryRevisionCache getRepositoryCache(@NotNull final Repository db) {
       String repositoryId = getRepositoryId(db);
       RepositoryRevisionCache result = myCache.get(repositoryId);
       if (result == null) {
-        result = new RepositoryRevisionCache();
+        result = new RepositoryRevisionCache(myRepositoryCacheSize);
         RepositoryRevisionCache old = myCache.putIfAbsent(repositoryId, result);
         result = (old == null) ? result : old;
       }
@@ -197,7 +193,11 @@ class GitMapFullPath {
    */
   private final static class RepositoryRevisionCache {
     //revision (SHA) -> does this repository have such revision
-    private final ConcurrentMap<String, Boolean> myCache = new ConcurrentHashMap<String, Boolean>();
+    private final RecentEntriesCache<String, Boolean> myCache;
+
+    private RepositoryRevisionCache(int cacheSize) {
+      myCache = new RecentEntriesCache<String, Boolean>(cacheSize);
+    }
 
     /**
      * @return true if repository has revision, false if doesn't, null if there is no data on this revision
@@ -214,6 +214,46 @@ class GitMapFullPath {
     @Override
     public String toString() {
       return myCache.toString();
+    }
+
+    void removeNegativeEntries() {
+      myCache.removeValues(new Filter<Boolean>() {
+        public boolean accept(@NotNull Boolean hasRevision) {
+          return !hasRevision;//remove entries for commits we don't have
+        }
+      });
+    }
+  }
+
+
+  private static class FullPath {
+    private final String myPath;
+    private final int myFirstSeparatorIdx;
+    private final int myLastSeparatorIdx;
+
+    private FullPath(@NotNull String path) {
+      myPath = path;
+      myFirstSeparatorIdx = path.indexOf("|");
+      myLastSeparatorIdx = path.lastIndexOf("|");
+    }
+
+    boolean isValid() {
+      return myFirstSeparatorIdx >= 0 && myLastSeparatorIdx > myFirstSeparatorIdx;
+    }
+
+    @NotNull
+    String getRevision() {
+      return myPath.substring(0, myFirstSeparatorIdx).trim();
+    }
+
+    @NotNull
+    String getRepositoryUrl() {
+      return myPath.substring(myFirstSeparatorIdx + 1, myLastSeparatorIdx).trim();
+    }
+
+    @NotNull
+    Collection<String> getMappedPaths() {
+      return Collections.singleton(myPath.substring(myLastSeparatorIdx + 1).trim());
     }
   }
 }

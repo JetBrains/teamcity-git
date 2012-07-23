@@ -238,4 +238,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public boolean verboseTreeWalkLog() {
     return TeamCityProperties.getBoolean("teamcity.git.verbose.tree.walk.log");
   }
+
+  public int getMapFullPathRevisionCacheSize() {
+    return TeamCityProperties.getInteger("teamcity.git.map.full.path.revision.cache.size", 100);
+  }
 }

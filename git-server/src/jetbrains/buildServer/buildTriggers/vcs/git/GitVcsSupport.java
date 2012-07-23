@@ -69,21 +69,25 @@ public class GitVcsSupport extends ServerVcsSupport
   private final TransportFactory myTransportFactory;
   private final FetchCommand myFetchCommand;
   private final RepositoryManager myRepositoryManager;
+  private final GitMapFullPath myMapFullPath;
 
 
-  public GitVcsSupport(@NotNull final ServerPluginConfig config,
-                       @NotNull final ResetCacheRegister resetCacheManager,
-                       @NotNull final TransportFactory transportFactory,
-                       @NotNull final FetchCommand fetchCommand,
-                       @NotNull final RepositoryManager repositoryManager,
-                       @Nullable final ExtensionHolder extensionHolder) {
+  public GitVcsSupport(@NotNull ServerPluginConfig config,
+                       @NotNull ResetCacheRegister resetCacheManager,
+                       @NotNull TransportFactory transportFactory,
+                       @NotNull FetchCommand fetchCommand,
+                       @NotNull RepositoryManager repositoryManager,
+                       @NotNull GitMapFullPath mapFullPath,
+                       @Nullable ExtensionHolder extensionHolder) {
     myConfig = config;
     myExtensionHolder = extensionHolder;
     myTransportFactory = transportFactory;
     myFetchCommand = fetchCommand;
     myRepositoryManager = repositoryManager;
+    myMapFullPath = mapFullPath;
     setStreamFileThreshold();
     resetCacheManager.registerHandler(new GitResetCacheHandler(repositoryManager));
+    myMapFullPath.setGitVcs(this);
   }
 
 
@@ -387,7 +391,7 @@ public class GitVcsSupport extends ServerVcsSupport
         final long finish = System.currentTimeMillis();
         PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + (finish - start) + "ms");
         myFetchCommand.fetch(db, fetchURI, refspecs, auth);
-        GitMapFullPath.invalidateRevisionsCache(db);
+        myMapFullPath.invalidateRevisionsCache(db);
       }
     } finally {
       rmLock.unlock();
@@ -466,7 +470,7 @@ public class GitVcsSupport extends ServerVcsSupport
   public Collection<String> mapFullPath(@NotNull final VcsRootEntry rootEntry, @NotNull final String fullPath) {
     OperationContext context = createContext(rootEntry.getVcsRoot(), "map full path");
     try {
-      return new GitMapFullPath(context, this, rootEntry, fullPath).mapFullPath();
+      return myMapFullPath.mapFullPath(context, rootEntry, fullPath);
     } catch (VcsException e) {
       LOG.error(e);
       return Collections.emptySet();

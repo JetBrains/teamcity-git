@@ -158,6 +158,10 @@ public class PluginConfigBuilder {
       public boolean verboseTreeWalkLog() {
         return false;
       }
+
+      public int getMapFullPathRevisionCacheSize() {
+        return 100;
+      }
     };
   }
 

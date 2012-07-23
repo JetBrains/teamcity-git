@@ -24,10 +24,12 @@ import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
-import jetbrains.buildServer.vcs.CheckoutRules;
-import jetbrains.buildServer.vcs.RepositoryState;
-import jetbrains.buildServer.vcs.VcsRoot;
-import jetbrains.buildServer.vcs.VcsRootEntry;
+import jetbrains.buildServer.vcs.*;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.jmock.Expectations;
+import org.jmock.Mockery;
+import org.jmock.lib.legacy.ClassImposteriser;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -51,13 +53,19 @@ public class MapFullPathTest {
   }
 
   private TempFiles myTempFiles;
+  private Mockery myContext;
   private File myRemoteRepositoryDir;
   private GitVcsSupport myGit;
+  private GitMapFullPath myMapFullPath;
   private VcsRoot myRoot;
+  private VcsRootEntry myRootEntry;
 
   @BeforeMethod
   public void setUp() throws IOException {
     myTempFiles = new TempFiles();
+    myContext = new Mockery() {{
+      setImposteriser(ClassImposteriser.INSTANCE);
+    }};
     myRemoteRepositoryDir = myTempFiles.createTempDir();
     copyRepository(dataFile("repo_for_fetch.1"), myRemoteRepositoryDir);
     ServerPaths paths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
@@ -67,8 +75,10 @@ public class MapFullPathTest {
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    myGit = new GitVcsSupport(config, myResetCacheManager, transportFactory, fetchCommand, repositoryManager, null);
+    myMapFullPath = new GitMapFullPath(config);
+    myGit = new GitVcsSupport(config, myResetCacheManager, transportFactory, fetchCommand, repositoryManager, myMapFullPath, null);
     myRoot = vcsRoot().withFetchUrl(myRemoteRepositoryDir.getAbsolutePath()).build();
+    myRootEntry = new VcsRootEntry(myRoot, CheckoutRules.DEFAULT);
   }
 
   @AfterMethod
@@ -84,15 +94,42 @@ public class MapFullPathTest {
     RepositoryState state1 = myGit.getCurrentState(myRoot);
     myGit.getCollectChangesPolicy().collectChanges(myRoot, state0, state1, CheckoutRules.DEFAULT);
 
-    Collection<String> paths = myGit.mapFullPath(new VcsRootEntry(myRoot, CheckoutRules.DEFAULT), "d47dda159b27b9a8c4cee4ce98e4435eb5b17168||.");
+    Collection<String> paths = myGit.mapFullPath(myRootEntry, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168||.");
     assertTrue(paths.isEmpty());
 
     remoteRepositoryUpdated();
 
     RepositoryState state2 = myGit.getCurrentState(myRoot);
     myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);//now we have d47dda159b27b9a8c4cee4ce98e4435eb5b17168
-    paths = myGit.mapFullPath(new VcsRootEntry(myRoot, CheckoutRules.DEFAULT), "d47dda159b27b9a8c4cee4ce98e4435eb5b17168||.");
+    paths = myGit.mapFullPath(myRootEntry, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168||.");
     assertFalse("mapFullPath returns outdated info", paths.isEmpty());
+  }
+
+
+  public void should_not_do_unnecessary_commit_lookup_after_fetch() throws Exception {
+    final String existingCommit = "a7274ca8e024d98c7d59874f19f21d26ee31d41d";
+
+    final GitVcsSupport git = myContext.mock(GitVcsSupport.class);
+    final RevCommit commit = myContext.mock(RevCommit.class);
+    myMapFullPath.setGitVcs(git);
+    myContext.checking(new Expectations() {{
+      //ask for existing commit only once:
+      one(git).getCommit(with(any(Repository.class)), with(existingCommit)); will(returnValue(commit));
+    }});
+
+    RepositoryState state0 = createSingleVersionRepositoryState("a7274ca8e024d98c7d59874f19f21d26ee31d41d");
+    RepositoryState state1 = myGit.getCurrentState(myRoot);
+    myGit.getCollectChangesPolicy().collectChanges(myRoot, state0, state1, CheckoutRules.DEFAULT);//fetch repository, so mapFullPath works
+
+    OperationContext context = myGit.createContext(myRoot, "map full path");
+    myMapFullPath.mapFullPath(context, myRootEntry, "a7274ca8e024d98c7d59874f19f21d26ee31d41d||.");
+
+    remoteRepositoryUpdated();
+
+    RepositoryState state2 = myGit.getCurrentState(myRoot);
+    myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);//this fetch should not cause new commit lookup
+    myGit.mapFullPath(myRootEntry, "a7274ca8e024d98c7d59874f19f21d26ee31d41d||.");
+    myContext.assertIsSatisfied();
   }
 
 
