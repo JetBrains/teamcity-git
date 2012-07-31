@@ -50,6 +50,7 @@ public class GitVcsRoot implements VcsRoot {
   private final SubmodulesCheckoutPolicy mySubmodulePolicy;
   private final AuthSettings myAuthSettings;
   private final String myUsernameForTags;
+  private final String myBranchSpec;
   private File myUserDefinedRepositoryPath;
 
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root) throws VcsException {
@@ -70,10 +71,16 @@ public class GitVcsRoot implements VcsRoot {
     myRepositoryPushURL = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURL : myAuthSettings.createAuthURI(pushUrl);
     myRepositoryPushURLNoFixErrors = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURLNoFixErrors : myAuthSettings.createAuthURI(pushUrl, false);
     myUsernameForTags = getProperty(Constants.USERNAME_FOR_TAGS);
+    myBranchSpec = getProperty(Constants.BRANCH_SPEC);
   }
 
   public GitVcsRoot getRootForBranch(@NotNull String branch) throws VcsException {
     return new GitVcsRoot(myMirrorManager, myDelegate, branch);
+  }
+
+  @Nullable
+  public String getBranchSpec() {
+    return myBranchSpec;
   }
 
   @NotNull

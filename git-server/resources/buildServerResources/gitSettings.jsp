@@ -41,7 +41,10 @@
     </tr>
     <tr>
       <th><label for="branch">Branch Name: <l:star/></label></th>
-      <td><props:textProperty name="branch"/></td>
+      <td>
+        <props:textProperty name="branch"/>
+        <span class="error" id="error_branch"></span>
+      </td>
     </tr>
     <bs:branchSpecTableRow/>
     <tr>
@@ -122,6 +125,7 @@
         <div class="smallNote" style="margin: 0;">Specify path to the private key
           on the TeamCity server host.
         </div>
+        <span class="error" id="error_privateKeyPath"></span>
       </td>
     </tr>
     <tr id="gitPassphraseRow">

@@ -412,7 +412,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
     OperationContext context = createContext(vcsRoot, "connection test");
-    TestConnectionCommand command = new TestConnectionCommand(myTransportFactory, myRepositoryManager);
+    TestConnectionCommand command = new TestConnectionCommand(this, myTransportFactory, myRepositoryManager);
     try {
       return command.testConnection(context);
     } catch (Exception e) {

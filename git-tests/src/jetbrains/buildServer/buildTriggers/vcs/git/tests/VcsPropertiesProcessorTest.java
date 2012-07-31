@@ -25,6 +25,8 @@ import org.testng.annotations.Test;
 import java.util.Collection;
 import java.util.HashMap;
 
+import static jetbrains.buildServer.util.Util.map;
+
 /**
  * @author dmitry.neverov
  */
@@ -49,6 +51,26 @@ public class VcsPropertiesProcessorTest extends TestCase {
     }});
     assertEquals(1, invalids.size());
     assertEquals(Constants.PRIVATE_KEY_PATH, invalids.iterator().next().getPropertyName());
+  }
+
+
+  public void branch_starts_with_slash() {
+    Collection<InvalidProperty> invalids = myProcessor.process(
+      map(Constants.FETCH_URL, "git://some.org/repository",
+          Constants.BRANCH_NAME, "/refs/heads/master",
+          Constants.BRANCH_SPEC, "+:refs/heads/*"));
+    assertEquals(1, invalids.size());
+    assertEquals(Constants.BRANCH_NAME, invalids.iterator().next().getPropertyName());
+  }
+
+
+  public void branchSpec_contains_pattern_started_from_slash() {
+    Collection<InvalidProperty> invalids = myProcessor.process(
+      map(Constants.FETCH_URL, "git://some.org/repository",
+          Constants.BRANCH_NAME, "refs/heads/master",
+          Constants.BRANCH_SPEC, "+:/refs/heads/*"));
+    assertEquals(1, invalids.size());
+    assertEquals(Constants.BRANCH_SPEC, invalids.iterator().next().getPropertyName());
   }
 
 }

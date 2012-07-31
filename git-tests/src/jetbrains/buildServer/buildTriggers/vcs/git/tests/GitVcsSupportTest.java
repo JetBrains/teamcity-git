@@ -217,6 +217,23 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  @Test
+  public void testConnection_should_validate_branchSpec() throws Exception {
+    VcsRootImpl root = vcsRoot()
+      .withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
+      .withBranch("master")
+      .withBranchSpec("+:/refs/heads/*")
+      .build();
+
+    try {
+      getSupport().testConnection(root);
+      fail("Test connection should validate branchSpec");
+    } catch (VcsException e) {
+      assertTrue(e.getMessage().contains("pattern should not start with /"));
+    }
+  }
+
+
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testCurrentVersion(boolean fetchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);

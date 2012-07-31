@@ -38,6 +38,9 @@ public interface Constants {
    * The branch name property
    */
   public static final String BRANCH_NAME = "branch";
+
+  public static final String BRANCH_SPEC = "teamcity:branchSpec";
+
   /**
    * The branch name property
    */

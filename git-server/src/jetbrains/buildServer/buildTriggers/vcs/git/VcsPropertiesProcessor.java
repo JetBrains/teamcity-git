@@ -18,12 +18,15 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.buildTriggers.vcs.AbstractVcsPropertiesProcessor;
 import jetbrains.buildServer.serverSide.InvalidProperty;
+import jetbrains.buildServer.util.StringUtil;
 import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.URISyntaxException;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.Map;
+import java.util.*;
+
+import static java.util.Collections.singleton;
 
 /**
  * @author dmitry.neverov
@@ -54,6 +57,10 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
         }
       }
     }
+
+    rc.addAll(validateBranchName(properties));
+    rc.addAll(validateBranchSpec(properties));
+
     String authMethod = properties.get(Constants.AUTH_METHOD);
     AuthenticationMethod authenticationMethod = authMethod == null ?
                                                 AuthenticationMethod.ANONYMOUS : Enum.valueOf(AuthenticationMethod.class, authMethod);
@@ -64,6 +71,36 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
       }
     }
     return rc;
+  }
+
+  public Collection<InvalidProperty> validateBranchName(@NotNull Map<String, String> properties) {
+    String branchName = properties.get(Constants.BRANCH_NAME);
+    Collection<InvalidProperty> errors = new ArrayList<InvalidProperty>();
+    if (branchName != null && branchName.startsWith("/")) {
+      errors.add(new InvalidProperty(Constants.BRANCH_NAME, "Branch name should not start with /"));
+    }
+    return errors;
+  }
+
+  @Nullable
+  public InvalidProperty validateBranchSpec(@Nullable String branchSpec) {
+    if (isEmpty(branchSpec))
+      return null;
+
+    int i = 0;
+    for (String line : StringUtil.splitByLines(branchSpec)) {
+      if (line.startsWith("+:/") || line.startsWith("-:/")) {
+        return new InvalidProperty(Constants.BRANCH_SPEC, "Line " + i + ": pattern should not start with /");
+      }
+      i++;
+    }
+    return null;
+  }
+
+  public Collection<InvalidProperty> validateBranchSpec(@NotNull Map<String, String> properties) {
+    String branchSpec = properties.get(Constants.BRANCH_SPEC);
+    InvalidProperty error = validateBranchSpec(branchSpec);
+    return error != null ? singleton(error) : Collections.<InvalidProperty>emptySet();
   }
 
 }

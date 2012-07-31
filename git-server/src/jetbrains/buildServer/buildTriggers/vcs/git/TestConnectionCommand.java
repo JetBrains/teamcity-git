@@ -17,13 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
-import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.transport.FetchConnection;
 import org.eclipse.jgit.transport.PushConnection;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
@@ -42,11 +41,14 @@ public class TestConnectionCommand {
 
   private static Logger LOG = Logger.getInstance(TestConnectionCommand.class.getName());
 
+  private final GitVcsSupport myGit;
   private final TransportFactory myTransportFactory;
   private final RepositoryManager myRepositoryManager;
 
-
-  public TestConnectionCommand(TransportFactory transportFactory, RepositoryManager repositoryManager) {
+  public TestConnectionCommand(@NotNull GitVcsSupport git,
+                               @NotNull TransportFactory transportFactory,
+                               @NotNull RepositoryManager repositoryManager) {
+    myGit = git;
     myTransportFactory = transportFactory;
     myRepositoryManager = repositoryManager;
   }
@@ -62,7 +64,8 @@ public class TestConnectionCommand {
       try {
         if (LOG.isDebugEnabled())
           LOG.debug("Opening connection for " + root.debugInfo());
-        checkFetchConnection(root, r);
+        validateBranchSpec(root);
+        checkFetchConnection(root);
         checkPushConnection(root, r);
         return null;
       } catch (NotSupportedException nse) {
@@ -78,21 +81,23 @@ public class TestConnectionCommand {
     }
   }
 
-
-  private void checkFetchConnection(GitVcsRoot root, Repository r) throws NotSupportedException, VcsException, TransportException {
-    validate(root.getRepositoryFetchURLNoFixedErrors());
-    final Transport tn = myTransportFactory.createTransport(r, root.getRepositoryFetchURLNoFixedErrors(), root.getAuthSettings());
-    FetchConnection c = null;
+  private void validateBranchSpec(@NotNull GitVcsRoot root) throws VcsException {
+    String specStr = root.getBranchSpec();
     try {
-      c = tn.openFetch();
-      if (LOG.isDebugEnabled())
-        LOG.debug("Checking references... " + root.debugInfo());
-      checkRefExists(root, c);
-    } finally {
-      if (c != null)
-        c.close();
-      tn.close();
+      BranchSpecs.validate(specStr);
+    } catch (InvalidBranchSpecException e) {
+      throw new VcsException("Branch specification error: " + e.getMessage(), e);
     }
+    VcsPropertiesProcessor validator = new VcsPropertiesProcessor();
+    InvalidProperty error = validator.validateBranchSpec(specStr);
+    if (error != null)
+      throw new VcsException("Branch specification error: " + error.getInvalidReason());
+  }
+
+
+  private void checkFetchConnection(@NotNull GitVcsRoot root) throws NotSupportedException, VcsException, TransportException {
+    validate(root.getRepositoryFetchURLNoFixedErrors());
+    myGit.getCurrentState(root);
   }
 
 
@@ -105,29 +110,12 @@ public class TestConnectionCommand {
         c = push.openPush();
         c.getRefs();
       } finally {
-        if (c != null)
+        if (c != null) {
           c.close();
+        }
         push.close();
       }
     }
-  }
-
-
-  private void checkRefExists(@NotNull GitVcsRoot root, @NotNull FetchConnection c) throws VcsException {
-    String refName = GitUtils.expandRef(root.getRef());
-    if (!isRefExist(root, c, refName))
-      throw new VcsException("The ref '" + refName + "' was not found in the repository " + root.getRepositoryFetchURL().toString());
-  }
-
-
-  private boolean isRefExist(@NotNull GitVcsRoot root, @NotNull FetchConnection c, @NotNull String refName) {
-    for (final Ref ref : c.getRefs()) {
-      if (refName.equals(ref.getName())) {
-        LOG.info("Found the ref " + refName + "=" + ref.getObjectId() + " for " + root.debugInfo());
-        return true;
-      }
-    }
-    return false;
   }
 
 
