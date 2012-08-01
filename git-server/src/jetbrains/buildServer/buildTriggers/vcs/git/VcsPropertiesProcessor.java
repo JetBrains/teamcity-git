@@ -87,7 +87,7 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
     if (isEmpty(branchSpec))
       return null;
 
-    int i = 0;
+    int i = 1;
     for (String line : StringUtil.splitByLines(branchSpec)) {
       if (line.startsWith("+:/") || line.startsWith("-:/")) {
         return new InvalidProperty(Constants.BRANCH_SPEC, "Line " + i + ": pattern should not start with /");
