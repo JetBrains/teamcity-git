@@ -28,6 +28,7 @@ import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Collection;
@@ -76,7 +77,8 @@ public class GitMapFullPath {
 
 
   private boolean repositoryContainsRevision(@NotNull OperationContext context, @NotNull VcsRootEntry rootEntry, @NotNull String revision) throws VcsException {
-    RepositoryRevisionCache repositoryCache = myCache.getRepositoryCache(context.getRepository());
+    GitVcsRoot root = context.getGitRoot();
+    RepositoryRevisionCache repositoryCache = myCache.getRepositoryCache(root);
     Boolean result = repositoryCache.hasRevision(revision);
     if (result != null) {
       LOG.debug("RevisionCache hit: root " + LogUtil.describe(rootEntry.getVcsRoot()) + (result ? "contains " : "doesn't contain ") + "revision " + revision);
@@ -161,8 +163,8 @@ public class GitMapFullPath {
         repositoryCache.removeNegativeEntries();
     }
 
-    RepositoryRevisionCache getRepositoryCache(@NotNull final Repository db) {
-      String repositoryId = getRepositoryId(db);
+    RepositoryRevisionCache getRepositoryCache(@NotNull final GitVcsRoot root) throws VcsException {
+      String repositoryId = getRepositoryId(root);
       RepositoryRevisionCache result = myCache.get(repositoryId);
       if (result == null) {
         result = new RepositoryRevisionCache(myRepositoryCacheSize);
@@ -172,11 +174,19 @@ public class GitMapFullPath {
       return result;
     }
 
+    private String getRepositoryId(@NotNull final GitVcsRoot root) {
+      return getRepositoryId(root.getRepositoryDir());
+    }
+
     private String getRepositoryId(@NotNull final Repository db) {
+      return getRepositoryId(db.getDirectory());
+    }
+
+    private String getRepositoryId(@NotNull final File repositoryDir) {
       try {
-        return db.getDirectory().getCanonicalPath();
+        return repositoryDir.getCanonicalPath();
       } catch (IOException e) {
-        return db.getDirectory().getAbsolutePath();
+        return repositoryDir.getAbsolutePath();
       }
     }
 
