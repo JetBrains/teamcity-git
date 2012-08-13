@@ -142,26 +142,24 @@ public class UpdaterImpl implements Updater {
       branchChanged = true;
     } else {
       String branchName = getShortBranchName(myFullBranchName);
-      if (isRegularBranch(myFullBranchName)) {
-        Branches branches = git.branch().call();
-        if (branches.isCurrentBranch(branchName)) {
-          myLogger.message("Resetting " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);
-          removeIndexLock();
-          git.reset().setHard(true).setRevision(myRevision).call();
-        } else {
-          branchChanged = true;
-          if (!branches.contains(branchName)) {
-            git.createBranch()
-              .setName(branchName)
-              .setStartPoint(GitUtils.createRemoteRef(myFullBranchName))
-              .setTrack(true)
-              .call();
-          }
-          removeRefLock();
-          git.updateRef().setRef(myFullBranchName).setRevision(myRevision).call();
-          myLogger.message("Checking out branch " + myFullBranchName + " in " + myRoot.getName() + " in " + myTargetDirectory + " with revision " + myRevision);
-          git.checkout().setForce(true).setBranch(branchName).call();
+      Branches branches = git.branch().call();
+      if (branches.isCurrentBranch(branchName)) {
+        myLogger.message("Resetting " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);
+        removeIndexLock();
+        git.reset().setHard(true).setRevision(myRevision).call();
+      } else {
+        branchChanged = true;
+        if (!branches.contains(branchName)) {
+          git.createBranch()
+            .setName(branchName)
+            .setStartPoint(GitUtils.createRemoteRef(myFullBranchName))
+            .setTrack(true)
+            .call();
         }
+        removeRefLock();
+        git.updateRef().setRef(myFullBranchName).setRevision(myRevision).call();
+        myLogger.message("Checking out branch " + myFullBranchName + " in " + myRoot.getName() + " in " + myTargetDirectory + " with revision " + myRevision);
+        git.checkout().setForce(true).setBranch(branchName).call();
       }
     }
 
