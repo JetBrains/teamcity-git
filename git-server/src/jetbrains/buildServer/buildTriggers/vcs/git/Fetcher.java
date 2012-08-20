@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.configuration.ChangeObserver;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
@@ -70,6 +71,10 @@ public class Fetcher {
       }
       System.exit(1);
     } finally {
+      //stop non-daemon thread that is implicitly used by TeamCityProperties -> FileWatcher
+      //TeamCityProperties shutdown hook does not stop ChangeObserver thread
+      //so process hangs
+      ChangeObserver.shutdownAll();
       exec.shutdown();
     }
   }
