@@ -498,7 +498,7 @@ public class GitVcsSupport extends ServerVcsSupport
     File tmpDir = null;
     try {
       tmpDir = FileUtil.createTempDirectory("git-ls-remote", "");
-      gitRoot.setUserDefinedRepositoryPath(tmpDir);
+      gitRoot.setCustomRepositoryDir(tmpDir);
       Repository db = context.getRepository();
       return getRemoteRefs(root, db, gitRoot);
     } catch (Exception e) {

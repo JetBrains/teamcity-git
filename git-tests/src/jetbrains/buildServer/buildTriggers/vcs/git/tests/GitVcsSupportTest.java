@@ -90,13 +90,13 @@ public class GitVcsSupportTest extends PatchTestCase {
   private PluginConfigBuilder myConfigBuilder;
   private TempFiles myTempFiles;
   private ResetCacheRegister myResetCacheManager;
+  private ServerPaths myServerPaths;
 
   @BeforeMethod
   public void setUp() throws IOException {
     myTempFiles = new TempFiles();
-    File teamcitySystemDir = myTempFiles.createTempDir();
-    ServerPaths paths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
-    myConfigBuilder = new PluginConfigBuilder(paths);
+    myServerPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
+    myConfigBuilder = new PluginConfigBuilder(myServerPaths);
     File masterRep = dataFile("repo.git");
     myTmpDir = myTempFiles.createTempDir();
     myMainRepositoryDir = new File(myTmpDir, "repo.git");
@@ -841,6 +841,20 @@ public class GitVcsSupportTest extends PatchTestCase {
       revWalk.release();
       r.close();
     }
+  }
+
+
+  @Test
+  @TestFor(issues = "TW-23423")
+  public void bla() throws VcsException {
+    String relativePath = "some" + File.separator + "relative" + File.separator + "path";
+    VcsRoot root = vcsRoot().withId(1)
+      .withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
+      .withRepositoryPathOnServer(relativePath)
+      .build();
+    GitVcsSupport git = getSupport();
+    git.collectChanges(root, "f3f826ce85d6dad25156b2d7550cedeb1a422f4c", "78cbbed3561de3417467ee819b1795ba14c03dfb", CheckoutRules.DEFAULT);
+    assertTrue(new File(myServerPaths.getCachesDir(), "git" + File.separator + relativePath).exists());
   }
 
 

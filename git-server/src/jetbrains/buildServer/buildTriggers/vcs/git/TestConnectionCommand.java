@@ -59,7 +59,7 @@ public class TestConnectionCommand {
     File repositoryTempDir = null;
     try {
       repositoryTempDir = FileUtil.createTempDirectory("git-testcon", "");
-      root.setUserDefinedRepositoryPath(repositoryTempDir);
+      root.setCustomRepositoryDir(repositoryTempDir);
       Repository r = context.getRepository();
       try {
         if (LOG.isDebugEnabled())
