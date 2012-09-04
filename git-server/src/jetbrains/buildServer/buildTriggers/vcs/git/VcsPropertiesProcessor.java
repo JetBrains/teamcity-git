@@ -39,22 +39,20 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
     if (isEmpty(url)) {
       rc.add(new InvalidProperty(Constants.FETCH_URL, "The URL must be specified"));
     } else {
-      try {
-        new URIish(url);
-      } catch (URISyntaxException e) {
-        if (!mayContainReference(url)) {
+      if (!mayContainReference(url)) {
+        try {
+          new URIish(url);
+        } catch (URISyntaxException e) {
           rc.add(new InvalidProperty(Constants.FETCH_URL, "Invalid URL syntax: " + url));
         }
       }
     }
     String pushUrl = properties.get(Constants.PUSH_URL);
-    if (!isEmpty(pushUrl)) {
+    if (!isEmpty(pushUrl) && !mayContainReference(pushUrl)) {
       try {
         new URIish(pushUrl);
       } catch (URISyntaxException e) {
-        if (!mayContainReference(pushUrl)) {
-          rc.add(new InvalidProperty(Constants.PUSH_URL, "Invalid URL syntax: " + pushUrl));
-        }
+        rc.add(new InvalidProperty(Constants.PUSH_URL, "Invalid URL syntax: " + pushUrl));
       }
     }
 
