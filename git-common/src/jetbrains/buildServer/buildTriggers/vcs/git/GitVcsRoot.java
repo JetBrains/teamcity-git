@@ -51,7 +51,7 @@ public class GitVcsRoot implements VcsRoot {
   private final AuthSettings myAuthSettings;
   private final String myUsernameForTags;
   private final String myBranchSpec;
-  private File myUserDefinedRepositoryPath;
+  private File myCustomRepositoryDir;
 
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root) throws VcsException {
     this(mirrorManager, root, root.getProperty(Constants.BRANCH_NAME));
@@ -60,7 +60,7 @@ public class GitVcsRoot implements VcsRoot {
   public GitVcsRoot(@NotNull MirrorManager mirrorManager, @NotNull VcsRoot root, @Nullable String ref) throws VcsException {
     myMirrorManager = mirrorManager;
     myDelegate = root;
-    myUserDefinedRepositoryPath = getPath();
+    myCustomRepositoryDir = getPath();
     myRef = ref;
     myUsernameStyle = readUserNameStyle();
     mySubmodulePolicy = readSubmodulesPolicy();
@@ -133,7 +133,12 @@ public class GitVcsRoot implements VcsRoot {
 
   public File getRepositoryDir() {
     String fetchUrl = getRepositoryFetchURL().toString();
-    return myUserDefinedRepositoryPath != null ? myUserDefinedRepositoryPath : myMirrorManager.getMirrorDir(fetchUrl);
+    if (myCustomRepositoryDir != null) {
+      return myCustomRepositoryDir.isAbsolute() ?
+             myCustomRepositoryDir :
+             new File(myMirrorManager.getBaseMirrorsDir(), myCustomRepositoryDir.getPath());
+    }
+    return myMirrorManager.getMirrorDir(fetchUrl);
   }
 
   /**
@@ -141,8 +146,8 @@ public class GitVcsRoot implements VcsRoot {
    *
    * @param file the path to set
    */
-  public void setUserDefinedRepositoryPath(File file) {
-    myUserDefinedRepositoryPath = file;
+  public void setCustomRepositoryDir(File file) {
+    myCustomRepositoryDir = file;
   }
 
   /**

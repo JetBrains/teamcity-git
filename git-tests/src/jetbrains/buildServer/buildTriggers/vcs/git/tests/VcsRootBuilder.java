@@ -36,6 +36,7 @@ public class VcsRootBuilder {
   private String myUsername;
   private String myPassword;
   private AuthenticationMethod myAuthMethod;
+  private String myPath;
 
   public static VcsRootBuilder vcsRoot() {
     return new VcsRootBuilder();
@@ -58,6 +59,8 @@ public class VcsRootBuilder {
       result.addProperty(Constants.SUBMODULES_CHECKOUT, mySubmodulePolicy.name());
     if (myAuthMethod != null)
       result.addProperty(Constants.AUTH_METHOD, myAuthMethod.name());
+    if (myPath != null)
+      result.addProperty(Constants.PATH, myPath);
     return result;
   }
 
@@ -69,6 +72,11 @@ public class VcsRootBuilder {
 
   public VcsRootBuilder withFetchUrl(String fetchUrl) {
     myFetchUrl = fetchUrl;
+    return this;
+  }
+
+  public VcsRootBuilder withRepositoryPathOnServer(String path) {
+    myPath = path;
     return this;
   }
 
