@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsPropertiesProcessor;
 import jetbrains.buildServer.serverSide.InvalidProperty;
+import jetbrains.buildServer.util.TestFor;
 import junit.framework.TestCase;
 import org.testng.annotations.Test;
 
@@ -71,6 +72,14 @@ public class VcsPropertiesProcessorTest extends TestCase {
           Constants.BRANCH_SPEC, "+:/refs/heads/*"));
     assertEquals(1, invalids.size());
     assertEquals(Constants.BRANCH_SPEC, invalids.iterator().next().getPropertyName());
+  }
+
+
+  @TestFor(issues = {"TW-23424", "TW-23220"})
+  public void should_not_try_to_parse_urls_with_parameters() {
+    Collection<InvalidProperty> errors = myProcessor.process(map(Constants.FETCH_URL, "file://c:%5CWork\\Test\\git\\%url.param%",
+                                                                 Constants.PUSH_URL, "file://c:%5CWork\\Test\\git\\%url.param%"));
+    assertTrue(errors.isEmpty());
   }
 
 }
