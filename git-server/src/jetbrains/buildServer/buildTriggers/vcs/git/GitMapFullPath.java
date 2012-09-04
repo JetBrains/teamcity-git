@@ -60,16 +60,17 @@ public class GitMapFullPath {
 
   public Collection<String> mapFullPath(@NotNull OperationContext context, @NotNull VcsRootEntry rootEntry, @NotNull String path) throws VcsException {
     GitVcsRoot root = context.getGitRoot();
+    LOG.debug("MapFullPath root: " + LogUtil.describe(root) + ", path " + path);
     FullPath fullPath = new FullPath(path);
-    if (!fullPath.isValid())
+    if (!fullPath.isValid()) {
+      LOG.warn("Invalid path: " + path);
       return Collections.emptySet();
+    }
 
-    String revision = fullPath.getRevision();
-    boolean pathContainsRevision = !isEmpty(revision);
-    if (pathContainsRevision && repositoryContainsRevision(context, rootEntry, revision))
+    if (fullPath.containsRevision() && repositoryContainsRevision(context, rootEntry, fullPath.getRevision()))
       return fullPath.getMappedPaths();
 
-    if (!pathContainsRevision && urlsMatch(root, fullPath))
+    if (!fullPath.containsRevision() && urlsMatch(root, fullPath))
       return fullPath.getMappedPaths();
 
     return Collections.emptySet();
@@ -84,8 +85,9 @@ public class GitMapFullPath {
       LOG.debug("RevisionCache hit: root " + LogUtil.describe(rootEntry.getVcsRoot()) + (result ? "contains " : "doesn't contain ") + "revision " + revision);
       return result;
     } else {
-      LOG.debug("RevisionCache miss: root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision);
+      LOG.debug("RevisionCache miss: root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + ", lookup commit in repository");
       result = findCommit(context, revision) != null;
+      LOG.debug("Root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + (result ? " wasn't found " : " was found ") + ", cache the result");
       repositoryCache.saveRevision(revision, result);
       return result;
     }
@@ -240,20 +242,32 @@ public class GitMapFullPath {
     private final String myPath;
     private final int myFirstSeparatorIdx;
     private final int myLastSeparatorIdx;
+    private final boolean myValid;
+    private final String myRevision;
 
     private FullPath(@NotNull String path) {
       myPath = path;
       myFirstSeparatorIdx = path.indexOf("|");
       myLastSeparatorIdx = path.lastIndexOf("|");
+      myValid = myFirstSeparatorIdx >= 0 && myLastSeparatorIdx > myFirstSeparatorIdx;
+      myRevision = myValid ? myPath.substring(0, myFirstSeparatorIdx).trim() : null;
     }
 
     boolean isValid() {
-      return myFirstSeparatorIdx >= 0 && myLastSeparatorIdx > myFirstSeparatorIdx;
+      return myValid;
     }
 
     @NotNull
     String getRevision() {
-      return myPath.substring(0, myFirstSeparatorIdx).trim();
+      if (!myValid)
+        throw new IllegalStateException("Invalid path " + myPath);
+      return myRevision;
+    }
+
+    boolean containsRevision() {
+      if (!myValid)
+        throw new IllegalStateException("Invalid path " + myPath);
+      return !isEmpty(myRevision);
     }
 
     @NotNull
