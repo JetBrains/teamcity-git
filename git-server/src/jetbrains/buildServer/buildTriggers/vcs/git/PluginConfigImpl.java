@@ -84,11 +84,6 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
 
-  public int getCloneTimeout() {
-    return TeamCityProperties.getInteger("teamcity.git.clone.timeout", 600);
-  }
-
-
   public boolean isPrintDebugInfoOnEachCommit() {
     return TeamCityProperties.getBoolean("teamcity.git.commit.debug.info");
   }

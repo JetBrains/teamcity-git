@@ -33,9 +33,6 @@ public interface ServerPluginConfig extends PluginConfig {
   int getFetchTimeout();
 
 
-  int getCloneTimeout();
-
-
   boolean isPrintDebugInfoOnEachCommit();
 
 

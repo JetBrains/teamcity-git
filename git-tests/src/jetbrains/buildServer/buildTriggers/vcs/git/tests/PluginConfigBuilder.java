@@ -35,7 +35,6 @@ public class PluginConfigBuilder {
   private final PluginConfigImpl myDelegate;
   private Integer myStreamFileThreshold;
   private Integer myFetchTimeout;
-  private Integer myCloneTimeout;
   private Boolean mySeparateProcessForFetch;
   private Boolean myRunNativeGC;
   private String  myPathToGit;
@@ -65,10 +64,6 @@ public class PluginConfigBuilder {
 
       public int getFetchTimeout() {
         return myFetchTimeout != null ? myFetchTimeout.intValue() : myDelegate.getFetchTimeout();
-      }
-
-      public int getCloneTimeout() {
-        return myCloneTimeout != null ? myCloneTimeout.intValue() : myDelegate.getCloneTimeout();
       }
 
       public boolean isPrintDebugInfoOnEachCommit() {
@@ -169,12 +164,6 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setFetchTimeout(int timeout) {
     myFetchTimeout = timeout;
-    return this;
-  }
-
-
-  PluginConfigBuilder setCloneTimeout(int timeout) {
-    myCloneTimeout = timeout;
     return this;
   }
 
