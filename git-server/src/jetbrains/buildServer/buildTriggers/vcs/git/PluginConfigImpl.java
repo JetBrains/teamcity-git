@@ -25,6 +25,7 @@ import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
+import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.BranchSupport;
@@ -45,13 +46,7 @@ import static com.intellij.openapi.util.text.StringUtil.isEmpty;
  */
 public class PluginConfigImpl implements ServerPluginConfig {
 
-  private final static long SECOND = 1000L;
-  private final static long MINUTE = 60 * SECOND;
-  private final static long HOUR = 60 * MINUTE;
-  private final static long DAY = 24 * HOUR;
-
   private final File myCachesDir;
-
 
   public PluginConfigImpl() {
     myCachesDir = null;
@@ -70,27 +65,13 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
 
-  public int getCurrentVersionCacheSize() {
-    return TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 1024);
-  }
-
-
   public int getStreamFileThreshold() {
-    if (isSeparateProcessForFetch()) {
-      return TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 128);
-    } else {
-      return TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 64);
-    }
+    return TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 128);
   }
 
 
   public int getFetchTimeout() {
     return TeamCityProperties.getInteger("teamcity.git.fetch.timeout", 600);
-  }
-
-
-  public int getCloneTimeout() {
-    return TeamCityProperties.getInteger("teamcity.git.clone.timeout", 600);
   }
 
 
@@ -162,7 +143,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   public long getMirrorExpirationTimeoutMillis() {
     int days = TeamCityProperties.getInteger("teamcity.git.mirror.expiration.timeout.days", 7);
-    return days * DAY;
+    return days * Dates.ONE_DAY;
   }
 
   @NotNull
