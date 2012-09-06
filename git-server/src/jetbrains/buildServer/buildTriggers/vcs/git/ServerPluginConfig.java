@@ -27,16 +27,10 @@ import java.util.List;
  */
 public interface ServerPluginConfig extends PluginConfig {
 
-  int getCurrentVersionCacheSize();
-
-
   int getStreamFileThreshold();
 
 
   int getFetchTimeout();
-
-
-  int getCloneTimeout();
 
 
   boolean isPrintDebugInfoOnEachCommit();
