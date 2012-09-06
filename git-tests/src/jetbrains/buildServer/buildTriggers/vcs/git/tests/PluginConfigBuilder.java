@@ -33,7 +33,6 @@ import java.util.List;
 public class PluginConfigBuilder {
 
   private final PluginConfigImpl myDelegate;
-  private Integer myCurrentVersionCacheSize;
   private Integer myStreamFileThreshold;
   private Integer myFetchTimeout;
   private Integer myCloneTimeout;
@@ -58,10 +57,6 @@ public class PluginConfigBuilder {
       @NotNull
       public File getCachesDir() {
         return myDelegate.getCachesDir();
-      }
-
-      public int getCurrentVersionCacheSize() {
-        return myCurrentVersionCacheSize != null ? myCurrentVersionCacheSize.intValue() : myDelegate.getCurrentVersionCacheSize();
       }
 
       public int getStreamFileThreshold() {
@@ -163,12 +158,6 @@ public class PluginConfigBuilder {
         return 100;
       }
     };
-  }
-
-
-  PluginConfigBuilder setCurrentVersionCacheSize(int size) {
-    myCurrentVersionCacheSize = size;
-    return this;
   }
 
 

@@ -70,11 +70,6 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
 
-  public int getCurrentVersionCacheSize() {
-    return TeamCityProperties.getInteger("teamcity.git.current.version.cache.size", 1024);
-  }
-
-
   public int getStreamFileThreshold() {
     if (isSeparateProcessForFetch()) {
       return TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 128);
