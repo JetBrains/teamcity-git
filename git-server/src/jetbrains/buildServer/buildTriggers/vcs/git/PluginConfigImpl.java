@@ -66,11 +66,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
 
   public int getStreamFileThreshold() {
-    if (isSeparateProcessForFetch()) {
-      return TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 128);
-    } else {
-      return TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 64);
-    }
+    return TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 128);
   }
 
 
