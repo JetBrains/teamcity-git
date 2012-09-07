@@ -43,7 +43,7 @@
       <th><label for="branch">Default Branch: <l:star/></label></th>
       <td>
         <props:textProperty name="branch"/>
-        <div class="smallNote">Branch to be used if no branch from Branch Specification is set</div>
+        <div class="smallNote" style="margin: 0">Branch to be used if no branch from Branch Specification is set</div>
         <span class="error" id="error_branch"></span>
       </td>
     </tr>
