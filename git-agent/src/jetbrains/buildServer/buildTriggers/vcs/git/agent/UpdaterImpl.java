@@ -136,11 +136,7 @@ public class UpdaterImpl implements Updater {
   private void updateSources() throws VcsException {
     GitFacade git = myGitFactory.create(myTargetDirectory);
     boolean branchChanged = false;
-    if (isTag(myFullBranchName)) {
-      String shortName = myFullBranchName.substring("refs/tags/".length());
-      git.checkout().setForce(true).setBranch(shortName).call();
-      branchChanged = true;
-    } else {
+    if (isRegularBranch(myFullBranchName)) {
       String branchName = getShortBranchName(myFullBranchName);
       Branches branches = git.branch().call();
       if (branches.isCurrentBranch(branchName)) {
@@ -161,6 +157,15 @@ public class UpdaterImpl implements Updater {
         myLogger.message("Checking out branch " + myFullBranchName + " in " + myRoot.getName() + " in " + myTargetDirectory + " with revision " + myRevision);
         git.checkout().setForce(true).setBranch(branchName).call();
       }
+    } else if (isTag(myFullBranchName)) {
+      String shortName = myFullBranchName.substring("refs/tags/".length());
+      git.checkout().setForce(true).setBranch(shortName).call();
+      branchChanged = true;
+    } else {
+      myLogger.message("Resetting " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);
+      removeIndexLock();
+      git.checkout().setForce(true).setBranch(myRevision).call();
+      branchChanged = true;
     }
 
     doClean(branchChanged);
@@ -314,7 +319,13 @@ public class UpdaterImpl implements Updater {
 
 
   private void fetchDefaultBranch() throws VcsException {
-    fetch(myTargetDirectory, "+" + myFullBranchName + ":" + GitUtils.createRemoteRef(myFullBranchName), false);
+    fetch(myTargetDirectory, getRefspecForFetch(), false);
+  }
+
+  private String getRefspecForFetch() {
+    if (isRegularBranch(myFullBranchName) || isTag(myFullBranchName))
+      return "+" + myFullBranchName + ":" + GitUtils.createRemoteRef(myFullBranchName);
+    return myFullBranchName;
   }
 
   private void fetchAllBranches() throws VcsException {

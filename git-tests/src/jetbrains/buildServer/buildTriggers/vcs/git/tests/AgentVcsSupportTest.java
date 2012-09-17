@@ -31,6 +31,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUti
 import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
+import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Ref;
@@ -323,6 +324,18 @@ public class AgentVcsSupportTest {
     assertTrue(refs.containsKey("tags/v1.0"));
     assertTrue(refs.containsKey("tags/v0.5"));//it is reachable from refs/tags/v1.0
     assertEquals(2, refs.size());
+  }
+
+
+  @TestFor(issues = "TW-23707")
+  public void do_not_create_remote_branch_unexisting_in_remote_repository() throws Exception {
+    myRoot.addProperty(Constants.BRANCH_NAME, "refs/changes/1/1");
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "5711cbfe566b6c92e331f95d4b236483f4532eed", myCheckoutDir, myBuild, false);
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    assertEquals("5711cbfe566b6c92e331f95d4b236483f4532eed", r.getBranch());//checkout a detached commit
+    Map<String, Ref> refs = r.getAllRefs();
+    assertFalse(refs.containsKey("refs/heads/refs/changes/1/1"));
+    assertFalse(refs.containsKey("refs/remotes/origin/changes/1/1"));
   }
 
 
