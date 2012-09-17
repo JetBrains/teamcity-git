@@ -75,6 +75,18 @@ public class VcsPropertiesProcessorTest extends TestCase {
   }
 
 
+  @TestFor(issues = "TW-23174")
+  public void branchSpec_count_empty_lines() {
+    Collection<InvalidProperty> invalids = myProcessor.process(
+      map(Constants.FETCH_URL, "git://some.org/repository",
+          Constants.BRANCH_NAME, "refs/heads/master",
+          Constants.BRANCH_SPEC, "+:refs/heads/*\n\n-:/refs/heads/release"));
+    assertEquals(1, invalids.size());
+    String reason = invalids.iterator().next().getInvalidReason();
+    assertTrue(reason != null && reason.startsWith("Line 3:"));
+  }
+
+
   @TestFor(issues = {"TW-23424", "TW-23220"})
   public void should_not_try_to_parse_urls_with_parameters() {
     Collection<InvalidProperty> errors = myProcessor.process(map(Constants.FETCH_URL, "file://c:%5CWork\\Test\\git\\%url.param%",

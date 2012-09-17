@@ -25,6 +25,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.URISyntaxException;
 import java.util.*;
+import java.util.regex.Pattern;
 
 import static java.util.Collections.singleton;
 
@@ -32,6 +33,8 @@ import static java.util.Collections.singleton;
  * @author dmitry.neverov
  */
 public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
+
+  private static final Pattern EOL_SPLIT_PATTERN = Pattern.compile("(\r|\n|\r\n)");
 
   public Collection<InvalidProperty> process(Map<String, String> properties) {
     Collection<InvalidProperty> rc = new LinkedList<InvalidProperty>();
@@ -85,8 +88,10 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
     if (isEmpty(branchSpec))
       return null;
 
+    assert branchSpec != null;
+
     int i = 1;
-    for (String line : StringUtil.splitByLines(branchSpec)) {
+    for (String line : splitByLines(branchSpec)) {
       if (line.startsWith("+:/") || line.startsWith("-:/")) {
         return new InvalidProperty(Constants.BRANCH_SPEC, "Line " + i + ": pattern should not start with /");
       }
@@ -101,4 +106,8 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
     return error != null ? singleton(error) : Collections.<InvalidProperty>emptySet();
   }
 
+
+  private String[] splitByLines(@NotNull String s) {
+    return EOL_SPLIT_PATTERN.split(s);
+  }
 }
