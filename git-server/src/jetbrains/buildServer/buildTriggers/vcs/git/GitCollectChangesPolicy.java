@@ -71,7 +71,8 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
       Repository r = context.getRepository();
       ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
       revWalk.sort(RevSort.TOPO);
-      ensureRepositoryStateLoaded(context, toState);
+      ensureRepositoryStateLoaded(context, toState, true);
+      ensureRepositoryStateLoaded(context, fromState, false);
       markStart(r, revWalk, toState);
       markUninteresting(r, revWalk, fromState, toState);
       while (revWalk.next() != null) {
@@ -85,13 +86,21 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     return changes;
   }
 
-  private void ensureRepositoryStateLoaded(@NotNull OperationContext context, @NotNull RepositoryState state) throws Exception {
+  private void ensureRepositoryStateLoaded(@NotNull OperationContext context, @NotNull RepositoryState state, boolean throwErrors) throws Exception {
     GitVcsRoot root = context.getGitRoot();
     for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
       String branch = entry.getKey();
       String revision = entry.getValue();
       GitVcsRoot branchRoot = root.getRootForBranch(branch);
-      myVcs.ensureCommitLoaded(context, branchRoot, GitUtils.versionRevision(revision));
+      try {
+        myVcs.ensureCommitLoaded(context, branchRoot, GitUtils.versionRevision(revision));
+      } catch (Exception e) {
+        if (throwErrors) {
+          throw e;
+        } else {
+          LOG.warn("Cannot find revision " + revision + " in branch " + branch + " of root " + LogUtil.describe(context.getGitRoot()));
+        }
+      }
     }
   }
 
