@@ -846,7 +846,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @Test
   @TestFor(issues = "TW-23423")
-  public void bla() throws VcsException {
+  public void relative_path_to_repository_should_go_under_git_caches_dir() throws VcsException {
     String relativePath = "some" + File.separator + "relative" + File.separator + "path";
     VcsRoot root = vcsRoot().withId(1)
       .withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
