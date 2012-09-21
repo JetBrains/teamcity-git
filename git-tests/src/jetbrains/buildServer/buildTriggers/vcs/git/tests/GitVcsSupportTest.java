@@ -68,6 +68,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.v
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
 import static jetbrains.buildServer.vcs.RepositoryStateFactory.createRepositoryState;
+import static jetbrains.buildServer.vcs.RepositoryStateFactory.createSingleVersionRepositoryState;
 
 /**
  * The tests for version detection functionality
@@ -91,16 +92,17 @@ public class GitVcsSupportTest extends PatchTestCase {
   private TempFiles myTempFiles;
   private ResetCacheRegister myResetCacheManager;
   private ServerPaths myServerPaths;
+  private File myRepoGitDir;
 
   @BeforeMethod
   public void setUp() throws IOException {
     myTempFiles = new TempFiles();
     myServerPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
     myConfigBuilder = new PluginConfigBuilder(myServerPaths);
-    File masterRep = dataFile("repo.git");
+    myRepoGitDir = dataFile("repo.git");
     myTmpDir = myTempFiles.createTempDir();
     myMainRepositoryDir = new File(myTmpDir, "repo.git");
-    copyRepository(masterRep, myMainRepositoryDir);
+    copyRepository(myRepoGitDir, myMainRepositoryDir);
     copyRepository(dataFile("submodule.git"), new File(myTmpDir, "submodule"));
     copyRepository(dataFile("submodule.git"), new File(myTmpDir, "submodule.git"));
     copyRepository(dataFile("sub-submodule.git"), new File(myTmpDir, "sub-submodule.git"));
@@ -846,7 +848,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @Test
   @TestFor(issues = "TW-23423")
-  public void bla() throws VcsException {
+  public void relative_path_to_repository_should_go_under_git_caches_dir() throws VcsException {
     String relativePath = "some" + File.separator + "relative" + File.separator + "path";
     VcsRoot root = vcsRoot().withId(1)
       .withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
@@ -1361,6 +1363,21 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test
   public void should_build_patch_on_revision_in_branch_when_cache_is_empty() throws Exception {
     checkPatch("patch.non.default.branch", "master", null, "3df61e6f11a5a9b919cb3f786a83fdd09f058617", false);
+  }
+
+
+  @Test
+  @TestFor(issues = "TW-23781")
+  public void collect_changes_between_repositories_with_different_urls_and_branches() throws Exception {
+    File repoGitFork = new File(myTmpDir, "repo-fork.git");
+    copyRepository(myRepoGitDir, repoGitFork);
+
+    VcsRoot root1 = vcsRoot().withFetchUrl(myMainRepositoryDir.getAbsolutePath()).withBranch("master").build();
+    RepositoryState state1 = createRepositoryState(map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"), "refs/heads/master");
+    VcsRoot root2 = vcsRoot().withFetchUrl(repoGitFork.getAbsolutePath()).withBranch("patch-tests").build();
+    RepositoryState state2 = createRepositoryState(map("refs/heads/patch-tests", "27de3d118ca320d3a8a08320ff05aa0567996590"), "refs/heads/patch-tests");
+    List<ModificationData> changes = getSupport().getCollectChangesPolicy().collectChanges(root1, state1, root2, state2, CheckoutRules.DEFAULT);
+    assertEquals(changes.size(), 11);
   }
 
 
