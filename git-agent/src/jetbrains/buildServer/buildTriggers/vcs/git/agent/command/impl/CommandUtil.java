@@ -19,13 +19,14 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 public class CommandUtil {
-  private static final int DEFAULT_COMMAND_TIMEOUT_SEC = 3600;
+  public static final int DEFAULT_COMMAND_TIMEOUT_SEC = 3600;
 
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
   public static void checkCommandFailed(@NotNull String cmdName, @NotNull ExecResult res, String... errorsLogLevel) throws VcsException {
@@ -87,6 +88,26 @@ public class CommandUtil {
     CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
     Loggers.VCS.debug(res.getStdout().trim());
     return res;
+  }
+
+  public static ExecResult runGitCommand(@NotNull GitCommandLine cli, final int timeout, final String... errorsLogLevel) throws VcsException {
+    try {
+      String cmdStr = cli.getCommandLineString();
+      Loggers.VCS.info("Run command: " + cmdStr);
+      ExecResult res = SimpleCommandLineProcessRunner.runCommand(cli, null, new SimpleCommandLineProcessRunner.RunCommandEventsAdapter() {
+        @Override
+        public Integer getOutputIdleSecondsTimeout() {
+          return timeout;
+        }
+      });
+      CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
+      Loggers.VCS.debug(res.getStdout().trim());
+      return res;
+    } finally {
+      for (Runnable action : cli.getPostActions()) {
+        action.run();
+      }
+    }
   }
 
   public static void failIfNotEmptyStdErr(@NotNull GeneralCommandLine cli, @NotNull ExecResult res, String... errorsLogLevel) throws VcsException {

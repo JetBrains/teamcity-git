@@ -16,10 +16,9 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
@@ -31,21 +30,20 @@ import java.util.List;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static com.intellij.openapi.util.text.StringUtil.splitByLines;
+import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
 
 /**
  * @author dmitry.neverov
  */
 public class LsRemoteCommandImpl implements LsRemoteCommand {
 
-  private GeneralCommandLine myCmd;
-  private GitAgentSSHService mySsh;
+  private GitCommandLine myCmd;
   private boolean myShowTags = false;
   private GitVcsRoot.AuthSettings myAuthSettings;
   private boolean myUseNativeSsh = false;
 
-  public LsRemoteCommandImpl(@NotNull GeneralCommandLine cmd, @NotNull GitAgentSSHService ssh) {
+  public LsRemoteCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
-    mySsh = ssh;
   }
 
   @NotNull
@@ -74,18 +72,10 @@ public class LsRemoteCommandImpl implements LsRemoteCommand {
     myCmd.addParameter("origin");
 
     try {
-      if (myUseNativeSsh) {
-        ExecResult result = CommandUtil.runCommand(myCmd);
-        return parse(result.getStdout());
-      } else {
-        SshHandler h = new SshHandler(mySsh, myAuthSettings, myCmd);
-        try {
-          ExecResult result = CommandUtil.runCommand(myCmd);
-          return parse(result.getStdout());
-        } finally {
-          h.unregister();
-        }
-      }
+      ExecResult result = myCmd.run(with()
+              .authSettings(myAuthSettings)
+              .useNativeSsh(myUseNativeSsh));
+      return parse(result.getStdout());
     } catch (VcsException e) {
       return Collections.emptyList();
     }

@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import org.jetbrains.annotations.NonNls;
+import org.jetbrains.annotations.NotNull;
 
 import java.text.MessageFormat;
 import java.text.ParseException;
@@ -41,31 +42,15 @@ public final class GitVersion implements Comparable<GitVersion> {
    */
   public static final GitVersion MIN = new GitVersion(1, 6, 4, 0);
 
-  /**
-   * Major version number
-   */
   private final int myMajor;
-  /**
-   * Minor version number
-   */
   private final int myMinor;
-  /**
-   * Revision number
-   */
   private final int myRevision;
-  /**
-   * Patch level
-   */
   private final int myPatchLevel;
 
-  /**
-   * A constructor from fields
-   *
-   * @param major      a major number
-   * @param minor      a minor number
-   * @param revision   a revision
-   * @param patchLevel a patch level
-   */
+  public GitVersion(int major, int minor, int revision) {
+    this(major, minor, revision, 0);
+  }
+
   public GitVersion(int major, int minor, int revision, int patchLevel) {
     myMajor = major;
     myMinor = minor;
@@ -110,6 +95,10 @@ public final class GitVersion implements Comparable<GitVersion> {
     return compareTo(MIN) >= 0;
   }
 
+
+  public boolean isLessThan(@NotNull GitVersion other) {
+    return compareTo(other) < 0;
+  }
 
   @Override
   public boolean equals(final Object obj) {
