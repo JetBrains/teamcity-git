@@ -16,20 +16,20 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
 
 /**
  * @author dmitry.neverov
  */
 public class FetchCommandImpl implements FetchCommand {
 
-  private final GeneralCommandLine myCmd;
-  private final GitAgentSSHService mySsh;
+  private final GitCommandLine myCmd;
   private boolean myUseNativeSsh;
   private int myTimeout;
   private String myRefspec;
@@ -38,11 +38,9 @@ public class FetchCommandImpl implements FetchCommand {
   private GitVcsRoot.AuthSettings myAuthSettings;
   private Integer myDepth;
 
-  public FetchCommandImpl(@NotNull GeneralCommandLine cmd, @NotNull GitAgentSSHService ssh) {
+  public FetchCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
-    mySsh = ssh;
   }
-
 
   @NotNull
   public FetchCommand setUseNativeSsh(boolean useNativeSsh) {
@@ -96,15 +94,8 @@ public class FetchCommandImpl implements FetchCommand {
       myCmd.addParameter("--depth=" + myDepth);
     myCmd.addParameter("origin");
     myCmd.addParameter(myRefspec);
-    if (myUseNativeSsh) {
-      CommandUtil.runCommand(myCmd, myTimeout);
-    } else {
-      SshHandler h = new SshHandler(mySsh, myAuthSettings, myCmd);
-      try {
-        CommandUtil.runCommand(myCmd, myTimeout);
-      } finally {
-        h.unregister();
-      }
-    }
+    myCmd.run(with().timeout(myTimeout)
+            .authSettings(myAuthSettings)
+            .useNativeSsh(myUseNativeSsh));
   }
 }

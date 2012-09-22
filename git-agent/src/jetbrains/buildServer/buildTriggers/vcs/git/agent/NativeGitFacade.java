@@ -16,7 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
+import com.intellij.openapi.util.SystemInfo;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import org.jetbrains.annotations.NotNull;
@@ -29,17 +29,22 @@ import java.io.File;
 public class NativeGitFacade implements GitFacade {
 
   private final GitAgentSSHService mySsh;
+  private final AskPassGenerator myAskPassGen;
   private final String myGitPath;
   private final String myRepositoryPath;
 
-  public NativeGitFacade(@NotNull GitAgentSSHService ssh, @NotNull String gitPath, @NotNull String repositoryPath) {
+  public NativeGitFacade(@NotNull GitAgentSSHService ssh,
+                         @NotNull String gitPath,
+                         @NotNull String repositoryPath) {
     mySsh = ssh;
+    myAskPassGen = makeAskPassGen();
     myGitPath = gitPath;
     myRepositoryPath = repositoryPath;
   }
 
   public NativeGitFacade(@NotNull String gitPath) {
     mySsh = null;
+    myAskPassGen = makeAskPassGen();
     myGitPath = gitPath;
     myRepositoryPath = new File(".").getAbsolutePath();
   }
@@ -107,7 +112,7 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   public FetchCommand fetch() {
-    return new FetchCommandImpl(createCommandLine(), mySsh);
+    return new FetchCommandImpl(createCommandLine());
   }
 
   @NotNull
@@ -122,7 +127,7 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   public SubmoduleUpdateCommand submoduleUpdate() {
-    return new SubmoduleUpdateCommandImpl(createCommandLine(), mySsh);
+    return new SubmoduleUpdateCommandImpl(createCommandLine());
   }
 
   @NotNull
@@ -137,14 +142,20 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   public LsRemoteCommand lsRemote() {
-    return new LsRemoteCommandImpl(createCommandLine(), mySsh);
+    return new LsRemoteCommandImpl(createCommandLine());
   }
 
   @NotNull
-  private GeneralCommandLine createCommandLine() {
-    GeneralCommandLine cmd = new GeneralCommandLine();
+  private GitCommandLine createCommandLine() {
+    GitCommandLine cmd = new GitCommandLine(mySsh, myAskPassGen);
     cmd.setExePath(myGitPath);
     cmd.setWorkDirectory(myRepositoryPath);
     return cmd;
   }
+
+  @NotNull
+  private AskPassGenerator makeAskPassGen() {
+    return SystemInfo.isUnix ? new UnixAskPassGen() : new WinAskPassGen();
+  }
+
 }

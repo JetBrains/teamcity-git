@@ -49,13 +49,11 @@ public class UpdaterWithMirror extends UpdaterImpl {
     super(pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir);
   }
 
-
   @Override
-  public void update() throws VcsException {
+  protected void doUpdate() throws VcsException {
     updateLocalMirror();
-    super.update();
+    super.doUpdate();
   }
-
 
   private void updateLocalMirror() throws VcsException {
     File bareRepositoryDir = myRoot.getRepositoryDir();

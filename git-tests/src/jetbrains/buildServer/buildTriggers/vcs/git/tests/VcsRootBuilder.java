@@ -37,6 +37,7 @@ public class VcsRootBuilder {
   private String myPassword;
   private AuthenticationMethod myAuthMethod;
   private String myPath;
+  private String myAgentGitPath;
 
   public static VcsRootBuilder vcsRoot() {
     return new VcsRootBuilder();
@@ -47,6 +48,8 @@ public class VcsRootBuilder {
   public VcsRootImpl build() {
     final int id = myId != null ? myId : 1;
     VcsRootImpl result = new VcsRootImpl(id, Constants.VCS_NAME);
+    result.setName(myFetchUrl);
+    result.addProperty(VcsRootImpl.VCS_NAME_PROP, Constants.VCS_NAME);
     result.addProperty(Constants.FETCH_URL, myFetchUrl);
     result.addProperty(Constants.BRANCH_NAME, myBranchName);
     result.addProperty(Constants.USERNAME_FOR_TAGS, myUsernameForTags);
@@ -61,6 +64,8 @@ public class VcsRootBuilder {
       result.addProperty(Constants.AUTH_METHOD, myAuthMethod.name());
     if (myPath != null)
       result.addProperty(Constants.PATH, myPath);
+    if (myAgentGitPath != null)
+      result.addProperty(Constants.AGENT_GIT_PATH, myAgentGitPath);
     return result;
   }
 
@@ -113,6 +118,11 @@ public class VcsRootBuilder {
 
   public VcsRootBuilder withAuthMethod(AuthenticationMethod authMethod) {
     myAuthMethod = authMethod;
+    return this;
+  }
+
+  public VcsRootBuilder withAgentGitPath(String agentGitPath) {
+    myAgentGitPath = agentGitPath;
     return this;
   }
 }
