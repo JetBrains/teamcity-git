@@ -29,16 +29,14 @@
     <exclude name="**/*.hprof/**"/>
     <exclude name="**/_svn/**"/>
     <exclude name="**/.hg/**"/>
-    <exclude name="**/.sbas/**"/>
-    <exclude name="**/.IJI.*/**"/>
-    <exclude name="**/vssver.scc/**"/>
-    <exclude name="**/vssver2.scc/**"/>
-    <exclude name="**/*.orig/**"/>
     <exclude name="**/*.lib/**"/>
     <exclude name="**/*~/**"/>
     <exclude name="**/__pycache__/**"/>
     <exclude name="**/.bundle/**"/>
     <exclude name="**/*.rbc/**"/>
+    <exclude name="**/vssver.scc/**"/>
+    <exclude name="**/vssver2.scc/**"/>
+    <exclude name="**/*.orig/**"/>
   </patternset>
   <patternset id="library.patterns">
     <include name="*.war"/>
@@ -46,6 +44,7 @@
     <include name="*.apk"/>
     <include name="*.zip"/>
     <include name="*.swc"/>
+    <include name="*.ane"/>
     <include name="*.egg"/>
     <include name="*.jar"/>
   </patternset>
@@ -68,17 +67,15 @@
   <property name="jdk.bin.1.6" value="${jdk.home.1.6}/bin"/>
   <path id="jdk.classpath.1.6">
     <fileset dir="${jdk.home.1.6}">
-      <include name="jre/lib/plugin.jar"/>
-      <include name="jre/lib/deploy.jar"/>
-      <include name="jre/lib/alt-rt.jar"/>
-      <include name="jre/lib/resources.jar"/>
       <include name="jre/lib/javaws.jar"/>
+      <include name="jre/lib/jsse.jar"/>
+      <include name="jre/lib/deploy.jar"/>
       <include name="jre/lib/jce.jar"/>
       <include name="jre/lib/rt.jar"/>
       <include name="jre/lib/charsets.jar"/>
-      <include name="jre/lib/jsse.jar"/>
-      <include name="jre/lib/alt-string.jar"/>
+      <include name="jre/lib/resources.jar"/>
       <include name="jre/lib/management-agent.jar"/>
+      <include name="jre/lib/plugin.jar"/>
       <include name="jre/lib/ext/dnsns.jar"/>
       <include name="jre/lib/ext/sunjce_provider.jar"/>
       <include name="jre/lib/ext/localedata.jar"/>
@@ -93,12 +90,12 @@
   
   <!-- Project Libraries -->
   
-  <path id="library.jsch-0.1.44.classpath">
-    <pathelement location="${basedir}/lib/common/jsch-0.1.44.jar"/>
+  <path id="library.jgit.classpath">
+    <pathelement location="${basedir}/lib/common/org.eclipse.jgit-2.1.0-SNAPSHOT.jar"/>
   </path>
   
-  <path id="library.org.eclipse.jgit-1.3.0-snapshot.classpath">
-    <pathelement location="${basedir}/lib/common/org.eclipse.jgit-1.3.0-SNAPSHOT.jar"/>
+  <path id="library.jsch-0.1.44.classpath">
+    <pathelement location="${basedir}/lib/common/jsch-0.1.44.jar"/>
   </path>
   
   <path id="library.teamcity_agent.classpath">
@@ -154,9 +151,6 @@
   </path>
   
   
-  <!-- Global Libraries -->
-  
-  
   <!-- Application Server Libraries -->
   
   <!-- Modules -->
@@ -184,14 +178,14 @@
     <path refid="${module.jdk.classpath.git-common}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
   
   <path id="git-common.runtime.production.module.classpath">
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
   
   <path id="git-common.module.classpath">
@@ -199,7 +193,7 @@
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
   
   <path id="git-common.runtime.module.classpath">
@@ -207,7 +201,7 @@
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
   
   
@@ -230,7 +224,7 @@
   
   <target name="compile.module.git-common.production" description="Compile module git-common; production classes">
     <mkdir dir="${git-common.output.dir}"/>
-    <javac destdir="${git-common.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-common}/javac" target="1.5">
+    <javac destdir="${git-common.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-common}/javac">
       <compilerarg line="${compiler.args.git-common}"/>
       <bootclasspath refid="git-common.module.bootclasspath"/>
       <classpath refid="git-common.module.production.classpath"/>
@@ -339,7 +333,7 @@
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
   
   <path id="git-agent.runtime.production.module.classpath">
@@ -347,7 +341,7 @@
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
@@ -365,7 +359,7 @@
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
   
   <path id="git-agent.runtime.module.classpath">
@@ -375,7 +369,7 @@
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
@@ -402,7 +396,7 @@
   
   <target name="compile.module.git-agent.production" depends="compile.module.git-common" description="Compile module git-agent; production classes">
     <mkdir dir="${git-agent.output.dir}"/>
-    <javac destdir="${git-agent.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-agent}/javac" target="1.5">
+    <javac destdir="${git-agent.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-agent}/javac">
       <compilerarg line="${compiler.args.git-agent}"/>
       <bootclasspath refid="git-agent.module.bootclasspath"/>
       <classpath refid="git-agent.module.production.classpath"/>
@@ -453,7 +447,7 @@
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_server.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
   
   <path id="git-server.runtime.production.module.classpath">
@@ -463,7 +457,7 @@
     <path refid="library.teamcity_third-party.classpath"/>
     <path refid="library.tomcat.classpath"/>
     <pathelement location="${git-common.output.dir}"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
   </path>
@@ -479,7 +473,7 @@
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_server.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
   
   <path id="git-server.runtime.module.classpath">
@@ -491,7 +485,7 @@
     <path refid="library.tomcat.classpath"/>
     <pathelement location="${git-common.testoutput.dir}"/>
     <pathelement location="${git-common.output.dir}"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
   </path>
@@ -517,7 +511,7 @@
   
   <target name="compile.module.git-server.production" depends="compile.module.git-common" description="Compile module git-server; production classes">
     <mkdir dir="${git-server.output.dir}"/>
-    <javac destdir="${git-server.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-server}/javac" target="1.5">
+    <javac destdir="${git-server.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-server}/javac">
       <compilerarg line="${compiler.args.git-server}"/>
       <bootclasspath refid="git-server.module.bootclasspath"/>
       <classpath refid="git-server.module.production.classpath"/>
@@ -578,7 +572,7 @@
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
   
   <path id="git-tests.runtime.production.module.classpath">
@@ -590,7 +584,7 @@
     <path refid="library.teamcity_third-party.classpath"/>
     <path refid="library.tomcat.classpath"/>
     <pathelement location="${git-common.output.dir}"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
@@ -619,7 +613,7 @@
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
   
   <path id="git-tests.runtime.module.classpath">
@@ -634,7 +628,7 @@
     <path refid="library.tomcat.classpath"/>
     <pathelement location="${git-common.testoutput.dir}"/>
     <pathelement location="${git-common.output.dir}"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
@@ -665,7 +659,7 @@
   
   <target name="compile.module.git-tests.production" depends="compile.module.git-server,compile.module.git-common,compile.module.git-agent" description="Compile module git-tests; production classes">
     <mkdir dir="${git-tests.output.dir}"/>
-    <javac destdir="${git-tests.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-tests}/javac" target="1.5">
+    <javac destdir="${git-tests.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-tests}/javac">
       <compilerarg line="${compiler.args.git-tests}"/>
       <bootclasspath refid="git-tests.module.bootclasspath"/>
       <classpath refid="git-tests.module.production.classpath"/>

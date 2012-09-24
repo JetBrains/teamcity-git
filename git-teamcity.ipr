@@ -628,6 +628,15 @@
   </component>
   <component name="WebServicesPlugin" addRequiredLibraries="true" />
   <component name="libraryTable">
+    <library name="jgit">
+      <CLASSES>
+        <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-2.1.0-SNAPSHOT.jar!/" />
+      </CLASSES>
+      <JAVADOC />
+      <SOURCES>
+        <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit-2.1.0-SNAPSHOT-sources.jar!/" />
+      </SOURCES>
+    </library>
     <library name="jsch-0.1.44">
       <CLASSES>
         <root url="jar://$PROJECT_DIR$/lib/common/jsch-0.1.44.jar!/" />
@@ -636,15 +645,6 @@
       <SOURCES>
         <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.44.zip!/jsch-0.1.44/src" />
         <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.44.zip!/jsch-0.1.44/examples" />
-      </SOURCES>
-    </library>
-    <library name="org.eclipse.jgit-1.3.0-SNAPSHOT">
-      <CLASSES>
-        <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-1.3.0-SNAPSHOT.jar!/" />
-      </CLASSES>
-      <JAVADOC />
-      <SOURCES>
-        <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit-1.3.0-SNAPSHOT-sources.jar!/" />
       </SOURCES>
     </library>
     <library name="TeamCity Agent">
