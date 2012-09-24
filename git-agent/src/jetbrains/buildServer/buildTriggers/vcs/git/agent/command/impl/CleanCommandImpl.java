@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -28,10 +29,10 @@ import org.jetbrains.annotations.NotNull;
  */
 public class CleanCommandImpl implements CleanCommand {
 
-  private final GeneralCommandLine myCmd;
+  private final GitCommandLine myCmd;
   private AgentCleanFilesPolicy myCleanPolicy = AgentCleanFilesPolicy.ALL_UNTRACKED;
 
-  public CleanCommandImpl(@NotNull GeneralCommandLine cmd) {
+  public CleanCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
   }
 

@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SetConfigCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -27,11 +28,11 @@ import org.jetbrains.annotations.NotNull;
  */
 public class SetConfigCommandImpl implements SetConfigCommand {
 
-  private final GeneralCommandLine myCmd;
+  private final GitCommandLine myCmd;
   private String myPropertyName;
   private String myValue;
 
-  public SetConfigCommandImpl(@NotNull GeneralCommandLine cmd) {
+  public SetConfigCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
   }
 

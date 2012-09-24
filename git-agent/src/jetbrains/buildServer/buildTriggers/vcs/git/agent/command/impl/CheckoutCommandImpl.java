@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CheckoutCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -26,11 +27,11 @@ import org.jetbrains.annotations.NotNull;
  */
 public class CheckoutCommandImpl implements CheckoutCommand {
 
-  private final GeneralCommandLine myCmd;
+  private final GitCommandLine myCmd;
   private boolean myForce;
   private String myBranch;
 
-  public CheckoutCommandImpl(@NotNull GeneralCommandLine cmd) {
+  public CheckoutCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
   }
 

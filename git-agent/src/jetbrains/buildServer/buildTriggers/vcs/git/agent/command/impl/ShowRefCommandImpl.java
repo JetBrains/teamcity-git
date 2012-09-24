@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
@@ -30,11 +31,11 @@ import java.util.*;
  */
 public class ShowRefCommandImpl implements ShowRefCommand {
 
-  private final GeneralCommandLine myCmd;
+  private final GitCommandLine myCmd;
   private String myPattern;
   private boolean myShowTags;
 
-  public ShowRefCommandImpl(@NotNull GeneralCommandLine cmd) {
+  public ShowRefCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
   }
 

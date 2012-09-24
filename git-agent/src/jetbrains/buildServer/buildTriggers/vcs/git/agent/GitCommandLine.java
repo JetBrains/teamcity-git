@@ -26,6 +26,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUti
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.SshHandler;
 import jetbrains.buildServer.vcs.VcsException;
+import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,6 +40,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private final GitAgentSSHService mySsh;
   private final AskPassGenerator myAskPassGen;
   private final List<Runnable> myPostActions = new ArrayList<Runnable>();
+  private File myWorkingDirectory;
 
   public GitCommandLine(@Nullable GitAgentSSHService ssh,
                         @NotNull AskPassGenerator askPassGen) {
@@ -66,11 +68,11 @@ public class GitCommandLine extends GeneralCommandLine {
         }
       }
       if (settings.isUseNativeSsh()) {
-        return CommandUtil.runGitCommand(this, settings.getTimeout());
+        return CommandUtil.runCommand(this, settings.getTimeout());
       } else {
         SshHandler h = new SshHandler(mySsh, authSettings, this);
         try {
-          return CommandUtil.runGitCommand(this, settings.getTimeout());
+          return CommandUtil.runCommand(this, settings.getTimeout());
         } finally {
           h.unregister();
         }
@@ -86,5 +88,16 @@ public class GitCommandLine extends GeneralCommandLine {
 
   public List<Runnable> getPostActions() {
     return myPostActions;
+  }
+
+  @Override
+  public void setWorkingDirectory(File workingDirectory) {
+    myWorkingDirectory = workingDirectory;
+    super.setWorkingDirectory(workingDirectory);
+  }
+
+  @Nullable
+  public File getWorkingDirectory() {
+    return myWorkingDirectory;
   }
 }

@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.AddRemoteCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -27,11 +28,11 @@ import org.jetbrains.annotations.NotNull;
  */
 public class AddRemoteCommandImpl implements AddRemoteCommand {
 
-  private final GeneralCommandLine myCmd;
+  private final GitCommandLine myCmd;
   private String myName;
   private String myUrl;
 
-  public AddRemoteCommandImpl(@NotNull GeneralCommandLine cmd) {
+  public AddRemoteCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
   }
 

@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -27,11 +28,11 @@ import org.jetbrains.annotations.NotNull;
  */
 public class UpdateRefCommandImpl implements UpdateRefCommand {
 
-  private final GeneralCommandLine myCmd;
+  private final GitCommandLine myCmd;
   private String myRef;
   private String myRevision;
 
-  public UpdateRefCommandImpl(@NotNull GeneralCommandLine cmd) {
+  public UpdateRefCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
   }
 
