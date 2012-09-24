@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LogCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -28,12 +29,12 @@ import org.jetbrains.annotations.Nullable;
  */
 public class LogCommandImpl implements LogCommand {
 
-  private final GeneralCommandLine myCmd;
+  private final GitCommandLine myCmd;
   private String myStartPoint;
   private int myCommitsNumber;
   private String myFormat;
 
-  public LogCommandImpl(@NotNull GeneralCommandLine cmd) {
+  public LogCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
   }
 

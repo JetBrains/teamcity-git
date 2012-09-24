@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.BranchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
 import jetbrains.buildServer.vcs.VcsException;
@@ -28,9 +29,9 @@ import org.jetbrains.annotations.NotNull;
  */
 public class BranchCommandImpl implements BranchCommand {
 
-  private final GeneralCommandLine myCmd;
+  private final GitCommandLine myCmd;
 
-  public BranchCommandImpl(@NotNull GeneralCommandLine cmd) {
+  public BranchCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
   }
 

@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.DeleteTagCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -27,10 +28,10 @@ import org.jetbrains.annotations.NotNull;
 public class DeleteTagCommandImpl implements DeleteTagCommand {
 
   private static final int TAG_PREFIX_LENGTH = "refs/tags/".length();
-  private final GeneralCommandLine myCmd;
+  private final GitCommandLine myCmd;
   private String myName;
 
-  public DeleteTagCommandImpl(@NotNull GeneralCommandLine cmd) {
+  public DeleteTagCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
   }
 

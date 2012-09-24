@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.XmlRpcHandlerManager;
@@ -28,6 +29,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.UnixAskPassGen;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.WinAskPassGen;
 import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -619,9 +622,9 @@ public class AgentVcsSupportTest {
 
   private class PushCommand {
     void run(String gitPath, String workDirectory) throws Exception {
-      GeneralCommandLine cmd = new GeneralCommandLine();
+      GitCommandLine cmd = new GitCommandLine(null, SystemInfo.isUnix ? new UnixAskPassGen() : new WinAskPassGen());
       cmd.setExePath(gitPath);
-      cmd.setWorkDirectory(workDirectory);
+      cmd.setWorkingDirectory(new File(workDirectory));
       cmd.addParameters("push", "origin", "master");
       CommandUtil.runCommand(cmd);
     }

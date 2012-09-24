@@ -37,10 +37,6 @@ public class GitFactoryImpl implements GitFactory {
 
   @NotNull
   public GitFacade create(@NotNull File repositoryDir) {
-    try {
-      return new NativeGitFacade(mySsh, myPluginConfig.getPathToGit(), repositoryDir.getCanonicalPath());
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    return new NativeGitFacade(mySsh, myPluginConfig.getPathToGit(), repositoryDir);
   }
 }

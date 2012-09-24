@@ -25,6 +25,8 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
+
 public class CommandUtil {
   public static final int DEFAULT_COMMAND_TIMEOUT_SEC = 3600;
 
@@ -72,28 +74,16 @@ public class CommandUtil {
     }
   }
 
-  public static ExecResult runCommand(@NotNull GeneralCommandLine cli, final String... errorsLogLevel) throws VcsException {
+  public static ExecResult runCommand(@NotNull GitCommandLine cli, final String... errorsLogLevel) throws VcsException {
     return runCommand(cli, DEFAULT_COMMAND_TIMEOUT_SEC, errorsLogLevel);
   }
 
-  public static ExecResult runCommand(@NotNull GeneralCommandLine cli, final int timeout, final String... errorsLogLevel) throws VcsException {
-    String cmdStr = cli.getCommandLineString();
-    Loggers.VCS.info("Run command: " + cmdStr);
-    ExecResult res = SimpleCommandLineProcessRunner.runCommand(cli, null, new SimpleCommandLineProcessRunner.RunCommandEventsAdapter() {
-      @Override
-      public Integer getOutputIdleSecondsTimeout() {
-        return timeout;
-      }
-    });
-    CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
-    Loggers.VCS.debug(res.getStdout().trim());
-    return res;
-  }
-
-  public static ExecResult runGitCommand(@NotNull GitCommandLine cli, final int timeout, final String... errorsLogLevel) throws VcsException {
+  public static ExecResult runCommand(@NotNull GitCommandLine cli, final int timeout, final String... errorsLogLevel) throws VcsException {
     try {
       String cmdStr = cli.getCommandLineString();
-      Loggers.VCS.info("Run command: " + cmdStr);
+      File workingDir = cli.getWorkingDirectory();
+      String inDir = workingDir != null ? "[" + workingDir.getAbsolutePath() + "]" : "";
+      Loggers.VCS.info(inDir + ": " + cmdStr);
       ExecResult res = SimpleCommandLineProcessRunner.runCommand(cli, null, new SimpleCommandLineProcessRunner.RunCommandEventsAdapter() {
         @Override
         public Integer getOutputIdleSecondsTimeout() {
