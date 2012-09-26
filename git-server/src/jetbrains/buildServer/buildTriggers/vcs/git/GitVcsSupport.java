@@ -26,14 +26,18 @@ import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
+import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.storage.dfs.DfsRepositoryDescription;
+import org.eclipse.jgit.storage.dfs.InMemoryRepository;
 import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.FetchConnection;
@@ -495,20 +499,13 @@ public class GitVcsSupport extends ServerVcsSupport
   private Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
     OperationContext context = createContext(root, "list remote refs");
     GitVcsRoot gitRoot = context.getGitRoot();
-    File tmpDir = null;
     try {
-      tmpDir = FileUtil.createTempDirectory("git-ls-remote", "");
-      gitRoot.setCustomRepositoryDir(tmpDir);
       Repository db = context.getRepository();
       return getRemoteRefs(root, db, gitRoot);
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
       context.close();
-      if (tmpDir != null) {
-        myRepositoryManager.cleanLocksFor(tmpDir);
-        FileUtil.delete(tmpDir);
-      }
     }
   }
 
