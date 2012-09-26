@@ -97,7 +97,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
 
-  public boolean isRunNativeGC() {
+  public boolean runGitGC() {
     return TeamCityProperties.getBoolean("teamcity.server.git.gc.enabled");
   }
 
@@ -105,7 +105,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return TeamCityProperties.getProperty("teamcity.server.git.executable.path", "git");
   }
 
-  public int getNativeGCQuotaMinutes() {
+  public int getGitGCQuotaMinutes() {
     return TeamCityProperties.getInteger("teamcity.server.git.gc.quota.minutes", 60);
   }
 

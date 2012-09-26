@@ -36,9 +36,8 @@ public class PluginConfigBuilder {
   private Integer myStreamFileThreshold;
   private Integer myFetchTimeout;
   private Boolean mySeparateProcessForFetch;
-  private Boolean myRunNativeGC;
+  private Boolean myRunGitGC;
   private String  myPathToGit;
-  private Integer myNativeGCQuota;
   private String  myFetchClassPath;
   private String  myFetcherClassName;
   private Integer myFixedSubmoduleCommitSearchDepth;
@@ -82,16 +81,16 @@ public class PluginConfigBuilder {
         return mySeparateProcessForFetch != null ? mySeparateProcessForFetch.booleanValue() : myDelegate.isSeparateProcessForFetch();
       }
 
-      public boolean isRunNativeGC() {
-        return myRunNativeGC != null ? myRunNativeGC.booleanValue() : myDelegate.isRunNativeGC();
+      public boolean runGitGC() {
+        return myRunGitGC != null ? myRunGitGC.booleanValue() : myDelegate.runGitGC();
       }
 
       public String getPathToGit() {
         return myPathToGit != null ? myPathToGit : myDelegate.getPathToGit();
       }
 
-      public int getNativeGCQuotaMinutes() {
-        return myNativeGCQuota != null ? myNativeGCQuota.intValue() : myDelegate.getNativeGCQuotaMinutes();
+      public int getGitGCQuotaMinutes() {
+        return myDelegate.getGitGCQuotaMinutes();
       }
 
       public String getFetchClasspath() {
@@ -189,20 +188,14 @@ public class PluginConfigBuilder {
   }
 
 
-  PluginConfigBuilder setRunNativeGC(boolean run) {
-    myRunNativeGC = run;
+  PluginConfigBuilder setRunGC(boolean run) {
+    myRunGitGC = run;
     return this;
   }
 
 
   PluginConfigBuilder setPathToGit(String path) {
     myPathToGit = path;
-    return this;
-  }
-
-
-  PluginConfigBuilder setNativeGCQuotaMinutes(int quota) {
-    myNativeGCQuota = quota;
     return this;
   }
 

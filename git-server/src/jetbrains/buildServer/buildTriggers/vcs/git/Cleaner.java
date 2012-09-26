@@ -69,7 +69,7 @@ public class Cleaner extends BuildServerAdapter {
     LOG.debug("Clean started");
     removeUnusedRepositories();
     cleanupMonitoringData();
-    if (myConfig.isRunNativeGC()) {
+    if (myConfig.runGitGC()) {
       runNativeGC();
     }
     LOG.debug("Clean finished");
@@ -136,7 +136,7 @@ public class Cleaner extends BuildServerAdapter {
 
   private void runNativeGC() {
     final long start = System.currentTimeMillis();
-    final long gcTimeQuota = minutes2Milliseconds(myConfig.getNativeGCQuotaMinutes());
+    final long gcTimeQuota = minutes2Milliseconds(myConfig.getGitGCQuotaMinutes());
     LOG.info("Garbage collection started");
     List<File> allDirs = getAllRepositoryDirs();
     int runGCCounter = 0;
