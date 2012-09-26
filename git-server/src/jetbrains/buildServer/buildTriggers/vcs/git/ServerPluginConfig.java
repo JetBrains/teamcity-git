@@ -46,6 +46,8 @@ public interface ServerPluginConfig extends PluginConfig {
 
   boolean runGitGC();
 
+  boolean useNativeGitGC();
+
   int getGitGCQuotaMinutes();
 
   String getFetchClasspath();

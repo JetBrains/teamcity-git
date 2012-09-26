@@ -101,6 +101,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return TeamCityProperties.getBoolean("teamcity.server.git.gc.enabled");
   }
 
+  public boolean useNativeGitGC() {
+    return TeamCityProperties.getBoolean("teamcity.server.native.git.gc");
+  }
+
   public String getPathToGit() {
     return TeamCityProperties.getProperty("teamcity.server.git.executable.path", "git");
   }

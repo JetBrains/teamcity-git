@@ -28,6 +28,11 @@ import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.ProgressMonitor;
+import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.storage.file.GC;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -70,7 +75,7 @@ public class Cleaner extends BuildServerAdapter {
     removeUnusedRepositories();
     cleanupMonitoringData();
     if (myConfig.runGitGC()) {
-      runNativeGC();
+      runGitGC();
     }
     LOG.debug("Clean finished");
   }
@@ -134,7 +139,7 @@ public class Cleaner extends BuildServerAdapter {
     return ageHours > myConfig.getMonitoringExpirationTimeoutHours();
   }
 
-  private void runNativeGC() {
+  private void runGitGC() {
     final long start = System.currentTimeMillis();
     final long gcTimeQuota = minutes2Milliseconds(myConfig.getGitGCQuotaMinutes());
     LOG.info("Garbage collection started");
@@ -142,7 +147,19 @@ public class Cleaner extends BuildServerAdapter {
     int runGCCounter = 0;
     for (File gitDir : allDirs) {
       synchronized (myRepositoryManager.getWriteLock(gitDir)) {
-        runNativeGC(gitDir);
+        if (myConfig.useNativeGitGC()) {
+          runNativeGC(gitDir);
+        } else {
+          try {
+            final long currentRepoStart = System.currentTimeMillis();
+            new GC(new FileRepositoryBuilder().setBare().setGitDir(gitDir).build())
+              .setProgressMonitor(new GCProgressMonitor(gitDir))
+              .gc();
+            LOG.info("Finish git gc in " + gitDir.getAbsolutePath() + ", it took " + (System.currentTimeMillis() - currentRepoStart) + " ms");
+          } catch (Exception e) {
+            LOG.error("Error while running gc at " + gitDir.getAbsolutePath(), e);
+          }
+        }
       }
       runGCCounter++;
       final long repositoryFinish = System.currentTimeMillis();
@@ -193,6 +210,33 @@ public class Cleaner extends BuildServerAdapter {
       }
     } catch (Exception e) {
       LOG.error("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", e);
+    }
+  }
+
+  private static class GCProgressMonitor implements ProgressMonitor {
+
+    private final File myRepositoryDir;
+
+    GCProgressMonitor(@NotNull File repositoryDir) {
+      myRepositoryDir = repositoryDir;
+    }
+
+    public void start(int totalTasks) {
+      LOG.info("Start git gc in " + myRepositoryDir.getAbsolutePath());
+    }
+
+    public void beginTask(String title, int totalWork) {
+      LOG.debug("Git gc in " + myRepositoryDir.getAbsolutePath() + " " + title);
+    }
+
+    public void update(int completed) {
+    }
+
+    public void endTask() {
+    }
+
+    public boolean isCancelled() {
+      return false;
     }
   }
 }

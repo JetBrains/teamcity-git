@@ -91,7 +91,7 @@ public class CleanerTest extends BaseTestCase {
     Thread.sleep(myConfig.getMirrorExpirationTimeoutMillis());
 
     final VcsRoot root = GitTestUtil.getVcsRoot();
-    mySupport.getCurrentVersion(root);//it will create dir in cache directory
+    mySupport.getContentProvider().getContent("readme.txt", root, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9");//it will create dir in cache directory
     File repositoryDir = getRepositoryDir(root);
 
     invokeClean();
@@ -104,7 +104,7 @@ public class CleanerTest extends BaseTestCase {
     assertEquals(1, files.length);
     assertEquals(repositoryDir, files[0]);
 
-    mySupport.getCurrentVersion(root);//check that repository is fine after git gc
+    mySupport.getContentProvider().getContent("readme.txt", root, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9");//check that repository is fine after git gc
   }
 
 

@@ -85,6 +85,10 @@ public class PluginConfigBuilder {
         return myRunGitGC != null ? myRunGitGC.booleanValue() : myDelegate.runGitGC();
       }
 
+      public boolean useNativeGitGC() {
+        return myDelegate.useNativeGitGC();
+      }
+
       public String getPathToGit() {
         return myPathToGit != null ? myPathToGit : myDelegate.getPathToGit();
       }
