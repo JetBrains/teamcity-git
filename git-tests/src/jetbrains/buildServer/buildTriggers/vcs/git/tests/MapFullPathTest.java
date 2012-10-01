@@ -18,14 +18,17 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitMapFullPath;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
-import jetbrains.buildServer.util.cache.ResetCacheHandler;
-import jetbrains.buildServer.util.cache.ResetCacheRegister;
-import jetbrains.buildServer.vcs.*;
+import jetbrains.buildServer.vcs.CheckoutRules;
+import jetbrains.buildServer.vcs.RepositoryStateData;
+import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.jmock.Expectations;
@@ -39,11 +42,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
-import static jetbrains.buildServer.vcs.RepositoryStateFactory.createSingleVersionRepositoryState;
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
 
@@ -87,8 +88,8 @@ public class MapFullPathTest {
   @TestFor(issues = "TW-21185")
   @Test
   public void mapFullPath_should_report_up_to_date_info() throws Exception {
-    RepositoryState state0 = createSingleVersionRepositoryState("a7274ca8e024d98c7d59874f19f21d26ee31d41d");
-    RepositoryState state1 = myGit.getCurrentState(myRoot);
+    RepositoryStateData state0 = RepositoryStateData.createSingleVersionState("a7274ca8e024d98c7d59874f19f21d26ee31d41d");
+    RepositoryStateData state1 = myGit.getCurrentState(myRoot);
     myGit.getCollectChangesPolicy().collectChanges(myRoot, state0, state1, CheckoutRules.DEFAULT);
 
     Collection<String> paths = myGit.mapFullPath(myRootEntry, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168||.");
@@ -96,7 +97,7 @@ public class MapFullPathTest {
 
     remoteRepositoryUpdated();
 
-    RepositoryState state2 = myGit.getCurrentState(myRoot);
+    RepositoryStateData state2 = myGit.getCurrentState(myRoot);
     myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);//now we have d47dda159b27b9a8c4cee4ce98e4435eb5b17168
     paths = myGit.mapFullPath(myRootEntry, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168||.");
     assertFalse("mapFullPath returns outdated info", paths.isEmpty());
@@ -114,8 +115,8 @@ public class MapFullPathTest {
       one(git).getCommit(with(any(Repository.class)), with(existingCommit)); will(returnValue(commit));
     }});
 
-    RepositoryState state0 = createSingleVersionRepositoryState("a7274ca8e024d98c7d59874f19f21d26ee31d41d");
-    RepositoryState state1 = myGit.getCurrentState(myRoot);
+    RepositoryStateData state0 = RepositoryStateData.createSingleVersionState("a7274ca8e024d98c7d59874f19f21d26ee31d41d");
+    RepositoryStateData state1 = myGit.getCurrentState(myRoot);
     myGit.getCollectChangesPolicy().collectChanges(myRoot, state0, state1, CheckoutRules.DEFAULT);//fetch repository, so mapFullPath works
 
     OperationContext context = myGit.createContext(myRoot, "map full path");
@@ -123,7 +124,7 @@ public class MapFullPathTest {
 
     remoteRepositoryUpdated();
 
-    RepositoryState state2 = myGit.getCurrentState(myRoot);
+    RepositoryStateData state2 = myGit.getCurrentState(myRoot);
     myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);//this fetch should not cause new commit lookup
     myGit.mapFullPath(myRootEntry, "a7274ca8e024d98c7d59874f19f21d26ee31d41d||.");
     myContext.assertIsSatisfied();

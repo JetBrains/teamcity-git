@@ -18,7 +18,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
@@ -34,9 +35,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.getVcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.AssertJUnit.assertEquals;
 

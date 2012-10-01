@@ -62,13 +62,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
-import static jetbrains.buildServer.vcs.RepositoryStateFactory.createRepositoryState;
 
 /**
  * The tests for version detection functionality
@@ -1338,7 +1337,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test
   public void current_state_should_contain_revision_for_expanded_ref_in_root() throws VcsException, IOException {
     VcsRoot root = getRoot("master");
-    RepositoryState state = getSupport().getCurrentState(root);
+    RepositoryStateData state = getSupport().getCurrentState(root);
     final String expandedRef = GitUtils.expandRef("master");
     assertNotNull(state.getBranchRevisions().get(expandedRef));
     assertEquals(state.getDefaultBranchName(), expandedRef);
@@ -1346,10 +1345,10 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @Test
   public void test_collect_changes_between_states() throws IOException, VcsException {
-    RepositoryState fromState = createRepositoryState(map("master", "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7"), "master");
-    RepositoryState toState = createRepositoryState(map("master", "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f",
-                                                        "personal-branch2", "3df61e6f11a5a9b919cb3f786a83fdd09f058617"),
-                                                    "master");
+    RepositoryStateData fromState = RepositoryStateData.createVersionState("master", map("master", "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7"));
+    RepositoryStateData toState = RepositoryStateData.createVersionState("master", map("master", "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f",
+                                                        "personal-branch2", "3df61e6f11a5a9b919cb3f786a83fdd09f058617")
+                                                    );
     VcsRoot root = getRoot("master", false);
     List<ModificationData> modifications = getSupport().getCollectChangesPolicy().collectChanges(root, fromState, toState, CheckoutRules.DEFAULT);
     assertEquals(7, modifications.size());
@@ -1357,8 +1356,8 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @Test
   public void start_using_full_branch_name_as_default_branch_name() throws Exception {
-    RepositoryState fromState = createRepositoryState(map("master", "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7"), "master");
-    RepositoryState toState = createRepositoryState(map("refs/heads/master", "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f"), "refs/heads/master");
+    RepositoryStateData fromState = RepositoryStateData.createVersionState("master", map("master", "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7"));
+    RepositoryStateData toState = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f"));
     VcsRoot root = getRoot("master", false);
     List<ModificationData> modifications = getSupport().getCollectChangesPolicy().collectChanges(root, fromState, toState, CheckoutRules.DEFAULT);
     assertEquals(4, modifications.size());
@@ -1378,9 +1377,9 @@ public class GitVcsSupportTest extends PatchTestCase {
     copyRepository(myRepoGitDir, repoGitFork);
 
     VcsRoot root1 = vcsRoot().withFetchUrl(myMainRepositoryDir.getAbsolutePath()).withBranch("master").build();
-    RepositoryState state1 = createRepositoryState(map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"), "refs/heads/master");
+    RepositoryStateData state1 = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"));
     VcsRoot root2 = vcsRoot().withFetchUrl(repoGitFork.getAbsolutePath()).withBranch("patch-tests").build();
-    RepositoryState state2 = createRepositoryState(map("refs/heads/patch-tests", "27de3d118ca320d3a8a08320ff05aa0567996590"), "refs/heads/patch-tests");
+    RepositoryStateData state2 = RepositoryStateData.createVersionState("refs/heads/patch-tests", map("refs/heads/patch-tests", "27de3d118ca320d3a8a08320ff05aa0567996590"));
     List<ModificationData> changes = getSupport().getCollectChangesPolicy().collectChanges(root1, state1, root2, state2, CheckoutRules.DEFAULT);
     assertEquals(changes.size(), 11);
   }
