@@ -124,7 +124,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  public RepositoryState getCurrentState(@NotNull VcsRoot root) throws VcsException {
+  public RepositoryStateData getCurrentState(@NotNull VcsRoot root) throws VcsException {
     GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root);
     String refInRoot = gitRoot.getRef();
     String fullRef = GitUtils.expandRef(refInRoot);
@@ -142,7 +142,7 @@ public class GitVcsSupport extends ServerVcsSupport
       e.setRoot(root);
       throw e;
     }
-    return RepositoryStateFactory.createRepositoryState(branchRevisions, fullRef);
+    return RepositoryStateData.createVersionState(fullRef, branchRevisions);
   }
 
   @NotNull

@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.serverSide.impl.LogUtil;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
@@ -53,17 +52,17 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
 
   @NotNull
   public List<ModificationData> collectChanges(@NotNull VcsRoot fromRoot,
-                                               @NotNull RepositoryState fromState,
+                                               @NotNull RepositoryStateData fromState,
                                                @NotNull VcsRoot toRoot,
-                                               @NotNull RepositoryState toState,
+                                               @NotNull RepositoryStateData toState,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     return collectChanges(toRoot, fromState, toState, checkoutRules);
   }
 
   @NotNull
   public List<ModificationData> collectChanges(@NotNull VcsRoot root,
-                                               @NotNull RepositoryState fromState,
-                                               @NotNull RepositoryState toState,
+                                               @NotNull RepositoryStateData fromState,
+                                               @NotNull RepositoryStateData toState,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     List<ModificationData> changes = new ArrayList<ModificationData>();
     OperationContext context = myVcs.createContext(root, "collecting changes");
@@ -86,7 +85,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     return changes;
   }
 
-  private void ensureRepositoryStateLoaded(@NotNull OperationContext context, @NotNull RepositoryState state, boolean throwErrors) throws Exception {
+  private void ensureRepositoryStateLoaded(@NotNull OperationContext context, @NotNull RepositoryStateData state, boolean throwErrors) throws Exception {
     GitVcsRoot root = context.getGitRoot();
     for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
       String branch = entry.getKey();
@@ -106,8 +105,8 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
 
   private void markUninteresting(@NotNull Repository r,
                                  @NotNull ModificationDataRevWalk walk,
-                                 @NotNull final RepositoryState fromState,
-                                 @NotNull final RepositoryState toState) throws IOException {
+                                 @NotNull final RepositoryStateData fromState,
+                                 @NotNull final RepositoryStateData toState) throws IOException {
     List<RevCommit> commits = getCommits(fromState, r, walk);
     if (commits.isEmpty())//if non of fromState revisions found - limit commits by toState
       commits = getCommits(toState, r, walk);
@@ -117,12 +116,12 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
   }
 
 
-  private void markStart(@NotNull Repository r, @NotNull RevWalk walk, @NotNull RepositoryState state) throws IOException {
+  private void markStart(@NotNull Repository r, @NotNull RevWalk walk, @NotNull RepositoryStateData state) throws IOException {
     walk.markStart(getCommits(state, r, walk));
   }
 
 
-  private List<RevCommit> getCommits(@NotNull RepositoryState state, @NotNull Repository r, @NotNull RevWalk walk) throws IOException {
+  private List<RevCommit> getCommits(@NotNull RepositoryStateData state, @NotNull Repository r, @NotNull RevWalk walk) throws IOException {
     List<RevCommit> revisions = new ArrayList<RevCommit>();
     for (String revision : state.getBranchRevisions().values()) {
       ObjectId id = ObjectId.fromString(GitUtils.versionRevision(revision));
@@ -134,7 +133,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
 
 
   @NotNull
-  public RepositoryState getCurrentState(@NotNull VcsRoot root) throws VcsException {
+  public RepositoryStateData getCurrentState(@NotNull VcsRoot root) throws VcsException {
     return myVcs.getCurrentState(root);
   }
 
