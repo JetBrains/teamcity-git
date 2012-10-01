@@ -18,9 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.serverSide.ServerListener;
 import jetbrains.buildServer.serverSide.ServerPaths;
-import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.VcsException;
@@ -37,7 +35,6 @@ import org.jmock.lib.legacy.ClassImposteriser;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 public class GitSupportBuilder {
@@ -99,7 +96,7 @@ public class GitSupportBuilder {
     }
     myMapFullPath = new GitMapFullPath(myPluginConfig);
     GitVcsSupport git = new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myFetchCommand, myRepositoryManager, myMapFullPath);
-    git.setExtensions(myExtensions);
+    git.addExtensions(myExtensions);
     git.setExtensionHolder(myExtensionHolder);
     return git;
   }

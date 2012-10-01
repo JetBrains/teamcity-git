@@ -67,7 +67,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private final FetchCommand myFetchCommand;
   private final RepositoryManager myRepositoryManager;
   private final GitMapFullPath myMapFullPath;
-  private Collection<GitServerExtension> myExtensions;
+  private Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
 
   public GitVcsSupport(@NotNull ServerPluginConfig config,
                        @NotNull ResetCacheRegister resetCacheManager,
@@ -89,8 +89,12 @@ public class GitVcsSupport extends ServerVcsSupport
     myExtensionHolder = extensionHolder;
   }
 
-  public void setExtensions(@NotNull Collection<GitServerExtension> extensions) {
-    myExtensions = extensions;
+  public void addExtensions(@NotNull Collection<GitServerExtension> extensions) {
+    myExtensions.addAll(extensions);
+  }
+
+  public void addExtension(@NotNull GitServerExtension extension) {
+    myExtensions.add(extension);
   }
 
   private void setStreamFileThreshold() {

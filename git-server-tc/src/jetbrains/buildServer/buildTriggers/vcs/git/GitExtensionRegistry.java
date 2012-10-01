@@ -11,6 +11,6 @@ public class GitExtensionRegistry {
                               @NotNull ExtensionHolder extensionHolder,
                               @NotNull Collection<GitServerExtension> extensions) {
     git.setExtensionHolder(extensionHolder);
-    git.setExtensions(extensions);
+    git.addExtensions(extensions);
   }
 }
