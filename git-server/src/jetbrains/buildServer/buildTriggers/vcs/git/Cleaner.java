@@ -50,6 +50,7 @@ public class Cleaner extends BuildServerAdapter {
   private final SBuildServer myServer;
   private final RepositoryManager myRepositoryManager;
   private final ServerPluginConfig myConfig;
+  private boolean myJavaGcError = false;
 
   public Cleaner(@NotNull final SBuildServer server,
                  @NotNull final EventDispatcher<BuildServerListener> dispatcher,
@@ -147,7 +148,7 @@ public class Cleaner extends BuildServerAdapter {
     int runGCCounter = 0;
     for (File gitDir : allDirs) {
       synchronized (myRepositoryManager.getWriteLock(gitDir)) {
-        if (myConfig.useNativeGitGC()) {
+        if (myConfig.useNativeGitGC() || myJavaGcError) {
           runNativeGC(gitDir);
         } else {
           try {
@@ -158,6 +159,8 @@ public class Cleaner extends BuildServerAdapter {
             LOG.info("Finish git gc in " + gitDir.getAbsolutePath() + ", it took " + (System.currentTimeMillis() - currentRepoStart) + " ms");
           } catch (Exception e) {
             LOG.error("Error while running gc at " + gitDir.getAbsolutePath(), e);
+            LOG.warn("Start using native gc");
+            myJavaGcError = true;
           }
         }
       }
