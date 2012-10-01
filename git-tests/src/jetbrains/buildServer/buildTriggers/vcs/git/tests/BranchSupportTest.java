@@ -26,6 +26,7 @@ import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -104,6 +105,7 @@ public class BranchSupportTest {
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    return new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCommand, repositoryManager, new GitMapFullPath(config), null);
+    Mockery context = new Mockery();
+    return new GitVcsSupport(config, context.mock(ResetCacheRegister.class), transportFactory, fetchCommand, repositoryManager, new GitMapFullPath(config), null);
   }
 }

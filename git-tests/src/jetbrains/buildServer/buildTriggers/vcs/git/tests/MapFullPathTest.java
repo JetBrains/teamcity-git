@@ -69,7 +69,7 @@ public class MapFullPathTest {
     myRemoteRepositoryDir = myTempFiles.createTempDir();
     copyRepository(dataFile("repo_for_fetch.1"), myRemoteRepositoryDir);
     ServerPaths paths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    ResetCacheRegister myResetCacheManager = new ResetCacheRegister();
+    ResetCacheRegister myResetCacheManager = myContext.mock(ResetCacheRegister.class);
     ServerPluginConfig config = new PluginConfigBuilder(paths).build();
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);

@@ -27,6 +27,7 @@ import jetbrains.buildServer.vcs.*;
 import org.hamcrest.Description;
 import org.hamcrest.TypeSafeMatcher;
 import org.jetbrains.annotations.NotNull;
+import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -65,7 +66,8 @@ public class ListFilesTest {
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    myGit = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCommand, repositoryManager, new GitMapFullPath(config), null);
+    Mockery context = new Mockery();
+    myGit = new GitVcsSupport(config, context.mock(ResetCacheRegister.class), transportFactory, fetchCommand, repositoryManager, new GitMapFullPath(config), null);
     File remoteRepositoryDir = new File(myTempFiles.createTempDir(), "repo.git");
     FileUtil.copyDir(dataFile("repo.git"), remoteRepositoryDir);
     myRoot = vcsRoot().withFetchUrl(remoteRepositoryDir.getAbsolutePath()).withBranch("patch-tests").build();

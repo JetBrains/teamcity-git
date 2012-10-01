@@ -93,6 +93,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   private ResetCacheRegister myResetCacheManager;
   private ServerPaths myServerPaths;
   private File myRepoGitDir;
+  private Mockery myContext;
 
   @BeforeMethod
   public void setUp() throws IOException {
@@ -106,7 +107,9 @@ public class GitVcsSupportTest extends PatchTestCase {
     copyRepository(dataFile("submodule.git"), new File(myTmpDir, "submodule"));
     copyRepository(dataFile("submodule.git"), new File(myTmpDir, "submodule.git"));
     copyRepository(dataFile("sub-submodule.git"), new File(myTmpDir, "sub-submodule.git"));
-    myResetCacheManager = new ResetCacheRegister();
+    myContext = new Mockery();
+    myResetCacheManager = myContext.mock(ResetCacheRegister.class);
+
   }
 
   @AfterMethod
@@ -1315,7 +1318,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    GitVcsSupport git = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCounter, repositoryManager, new GitMapFullPath(config), null);
+    GitVcsSupport git = new GitVcsSupport(config, myContext.mock(ResetCacheRegister.class), transportFactory, fetchCounter, repositoryManager, new GitMapFullPath(config), null);
 
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
     copyRepository(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
