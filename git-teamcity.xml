@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="git-plugin" default="all">
+<project name="git-teamcity" default="all">
   
   
   <property file="git-teamcity.properties"/>
@@ -29,6 +29,11 @@
     <exclude name="**/*.hprof/**"/>
     <exclude name="**/_svn/**"/>
     <exclude name="**/.hg/**"/>
+    <exclude name="**/.sbas/**"/>
+    <exclude name="**/.IJI.*/**"/>
+    <exclude name="**/vssver.scc/**"/>
+    <exclude name="**/vssver2.scc/**"/>
+    <exclude name="**/*.orig/**"/>
     <exclude name="**/*.lib/**"/>
     <exclude name="**/*~/**"/>
     <exclude name="**/__pycache__/**"/>
@@ -36,13 +41,12 @@
     <exclude name="**/*.rbc/**"/>
   </patternset>
   <patternset id="library.patterns">
-    <include name="*.zip"/>
-    <include name="*.apk"/>
     <include name="*.war"/>
-    <include name="*.egg"/>
     <include name="*.ear"/>
-    <include name="*.ane"/>
+    <include name="*.apk"/>
+    <include name="*.zip"/>
     <include name="*.swc"/>
+    <include name="*.egg"/>
     <include name="*.jar"/>
   </patternset>
   <patternset id="compiler.resources">
@@ -59,7 +63,34 @@
     <include name="**/?*.jsp"/>
   </patternset>
   
-  
+  <!-- JDK definitions -->
+
+  <property name="jdk.bin.1.6" value="${jdk.home.1.6}/bin"/>
+  <path id="jdk.classpath.1.6">
+    <fileset dir="${jdk.home.1.6}">
+      <include name="jre/lib/plugin.jar"/>
+      <include name="jre/lib/deploy.jar"/>
+      <include name="jre/lib/alt-rt.jar"/>
+      <include name="jre/lib/resources.jar"/>
+      <include name="jre/lib/javaws.jar"/>
+      <include name="jre/lib/jce.jar"/>
+      <include name="jre/lib/rt.jar"/>
+      <include name="jre/lib/charsets.jar"/>
+      <include name="jre/lib/jsse.jar"/>
+      <include name="jre/lib/alt-string.jar"/>
+      <include name="jre/lib/management-agent.jar"/>
+      <include name="jre/lib/ext/dnsns.jar"/>
+      <include name="jre/lib/ext/sunjce_provider.jar"/>
+      <include name="jre/lib/ext/localedata.jar"/>
+      <include name="jre/lib/ext/sunpkcs11.jar"/>
+    </fileset>
+  </path>
+
+  <property name="project.jdk.home" value="${jdk.home.1.6}"/>
+  <property name="project.jdk.bin" value="${jdk.bin.1.6}"/>
+  <property name="project.jdk.classpath" value="jdk.classpath.1.6"/>
+
+
   <!-- Project Libraries -->
   
   <path id="library.jsch-0.1.44.classpath">
@@ -129,19 +160,10 @@
   </path>
   
   
+  <!-- Global Libraries -->
+
+
   <!-- Application Server Libraries -->
-  <!-- Register Custom Compiler Taskdefs -->
-  <property name="javac2.home" value="${idea.home}/lib"/>
-  <path id="javac2.classpath">
-    <pathelement location="${javac2.home}/javac2.jar"/>
-    <pathelement location="${javac2.home}/jdom.jar"/>
-    <pathelement location="${javac2.home}/asm4-all.jar"/>
-    <pathelement location="${javac2.home}/jgoodies-forms.jar"/>
-  </path>
-  <target name="register.custom.compilers">
-    <taskdef name="javac2" classname="com.intellij.ant.Javac2" classpathref="javac2.classpath"/>
-    <taskdef name="instrumentIdeaExtensions" classname="com.intellij.ant.InstrumentIdeaExtensions" classpathref="javac2.classpath"/>
-  </target>
   
   <!-- Modules -->
   
@@ -207,15 +229,15 @@
   
   <target name="compile.module.git-common" depends="compile.module.git-common.production,compile.module.git-common.tests" description="Compile module git-common"/>
   
-  <target name="compile.module.git-common.production" depends="register.custom.compilers" description="Compile module git-common; production classes">
+  <target name="compile.module.git-common.production" description="Compile module git-common; production classes">
     <mkdir dir="${git-common.output.dir}"/>
-    <javac2 destdir="${git-common.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
+    <javac destdir="${git-common.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
       <compilerarg line="${compiler.args.git-common}"/>
       <bootclasspath refid="git-common.module.bootclasspath"/>
       <classpath refid="git-common.module.production.classpath"/>
       <src refid="git-common.module.sourcepath"/>
       <patternset refid="excluded.from.compilation.git-common"/>
-    </javac2>
+    </javac>
     
     <copy todir="${git-common.output.dir}">
       <fileset dir="${module.git-common.basedir}/git-common/src">
@@ -225,7 +247,7 @@
     </copy>
   </target>
   
-  <target name="compile.module.git-common.tests" depends="register.custom.compilers,compile.module.git-common.production" description="compile module git-common; test classes" unless="skip.tests"/>
+  <target name="compile.module.git-common.tests" depends="compile.module.git-common.production" description="compile module git-common; test classes" unless="skip.tests"/>
   
   <target name="clean.module.git-common" description="cleanup module">
     <delete dir="${git-common.output.dir}"/>
@@ -275,9 +297,9 @@
   
   <target name="compile.module.root" depends="compile.module.root.production,compile.module.root.tests" description="Compile module root"/>
   
-  <target name="compile.module.root.production" depends="register.custom.compilers" description="Compile module root; production classes"/>
+  <target name="compile.module.root.production" description="Compile module root; production classes"/>
   
-  <target name="compile.module.root.tests" depends="register.custom.compilers,compile.module.root.production" description="compile module root; test classes" unless="skip.tests"/>
+  <target name="compile.module.root.tests" depends="compile.module.root.production" description="compile module root; test classes" unless="skip.tests"/>
   
   <target name="clean.module.root" description="cleanup module">
     <delete dir="${root.output.dir}"/>
@@ -368,15 +390,15 @@
   
   <target name="compile.module.git-agent" depends="compile.module.git-agent.production,compile.module.git-agent.tests" description="Compile module git-agent"/>
   
-  <target name="compile.module.git-agent.production" depends="register.custom.compilers,compile.module.git-common" description="Compile module git-agent; production classes">
+  <target name="compile.module.git-agent.production" depends="compile.module.git-common" description="Compile module git-agent; production classes">
     <mkdir dir="${git-agent.output.dir}"/>
-    <javac2 destdir="${git-agent.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
+    <javac destdir="${git-agent.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
       <compilerarg line="${compiler.args.git-agent}"/>
       <bootclasspath refid="git-agent.module.bootclasspath"/>
       <classpath refid="git-agent.module.production.classpath"/>
       <src refid="git-agent.module.sourcepath"/>
       <patternset refid="excluded.from.compilation.git-agent"/>
-    </javac2>
+    </javac>
     
     <copy todir="${git-agent.output.dir}">
       <fileset dir="${module.git-agent.basedir}/git-agent/src">
@@ -386,7 +408,7 @@
     </copy>
   </target>
   
-  <target name="compile.module.git-agent.tests" depends="register.custom.compilers,compile.module.git-agent.production" description="compile module git-agent; test classes" unless="skip.tests"/>
+  <target name="compile.module.git-agent.tests" depends="compile.module.git-agent.production" description="compile module git-agent; test classes" unless="skip.tests"/>
   
   <target name="clean.module.git-agent" description="cleanup module">
     <delete dir="${git-agent.output.dir}"/>
@@ -474,15 +496,15 @@
   
   <target name="compile.module.git-server" depends="compile.module.git-server.production,compile.module.git-server.tests" description="Compile module git-server"/>
   
-  <target name="compile.module.git-server.production" depends="register.custom.compilers,compile.module.git-common" description="Compile module git-server; production classes">
+  <target name="compile.module.git-server.production" depends="compile.module.git-common" description="Compile module git-server; production classes">
     <mkdir dir="${git-server.output.dir}"/>
-    <javac2 destdir="${git-server.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
+    <javac destdir="${git-server.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
       <compilerarg line="${compiler.args.git-server}"/>
       <bootclasspath refid="git-server.module.bootclasspath"/>
       <classpath refid="git-server.module.production.classpath"/>
       <src refid="git-server.module.sourcepath"/>
       <patternset refid="excluded.from.compilation.git-server"/>
-    </javac2>
+    </javac>
     
     <copy todir="${git-server.output.dir}">
       <fileset dir="${module.git-server.basedir}/git-server/resources">
@@ -496,7 +518,7 @@
     </copy>
   </target>
   
-  <target name="compile.module.git-server.tests" depends="register.custom.compilers,compile.module.git-server.production" description="compile module git-server; test classes" unless="skip.tests"/>
+  <target name="compile.module.git-server.tests" depends="compile.module.git-server.production" description="compile module git-server; test classes" unless="skip.tests"/>
   
   <target name="clean.module.git-server" description="cleanup module">
     <delete dir="${git-server.output.dir}"/>
@@ -621,15 +643,15 @@
   
   <target name="compile.module.git-tests" depends="compile.module.git-tests.production,compile.module.git-tests.tests" description="Compile module git-tests"/>
   
-  <target name="compile.module.git-tests.production" depends="register.custom.compilers,compile.module.git-server,compile.module.git-common,compile.module.git-agent" description="Compile module git-tests; production classes">
+  <target name="compile.module.git-tests.production" depends="compile.module.git-server,compile.module.git-common,compile.module.git-agent" description="Compile module git-tests; production classes">
     <mkdir dir="${git-tests.output.dir}"/>
-    <javac2 destdir="${git-tests.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
+    <javac destdir="${git-tests.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
       <compilerarg line="${compiler.args.git-tests}"/>
       <bootclasspath refid="git-tests.module.bootclasspath"/>
       <classpath refid="git-tests.module.production.classpath"/>
       <src refid="git-tests.module.sourcepath"/>
       <patternset refid="excluded.from.compilation.git-tests"/>
-    </javac2>
+    </javac>
     
     <copy todir="${git-tests.output.dir}">
       <fileset dir="${module.git-tests.basedir}/git-tests/src">
@@ -639,7 +661,7 @@
     </copy>
   </target>
   
-  <target name="compile.module.git-tests.tests" depends="register.custom.compilers,compile.module.git-tests.production" description="compile module git-tests; test classes" unless="skip.tests"/>
+  <target name="compile.module.git-tests.tests" depends="compile.module.git-tests.production" description="compile module git-tests; test classes" unless="skip.tests"/>
   
   <target name="clean.module.git-tests" description="cleanup module">
     <delete dir="${git-tests.output.dir}"/>
