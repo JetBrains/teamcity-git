@@ -1,12 +1,12 @@
 <component name="libraryTable">
   <library name="TeamCity Vcs Api">
     <CLASSES>
-      <root url="jar://E:/ref/TeamCity.Trunk/devPackage/server-common-api.jar!/" />
-      <root url="jar://E:/ref/TeamCity.Trunk/devPackage/server-vcs-api.jar!/" />
+      <root url="jar://$TeamCityDistribution$/devPackage/server-common-api.jar!/" />
+      <root url="jar://$TeamCityDistribution$/devPackage/server-vcs-api.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="jar://E:/ref/TeamCity.Trunk/devPackage/src/openApi-source.jar!/" />
+      <root url="jar://$TeamCityDistribution$/devPackage/src/openApi-source.jar!/" />
     </SOURCES>
   </library>
 </component>

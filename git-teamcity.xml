@@ -141,8 +141,8 @@
   </path>
   
   <path id="library.teamcity_vcs_api.classpath">
-    <pathelement location="${basedir}/../../../../ref/TeamCity.Trunk/devPackage/server-common-api.jar"/>
-    <pathelement location="${basedir}/../../../../ref/TeamCity.Trunk/devPackage/server-vcs-api.jar"/>
+    <pathelement location="${path.variable.teamcitydistribution}/devPackage/server-common-api.jar"/>
+    <pathelement location="${path.variable.teamcitydistribution}/devPackage/server-vcs-api.jar"/>
   </path>
   
   <path id="library.testlibs.classpath">
