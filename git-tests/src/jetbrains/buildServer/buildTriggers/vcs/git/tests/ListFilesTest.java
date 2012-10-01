@@ -22,11 +22,13 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import org.hamcrest.Description;
 import org.hamcrest.TypeSafeMatcher;
 import org.jetbrains.annotations.NotNull;
+import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -35,6 +37,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.Collection;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.ListFilesTest.VcsFileDataMatcher.vcsDir;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.ListFilesTest.VcsFileDataMatcher.vcsFile;
@@ -61,13 +64,7 @@ public class ListFilesTest {
   public void setUp() throws Exception {
     myTempFiles = new TempFiles();
     ServerPaths serverPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    ServerPluginConfig config = new PluginConfigBuilder(serverPaths).build();
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    Mockery context = new Mockery();
-    myGit = new GitVcsSupport(config, context.mock(ResetCacheRegister.class), transportFactory, fetchCommand, repositoryManager, new GitMapFullPath(config), null);
+    myGit = gitSupport().withServerPaths(serverPaths).build();
     File remoteRepositoryDir = new File(myTempFiles.createTempDir(), "repo.git");
     FileUtil.copyDir(dataFile("repo.git"), remoteRepositoryDir);
     myRoot = vcsRoot().withFetchUrl(remoteRepositoryDir.getAbsolutePath()).withBranch("patch-tests").build();

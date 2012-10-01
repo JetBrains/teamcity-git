@@ -16,17 +16,16 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
-import jetbrains.buildServer.vcs.impl.VcsRootImpl;
-import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -36,6 +35,9 @@ import java.io.IOException;
 import java.util.List;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.getVcsRoot;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.AssertJUnit.assertEquals;
 
 /**
@@ -43,6 +45,10 @@ import static org.testng.AssertJUnit.assertEquals;
  */
 @Test
 public class BranchSupportTest {
+
+  static {
+    Logger.setFactory(new Log4jFactory());
+  }
 
   private static final TempFiles ourTempFiles = new TempFiles();
   protected File myRepositoryDir;
@@ -77,35 +83,17 @@ public class BranchSupportTest {
    * |
    */
   public void test() throws VcsException {
-    VcsRoot originalRoot = getVcsRoot("master");
-    VcsRoot substitutionRoot = getVcsRoot("personal-branch1");
+    VcsRoot originalRoot = vcsRoot().withFetchUrl(GitUtils.toURL(myRepositoryDir)).withBranch("master").build();
+    VcsRoot substitutionRoot = vcsRoot().withFetchUrl(GitUtils.toURL(myRepositoryDir)).withBranch("personal-branch1").build();
 
     final String originalRootVersion = "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f";
     final String substitutionRootVersion = "1391281d33a83a7205f2f05d3eb64c349c636e87";
 
-    GitVcsSupport vcsSupport = getSupport();
-    List<ModificationData> changes = vcsSupport.collectChanges(originalRoot, originalRootVersion, substitutionRoot, substitutionRootVersion, new CheckoutRules(""));
+    GitVcsSupport vcsSupport = gitSupport().withServerPaths(myServerPaths).build();
+    List<ModificationData> changes = vcsSupport.collectChanges(originalRoot, originalRootVersion, substitutionRoot, substitutionRootVersion, CheckoutRules.DEFAULT);
 
     assertEquals(1, changes.size());
     assertEquals(substitutionRoot, changes.get(0).getVcsRootObject());
     assertEquals(substitutionRootVersion, changes.get(0).getVersion());
-  }
-
-
-  private VcsRoot getVcsRoot(String branchName) {
-    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
-    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(myRepositoryDir));
-    root.addProperty(Constants.BRANCH_NAME, branchName);
-    return root;
-  }
-
-  private GitVcsSupport getSupport() {
-    PluginConfigImpl config = new PluginConfigImpl(myServerPaths);
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    Mockery context = new Mockery();
-    return new GitVcsSupport(config, context.mock(ResetCacheRegister.class), transportFactory, fetchCommand, repositoryManager, new GitMapFullPath(config), null);
   }
 }

@@ -23,6 +23,7 @@ import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
+import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.Repository;
@@ -38,6 +39,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
@@ -69,14 +71,9 @@ public class MapFullPathTest {
     myRemoteRepositoryDir = myTempFiles.createTempDir();
     copyRepository(dataFile("repo_for_fetch.1"), myRemoteRepositoryDir);
     ServerPaths paths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    ResetCacheRegister myResetCacheManager = myContext.mock(ResetCacheRegister.class);
-    ServerPluginConfig config = new PluginConfigBuilder(paths).build();
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    myMapFullPath = new GitMapFullPath(config);
-    myGit = new GitVcsSupport(config, myResetCacheManager, transportFactory, fetchCommand, repositoryManager, myMapFullPath, null);
+    GitSupportBuilder gitBuilder = new GitSupportBuilder();
+    myGit = gitBuilder.withServerPaths(paths).build();
+    myMapFullPath = gitBuilder.getMapFullPath();
     myRoot = vcsRoot().withFetchUrl(myRemoteRepositoryDir.getAbsolutePath()).build();
     myRootEntry = new VcsRootEntry(myRoot, CheckoutRules.DEFAULT);
   }

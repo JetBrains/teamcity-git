@@ -20,6 +20,7 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
@@ -32,6 +33,7 @@ import org.eclipse.jgit.storage.file.FileBasedConfig;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.eclipse.jgit.util.FS;
+import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -42,6 +44,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIteratorFactory.create;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static org.testng.Assert.*;
 
@@ -58,13 +61,7 @@ public class SubmoduleTest {
   public void setUp() throws IOException {
     File teamcitySystemDir = myTempFiles.createTempDir();
     myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
-    final PluginConfigImpl config = new PluginConfigImpl(myServerPaths);
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    Mockery context = new Mockery();
-    myGitSupport = new GitVcsSupport(config, context.mock(ResetCacheRegister.class), transportFactory, fetchCommand, repositoryManager, new GitMapFullPath(config), null);
+    myGitSupport = gitSupport().withServerPaths(myServerPaths).build();
   }
 
   @AfterMethod

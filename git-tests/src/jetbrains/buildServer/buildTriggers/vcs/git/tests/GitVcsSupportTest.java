@@ -64,11 +64,11 @@ import java.util.regex.Pattern;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
 import static jetbrains.buildServer.vcs.RepositoryStateFactory.createRepositoryState;
-import static jetbrains.buildServer.vcs.RepositoryStateFactory.createSingleVersionRepositoryState;
 
 /**
  * The tests for version detection functionality
@@ -109,7 +109,9 @@ public class GitVcsSupportTest extends PatchTestCase {
     copyRepository(dataFile("sub-submodule.git"), new File(myTmpDir, "sub-submodule.git"));
     myContext = new Mockery();
     myResetCacheManager = myContext.mock(ResetCacheRegister.class);
-
+    myContext.checking(new Expectations() {{
+      allowing(myResetCacheManager).registerHandler(with(any(ResetCacheHandler.class)));
+    }});
   }
 
   @AfterMethod
@@ -153,12 +155,11 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   private GitVcsSupport getSupport(@Nullable ExtensionHolder holder) {
-    ServerPluginConfig config = myConfigBuilder.build();
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    return new GitVcsSupport(config, myResetCacheManager, transportFactory, fetchCommand, repositoryManager, new GitMapFullPath(config), holder);
+    return gitSupport()
+      .withPluginConfig(myConfigBuilder)
+      .withExtensionHolder(holder)
+      .withResetCacheManager(myResetCacheManager)
+      .build();
   }
 
 
@@ -1294,15 +1295,18 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport git = getSupport();
     VcsRoot root = getRoot("master");
     git.getCurrentVersion(root);
+    git.getCollectChangesPolicy().collectChanges(root, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", CheckoutRules.DEFAULT);
 
-    //reset git caches:
-    for (ResetCacheHandler handler : myResetCacheManager.getHandlers()) {
-      for (String cache : handler.listCaches())
-        handler.resetCache(cache);
-    }
+    ServerPluginConfig config = myConfigBuilder.build();
+    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
+    ResetCacheHandler resetHandler = new GitResetCacheHandler(repositoryManager);
+    for (String cache : resetHandler.listCaches())
+      resetHandler.resetCache(cache);
 
     try {
-      git.getCurrentVersion(root);
+      git.getCollectChangesPolicy().collectChanges(root, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6",
+                                                   "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", CheckoutRules.DEFAULT);
     } catch (VcsException e) {
       fail("Reset of caches breaks repository");
     }
@@ -1316,9 +1320,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    GitVcsSupport git = new GitVcsSupport(config, myContext.mock(ResetCacheRegister.class), transportFactory, fetchCounter, repositoryManager, new GitMapFullPath(config), null);
+    GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
 
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
     copyRepository(dataFile("repo_for_fetch.1"), remoteRepositoryDir);

@@ -70,15 +70,9 @@ public class CleanerTest extends BaseTestCase {
       will(returnValue(myCleanExecutor));
     }});
     myConfig = myConfigBuilder.build();
-    TransportFactory transportFactory = new TransportFactoryImpl(myConfig);
-    FetchCommand fetchCommand = new FetchCommandImpl(myConfig, transportFactory);
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl());
-    myRepositoryManager = new RepositoryManagerImpl(myConfig, mirrorManager);
-    final ResetCacheRegister resetCacheManager = myContext.mock(ResetCacheRegister.class);
-    myContext.checking(new Expectations() {{
-      allowing(resetCacheManager).registerHandler(with(any(GitResetCacheHandler.class)));
-    }});
-    mySupport = new GitVcsSupport(myConfig, resetCacheManager, transportFactory, fetchCommand, myRepositoryManager, new GitMapFullPath(myConfig), null);
+    GitSupportBuilder gitBuilder = new GitSupportBuilder();
+    mySupport = gitBuilder.withPluginConfig(myConfigBuilder).build();
+    myRepositoryManager = gitBuilder.getRepositoryManager();
     myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), myConfig, myRepositoryManager);
   }
 
