@@ -28,7 +28,6 @@ import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.vcs.BranchSupport;
 import jetbrains.buildServer.vcs.VcsPersonalSupport;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.commons.codec.Decoder;
@@ -36,9 +35,7 @@ import org.eclipse.jgit.lib.ProgressMonitor;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -111,7 +108,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   public String getFetchClasspath() {
-    return ClasspathUtil.composeClasspath(new Class[]{
+    Set<Class<?>> clazzez = new HashSet<Class<?>>(Arrays.asList(
       Fetcher.class,
       VcsRoot.class,
       ProgressMonitor.class,
@@ -121,11 +118,13 @@ public class PluginConfigImpl implements ServerPluginConfig {
       JSch.class,
       Decoder.class,
       TObjectHashingStrategy.class,
-      BranchSupport.class,
       EncryptUtil.class,
       DiagnosticUtil.class,
       FileUtil.class
-    }, null, null);
+    ));
+
+    Collections.addAll(clazzez, GitVcsSupport.class.getInterfaces());
+    return ClasspathUtil.composeClasspath(clazzez.toArray(new Class[clazzez.size()]), null, null);
   }
 
 
