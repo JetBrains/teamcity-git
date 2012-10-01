@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="TeamCity Third-Party">
+    <CLASSES>
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/annotations.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/spring.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/openapi.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/util.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/spring-webmvc.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

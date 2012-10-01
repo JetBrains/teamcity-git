@@ -1,0 +1,17 @@
+<component name="libraryTable">
+  <library name="TeamCity Open API common">
+    <CLASSES>
+      <root url="jar://$TeamCityDistribution$/devPackage/common-api.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/log4j-1.2.12.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/commons-codec-1.3.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/xmlrpc-2.0.1.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/trove4j.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$TeamCityDistribution$/devPackage/javadoc/openApi-help.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$TeamCityDistribution$/devPackage/src/openApi-source.jar!/" />
+    </SOURCES>
+  </library>
+</component>
