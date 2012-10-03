@@ -18,46 +18,52 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.File;
-import java.util.List;
-import java.util.concurrent.locks.Lock;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.BuildServerAdapter;
 import jetbrains.buildServer.serverSide.BuildServerListener;
-import jetbrains.buildServer.serverSide.SBuildServer;
+import jetbrains.buildServer.serverSide.executors.ExecutorServices;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
+import java.util.List;
+import java.util.concurrent.locks.Lock;
+
 /**
  * Cleans unused git repositories
  * @author dmitry.neverov
  */
-public class Cleaner extends BuildServerAdapter {
+public class Cleaner {
 
   private static Logger LOG = Loggers.CLEANUP;
 
-  private final SBuildServer myServer;
+  private final ExecutorServices myExecutor;
   private final RepositoryManager myRepositoryManager;
   private final ServerPluginConfig myConfig;
 
-  public Cleaner(@NotNull final SBuildServer server,
+  public Cleaner(@NotNull final ExecutorServices executor,
                  @NotNull final EventDispatcher<BuildServerListener> dispatcher,
                  @NotNull final ServerPluginConfig config,
                  @NotNull final RepositoryManager repositoryManager) {
-    myServer = server;
+    myExecutor = executor;
     myConfig = config;
     myRepositoryManager = repositoryManager;
-    dispatcher.addListener(this);
+    dispatcher.addListener(new BuildServerAdapter(){
+      @Override
+      public void cleanupStarted() {
+        Cleaner.this.cleanupStarted();
+      }
+    });
+    //TODO: let's register clean tasks into ScheduledExecutorService to avoid use of EventDispatcher
   }
 
-  @Override
   public void cleanupStarted() {
-    myServer.getExecutor().submit(new Runnable() {
+    myExecutor.getNormalExecutorService().submit(new Runnable() {
       public void run() {
         clean();
       }

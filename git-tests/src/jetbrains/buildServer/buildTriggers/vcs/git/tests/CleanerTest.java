@@ -20,10 +20,9 @@ import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.BuildServerListener;
-import jetbrains.buildServer.serverSide.SBuildServer;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.executors.ExecutorServices;
 import jetbrains.buildServer.util.EventDispatcher;
-import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jmock.Expectations;
@@ -64,9 +63,9 @@ public class CleanerTest extends BaseTestCase {
 
     Mockery myContext = new Mockery();
     myCleanExecutor = Executors.newSingleThreadScheduledExecutor();
-    final SBuildServer server = myContext.mock(SBuildServer.class);
+    final ExecutorServices server = myContext.mock(ExecutorServices.class);
     myContext.checking(new Expectations() {{
-      allowing(server).getExecutor();
+      allowing(server).getNormalExecutorService();
       will(returnValue(myCleanExecutor));
     }});
     myConfig = myConfigBuilder.build();

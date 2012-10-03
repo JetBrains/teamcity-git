@@ -22,7 +22,7 @@ import com.jcraft.jsch.Proxy;
 import com.jcraft.jsch.ProxyHTTP;
 import gnu.trove.TObjectHashingStrategy;
 import jetbrains.buildServer.agent.ClasspathUtil;
-import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
 import jetbrains.buildServer.util.Dates;
@@ -50,8 +50,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
     myCachesDir = null;
   }
 
-  public PluginConfigImpl(@NotNull final ServerPaths serverPaths) {
-    myCachesDir = new File(serverPaths.getCachesDir(), "git");
+  public PluginConfigImpl(@NotNull final CachePaths paths) {
+    myCachesDir = paths.getCacheDirectory("git");
   }
 
 
