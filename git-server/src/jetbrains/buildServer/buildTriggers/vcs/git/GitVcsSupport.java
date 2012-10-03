@@ -22,7 +22,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilder;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
-import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
@@ -30,7 +29,6 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
@@ -57,7 +55,7 @@ import static jetbrains.buildServer.util.CollectionsUtil.setOf;
  */
 public class GitVcsSupport extends ServerVcsSupport
   implements VcsPersonalSupport, BuildPatchByCheckoutRules,
-             TestConnectionSupport, BranchSupport, IncludeRuleBasedMappingProvider {
+             TestConnectionSupport, IncludeRuleBasedMappingProvider {
 
   private static final Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
@@ -68,7 +66,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private final FetchCommand myFetchCommand;
   private final RepositoryManager myRepositoryManager;
   private final GitMapFullPath myMapFullPath;
-
+  private final Collection<GitServerExtension> myExtensions;
 
   public GitVcsSupport(@NotNull ServerPluginConfig config,
                        @NotNull ResetCacheRegister resetCacheManager,
@@ -76,7 +74,8 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull FetchCommand fetchCommand,
                        @NotNull RepositoryManager repositoryManager,
                        @NotNull GitMapFullPath mapFullPath,
-                       @Nullable ExtensionHolder extensionHolder) {
+                       @Nullable ExtensionHolder extensionHolder,
+                       @NotNull Collection<GitServerExtension> extensions) {
     myConfig = config;
     myExtensionHolder = extensionHolder;
     myTransportFactory = transportFactory;
@@ -86,6 +85,7 @@ public class GitVcsSupport extends ServerVcsSupport
     setStreamFileThreshold();
     resetCacheManager.registerHandler(new GitResetCacheHandler(repositoryManager));
     myMapFullPath.setGitVcs(this);
+    myExtensions = extensions;
   }
 
 
@@ -113,11 +113,6 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   @NotNull
-  public String getRemoteRunOnBranchPattern() {
-    return "refs/heads/remote-run/*";
-  }
-
-  @NotNull
   public RepositoryStateData getCurrentState(@NotNull VcsRoot root) throws VcsException {
     GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root);
     String refInRoot = gitRoot.getRef();
@@ -139,64 +134,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return RepositoryStateData.createVersionState(fullRef, branchRevisions);
   }
 
-  @NotNull
-  public Map<String, String> getBranchRootOptions(@NotNull VcsRoot root, @NotNull String branchName) {
-    final Map<String, String> result = new HashMap<String, String>(root.getProperties());
-    result.put(Constants.BRANCH_NAME, branchName);
-    return result;
-  }
-
-
-  @Nullable
-  public PersonalBranchDescription getPersonalBranchDescription(@NotNull VcsRoot original, @NotNull String branchName) throws VcsException {
-    VcsRoot branchRoot = createBranchRoot(original, branchName);
-    OperationContext context = createContext(branchRoot, "find fork version");
-    PersonalBranchDescription result = null;
-    RevWalk walk = null;
-    try {
-      String originalCommit = getCurrentVersion(original);
-      String branchCommit   = getCurrentVersion(branchRoot);
-      ensureCommitLoaded(context, context.getGitRoot(original), originalCommit);
-      ensureCommitLoaded(context, context.getGitRoot(branchRoot), branchCommit);
-
-      Repository db = context.getRepository();
-      walk = new RevWalk(db);
-      walk.markStart(walk.parseCommit(ObjectId.fromString(branchCommit)));
-      walk.markUninteresting(walk.parseCommit(ObjectId.fromString(originalCommit)));
-      walk.sort(RevSort.TOPO);
-      boolean lastCommit = true;
-      String firstCommitInBranch = null;
-      String lastCommitUser = null;
-      RevCommit c;
-      while ((c = walk.next()) != null) {
-        if (lastCommit) {
-          lastCommitUser = GitServerUtil.getUser(context.getGitRoot(), c);
-          lastCommit = false;
-        }
-        firstCommitInBranch = c.name();
-      }
-      if (firstCommitInBranch != null && lastCommitUser != null)
-        result = new PersonalBranchDescription(firstCommitInBranch, lastCommitUser);
-    } catch (Exception e) {
-      throw context.wrapException(e);
-    } finally {
-      try {
-        if (walk != null)
-          walk.release();
-      } finally {
-        context.close();
-      }
-    }
-    return result;
-  }
-
-  private VcsRoot createBranchRoot(VcsRoot original, String branchName) {
-    VcsRootImpl result = new VcsRootImpl(original.getId(), original.getVcsName());
-    result.addAllProperties(original.getProperties());
-    result.addProperty(Constants.BRANCH_NAME, branchName);
-    return result;
-  }
-
   public void buildPatch(@NotNull VcsRoot root,
                          @Nullable String fromVersion,
                          @NotNull String toVersion,
@@ -215,7 +152,6 @@ public class GitVcsSupport extends ServerVcsSupport
       context.close();
     }
   }
-
 
   @NotNull
   RevCommit ensureCommitLoaded(@NotNull OperationContext context,
@@ -584,5 +520,15 @@ public class GitVcsSupport extends ServerVcsSupport
     for (String key : repositoryPropertyKeys)
       repositoryProperties.put(key, rootProperties.get(key));
     return repositoryProperties;
+  }
+
+  @Override
+  @Nullable
+  public <T extends VcsExtension> T getVcsExtension(@NotNull Class<T> klass) {
+    for (GitServerExtension e : myExtensions) {
+      if (klass.isInstance(e))
+        return klass.cast(e);
+    }
+    return null;
   }
 }
