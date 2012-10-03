@@ -98,11 +98,11 @@ public final class RepositoryManagerImpl implements RepositoryManager {
     long now = System.currentTimeMillis();
     List<File> result = new ArrayList<File>();
     final File[] files = myMirrorManager.getBaseMirrorsDir().listFiles();
-    if (files != null) {
-      for (File dir : files) {
-        if (isExpired(dir, now))
-          result.add(dir);
-      }
+    if (files == null)
+      return result;
+    for (File f : files) {
+      if (f.isDirectory() && isExpired(f, now))
+        result.add(f);
     }
     return result;
   }
