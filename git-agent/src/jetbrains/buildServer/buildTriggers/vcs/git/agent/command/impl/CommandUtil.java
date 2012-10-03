@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
+import java.io.File;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
@@ -24,8 +25,6 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
 
 public class CommandUtil {
   public static final int DEFAULT_COMMAND_TIMEOUT_SEC = 3600;
@@ -84,7 +83,7 @@ public class CommandUtil {
       File workingDir = cli.getWorkingDirectory();
       String inDir = workingDir != null ? "[" + workingDir.getAbsolutePath() + "]" : "";
       Loggers.VCS.info(inDir + ": " + cmdStr);
-      ExecResult res = SimpleCommandLineProcessRunner.runCommand(cli, null, new SimpleCommandLineProcessRunner.RunCommandEventsAdapter() {
+      ExecResult res = SimpleCommandLineProcessRunner.runCommand(cli, null, new SimpleCommandLineProcessRunner.ProcessRunCallbackAdapter() {
         @Override
         public Integer getOutputIdleSecondsTimeout() {
           return timeout;
