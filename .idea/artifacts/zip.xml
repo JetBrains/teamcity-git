@@ -1,0 +1,10 @@
+<component name="ArtifactManager">
+  <artifact name="zip">
+    <output-path>$PROJECT_DIR$/dist</output-path>
+    <root id="root">
+      <element id="archive" name="git-plugin.zip">
+        <element id="artifact" artifact-name="plugin" />
+      </element>
+    </root>
+  </artifact>
+</component>

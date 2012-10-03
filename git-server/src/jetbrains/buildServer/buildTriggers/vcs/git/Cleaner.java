@@ -18,6 +18,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.File;
+import java.util.List;
+import java.util.concurrent.locks.Lock;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
@@ -29,10 +32,6 @@ import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.util.List;
-import java.util.concurrent.locks.Lock;
 
 /**
  * Cleans unused git repositories
@@ -170,7 +169,7 @@ public class Cleaner extends BuildServerAdapter {
       cl.addParameter("--auto");
       cl.addParameter("--quiet");
 
-      ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.RunCommandEvents() {
+      ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.ProcessRunCallback() {
         public void onProcessStarted(Process ps) {
           LOG.info("Start 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
         }
@@ -180,6 +179,9 @@ public class Cleaner extends BuildServerAdapter {
         }
         public Integer getOutputIdleSecondsTimeout() {
           return 3 * 60 * 60;//3 hours
+        }
+        public Integer getMaxAcceptedOutputSize() {
+          return null;
         }
       });
 

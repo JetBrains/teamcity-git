@@ -10,6 +10,10 @@ import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 public class GitSupportBuilder {
 
   private ServerPluginConfig myPluginConfig;
@@ -22,6 +26,7 @@ public class GitSupportBuilder {
   private TransportFactory myTransportFactory;
   private MirrorManager myMirrorManager;
   private GitMapFullPath myMapFullPath;
+  private List<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
 
   public static GitSupportBuilder gitSupport() {
     return new GitSupportBuilder();
@@ -48,7 +53,7 @@ public class GitSupportBuilder {
       resetCacheManager = myResetCacheManager;
     }
     myMapFullPath = new GitMapFullPath(myPluginConfig);
-    return new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myFetchCommand, myRepositoryManager, myMapFullPath, myExtensionHolder);
+    return new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myFetchCommand, myRepositoryManager, myMapFullPath, myExtensionHolder, myExtensions);
   }
 
   public GitSupportBuilder withPluginConfig(@NotNull PluginConfigBuilder config) {
@@ -73,6 +78,11 @@ public class GitSupportBuilder {
 
   public GitSupportBuilder withFetchCommand(@NotNull FetchCommand fetchCommand) {
     myFetchCommand = fetchCommand;
+    return this;
+  }
+
+  public GitSupportBuilder withExtension(@NotNull GitServerExtension extension) {
+    myExtensions.add(extension);
     return this;
   }
 

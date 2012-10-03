@@ -18,6 +18,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
@@ -38,12 +43,6 @@ import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.text.SimpleDateFormat;
-import java.util.*;
 
 /**
 * @author dmitry.neverov
@@ -241,7 +240,7 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
 
-  private class FetcherEventHandler implements SimpleCommandLineProcessRunner.RunCommandEvents {
+  private class FetcherEventHandler implements SimpleCommandLineProcessRunner.ProcessRunCallback {
     private final String myRepositoryDebugInfo;
     private final GitVcsRoot.AuthSettings myAuthSettings;
     private final File myRepositoryDir;
@@ -295,6 +294,10 @@ public class FetchCommandImpl implements FetchCommand {
 
     public Integer getOutputIdleSecondsTimeout() {
       return myConfig.getFetchTimeout();
+    }
+
+    public Integer getMaxAcceptedOutputSize() {
+      return null;
     }
 
     boolean hasErrors() {

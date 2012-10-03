@@ -1,0 +1,25 @@
+<component name="ArtifactManager">
+  <artifact name="plugin">
+    <output-path>$PROJECT_DIR$/out/artifacts/plugin</output-path>
+    <properties id="ant-postprocessing">
+      <options>
+        <file>file://$PROJECT_DIR$/build/ant.build.xml</file>
+        <target>replace-tokens-in-teamcity-plugin-xml</target>
+      </options>
+    </properties>
+    <root id="root">
+      <element id="directory" name="server">
+        <element id="library" level="project" name="jsch-0.1.44" />
+        <element id="library" level="project" name="org.eclipse.jgit-1.3.0-SNAPSHOT" />
+        <element id="artifact" artifact-name="git-server.jar" />
+        <element id="artifact" artifact-name="git-server-tc.jar" />
+        <element id="artifact" artifact-name="git-common.jar" />
+        <element id="file-copy" path="$PROJECT_DIR$/teamcity-plugin.dist.xml" />
+      </element>
+      <element id="directory" name="agent">
+        <element id="artifact" artifact-name="agent.zip" />
+      </element>
+      <element id="file-copy" path="$PROJECT_DIR$/teamcity-plugin.dist.xml" output-file-name="teamcity-plugin.xml" />
+    </root>
+  </artifact>
+</component>

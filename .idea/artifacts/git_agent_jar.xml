@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="git-agent.jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/git_agent_jar</output-path>
+    <root id="archive" name="git-agent.jar.jar">
+      <element id="module-output" name="git-agent" />
+    </root>
+  </artifact>
+</component>
