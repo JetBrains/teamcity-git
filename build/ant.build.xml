@@ -17,9 +17,7 @@
     <replace dir="${home}" summary="true">
       <include name="**/teamcity-plugin.xml"/>
 
-      <replacefilter token="@Plugin_Version@" value="${build.number}"/>
-      <replacefilter token="@Plugin_Vendor@" value="JetBrains, s.r.o."/>
-      <replacefilter token="@Plugin_Vendor_Url@" value="http://www.jetbrains.com"/>
+      <replacefilter token="@version@" value="${build.number}"/>
     </replace>
   </target>
 
