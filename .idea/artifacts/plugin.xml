@@ -2,7 +2,7 @@
   <artifact name="plugin">
     <output-path>$PROJECT_DIR$/out/artifacts/plugin</output-path>
     <properties id="ant-postprocessing">
-      <options>
+      <options enabled="true">
         <file>file://$PROJECT_DIR$/build/ant.build.xml</file>
         <target>replace-tokens-in-teamcity-plugin-xml</target>
       </options>
