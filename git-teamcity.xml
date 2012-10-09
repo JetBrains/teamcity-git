@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="git-teamcity" default="all">
-  
-  
+
+
   <property file="git-teamcity.properties"/>
   <!-- Uncomment the following property if no tests compilation is needed -->
-  <!-- 
+  <!--
   <property name="skip.tests" value="true"/>
    -->
-  
+
   <!-- Compiler options -->
-  
+
   <property name="compiler.debug" value="on"/>
   <property name="compiler.generate.no.warnings" value="off"/>
   <property name="compiler.args" value=""/>
@@ -29,16 +29,14 @@
     <exclude name="**/*.hprof/**"/>
     <exclude name="**/_svn/**"/>
     <exclude name="**/.hg/**"/>
-    <exclude name="**/.sbas/**"/>
-    <exclude name="**/.IJI.*/**"/>
-    <exclude name="**/vssver.scc/**"/>
-    <exclude name="**/vssver2.scc/**"/>
-    <exclude name="**/*.orig/**"/>
     <exclude name="**/*.lib/**"/>
     <exclude name="**/*~/**"/>
     <exclude name="**/__pycache__/**"/>
     <exclude name="**/.bundle/**"/>
     <exclude name="**/*.rbc/**"/>
+    <exclude name="**/vssver.scc/**"/>
+    <exclude name="**/vssver2.scc/**"/>
+    <exclude name="**/*.orig/**"/>
   </patternset>
   <patternset id="library.patterns">
     <include name="*.war"/>
@@ -46,6 +44,7 @@
     <include name="*.apk"/>
     <include name="*.zip"/>
     <include name="*.swc"/>
+    <include name="*.ane"/>
     <include name="*.egg"/>
     <include name="*.jar"/>
   </patternset>
@@ -62,23 +61,21 @@
     <include name="**/?*.ftl"/>
     <include name="**/?*.jsp"/>
   </patternset>
-  
+
   <!-- JDK definitions -->
 
   <property name="jdk.bin.1.6" value="${jdk.home.1.6}/bin"/>
   <path id="jdk.classpath.1.6">
     <fileset dir="${jdk.home.1.6}">
-      <include name="jre/lib/plugin.jar"/>
-      <include name="jre/lib/deploy.jar"/>
-      <include name="jre/lib/alt-rt.jar"/>
-      <include name="jre/lib/resources.jar"/>
       <include name="jre/lib/javaws.jar"/>
+      <include name="jre/lib/jsse.jar"/>
+      <include name="jre/lib/deploy.jar"/>
       <include name="jre/lib/jce.jar"/>
       <include name="jre/lib/rt.jar"/>
       <include name="jre/lib/charsets.jar"/>
-      <include name="jre/lib/jsse.jar"/>
-      <include name="jre/lib/alt-string.jar"/>
+      <include name="jre/lib/resources.jar"/>
       <include name="jre/lib/management-agent.jar"/>
+      <include name="jre/lib/plugin.jar"/>
       <include name="jre/lib/ext/dnsns.jar"/>
       <include name="jre/lib/ext/sunjce_provider.jar"/>
       <include name="jre/lib/ext/localedata.jar"/>
@@ -92,23 +89,23 @@
 
 
   <!-- Project Libraries -->
-  
+
+  <path id="library.jgit.classpath">
+    <pathelement location="${basedir}/lib/common/org.eclipse.jgit-2.1.0-SNAPSHOT.jar"/>
+  </path>
+
   <path id="library.jsch-0.1.44.classpath">
     <pathelement location="${basedir}/lib/common/jsch-0.1.44.jar"/>
   </path>
-  
-  <path id="library.org.eclipse.jgit-1.3.0-snapshot.classpath">
-    <pathelement location="${basedir}/lib/common/org.eclipse.jgit-1.3.0-SNAPSHOT.jar"/>
-  </path>
-  
+
   <path id="library.teamcity_agent.classpath">
     <pathelement location="${path.variable.teamcitydistribution}/buildAgent/lib/agent.jar"/>
   </path>
-  
+
   <path id="library.teamcity_open_api_agent.classpath">
     <pathelement location="${path.variable.teamcitydistribution}/devPackage/agent-api.jar"/>
   </path>
-  
+
   <path id="library.teamcity_open_api_common.classpath">
     <pathelement location="${path.variable.teamcitydistribution}/devPackage/common-api.jar"/>
     <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/commons-codec-1.3.jar"/>
@@ -116,22 +113,22 @@
     <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/trove4j.jar"/>
     <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/xmlrpc-2.0.1.jar"/>
   </path>
-  
+
   <path id="library.teamcity_open_api_server.classpath">
     <pathelement location="${path.variable.teamcitydistribution}/devPackage/server-api.jar"/>
     <pathelement location="${path.variable.teamcitydistribution}/devPackage/server-common-api.jar"/>
   </path>
-  
+
   <path id="library.teamcity_server.classpath">
     <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/server.jar"/>
   </path>
-  
+
   <path id="library.teamcity_tests.classpath">
     <pathelement location="${path.variable.teamcitydistribution}/devPackage/tests/patches-test.jar"/>
     <pathelement location="${path.variable.teamcitydistribution}/devPackage/tests/tests-support.jar"/>
     <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/patches-impl.jar"/>
   </path>
-  
+
   <path id="library.teamcity_third-party.classpath">
     <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/annotations.jar"/>
     <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/openapi.jar"/>
@@ -139,106 +136,108 @@
     <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/spring.jar"/>
     <pathelement location="${path.variable.teamcitydistribution}/webapps/ROOT/WEB-INF/lib/util.jar"/>
   </path>
-  
+
   <path id="library.teamcity_vcs_api.classpath">
     <pathelement location="${path.variable.teamcitydistribution}/devPackage/server-common-api.jar"/>
     <pathelement location="${path.variable.teamcitydistribution}/devPackage/server-vcs-api.jar"/>
   </path>
-  
+
   <path id="library.testlibs.classpath">
     <fileset dir="${basedir}/git-tests/lib">
       <patternset refid="library.patterns"/>
     </fileset>
   </path>
-  
+
   <path id="library.tomcat.classpath">
     <pathelement location="${path.variable.teamcitydistribution}/lib/servlet-api.jar"/>
   </path>
-  
+
   <path id="library.trilead_ssh.classpath">
     <pathelement location="${basedir}/lib/agent/trilead-ssh2.jar"/>
   </path>
-  
-  
-  <!-- Global Libraries -->
 
 
   <!-- Application Server Libraries -->
-  
+
   <!-- Modules -->
-  
-  
+
+
   <!-- Module git-common -->
-  
+
   <dirname property="module.git-common.basedir" file="${ant.file}"/>
-  
-  
-  
+
+
+  <property name="module.jdk.home.git-common" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.git-common" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.git-common" value="${project.jdk.classpath}"/>
+
   <property name="compiler.args.git-common" value="${compiler.args}"/>
-  
+
   <property name="git-common.output.dir" value="${module.git-common.basedir}/out/production/git-common"/>
   <property name="git-common.testoutput.dir" value="${module.git-common.basedir}/out/test/git-common"/>
-  
+
   <path id="git-common.module.bootclasspath">
     <!-- Paths to be included in compilation bootclasspath -->
   </path>
-  
+
   <path id="git-common.module.production.classpath">
+    <path refid="${module.jdk.classpath.git-common}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
-  
+
   <path id="git-common.runtime.production.module.classpath">
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
-  
+
   <path id="git-common.module.classpath">
+    <path refid="${module.jdk.classpath.git-common}"/>
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
-  
+
   <path id="git-common.runtime.module.classpath">
     <pathelement location="${git-common.testoutput.dir}"/>
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
-  
-  
+
+
   <patternset id="excluded.from.module.git-common">
     <patternset refid="ignored.files"/>
   </patternset>
-  
+
   <patternset id="excluded.from.compilation.git-common">
     <patternset refid="excluded.from.module.git-common"/>
   </patternset>
-  
+
   <path id="git-common.module.sourcepath">
     <dirset dir="${module.git-common.basedir}/git-common">
       <include name="src"/>
     </dirset>
   </path>
-  
-  
+
+
   <target name="compile.module.git-common" depends="compile.module.git-common.production,compile.module.git-common.tests" description="Compile module git-common"/>
-  
+
   <target name="compile.module.git-common.production" description="Compile module git-common; production classes">
     <mkdir dir="${git-common.output.dir}"/>
-    <javac destdir="${git-common.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
+    <javac destdir="${git-common.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-common}/javac">
       <compilerarg line="${compiler.args.git-common}"/>
       <bootclasspath refid="git-common.module.bootclasspath"/>
       <classpath refid="git-common.module.production.classpath"/>
       <src refid="git-common.module.sourcepath"/>
       <patternset refid="excluded.from.compilation.git-common"/>
     </javac>
-    
+
     <copy todir="${git-common.output.dir}">
       <fileset dir="${module.git-common.basedir}/git-common/src">
         <patternset refid="compiler.resources"/>
@@ -246,83 +245,93 @@
       </fileset>
     </copy>
   </target>
-  
+
   <target name="compile.module.git-common.tests" depends="compile.module.git-common.production" description="compile module git-common; test classes" unless="skip.tests"/>
-  
+
   <target name="clean.module.git-common" description="cleanup module">
     <delete dir="${git-common.output.dir}"/>
     <delete dir="${git-common.testoutput.dir}"/>
   </target>
-  
-  
+
+
   <!-- Module root -->
-  
+
   <dirname property="module.root.basedir" file="${ant.file}"/>
-  
-  
-  
+
+
+  <property name="module.jdk.home.root" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.root" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.root" value="${project.jdk.classpath}"/>
+
   <property name="compiler.args.root" value="${compiler.args}"/>
-  
+
   <property name="root.output.dir" value="${module.root.basedir}/out/production/root"/>
   <property name="root.testoutput.dir" value="${module.root.basedir}/out/test/root"/>
-  
+
   <path id="root.module.bootclasspath">
     <!-- Paths to be included in compilation bootclasspath -->
   </path>
-  
-  <path id="root.module.production.classpath"/>
-  
+
+  <path id="root.module.production.classpath">
+    <path refid="${module.jdk.classpath.root}"/>
+  </path>
+
   <path id="root.runtime.production.module.classpath">
     <pathelement location="${root.output.dir}"/>
   </path>
-  
+
   <path id="root.module.classpath">
+    <path refid="${module.jdk.classpath.root}"/>
     <pathelement location="${root.output.dir}"/>
   </path>
-  
+
   <path id="root.runtime.module.classpath">
     <pathelement location="${root.testoutput.dir}"/>
     <pathelement location="${root.output.dir}"/>
   </path>
-  
-  
+
+
   <patternset id="excluded.from.module.root">
     <patternset refid="ignored.files"/>
   </patternset>
-  
+
   <patternset id="excluded.from.compilation.root">
     <patternset refid="excluded.from.module.root"/>
   </patternset>
-  
-  
+
+
   <target name="compile.module.root" depends="compile.module.root.production,compile.module.root.tests" description="Compile module root"/>
-  
+
   <target name="compile.module.root.production" description="Compile module root; production classes"/>
-  
+
   <target name="compile.module.root.tests" depends="compile.module.root.production" description="compile module root; test classes" unless="skip.tests"/>
-  
+
   <target name="clean.module.root" description="cleanup module">
     <delete dir="${root.output.dir}"/>
     <delete dir="${root.testoutput.dir}"/>
   </target>
-  
-  
+
+
   <!-- Module git-agent -->
-  
+
   <dirname property="module.git-agent.basedir" file="${ant.file}"/>
-  
-  
-  
+
+
+  <property name="module.jdk.home.git-agent" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.git-agent" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.git-agent" value="${project.jdk.classpath}"/>
+
   <property name="compiler.args.git-agent" value="${compiler.args}"/>
-  
+
   <property name="git-agent.output.dir" value="${module.git-agent.basedir}/out/production/git-agent"/>
   <property name="git-agent.testoutput.dir" value="${module.git-agent.basedir}/out/test/git-agent"/>
-  
+
   <path id="git-agent.module.bootclasspath">
     <!-- Paths to be included in compilation bootclasspath -->
   </path>
-  
+
   <path id="git-agent.module.production.classpath">
+    <path refid="${module.jdk.classpath.git-agent}"/>
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
@@ -330,22 +339,23 @@
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
-  
+
   <path id="git-agent.runtime.production.module.classpath">
     <pathelement location="${git-agent.output.dir}"/>
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
   </path>
-  
+
   <path id="git-agent.module.classpath">
+    <path refid="${module.jdk.classpath.git-agent}"/>
     <pathelement location="${git-agent.output.dir}"/>
     <pathelement location="${git-common.testoutput.dir}"/>
     <pathelement location="${git-common.output.dir}"/>
@@ -355,9 +365,9 @@
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
-  
+
   <path id="git-agent.runtime.module.classpath">
     <pathelement location="${git-agent.testoutput.dir}"/>
     <pathelement location="${git-agent.output.dir}"/>
@@ -365,41 +375,41 @@
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
   </path>
-  
-  
+
+
   <patternset id="excluded.from.module.git-agent">
     <patternset refid="ignored.files"/>
   </patternset>
-  
+
   <patternset id="excluded.from.compilation.git-agent">
     <patternset refid="excluded.from.module.git-agent"/>
   </patternset>
-  
+
   <path id="git-agent.module.sourcepath">
     <dirset dir="${module.git-agent.basedir}/git-agent">
       <include name="src"/>
     </dirset>
   </path>
-  
-  
+
+
   <target name="compile.module.git-agent" depends="compile.module.git-agent.production,compile.module.git-agent.tests" description="Compile module git-agent"/>
-  
+
   <target name="compile.module.git-agent.production" depends="compile.module.git-common" description="Compile module git-agent; production classes">
     <mkdir dir="${git-agent.output.dir}"/>
-    <javac destdir="${git-agent.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
+    <javac destdir="${git-agent.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-agent}/javac">
       <compilerarg line="${compiler.args.git-agent}"/>
       <bootclasspath refid="git-agent.module.bootclasspath"/>
       <classpath refid="git-agent.module.production.classpath"/>
       <src refid="git-agent.module.sourcepath"/>
       <patternset refid="excluded.from.compilation.git-agent"/>
     </javac>
-    
+
     <copy todir="${git-agent.output.dir}">
       <fileset dir="${module.git-agent.basedir}/git-agent/src">
         <patternset refid="compiler.resources"/>
@@ -407,52 +417,57 @@
       </fileset>
     </copy>
   </target>
-  
+
   <target name="compile.module.git-agent.tests" depends="compile.module.git-agent.production" description="compile module git-agent; test classes" unless="skip.tests"/>
-  
+
   <target name="clean.module.git-agent" description="cleanup module">
     <delete dir="${git-agent.output.dir}"/>
     <delete dir="${git-agent.testoutput.dir}"/>
   </target>
-  
-  
+
+
   <!-- Module git-server -->
-  
+
   <dirname property="module.git-server.basedir" file="${ant.file}"/>
-  
-  
-  
+
+
+  <property name="module.jdk.home.git-server" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.git-server" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.git-server" value="${project.jdk.classpath}"/>
+
   <property name="compiler.args.git-server" value="${compiler.args}"/>
-  
+
   <property name="git-server.output.dir" value="${module.git-server.basedir}/out/production/git-server"/>
   <property name="git-server.testoutput.dir" value="${module.git-server.basedir}/out/test/git-server"/>
-  
+
   <path id="git-server.module.bootclasspath">
     <!-- Paths to be included in compilation bootclasspath -->
   </path>
-  
+
   <path id="git-server.module.production.classpath">
+    <path refid="${module.jdk.classpath.git-server}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_open_api_server.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.jsch-0.1.44.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
     <path refid="library.teamcity_vcs_api.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
-  
+
   <path id="git-server.runtime.production.module.classpath">
     <pathelement location="${git-server.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_open_api_server.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
     <pathelement location="${git-common.output.dir}"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
     <path refid="library.teamcity_vcs_api.classpath"/>
   </path>
-  
+
   <path id="git-server.module.classpath">
+    <path refid="${module.jdk.classpath.git-server}"/>
     <pathelement location="${git-server.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.teamcity_open_api_server.classpath"/>
@@ -460,10 +475,10 @@
     <pathelement location="${git-common.testoutput.dir}"/>
     <pathelement location="${git-common.output.dir}"/>
     <path refid="library.jsch-0.1.44.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
     <path refid="library.teamcity_vcs_api.classpath"/>
+    <path refid="library.jgit.classpath"/>
   </path>
-  
+
   <path id="git-server.runtime.module.classpath">
     <pathelement location="${git-server.testoutput.dir}"/>
     <pathelement location="${git-server.output.dir}"/>
@@ -472,40 +487,40 @@
     <path refid="library.teamcity_third-party.classpath"/>
     <pathelement location="${git-common.testoutput.dir}"/>
     <pathelement location="${git-common.output.dir}"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
     <path refid="library.teamcity_vcs_api.classpath"/>
   </path>
-  
-  
+
+
   <patternset id="excluded.from.module.git-server">
     <patternset refid="ignored.files"/>
   </patternset>
-  
+
   <patternset id="excluded.from.compilation.git-server">
     <patternset refid="excluded.from.module.git-server"/>
   </patternset>
-  
+
   <path id="git-server.module.sourcepath">
     <dirset dir="${module.git-server.basedir}/git-server">
       <include name="resources"/>
       <include name="src"/>
     </dirset>
   </path>
-  
-  
+
+
   <target name="compile.module.git-server" depends="compile.module.git-server.production,compile.module.git-server.tests" description="Compile module git-server"/>
-  
+
   <target name="compile.module.git-server.production" depends="compile.module.git-common" description="Compile module git-server; production classes">
     <mkdir dir="${git-server.output.dir}"/>
-    <javac destdir="${git-server.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
+    <javac destdir="${git-server.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-server}/javac">
       <compilerarg line="${compiler.args.git-server}"/>
       <bootclasspath refid="git-server.module.bootclasspath"/>
       <classpath refid="git-server.module.production.classpath"/>
       <src refid="git-server.module.sourcepath"/>
       <patternset refid="excluded.from.compilation.git-server"/>
     </javac>
-    
+
     <copy todir="${git-server.output.dir}">
       <fileset dir="${module.git-server.basedir}/git-server/resources">
         <patternset refid="compiler.resources"/>
@@ -517,31 +532,157 @@
       </fileset>
     </copy>
   </target>
-  
+
   <target name="compile.module.git-server.tests" depends="compile.module.git-server.production" description="compile module git-server; test classes" unless="skip.tests"/>
-  
+
   <target name="clean.module.git-server" description="cleanup module">
     <delete dir="${git-server.output.dir}"/>
     <delete dir="${git-server.testoutput.dir}"/>
   </target>
-  
-  
+
+
+  <!-- Module git-server-tc -->
+
+  <dirname property="module.git-server-tc.basedir" file="${ant.file}"/>
+
+
+  <property name="module.jdk.home.git-server-tc" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.git-server-tc" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.git-server-tc" value="${project.jdk.classpath}"/>
+
+  <property name="compiler.args.git-server-tc" value="${compiler.args}"/>
+
+  <property name="git-server-tc.output.dir" value="${module.git-server-tc.basedir}/out/production/git-server-tc"/>
+  <property name="git-server-tc.testoutput.dir" value="${module.git-server-tc.basedir}/out/test/git-server-tc"/>
+
+  <path id="git-server-tc.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+
+  <path id="git-server-tc.module.production.classpath">
+    <path refid="${module.jdk.classpath.git-server-tc}"/>
+    <path refid="library.teamcity_open_api_server.classpath"/>
+    <path refid="library.teamcity_open_api_common.classpath"/>
+    <path refid="library.teamcity_vcs_api.classpath"/>
+    <path refid="library.teamcity_server.classpath"/>
+    <pathelement location="${idea.home}/lib/annotations.jar"/>
+    <pathelement location="${git-server.output.dir}"/>
+    <pathelement location="${git-common.output.dir}"/>
+    <path refid="library.teamcity_third-party.classpath"/>
+    <path refid="library.jgit.classpath"/>
+  </path>
+
+  <path id="git-server-tc.runtime.production.module.classpath">
+    <pathelement location="${git-server-tc.output.dir}"/>
+    <path refid="library.teamcity_open_api_server.classpath"/>
+    <path refid="library.teamcity_open_api_common.classpath"/>
+    <path refid="library.teamcity_vcs_api.classpath"/>
+    <path refid="library.teamcity_server.classpath"/>
+    <pathelement location="${idea.home}/lib/annotations.jar"/>
+    <pathelement location="${git-server.output.dir}"/>
+    <path refid="library.teamcity_third-party.classpath"/>
+    <pathelement location="${git-common.output.dir}"/>
+    <path refid="library.jgit.classpath"/>
+    <path refid="library.jsch-0.1.44.classpath"/>
+  </path>
+
+  <path id="git-server-tc.module.classpath">
+    <path refid="${module.jdk.classpath.git-server-tc}"/>
+    <pathelement location="${git-server-tc.output.dir}"/>
+    <path refid="library.teamcity_open_api_server.classpath"/>
+    <path refid="library.teamcity_open_api_common.classpath"/>
+    <path refid="library.teamcity_vcs_api.classpath"/>
+    <path refid="library.teamcity_server.classpath"/>
+    <pathelement location="${idea.home}/lib/annotations.jar"/>
+    <pathelement location="${git-server.testoutput.dir}"/>
+    <pathelement location="${git-server.output.dir}"/>
+    <pathelement location="${git-common.testoutput.dir}"/>
+    <pathelement location="${git-common.output.dir}"/>
+    <path refid="library.teamcity_third-party.classpath"/>
+    <path refid="library.jgit.classpath"/>
+  </path>
+
+  <path id="git-server-tc.runtime.module.classpath">
+    <pathelement location="${git-server-tc.testoutput.dir}"/>
+    <pathelement location="${git-server-tc.output.dir}"/>
+    <path refid="library.teamcity_open_api_server.classpath"/>
+    <path refid="library.teamcity_open_api_common.classpath"/>
+    <path refid="library.teamcity_vcs_api.classpath"/>
+    <path refid="library.teamcity_server.classpath"/>
+    <pathelement location="${idea.home}/lib/annotations.jar"/>
+    <pathelement location="${git-server.testoutput.dir}"/>
+    <pathelement location="${git-server.output.dir}"/>
+    <path refid="library.teamcity_third-party.classpath"/>
+    <pathelement location="${git-common.testoutput.dir}"/>
+    <pathelement location="${git-common.output.dir}"/>
+    <path refid="library.jgit.classpath"/>
+    <path refid="library.jsch-0.1.44.classpath"/>
+  </path>
+
+
+  <patternset id="excluded.from.module.git-server-tc">
+    <patternset refid="ignored.files"/>
+  </patternset>
+
+  <patternset id="excluded.from.compilation.git-server-tc">
+    <patternset refid="excluded.from.module.git-server-tc"/>
+  </patternset>
+
+  <path id="git-server-tc.module.sourcepath">
+    <dirset dir="${module.git-server-tc.basedir}/git-server-tc">
+      <include name="src"/>
+    </dirset>
+  </path>
+
+
+  <target name="compile.module.git-server-tc" depends="compile.module.git-server-tc.production,compile.module.git-server-tc.tests" description="Compile module git-server-tc"/>
+
+  <target name="compile.module.git-server-tc.production" depends="compile.module.git-server,compile.module.git-common" description="Compile module git-server-tc; production classes">
+    <mkdir dir="${git-server-tc.output.dir}"/>
+    <javac destdir="${git-server-tc.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-server-tc}/javac">
+      <compilerarg line="${compiler.args.git-server-tc}"/>
+      <bootclasspath refid="git-server-tc.module.bootclasspath"/>
+      <classpath refid="git-server-tc.module.production.classpath"/>
+      <src refid="git-server-tc.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.git-server-tc"/>
+    </javac>
+
+    <copy todir="${git-server-tc.output.dir}">
+      <fileset dir="${module.git-server-tc.basedir}/git-server-tc/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="compile.module.git-server-tc.tests" depends="compile.module.git-server-tc.production" description="compile module git-server-tc; test classes" unless="skip.tests"/>
+
+  <target name="clean.module.git-server-tc" description="cleanup module">
+    <delete dir="${git-server-tc.output.dir}"/>
+    <delete dir="${git-server-tc.testoutput.dir}"/>
+  </target>
+
+
   <!-- Module git-tests -->
-  
+
   <dirname property="module.git-tests.basedir" file="${ant.file}"/>
-  
-  
-  
+
+
+  <property name="module.jdk.home.git-tests" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.git-tests" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.git-tests" value="${project.jdk.classpath}"/>
+
   <property name="compiler.args.git-tests" value="${compiler.args}"/>
-  
+
   <property name="git-tests.output.dir" value="${module.git-tests.basedir}/out/production/git-tests"/>
   <property name="git-tests.testoutput.dir" value="${module.git-tests.basedir}/out/test/git-tests"/>
-  
+
   <path id="git-tests.module.bootclasspath">
     <!-- Paths to be included in compilation bootclasspath -->
   </path>
-  
+
   <path id="git-tests.module.production.classpath">
+    <path refid="${module.jdk.classpath.git-tests}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.testlibs.classpath"/>
     <pathelement location="${git-server.output.dir}"/>
@@ -555,10 +696,11 @@
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.teamcity_vcs_api.classpath"/>
+    <pathelement location="${git-server-tc.output.dir}"/>
   </path>
-  
+
   <path id="git-tests.runtime.production.module.classpath">
     <pathelement location="${git-tests.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
@@ -567,7 +709,7 @@
     <path refid="library.teamcity_open_api_server.classpath"/>
     <path refid="library.teamcity_third-party.classpath"/>
     <pathelement location="${git-common.output.dir}"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
     <path refid="library.teamcity_vcs_api.classpath"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
@@ -577,9 +719,12 @@
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
+    <pathelement location="${git-server-tc.output.dir}"/>
+    <pathelement location="${idea.home}/lib/annotations.jar"/>
   </path>
-  
+
   <path id="git-tests.module.classpath">
+    <path refid="${module.jdk.classpath.git-tests}"/>
     <pathelement location="${git-tests.output.dir}"/>
     <path refid="library.teamcity_open_api_common.classpath"/>
     <path refid="library.testlibs.classpath"/>
@@ -597,10 +742,12 @@
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.teamcity_vcs_api.classpath"/>
+    <pathelement location="${git-server-tc.testoutput.dir}"/>
+    <pathelement location="${git-server-tc.output.dir}"/>
   </path>
-  
+
   <path id="git-tests.runtime.module.classpath">
     <pathelement location="${git-tests.testoutput.dir}"/>
     <pathelement location="${git-tests.output.dir}"/>
@@ -612,7 +759,7 @@
     <path refid="library.teamcity_third-party.classpath"/>
     <pathelement location="${git-common.testoutput.dir}"/>
     <pathelement location="${git-common.output.dir}"/>
-    <path refid="library.org.eclipse.jgit-1.3.0-snapshot.classpath"/>
+    <path refid="library.jgit.classpath"/>
     <path refid="library.jsch-0.1.44.classpath"/>
     <path refid="library.teamcity_vcs_api.classpath"/>
     <path refid="library.teamcity_open_api_agent.classpath"/>
@@ -623,36 +770,39 @@
     <path refid="library.trilead_ssh.classpath"/>
     <path refid="library.teamcity_agent.classpath"/>
     <path refid="library.teamcity_server.classpath"/>
+    <pathelement location="${git-server-tc.testoutput.dir}"/>
+    <pathelement location="${git-server-tc.output.dir}"/>
+    <pathelement location="${idea.home}/lib/annotations.jar"/>
   </path>
-  
-  
+
+
   <patternset id="excluded.from.module.git-tests">
     <patternset refid="ignored.files"/>
   </patternset>
-  
+
   <patternset id="excluded.from.compilation.git-tests">
     <patternset refid="excluded.from.module.git-tests"/>
   </patternset>
-  
+
   <path id="git-tests.module.sourcepath">
     <dirset dir="${module.git-tests.basedir}/git-tests">
       <include name="src"/>
     </dirset>
   </path>
-  
-  
+
+
   <target name="compile.module.git-tests" depends="compile.module.git-tests.production,compile.module.git-tests.tests" description="Compile module git-tests"/>
-  
-  <target name="compile.module.git-tests.production" depends="compile.module.git-server,compile.module.git-common,compile.module.git-agent" description="Compile module git-tests; production classes">
+
+  <target name="compile.module.git-tests.production" depends="compile.module.git-server,compile.module.git-common,compile.module.git-agent,compile.module.git-server-tc" description="Compile module git-tests; production classes">
     <mkdir dir="${git-tests.output.dir}"/>
-    <javac destdir="${git-tests.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
+    <javac destdir="${git-tests.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.git-tests}/javac">
       <compilerarg line="${compiler.args.git-tests}"/>
       <bootclasspath refid="git-tests.module.bootclasspath"/>
       <classpath refid="git-tests.module.production.classpath"/>
       <src refid="git-tests.module.sourcepath"/>
       <patternset refid="excluded.from.compilation.git-tests"/>
     </javac>
-    
+
     <copy todir="${git-tests.output.dir}">
       <fileset dir="${module.git-tests.basedir}/git-tests/src">
         <patternset refid="compiler.resources"/>
@@ -660,21 +810,154 @@
       </fileset>
     </copy>
   </target>
-  
+
   <target name="compile.module.git-tests.tests" depends="compile.module.git-tests.production" description="compile module git-tests; test classes" unless="skip.tests"/>
-  
+
   <target name="clean.module.git-tests" description="cleanup module">
     <delete dir="${git-tests.output.dir}"/>
     <delete dir="${git-tests.testoutput.dir}"/>
   </target>
-  
+
   <target name="init" description="Build initialization">
     <!-- Perform any build initialization in this target -->
   </target>
-  
-  <target name="clean" depends="clean.module.git-common, clean.module.root, clean.module.git-agent, clean.module.git-server, clean.module.git-tests" description="cleanup all"/>
-  
-  <target name="build.modules" depends="init, clean, compile.module.git-common, compile.module.root, compile.module.git-agent, compile.module.git-server, compile.module.git-tests" description="build all modules"/>
-  
-  <target name="all" depends="build.modules" description="build all"/>
+
+  <target name="clean" depends="clean.module.git-common, clean.module.root, clean.module.git-agent, clean.module.git-server, clean.module.git-server-tc, clean.module.git-tests, clean.artifact.agent.zip, clean.artifact.plugin, clean.artifact.zip" description="cleanup all"/>
+
+  <target name="build.modules" depends="init, clean, compile.module.git-common, compile.module.root, compile.module.git-agent, compile.module.git-server, compile.module.git-server-tc, compile.module.git-tests" description="build all modules"/>
+
+  <target name="init.artifacts">
+    <property name="artifacts.temp.dir" value="${basedir}/__artifacts_temp"/>
+    <property name="artifact.output.agent.zip" value="${basedir}/out/artifacts/agent_zip"/>
+    <property name="artifact.output.git-agent.jar" value="${basedir}/out/artifacts/git_agent_jar"/>
+    <property name="artifact.output.git-common.jar" value="${basedir}/out/artifacts/git_common_jar"/>
+    <property name="artifact.output.git-server-tc.jar" value="${basedir}/out/artifacts/git_server_tc_jar"/>
+    <property name="artifact.output.git-server.jar" value="${basedir}/out/artifacts/git_server_jar"/>
+    <property name="artifact.output.plugin" value="${basedir}/out/artifacts/plugin"/>
+    <property name="artifact.output.zip" value="${basedir}/dist"/>
+    <mkdir dir="${artifacts.temp.dir}"/>
+    <property name="temp.jar.path.git-agent.jar.jar" value="${artifacts.temp.dir}/git-agent.jar.jar"/>
+    <property name="temp.jar.path.git-common.jar.jar" value="${artifacts.temp.dir}/git-common.jar.jar"/>
+    <property name="temp.jar.path.git-server-tc.jar.jar" value="${artifacts.temp.dir}/git-server-tc.jar.jar"/>
+    <property name="temp.jar.path.git-server.jar.jar" value="${artifacts.temp.dir}/git-server.jar.jar"/>
+    <property name="temp.jar.path.git-plugin.zip" value="${artifacts.temp.dir}/git-plugin.zip"/>
+  </target>
+
+  <target name="clean.artifact.agent.zip" description="clean agent.zip artifact output">
+    <delete dir="${artifact.output.agent.zip}"/>
+  </target>
+
+  <target name="clean.artifact.plugin" description="clean plugin artifact output">
+    <delete dir="${artifact.output.plugin}"/>
+  </target>
+
+  <target name="clean.artifact.zip" description="clean zip artifact output">
+    <delete dir="${artifact.output.zip}"/>
+  </target>
+
+  <target name="artifact.agent.zip" depends="init.artifacts, artifact.git-agent.jar, artifact.git-common.jar" description="Build &#39;agent.zip&#39; artifact">
+    <mkdir dir="${artifact.output.agent.zip}"/>
+    <mkdir dir="${artifact.output.agent.zip}/lib"/>
+    <mkdir dir="${artifact.output.agent.zip}/lib/ssh"/>
+    <copy file="${basedir}/lib/agent/trilead-ssh2.jar" tofile="${artifact.output.agent.zip}/lib/ssh/trilead-ssh2.jar"/>
+    <copy file="${basedir}/lib/common/jsch-0.1.44.jar" tofile="${artifact.output.agent.zip}/lib/jsch-0.1.44.jar"/>
+    <copy todir="${artifact.output.agent.zip}/lib">
+      <fileset dir="${artifact.temp.output.git-agent.jar}"/>
+    </copy>
+    <copy todir="${artifact.output.agent.zip}/lib">
+      <fileset dir="${artifact.temp.output.git-common.jar}"/>
+    </copy>
+  </target>
+
+  <target name="artifact.git-agent.jar" depends="init.artifacts, compile.module.git-agent" description="Build &#39;git-agent.jar&#39; artifact">
+    <property name="artifact.temp.output.git-agent.jar" value="${artifacts.temp.dir}/git_agent_jar"/>
+    <mkdir dir="${artifact.temp.output.git-agent.jar}"/>
+    <jar destfile="${temp.jar.path.git-agent.jar.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
+      <zipfileset dir="${git-agent.output.dir}"/>
+    </jar>
+    <copy file="${temp.jar.path.git-agent.jar.jar}" tofile="${artifact.temp.output.git-agent.jar}/git-agent.jar.jar"/>
+  </target>
+
+  <target name="artifact.git-common.jar" depends="init.artifacts, compile.module.git-common" description="Build &#39;git-common.jar&#39; artifact">
+    <property name="artifact.temp.output.git-common.jar" value="${artifacts.temp.dir}/git_common_jar"/>
+    <mkdir dir="${artifact.temp.output.git-common.jar}"/>
+    <jar destfile="${temp.jar.path.git-common.jar.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
+      <zipfileset dir="${git-common.output.dir}"/>
+    </jar>
+    <copy file="${temp.jar.path.git-common.jar.jar}" tofile="${artifact.temp.output.git-common.jar}/git-common.jar.jar"/>
+  </target>
+
+  <target name="artifact.git-server-tc.jar" depends="init.artifacts, compile.module.git-server-tc" description="Build &#39;git-server-tc.jar&#39; artifact">
+    <property name="artifact.temp.output.git-server-tc.jar" value="${artifacts.temp.dir}/git_server_tc_jar"/>
+    <mkdir dir="${artifact.temp.output.git-server-tc.jar}"/>
+    <jar destfile="${temp.jar.path.git-server-tc.jar.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
+      <zipfileset dir="${git-server-tc.output.dir}"/>
+    </jar>
+    <copy file="${temp.jar.path.git-server-tc.jar.jar}" tofile="${artifact.temp.output.git-server-tc.jar}/git-server-tc.jar.jar"/>
+  </target>
+
+  <target name="artifact.git-server.jar" depends="init.artifacts, compile.module.git-server" description="Build &#39;git-server.jar&#39; artifact">
+    <property name="artifact.temp.output.git-server.jar" value="${artifacts.temp.dir}/git_server_jar"/>
+    <mkdir dir="${artifact.temp.output.git-server.jar}"/>
+    <jar destfile="${temp.jar.path.git-server.jar.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
+      <zipfileset dir="${git-server.output.dir}"/>
+    </jar>
+    <copy file="${temp.jar.path.git-server.jar.jar}" tofile="${artifact.temp.output.git-server.jar}/git-server.jar.jar"/>
+  </target>
+
+  <target name="artifact.plugin" depends="init.artifacts, artifact.git-server.jar, artifact.git-server-tc.jar, artifact.git-common.jar, artifact.agent.zip" description="Build &#39;plugin&#39; artifact">
+    <mkdir dir="${artifact.output.plugin}"/>
+    <mkdir dir="${artifact.output.plugin}/server"/>
+    <copy file="${basedir}/lib/common/jsch-0.1.44.jar" tofile="${artifact.output.plugin}/server/jsch-0.1.44.jar"/>
+    <copy todir="${artifact.output.plugin}/server">
+      <fileset dir="${artifact.temp.output.git-server.jar}"/>
+    </copy>
+    <copy todir="${artifact.output.plugin}/server">
+      <fileset dir="${artifact.temp.output.git-server-tc.jar}"/>
+    </copy>
+    <copy todir="${artifact.output.plugin}/server">
+      <fileset dir="${artifact.temp.output.git-common.jar}"/>
+    </copy>
+    <copy file="${basedir}/teamcity-plugin.dist.xml" tofile="${artifact.output.plugin}/server/teamcity-plugin.dist.xml"/>
+    <mkdir dir="${artifact.output.plugin}/agent"/>
+    <copy todir="${artifact.output.plugin}/agent">
+      <fileset dir="${artifact.output.agent.zip}"/>
+    </copy>
+    <copy file="${basedir}/teamcity-plugin.dist.xml" tofile="${artifact.output.plugin}/teamcity-plugin.xml"/>
+    <ant antfile="ant.build.xml" target="replace-tokens-in-teamcity-plugin-xml" dir="${basedir}/build">
+      <property name="artifact.output.path" value="${artifact.output.plugin}"/>
+    </ant>
+  </target>
+
+  <target name="artifact.zip" depends="init.artifacts, artifact.plugin" description="Build &#39;zip&#39; artifact">
+    <mkdir dir="${artifact.output.zip}"/>
+    <zip destfile="${temp.jar.path.git-plugin.zip}">
+      <zipfileset dir="${artifact.output.plugin}"/>
+    </zip>
+    <copy file="${temp.jar.path.git-plugin.zip}" tofile="${artifact.output.zip}/git-plugin.zip"/>
+  </target>
+
+  <target name="build.all.artifacts" depends="artifact.agent.zip, artifact.git-agent.jar, artifact.git-common.jar, artifact.git-server-tc.jar, artifact.git-server.jar, artifact.plugin, artifact.zip" description="Build all artifacts">
+    <mkdir dir="${artifact.output.git-agent.jar}"/>
+    <copy todir="${artifact.output.git-agent.jar}">
+      <fileset dir="${artifact.temp.output.git-agent.jar}"/>
+    </copy>
+    <mkdir dir="${artifact.output.git-common.jar}"/>
+    <copy todir="${artifact.output.git-common.jar}">
+      <fileset dir="${artifact.temp.output.git-common.jar}"/>
+    </copy>
+    <mkdir dir="${artifact.output.git-server-tc.jar}"/>
+    <copy todir="${artifact.output.git-server-tc.jar}">
+      <fileset dir="${artifact.temp.output.git-server-tc.jar}"/>
+    </copy>
+    <mkdir dir="${artifact.output.git-server.jar}"/>
+    <copy todir="${artifact.output.git-server.jar}">
+      <fileset dir="${artifact.temp.output.git-server.jar}"/>
+    </copy>
+
+    <!-- Delete temporary files -->
+    <delete dir="${artifacts.temp.dir}"/>
+  </target>
+
+  <target name="all" depends="build.modules, build.all.artifacts" description="build all"/>
 </project>

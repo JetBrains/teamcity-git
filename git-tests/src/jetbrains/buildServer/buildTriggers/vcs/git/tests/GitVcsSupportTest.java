@@ -21,6 +21,7 @@ import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
@@ -28,16 +29,15 @@ import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
+import jetbrains.buildServer.vcs.RepositoryState;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import jetbrains.buildServer.vcs.patches.LowLevelPatchBuilder;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import jetbrains.buildServer.vcs.patches.PatchTestCase;
 import org.apache.log4j.Level;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
-import org.eclipse.jgit.lib.PersonIdent;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevTag;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.LockFile;
@@ -757,6 +757,32 @@ public class GitVcsSupportTest extends PatchTestCase {
     checkPatch(root, "patch7", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9", new CheckoutRules("+:.=>path"));
   }
 
+
+  @TestFor(issues = "TW-16530")
+  @Test
+  public void build_patch_should_respect_autocrlf() throws Exception {
+    VcsRoot root = vcsRoot().withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
+
+    //modify repository config to use core.autocrlf = true:
+    ServerPluginConfig config = myConfigBuilder.setRespectAutocrlf(true).build();
+    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    File repoDir = mirrorManager.getMirrorDir(myMainRepositoryDir.getAbsolutePath());
+    Repository db = new RepositoryBuilder().setBare().setGitDir(repoDir).build();
+    db.create(true);
+    StoredConfig repoConfig = db.getConfig();
+    repoConfig.setString(ConfigConstants.CONFIG_CORE_SECTION, null, "autocrlf", "true");
+    repoConfig.setString("teamcity", null, "remote", myMainRepositoryDir.getAbsolutePath());
+    repoConfig.save();
+
+    setExpectedSeparator("\r\n");
+    checkPatch(root, "patch-eol", null, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", new CheckoutRules("-:dir"));
+
+    String content = new String(getSupport().getContentProvider()
+            .getContent("readme.txt", root, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"));
+    assertEquals(content, "Test repository for teamcity.change 1\r\nadd feature\r\n");
+  }
+
+
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testSubmodulePatches(boolean fetchInSeparateProcess) throws IOException, VcsException {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
@@ -795,7 +821,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     checkPatchResult(output.toByteArray());
   }
 
-  private void checkPatch(@NotNull VcsRoot root, String name, String fromVersion, String toVersion, CheckoutRules rules) throws IOException, VcsException {
+  private void checkPatch(@NotNull VcsRoot root, String name, @Nullable String fromVersion, String toVersion, CheckoutRules rules) throws IOException, VcsException {
     setName(name);
     GitVcsSupport support = getSupport();
     final ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -1254,26 +1280,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(child2parent.get("ad4528ed5c84092fdbe9e0502163cf8d6e6141e7"), "97442a720324a0bd092fb9235f72246dc8b345bc");
     assertEquals(child2parent.get("97442a720324a0bd092fb9235f72246dc8b345bc"), "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653");
     assertEquals(child2parent.get("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653"),  "0000000000000000000000000000000000000000");
-  }
-
-
-  @TestFor(issues = "TW-16530")
-//  @Test
-  public void test_crlf() throws Exception {
-    String original = System.getProperty("user.home");
-    try {
-      File homeDir = myTempFiles.createTempDir();
-      File userConfig = new File(homeDir, ".gitconfig");
-      FileUtil.writeFile(userConfig, "[core]\n autocrlf=true\n");
-      System.setProperty("user.home", homeDir.getAbsolutePath());
-
-      VcsRoot root = getRoot("master");
-      byte[] bytes = getSupport().getContentProvider().getContent("readme.txt", root, "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f@1283497225000");
-      String content = new String(bytes);
-      assertTrue(content.contains("\r\n"));
-    } finally {
-      System.setProperty("user.home", original);
-    }
   }
 
 

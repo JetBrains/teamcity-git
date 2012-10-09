@@ -290,12 +290,6 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
 
-  private boolean isRemoteRefUpdated(@NotNull Repository db, @NotNull Ref remoteRef) throws IOException {
-    Ref localRef = db.getRef(remoteRef.getName());
-    return localRef == null || !remoteRef.getObjectId().name().equals(localRef.getObjectId().name());
-  }
-
-
   public boolean sourcesUpdatePossibleIfChangesNotFound(@NotNull VcsRoot root) {
     return false;
   }

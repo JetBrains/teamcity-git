@@ -45,6 +45,7 @@ public class PluginConfigBuilder {
   private Integer myIdleTimeoutSeconds;
   private Long myMirrorExpirationTimeoutMillis;
   private int myNumberOfCommitsWhenFromVersionNotFound = -1;
+  private boolean myRespectAutocrlf = false;
 
   public PluginConfigBuilder(@NotNull ServerPaths paths) {
     myDelegate = new PluginConfigImpl(paths);
@@ -152,6 +153,10 @@ public class PluginConfigBuilder {
       public int getMapFullPathRevisionCacheSize() {
         return 100;
       }
+
+      public boolean respectAutocrlf() {
+        return myRespectAutocrlf;
+      }
     };
   }
 
@@ -239,6 +244,11 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setNumberOfCommitsWhenFromVersionNotFound(int numberOfCommits) {
     myNumberOfCommitsWhenFromVersionNotFound = numberOfCommits;
+    return this;
+  }
+
+  public PluginConfigBuilder setRespectAutocrlf(boolean doRespect) {
+    myRespectAutocrlf = doRespect;
     return this;
   }
 }

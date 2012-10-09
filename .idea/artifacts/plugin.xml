@@ -10,7 +10,6 @@
     <root id="root">
       <element id="directory" name="server">
         <element id="library" level="project" name="jsch-0.1.44" />
-        <element id="library" level="project" name="org.eclipse.jgit-1.3.0-SNAPSHOT" />
         <element id="artifact" artifact-name="git-server.jar" />
         <element id="artifact" artifact-name="git-server-tc.jar" />
         <element id="artifact" artifact-name="git-common.jar" />

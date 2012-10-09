@@ -223,4 +223,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public int getMapFullPathRevisionCacheSize() {
     return TeamCityProperties.getInteger("teamcity.git.map.full.path.revision.cache.size", 100);
   }
+
+  public boolean respectAutocrlf() {
+    return TeamCityProperties.getBoolean("teamcity.git.autocrlf");
+  }
 }

@@ -17,22 +17,25 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
+import org.eclipse.jgit.lib.CoreConfig;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.treewalk.WorkingTreeOptions;
+import org.eclipse.jgit.util.io.AutoCRLFOutputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.concurrent.Callable;
 
 /**
 * @author dmitry.neverov
 */
 class LoadContentAction implements Callable<Void> {
+  private final ServerPluginConfig myConfig;
   private final PatchBuilder myBuilder;
   private final BuildPatchLogger myLogger;
   private Repository myRepository;
@@ -41,7 +44,10 @@ class LoadContentAction implements Callable<Void> {
   private String myMappedPath;
   private String myMode;
 
-  LoadContentAction(@NotNull PatchBuilder builder, @NotNull BuildPatchLogger logger) {
+  LoadContentAction(@NotNull ServerPluginConfig config,
+                    @NotNull PatchBuilder builder,
+                    @NotNull BuildPatchLogger logger) {
+    myConfig = config;
     myBuilder = builder;
     myLogger = logger;
   }
@@ -75,8 +81,12 @@ class LoadContentAction implements Callable<Void> {
     InputStream objectStream = null;
     try {
       ObjectLoader loader = getObjectLoader();
-      objectStream = loader.isLarge() ? loader.openStream() : new ByteArrayInputStream(loader.getCachedBytes());
-      myBuilder.changeOrCreateBinaryFile(GitUtils.toFile(myMappedPath), myMode, objectStream, loader.getSize());
+      WorkingTreeOptions opt = myRepository.getConfig().get(WorkingTreeOptions.KEY);
+      ByteArrayOutputStream out = new ByteArrayOutputStream((int) loader.getSize());
+      OutputStream output = (myConfig.respectAutocrlf() && opt.getAutoCRLF() == CoreConfig.AutoCRLF.TRUE) ? new AutoCRLFOutputStream(out) : out;
+      loader.copyTo(output);
+      output.flush();
+      myBuilder.changeOrCreateBinaryFile(GitUtils.toFile(myMappedPath), myMode, new ByteArrayInputStream(out.toByteArray()), out.size());
     } catch (Error e) {
       myLogger.cannotLoadFile(myPath, myObjectId);
       throw e;
