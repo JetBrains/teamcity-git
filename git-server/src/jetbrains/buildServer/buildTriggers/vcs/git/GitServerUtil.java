@@ -47,10 +47,6 @@ public class GitServerUtil {
    * Amount of characters displayed for in the display version of revision number
    */
   public static final int DISPLAY_VERSION_AMOUNT = 40;
-  /**
-   * User name for the system user
-   */
-  public static final String SYSTEM_USER = "system@git-plugin.teamcity";
 
   /**
    * Ensures that a bare repository exists at the specified path.

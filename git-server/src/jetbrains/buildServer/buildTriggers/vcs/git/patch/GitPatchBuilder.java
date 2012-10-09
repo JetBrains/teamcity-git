@@ -185,6 +185,6 @@ public final class GitPatchBuilder {
   }
 
   private LoadContentAction loadContent() {
-    return new LoadContentAction(myBuilder, myLogger);
+    return new LoadContentAction(myConfig, myBuilder, myLogger);
   }
 }

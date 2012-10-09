@@ -19,17 +19,21 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.vcs.*;
+import org.eclipse.jgit.lib.CoreConfig;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.treewalk.WorkingTreeOptions;
 import org.eclipse.jgit.treewalk.filter.PathFilterGroup;
+import org.eclipse.jgit.util.io.AutoCRLFOutputStream;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Collections;
 
 /**
@@ -142,14 +146,12 @@ public class GitVcsFileContentProvider implements VcsFileContentProvider {
     if (loader == null) {
       throw new IOException("Unable to find blob " + id + (path == null ? "" : "(" + path + ")") + " in repository " + r);
     }
-    if (loader.isLarge()) {
-      assert loader.getSize() < Integer.MAX_VALUE;
-      ByteArrayOutputStream output = new ByteArrayOutputStream((int) loader.getSize());
-      loader.copyTo(output);
-      return output.toByteArray();
-    } else {
-      return loader.getCachedBytes();
-    }
+    WorkingTreeOptions opt = r.getConfig().get(WorkingTreeOptions.KEY);
+    ByteArrayOutputStream out = new ByteArrayOutputStream((int) loader.getSize());
+    OutputStream output = (myConfig.respectAutocrlf() && opt.getAutoCRLF() == CoreConfig.AutoCRLF.TRUE) ? new AutoCRLFOutputStream(out) : out;
+    loader.copyTo(output);
+    output.flush();
+    return out.toByteArray();
   }
 
   /**
