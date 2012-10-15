@@ -79,16 +79,16 @@ public class GitMapFullPath {
   private boolean repositoryContainsRevision(@NotNull OperationContext context, @NotNull VcsRootEntry rootEntry, @NotNull String revision) throws VcsException {
     GitVcsRoot root = context.getGitRoot();
     RepositoryRevisionCache repositoryCache = myCache.getRepositoryCache(root);
-    Boolean result = repositoryCache.hasRevision(revision);
-    if (result != null) {
-      LOG.debug("RevisionCache hit: root " + LogUtil.describe(rootEntry.getVcsRoot()) + (result ? "contains " : "doesn't contain ") + "revision " + revision);
-      return result;
+    Boolean hasRevision = repositoryCache.hasRevision(revision);
+    if (hasRevision != null) {
+      LOG.debug("RevisionCache hit: root " + LogUtil.describe(rootEntry.getVcsRoot()) + (hasRevision ? "contains " : "doesn't contain ") + "revision " + revision);
+      return hasRevision;
     } else {
       LOG.debug("RevisionCache miss: root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + ", lookup commit in repository");
-      result = findCommit(context, revision) != null;
-      LOG.debug("Root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + (result ? " wasn't found " : " was found ") + ", cache the result");
-      repositoryCache.saveRevision(revision, result);
-      return result;
+      hasRevision = findCommit(context, revision) != null;
+      LOG.debug("Root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + (hasRevision ? " was found" : " wasn't found") + ", cache the result");
+      repositoryCache.saveRevision(revision, hasRevision);
+      return hasRevision;
     }
   }
 
