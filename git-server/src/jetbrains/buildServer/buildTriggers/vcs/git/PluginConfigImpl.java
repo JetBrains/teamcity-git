@@ -31,6 +31,7 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsPersonalSupport;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.commons.codec.Decoder;
+import org.apache.log4j.Layout;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.jetbrains.annotations.NotNull;
 
@@ -120,7 +121,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
       TObjectHashingStrategy.class,
       EncryptUtil.class,
       DiagnosticUtil.class,
-      FileUtil.class
+      FileUtil.class,
+      Layout.class
     ));
 
     Collections.addAll(clazzez, GitVcsSupport.class.getInterfaces());
