@@ -9,6 +9,7 @@
     </properties>
     <root id="root">
       <element id="directory" name="server">
+        <element id="library" level="project" name="jgit" />
         <element id="library" level="project" name="jsch-0.1.44" />
         <element id="artifact" artifact-name="git-server.jar" />
         <element id="artifact" artifact-name="git-server-tc.jar" />
