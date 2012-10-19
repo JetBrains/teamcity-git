@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.serverSide.impl.LogUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.util.filters.Filter;
@@ -67,9 +68,21 @@ public class GitMapFullPath {
       return Collections.emptySet();
     }
 
-    if (fullPath.containsRevision() && repositoryContainsRevision(context, rootEntry, fullPath.getRevision()))
-      return fullPath.getMappedPaths();
+    //match by revision
+    if (fullPath.containsRevision()) {
+      if (fullPath.containsHintRevision()) {
+        //if full path has a hint revision, first check if repository contains it;
+        //a hint revision should rarely change and most likely will be cached
+        if (repositoryContainsRevision(context, rootEntry, fullPath.getHintRevision())
+            && repositoryContainsRevision(context, rootEntry, fullPath.getRevision()))
+            return fullPath.getMappedPaths();
+      } else {
+        if (repositoryContainsRevision(context, rootEntry, fullPath.getRevision()))
+          return fullPath.getMappedPaths();
+      }
+    }
 
+    //match by url only if path doesn't have revision
     if (!fullPath.containsRevision() && urlsMatch(root, fullPath))
       return fullPath.getMappedPaths();
 
@@ -237,20 +250,33 @@ public class GitMapFullPath {
     }
   }
 
-
+  //Format: <hint revision>-<git revision hash>|<repository url>|<file relative path>
   private static class FullPath {
     private final String myPath;
     private final int myFirstSeparatorIdx;
     private final int myLastSeparatorIdx;
     private final boolean myValid;
     private final String myRevision;
+    private final String myHintRevision;
 
     private FullPath(@NotNull String path) {
       myPath = path;
       myFirstSeparatorIdx = path.indexOf("|");
       myLastSeparatorIdx = path.lastIndexOf("|");
       myValid = myFirstSeparatorIdx >= 0 && myLastSeparatorIdx > myFirstSeparatorIdx;
-      myRevision = myValid ? myPath.substring(0, myFirstSeparatorIdx).trim() : null;
+      Pair<String, String> revisions = parseRevisions();
+      myHintRevision = revisions.first;
+      myRevision = revisions.second;
+    }
+
+    private Pair<String, String> parseRevisions() {
+      if (!myValid)
+        return Pair.create(null, null);
+      String revisions = myPath.substring(0, myFirstSeparatorIdx).trim();
+      int idx = revisions.indexOf("-");
+      if (idx <= 0)
+        return Pair.create(null, revisions);
+      return Pair.create(revisions.substring(0, idx), revisions.substring(idx + 1, revisions.length()));
     }
 
     boolean isValid() {
@@ -268,6 +294,17 @@ public class GitMapFullPath {
       if (!myValid)
         throw new IllegalStateException("Invalid path " + myPath);
       return !isEmpty(myRevision);
+    }
+
+    @Nullable
+    String getHintRevision() {
+      return myHintRevision;
+    }
+
+    boolean containsHintRevision() {
+      if (!myValid)
+        throw new IllegalStateException("Invalid path " + myPath);
+      return myHintRevision != null;
     }
 
     @NotNull
