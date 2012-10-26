@@ -50,4 +50,6 @@ public interface MirrorManager {
 
 
   public Map<String, File> getMappings();
+
+  public long getLastUsedTime(@NotNull final File dir);
 }
