@@ -114,23 +114,9 @@ public final class RepositoryManagerImpl implements RepositoryManager {
   }
 
 
-  private long getLastUsedTime(@NotNull final File dir) {
-    File timestamp = new File(dir, "timestamp");
-    if (timestamp.exists()) {
-      try {
-        List<String> lines = FileUtil.readFile(timestamp);
-        if (lines.isEmpty())
-          return dir.lastModified();
-        else
-          return Long.valueOf(lines.get(0));
-      } catch (IOException e) {
-        return dir.lastModified();
-      }
-    } else {
-      return dir.lastModified();
-    }
+  public long getLastUsedTime(@NotNull File dir) {
+    return myMirrorManager.getLastUsedTime(dir);
   }
-
 
   @NotNull
   public Repository openRepository(@NotNull final URIish fetchUrl) throws VcsException {

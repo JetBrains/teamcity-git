@@ -96,6 +96,24 @@ public class MirrorManagerImpl implements MirrorManager {
   }
 
 
+  public long getLastUsedTime(@NotNull final File dir) {
+    File timestamp = new File(dir, "timestamp");
+    if (timestamp.exists()) {
+      try {
+        List<String> lines = FileUtil.readFile(timestamp);
+        if (lines.isEmpty())
+          return dir.lastModified();
+        else
+          return Long.valueOf(lines.get(0));
+      } catch (IOException e) {
+        return dir.lastModified();
+      }
+    } else {
+      return dir.lastModified();
+    }
+  }
+
+
   @NotNull
   private List<String> getUrlsMappedToDir(@NotNull final File dir) {
     synchronized (myLock) {
