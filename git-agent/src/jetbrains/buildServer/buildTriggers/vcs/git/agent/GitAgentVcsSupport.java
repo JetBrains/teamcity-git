@@ -41,16 +41,16 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private final SmartDirectoryCleaner myDirectoryCleaner;
   private final GitAgentSSHService mySshService;
   private final PluginConfigFactory myConfigFactory;
-  private final HashCalculator myHashCalculator;
+  private final MirrorManager myMirrorManager;
 
-  public GitAgentVcsSupport(@NotNull final SmartDirectoryCleaner directoryCleaner,
-                            @NotNull final GitAgentSSHService sshService,
-                            @NotNull final PluginConfigFactory configFactory,
-                            @NotNull final HashCalculator hashCalculator) {
+  public GitAgentVcsSupport(@NotNull SmartDirectoryCleaner directoryCleaner,
+                            @NotNull GitAgentSSHService sshService,
+                            @NotNull PluginConfigFactory configFactory,
+                            @NotNull MirrorManager mirrorManager) {
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
     myConfigFactory = configFactory;
-    myHashCalculator = hashCalculator;
+    myMirrorManager = mirrorManager;
   }
 
 
@@ -77,11 +77,10 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     validateCheckoutRules(root, rules);
     File targetDir = getTargetDir(root, rules, checkoutDirectory);
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, myHashCalculator);
     GitFactory gitFactory = new GitFactoryImpl(mySshService, config);
     Updater updater = config.isUseLocalMirrors() ?
-                      new UpdaterWithMirror(config, mirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir):
-                      new UpdaterImpl(config, mirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir);
+                      new UpdaterWithMirror(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir):
+                      new UpdaterImpl(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir);
     updater.update();
   }
 

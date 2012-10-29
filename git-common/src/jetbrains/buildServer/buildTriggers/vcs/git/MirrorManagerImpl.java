@@ -46,7 +46,7 @@ public class MirrorManagerImpl implements MirrorManager {
   private final HashCalculator myHashCalculator;
 
 
-  public MirrorManagerImpl(@NotNull final PluginConfig config, @NotNull HashCalculator hash) {
+  public MirrorManagerImpl(@NotNull MirrorConfig config, @NotNull HashCalculator hash) {
     myHashCalculator = hash;
     myBaseMirrorsDir = config.getCachesDir();
     myMapFile = new File(myBaseMirrorsDir, "map");

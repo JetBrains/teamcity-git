@@ -14,24 +14,24 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git;
+package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import jetbrains.buildServer.agent.BuildAgentConfiguration;
+import jetbrains.buildServer.buildTriggers.vcs.git.MirrorConfig;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 
-/**
- * @author dmitry.neverov
- */
-public interface PluginConfig extends MirrorConfig {
+public class AgentMirrorConfig implements MirrorConfig {
 
-  static int DEFAULT_IDLE_TIMEOUT = 600;
+  private final BuildAgentConfiguration myAgentConfig;
+
+  public AgentMirrorConfig(@NotNull BuildAgentConfiguration agentConfig) {
+    myAgentConfig = agentConfig;
+  }
 
   @NotNull
-  File getCachesDir();
-
-  int getIdleTimeoutSeconds();
-
-  String getPathToGit();
-
+  public File getCachesDir() {
+    return myAgentConfig.getCacheDirectory("git");
+  }
 }

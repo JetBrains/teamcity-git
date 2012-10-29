@@ -34,6 +34,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ListFilesTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVcsRootTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.MapFullPathTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentMirrorCleanerTest"/>
     </classes>
   </test>
 </suite>
