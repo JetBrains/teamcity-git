@@ -20,18 +20,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 
-/**
- * @author dmitry.neverov
- */
-public interface PluginConfig extends MirrorConfig {
-
-  static int DEFAULT_IDLE_TIMEOUT = 600;
+public interface MirrorConfig {
 
   @NotNull
   File getCachesDir();
-
-  int getIdleTimeoutSeconds();
-
-  String getPathToGit();
 
 }

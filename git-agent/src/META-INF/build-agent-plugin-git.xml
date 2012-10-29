@@ -9,5 +9,7 @@
   <bean id="agentStratupGitDetector" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentStartupGitDetector"/>
   <bean id="configFactory" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigFactoryImpl"/>
   <bean id="hashCalculator" class="jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl"/>
+  <bean id="mirrorConfig" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentMirrorConfig"/>
   <bean id="mirrorCleaner" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentMirrorCleaner"/>
+  <bean id="mirrorManager" class="jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl"/>
 </beans>
