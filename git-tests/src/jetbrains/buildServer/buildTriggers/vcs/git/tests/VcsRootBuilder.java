@@ -38,6 +38,7 @@ public class VcsRootBuilder {
   private AuthenticationMethod myAuthMethod;
   private String myPath;
   private String myAgentGitPath;
+  private boolean myAutoCrlf = false;
 
   public static VcsRootBuilder vcsRoot() {
     return new VcsRootBuilder();
@@ -66,6 +67,7 @@ public class VcsRootBuilder {
       result.addProperty(Constants.PATH, myPath);
     if (myAgentGitPath != null)
       result.addProperty(Constants.AGENT_GIT_PATH, myAgentGitPath);
+    result.addProperty(Constants.SERVER_SIDE_AUTO_CRLF, String.valueOf(myAutoCrlf));
     return result;
   }
 
@@ -123,6 +125,11 @@ public class VcsRootBuilder {
 
   public VcsRootBuilder withAgentGitPath(String agentGitPath) {
     myAgentGitPath = agentGitPath;
+    return this;
+  }
+
+  public VcsRootBuilder withAutoCrlf(boolean autoCrlf) {
+    myAutoCrlf = autoCrlf;
     return this;
   }
 }

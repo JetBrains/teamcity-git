@@ -101,4 +101,6 @@ public interface Constants {
   public static final String THREAD_DUMP_FILE = "THREAD_DUMP_FILE";
 
   public static final String USERNAME_FOR_TAGS = "userForTags";
+
+  public static final String SERVER_SIDE_AUTO_CRLF = "serverSideAutoCrlf";
 }

@@ -85,6 +85,4 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean verboseTreeWalkLog();
 
   int getMapFullPathRevisionCacheSize();
-
-  boolean respectAutocrlf();
 }

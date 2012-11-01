@@ -51,6 +51,7 @@ public class GitVcsRoot implements VcsRoot {
   private final AuthSettings myAuthSettings;
   private final String myUsernameForTags;
   private final String myBranchSpec;
+  private final boolean myAutoCrlf;
   private File myCustomRepositoryDir;
 
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root) throws VcsException {
@@ -72,6 +73,7 @@ public class GitVcsRoot implements VcsRoot {
     myRepositoryPushURLNoFixErrors = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURLNoFixErrors : myAuthSettings.createAuthURI(pushUrl, false);
     myUsernameForTags = getProperty(Constants.USERNAME_FOR_TAGS);
     myBranchSpec = getProperty(Constants.BRANCH_SPEC);
+    myAutoCrlf = Boolean.valueOf(getProperty(Constants.SERVER_SIDE_AUTO_CRLF, "false"));
   }
 
   public GitVcsRoot getRootForBranch(@NotNull String branch) throws VcsException {
@@ -139,6 +141,10 @@ public class GitVcsRoot implements VcsRoot {
              new File(myMirrorManager.getBaseMirrorsDir(), myCustomRepositoryDir.getPath());
     }
     return myMirrorManager.getMirrorDir(fetchUrl);
+  }
+
+  public boolean isAutoCrlf() {
+    return myAutoCrlf;
   }
 
   /**

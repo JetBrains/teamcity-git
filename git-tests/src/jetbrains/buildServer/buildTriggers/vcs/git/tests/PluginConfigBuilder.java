@@ -153,10 +153,6 @@ public class PluginConfigBuilder {
       public int getMapFullPathRevisionCacheSize() {
         return 100;
       }
-
-      public boolean respectAutocrlf() {
-        return myRespectAutocrlf;
-      }
     };
   }
 

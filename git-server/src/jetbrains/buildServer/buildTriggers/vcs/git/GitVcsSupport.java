@@ -583,6 +583,12 @@ public class GitVcsSupport extends ServerVcsSupport
     Map<String, String> repositoryProperties = new HashMap<String, String>();
     for (String key : repositoryPropertyKeys)
       repositoryProperties.put(key, rootProperties.get(key));
+
+    //include autocrlf settings only for non-default value
+    //in order to avoid clean checkout
+    if ("true".equals(rootProperties.get(Constants.SERVER_SIDE_AUTO_CRLF)))
+      repositoryProperties.put(Constants.SERVER_SIDE_AUTO_CRLF, rootProperties.get(Constants.SERVER_SIDE_AUTO_CRLF));
+
     return repositoryProperties;
   }
 }
