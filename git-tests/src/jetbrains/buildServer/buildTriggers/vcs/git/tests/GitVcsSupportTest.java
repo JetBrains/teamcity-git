@@ -761,25 +761,31 @@ public class GitVcsSupportTest extends PatchTestCase {
   @TestFor(issues = "TW-16530")
   @Test
   public void build_patch_should_respect_autocrlf() throws Exception {
-    VcsRoot root = vcsRoot().withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
-
-    //modify repository config to use core.autocrlf = true:
-    ServerPluginConfig config = myConfigBuilder.setRespectAutocrlf(true).build();
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    File repoDir = mirrorManager.getMirrorDir(myMainRepositoryDir.getAbsolutePath());
-    Repository db = new RepositoryBuilder().setBare().setGitDir(repoDir).build();
-    db.create(true);
-    StoredConfig repoConfig = db.getConfig();
-    repoConfig.setString(ConfigConstants.CONFIG_CORE_SECTION, null, "autocrlf", "true");
-    repoConfig.setString("teamcity", null, "remote", myMainRepositoryDir.getAbsolutePath());
-    repoConfig.save();
+    VcsRoot root = vcsRoot().withAutoCrlf(true).withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
 
     setExpectedSeparator("\r\n");
     checkPatch(root, "patch-eol", null, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", new CheckoutRules("-:dir"));
 
-    String content = new String(getSupport().getContentProvider()
-            .getContent("readme.txt", root, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"));
+    String content = new String(getSupport().getContentProvider().getContent("readme.txt", root, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"));
     assertEquals(content, "Test repository for teamcity.change 1\r\nadd feature\r\n");
+  }
+
+
+  @Test
+  public void default_autocrlf_should_not_be_included_in_checkout_properties() throws VcsException {
+    VcsRoot root = vcsRoot().withAutoCrlf(false).withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
+    Map<String, String> checkoutProperties = getSupport().getCheckoutProperties(root);
+    assertFalse(checkoutProperties.containsKey(Constants.SERVER_SIDE_AUTO_CRLF),
+                "Introduction of autocrlf cause clean checkout");
+  }
+
+
+  @Test
+  public void non_default_autocrlf_should_be_reported_in_checkout_properties() throws VcsException {
+    VcsRoot root = vcsRoot().withAutoCrlf(true).withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
+    Map<String, String> checkoutProperties = getSupport().getCheckoutProperties(root);
+    assertTrue(checkoutProperties.containsKey(Constants.SERVER_SIDE_AUTO_CRLF),
+               "Autocrlf is not reported in checkout properties");
   }
 
 

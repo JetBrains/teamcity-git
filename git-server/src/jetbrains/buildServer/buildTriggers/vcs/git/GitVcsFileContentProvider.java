@@ -83,7 +83,7 @@ public class GitVcsFileContentProvider implements VcsFileContentProvider {
         if (!tw.next()) {
           throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + gitRoot.debugInfo());
         }
-        final byte[] data = loadObject(r, tw, 0);
+        final byte[] data = loadObject(gitRoot, r, tw, 0);
         logFileContentLoaded(gitRoot, version, filePath, tw);
         return data;
       } finally {
@@ -125,11 +125,11 @@ public class GitVcsFileContentProvider implements VcsFileContentProvider {
    * @return loaded bytes
    * @throws IOException if there is an IO error
    */
-  private byte[] loadObject(Repository r, TreeWalk tw, final int nth) throws IOException {
+  private byte[] loadObject(@NotNull GitVcsRoot root, Repository r, TreeWalk tw, final int nth) throws IOException {
     ObjectId id = tw.getObjectId(nth);
     Repository objRep = getRepository(r, tw, nth);
     final String path = tw.getPathString();
-    return loadObject(objRep, path, id);
+    return loadObject(root, objRep, path, id);
   }
 
   /**
@@ -141,14 +141,13 @@ public class GitVcsFileContentProvider implements VcsFileContentProvider {
    * @return the object's bytes
    * @throws IOException in case of IO problem
    */
-  private byte[] loadObject(Repository r, String path, ObjectId id) throws IOException {
+  private byte[] loadObject(@NotNull GitVcsRoot root, Repository r, String path, ObjectId id) throws IOException {
     final ObjectLoader loader = r.open(id);
     if (loader == null) {
       throw new IOException("Unable to find blob " + id + (path == null ? "" : "(" + path + ")") + " in repository " + r);
     }
-    WorkingTreeOptions opt = r.getConfig().get(WorkingTreeOptions.KEY);
     ByteArrayOutputStream out = new ByteArrayOutputStream((int) loader.getSize());
-    OutputStream output = (myConfig.respectAutocrlf() && opt.getAutoCRLF() == CoreConfig.AutoCRLF.TRUE) ? new AutoCRLFOutputStream(out) : out;
+    OutputStream output = root.isAutoCrlf() ? new AutoCRLFOutputStream(out) : out;
     loader.copyTo(output);
     output.flush();
     return out.toByteArray();

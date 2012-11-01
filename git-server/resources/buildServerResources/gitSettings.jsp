@@ -136,6 +136,22 @@
   </l:settingsGroup>
   <l:settingsGroup title="Agent Settings">
     <tr>
+      <td colspan="2">Settings that are used in case of server-side checkout.</td>
+    </tr>
+    <tr>
+      <th>
+        <label for="serverSideAutoCrlf">Automatic CRLF conversion:</label>
+      </th>
+      <td>
+        <props:selectProperty name="serverSideAutoCrlf">
+          <props:option value="false">false</props:option>
+          <props:option value="true">true</props:option>
+        </props:selectProperty>
+      </td>
+    </tr>
+  </l:settingsGroup>
+  <l:settingsGroup title="Agent Settings">
+    <tr>
       <td colspan="2">Agent-specific settings that are used in case of agent checkout.<bs:help file="Git+(JetBrains)" anchor="agentSettings"/></td>
     </tr>
     <tr>
