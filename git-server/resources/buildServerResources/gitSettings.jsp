@@ -134,13 +134,13 @@
       <td><props:passwordProperty name="secure:passphrase"/></td>
     </tr>
   </l:settingsGroup>
-  <l:settingsGroup title="Agent Settings">
+  <l:settingsGroup title="Server Settings">
     <tr>
       <td colspan="2">Settings that are used in case of server-side checkout.</td>
     </tr>
     <tr>
       <th>
-        <label for="serverSideAutoCrlf">Convert line-endings to CRLF:</label>
+        <label for="serverSideAutoCrlf">Convert line-endings to CRLF:<bs:help file="Git+(JetBrains)" anchor="serverAutoCRLF"/></label>
       </th>
       <td>
         <props:checkboxProperty name="serverSideAutoCrlf"/>
