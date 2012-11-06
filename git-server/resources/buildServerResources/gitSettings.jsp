@@ -140,13 +140,10 @@
     </tr>
     <tr>
       <th>
-        <label for="serverSideAutoCrlf">Automatic CRLF conversion:</label>
+        <label for="serverSideAutoCrlf">Convert line-endings to CRLF:</label>
       </th>
       <td>
-        <props:selectProperty name="serverSideAutoCrlf">
-          <props:option value="false">false</props:option>
-          <props:option value="true">true</props:option>
-        </props:selectProperty>
+        <props:checkboxProperty name="serverSideAutoCrlf"/>
       </td>
     </tr>
   </l:settingsGroup>
