@@ -31,7 +31,6 @@ import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.RepositoryState;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
-import jetbrains.buildServer.vcs.patches.LowLevelPatchBuilder;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import jetbrains.buildServer.vcs.patches.PatchTestCase;
 import org.apache.log4j.Level;
@@ -41,8 +40,7 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevTag;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.LockFile;
-import org.eclipse.jgit.transport.RefSpec;
-import org.eclipse.jgit.transport.URIish;
+import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -92,9 +90,11 @@ public class GitVcsSupportTest extends PatchTestCase {
   private ResetCacheRegister myResetCacheManager;
   private ServerPaths myServerPaths;
   private File myRepoGitDir;
+  private Mockery myContext;
 
   @BeforeMethod
   public void setUp() throws IOException {
+    myContext = new Mockery();
     myTempFiles = new TempFiles();
     myServerPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
     myConfigBuilder = new PluginConfigBuilder(myServerPaths);
@@ -1389,6 +1389,74 @@ public class GitVcsSupportTest extends PatchTestCase {
     RepositoryState state2 = createRepositoryState(map("refs/heads/patch-tests", "27de3d118ca320d3a8a08320ff05aa0567996590"), "refs/heads/patch-tests");
     List<ModificationData> changes = getSupport().getCollectChangesPolicy().collectChanges(root1, state1, root2, state2, CheckoutRules.DEFAULT);
     assertEquals(changes.size(), 11);
+  }
+
+
+  @Test
+  @TestFor(issues = "TW-24084")
+  public void should_retry_getCurrentState_if_it_fails() throws Exception {
+    VcsRootImpl root = vcsRoot().withFetchUrl("ssh://some.org/repo.git")
+      .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_DEFAULT)
+      .build();
+
+    final FetchConnection connection = myContext.mock(FetchConnection.class);
+    final Ref masterRef = myContext.mock(Ref.class, "master");
+    final Ref topicRef = myContext.mock(Ref.class, "topic");
+    myContext.checking(new Expectations() {{
+      allowing(masterRef).getName(); will(returnValue("refs/heads/master"));
+      allowing(masterRef).getObjectId(); will(returnValue(ObjectId.fromString("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")));
+
+      allowing(topicRef).getName(); will(returnValue("refs/heads/topic"));
+      allowing(topicRef).getObjectId(); will(returnValue(ObjectId.fromString("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")));
+
+      allowing(connection).getRefsMap(); will(returnValue(map("refs/heads/master", masterRef, "refs/heads/topic", topicRef)));
+      allowing(connection).close();
+    }});
+
+    //setup TransportFactory so that it fails to get connection 2 times with well known exceptions
+    //and successfully gets it on the 3rd call
+    final AtomicInteger failCount = new AtomicInteger(0);
+    ServerPluginConfig config = myConfigBuilder.build();
+    TransportFactory transportFactory = new TransportFactoryImpl(config) {
+      @Override
+      public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull GitVcsRoot.AuthSettings authSettings)
+        throws NotSupportedException, VcsException {
+        return new Transport(r, url) {
+          @Override
+          public FetchConnection openFetch() throws NotSupportedException, TransportException {
+            if (failCount.get() == 0) {
+              failCount.incrementAndGet();
+              throw new TransportException("Session.connect: java.net.SocketException: Connection reset");
+            }
+            if (failCount.get() == 1) {
+              failCount.incrementAndGet();
+              throw new TransportException("com.jcraft.jsch.JSchException: connection is closed by foreign host");
+            }
+            return connection;
+          }
+
+          @Override
+          public PushConnection openPush() throws NotSupportedException, TransportException {
+            return null;
+          }
+
+          @Override
+          public void close() {
+          }
+        };
+      }
+    };
+
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
+    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
+    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
+    GitVcsSupport git = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCounter, repositoryManager, new GitMapFullPath(config), null);
+
+    RepositoryState state = git.getCurrentState(root);
+    assertEquals(state.getBranchRevisions(),
+                 map("refs/heads/master", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                     "refs/heads/topic",  "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
   }
 
 
