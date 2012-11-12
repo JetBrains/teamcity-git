@@ -225,4 +225,12 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public int getMapFullPathRevisionCacheSize() {
     return TeamCityProperties.getInteger("teamcity.git.map.full.path.revision.cache.size", 100);
   }
+
+  public long getConnectionRetryIntervalMillis() {
+    return TeamCityProperties.getInteger("teamcity.git.connectionRetryIntervalSeconds", 2) * 1000L;
+  }
+
+  public int getConnectionRetryAttempts() {
+    return TeamCityProperties.getInteger("teamcity.git.connectionRetryAttempts", 3);
+  }
 }

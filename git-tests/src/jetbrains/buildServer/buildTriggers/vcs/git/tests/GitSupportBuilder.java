@@ -37,7 +37,8 @@ public class GitSupportBuilder {
     if (myPluginConfigBuilder == null && myServerPaths == null)
       throw new IllegalStateException("Plugin config and server paths are not set");
     myPluginConfig = myPluginConfigBuilder != null ? myPluginConfigBuilder.build() : new PluginConfigImpl(myServerPaths);
-    myTransportFactory = new TransportFactoryImpl(myPluginConfig);
+    if (myTransportFactory == null)
+      myTransportFactory = new TransportFactoryImpl(myPluginConfig);
     if (myFetchCommand == null)
       myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory);
     myMirrorManager = new MirrorManagerImpl(myPluginConfig, new HashCalculatorImpl());
@@ -86,6 +87,11 @@ public class GitSupportBuilder {
     return this;
   }
 
+  public GitSupportBuilder withTransportFactory(@NotNull TransportFactory factory) {
+    myTransportFactory = factory;
+    return this;
+  }
+
   public RepositoryManager getRepositoryManager() {
     return myRepositoryManager;
   }
@@ -93,4 +99,5 @@ public class GitSupportBuilder {
   public GitMapFullPath getMapFullPath() {
     return myMapFullPath;
   }
+
 }

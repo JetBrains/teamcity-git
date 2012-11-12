@@ -153,6 +153,14 @@ public class PluginConfigBuilder {
       public int getMapFullPathRevisionCacheSize() {
         return 100;
       }
+
+      public long getConnectionRetryIntervalMillis() {
+        return myDelegate.getConnectionRetryIntervalMillis();
+      }
+
+      public int getConnectionRetryAttempts() {
+        return myDelegate.getConnectionRetryAttempts();
+      }
     };
   }
 

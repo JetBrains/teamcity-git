@@ -85,4 +85,8 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean verboseTreeWalkLog();
 
   int getMapFullPathRevisionCacheSize();
+
+  long getConnectionRetryIntervalMillis();
+
+  int getConnectionRetryAttempts();
 }
