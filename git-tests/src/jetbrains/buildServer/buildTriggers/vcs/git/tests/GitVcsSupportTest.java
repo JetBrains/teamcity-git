@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.TempFiles;
@@ -1441,11 +1442,11 @@ public class GitVcsSupportTest extends PatchTestCase {
           public FetchConnection openFetch() throws NotSupportedException, TransportException {
             if (failCount.get() == 0) {
               failCount.incrementAndGet();
-              throw new TransportException("Session.connect: java.net.SocketException: Connection reset");
+              throw new TransportException("Session.connect: java.net.SocketException: Connection reset", new JSchException("test"));
             }
             if (failCount.get() == 1) {
               failCount.incrementAndGet();
-              throw new TransportException("com.jcraft.jsch.JSchException: connection is closed by foreign host");
+              throw new TransportException("com.jcraft.jsch.JSchException: connection is closed by foreign host", new JSchException("test"));
             }
             return connection;
           }

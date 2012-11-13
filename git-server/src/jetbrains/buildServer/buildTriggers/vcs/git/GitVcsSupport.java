@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
+import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilder;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
@@ -471,8 +472,12 @@ public class GitVcsSupport extends ServerVcsSupport
     String message = e.getMessage();
     if (message == null)
       return false;
-    return message.contains("Session.connect: java.net.SocketException: Connection reset") ||
-           message.contains("com.jcraft.jsch.JSchException: connection is closed by foreign host");
+    Throwable cause = e.getCause();
+    if (cause instanceof JSchException) {
+      return message.contains("Session.connect: java.net.SocketException: Connection reset") ||
+             message.contains("connection is closed by foreign host");
+    }
+    return false;
   }
 
 
