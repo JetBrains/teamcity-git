@@ -230,12 +230,12 @@ public class GitVcsSupport extends ServerVcsSupport
           }
         }
         if (communityPluginFound) {
-          myDisplayName = "Git (Jetbrains plugin)";
+          myDisplayName = "Git (JetBrains plugin)";
         } else {
           myDisplayName = "Git";
         }
       } else {
-        myDisplayName = "Git (Jetbrains plugin)";
+        myDisplayName = "Git (JetBrains plugin)";
       }
     }
   }
