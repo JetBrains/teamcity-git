@@ -999,7 +999,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       allowing(anotherGitPluginCore).getName(); will(returnValue("git"));
     }});
     GitVcsSupport jetbrainsPlugin = getSupport(holder);
-    assertEquals(jetbrainsPlugin.getDisplayName(), "Git (Jetbrains plugin)");
+    assertEquals(jetbrainsPlugin.getDisplayName(), "Git (JetBrains plugin)");
   }
 
 
