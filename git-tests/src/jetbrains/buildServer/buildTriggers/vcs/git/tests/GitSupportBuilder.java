@@ -54,7 +54,10 @@ public class GitSupportBuilder {
       resetCacheManager = myResetCacheManager;
     }
     myMapFullPath = new GitMapFullPath(myPluginConfig);
-    return new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myFetchCommand, myRepositoryManager, myMapFullPath, myExtensionHolder, myExtensions);
+    GitVcsSupport git = new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myFetchCommand, myRepositoryManager, myMapFullPath);
+    git.setExtensions(myExtensions);
+    git.setExtensionHolder(myExtensionHolder);
+    return git;
   }
 
   public GitSupportBuilder withPluginConfig(@NotNull PluginConfigBuilder config) {

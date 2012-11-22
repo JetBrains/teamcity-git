@@ -28,6 +28,7 @@ import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsPersonalSupport;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.commons.codec.Decoder;
@@ -122,7 +123,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
       EncryptUtil.class,
       DiagnosticUtil.class,
       FileUtil.class,
-      Layout.class
+      Layout.class,
+      VcsException.class
     ));
 
     Collections.addAll(clazzez, GitVcsSupport.class.getInterfaces());

@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
+
 import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilder;
@@ -59,25 +60,22 @@ public class GitVcsSupport extends ServerVcsSupport
 
   private static final Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
-  private final ExtensionHolder myExtensionHolder;
+  private ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
   private final ServerPluginConfig myConfig;
   private final TransportFactory myTransportFactory;
   private final FetchCommand myFetchCommand;
   private final RepositoryManager myRepositoryManager;
   private final GitMapFullPath myMapFullPath;
-  private final Collection<GitServerExtension> myExtensions;
+  private Collection<GitServerExtension> myExtensions;
 
   public GitVcsSupport(@NotNull ServerPluginConfig config,
                        @NotNull ResetCacheRegister resetCacheManager,
                        @NotNull TransportFactory transportFactory,
                        @NotNull FetchCommand fetchCommand,
                        @NotNull RepositoryManager repositoryManager,
-                       @NotNull GitMapFullPath mapFullPath,
-                       @Nullable ExtensionHolder extensionHolder,
-                       @NotNull Collection<GitServerExtension> extensions) {
+                       @NotNull GitMapFullPath mapFullPath) {
     myConfig = config;
-    myExtensionHolder = extensionHolder;
     myTransportFactory = transportFactory;
     myFetchCommand = fetchCommand;
     myRepositoryManager = repositoryManager;
@@ -85,9 +83,15 @@ public class GitVcsSupport extends ServerVcsSupport
     setStreamFileThreshold();
     resetCacheManager.registerHandler(new GitResetCacheHandler(repositoryManager));
     myMapFullPath.setGitVcs(this);
-    myExtensions = extensions;
   }
 
+  public void setExtensionHolder(@Nullable ExtensionHolder extensionHolder) {
+    myExtensionHolder = extensionHolder;
+  }
+
+  public void setExtensions(@NotNull Collection<GitServerExtension> extensions) {
+    myExtensions = extensions;
+  }
 
   private void setStreamFileThreshold() {
     WindowCacheConfig cfg = new WindowCacheConfig();
@@ -126,10 +130,7 @@ public class GitVcsSupport extends ServerVcsSupport
       branchRevisions.put(ref.getName(), ref.getObjectId().name());
     }
     if (branchRevisions.get(fullRef) == null) {
-      VcsException e = new VcsException("Cannot find revision of the default branch '" +
-              refInRoot + "' of vcs root " + LogUtil.describe(root));
-      e.setRoot(root);
-      throw e;
+      throw new VcsException("Cannot find revision of the default branch '" + refInRoot + "' of vcs root " + LogUtil.describe(root));
     }
     return RepositoryStateData.createVersionState(fullRef, branchRevisions);
   }
