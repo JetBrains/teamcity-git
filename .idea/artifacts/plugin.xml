@@ -14,7 +14,6 @@
         <element id="artifact" artifact-name="git-server.jar" />
         <element id="artifact" artifact-name="git-server-tc.jar" />
         <element id="artifact" artifact-name="git-common.jar" />
-        <element id="file-copy" path="$PROJECT_DIR$/teamcity-plugin.dist.xml" />
       </element>
       <element id="directory" name="agent">
         <element id="artifact" artifact-name="agent.zip" />
