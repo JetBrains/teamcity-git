@@ -16,7 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleUpdateCommand;
 import jetbrains.buildServer.vcs.VcsException;
@@ -31,7 +31,7 @@ public class SubmoduleUpdateCommandImpl implements SubmoduleUpdateCommand {
 
   private final GitCommandLine myCmd;
   private boolean myUseNativeSsh;
-  private GitVcsRoot.AuthSettings myAuthSettings;
+  private AuthSettings myAuthSettings;
   private int myTimeout;
 
   public SubmoduleUpdateCommandImpl(@NotNull GitCommandLine cmd) {
@@ -45,7 +45,7 @@ public class SubmoduleUpdateCommandImpl implements SubmoduleUpdateCommand {
   }
 
   @NotNull
-  public SubmoduleUpdateCommand setAuthSettings(@NotNull GitVcsRoot.AuthSettings settings) {
+  public SubmoduleUpdateCommand setAuthSettings(@NotNull AuthSettings settings) {
     myAuthSettings = settings;
     return this;
   }

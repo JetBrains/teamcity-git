@@ -19,6 +19,8 @@
   <test name="Git Tests">
     <classes>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVcsSupportTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.TestConnectionTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AuthSettingsTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SubmoduleTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CleanerTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitUrlSupportTest"/>

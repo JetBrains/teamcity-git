@@ -17,7 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
 import jetbrains.buildServer.vcs.VcsException;
@@ -39,7 +39,7 @@ public class LsRemoteCommandImpl implements LsRemoteCommand {
 
   private GitCommandLine myCmd;
   private boolean myShowTags = false;
-  private GitVcsRoot.AuthSettings myAuthSettings;
+  private AuthSettings myAuthSettings;
   private boolean myUseNativeSsh = false;
 
   public LsRemoteCommandImpl(@NotNull GitCommandLine cmd) {
@@ -53,7 +53,7 @@ public class LsRemoteCommandImpl implements LsRemoteCommand {
   }
 
   @NotNull
-  public LsRemoteCommand setAuthSettings(@NotNull GitVcsRoot.AuthSettings authSettings) {
+  public LsRemoteCommand setAuthSettings(@NotNull AuthSettings authSettings) {
     myAuthSettings = authSettings;
     return this;
   }

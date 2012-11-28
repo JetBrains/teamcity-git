@@ -17,7 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.openapi.util.io.FileUtil;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.AskPassGenerator;
 import org.jetbrains.annotations.NotNull;
 
@@ -29,7 +29,7 @@ import java.io.PrintWriter;
 public class UnixAskPassGen implements AskPassGenerator {
 
   @NotNull
-  public File generate(@NotNull GitVcsRoot.AuthSettings authSettings) throws IOException {
+  public File generate(@NotNull AuthSettings authSettings) throws IOException {
     File script = FileUtil.createTempFile("pass", "");
     PrintWriter out = null;
     try {

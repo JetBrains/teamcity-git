@@ -16,7 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.vcs.VcsException;
@@ -35,7 +35,7 @@ public class FetchCommandImpl implements FetchCommand {
   private String myRefspec;
   private boolean myQuite;
   private boolean myShowProgress;
-  private GitVcsRoot.AuthSettings myAuthSettings;
+  private AuthSettings myAuthSettings;
   private Integer myDepth;
 
   public FetchCommandImpl(@NotNull GitCommandLine cmd) {
@@ -73,7 +73,7 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
   @NotNull
-  public FetchCommand setAuthSettings(@NotNull GitVcsRoot.AuthSettings settings) {
+  public FetchCommand setAuthSettings(@NotNull AuthSettings settings) {
     myAuthSettings = settings;
     return this;
   }

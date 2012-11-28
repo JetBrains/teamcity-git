@@ -16,7 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -25,6 +25,6 @@ import java.io.IOException;
 public interface AskPassGenerator {
 
   @NotNull
-  File generate(@NotNull GitVcsRoot.AuthSettings authSettings) throws IOException;
+  File generate(@NotNull AuthSettings authSettings) throws IOException;
 
 }

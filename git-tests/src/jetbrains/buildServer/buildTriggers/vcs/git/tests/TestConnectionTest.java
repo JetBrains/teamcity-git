@@ -121,13 +121,4 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
       assertTrue(e.getMessage().contains("pattern should not start with /"));
     }
   }
-
-
-  public void should_not_fail_when_password_is_empty() throws Exception {
-    VcsRoot root = vcsRoot().withFetchUrl("http://some.org/repository")
-      .withAuthMethod(AuthenticationMethod.PASSWORD)
-      .withUsername("user")
-      .build();
-    myGit.testConnection(root);
-  }
 }

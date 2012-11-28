@@ -1344,7 +1344,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     ServerPluginConfig config = myConfigBuilder.build();
     TransportFactory transportFactory = new TransportFactoryImpl(config) {
       @Override
-      public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull GitVcsRoot.AuthSettings authSettings)
+      public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings)
         throws NotSupportedException, VcsException {
         return new Transport(r, url) {
           @Override
@@ -1397,7 +1397,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       myDelegate = delegate;
     }
 
-    public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull GitVcsRoot.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+    public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
       myDelegate.fetch(db, fetchURI, refspecs, auth);
       inc();
     }

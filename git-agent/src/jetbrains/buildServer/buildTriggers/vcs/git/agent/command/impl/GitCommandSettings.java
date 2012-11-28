@@ -16,14 +16,14 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class GitCommandSettings {
 
   private Integer myTimeout = CommandUtil.DEFAULT_COMMAND_TIMEOUT_SEC;
-  private GitVcsRoot.AuthSettings myAuthSettings;
+  private AuthSettings myAuthSettings;
   private boolean myUseNativeSsh = false;
 
   public static GitCommandSettings with() {
@@ -35,7 +35,7 @@ public class GitCommandSettings {
     return this;
   }
 
-  public GitCommandSettings authSettings(@NotNull GitVcsRoot.AuthSettings authSettings) {
+  public GitCommandSettings authSettings(@NotNull AuthSettings authSettings) {
     myAuthSettings = authSettings;
     return this;
   }
@@ -50,7 +50,7 @@ public class GitCommandSettings {
   }
 
   @Nullable
-  public GitVcsRoot.AuthSettings getAuthSettings() {
+  public AuthSettings getAuthSettings() {
     return myAuthSettings;
   }
 
