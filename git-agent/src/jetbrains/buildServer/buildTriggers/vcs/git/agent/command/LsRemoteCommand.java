@@ -16,7 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
@@ -31,7 +31,7 @@ public interface LsRemoteCommand {
   LsRemoteCommand showTags();
 
   @NotNull
-  LsRemoteCommand setAuthSettings(@NotNull GitVcsRoot.AuthSettings authSettings);
+  LsRemoteCommand setAuthSettings(@NotNull AuthSettings authSettings);
 
   @NotNull
   LsRemoteCommand setUseNativeSsh(boolean useNativeSsh);

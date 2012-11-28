@@ -385,7 +385,7 @@ public class UpdaterImpl implements Updater {
   private void checkAuthMethodIsSupported() throws VcsException {
     if ("git".equals(myRoot.getRepositoryFetchURL().getScheme()))
       return;//anonymous protocol, don't check anything
-    GitVcsRoot.AuthSettings authSettings = myRoot.getAuthSettings();
+    AuthSettings authSettings = myRoot.getAuthSettings();
     switch (authSettings.getAuthMethod()) {
       case PASSWORD:
         if ("http".equals(myRoot.getRepositoryFetchURL().getScheme()) ||

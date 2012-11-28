@@ -311,7 +311,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
 
-  public void fetch(Repository db, URIish fetchURI, Collection<RefSpec> refspecs, GitVcsRoot.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+  public void fetch(Repository db, URIish fetchURI, Collection<RefSpec> refspecs, AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
     Lock rmLock = myRepositoryManager.getRmLock(repositoryDir).readLock();
@@ -336,7 +336,7 @@ public class GitVcsSupport extends ServerVcsSupport
    * @param refspec refspec
    * @param auth auth settings
    */
-  public void fetch(Repository db, URIish fetchURI, RefSpec refspec, GitVcsRoot.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+  public void fetch(Repository db, URIish fetchURI, RefSpec refspec, AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     fetch(db, fetchURI, Collections.singletonList(refspec), auth);
   }
 

@@ -153,88 +153,15 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   private GitVcsSupport getSupport(@Nullable ExtensionHolder holder) {
-    return gitSupport()
-      .withPluginConfig(myConfigBuilder)
-      .withExtensionHolder(holder)
+    return gitSupport().withPluginConfig(myConfigBuilder)
       .withResetCacheManager(myResetCacheManager)
+      .withExtensionHolder(holder)
       .build();
   }
 
 
   protected String getTestDataPath() {
     return dataFile().getPath();
-  }
-
-
-  @Test
-  public void testConnection() throws Exception {
-    GitVcsSupport support = getSupport();
-    VcsRoot root = getRoot("version-test");
-    support.testConnection(root);
-    try {
-      root = getRoot("no-such-branch");
-      support.testConnection(root);
-      fail("The connection should have failed");
-    } catch (VcsException ex) {
-      assertTrue(true);
-    }
-  }
-
-
-  // Tests work-around for TW-9933.
-  @TestFor(issues = "TW-9933")
-  @Test
-  public void test_not_existing_local_repository() {
-    File notExisting = new File(myTmpDir, "not-existing");
-    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
-    root.addProperty(Constants.FETCH_URL, GitUtils.toURL(notExisting));
-    try {
-      getSupport().testConnection(root);
-      fail("Should throw an exception for not-existing repository");
-    } catch (VcsException e) {
-      assertTrue(e.getMessage().contains("Cannot access repository"));
-      assertFalse(e.getMessage().endsWith("\n"));
-    }
-  }
-
-
-  @Test
-  public void testConnection_should_throw_exception_for_anonymous_git_url_with_username() throws Exception {
-    String url = "git://git@some.org/repository";
-    VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
-    root.addProperty(Constants.FETCH_URL, url);
-    try {
-      getSupport().testConnection(root);
-      fail("should fail, because native git fails for such url");
-    } catch (VcsException e) {
-      assertTrue(e.getMessage().contains("Incorrect url " + url + ": anonymous git url should not contain a username"));
-    }
-
-    //other operations should fail with another error message,
-    //that means old roots that have such urls and use server-side checkout will still work
-    try {
-      getSupport().collectChanges(root, MERGE_VERSION, AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION, CheckoutRules.DEFAULT);
-      fail("should fail, because no such root exists");
-    } catch (VcsException e) {
-      assertFalse(e.getMessage().contains("Incorrect url " + url + ": anonymous git url should not contain a username"));
-    }
-  }
-
-
-  @Test
-  public void testConnection_should_validate_branchSpec() throws Exception {
-    VcsRootImpl root = vcsRoot()
-      .withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
-      .withBranch("master")
-      .withBranchSpec("+:/refs/heads/*")
-      .build();
-
-    try {
-      getSupport().testConnection(root);
-      fail("Test connection should validate branchSpec");
-    } catch (VcsException e) {
-      assertTrue(e.getMessage().contains("pattern should not start with /"));
-    }
   }
 
 
@@ -1339,8 +1266,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test
   public void getCurrentVersion_should_not_do_fetch() throws Exception {
     ServerPluginConfig config = myConfigBuilder.build();
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config));
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
 
@@ -1435,7 +1361,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     ServerPluginConfig config = myConfigBuilder.build();
     TransportFactory transportFactory = new TransportFactoryImpl(config) {
       @Override
-      public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull GitVcsRoot.AuthSettings authSettings)
+      public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings)
         throws NotSupportedException, VcsException {
         return new Transport(r, url) {
           @Override
@@ -1463,9 +1389,12 @@ public class GitVcsSupportTest extends PatchTestCase {
       }
     };
 
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
+    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport()
       .withPluginConfig(myConfigBuilder)
       .withTransportFactory(transportFactory)
+      .withFetchCommand(fetchCounter)
       .build();
 
     RepositoryStateData state = git.getCurrentState(root);
@@ -1484,7 +1413,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       myDelegate = delegate;
     }
 
-    public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull GitVcsRoot.AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+    public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
       myDelegate.fetch(db, fetchURI, refspecs, auth);
       inc();
     }

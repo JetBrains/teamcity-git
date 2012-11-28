@@ -1,3 +1,19 @@
+/*
+ * Copyright 2000-2012 JetBrains s.r.o.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.ExtensionHolder;
@@ -9,6 +25,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
+import org.jmock.lib.legacy.ClassImposteriser;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,9 +51,10 @@ public class GitSupportBuilder {
 
   @NotNull
   public GitVcsSupport build() {
-    if (myPluginConfigBuilder == null && myServerPaths == null)
-      throw new IllegalStateException("Plugin config and server paths are not set");
-    myPluginConfig = myPluginConfigBuilder != null ? myPluginConfigBuilder.build() : new PluginConfigImpl(myServerPaths);
+    if (myPluginConfigBuilder == null && myServerPaths == null && myPluginConfig == null)
+      throw new IllegalStateException("Plugin config or server paths should be set");
+    if (myPluginConfig == null)
+      myPluginConfig = myPluginConfigBuilder != null ? myPluginConfigBuilder.build() : new PluginConfigImpl(myServerPaths);
     if (myTransportFactory == null)
       myTransportFactory = new TransportFactoryImpl(myPluginConfig);
     if (myFetchCommand == null)
@@ -46,6 +64,7 @@ public class GitSupportBuilder {
     final ResetCacheRegister resetCacheManager;
     if (myResetCacheManager == null) {
       Mockery context = new Mockery();
+      context.setImposteriser(ClassImposteriser.INSTANCE);
       resetCacheManager = context.mock(ResetCacheRegister.class);
       context.checking(new Expectations() {{
         allowing(resetCacheManager).registerHandler(with(any(ResetCacheHandler.class)));
@@ -62,6 +81,11 @@ public class GitSupportBuilder {
 
   public GitSupportBuilder withPluginConfig(@NotNull PluginConfigBuilder config) {
     myPluginConfigBuilder = config;
+    return this;
+  }
+
+  public GitSupportBuilder withPluginConfig(@NotNull ServerPluginConfig config) {
+    myPluginConfig = config;
     return this;
   }
 
@@ -90,6 +114,10 @@ public class GitSupportBuilder {
     return this;
   }
 
+  public GitSupportBuilder withRepositoryManager(@NotNull RepositoryManager repositoryManager) {
+    return this;
+  }
+
   public GitSupportBuilder withTransportFactory(@NotNull TransportFactory factory) {
     myTransportFactory = factory;
     return this;
@@ -102,5 +130,4 @@ public class GitSupportBuilder {
   public GitMapFullPath getMapFullPath() {
     return myMapFullPath;
   }
-
 }

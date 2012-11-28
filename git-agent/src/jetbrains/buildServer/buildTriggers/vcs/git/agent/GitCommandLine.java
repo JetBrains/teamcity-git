@@ -19,14 +19,13 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.AskPassGenerator;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.SshHandler;
 import jetbrains.buildServer.vcs.VcsException;
-import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -49,7 +48,7 @@ public class GitCommandLine extends GeneralCommandLine {
   }
 
   public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
-    GitVcsRoot.AuthSettings authSettings = settings.getAuthSettings();
+    AuthSettings authSettings = settings.getAuthSettings();
     if (authSettings != null) {
       if (mySsh == null)
         throw new IllegalStateException("Ssh is not initialized");

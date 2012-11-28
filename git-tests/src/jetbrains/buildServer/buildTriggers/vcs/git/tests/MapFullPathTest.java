@@ -45,6 +45,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
@@ -81,8 +82,8 @@ public class MapFullPathTest {
     copyRepository(dataFile("repo.git"), myRemoteRepositoryDir2);
 
     ServerPaths paths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    GitSupportBuilder gitBuilder = new GitSupportBuilder();
-    myGit = gitBuilder.withServerPaths(paths).build();
+    GitSupportBuilder gitBuilder = gitSupport().withServerPaths(paths);
+    myGit = gitBuilder.build();
     myMapFullPath = gitBuilder.getMapFullPath();
     myRoot = vcsRoot().withFetchUrl(myRemoteRepositoryDir.getAbsolutePath()).build();
     myRootEntry = new VcsRootEntry(myRoot, CheckoutRules.DEFAULT);

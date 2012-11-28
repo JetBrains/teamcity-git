@@ -63,8 +63,7 @@ public class ListFilesTest {
   @BeforeMethod
   public void setUp() throws Exception {
     myTempFiles = new TempFiles();
-    ServerPaths serverPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    myGit = gitSupport().withServerPaths(serverPaths).build();
+    myGit = gitSupport().withServerPaths(new ServerPaths(myTempFiles.createTempDir().getAbsolutePath())).build();
     File remoteRepositoryDir = new File(myTempFiles.createTempDir(), "repo.git");
     FileUtil.copyDir(dataFile("repo.git"), remoteRepositoryDir);
     myRoot = vcsRoot().withFetchUrl(remoteRepositoryDir.getAbsolutePath()).withBranch("patch-tests").build();

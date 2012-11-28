@@ -54,14 +54,13 @@ import static org.testng.Assert.*;
 public class SubmoduleTest {
 
   private static TempFiles myTempFiles = new TempFiles();
-  private ServerPaths myServerPaths;
   private GitVcsSupport myGitSupport;
 
   @BeforeMethod
   public void setUp() throws IOException {
-    File teamcitySystemDir = myTempFiles.createTempDir();
-    myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
-    myGitSupport = gitSupport().withServerPaths(myServerPaths).build();
+    File dotBuildServer = myTempFiles.createTempDir();
+    ServerPaths serverPaths = new ServerPaths(dotBuildServer.getAbsolutePath());
+    myGitSupport = gitSupport().withServerPaths(serverPaths).build();
   }
 
   @AfterMethod

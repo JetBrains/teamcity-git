@@ -43,6 +43,6 @@ public interface FetchCommand {
    * @throws TransportException
    * @throws VcsException
    */
-  public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull GitVcsRoot.AuthSettings auth) throws NotSupportedException, TransportException, VcsException;
+  public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull AuthSettings auth) throws NotSupportedException, TransportException, VcsException;
 
 }

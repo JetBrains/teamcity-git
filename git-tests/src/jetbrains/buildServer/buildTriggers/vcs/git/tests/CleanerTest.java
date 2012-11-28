@@ -38,6 +38,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
+
 /**
  * @author dmitry.neverov
  */
@@ -53,24 +55,23 @@ public class CleanerTest extends BaseTestCase {
 
   @BeforeMethod
   public void setUp() throws IOException {
-    File dotBuildServer = ourTempFiles.createTempDir();
-    ServerPaths myServerPaths = new ServerPaths(dotBuildServer.getAbsolutePath());
-    PluginConfigBuilder myConfigBuilder = new PluginConfigBuilder(myServerPaths)
+    ServerPaths paths = new ServerPaths(ourTempFiles.createTempDir().getAbsolutePath());
+    PluginConfigBuilder configBuilder = new PluginConfigBuilder(paths)
       .setRunNativeGC(true)
-      .setMirrorExpirationTimeoutMillis(10000);
-    if (System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH) != null)
-      myConfigBuilder.setPathToGit(System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH));
+      .setMirrorExpirationTimeoutMillis(5000);
 
-    Mockery myContext = new Mockery();
+    if (System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH) != null)
+      configBuilder.setPathToGit(System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH));
+
+    final Mockery context = new Mockery();
     myCleanExecutor = Executors.newSingleThreadScheduledExecutor();
-    final ExecutorServices server = myContext.mock(ExecutorServices.class);
-    myContext.checking(new Expectations() {{
-      allowing(server).getNormalExecutorService();
-      will(returnValue(myCleanExecutor));
+    final ExecutorServices server = context.mock(ExecutorServices.class);
+    context.checking(new Expectations() {{
+      allowing(server).getNormalExecutorService(); will(returnValue(myCleanExecutor));
     }});
-    myConfig = myConfigBuilder.build();
-    GitSupportBuilder gitBuilder = new GitSupportBuilder();
-    mySupport = gitBuilder.withPluginConfig(myConfigBuilder).build();
+    myConfig = configBuilder.build();
+    GitSupportBuilder gitBuilder = gitSupport().withPluginConfig(myConfig);
+    mySupport = gitBuilder.build();
     myRepositoryManager = gitBuilder.getRepositoryManager();
     myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), myConfig, myRepositoryManager);
   }
@@ -85,7 +86,7 @@ public class CleanerTest extends BaseTestCase {
     File baseMirrorsDir = myRepositoryManager.getBaseMirrorsDir();
     generateGarbage(baseMirrorsDir);
 
-    Thread.sleep(myConfig.getMirrorExpirationTimeoutMillis());
+    Thread.sleep(2 * myConfig.getMirrorExpirationTimeoutMillis());
 
     final VcsRoot root = GitTestUtil.getVcsRoot();
     mySupport.getCurrentVersion(root);//it will create dir in cache directory
