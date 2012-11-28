@@ -34,6 +34,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.Collection;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.ListFilesTest.VcsFileDataMatcher.vcsDir;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.ListFilesTest.VcsFileDataMatcher.vcsFile;
@@ -59,13 +60,7 @@ public class ListFilesTest {
   @BeforeMethod
   public void setUp() throws Exception {
     myTempFiles = new TempFiles();
-    ServerPaths serverPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    ServerPluginConfig config = new PluginConfigBuilder(serverPaths).build();
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    myGit = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCommand, repositoryManager, new GitMapFullPath(config), null);
+    myGit = gitSupport().withServerPaths(new ServerPaths(myTempFiles.createTempDir().getAbsolutePath())).build();
     File remoteRepositoryDir = new File(myTempFiles.createTempDir(), "repo.git");
     FileUtil.copyDir(dataFile("repo.git"), remoteRepositoryDir);
     myRoot = vcsRoot().withFetchUrl(remoteRepositoryDir.getAbsolutePath()).withBranch("patch-tests").build();

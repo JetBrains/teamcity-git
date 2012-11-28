@@ -34,6 +34,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static org.testng.AssertJUnit.assertEquals;
 
@@ -82,7 +83,7 @@ public class BranchSupportTest {
     final String originalRootVersion = "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f";
     final String substitutionRootVersion = "1391281d33a83a7205f2f05d3eb64c349c636e87";
 
-    GitVcsSupport vcsSupport = getSupport();
+    GitVcsSupport vcsSupport = gitSupport().withServerPaths(myServerPaths).build();
     List<ModificationData> changes = vcsSupport.collectChanges(originalRoot, originalRootVersion, substitutionRoot, substitutionRootVersion, new CheckoutRules(""));
 
     assertEquals(1, changes.size());
@@ -96,14 +97,5 @@ public class BranchSupportTest {
     root.addProperty(Constants.FETCH_URL, GitUtils.toURL(myRepositoryDir));
     root.addProperty(Constants.BRANCH_NAME, branchName);
     return root;
-  }
-
-  private GitVcsSupport getSupport() {
-    PluginConfigImpl config = new PluginConfigImpl(myServerPaths);
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    return new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCommand, repositoryManager, new GitMapFullPath(config), null);
   }
 }

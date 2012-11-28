@@ -39,6 +39,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
+
 /**
  * @author dmitry.neverov
  */
@@ -54,27 +56,24 @@ public class CleanerTest extends BaseTestCase {
 
   @BeforeMethod
   public void setUp() throws IOException {
-    File dotBuildServer = ourTempFiles.createTempDir();
-    ServerPaths myServerPaths = new ServerPaths(dotBuildServer.getAbsolutePath());
-    PluginConfigBuilder myConfigBuilder = new PluginConfigBuilder(myServerPaths)
+    ServerPaths paths = new ServerPaths(ourTempFiles.createTempDir().getAbsolutePath());
+    PluginConfigBuilder configBuilder = new PluginConfigBuilder(paths)
       .setRunNativeGC(true)
-      .setMirrorExpirationTimeoutMillis(10000);
-    if (System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH) != null)
-      myConfigBuilder.setPathToGit(System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH));
+      .setMirrorExpirationTimeoutMillis(5000);
 
-    Mockery myContext = new Mockery();
+    if (System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH) != null)
+      configBuilder.setPathToGit(System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH));
+
+    Mockery context = new Mockery();
     myCleanExecutor = Executors.newSingleThreadScheduledExecutor();
-    final SBuildServer server = myContext.mock(SBuildServer.class);
-    myContext.checking(new Expectations() {{
-      allowing(server).getExecutor();
-      will(returnValue(myCleanExecutor));
+    final SBuildServer server = context.mock(SBuildServer.class);
+    context.checking(new Expectations() {{
+      allowing(server).getExecutor(); will(returnValue(myCleanExecutor));
     }});
-    myConfig = myConfigBuilder.build();
-    TransportFactory transportFactory = new TransportFactoryImpl(myConfig);
-    FetchCommand fetchCommand = new FetchCommandImpl(myConfig, transportFactory);
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl());
-    myRepositoryManager = new RepositoryManagerImpl(myConfig, mirrorManager);
-    mySupport = new GitVcsSupport(myConfig, new ResetCacheRegister(), transportFactory, fetchCommand, myRepositoryManager, new GitMapFullPath(myConfig), null);
+    myConfig = configBuilder.build();
+    GitSupportBuilder gitBuilder = gitSupport().withPluginConfig(myConfig);
+    mySupport = gitBuilder.build();
+    myRepositoryManager = gitBuilder.getRepositoryManager();
     myCleaner = new Cleaner(server, EventDispatcher.create(BuildServerListener.class), myConfig, myRepositoryManager);
   }
 
@@ -88,7 +87,7 @@ public class CleanerTest extends BaseTestCase {
     File baseMirrorsDir = myRepositoryManager.getBaseMirrorsDir();
     generateGarbage(baseMirrorsDir);
 
-    Thread.sleep(myConfig.getMirrorExpirationTimeoutMillis());
+    Thread.sleep(2 * myConfig.getMirrorExpirationTimeoutMillis());
 
     final VcsRoot root = GitTestUtil.getVcsRoot();
     mySupport.getCurrentVersion(root);//it will create dir in cache directory

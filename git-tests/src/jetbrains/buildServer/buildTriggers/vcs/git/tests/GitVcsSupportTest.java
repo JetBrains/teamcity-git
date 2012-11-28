@@ -61,6 +61,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
@@ -150,12 +151,10 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   private GitVcsSupport getSupport(@Nullable ExtensionHolder holder) {
-    ServerPluginConfig config = myConfigBuilder.build();
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    return new GitVcsSupport(config, myResetCacheManager, transportFactory, fetchCommand, repositoryManager, new GitMapFullPath(config), holder);
+    return gitSupport().withPluginConfig(myConfigBuilder)
+      .withResetCacheManager(myResetCacheManager)
+      .withExtensionHolder(holder)
+      .build();
   }
 
 
@@ -1322,12 +1321,9 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test
   public void getCurrentVersion_should_not_do_fetch() throws Exception {
     ServerPluginConfig config = myConfigBuilder.build();
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config));
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    GitVcsSupport git = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCounter, repositoryManager, new GitMapFullPath(config), null);
+    GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withFetchCommand(fetchCounter).build();
 
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
     copyRepository(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
@@ -1450,9 +1446,12 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    GitVcsSupport git = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCounter, repositoryManager, new GitMapFullPath(config), null);
+    GitVcsSupport git = gitSupport()
+      .withPluginConfig(myConfigBuilder)
+      .withTransportFactory(transportFactory)
+      .withFetchCommand(fetchCounter)
+      .build();
+
 
     RepositoryState state = git.getCurrentState(root);
     assertEquals(state.getBranchRevisions(),

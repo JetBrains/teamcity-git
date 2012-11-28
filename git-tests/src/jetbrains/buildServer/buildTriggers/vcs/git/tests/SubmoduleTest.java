@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIteratorFactory.create;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static org.testng.Assert.*;
 
@@ -50,19 +51,13 @@ import static org.testng.Assert.*;
 public class SubmoduleTest {
 
   private static TempFiles myTempFiles = new TempFiles();
-  private ServerPaths myServerPaths;
   private GitVcsSupport myGitSupport;
 
   @BeforeMethod
   public void setUp() throws IOException {
-    File teamcitySystemDir = myTempFiles.createTempDir();
-    myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
-    final PluginConfigImpl config = new PluginConfigImpl(myServerPaths);
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    myGitSupport = new GitVcsSupport(config, new ResetCacheRegister(), transportFactory, fetchCommand, repositoryManager, new GitMapFullPath(config), null);
+    File dotBuildServer = myTempFiles.createTempDir();
+    ServerPaths serverPaths = new ServerPaths(dotBuildServer.getAbsolutePath());
+    myGitSupport = gitSupport().withServerPaths(serverPaths).build();
   }
 
   @AfterMethod
