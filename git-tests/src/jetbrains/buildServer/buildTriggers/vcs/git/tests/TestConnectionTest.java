@@ -17,23 +17,31 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.eclipse.jgit.errors.NotSupportedException;
+import org.eclipse.jgit.errors.TransportException;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
+import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.Collection;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.PluginConfigBuilder.pluginConfig;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
@@ -120,5 +128,43 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
     } catch (VcsException e) {
       assertTrue(e.getMessage().contains("pattern should not start with /"));
     }
+  }
+
+
+  public void testConnection_should_not_be_blocked_by_long_fetch() throws Exception {
+    PluginConfigBuilder config = pluginConfig().withDotBuildServerDir(myTempFiles.createTempDir()).setSeparateProcessForFetch(false);
+
+    final Semaphore fetchStarted = new Semaphore(1);
+    final Semaphore fetchCanFinish = new Semaphore(1);
+
+    final GitVcsSupport git = gitSupport()
+      .withBeforeFetchHook(new Runnable() {
+        public void run() {
+          fetchStarted.release();
+          fetchCanFinish.acquireUninterruptibly();
+        }
+      })
+      .withPluginConfig(config)
+      .build();
+
+    final VcsRoot root = vcsRoot().withFetchUrl(getRemoteRepositoryUrl("repo.git")).build();
+
+    fetchStarted.acquireUninterruptibly();//don't allow fetch to start
+    fetchCanFinish.acquireUninterruptibly();//don't allow fetch to finish
+
+    Thread longFetch = new Thread(new Runnable() {
+      public void run() {
+        try {
+          git.collectChanges(root, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7", CheckoutRules.DEFAULT);
+        } catch (VcsException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    longFetch.start();
+
+    Assert.assertTrue(fetchStarted.tryAcquire(10, TimeUnit.SECONDS));
+    git.testConnection(root);//test connection during long fetch
+    fetchCanFinish.release();//allow fetch to finish
   }
 }
