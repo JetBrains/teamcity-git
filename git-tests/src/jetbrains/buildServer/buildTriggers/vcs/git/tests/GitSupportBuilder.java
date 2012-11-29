@@ -21,6 +21,12 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
+import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.errors.NotSupportedException;
+import org.eclipse.jgit.errors.TransportException;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
@@ -28,6 +34,7 @@ import org.jmock.Mockery;
 import org.jmock.lib.legacy.ClassImposteriser;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -38,6 +45,7 @@ public class GitSupportBuilder {
   private ExtensionHolder myExtensionHolder;
   private ResetCacheRegister myResetCacheManager;
   private FetchCommand myFetchCommand;
+  private Runnable myBeforeFetchHook;
   private ServerPaths myServerPaths;
   private RepositoryManager myRepositoryManager;
   private TransportFactory myTransportFactory;
@@ -57,8 +65,23 @@ public class GitSupportBuilder {
       myPluginConfig = myPluginConfigBuilder != null ? myPluginConfigBuilder.build() : new PluginConfigImpl(myServerPaths);
     if (myTransportFactory == null)
       myTransportFactory = new TransportFactoryImpl(myPluginConfig);
-    if (myFetchCommand == null)
-      myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory);
+    if (myFetchCommand == null) {
+      if (myBeforeFetchHook == null) {
+        myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory);
+      } else {
+        final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory);
+        myFetchCommand = new FetchCommand() {
+          public void fetch(@NotNull Repository db,
+                            @NotNull URIish fetchURI,
+                            @NotNull Collection<RefSpec> refspecs,
+                            @NotNull AuthSettings auth)
+            throws NotSupportedException, TransportException, VcsException {
+            myBeforeFetchHook.run();
+            originalCommand.fetch(db, fetchURI, refspecs, auth);
+          }
+        };
+      }
+    }
     myMirrorManager = new MirrorManagerImpl(myPluginConfig, new HashCalculatorImpl());
     myRepositoryManager = new RepositoryManagerImpl(myPluginConfig, myMirrorManager);
     final ResetCacheRegister resetCacheManager;
@@ -114,7 +137,8 @@ public class GitSupportBuilder {
     return this;
   }
 
-  public GitSupportBuilder withRepositoryManager(@NotNull RepositoryManager repositoryManager) {
+  public GitSupportBuilder withBeforeFetchHook(@NotNull Runnable beforeFetchHook) {
+    myBeforeFetchHook = beforeFetchHook;
     return this;
   }
 

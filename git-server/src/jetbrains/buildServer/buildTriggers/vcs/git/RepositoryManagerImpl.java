@@ -65,6 +65,7 @@ public final class RepositoryManagerImpl implements RepositoryManager {
    */
   private final ConcurrentMap<File, ReadWriteLock> myRmLocks = new ConcurrentHashMap<File, ReadWriteLock>();
 
+  private final ConcurrentMap<File, Object> myUpdateLastUsedTimeLocks = new ConcurrentHashMap<File, Object>();
 
   public RepositoryManagerImpl(@NotNull final ServerPluginConfig config, @NotNull final MirrorManager mirrorManager) {
     myExpirationTimeout = config.getMirrorExpirationTimeoutMillis();
@@ -170,7 +171,7 @@ public final class RepositoryManagerImpl implements RepositoryManager {
     Lock rmLock = getRmLock(dir).readLock();
     try {
       rmLock.lock();
-      synchronized (getWriteLock(dir)) {
+      synchronized (getUpdateLastUsedTimeLock(dir)) {
         File timestamp = new File(dir, "timestamp");
         if (!dir.exists() && !dir.mkdirs())
           throw new IOException("Cannot create directory " + dir.getAbsolutePath());
@@ -189,6 +190,17 @@ public final class RepositoryManagerImpl implements RepositoryManager {
   private boolean isDefaultMirrorDir(@NotNull final File dir) {
     File baseDir = myMirrorManager.getBaseMirrorsDir();
     return baseDir.equals(dir.getParentFile());
+  }
+
+
+  @NotNull
+  private Object getUpdateLastUsedTimeLock(@NotNull File dir) {
+    try {
+      File canonical = dir.getCanonicalFile();
+      return getOrCreate(myUpdateLastUsedTimeLocks, canonical, new Object());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
 

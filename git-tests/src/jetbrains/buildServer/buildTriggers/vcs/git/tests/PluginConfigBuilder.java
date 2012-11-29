@@ -32,7 +32,7 @@ import java.util.List;
  */
 public class PluginConfigBuilder {
 
-  private final PluginConfigImpl myDelegate;
+  private PluginConfigImpl myDelegate;
   private Integer myStreamFileThreshold;
   private Integer myFetchTimeout;
   private Boolean mySeparateProcessForFetch;
@@ -46,13 +46,24 @@ public class PluginConfigBuilder {
   private Long myMirrorExpirationTimeoutMillis;
   private int myNumberOfCommitsWhenFromVersionNotFound = -1;
   private boolean myRespectAutocrlf = false;
+  private ServerPaths myPaths;
+  private File myDotBuildServerDir;
 
-  public PluginConfigBuilder(@NotNull ServerPaths paths) {
-    myDelegate = new PluginConfigImpl(paths);
+  public static PluginConfigBuilder pluginConfig() {
+    return new PluginConfigBuilder();
   }
 
+  public PluginConfigBuilder() {
+  }
+
+  public PluginConfigBuilder(@NotNull ServerPaths paths) {
+    myPaths = paths;
+  }
 
   public ServerPluginConfig build() {
+    if (myPaths == null && myDotBuildServerDir == null)
+      throw new IllegalArgumentException("Either ServerPaths or .BuildServer dir must be set");
+    myDelegate = myPaths != null ? new PluginConfigImpl(myPaths) : new PluginConfigImpl(new ServerPaths(myDotBuildServerDir.getAbsolutePath()));
     return new ServerPluginConfig() {
       @NotNull
       public File getCachesDir() {
@@ -255,4 +266,15 @@ public class PluginConfigBuilder {
     myRespectAutocrlf = doRespect;
     return this;
   }
+
+  public PluginConfigBuilder withServerPaths(@NotNull ServerPaths paths) {
+    myPaths = paths;
+    return this;
+  }
+
+  public PluginConfigBuilder withDotBuildServerDir(@NotNull File dotBuildServer) {
+    myDotBuildServerDir = dotBuildServer;
+    return this;
+  }
+
 }
