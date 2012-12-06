@@ -71,7 +71,7 @@ public class TestConnectionCommand {
       } catch (NotSupportedException nse) {
         throw friendlyNotSupportedException(root, nse);
       } catch (TransportException te) {
-        throw friendlyTransportException(te);
+        throw friendlyTransportException(te, root);
       }
     } finally {
       if (repositoryTempDir != null) {

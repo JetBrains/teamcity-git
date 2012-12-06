@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.JGitText;
@@ -158,14 +159,28 @@ public class GitServerUtil {
   }
 
 
-  public static Exception friendlyTransportException(TransportException te) {
+  public static Exception friendlyTransportException(@NotNull TransportException te, @NotNull GitVcsRoot root) {
     if (isUnknownHostKeyError(te)) {
       String originalMessage = te.getMessage();
       String message = originalMessage + ". Add this host to a known hosts database or check option 'Ignore Known Hosts Database'.";
       return new VcsException(message, te);
+    } else if (root.isOnGithub() &&
+               root.isSsh() &&
+               isAuthError(te) &&
+               !"git".equals(root.getAuthSettings().getUserName())) {
+      String message = "Wrong username: '" + root.getAuthSettings().getUserName() + "', github expects a username 'git'";
+      return new VcsException(message, te);
     } else {
       return te;
     }
+  }
+
+
+  private static boolean isAuthError(@NotNull TransportException e) {
+    Throwable cause = e.getCause();
+    return cause instanceof JSchException &&
+           ("Auth fail".equals(cause.getMessage()) ||
+            "session is down".equals(cause.getMessage()));
   }
 
 

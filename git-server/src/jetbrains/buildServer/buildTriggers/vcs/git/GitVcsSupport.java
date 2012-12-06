@@ -455,7 +455,7 @@ public class GitVcsSupport extends ServerVcsSupport
         if (isRecoverable(te) && attemptsLeft > 0) {
           LOG.warn("List remote refs failed: " + te.getMessage() + ", " + attemptsLeft + " attempt(s) left");
         } else {
-          throw friendlyTransportException(te);
+          throw friendlyTransportException(te, gitRoot);
         }
       } finally {
         if (connection != null)

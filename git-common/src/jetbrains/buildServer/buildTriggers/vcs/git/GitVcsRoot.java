@@ -186,6 +186,7 @@ public class GitVcsRoot implements VcsRoot {
     return myRepositoryPushURLNoFixErrors;
   }
 
+  @NotNull
   public AuthSettings getAuthSettings() {
     return myAuthSettings;
   }
@@ -276,5 +277,14 @@ public class GitVcsRoot implements VcsRoot {
 
   public String getSimplifiedName() {
     return myDelegate.getSimplifiedName();
+  }
+
+  public boolean isOnGithub() {
+    return "github.com".equals(myRepositoryFetchURL.getHost());
+  }
+
+  public boolean isSsh() {
+    return myRepositoryFetchURL.getScheme() == null ||
+           "ssh".equals(myRepositoryFetchURL.getScheme());
   }
 }

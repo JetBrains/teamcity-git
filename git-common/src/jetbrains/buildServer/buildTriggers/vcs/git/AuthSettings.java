@@ -69,6 +69,10 @@ public class AuthSettings {
     return myPassphrase;
   }
 
+  public String getUserName() {
+    return myUserName;
+  }
+
   public String getPrivateKeyFilePath() {
     return myPrivateKeyFilePath;
   }
