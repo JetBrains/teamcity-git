@@ -16,7 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.TempFiles;
+import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.TestFor;
@@ -27,16 +27,16 @@ import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.Collection;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
@@ -51,6 +51,7 @@ import static org.testng.AssertJUnit.fail;
 public class TestConnectionTest extends BaseRemoteRepositoryTest {
 
   private GitVcsSupport myGit;
+  private ServerPaths myPaths;
 
   public TestConnectionTest() {
     super("repo.git");
@@ -59,8 +60,8 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
   @BeforeMethod
   public void setUp() throws Exception {
     super.setUp();
-    ServerPaths paths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    myGit = gitSupport().withServerPaths(paths).build();
+    myPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
+    myGit = gitSupport().withServerPaths(myPaths).build();
   }
 
   @AfterMethod
@@ -166,5 +167,47 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
     Assert.assertTrue(fetchStarted.tryAcquire(10, TimeUnit.SECONDS));
     git.testConnection(root);//test connection during long fetch
     fetchCanFinish.release();//allow fetch to finish
+  }
+
+
+  @DataProvider(name = "common-github-auth-errors")
+  public static Object[][] commonGithubAuthErrors() {
+    return new Object[][] {
+      new Object[] { "Auth fail" },
+      new Object[] { "session is down" }
+    };
+  }
+
+
+  @TestFor(issues = "TW-24074")
+  @Test(dataProvider = "common-github-auth-errors")
+  public void wrong_github_username(@NotNull final String error) {
+    TransportFactory factoryWithGivenError = new TransportFactory() {
+      public Transport createTransport(@NotNull Repository r,
+                                       @NotNull URIish url,
+                                       @NotNull AuthSettings authSettings) throws NotSupportedException, VcsException, TransportException {
+        throw new TransportException(url.toString() + ": " + error, new JSchException(error));
+      }
+    };
+
+    myGit = gitSupport().withTransportFactory(factoryWithGivenError)
+      .withServerPaths(myPaths)
+      .build();
+
+    String wrongUsername = "user";
+    VcsRootImpl root = vcsRoot()
+      .withFetchUrl("git@github.com:user/repo.git")
+      .withBranch("master")
+      .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_DEFAULT)
+      .withUsername(wrongUsername)
+      .build();
+
+    try {
+      myGit.testConnection(root);
+      fail("should fail during transport creation");
+    } catch (VcsException e) {
+      assertTrue(e.getMessage(),
+                 e.getMessage().contains("Wrong username: '" + wrongUsername + "', github expects a username 'git'"));
+    }
   }
 }
