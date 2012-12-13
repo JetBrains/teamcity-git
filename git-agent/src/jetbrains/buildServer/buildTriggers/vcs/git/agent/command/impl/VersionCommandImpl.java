@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
@@ -38,7 +37,7 @@ public class VersionCommandImpl implements VersionCommand {
   @NotNull
   public GitVersion call() throws VcsException {
     myCmd.addParameter("version");
-    ExecResult r = CommandUtil.runCommand(myCmd);
+    ExecResult r = CommandUtil.runCommand(myCmd.repeatOnEmptyOutput(true));
     CommandUtil.failIfNotEmptyStdErr(myCmd, r);
     return GitVersion.parse(r.getStdout());
   }
