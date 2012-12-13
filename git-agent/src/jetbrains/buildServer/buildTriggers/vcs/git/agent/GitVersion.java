@@ -83,7 +83,7 @@ public final class GitVersion implements Comparable<GitVersion> {
         return new GitVersion(major, minor, revision, patchLevel);
       }
       catch (ParseException ex) {
-        throw new IllegalArgumentException("Unsupported format of git --version output: " + version);
+        throw new IllegalArgumentException("Unsupported format of git --version output: '" + version + "'");
       }
     }
   }

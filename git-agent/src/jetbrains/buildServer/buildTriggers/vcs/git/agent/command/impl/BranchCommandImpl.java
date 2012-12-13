@@ -16,13 +16,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
+import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.BranchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
 /**
  * @author dmitry.neverov
@@ -46,11 +48,13 @@ public class BranchCommandImpl implements BranchCommand {
   @NotNull
   private Branches parseOutput(String out) {
     Branches branches = new Branches();
-    for (String line : out.split("\n")) {
-      if (line.length() < 2)
+    for (String l : StringUtil.splitByLines(out)) {
+      String line = l.trim();
+      if (isEmpty(line))
         continue;
-      String b = line.substring(2).trim();
-      branches.addBranch(b, line.charAt(0) == '*');
+      boolean currentBranch = line.startsWith("* ");
+      String branchName = currentBranch ? line.substring(2).trim() : line;
+      branches.addBranch(branchName, currentBranch);
     }
     return branches;
   }

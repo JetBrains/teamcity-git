@@ -40,6 +40,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private final AskPassGenerator myAskPassGen;
   private final List<Runnable> myPostActions = new ArrayList<Runnable>();
   private File myWorkingDirectory;
+  private boolean myRepeatOnEmptyOutput = false;
 
   public GitCommandLine(@Nullable GitAgentSSHService ssh,
                         @NotNull AskPassGenerator askPassGen) {
@@ -98,5 +99,14 @@ public class GitCommandLine extends GeneralCommandLine {
   @Nullable
   public File getWorkingDirectory() {
     return myWorkingDirectory;
+  }
+
+  public GitCommandLine repeatOnEmptyOutput(boolean doRepeat) {
+    myRepeatOnEmptyOutput = doRepeat;
+    return this;
+  }
+
+  public boolean isRepeatOnEmptyOutput() {
+    return myRepeatOnEmptyOutput;
   }
 }

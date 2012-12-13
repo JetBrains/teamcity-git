@@ -26,6 +26,10 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
+
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
+
 public class CommandUtil {
   public static final int DEFAULT_COMMAND_TIMEOUT_SEC = 3600;
 
@@ -78,29 +82,36 @@ public class CommandUtil {
   }
 
   public static ExecResult runCommand(@NotNull GitCommandLine cli, final int timeout, final String... errorsLogLevel) throws VcsException {
-    try {
-      String cmdStr = cli.getCommandLineString();
-      File workingDir = cli.getWorkingDirectory();
-      String inDir = workingDir != null ? "[" + workingDir.getAbsolutePath() + "]" : "";
-      Loggers.VCS.info(inDir + ": " + cmdStr);
-      ExecResult res = SimpleCommandLineProcessRunner.runCommand(cli, null, new SimpleCommandLineProcessRunner.ProcessRunCallbackAdapter() {
-        @Override
-        public Integer getOutputIdleSecondsTimeout() {
-          return timeout;
+    int attemptsLeft = 2;
+    while (true) {
+      try {
+        String cmdStr = cli.getCommandLineString();
+        File workingDir = cli.getWorkingDirectory();
+        String inDir = workingDir != null ? "[" + workingDir.getAbsolutePath() + "]" : "";
+        Loggers.VCS.info(inDir + ": " + cmdStr);
+        ExecResult res = SimpleCommandLineProcessRunner.runCommand(cli, null, new SimpleCommandLineProcessRunner.ProcessRunCallbackAdapter() {
+          @Override
+          public Integer getOutputIdleSecondsTimeout() {
+            return timeout;
+          }
+        });
+        CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
+        String out = res.getStdout().trim();
+        Loggers.VCS.debug(out);
+        if (!isEmpty(out) || !cli.isRepeatOnEmptyOutput() || attemptsLeft <= 0)
+          return res;
+        Loggers.VCS.warn("Get an unexpected empty output, will repeat command, attempts left: " + attemptsLeft);
+        attemptsLeft--;
+      } finally {
+        for (Runnable action : cli.getPostActions()) {
+          action.run();
         }
-      });
-      CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
-      Loggers.VCS.debug(res.getStdout().trim());
-      return res;
-    } finally {
-      for (Runnable action : cli.getPostActions()) {
-        action.run();
       }
     }
   }
 
   public static void failIfNotEmptyStdErr(@NotNull GeneralCommandLine cli, @NotNull ExecResult res, String... errorsLogLevel) throws VcsException {
-    if (!StringUtil.isEmpty(res.getStderr()))
+    if (!isEmpty(res.getStderr()))
       CommandUtil.commandFailed(cli.getCommandLineString(), res, errorsLogLevel);
   }
 }
