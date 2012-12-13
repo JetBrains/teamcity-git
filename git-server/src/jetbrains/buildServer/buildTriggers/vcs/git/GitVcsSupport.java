@@ -525,12 +525,12 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @Override
   @Nullable
-  public <T extends VcsExtension> T getVcsExtension(@NotNull Class<T> klass) {
+  protected <T extends VcsExtension> T getVcsCustomExtension(@NotNull final Class<T> extensionClass) {
     if (myExtensions == null)
       return null;
     for (GitServerExtension e : myExtensions) {
-      if (klass.isInstance(e))
-        return klass.cast(e);
+      if (extensionClass.isInstance(e))
+        return extensionClass.cast(e);
     }
     return null;
   }
