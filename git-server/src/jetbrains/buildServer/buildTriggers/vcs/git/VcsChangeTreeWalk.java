@@ -51,7 +51,7 @@ public class VcsChangeTreeWalk extends TreeWalk {
     final String path = getPathString();
     final ChangeType gitChangeType = classifyChange();
 
-    if (LOG.isDebugEnabled() && myConfig.verboseTreeWalkLog())
+    if (isExtraDebug())
       LOG.debug("Processing change " + treeWalkInfo(path) + " as " + gitChangeType + " " + myRepositoryDebugInfo);
 
     VcsChange.Type type = getChangeType(gitChangeType, path);
@@ -73,6 +73,8 @@ public class VcsChangeTreeWalk extends TreeWalk {
   @NotNull
   public ChangeType classifyChange() {
     final FileMode mode0 = getFileMode(0);
+    if (isExtraDebug())
+      LOG.debug(getPathString() + " file mode: " + mode0);
     if (FileMode.MISSING.equals(mode0)) {
       for (int i = 1; i < getTreeCount(); i++) {
         if (FileMode.MISSING.equals(getFileMode(i))) {
@@ -115,6 +117,10 @@ public class VcsChangeTreeWalk extends TreeWalk {
       return ChangeType.FILE_MODE_CHANGED;
     }
     return ChangeType.UNCHANGED;
+  }
+
+  private boolean isExtraDebug() {
+    return LOG.isDebugEnabled() && myConfig.verboseTreeWalkLog();
   }
 
 

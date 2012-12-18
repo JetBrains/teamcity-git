@@ -17,7 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
 import com.intellij.openapi.diagnostic.Logger;
+import jetbrains.buildServer.buildTriggers.vcs.git.ChangeType;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
+import jetbrains.buildServer.vcs.CheckoutRules;
 import org.eclipse.jgit.lib.ObjectId;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -50,13 +52,26 @@ public final class BuildPatchLogger {
     myDelegate.info("The commit " + fromRevision + " is not available in the repository, build a clean patch");
   }
 
+  public void logFileExcludedByCheckoutRules(@NotNull String path, @NotNull CheckoutRules rules) {
+    myDelegate.debug("File " + path + " excluded by checkout rules " + rules.getAsString());
+  }
+
   public void logVisitFile(@NotNull String fileInfo) {
-    if (myDelegate.isDebugEnabled() && myConfig.isPrintDebugInfoOnEachCommit())
-      myDelegate.debug("File found " + fileInfo + " for " + myRepoDebugInfo);
+    if (myDelegate.isDebugEnabled() && myConfig.verboseTreeWalkLog())
+      myDelegate.debug("Visit file " + fileInfo + " in " + myRepoDebugInfo);
+  }
+
+  public void logChangeType(@NotNull String path, @NotNull ChangeType changeType) {
+    if (myDelegate.isDebugEnabled() && myConfig.verboseTreeWalkLog())
+      myDelegate.debug("Change type of " + path + ": " + changeType);
+  }
+
+  public void logAddFile(@NotNull String mappedPath, int contentSize) {
+    myDelegate.debug("Add file " + mappedPath + ", size " + contentSize + " bytes");
   }
 
   public void logFileModeChanged(@NotNull String modeDiff, @NotNull String fileInfo) {
-    if (myDelegate.isDebugEnabled() && myConfig.isPrintDebugInfoOnEachCommit())
+    if (myDelegate.isDebugEnabled() && myConfig.verboseTreeWalkLog())
       myDelegate.debug("The mode change " + modeDiff + " is detected for " + fileInfo);
   }
 

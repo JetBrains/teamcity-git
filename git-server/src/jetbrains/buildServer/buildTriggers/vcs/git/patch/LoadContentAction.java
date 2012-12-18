@@ -84,6 +84,7 @@ class LoadContentAction implements Callable<Void> {
       loader.copyTo(output);
       output.flush();
       myBuilder.changeOrCreateBinaryFile(GitUtils.toFile(myMappedPath), myMode, new ByteArrayInputStream(out.toByteArray()), out.size());
+      myLogger.logAddFile(myMappedPath, out.size());
     } catch (Error e) {
       myLogger.cannotLoadFile(myPath, myObjectId);
       throw e;
