@@ -5,7 +5,9 @@
        default-autowire="constructor">
 
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitExtensionRegistry"/>
-  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitBranchSupport"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitBranchSupport">
+    <property name="gitSupport" ref="jetbrainsGitServer"/>
+  </bean>
   <bean id="cleaner" class="jetbrains.buildServer.buildTriggers.vcs.git.Cleaner"/>
 
 </beans>
