@@ -103,6 +103,7 @@ public final class GitPatchBuilder {
       myLogger.logBuildCleanPatch(myToRevision);
       myTreeWalk.addTree(new EmptyTreeIterator());
     } else {
+      assert myFromRevision != null;
       myLogger.logBuildIncrementalPatch(myFromRevision, myToRevision);
       RevCommit fromCommit = myContext.findCommit(myRepository, myFromRevision);
       if (fromCommit == null) {
@@ -120,10 +121,14 @@ public final class GitPatchBuilder {
     while (myTreeWalk.next()) {
       String path = myTreeWalk.getPathString();
       String mappedPath = myRules.map(path);
-      if (mappedPath == null)
+      if (mappedPath == null) {
+        myLogger.logFileExcludedByCheckoutRules(path, myRules);
         continue;
+      }
       myLogger.logVisitFile(myTreeWalk.treeWalkInfo(path));
-      switch (myTreeWalk.classifyChange()) {
+      ChangeType changeType = myTreeWalk.classifyChange();
+      myLogger.logChangeType(path, changeType);
+      switch (changeType) {
         case UNCHANGED:
           break;
         case MODIFIED:
