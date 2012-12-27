@@ -109,14 +109,15 @@ public class AuthSettings {
         result = result.setPass(myPassword);
       }
     }
-    if (fixErrors && isAnonymousProtocolWithUser(result)) {
+    if (fixErrors && isAnonymousProtocol(result)) {
       result = result.setUser(null);
+      result = result.setPass(null);
     }
     return result;
   }
 
-  private boolean isAnonymousProtocolWithUser(@NotNull URIish uriish) {
-    return "git".equals(uriish.getScheme()) && uriish.getUser() != null;
+  private boolean isAnonymousProtocol(@NotNull URIish uriish) {
+    return "git".equals(uriish.getScheme());
   }
 
   private boolean requiresCredentials(URIish result) {

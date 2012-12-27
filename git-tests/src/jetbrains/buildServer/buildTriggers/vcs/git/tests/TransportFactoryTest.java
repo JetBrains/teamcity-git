@@ -16,10 +16,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import bsh.commands.dir;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.TestFor;
+import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
@@ -30,10 +33,13 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.getVcsRoot;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertNull;
 
 /**
  * @author dmitry.neverov
@@ -67,6 +73,21 @@ public class TransportFactoryTest {
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     Transport transport = createTransport(transportFactory);
     assertEquals(20, transport.getTimeout());
+  }
+
+
+  @TestFor(issues = "TW-25087")
+  public void transport_for_anonymous_protocol_should_not_have_credentials() throws Exception {
+    File tmp = myTempFiles.createTempDir();
+    Repository r = new RepositoryBuilder().setBare().setGitDir(tmp).build();
+    VcsRoot root = vcsRoot().withFetchUrl("git://some.org/repo.git")
+      .withAuthMethod(AuthenticationMethod.PASSWORD)
+      .withUsername("user")
+      .withPassword("pwd")
+      .build();
+    AuthSettings authSettings = new AuthSettings(root);
+    TransportFactory factory = new TransportFactoryImpl(myConfigBuilder.build());
+    factory.createTransport(r, authSettings.createAuthURI("git://some.org/repo.git"), authSettings);
   }
 
 
