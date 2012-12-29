@@ -1156,38 +1156,6 @@ public class GitVcsSupportTest extends PatchTestCase {
 
 
   @Test
-  public void test_getPersonalBranchDescription_when_branch_contains_commits() throws Exception {
-    VcsRoot root = getRoot("master");
-    GitBranchSupport branchSupport = new GitBranchSupport();
-    GitVcsSupport support = gitSupport()
-      .withPluginConfig(myConfigBuilder)
-      .withResetCacheManager(myResetCacheManager)
-      .withExtension(branchSupport)
-      .build();
-    branchSupport.setGitSupport(support);
-    PersonalBranchDescription description = support.getVcsExtension(BranchSupport.class).getPersonalBranchDescription(root, "personal-branch2");
-    assertNotNull(description);
-    assertEquals(description.getBranchId(), "1391281d33a83a7205f2f05d3eb64c349c636e87");
-    assertEquals(description.getUsername(), "other.user");
-  }
-
-
-  @Test
-  public void test_getPersonalBranchDescription_when_branch_does_not_contain_commits() throws Exception {
-    VcsRoot root = getRoot("master");
-    GitBranchSupport branchSupport = new GitBranchSupport();
-    GitVcsSupport support = gitSupport()
-      .withPluginConfig(myConfigBuilder)
-      .withResetCacheManager(myResetCacheManager)
-      .withExtension(branchSupport)
-      .build();
-    branchSupport.setGitSupport(support);
-    PersonalBranchDescription description = support.getVcsExtension(BranchSupport.class).getPersonalBranchDescription(root, "master");
-    assertNull(description);
-  }
-
-
-  @Test
   public void all_changes_should_have_parents() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master");
