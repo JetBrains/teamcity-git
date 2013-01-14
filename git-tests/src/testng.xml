@@ -37,6 +37,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVcsRootTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.MapFullPathTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentMirrorCleanerTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.EchoArgumentEscapingTest"/>
     </classes>
   </test>
 </suite>
