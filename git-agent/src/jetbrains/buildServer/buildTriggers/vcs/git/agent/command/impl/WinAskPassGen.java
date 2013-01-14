@@ -28,13 +28,19 @@ import java.io.PrintWriter;
 
 public class WinAskPassGen implements AskPassGenerator {
 
+  private final EscapeEchoArgument myEscaper;
+
+  public WinAskPassGen(@NotNull EscapeEchoArgument escaper) {
+    myEscaper = escaper;
+  }
+
   @NotNull
   public File generate(@NotNull AuthSettings authSettings) throws IOException {
     File script = FileUtil.createTempFile("pass", ".bat");
     PrintWriter out = null;
     try {
       out = new PrintWriter(new FileWriter(script));
-      out.println("@echo " + authSettings.getPassword());
+      out.println("@echo " + myEscaper.escape(authSettings.getPassword()));
       if (!script.setExecutable(true))
         throw new IOException("Cannot make askpass script executable");
     } finally {

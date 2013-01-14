@@ -155,7 +155,7 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   private AskPassGenerator makeAskPassGen() {
-    return SystemInfo.isUnix ? new UnixAskPassGen() : new WinAskPassGen();
+    return SystemInfo.isUnix ? new UnixAskPassGen(new EscapeEchoArgumentUnix()) : new WinAskPassGen(new EscapeEchoArgumentWin());
   }
 
 }
