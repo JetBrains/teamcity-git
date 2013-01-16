@@ -125,7 +125,7 @@ public class GitVcsSupport extends ServerVcsSupport
     for (Ref ref : getRemoteRefs(root).values()) {
       if (!ref.getName().startsWith("ref"))
         continue;
-      if (isTag(ref) && !fullRef.equals(ref.getName()))
+      if (!myConfig.includeTagsInCurrentState() && isTag(ref) && !fullRef.equals(ref.getName()))
         continue;
       branchRevisions.put(ref.getName(), ref.getObjectId().name());
     }
