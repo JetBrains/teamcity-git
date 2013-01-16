@@ -20,7 +20,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.JGitText;
+import org.eclipse.jgit.internal.JGitText;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
