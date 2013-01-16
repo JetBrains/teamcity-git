@@ -89,4 +89,6 @@ public interface ServerPluginConfig extends PluginConfig {
   long getConnectionRetryIntervalMillis();
 
   int getConnectionRetryAttempts();
+
+  boolean includeTagsInCurrentState();
 }

@@ -64,6 +64,7 @@ import java.util.regex.Pattern;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.getVcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
@@ -1385,6 +1386,21 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(state.getBranchRevisions(),
                  map("refs/heads/master", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                      "refs/heads/topic",  "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
+  }
+
+
+  @TestFor(issues = "TW-24128")
+  @Test
+  public void tags_in_currentState() throws Exception {
+    //by default - don't include tags
+    RepositoryState state = getSupport().getCurrentState(getVcsRoot());
+    assertFalse(state.getBranchRevisions().containsKey("refs/tags/v0.5"));
+    assertFalse(state.getBranchRevisions().containsKey("refs/tags/v1.0"));
+
+    myConfigBuilder.includeTagsInCurrentState(true);
+    state = getSupport().getCurrentState(getVcsRoot());
+    assertTrue(state.getBranchRevisions().containsKey("refs/tags/v0.5"));
+    assertTrue(state.getBranchRevisions().containsKey("refs/tags/v1.0"));
   }
 
 
