@@ -37,6 +37,8 @@ import org.eclipse.jgit.lib.ProgressMonitor;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,6 +49,7 @@ import static com.intellij.openapi.util.text.StringUtil.isEmpty;
  */
 public class PluginConfigImpl implements ServerPluginConfig {
 
+  private final static int GB = 1024 * 1024 * 1024;//bytes
   private final File myCachesDir;
 
   public PluginConfigImpl() {
@@ -89,7 +92,16 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
 
   public String getFetchProcessMaxMemory() {
-    return TeamCityProperties.getProperty("teamcity.git.fetch.process.max.memory", "512M");
+    String maxMemory = TeamCityProperties.getProperty("teamcity.git.fetch.process.max.memory");
+    if (!isEmpty(maxMemory))
+      return maxMemory;
+    OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+    if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
+      long freeRAM = ((com.sun.management.OperatingSystemMXBean) osBean).getFreePhysicalMemorySize();
+      if (freeRAM > GB)
+        return "1024M";
+    }
+    return "512M";
   }
 
 
