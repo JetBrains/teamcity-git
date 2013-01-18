@@ -22,6 +22,7 @@ import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.util.io.AutoCRLFInputStream;
 import org.eclipse.jgit.util.io.AutoCRLFOutputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -79,12 +80,10 @@ class LoadContentAction implements Callable<Void> {
     InputStream objectStream = null;
     try {
       ObjectLoader loader = getObjectLoader();
-      ByteArrayOutputStream out = new ByteArrayOutputStream((int) loader.getSize());
-      OutputStream output = myRoot.isAutoCrlf() ? new AutoCRLFOutputStream(out) : out;
-      loader.copyTo(output);
-      output.flush();
-      myBuilder.changeOrCreateBinaryFile(GitUtils.toFile(myMappedPath), myMode, new ByteArrayInputStream(out.toByteArray()), out.size());
-      myLogger.logAddFile(myMappedPath, out.size());
+      long size = getStreamSize(myRoot, loader);
+      objectStream = getObjectStream(myRoot, loader);
+      myBuilder.changeOrCreateBinaryFile(GitUtils.toFile(myMappedPath), myMode, objectStream, size);
+      myLogger.logAddFile(myMappedPath, size);
     } catch (Error e) {
       myLogger.cannotLoadFile(myPath, myObjectId);
       throw e;
@@ -103,5 +102,33 @@ class LoadContentAction implements Callable<Void> {
     if (loader == null)
       throw new IOException("Unable to find blob " + myObjectId.name() + (myPath == null ? "" : "(" + myPath + ")") + " in repository " + myRepository);
     return loader;
+  }
+
+  private long getStreamSize(@NotNull GitVcsRoot root, @NotNull ObjectLoader loader) throws IOException {
+    if (!root.isAutoCrlf())
+      return loader.getSize();
+
+    InputStream objectStream = null;
+    try {
+      objectStream = loader.isLarge() ? loader.openStream() : new ByteArrayInputStream(loader.getCachedBytes());
+      objectStream = new AutoCRLFInputStream(objectStream, true);
+      int count;
+      int size = 0;
+      byte[] buf = new byte[8096];
+      while ((count = objectStream.read(buf)) != -1) {
+        size += count;
+      }
+      return size;
+    } finally {
+      if (objectStream != null)
+        objectStream.close();
+    }
+  }
+
+  private InputStream getObjectStream(@NotNull GitVcsRoot root, @NotNull ObjectLoader loader) throws IOException {
+    InputStream stream = loader.isLarge() ? loader.openStream() : new ByteArrayInputStream(loader.getCachedBytes());
+    if (!root.isAutoCrlf())
+      return stream;
+    return new AutoCRLFInputStream(stream, true);
   }
 }
