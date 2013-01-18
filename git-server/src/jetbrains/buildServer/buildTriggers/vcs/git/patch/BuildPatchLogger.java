@@ -66,7 +66,7 @@ public final class BuildPatchLogger {
       myDelegate.debug("Change type of " + path + ": " + changeType);
   }
 
-  public void logAddFile(@NotNull String mappedPath, int contentSize) {
+  public void logAddFile(@NotNull String mappedPath, long contentSize) {
     myDelegate.debug("Add file " + mappedPath + ", size " + contentSize + " bytes");
   }
 
