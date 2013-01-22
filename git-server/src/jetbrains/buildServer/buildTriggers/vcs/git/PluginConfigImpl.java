@@ -251,4 +251,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public boolean includeTagsInCurrentState() {
     return TeamCityProperties.getBoolean("teamcity.git.includeTagsInCurrentState");
   }
+
+  public boolean ignoreFetchedCommits() {
+    return TeamCityProperties.getBoolean("teamcity.git.mapFullPathIgnoresFetchedCommits");
+  }
 }

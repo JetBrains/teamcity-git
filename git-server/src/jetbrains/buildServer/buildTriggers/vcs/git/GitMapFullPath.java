@@ -22,8 +22,12 @@ import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.util.filters.Filter;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRootEntry;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevSort;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -31,8 +35,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -44,11 +47,13 @@ import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 public class GitMapFullPath {
 
   private static final Logger LOG = Logger.getInstance(GitMapFullPath.class.getName());
+  private final ServerPluginConfig myConfig;
   private final RevisionsCache myCache;
   private GitVcsSupport myGit;
 
 
   public GitMapFullPath(@NotNull ServerPluginConfig config) {
+    myConfig = config;
     myCache = new RevisionsCache(config.getMapFullPathRevisionCacheSize());
   }
 
@@ -153,8 +158,49 @@ public class GitMapFullPath {
     return (branchSeparatorIndex > 0) ? url.substring(0, branchSeparatorIndex) : url;
   }
 
-  public void invalidateRevisionsCache(@NotNull Repository db) {
-    myCache.invalidateCache(db);
+  public void invalidateRevisionsCache(@NotNull Repository db, @NotNull Map<String, Ref> oldRefs, @NotNull Map<String, Ref> newRefs) {
+    if (myConfig.ignoreFetchedCommits()) {
+      myCache.invalidateCache(db);
+    } else {
+      try {
+        Set<String> newCommits = getNewCommits(db, oldRefs, newRefs);
+        myCache.invalidateCache(db, newCommits);
+      } catch (IOException e) {
+        LOG.warn("Error while calculating new commits for repository " + db.getDirectory(), e);
+        myCache.invalidateCache(db);
+      }
+    }
+  }
+
+  private Set<String> getNewCommits(@NotNull Repository db, @NotNull Map<String, Ref> oldRefs, @NotNull Map<String, Ref> newRefs) throws IOException {
+    Set<ObjectId> updatedHeads = new HashSet<ObjectId>();
+    Set<ObjectId> uninteresting = new HashSet<ObjectId>();
+    for (Map.Entry<String, Ref> e : newRefs.entrySet()) {
+      String refName = e.getKey();
+      if (!refName.startsWith("refs/"))
+        continue;
+      Ref newRef = e.getValue();
+      Ref oldRef = oldRefs.get(refName);
+      if (oldRef == null || !oldRef.getObjectId().equals(newRef.getObjectId()))
+        updatedHeads.add(newRef.getObjectId());
+      if (oldRef != null)
+        uninteresting.add(oldRef.getObjectId());
+    }
+
+    RevWalk revWalk = new RevWalk(db);
+    revWalk.sort(RevSort.TOPO);
+    for (ObjectId id : updatedHeads) {
+      revWalk.markStart(revWalk.parseCommit(id));
+    }
+    for (ObjectId id : uninteresting) {
+      revWalk.markUninteresting(revWalk.parseCommit(id));
+    }
+    Set<String> newCommits = new HashSet<String>();
+    RevCommit newCommit = null;
+    while ((newCommit = revWalk.next()) != null) {
+      newCommits.add(newCommit.name());
+    }
+    return newCommits;
   }
 
   /**
@@ -175,6 +221,16 @@ public class GitMapFullPath {
       RepositoryRevisionCache repositoryCache = myCache.get(repositoryId);
       if (repositoryCache != null)
         repositoryCache.removeNegativeEntries();
+    }
+
+    void invalidateCache(@NotNull final Repository db, @NotNull Set<String> newCommits) {
+      String repositoryId = getRepositoryId(db);
+      RepositoryRevisionCache repositoryCache = myCache.get(repositoryId);
+      if (repositoryCache != null) {
+        if (LOG.isDebugEnabled())
+          LOG.debug("Invalidate cache for repository " + db.getDirectory() + ", new commits " + newCommits);
+        repositoryCache.removeNegativeEntries(newCommits);
+      }
     }
 
     RepositoryRevisionCache getRepositoryCache(@NotNull final GitVcsRoot root) throws VcsException {
@@ -246,6 +302,20 @@ public class GitMapFullPath {
           return !hasRevision;//remove entries for commits we don't have
         }
       });
+    }
+
+    void removeNegativeEntries(@NotNull Set<String> newCommits) {
+      synchronized (myCache) {
+        Set<String> forRemove = new HashSet<String>();
+        for (String commit : myCache.keySet()) {
+          if (newCommits.contains(commit) && Boolean.FALSE.equals(myCache.get(commit)))
+            forRemove.add(commit);
+        }
+
+        for (String commit : forRemove) {
+          myCache.remove(commit);
+        }
+      }
     }
   }
 

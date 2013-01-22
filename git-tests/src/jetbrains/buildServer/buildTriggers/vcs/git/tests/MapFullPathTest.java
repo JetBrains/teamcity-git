@@ -29,6 +29,9 @@ import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.RepositoryStateData;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootEntry;
+import org.eclipse.jgit.errors.MissingObjectException;
+import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.hamcrest.Description;
@@ -106,6 +109,8 @@ public class MapFullPathTest {
 
     Collection<String> paths = myGit.mapFullPath(myRootEntry, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168||.");
     assertTrue(paths.isEmpty());
+    paths = myGit.mapFullPath(myRootEntry, "252771029d6ac61aaa78d282d5818d210812a4e5||.");
+    assertTrue(paths.isEmpty());
 
     remoteRepositoryUpdated();
 
@@ -113,11 +118,14 @@ public class MapFullPathTest {
     myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);//now we have d47dda159b27b9a8c4cee4ce98e4435eb5b17168
     paths = myGit.mapFullPath(myRootEntry, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168||.");
     assertFalse("mapFullPath returns outdated info", paths.isEmpty());
+    paths = myGit.mapFullPath(myRootEntry, "252771029d6ac61aaa78d282d5818d210812a4e5||.");
+    assertFalse("mapFullPath returns outdated info", paths.isEmpty());
   }
 
 
   public void should_not_do_unnecessary_commit_lookup_after_fetch() throws Exception {
     final String existingCommit = "a7274ca8e024d98c7d59874f19f21d26ee31d41d";
+    final String nonExistingCommit = "abababababababababababababababababababab";
 
     final GitVcsSupport git = myContext.mock(GitVcsSupport.class);
     final RevCommit commit = myContext.mock(RevCommit.class);
@@ -125,6 +133,8 @@ public class MapFullPathTest {
     myContext.checking(new Expectations() {{
       //ask for existing commit only once:
       one(git).getCommit(with(any(Repository.class)), with(existingCommit)); will(returnValue(commit));
+      one(git).getCommit(with(any(Repository.class)), with(nonExistingCommit)); will(throwException(new MissingObjectException(ObjectId.fromString(nonExistingCommit), Constants.TYPE_COMMIT)));
+
     }});
 
     RepositoryStateData state0 = RepositoryStateData.createSingleVersionState("a7274ca8e024d98c7d59874f19f21d26ee31d41d");
@@ -132,13 +142,15 @@ public class MapFullPathTest {
     myGit.getCollectChangesPolicy().collectChanges(myRoot, state0, state1, CheckoutRules.DEFAULT);//fetch repository, so mapFullPath works
 
     OperationContext context = myGit.createContext(myRoot, "map full path");
-    myMapFullPath.mapFullPath(context, myRootEntry, "a7274ca8e024d98c7d59874f19f21d26ee31d41d||.");
+    myMapFullPath.mapFullPath(context, myRootEntry, existingCommit + "||.");
+    myMapFullPath.mapFullPath(context, myRootEntry, nonExistingCommit + "||.");
 
     remoteRepositoryUpdated();
 
     RepositoryStateData state2 = myGit.getCurrentState(myRoot);
     myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);//this fetch should not cause new commit lookup
-    myGit.mapFullPath(myRootEntry, "a7274ca8e024d98c7d59874f19f21d26ee31d41d||.");
+    myGit.mapFullPath(myRootEntry, existingCommit + "||.");
+    myGit.mapFullPath(myRootEntry, nonExistingCommit + "||.");
     myContext.assertIsSatisfied();
   }
 

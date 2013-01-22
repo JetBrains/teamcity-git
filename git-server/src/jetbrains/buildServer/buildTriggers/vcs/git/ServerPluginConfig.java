@@ -91,4 +91,6 @@ public interface ServerPluginConfig extends PluginConfig {
   int getConnectionRetryAttempts();
 
   boolean includeTagsInCurrentState();
+
+  boolean ignoreFetchedCommits();
 }

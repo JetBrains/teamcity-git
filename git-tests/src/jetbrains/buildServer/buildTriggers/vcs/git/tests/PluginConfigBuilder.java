@@ -177,6 +177,10 @@ public class PluginConfigBuilder {
       public boolean includeTagsInCurrentState() {
         return myIncludeTagsInCurrentState;
       }
+
+      public boolean ignoreFetchedCommits() {
+        return false;
+      }
     };
   }
 

@@ -320,9 +320,11 @@ public class GitVcsSupport extends ServerVcsSupport
       final long start = System.currentTimeMillis();
       synchronized (myRepositoryManager.getWriteLock(repositoryDir)) {
         final long finish = System.currentTimeMillis();
+        Map<String, Ref> oldRefs = new HashMap<String, Ref>(db.getAllRefs());
         PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + (finish - start) + "ms");
         myFetchCommand.fetch(db, fetchURI, refspecs, auth);
-        myMapFullPath.invalidateRevisionsCache(db);
+        Map<String, Ref> newRefs = new HashMap<String, Ref>(db.getAllRefs());
+        myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
       }
     } finally {
       rmLock.unlock();
