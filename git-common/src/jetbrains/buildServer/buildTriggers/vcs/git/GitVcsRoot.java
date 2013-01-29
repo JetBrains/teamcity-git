@@ -17,6 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.text.StringUtil;
+import java.io.File;
+import java.util.Map;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -24,9 +26,6 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.Map;
 
 /**
  * Git Vcs Settings
@@ -275,8 +274,9 @@ public class GitVcsRoot implements VcsRoot {
     return myDelegate.toString();
   }
 
-  public String getSimplifiedName() {
-    return myDelegate.getSimplifiedName();
+  @NotNull
+  public String describe(final boolean verbose) {
+    return myDelegate.describe(verbose);
   }
 
   public boolean isOnGithub() {
