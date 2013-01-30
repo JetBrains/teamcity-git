@@ -29,7 +29,7 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import jetbrains.buildServer.vcs.VcsUtil;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.NullProgressMonitor;
@@ -274,7 +274,7 @@ public class FetchCommandImpl implements FetchCommand {
         properties.put(Constants.REFSPEC, serializeSpecs());
         properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
         properties.put(Constants.THREAD_DUMP_FILE, myThreadDump.getAbsolutePath());
-        processInput.write(VcsRootImpl.propertiesToString(properties).getBytes("UTF-8"));
+        processInput.write(VcsUtil.propertiesToStringSecure(properties).getBytes("UTF-8"));
         processInput.flush();
       } catch (IOException e) {
         myErrors.add(e);
