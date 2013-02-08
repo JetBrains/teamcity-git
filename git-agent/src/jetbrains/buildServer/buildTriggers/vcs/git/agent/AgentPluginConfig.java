@@ -30,6 +30,8 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isUseShallowClone();
 
+  boolean isDeleteTempFiles();
+
   @NotNull
   GitVersion getGitVersion();
 

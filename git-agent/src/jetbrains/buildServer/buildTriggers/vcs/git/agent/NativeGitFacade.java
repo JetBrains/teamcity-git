@@ -32,14 +32,17 @@ public class NativeGitFacade implements GitFacade {
   private final AskPassGenerator myAskPassGen;
   private final String myGitPath;
   private final File myRepositoryDir;
+  private final boolean myDeleteTempFiles;
 
   public NativeGitFacade(@NotNull GitAgentSSHService ssh,
                          @NotNull String gitPath,
-                         @NotNull File repositoryDir) {
+                         @NotNull File repositoryDir,
+                         boolean deleteTempFiles) {
     mySsh = ssh;
     myAskPassGen = makeAskPassGen();
     myGitPath = gitPath;
     myRepositoryDir = repositoryDir;
+    myDeleteTempFiles = deleteTempFiles;
   }
 
   public NativeGitFacade(@NotNull String gitPath) {
@@ -47,6 +50,7 @@ public class NativeGitFacade implements GitFacade {
     myAskPassGen = makeAskPassGen();
     myGitPath = gitPath;
     myRepositoryDir = new File(".");
+    myDeleteTempFiles = true;
   }
 
 
@@ -147,7 +151,7 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   private GitCommandLine createCommandLine() {
-    GitCommandLine cmd = new GitCommandLine(mySsh, myAskPassGen);
+    GitCommandLine cmd = new GitCommandLine(mySsh, myAskPassGen, myDeleteTempFiles);
     cmd.setExePath(myGitPath);
     cmd.setWorkingDirectory(myRepositoryDir);
     return cmd;

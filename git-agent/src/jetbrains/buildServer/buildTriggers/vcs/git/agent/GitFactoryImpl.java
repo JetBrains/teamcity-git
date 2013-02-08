@@ -37,6 +37,6 @@ public class GitFactoryImpl implements GitFactory {
 
   @NotNull
   public GitFacade create(@NotNull File repositoryDir) {
-    return new NativeGitFacade(mySsh, myPluginConfig.getPathToGit(), repositoryDir);
+    return new NativeGitFacade(mySsh, myPluginConfig.getPathToGit(), repositoryDir, myPluginConfig.isDeleteTempFiles());
   }
 }

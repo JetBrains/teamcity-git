@@ -41,7 +41,7 @@ public class UnixAskPassGen implements AskPassGenerator {
     try {
       out = new PrintWriter(new FileWriter(script));
       out.println("#!/bin/sh");
-      out.println("echo -n " + myEscaper.escape(authSettings.getPassword()));
+      out.println("printf " + myEscaper.escape(authSettings.getPassword()));
       if (!script.setExecutable(true))
         throw new IOException("Cannot make askpass script executable");
     } finally {

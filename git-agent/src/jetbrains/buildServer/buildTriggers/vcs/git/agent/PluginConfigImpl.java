@@ -31,6 +31,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String USE_NATIVE_SSH = "teamcity.git.use.native.ssh";
   public static final String USE_MIRRORS = "teamcity.git.use.local.mirrors";
   public static final String USE_SHALLOW_CLONE = "teamcity.git.use.shallow.clone";
+  public static final String TEAMCITY_DONT_DELETE_TEMP_FILES = "teamcity.dont.delete.temp.files";
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
@@ -92,6 +93,11 @@ public class PluginConfigImpl implements AgentPluginConfig {
     }
   }
 
+
+  public boolean isDeleteTempFiles() {
+    boolean doNotDelete = Boolean.parseBoolean(myBuild.getSharedConfigParameters().get(TEAMCITY_DONT_DELETE_TEMP_FILES));
+    return !doNotDelete;
+  }
 
   @NotNull
   public GitVersion getGitVersion() {
