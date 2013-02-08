@@ -39,13 +39,16 @@ public class GitCommandLine extends GeneralCommandLine {
   private final GitAgentSSHService mySsh;
   private final AskPassGenerator myAskPassGen;
   private final List<Runnable> myPostActions = new ArrayList<Runnable>();
+  private final boolean myDeleteTempFiles;
   private File myWorkingDirectory;
   private boolean myRepeatOnEmptyOutput = false;
 
   public GitCommandLine(@Nullable GitAgentSSHService ssh,
-                        @NotNull AskPassGenerator askPassGen) {
+                        @NotNull AskPassGenerator askPassGen,
+                        boolean deleteTempFiles) {
     mySsh = ssh;
     myAskPassGen = askPassGen;
+    myDeleteTempFiles = deleteTempFiles;
   }
 
   public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
@@ -60,7 +63,8 @@ public class GitCommandLine extends GeneralCommandLine {
           getParametersList().addAt(1, "core.askpass=" + askPass.getAbsolutePath());
           addPostAction(new Runnable() {
             public void run() {
-              FileUtil.delete(askPass);
+              if (myDeleteTempFiles)
+                FileUtil.delete(askPass);
             }
           });
         } catch (IOException e) {

@@ -621,7 +621,7 @@ public class AgentVcsSupportTest {
 
   private class PushCommand {
     void run(String gitPath, String workDirectory) throws Exception {
-      GitCommandLine cmd = new GitCommandLine(null, SystemInfo.isUnix ? new UnixAskPassGen(new EscapeEchoArgumentUnix()) : new WinAskPassGen(new EscapeEchoArgumentWin()));
+      GitCommandLine cmd = new GitCommandLine(null, SystemInfo.isUnix ? new UnixAskPassGen(new EscapeEchoArgumentUnix()) : new WinAskPassGen(new EscapeEchoArgumentWin()), true);
       cmd.setExePath(gitPath);
       cmd.setWorkingDirectory(new File(workDirectory));
       cmd.addParameters("push", "origin", "master");
