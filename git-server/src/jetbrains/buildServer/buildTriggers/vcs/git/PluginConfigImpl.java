@@ -95,6 +95,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
     String maxMemory = TeamCityProperties.getProperty("teamcity.git.fetch.process.max.memory");
     if (!isEmpty(maxMemory))
       return maxMemory;
+    try {
+      Class.forName("com.sun.management.OperatingSystemMXBean");
+    } catch (ClassNotFoundException e) {
+      return "512M";
+    }
     OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
     if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
       long freeRAM = ((com.sun.management.OperatingSystemMXBean) osBean).getFreePhysicalMemorySize();
