@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
@@ -24,10 +25,12 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Map;
 
@@ -60,6 +63,8 @@ public class UpdaterWithMirror extends UpdaterImpl {
     String mirrorDescription = "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
     LOG.info("Update " + mirrorDescription);
     boolean fetchRequired = true;
+    if (!isValidGitRepo(bareRepositoryDir))
+      FileUtil.delete(bareRepositoryDir);
     if (!bareRepositoryDir.exists()) {
       LOG.info("Init " + mirrorDescription);
       bareRepositoryDir.mkdirs();
@@ -82,6 +87,16 @@ public class UpdaterWithMirror extends UpdaterImpl {
     if (hasRevision(bareRepositoryDir, myRevision))
       return;
     fetch(bareRepositoryDir, "+refs/heads/*:refs/heads/*", false);
+  }
+
+
+  private boolean isValidGitRepo(@NotNull File gitDir) {
+    try {
+      new RepositoryBuilder().setGitDir(gitDir).setMustExist(true).build();
+      return true;
+    } catch (IOException e) {
+      return false;
+    }
   }
 
 
