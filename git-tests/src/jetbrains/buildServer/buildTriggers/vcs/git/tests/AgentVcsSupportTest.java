@@ -307,6 +307,26 @@ public class AgentVcsSupportTest {
   }
 
 
+  @TestFor(issues = "TW-25839")
+  public void update_should_not_fail_if_local_mirror_is_corrupted() throws Exception {
+    AgentRunningBuild buildWithMirrorsEnabled = createRunningBuild(true);
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
+
+    //corrupt local mirror
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
+    GitVcsRoot root = new GitVcsRoot(mirrorManager, myRoot);
+    File mirror = mirrorManager.getMirrorDir(root.getRepositoryFetchURL().toString());
+    File[] children = mirror.listFiles();
+    if (children != null) {
+      for (File child : children) {
+        delete(child);
+      }
+    }
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
+  }
+
+
   public void checkout_tag() throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "refs/tags/v1.0");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
