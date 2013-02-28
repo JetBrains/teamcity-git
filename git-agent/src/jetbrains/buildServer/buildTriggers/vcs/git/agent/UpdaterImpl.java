@@ -186,6 +186,7 @@ public class UpdaterImpl implements Updater {
       myLogger.message("Checkout submodules in " + repositoryDir);
       GitFacade git = myGitFactory.create(repositoryDir);
       git.submoduleInit().call();
+      git.submoduleSync().call();
       git.submoduleUpdate()
         .setAuthSettings(myRoot.getAuthSettings())
         .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
