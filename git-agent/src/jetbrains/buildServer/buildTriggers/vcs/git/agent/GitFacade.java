@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleSyncCommand;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -68,6 +69,8 @@ public interface GitFacade {
 
   @NotNull
   SubmoduleInitCommand submoduleInit();
+
+  SubmoduleSyncCommand submoduleSync();
 
   @NotNull
   SubmoduleUpdateCommand submoduleUpdate();

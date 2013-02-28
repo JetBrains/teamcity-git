@@ -130,6 +130,11 @@ public class NativeGitFacade implements GitFacade {
   }
 
   @NotNull
+  public SubmoduleSyncCommand submoduleSync() {
+    return new SubmoduleSyncCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   public SubmoduleUpdateCommand submoduleUpdate() {
     return new SubmoduleUpdateCommandImpl(createCommandLine());
   }
