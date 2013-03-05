@@ -287,4 +287,9 @@ public class GitVcsRoot implements VcsRoot {
     return myRepositoryFetchURL.getScheme() == null ||
            "ssh".equals(myRepositoryFetchURL.getScheme());
   }
+
+  public boolean isHttp() {
+    return "http".equals(myRepositoryFetchURL.getScheme()) ||
+           "https".equals(myRepositoryFetchURL.getScheme());
+  }
 }

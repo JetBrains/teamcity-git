@@ -164,15 +164,27 @@ public class GitServerUtil {
       String originalMessage = te.getMessage();
       String message = originalMessage + ". Add this host to a known hosts database or check option 'Ignore Known Hosts Database'.";
       return new VcsException(message, te);
-    } else if (root.isOnGithub() &&
-               root.isSsh() &&
-               isAuthError(te) &&
-               !"git".equals(root.getAuthSettings().getUserName())) {
-      String message = "Wrong username: '" + root.getAuthSettings().getUserName() + "', github expects a username 'git'";
-      return new VcsException(message, te);
-    } else {
-      return te;
     }
+
+    if (root.isOnGithub()) {
+      if (isWrongGithubUsername(te, root)) {
+        String message = "Wrong username: '" + root.getAuthSettings().getUserName() + "', github expects a username 'git'";
+        return new VcsException(message, te);
+      }
+      if (root.isHttp() && !root.getRepositoryFetchURL().getPath().endsWith(".git") &&
+          te.getMessage().contains("service=git-upload-pack not found")) {
+        String url = root.getRepositoryFetchURL().toString();
+        String message = "Url \"" + url + "\" might be incorrect, try using \"" + url + ".git\"";
+        return new VcsException(message, te);
+      }
+    }
+
+    return te;
+  }
+
+
+  private static boolean isWrongGithubUsername(@NotNull TransportException te, @NotNull GitVcsRoot root) {
+    return root.isSsh() && isAuthError(te) && !"git".equals(root.getAuthSettings().getUserName());
   }
 
 
