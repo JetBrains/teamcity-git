@@ -17,9 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.Proxy;
-import com.jcraft.jsch.ProxyHTTP;
+import com.jcraft.jsch.*;
 import gnu.trove.TObjectHashingStrategy;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -173,6 +171,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
     addHttpNonProxyHosts(proxySettings);
     addHttpsProxyHost(proxySettings);
     addHttpsProxyPort(proxySettings);
+    addSshProxySettings(proxySettings);
     return proxySettings;
   }
 
@@ -181,11 +180,23 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   public Proxy getJschProxy() {
-    String httpProxyHost = TeamCityProperties.getProperty("http.proxyHost");
-    int httpProxyPort = TeamCityProperties.getInteger("http.proxyPort", ProxyHTTP.getDefaultPort());
-    if (isEmpty(httpProxyHost))
+    String sshProxyType = TeamCityProperties.getProperty("teamcity.git.sshProxyType");
+    if (isEmpty(sshProxyType))
       return null;
-    return new ProxyHTTP(httpProxyHost, httpProxyPort);
+    String sshProxyHost = TeamCityProperties.getProperty("teamcity.git.sshProxyHost");
+    if (isEmpty(sshProxyHost))
+      return null;
+    int sshProxyPort = TeamCityProperties.getInteger("teamcity.git.sshProxyPort", -1);
+    if ("http".equals(sshProxyType)) {
+      return sshProxyPort != -1 ? new ProxyHTTP(sshProxyHost, sshProxyPort) : new ProxyHTTP(sshProxyHost);
+    }
+    if ("socks4".equals(sshProxyType)) {
+      return sshProxyPort != -1 ? new ProxySOCKS4(sshProxyHost, sshProxyPort) : new ProxySOCKS4(sshProxyHost);
+    }
+    if ("socks5".equals(sshProxyType)) {
+      return sshProxyPort != -1 ? new ProxySOCKS5(sshProxyHost, sshProxyPort) : new ProxySOCKS5(sshProxyHost);
+    }
+    return null;
   }
 
   private void addHttpProxyHost(@NotNull final List<String> proxySettings) {
@@ -216,6 +227,18 @@ public class PluginConfigImpl implements ServerPluginConfig {
     int httpsProxyPort = TeamCityProperties.getInteger("https.proxyPort", -1);
     if (httpsProxyPort != -1)
       proxySettings.add("-Dhttps.proxyPort=" + httpsProxyPort);
+  }
+
+  private void addSshProxySettings(List<String> proxySettings) {
+    String sshProxyType = TeamCityProperties.getProperty("teamcity.git.sshProxyType");
+    if (!isEmpty(sshProxyType))
+      proxySettings.add("-Dteamcity.git.sshProxyType=" + sshProxyType);
+    String sshProxyHost = TeamCityProperties.getProperty("teamcity.git.sshProxyHost");
+    if (!isEmpty(sshProxyHost))
+      proxySettings.add("-Dteamcity.git.sshProxyHost=" + sshProxyHost);
+    int sshProxyPort = TeamCityProperties.getInteger("teamcity.git.sshProxyPort", -1);
+    if (sshProxyPort != -1)
+      proxySettings.add("-Dteamcity.git.sshProxyPort=" + sshProxyPort);
   }
 
   @NotNull
