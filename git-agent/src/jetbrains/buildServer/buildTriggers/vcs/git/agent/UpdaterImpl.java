@@ -21,6 +21,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Tags;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -147,7 +148,14 @@ public class UpdaterImpl implements Updater {
       if (branches.isCurrentBranch(branchName)) {
         myLogger.message("Resetting " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);
         removeIndexLock();
-        git.reset().setHard(true).setRevision(myRevision).call();
+        try {
+          git.reset().setHard(true).setRevision(myRevision).call();
+        } catch (GitIndexCorruptedException e) {
+          File gitIndex = e.getGitIndex();
+          myLogger.message("Git index '" + gitIndex.getAbsolutePath() + "' is corrupted, remove it and repeat git reset");
+          FileUtil.delete(gitIndex);
+          git.reset().setHard(true).setRevision(myRevision).call();
+        }
       } else {
         branchChanged = true;
         if (!branches.contains(branchName)) {
