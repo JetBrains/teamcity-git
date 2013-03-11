@@ -16,22 +16,27 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import com.jcraft.jsch.Proxy;
+import com.jcraft.jsch.ProxyHTTP;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.util.TestFor;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
 import static java.util.Arrays.asList;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertNotNull;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItem;
+import static org.testng.AssertJUnit.*;
 
 /**
  * @author dmitry.neverov
@@ -108,6 +113,26 @@ public class ServerPluginConfigTest {
                         "-Dhttps.proxyHost=" + httpsProxyHost,
                         "-Dhttps.proxyPort=" + httpsProxyPort),
                  config.getProxySettingsForSeparateProcess());
-    assertNotNull(config.getJschProxy());
+    assertNull(config.getJschProxy());
+  }
+
+  @TestFor(issues = "TW-26507")
+  public void ssh_proxy_settings() {
+    final String sshProxyHost = "acme.org";
+    final String sshProxyPort = "3128";
+    final String sshProxyType = "http";
+    System.setProperty("teamcity.git.sshProxyType", sshProxyType);
+    System.setProperty("teamcity.git.sshProxyHost", sshProxyHost);
+    System.setProperty("teamcity.git.sshProxyPort", sshProxyPort);
+
+    ServerPluginConfig config = new PluginConfigImpl();
+    Proxy sshProxy = config.getJschProxy();
+    assertNotNull(sshProxy);
+    assertTrue(sshProxy instanceof ProxyHTTP);
+
+    List<String> separateProcessProxySettings = config.getProxySettingsForSeparateProcess();
+    assertThat(separateProcessProxySettings, hasItem("-Dteamcity.git.sshProxyType=" + sshProxyType));
+    assertThat(separateProcessProxySettings, hasItem("-Dteamcity.git.sshProxyHost=" + sshProxyHost));
+    assertThat(separateProcessProxySettings, hasItem("-Dteamcity.git.sshProxyPort=" + sshProxyPort));
   }
 }
