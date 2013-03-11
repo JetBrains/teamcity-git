@@ -19,8 +19,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ResetCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
 
 /**
  * @author dmitry.neverov
@@ -52,6 +55,16 @@ public class ResetCommandImpl implements ResetCommand {
     if (myHard)
       myCmd.addParameter("--hard");
     myCmd.addParameter(myRevision);
-    CommandUtil.runCommand(myCmd);
+    try {
+      CommandUtil.runCommand(myCmd);
+    } catch (VcsException e) {
+      String message = e.getMessage();
+      if (message != null && message.contains("fatal: index file smaller than expected")) {
+        File workingDir = myCmd.getWorkingDirectory();
+        File gitIndex = new File(new File(workingDir, ".git"), "index");
+        throw new GitIndexCorruptedException(gitIndex, e);
+      }
+      throw e;
+    }
   }
 }

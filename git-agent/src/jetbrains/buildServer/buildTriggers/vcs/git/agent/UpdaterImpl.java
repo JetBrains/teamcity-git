@@ -27,6 +27,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Tags;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -147,7 +148,14 @@ public class UpdaterImpl implements Updater {
       if (branches.isCurrentBranch(branchName)) {
         myLogger.message("Resetting " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);
         removeIndexLock();
-        git.reset().setHard(true).setRevision(myRevision).call();
+        try {
+          git.reset().setHard(true).setRevision(myRevision).call();
+        } catch (GitIndexCorruptedException e) {
+          File gitIndex = e.getGitIndex();
+          myLogger.message("Git index '" + gitIndex.getAbsolutePath() + "' is corrupted, remove it and repeat git reset");
+          FileUtil.delete(gitIndex);
+          git.reset().setHard(true).setRevision(myRevision).call();
+        }
       } else {
         branchChanged = true;
         if (!branches.contains(branchName)) {
@@ -230,8 +238,9 @@ public class UpdaterImpl implements Updater {
 
 
   private void setNotUseLocalMirror() throws VcsException {
+    Repository r = null;
     try {
-      Repository r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
+      r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
       StoredConfig config = r.getConfig();
       Set<String> urlSubsections = config.getSubsections("url");
       for (String subsection : urlSubsections) {
@@ -242,6 +251,9 @@ public class UpdaterImpl implements Updater {
       String msg = "Error while remove url.* sections";
       LOG.error(msg, e);
       throw new VcsException(msg, e);
+    } finally {
+      if (r != null)
+        r.close();
     }
   }
 
@@ -257,14 +269,18 @@ public class UpdaterImpl implements Updater {
 
 
   protected boolean isRepositoryUseLocalMirror() throws VcsException {
+    Repository r = null;
     try {
-      Repository r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
+      r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
       StoredConfig config = r.getConfig();
       return !config.getSubsections("url").isEmpty();
     } catch (IOException e) {
       String msg = "Error while reading config file in repository " + myTargetDirectory.getAbsolutePath();
       LOG.error(msg, e);
       throw new VcsException(msg, e);
+    } finally {
+      if (r != null)
+        r.close();
     }
   }
 
