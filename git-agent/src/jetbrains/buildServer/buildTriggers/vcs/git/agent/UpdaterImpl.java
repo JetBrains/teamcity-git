@@ -230,8 +230,9 @@ public class UpdaterImpl implements Updater {
 
 
   private void setNotUseLocalMirror() throws VcsException {
+    Repository r = null;
     try {
-      Repository r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
+      r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
       StoredConfig config = r.getConfig();
       Set<String> urlSubsections = config.getSubsections("url");
       for (String subsection : urlSubsections) {
@@ -242,6 +243,9 @@ public class UpdaterImpl implements Updater {
       String msg = "Error while remove url.* sections";
       LOG.error(msg, e);
       throw new VcsException(msg, e);
+    } finally {
+      if (r != null)
+        r.close();
     }
   }
 
@@ -257,14 +261,18 @@ public class UpdaterImpl implements Updater {
 
 
   protected boolean isRepositoryUseLocalMirror() throws VcsException {
+    Repository r = null;
     try {
-      Repository r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
+      r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
       StoredConfig config = r.getConfig();
       return !config.getSubsections("url").isEmpty();
     } catch (IOException e) {
       String msg = "Error while reading config file in repository " + myTargetDirectory.getAbsolutePath();
       LOG.error(msg, e);
       throw new VcsException(msg, e);
+    } finally {
+      if (r != null)
+        r.close();
     }
   }
 
