@@ -383,7 +383,14 @@ public class UpdaterImpl implements Updater {
     if (shallowClone)
       fetch.setDepth(1);
 
-    fetch.call();
+    try {
+      fetch.call();
+    } catch (GitIndexCorruptedException e) {
+      File gitIndex = e.getGitIndex();
+      myLogger.message("Git index '" + gitIndex.getAbsolutePath() + "' is corrupted, remove it and repeat git fetch");
+      FileUtil.delete(gitIndex);
+      fetch.call();
+    }
   }
 
   private boolean isSilentFetch() {
