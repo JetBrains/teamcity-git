@@ -33,10 +33,13 @@ import org.apache.commons.codec.Decoder;
 import org.apache.log4j.Layout;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.quartz.CronExpression;
 
 import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
+import java.text.ParseException;
 import java.util.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
@@ -46,6 +49,7 @@ import static com.intellij.openapi.util.text.StringUtil.isEmpty;
  */
 public class PluginConfigImpl implements ServerPluginConfig {
 
+  private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
   private final File myCachesDir;
 
@@ -282,5 +286,18 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   public boolean ignoreFetchedCommits() {
     return TeamCityProperties.getBoolean("teamcity.git.mapFullPathIgnoresFetchedCommits");
+  }
+
+  @Nullable
+  public CronExpression getCleanupCronExpression() {
+    String cron = TeamCityProperties.getProperty("teamcity.git.cleanupCron");
+    if (isEmpty(cron))
+      return null;
+    try {
+      return new CronExpression(cron);
+    } catch (ParseException e) {
+      LOG.warn("Wrong cron expression " + cron, e);
+      return null;
+    }
   }
 }

@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.jcraft.jsch.Proxy;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.quartz.CronExpression;
 
 import java.util.List;
 
@@ -93,4 +94,7 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean includeTagsInCurrentState();
 
   boolean ignoreFetchedCommits();
+
+  @Nullable
+  CronExpression getCleanupCronExpression();
 }

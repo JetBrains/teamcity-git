@@ -22,6 +22,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.quartz.CronExpression;
 
 import java.io.File;
 import java.util.Collections;
@@ -180,6 +181,11 @@ public class PluginConfigBuilder {
 
       public boolean ignoreFetchedCommits() {
         return false;
+      }
+
+      @Nullable
+      public CronExpression getCleanupCronExpression() {
+        return null;
       }
     };
   }

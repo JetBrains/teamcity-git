@@ -61,7 +61,7 @@ public final class RepositoryManagerImpl implements RepositoryManager {
   /**
    * During cleanup unused bare repositories are removed. This map contains rw locks for repository removal.
    * Fetch/push/create operations should be done with read lock hold, remove operation is done with write lock hold.
-   * @see Cleaner
+   * @see Cleanup
    */
   private final ConcurrentMap<File, ReadWriteLock> myRmLocks = new ConcurrentHashMap<File, ReadWriteLock>();
 

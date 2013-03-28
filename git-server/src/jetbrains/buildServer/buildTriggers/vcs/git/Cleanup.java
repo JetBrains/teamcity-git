@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2012 JetBrains s.r.o.
+ * Copyright 2000-2013 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,11 +21,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.serverSide.BuildServerAdapter;
-import jetbrains.buildServer.serverSide.BuildServerListener;
-import jetbrains.buildServer.serverSide.executors.ExecutorServices;
 import jetbrains.buildServer.util.Dates;
-import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -34,50 +30,27 @@ import java.io.File;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 
-/**
- * Cleans unused git repositories
- * @author dmitry.neverov
- */
-public class Cleaner {
+public class Cleanup {
 
   private static Logger LOG = Loggers.CLEANUP;
 
-  private final ExecutorServices myExecutor;
   private final RepositoryManager myRepositoryManager;
   private final ServerPluginConfig myConfig;
 
-  public Cleaner(@NotNull final ExecutorServices executor,
-                 @NotNull final EventDispatcher<BuildServerListener> dispatcher,
-                 @NotNull final ServerPluginConfig config,
+  public Cleanup(@NotNull final ServerPluginConfig config,
                  @NotNull final RepositoryManager repositoryManager) {
-    myExecutor = executor;
     myConfig = config;
     myRepositoryManager = repositoryManager;
-    dispatcher.addListener(new BuildServerAdapter(){
-      @Override
-      public void cleanupStarted() {
-        Cleaner.this.cleanupStarted();
-      }
-    });
-    //TODO: let's register clean tasks into ScheduledExecutorService to avoid use of EventDispatcher
   }
 
-  public void cleanupStarted() {
-    myExecutor.getNormalExecutorService().submit(new Runnable() {
-      public void run() {
-        clean();
-      }
-    });
-  }
-
-  private void clean() {
-    LOG.debug("Clean started");
+  public void run() {
+    LOG.debug("Cleanup started");
     removeUnusedRepositories();
     cleanupMonitoringData();
     if (myConfig.isRunNativeGC()) {
       runNativeGC();
     }
-    LOG.debug("Clean finished");
+    LOG.debug("Cleanup finished");
   }
 
   private void removeUnusedRepositories() {

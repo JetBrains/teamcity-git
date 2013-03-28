@@ -27,4 +27,5 @@
   <bean id="hashCalculator" class="jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl"/>
   <bean id="repositoryManager" class="jetbrains.buildServer.buildTriggers.vcs.git.RepositoryManagerImpl"/>
   <bean id="mapFullPath" class="jetbrains.buildServer.buildTriggers.vcs.git.GitMapFullPath"/>
+  <bean id="cleaner" class="jetbrains.buildServer.buildTriggers.vcs.git.CleanupRunner"/>
 </beans>
