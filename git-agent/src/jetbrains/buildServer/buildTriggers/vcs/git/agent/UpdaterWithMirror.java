@@ -83,10 +83,24 @@ public class UpdaterWithMirror extends UpdaterImpl {
       }
     }
     if (fetchRequired)
-      fetch(bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName), false);
+      fetchMirror(bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName), false);
     if (hasRevision(bareRepositoryDir, myRevision))
       return;
-    fetch(bareRepositoryDir, "+refs/heads/*:refs/heads/*", false);
+    fetchMirror(bareRepositoryDir, "+refs/heads/*:refs/heads/*", false);
+  }
+
+
+  private void fetchMirror(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone) throws VcsException {
+    try {
+      fetch(repositoryDir, refspec, shallowClone);
+    } catch (VcsException e) {
+      FileUtil.delete(repositoryDir);
+      repositoryDir.mkdirs();
+      GitFacade git = myGitFactory.create(repositoryDir);
+      git.init().setBare(true).call();
+      git.addRemote().setName("origin").setUrl(myRoot.getRepositoryFetchURL().toString()).call();
+      fetch(repositoryDir, refspec, shallowClone);
+    }
   }
 
 

@@ -41,10 +41,7 @@ import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsUtil;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.RepositoryBuilder;
-import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
@@ -58,6 +55,7 @@ import org.testng.annotations.Test;
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.Util.map;
 import static org.testng.AssertJUnit.*;
 
@@ -80,6 +78,7 @@ public class AgentVcsSupportTest {
   private BuildProgressLogger myLogger;
   private AgentRunningBuild myBuild;
   private PluginConfigFactory myConfigFactory;
+  private MirrorManager myMirrorManager;
 
   static {
     Logger.setFactory(new Log4jFactory());
@@ -114,19 +113,12 @@ public class AgentVcsSupportTest {
     }});
     myAgentConfiguration = createBuildAgentConfiguration();
     myConfigFactory = new PluginConfigFactoryImpl(myAgentConfiguration, detector);
-    MirrorManager mirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl());
-    myVcsSupport = new GitAgentVcsSupport(createSmartDirectoryCleaner(), new GitAgentSSHService(createBuildAgent(), myAgentConfiguration, new GitPluginDescriptor()), myConfigFactory, mirrorManager);
+    myMirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl());
+    myVcsSupport = new GitAgentVcsSupport(createSmartDirectoryCleaner(), new GitAgentSSHService(createBuildAgent(), myAgentConfiguration, new GitPluginDescriptor()), myConfigFactory, myMirrorManager);
     myLogger = createLogger();
     myBuild = createRunningBuild(true);
 
-
-    myRoot = new VcsRootImpl(1, new HashMap<String, String>() {{
-      put(VcsRootImpl.VCS_NAME_PROP, Constants.VCS_NAME);
-      put(VcsRootImpl.VCS_ROOT_NAME_PROP, "test");
-      put(Constants.BRANCH_NAME, "master");
-      put(Constants.FETCH_URL, GitUtils.toURL(myMainRepo));
-      put(Constants.AGENT_GIT_PATH, pathToGit);
-    }});
+    myRoot = vcsRoot().withAgentGitPath(pathToGit).withFetchUrl(GitUtils.toURL(myMainRepo)).build();
   }
 
 
@@ -322,6 +314,39 @@ public class AgentVcsSupportTest {
     }
 
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
+  }
+
+
+  public void when_fetch_for_mirror_failed_remove_it_and_try_again() throws Exception {
+    File repo = dataFile("repo_for_fetch.1");
+    File remoteRepo = myTempFiles.createTempDir();
+    copyRepository(repo, remoteRepo);
+
+    VcsRootImpl root = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(remoteRepo)).build();
+
+    AgentRunningBuild buildWithMirrors = createRunningBuild(true);
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "add81050184d3c818560bdd8839f50024c188586", myCheckoutDir, buildWithMirrors, false);
+
+    //create branch tmp in the mirror
+    File mirror = myMirrorManager.getMirrorDir(GitUtils.toURL(remoteRepo));
+    Repository r = new RepositoryBuilder().setBare().setGitDir(mirror).build();
+    RefUpdate update = r.updateRef("refs/heads/tmp");
+    update.setNewObjectId(ObjectId.fromString("add81050184d3c818560bdd8839f50024c188586"));
+    update.update();
+
+    //update remote repo
+    delete(remoteRepo);
+    File updatedRepo = dataFile("repo_for_fetch.2.personal");
+    copyRepository(updatedRepo, remoteRepo);
+
+    //create branch tmp/1 in remote repo, so fetch will fail
+    r = new RepositoryBuilder().setBare().setGitDir(remoteRepo).build();
+    update = r.updateRef("refs/heads/tmp/1");
+    update.setNewObjectId(ObjectId.fromString("d47dda159b27b9a8c4cee4ce98e4435eb5b17168"));
+    update.update();
+
+    //update succeeds
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, buildWithMirrors, false);
   }
 
 
