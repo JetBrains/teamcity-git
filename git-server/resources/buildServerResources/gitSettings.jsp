@@ -20,6 +20,11 @@
 
 <jsp:useBean id="propertiesBean" scope="request" type="jetbrains.buildServer.controllers.BasePropertiesBean"/>
 <c:set var="gitPathEnv" value="<%= Constants.TEAMCITY_AGENT_GIT_PATH %>"/>
+<style>
+.gitUsernameStyleHighlight {
+  color: rgb(97, 94, 192);
+}
+</style>
 <table class="runnerFormTable">
   <c:set var="userHome"
          value='<%=new File(System.getProperty("user.home"), ".ssh"+File.separator+"config").getAbsolutePath() %>'/>
@@ -57,15 +62,25 @@
       </td>
     </tr>
     <tr>
-      <th><label for="usernameStyle">User Name Style:</label></th>
+      <th><label for="usernameStyle">Username Style:</label></th>
       <td><props:selectProperty name="usernameStyle">
-        <props:option value="USERID">UserId (jsmith)</props:option>
-        <props:option value="NAME">Author Name (John Smith)</props:option>
-        <props:option value="FULL">Author Name and Email (John Smith &lt;jsmith@example.org&gt;)</props:option>
-        <props:option value="EMAIL">Author Email (jsmith@example.org)</props:option>
+        <props:option value="USERID">UserId</props:option>
+        <props:option value="NAME">Author Name</props:option>
+        <props:option value="FULL">Author Name and Email</props:option>
+        <props:option value="EMAIL">Author Email</props:option>
       </props:selectProperty>
-        <div class="smallNote" style="margin: 0;">Changing user name style will affect only newly collected changes.
-          Old changes will continue to be stored with the style that was active at the time of collecting changes.
+        <div class="smallNote" style="margin: 0;">
+          Defines a way TeamCity binds VCS changes to the user. With
+          selected style and the following content of ~/.gitconfig:
+          <div style="font-weight: bold">[user]</div>
+          <div style="margin-left: 15px">name = <span id="gitConfigUserName">Joe Coder</span></div>
+	      <div style="margin-left: 15px">email = <span id="gitConfigUserId">joe.coder</span><span id="gitConfigEmail">@acme.com</span></div>
+          you should enter <span id="usernameToEnter" class="gitUsernameStyleHighlight"></span> in
+          Version Control Username Settings in your profile.
+          <br/>
+          Changing username style will affect only newly collected
+          changes. Old changes will continue to be stored with the style
+          that was active at the time of collecting changes.
         </div>
       </td>
     </tr>
@@ -214,9 +229,36 @@
         break;
     }
     BS.VisibilityHandlers.updateVisibility($('vcsRootProperties'));
-  }
+  };
   gitSelectAuthentication();
   if ($('url').value == "") {
     $('submoduleCheckout').selectedIndex = 1;
   }
+
+  illustrateUsernameStyle = function() {
+    var style = $j("#usernameStyle").val();
+    $j("#gitConfigUserName").removeClass("gitUsernameStyleHighlight");
+    $j("#gitConfigUserId").removeClass("gitUsernameStyleHighlight");
+    $j("#gitConfigEmail").removeClass("gitUsernameStyleHighlight");
+    if (style === "USERID") {
+      $j("#gitConfigUserId").addClass("gitUsernameStyleHighlight");
+      $j("#usernameToEnter").text("joe.coder");
+    } else if (style === "NAME") {
+      $j("#gitConfigUserName").addClass("gitUsernameStyleHighlight");
+      $j("#usernameToEnter").text("Joe Coder");
+    } else if (style === "FULL") {
+      $j("#gitConfigUserName").addClass("gitUsernameStyleHighlight");
+      $j("#gitConfigUserId").addClass("gitUsernameStyleHighlight");
+      $j("#gitConfigEmail").addClass("gitUsernameStyleHighlight");
+      $j("#usernameToEnter").text("Joe Coder <joe.coder@acme.com>");
+    } else if (style === "EMAIL") {
+      $j("#gitConfigUserId").addClass("gitUsernameStyleHighlight");
+      $j("#gitConfigEmail").addClass("gitUsernameStyleHighlight");
+      $j("#usernameToEnter").text("joe.coder@acme.com");
+    }
+  };
+
+  illustrateUsernameStyle();
+
+  $j("#usernameStyle").change(illustrateUsernameStyle);
 </script>
