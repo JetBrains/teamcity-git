@@ -25,7 +25,10 @@ import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.URIish;
 import org.testng.annotations.Test;
 
+import java.net.URISyntaxException;
+
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
+import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertNull;
 import static org.testng.AssertJUnit.assertTrue;
 
@@ -40,6 +43,30 @@ public class AuthSettingsTest {
     CredentialsProvider c = new AuthSettings(root).toCredentialsProvider();
     assertTrue(c.supports(new CredentialItem.Username(), new CredentialItem.Password()));
     c.get(new URIish("http://some.org/repository"), new CredentialItem.Username(), new CredentialItem.Password());
+  }
+
+
+  @TestFor(issues = "TW-27506")
+  public void should_take_username_from_URL_into_account() throws URISyntaxException {
+    String user = "usr";
+    String url = "http://" + user + "@acme.org/repository.git";
+    VcsRoot root = vcsRoot().withFetchUrl(url)
+      .withAuthMethod(AuthenticationMethod.PASSWORD)
+      .withPassword("pwd")
+      .build();
+    CredentialsProvider c = new AuthSettings(root).toCredentialsProvider();
+    CredentialItem.Username username = new CredentialItem.Username();
+    c.get(new URIish(url), username, new CredentialItem.Password());
+    assertEquals(user, username.getValue());
+  }
+
+
+  @TestFor(issues = "TW-27226")
+  public void should_take_username_in_URL_into_account2() {
+    VcsRoot root = vcsRoot().withFetchUrl("git@github.com:name/repo.git")
+      .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_DEFAULT)
+      .build();
+    assertEquals("git", new AuthSettings(root).getUserName());
   }
 
 

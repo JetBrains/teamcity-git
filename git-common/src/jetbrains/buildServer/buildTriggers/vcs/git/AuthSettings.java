@@ -53,8 +53,25 @@ public class AuthSettings {
       myPassphrase = null;
       myPrivateKeyFilePath = null;
     }
-    myUserName = myAuthMethod == AuthenticationMethod.ANONYMOUS ? null : properties.get(Constants.USERNAME);
+    myUserName = readUsername(properties);
     myPassword = myAuthMethod != AuthenticationMethod.PASSWORD ? null : properties.get(Constants.PASSWORD);
+  }
+
+  private String readUsername(Map<String, String> properties) {
+    if (myAuthMethod == AuthenticationMethod.ANONYMOUS)
+      return null;
+    String url = properties.get(Constants.FETCH_URL);
+    String username = null;
+    try {
+      URIish u = new URIish(url);
+      username = u.getUser();
+    } catch (URISyntaxException e) {
+      //ignore
+    }
+    String explicitUsername = properties.get(Constants.USERNAME);
+    if (explicitUsername != null)
+      username = explicitUsername;
+    return username;
   }
 
   public AuthenticationMethod getAuthMethod() {
@@ -162,7 +179,11 @@ public class AuthSettings {
       public boolean get(URIish uri, CredentialItem... items) throws UnsupportedCredentialItem {
         for (CredentialItem i : items) {
           if (myAuthMethod != AuthenticationMethod.ANONYMOUS && i instanceof CredentialItem.Username) {
-            ((CredentialItem.Username) i).setValue(myUserName);
+            if (myUserName != null) {
+              ((CredentialItem.Username) i).setValue(myUserName);
+            } else {
+              ((CredentialItem.Username) i).setValue(uri.getUser());
+            }
           } else if (myAuthMethod == AuthenticationMethod.PASSWORD && i instanceof CredentialItem.Password) {
             ((CredentialItem.Password) i).setValue(myPassword != null ? myPassword.toCharArray() : null);
           } else {
