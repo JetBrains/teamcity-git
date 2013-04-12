@@ -162,7 +162,11 @@ public class AuthSettings {
       public boolean get(URIish uri, CredentialItem... items) throws UnsupportedCredentialItem {
         for (CredentialItem i : items) {
           if (myAuthMethod != AuthenticationMethod.ANONYMOUS && i instanceof CredentialItem.Username) {
-            ((CredentialItem.Username) i).setValue(myUserName);
+            if (myUserName != null) {
+              ((CredentialItem.Username) i).setValue(myUserName);
+            } else {
+              ((CredentialItem.Username) i).setValue(uri.getUser());
+            }
           } else if (myAuthMethod == AuthenticationMethod.PASSWORD && i instanceof CredentialItem.Password) {
             ((CredentialItem.Password) i).setValue(myPassword != null ? myPassword.toCharArray() : null);
           } else {
