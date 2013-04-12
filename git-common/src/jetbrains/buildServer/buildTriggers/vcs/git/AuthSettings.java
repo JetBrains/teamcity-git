@@ -53,8 +53,25 @@ public class AuthSettings {
       myPassphrase = null;
       myPrivateKeyFilePath = null;
     }
-    myUserName = myAuthMethod == AuthenticationMethod.ANONYMOUS ? null : properties.get(Constants.USERNAME);
+    myUserName = readUsername(properties);
     myPassword = myAuthMethod != AuthenticationMethod.PASSWORD ? null : properties.get(Constants.PASSWORD);
+  }
+
+  private String readUsername(Map<String, String> properties) {
+    if (myAuthMethod == AuthenticationMethod.ANONYMOUS)
+      return null;
+    String url = properties.get(Constants.FETCH_URL);
+    String username = null;
+    try {
+      URIish u = new URIish(url);
+      username = u.getUser();
+    } catch (URISyntaxException e) {
+      //ignore
+    }
+    String explicitUsername = properties.get(Constants.USERNAME);
+    if (explicitUsername != null)
+      username = explicitUsername;
+    return username;
   }
 
   public AuthenticationMethod getAuthMethod() {

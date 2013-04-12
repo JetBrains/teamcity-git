@@ -61,6 +61,15 @@ public class AuthSettingsTest {
   }
 
 
+  @TestFor(issues = "TW-27226")
+  public void should_take_username_in_URL_into_account2() {
+    VcsRoot root = vcsRoot().withFetchUrl("git@github.com:name/repo.git")
+      .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_DEFAULT)
+      .build();
+    assertEquals("git", new AuthSettings(root).getUserName());
+  }
+
+
   @TestFor(issues = "TW-25087")
   public void auth_uri_for_anonymous_protocol_should_not_have_user_and_password() throws Exception {
     VcsRoot root = vcsRoot().withFetchUrl("git://some.org/repo.git")
