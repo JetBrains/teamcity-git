@@ -131,7 +131,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       File mirrorRepositoryDir = myRoot.getRepositoryDir();
       String tmpBranchName = createTmpBranch(mirrorRepositoryDir, myRevision);
       String tmpBranchRef = "refs/heads/" + tmpBranchName;
-      String refspec = "+" + tmpBranchRef + ":" + GitUtils.createRemoteRef(myRoot.getRef());
+      String refspec = "+" + tmpBranchRef + ":" + GitUtils.createRemoteRef(myFullBranchName);
       fetch(myTargetDirectory, refspec, true);
       myGitFactory.create(mirrorRepositoryDir).deleteBranch().setName(tmpBranchName).call();
     } else {

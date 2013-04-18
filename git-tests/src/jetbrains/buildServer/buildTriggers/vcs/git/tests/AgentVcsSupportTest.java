@@ -519,6 +519,17 @@ public class AgentVcsSupportTest {
   }
 
 
+  @TestFor(issues = "TW-27677")
+  public void shallow_clone_in_non_master_branch() throws Exception {
+    AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.USE_MIRRORS, "true");
+      put(PluginConfigImpl.USE_SHALLOW_CLONE, "true");
+      put(ServerProvidedProperties.TEAMCITY_BUILD_VCS_BRANCH + "." + myRoot.getSimplifiedName(), "refs/heads/version-test");//build on non-master branch
+    }});
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build, false);
+  }
+
+
   @TestFor(issues = "TW-20165")
   public void push_with_local_mirrors_should_go_to_original_repository() throws Exception {
     AgentRunningBuild build = createRunningBuild(true);
