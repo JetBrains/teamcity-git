@@ -27,7 +27,7 @@ public class ShortDefaultBranchNameProvider implements BranchSpecProvider, GitSe
   }
 
   public boolean isDefinedFor(@NotNull BuildTypeEx buildTypeEx) {
-    return true;
+    return false;
   }
 
   private String getRef(@NotNull VcsRootInstance root) {
