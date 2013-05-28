@@ -19,8 +19,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
 
@@ -94,8 +97,18 @@ public class FetchCommandImpl implements FetchCommand {
       myCmd.addParameter("--depth=" + myDepth);
     myCmd.addParameter("origin");
     myCmd.addParameter(myRefspec);
-    myCmd.run(with().timeout(myTimeout)
-            .authSettings(myAuthSettings)
-            .useNativeSsh(myUseNativeSsh));
+    try {
+      myCmd.run(with().timeout(myTimeout)
+                  .authSettings(myAuthSettings)
+                  .useNativeSsh(myUseNativeSsh));
+    } catch (VcsException e) {
+      String message = e.getMessage();
+      if (message != null && message.contains("fatal: index file smaller than expected")) {
+        File workingDir = myCmd.getWorkingDirectory();
+        File gitIndex = new File(new File(workingDir, ".git"), "index");
+        throw new GitIndexCorruptedException(gitIndex, e);
+      }
+      throw e;
+    }
   }
 }
