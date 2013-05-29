@@ -1376,13 +1376,20 @@ public class GitVcsSupportTest extends PatchTestCase {
   @TestFor(issues = "TW-24128")
   @Test
   public void tags_in_currentState() throws Exception {
+    VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
+      .withBranch("master")
+      .build();
+
     //by default - don't include tags
-    RepositoryStateData state = getSupport().getCurrentState(getVcsRoot());
+    RepositoryStateData state = getSupport().getCurrentState(root);
     assertFalse(state.getBranchRevisions().containsKey("refs/tags/v0.5"));
     assertFalse(state.getBranchRevisions().containsKey("refs/tags/v1.0"));
 
-    myConfigBuilder.includeTagsInCurrentState(true);
-    state = getSupport().getCurrentState(getVcsRoot());
+    root = vcsRoot().withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
+      .withReportTags(true)
+      .withBranch("master")
+      .build();
+    state = getSupport().getCurrentState(root);
     assertTrue(state.getBranchRevisions().containsKey("refs/tags/v0.5"));
     assertTrue(state.getBranchRevisions().containsKey("refs/tags/v1.0"));
   }

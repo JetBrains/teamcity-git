@@ -103,4 +103,6 @@ public interface Constants {
   public static final String USERNAME_FOR_TAGS = "userForTags";
 
   public static final String SERVER_SIDE_AUTO_CRLF = "serverSideAutoCrlf";
+
+  public static final String REPORT_TAG_REVISIONS = "reportTagRevisions";
 }

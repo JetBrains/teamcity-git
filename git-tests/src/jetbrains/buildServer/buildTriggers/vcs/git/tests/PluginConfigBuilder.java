@@ -49,7 +49,6 @@ public class PluginConfigBuilder {
   private boolean myRespectAutocrlf = false;
   private ServerPaths myPaths;
   private File myDotBuildServerDir;
-  private boolean myIncludeTagsInCurrentState;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -175,10 +174,6 @@ public class PluginConfigBuilder {
         return myDelegate.getConnectionRetryAttempts();
       }
 
-      public boolean includeTagsInCurrentState() {
-        return myIncludeTagsInCurrentState;
-      }
-
       public boolean ignoreFetchedCommits() {
         return false;
       }
@@ -289,11 +284,6 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder withDotBuildServerDir(@NotNull File dotBuildServer) {
     myDotBuildServerDir = dotBuildServer;
-    return this;
-  }
-
-  public PluginConfigBuilder includeTagsInCurrentState(boolean doInclude) {
-    myIncludeTagsInCurrentState = doInclude;
     return this;
   }
 }

@@ -54,6 +54,13 @@
     </tr>
     <bs:branchSpecTableRow/>
     <tr>
+      <th><label for="reportTagRevisions">Use tags as branches:</label></th>
+      <td>
+        <props:checkboxProperty name="reportTagRevisions"/>
+        <div class="smallNote" style="margin: 0">Allows you to use tags in branch specification</div>
+      </td>
+    </tr>
+    <tr>
       <th><label for="path">Clone Repository To: </label></th>
       <td><props:textProperty name="path" className="longField"/>
         <div class="smallNote" style="margin: 0;">Provide path to a directory on TeamCity server where a

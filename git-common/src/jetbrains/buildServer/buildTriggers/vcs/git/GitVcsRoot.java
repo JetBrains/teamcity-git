@@ -45,6 +45,7 @@ public class GitVcsRoot implements VcsRoot {
   private final String myUsernameForTags;
   private final String myBranchSpec;
   private final boolean myAutoCrlf;
+  private final boolean myReportTags;
   private File myCustomRepositoryDir;
 
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root) throws VcsException {
@@ -67,6 +68,7 @@ public class GitVcsRoot implements VcsRoot {
     myUsernameForTags = getProperty(Constants.USERNAME_FOR_TAGS);
     myBranchSpec = getProperty(Constants.BRANCH_SPEC);
     myAutoCrlf = Boolean.valueOf(getProperty(Constants.SERVER_SIDE_AUTO_CRLF, "false"));
+    myReportTags = Boolean.valueOf(getProperty(Constants.REPORT_TAG_REVISIONS, "false"));
   }
 
   public GitVcsRoot getRootForBranch(@NotNull String branch) throws VcsException {
@@ -138,6 +140,10 @@ public class GitVcsRoot implements VcsRoot {
 
   public boolean isAutoCrlf() {
     return myAutoCrlf;
+  }
+
+  public boolean isReportTags() {
+    return myReportTags;
   }
 
   /**

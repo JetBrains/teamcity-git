@@ -39,6 +39,7 @@ public class VcsRootBuilder {
   private String myPath;
   private String myAgentGitPath;
   private boolean myAutoCrlf = false;
+  private boolean myReportTags = false;
 
   public static VcsRootBuilder vcsRoot() {
     return new VcsRootBuilder();
@@ -68,6 +69,7 @@ public class VcsRootBuilder {
     if (myAgentGitPath != null)
       result.addProperty(Constants.AGENT_GIT_PATH, myAgentGitPath);
     result.addProperty(Constants.SERVER_SIDE_AUTO_CRLF, String.valueOf(myAutoCrlf));
+    result.addProperty(Constants.REPORT_TAG_REVISIONS, String.valueOf(myReportTags));
     return result;
   }
 
@@ -130,6 +132,11 @@ public class VcsRootBuilder {
 
   public VcsRootBuilder withAutoCrlf(boolean autoCrlf) {
     myAutoCrlf = autoCrlf;
+    return this;
+  }
+
+  public VcsRootBuilder withReportTags(boolean doReportTags) {
+    myReportTags = doReportTags;
     return this;
   }
 }
