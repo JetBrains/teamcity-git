@@ -290,7 +290,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   @Nullable
   public CronExpression getCleanupCronExpression() {
-    String cron = TeamCityProperties.getProperty("teamcity.git.cleanupCron");
+    String cron = TeamCityProperties.getProperty("teamcity.git.cleanupCron", "0 0 2 * * ? *");
     if (isEmpty(cron))
       return null;
     try {
