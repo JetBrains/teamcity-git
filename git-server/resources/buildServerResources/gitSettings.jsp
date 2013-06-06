@@ -45,7 +45,7 @@
       </td>
     </tr>
     <tr>
-      <th><label for="branch">Default Branch: <l:star/></label></th>
+      <th><label for="branch">Default branch: <l:star/></label></th>
       <td>
         <props:textProperty name="branch"/>
         <div class="smallNote" style="margin: 0">Branch to be used if no branch from Branch Specification is set</div>
@@ -57,11 +57,11 @@
       <th><label for="reportTagRevisions">Use tags as branches:</label></th>
       <td>
         <props:checkboxProperty name="reportTagRevisions"/>
-        <div class="smallNote" style="margin: 0">Allows you to use tags in branch specification</div>
+        <div class="smallNote" style="margin: 0">If enabled tags can be used in branch specification</div>
       </td>
     </tr>
     <tr>
-      <th><label for="path">Clone Repository To: </label></th>
+      <th><label for="path">Clone repository to: </label></th>
       <td><props:textProperty name="path" className="longField"/>
         <div class="smallNote" style="margin: 0;">Provide path to a directory on TeamCity server where a
           bare cloned repository should be created. Leave blank to use default path.
@@ -69,7 +69,7 @@
       </td>
     </tr>
     <tr>
-      <th><label for="usernameStyle">Username Style:</label></th>
+      <th><label for="usernameStyle">Username style:</label></th>
       <td><props:selectProperty name="usernameStyle">
         <props:option value="USERID">UserId</props:option>
         <props:option value="NAME">Author Name</props:option>
@@ -103,15 +103,15 @@
       </td>
     </tr>
     <tr>
-      <th><label for="userForTags">Username For Tags:</label></th>
+      <th><label for="userForTags">Username for tags:</label></th>
       <td><props:textProperty name="userForTags"/>
         <div class="smallNote" style="margin: 0">Format: User Name &lt;email&gt;</div>
       </td>
     </tr>
   </l:settingsGroup>
-  <l:settingsGroup title="Authentication settings">
+  <l:settingsGroup title="Authentication Settings">
     <tr>
-      <th><label for="authMethod">Authentication Method:</label></th>
+      <th><label for="authMethod">Authentication method:</label></th>
       <td><props:selectProperty name="authMethod" onchange="gitSelectAuthentication()">
         <props:option value="ANONYMOUS">Anonymous</props:option>
         <props:option value="PRIVATE_KEY_DEFAULT">Default Private Key</props:option>
@@ -127,7 +127,7 @@
       </td>
     </tr>
     <tr id="gitUsername">
-      <th><label for="username">User Name:</label></th>
+      <th><label for="username">User name:</label></th>
       <td><props:textProperty name="username"/>
         <div class="smallNote" style="margin: 0">Username must be specified if there is no username in the clone URL.
           The user name specified here overrides username from URL.
@@ -135,7 +135,7 @@
       </td>
     </tr>
     <tr id="gitKnownHosts">
-      <th>Ignore Known Hosts Database:</th>
+      <th><label for="ignoreKnownHosts">Ignore known hosts database:</label></th>
       <td><props:checkboxProperty name="ignoreKnownHosts"/></td>
     </tr>
     <tr id="gitPasswordRow">
@@ -143,7 +143,7 @@
       <td><props:passwordProperty name="secure:password"/></td>
     </tr>
     <tr id="gitPrivateKeyRow">
-      <th><label for="privateKeyPath">Private Key Path: <l:star/></label></th>
+      <th><label for="privateKeyPath">Private key path: <l:star/></label></th>
       <td><props:textProperty name="privateKeyPath" className="longField"/>
         <div class="smallNote" style="margin: 0;">Specify path to the private key
           on the TeamCity server host.
@@ -174,7 +174,7 @@
       <td colspan="2">Agent-specific settings that are used in case of agent checkout.<bs:help file="Git+(JetBrains)" anchor="agentSettings"/></td>
     </tr>
     <tr>
-      <th><label for="agentGitPath">Path To Git: </label></th>
+      <th><label for="agentGitPath">Path to Git: </label></th>
       <td><props:textProperty name="agentGitPath" className="longField"/>
         <div class="smallNote" style="margin: 0;">Provide path to a git executable
         to be used on agent. If the path is not specified, TeamCity will use
@@ -183,7 +183,7 @@
       </td>
     </tr>
     <tr>
-      <th><label for="agentCleanPolicy">Clean Policy:</label></th>
+      <th><label for="agentCleanPolicy">Clean policy:</label></th>
       <td><props:selectProperty name="agentCleanPolicy">
         <props:option value="ON_BRANCH_CHANGE">On Branch Change</props:option>
         <props:option value="ALWAYS">Always</props:option>
@@ -194,7 +194,7 @@
       </td>
     </tr>
     <tr>
-      <th><label for="agentCleanFilesPolicy">Clean Files Policy:</label></th>
+      <th><label for="agentCleanFilesPolicy">Clean files policy:</label></th>
       <td><props:selectProperty name="agentCleanFilesPolicy">
         <props:option value="ALL_UNTRACKED">All untracked files</props:option>
         <props:option value="IGNORED_ONLY">All ignored untracked files</props:option>
