@@ -36,7 +36,7 @@
         <span class="error" id="error_url"></span></td>
     </tr>
     <tr>
-      <th><label for="url">Push URL:</label></th>
+      <th><label for="push_url">Push URL:</label></th>
       <td><props:textProperty name="push_url" className="longField"/>
         <div class="smallNote" style="margin: 0;">It is used for pushing tags to the remote repository.
           If blank, the fetch url is used.
