@@ -317,6 +317,25 @@ public class AgentVcsSupportTest {
   }
 
 
+  @TestFor(issues = "TW-29291")
+  public void shallow_clone_should_check_if_auxiliary_branch_already_exists() throws Exception {
+    AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.USE_MIRRORS, "true");
+      put(PluginConfigImpl.USE_SHALLOW_CLONE, "true");
+    }});
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build, true);
+
+    //manually create a branch tmp_branch_for_build with, it seems like it wasn't removed due to errors in previous checkouts
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
+    GitVcsRoot root = new GitVcsRoot(mirrorManager, myRoot);
+    File mirror = mirrorManager.getMirrorDir(root.getRepositoryFetchURL().toString());
+    File emptyBranchFile = new File(mirror, "refs" + File.separator + "heads" + File.separator + "tmp_branch_for_build");
+    FileUtil.writeToFile(emptyBranchFile, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653\n".getBytes());
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build, true);
+  }
+
+
   public void when_fetch_for_mirror_failed_remove_it_and_try_again() throws Exception {
     File repo = dataFile("repo_for_fetch.1");
     File remoteRepo = myTempFiles.createTempDir();

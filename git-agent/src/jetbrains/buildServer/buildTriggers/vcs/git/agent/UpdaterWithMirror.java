@@ -176,7 +176,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     String branchName = tmpBranchName;
     Map<String, Ref> existingRefs = myGitFactory.create(repositoryDir).showRef().call();
     int i = 0;
-    while (existingRefs.containsKey(branchName)) {
+    while (existingRefs.containsKey("refs/heads/" + branchName)) {
       branchName = tmpBranchName + i;
       i++;
     }
