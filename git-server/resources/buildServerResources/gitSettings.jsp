@@ -61,14 +61,6 @@
       </td>
     </tr>
     <tr>
-      <th><label for="path">Clone repository to: </label></th>
-      <td><props:textProperty name="path" className="longField"/>
-        <div class="smallNote" style="margin: 0;">Provide path to a directory on TeamCity server where a
-          bare cloned repository should be created. Leave blank to use default path.
-        </div>
-      </td>
-    </tr>
-    <tr>
       <th><label for="usernameStyle">Username style:</label></th>
       <td><props:selectProperty name="usernameStyle">
         <props:option value="USERID">UserId</props:option>
@@ -166,6 +158,14 @@
       </th>
       <td>
         <props:checkboxProperty name="serverSideAutoCrlf"/>
+      </td>
+    </tr>
+    <tr>
+      <th><label for="path">Custom clone directory on server:<bs:help file="Git+(JetBrains)" anchor="customCloneDir"/></label></th>
+      <td><props:textProperty name="path" className="longField"/>
+        <div class="smallNote" style="margin: 0;">
+          A directory on TeamCity server where a bare cloned repository should be created. Leave blank to use default path.
+        </div>
       </td>
     </tr>
   </l:settingsGroup>
