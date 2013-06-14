@@ -57,7 +57,7 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
         ourLog.debug("Repository " + repositoryUrl + " is used in the build, its mirror won't be cleaned");
         repositories.add(gitRoot.getRepositoryFetchURL().toString());
       } catch (VcsException e) {
-        ourLog.warn("Error while creating git root " + root.getName());
+        ourLog.warn("Error while creating git root " + root.getName() + ". If the root has a mirror on agent, the mirror might be cleaned", e);
       }
     }
     return repositories;
