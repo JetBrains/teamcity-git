@@ -4,6 +4,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.agent.DirectoryCleanersProvider;
 import jetbrains.buildServer.agent.DirectoryCleanersProviderContext;
 import jetbrains.buildServer.agent.DirectoryCleanersRegistry;
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.vcs.VcsException;
@@ -48,6 +49,8 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
     Set<String> repositories = new HashSet<String>();
     for (VcsRootEntry entry : context.getRunningBuild().getVcsRootEntries()) {
       VcsRoot root = entry.getVcsRoot();
+      if (!Constants.VCS_NAME.equals(root.getVcsName()))
+        continue;
       try {
         GitVcsRoot gitRoot = new GitVcsRoot(myMirrorManager, root);
         String repositoryUrl = gitRoot.getRepositoryFetchURL().toString();
