@@ -44,6 +44,8 @@ import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
+
 /**
 * @author dmitry.neverov
 */
@@ -54,11 +56,14 @@ public class FetchCommandImpl implements FetchCommand {
 
   private final ServerPluginConfig myConfig;
   private final TransportFactory myTransportFactory;
+  private final FetcherProperties myFetcherProperties;
 
-
-  public FetchCommandImpl(@NotNull ServerPluginConfig config, @NotNull TransportFactory transportFactory) {
+  public FetchCommandImpl(@NotNull ServerPluginConfig config,
+                          @NotNull TransportFactory transportFactory,
+                          @NotNull FetcherProperties fetcherProperties) {
     myConfig = config;
     myTransportFactory = transportFactory;
+    myFetcherProperties = fetcherProperties;
   }
 
 
@@ -114,32 +119,39 @@ public class FetchCommandImpl implements FetchCommand {
     final long fetchStart = System.currentTimeMillis();
     final String debugInfo = getDebugInfo(repository, uri, specs);
 
-    GeneralCommandLine cl = createFetcherCommandLine(repository, uri);
-    if (LOG.isDebugEnabled())
-      LOG.debug("Start fetch process for " + debugInfo);
+    File gitPropertiesFile = null;
+    try {
+      GeneralCommandLine cl = createFetcherCommandLine(repository, uri);
+      if (LOG.isDebugEnabled())
+        LOG.debug("Start fetch process for " + debugInfo);
 
-    File threadDump = getThreadDumpFile(repository);
-    FetcherEventHandler processEventHandler = new FetcherEventHandler(debugInfo, settings, repository.getDirectory(), uri, specs, threadDump);
-    ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, processEventHandler);
+      File threadDump = getThreadDumpFile(repository);
+      gitPropertiesFile = myFetcherProperties.getPropertiesFile();
+      FetcherEventHandler processEventHandler = new FetcherEventHandler(debugInfo, settings, repository.getDirectory(), uri, specs, threadDump, gitPropertiesFile);
+      ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, processEventHandler);
 
-    if (PERFORMANCE_LOG.isDebugEnabled())
-      PERFORMANCE_LOG.debug("[fetch in separate process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
+      if (PERFORMANCE_LOG.isDebugEnabled())
+        PERFORMANCE_LOG.debug("[fetch in separate process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
 
-    if (processEventHandler.hasErrors())
-      processEventHandler.throwWrappedException();
+      if (processEventHandler.hasErrors())
+        processEventHandler.throwWrappedException();
 
-    VcsException commandError = CommandLineUtil.getCommandLineError("git fetch", result);
-    if (commandError != null) {
-      if (isOutOfMemoryError(result))
-        LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + myConfig.getFetchProcessMaxMemory() + ", try to increase it.");
-      if (isTimeout(result))
-        logTimeout(debugInfo, threadDump);
-      clean(repository);
-      throw commandError;
-    }
-    if (result.getStderr().length() > 0) {
-      LOG.warn("Error output produced by git fetch");
-      LOG.warn(result.getStderr());
+      VcsException commandError = CommandLineUtil.getCommandLineError("git fetch", result);
+      if (commandError != null) {
+        if (isOutOfMemoryError(result))
+          LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + myConfig.getFetchProcessMaxMemory() + ", try to increase it.");
+        if (isTimeout(result))
+          logTimeout(debugInfo, threadDump);
+        clean(repository);
+        throw commandError;
+      }
+      if (result.getStderr().length() > 0) {
+        LOG.warn("Error output produced by git fetch");
+        LOG.warn(result.getStderr());
+      }
+    } finally {
+      if (gitPropertiesFile != null)
+        FileUtil.delete(gitPropertiesFile);
     }
   }
 
@@ -248,19 +260,22 @@ public class FetchCommandImpl implements FetchCommand {
     private final Collection<RefSpec> mySpecs;
     private final List<Exception> myErrors = new ArrayList<Exception>();
     private final File myThreadDump;
+    private final File myGitProperties;
 
     FetcherEventHandler(@NotNull final String repositoryDebugInfo,
                         @NotNull final AuthSettings authSettings,
                         @NotNull final File repositoryDir,
                         @NotNull final URIish uri,
                         @NotNull final Collection<RefSpec> specs,
-                        @NotNull final File threadDump) {
+                        @NotNull final File threadDump,
+                        @NotNull final File gitProperties) {
       myRepositoryDebugInfo = repositoryDebugInfo;
       myAuthSettings = authSettings;
       myRepositoryDir = repositoryDir;
       myUri = uri;
       mySpecs = specs;
       myThreadDump = threadDump;
+      myGitProperties = gitProperties;
     }
 
     public void onProcessStarted(Process ps) {
@@ -274,6 +289,7 @@ public class FetchCommandImpl implements FetchCommand {
         properties.put(Constants.REFSPEC, serializeSpecs());
         properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
         properties.put(Constants.THREAD_DUMP_FILE, myThreadDump.getAbsolutePath());
+        properties.put(Constants.FETCHER_INTERNAL_PROPERTIES_FILE, myGitProperties.getAbsolutePath());
         processInput.write(VcsUtil.propertiesToStringSecure(properties).getBytes("UTF-8"));
         processInput.flush();
       } catch (IOException e) {

@@ -18,7 +18,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.serverSide.ServerListener;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.VcsException;
@@ -67,9 +69,9 @@ public class GitSupportBuilder {
       myTransportFactory = new TransportFactoryImpl(myPluginConfig);
     if (myFetchCommand == null) {
       if (myBeforeFetchHook == null) {
-        myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory);
+        myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig));
       } else {
-        final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory);
+        final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig));
         myFetchCommand = new FetchCommand() {
           public void fetch(@NotNull Repository db,
                             @NotNull URIish fetchURI,

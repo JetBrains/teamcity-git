@@ -43,15 +43,25 @@ import java.text.ParseException;
 import java.util.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
+import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
 /**
  * @author dmitry.neverov
  */
 public class PluginConfigImpl implements ServerPluginConfig {
 
+  private static final String TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS = "teamcity.git.idle.timeout.seconds";
+  private static final String TEAMCITY_GIT_SSH_PROXY_TYPE = "teamcity.git.sshProxyType";
+  private static final String TEAMCITY_GIT_SSH_PROXY_PORT = "teamcity.git.sshProxyPort";
+  private static final String TEAMCITY_GIT_ALWAYS_CHECK_CIPHERS = "teamcity.git.always.check.ciphers";
+
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
   private final File myCachesDir;
+  private final Set<String> myFetcherPropertyNames = setOf(TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS,
+                                                           TEAMCITY_GIT_SSH_PROXY_TYPE,
+                                                           TEAMCITY_GIT_SSH_PROXY_PORT,
+                                                           TEAMCITY_GIT_ALWAYS_CHECK_CIPHERS);
 
   public PluginConfigImpl() {
     myCachesDir = null;
@@ -160,7 +170,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   public int getIdleTimeoutSeconds() {
-    return TeamCityProperties.getInteger("teamcity.git.idle.timeout.seconds", DEFAULT_IDLE_TIMEOUT);
+    return TeamCityProperties.getInteger(TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS, DEFAULT_IDLE_TIMEOUT);
   }
 
 
@@ -186,13 +196,13 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   public Proxy getJschProxy() {
-    String sshProxyType = TeamCityProperties.getProperty("teamcity.git.sshProxyType");
+    String sshProxyType = TeamCityProperties.getProperty(TEAMCITY_GIT_SSH_PROXY_TYPE);
     if (isEmpty(sshProxyType))
       return null;
     String sshProxyHost = TeamCityProperties.getProperty("teamcity.git.sshProxyHost");
     if (isEmpty(sshProxyHost))
       return null;
-    int sshProxyPort = TeamCityProperties.getInteger("teamcity.git.sshProxyPort", -1);
+    int sshProxyPort = TeamCityProperties.getInteger(TEAMCITY_GIT_SSH_PROXY_PORT, -1);
     if ("http".equals(sshProxyType)) {
       return sshProxyPort != -1 ? new ProxyHTTP(sshProxyHost, sshProxyPort) : new ProxyHTTP(sshProxyHost);
     }
@@ -236,13 +246,13 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   private void addSshProxySettings(List<String> proxySettings) {
-    String sshProxyType = TeamCityProperties.getProperty("teamcity.git.sshProxyType");
+    String sshProxyType = TeamCityProperties.getProperty(TEAMCITY_GIT_SSH_PROXY_TYPE);
     if (!isEmpty(sshProxyType))
       proxySettings.add("-Dteamcity.git.sshProxyType=" + sshProxyType);
     String sshProxyHost = TeamCityProperties.getProperty("teamcity.git.sshProxyHost");
     if (!isEmpty(sshProxyHost))
       proxySettings.add("-Dteamcity.git.sshProxyHost=" + sshProxyHost);
-    int sshProxyPort = TeamCityProperties.getInteger("teamcity.git.sshProxyPort", -1);
+    int sshProxyPort = TeamCityProperties.getInteger(TEAMCITY_GIT_SSH_PROXY_PORT, -1);
     if (sshProxyPort != -1)
       proxySettings.add("-Dteamcity.git.sshProxyPort=" + sshProxyPort);
   }
@@ -257,7 +267,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   public boolean alwaysCheckCiphers() {
-    return TeamCityProperties.getBoolean("teamcity.git.always.check.ciphers");
+    return TeamCityProperties.getBoolean(TEAMCITY_GIT_ALWAYS_CHECK_CIPHERS);
   }
 
   public boolean verboseGetContentLog() {
@@ -295,5 +305,14 @@ public class PluginConfigImpl implements ServerPluginConfig {
       LOG.warn("Wrong cron expression " + cron, e);
       return null;
     }
+  }
+
+  @NotNull
+  public Map<String, String> getFetcherProperties() {
+    Map<String, String> fetcherProps = new HashMap<String, String>();
+    for (String propName : myFetcherPropertyNames) {
+      fetcherProps.put(propName, TeamCityProperties.getProperty(propName));
+    }
+    return fetcherProps;
   }
 }

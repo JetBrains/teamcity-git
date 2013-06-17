@@ -105,4 +105,7 @@ public interface Constants {
   public static final String SERVER_SIDE_AUTO_CRLF = "serverSideAutoCrlf";
 
   public static final String REPORT_TAG_REVISIONS = "reportTagRevisions";
+
+  //path to internal properties to use in Fetcher
+  public static final String FETCHER_INTERNAL_PROPERTIES_FILE = "fetcherInternalPropertiesFile";
 }

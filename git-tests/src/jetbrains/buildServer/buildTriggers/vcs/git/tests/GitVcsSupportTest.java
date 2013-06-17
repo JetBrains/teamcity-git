@@ -24,7 +24,11 @@ import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.serverSide.BasePropertiesModel;
+import jetbrains.buildServer.serverSide.ServerListener;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
@@ -50,9 +54,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -95,6 +97,9 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @BeforeMethod
   public void setUp() throws IOException {
+    new TeamCityProperties() {{
+      setModel(new BasePropertiesModel() {});
+    }};
     myContext = new Mockery();
     myTempFiles = new TempFiles();
     myServerPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
@@ -1034,6 +1039,31 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  @Test
+  public void fetch_process_should_have_necessary_options_from_internal_properties() throws Exception {
+    String classpath = myConfigBuilder.build().getFetchClasspath() + File.pathSeparator +
+                       ClasspathUtil.composeClasspath(new Class[]{FetcherCheckingProperties.class}, null, null);
+    myConfigBuilder.setSeparateProcessForFetch(true)
+      .setFetchClasspath(classpath)
+      .setFetcherClassName(FetcherCheckingProperties.class.getName()) //custom Fetcher that throws a error if it cannot find specific property
+      .withFetcherProperties("teamcity.git.some.prop", "123");
+
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("master");
+
+    //custom Fetcher throws a error if TeamCityProperty teamcity.git.idle.timeout.seconds != 123, collect changes would fail in this case
+    support.collectChanges(root, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", "f3f826ce85d6dad25156b2d7550cedeb1a422f4c", CheckoutRules.DEFAULT);
+  }
+
+  public static class FetcherCheckingProperties {
+    public static void main(String... args) throws Exception {
+      Fetcher.main(args);
+      if (!"123".equals(TeamCityProperties.getProperty("teamcity.git.some.prop")))
+        throw new Exception("Property teamcity.git.some.prop is not passed to the Fetcher");
+    }
+  }
+
+
   //@Test
   public void collecting_changes_should_not_block_IDE_requests() throws Exception {
     String classpath = myConfigBuilder.build().getFetchClasspath() + File.pathSeparator +
@@ -1235,7 +1265,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test
   public void getCurrentVersion_should_not_do_fetch() throws Exception {
     ServerPluginConfig config = myConfigBuilder.build();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config));
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config), new FetcherProperties(config));
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
 
@@ -1358,7 +1388,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       }
     };
 
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, new FetcherProperties(config));
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport()
       .withPluginConfig(myConfigBuilder)

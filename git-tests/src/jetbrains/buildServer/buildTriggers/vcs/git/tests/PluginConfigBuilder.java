@@ -26,7 +26,11 @@ import org.quartz.CronExpression;
 
 import java.io.File;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import static jetbrains.buildServer.util.Util.map;
 
 /**
  * @author dmitry.neverov
@@ -34,21 +38,18 @@ import java.util.List;
 public class PluginConfigBuilder {
 
   private PluginConfigImpl myDelegate;
-  private Integer myStreamFileThreshold;
-  private Integer myFetchTimeout;
   private Boolean mySeparateProcessForFetch;
   private Boolean myRunNativeGC;
   private String  myPathToGit;
-  private Integer myNativeGCQuota;
   private String  myFetchClassPath;
   private String  myFetcherClassName;
   private Integer myFixedSubmoduleCommitSearchDepth;
   private Integer myIdleTimeoutSeconds;
   private Long myMirrorExpirationTimeoutMillis;
   private int myNumberOfCommitsWhenFromVersionNotFound = -1;
-  private boolean myRespectAutocrlf = false;
   private ServerPaths myPaths;
   private File myDotBuildServerDir;
+  private Map<String, String> myFetcherProperties = new HashMap<String, String>();
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -72,11 +73,11 @@ public class PluginConfigBuilder {
       }
 
       public int getStreamFileThreshold() {
-        return myStreamFileThreshold != null ? myStreamFileThreshold.intValue() : myDelegate.getStreamFileThreshold();
+        return myDelegate.getStreamFileThreshold();
       }
 
       public int getFetchTimeout() {
-        return myFetchTimeout != null ? myFetchTimeout.intValue() : myDelegate.getFetchTimeout();
+        return myDelegate.getFetchTimeout();
       }
 
       public boolean isPrintDebugInfoOnEachCommit() {
@@ -92,11 +93,11 @@ public class PluginConfigBuilder {
       }
 
       public boolean isSeparateProcessForFetch() {
-        return mySeparateProcessForFetch != null ? mySeparateProcessForFetch.booleanValue() : myDelegate.isSeparateProcessForFetch();
+        return mySeparateProcessForFetch != null ? mySeparateProcessForFetch : myDelegate.isSeparateProcessForFetch();
       }
 
       public boolean isRunNativeGC() {
-        return myRunNativeGC != null ? myRunNativeGC.booleanValue() : myDelegate.isRunNativeGC();
+        return myRunNativeGC != null ? myRunNativeGC : myDelegate.isRunNativeGC();
       }
 
       public String getPathToGit() {
@@ -104,7 +105,7 @@ public class PluginConfigBuilder {
       }
 
       public int getNativeGCQuotaMinutes() {
-        return myNativeGCQuota != null ? myNativeGCQuota.intValue() : myDelegate.getNativeGCQuotaMinutes();
+        return myDelegate.getNativeGCQuotaMinutes();
       }
 
       public String getFetchClasspath() {
@@ -182,34 +183,12 @@ public class PluginConfigBuilder {
       public CronExpression getCleanupCronExpression() {
         return null;
       }
+
+      @NotNull
+      public Map<String, String> getFetcherProperties() {
+        return myFetcherProperties;
+      }
     };
-  }
-
-
-  PluginConfigBuilder setStreamFileThreshold(int threshold) {
-    myStreamFileThreshold = threshold;
-    return this;
-  }
-
-
-  PluginConfigBuilder setFetchTimeout(int timeout) {
-    myFetchTimeout = timeout;
-    return this;
-  }
-
-
-  PluginConfigBuilder setPrintDebugInfoOnEachCommit(boolean debug) {
-    return this;
-  }
-
-
-  PluginConfigBuilder setFetchProcessJavaPath(String path) {
-    return this;
-  }
-
-
-  PluginConfigBuilder setFetchProcessMaxMemory(String memory) {
-    return this;
   }
 
 
@@ -227,12 +206,6 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setPathToGit(String path) {
     myPathToGit = path;
-    return this;
-  }
-
-
-  PluginConfigBuilder setNativeGCQuotaMinutes(int quota) {
-    myNativeGCQuota = quota;
     return this;
   }
 
@@ -272,18 +245,13 @@ public class PluginConfigBuilder {
     return this;
   }
 
-  public PluginConfigBuilder setRespectAutocrlf(boolean doRespect) {
-    myRespectAutocrlf = doRespect;
-    return this;
-  }
-
-  public PluginConfigBuilder withServerPaths(@NotNull ServerPaths paths) {
-    myPaths = paths;
-    return this;
-  }
-
   public PluginConfigBuilder withDotBuildServerDir(@NotNull File dotBuildServer) {
     myDotBuildServerDir = dotBuildServer;
+    return this;
+  }
+
+  public PluginConfigBuilder withFetcherProperties(@NotNull String... props) {
+    myFetcherProperties.putAll(map(props));
     return this;
   }
 }

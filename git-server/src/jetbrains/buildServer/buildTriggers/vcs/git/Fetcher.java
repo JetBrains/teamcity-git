@@ -25,6 +25,9 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import jetbrains.buildServer.serverSide.FileWatchingPropertiesModel;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
@@ -55,6 +58,10 @@ public class Fetcher {
       String threadDumpFilePath = properties.remove(Constants.THREAD_DUMP_FILE);
       String repositoryPath = properties.remove(Constants.REPOSITORY_DIR_PROPERTY_NAME);
       debug = "true".equals(properties.remove(Constants.VCS_DEBUG_ENABLED));
+      final String internalPropsFile = properties.remove(Constants.FETCHER_INTERNAL_PROPERTIES_FILE);
+      new TeamCityProperties() {{
+        setModel(new FileWatchingPropertiesModel(new File(internalPropsFile)));
+      }};
 
       ByteArrayOutputStream output = new ByteArrayOutputStream();
       FetchProgressMonitor progress = new FetchProgressMonitor(new PrintStream(output));

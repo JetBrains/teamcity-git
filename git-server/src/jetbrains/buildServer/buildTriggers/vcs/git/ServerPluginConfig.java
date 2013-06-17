@@ -22,6 +22,7 @@ import org.jetbrains.annotations.Nullable;
 import org.quartz.CronExpression;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author dmitry.neverov
@@ -95,4 +96,7 @@ public interface ServerPluginConfig extends PluginConfig {
 
   @Nullable
   CronExpression getCleanupCronExpression();
+
+  @NotNull
+  Map<String, String> getFetcherProperties();
 }
