@@ -1051,7 +1051,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master");
 
-    //custom Fetcher throws a error if TeamCityProperty teamcity.git.idle.timeout.seconds != 123, collect changes would fail in this case
+    //custom Fetcher throws a error if TeamCityProperty teamcity.git.some.prop != 123, collect changes would fail in this case
     support.collectChanges(root, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", "f3f826ce85d6dad25156b2d7550cedeb1a422f4c", CheckoutRules.DEFAULT);
   }
 
