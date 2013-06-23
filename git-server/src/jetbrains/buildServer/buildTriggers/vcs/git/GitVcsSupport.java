@@ -29,12 +29,15 @@ import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
+import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevObject;
+import org.eclipse.jgit.revwalk.RevTag;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
@@ -186,7 +189,15 @@ public class GitVcsSupport extends ServerVcsSupport
       try {
         return getCommit(db, commitSHA);
       } catch (IOException e1) {
-        throw new VcsException("Cannot find commit " + commitSHA + " in repository " + root.debugInfo());
+        LOG.debug("Cannot find commit " + commitSHA + " in the branch " + root.getRef() +
+                  " of repository " + root.debugInfo() + ", fetch all tags");
+        spec = new RefSpec().setSourceDestination("refs/tags/*", "refs/tags/*").setForceUpdate(true);
+        fetch(db, root.getRepositoryFetchURL(), spec, root.getAuthSettings());
+        try {
+          return getCommit(db, commitSHA);
+        } catch (IOException e2) {
+          throw new VcsException("Cannot find commit " + commitSHA + " in repository " + root.debugInfo());
+        }
       }
     }
   }
@@ -199,7 +210,19 @@ public class GitVcsSupport extends ServerVcsSupport
     final long start = System.currentTimeMillis();
     RevWalk walk = new RevWalk(repository);
     try {
-      return walk.parseCommit(commitId);
+      RevObject object = walk.parseAny(commitId);
+      while(true) {
+        if (object instanceof RevCommit) {
+          return (RevCommit)object;
+        }
+
+        if (object instanceof RevTag) {
+          object = ((RevTag)object).getObject();
+          continue;
+        }
+
+        throw new MissingObjectException(commitId, org.eclipse.jgit.lib.Constants.OBJ_COMMIT);
+      }
     } finally {
       walk.release();
       final long finish = System.currentTimeMillis();
