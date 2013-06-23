@@ -37,6 +37,7 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import jetbrains.buildServer.vcs.patches.PatchTestCase;
+import junit.framework.Assert;
 import org.apache.log4j.Level;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
@@ -1424,6 +1425,55 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertTrue(state.getBranchRevisions().containsKey("refs/tags/v1.0"));
   }
 
+  @TestFor(issues = "TW-29778")
+  @Test
+  public void tags_in_currentState2() throws Exception {
+    final File temp = new File(myTmpDir, "heavy-tags.git");
+    copyRepository(dataFile("heavy-tags.git"), temp);
+    final String repo = GitUtils.toURL(temp);
+
+    final VcsRoot rootWithTags = vcsRoot().withFetchUrl(repo)
+      .withReportTags(true)
+      .withBranch("master")
+      .withBranchSpec("+:refs/tags/*\n+:refs/heads")
+      .build();
+
+    final VcsRoot rootForChanges = vcsRoot().withFetchUrl(repo)
+      .withReportTags(false)
+      .withBranch("master")
+      .build();
+
+    //by default - don't include tags
+    RepositoryStateData state = getSupport().getCurrentState(rootWithTags);
+    final String[] branchNames = ("a_01\na_02\na_03\na_04\na_05\na_06\na_07\na_08\na_09\na_0A\na_0B\na_0C\nbare_01\nbare_02\nbare_03\nbare_04\nbare_05\nbare_06\nbare_07\nbare_08").split("\n+");
+    final String[] allBranches = new String[branchNames.length];
+    for (int i = 0; i < branchNames.length; i++) {
+      allBranches[i] = "refs/tags/" + branchNames[i];
+    }
+
+    for (String branch : allBranches) {
+      Assert.assertNotNull(state.getBranchRevisions().get(branch), "must contain branch: " + branch);
+    }
+
+    for(int i = 0; i < allBranches.length; i++) {
+      for(int j = i + 1 ; j < allBranches.length; j++) {
+        //this operation must not crash
+        final String fromVersion = state.getBranchRevisions().get(allBranches[i]);
+        final String toVersion = state.getBranchRevisions().get(allBranches[j]);
+        final String defaultBranch = "refs/heads/master";
+
+        System.out.println("Checking changes from: " + fromVersion + " to " + toVersion);
+
+        getSupport().getCollectChangesPolicy().collectChanges(
+          rootForChanges,
+          RepositoryStateData.createVersionState(defaultBranch, Collections.singletonMap(defaultBranch, fromVersion)),
+          rootForChanges,
+          RepositoryStateData.createVersionState(defaultBranch, Collections.singletonMap(defaultBranch, toVersion)),
+          new CheckoutRules(".=>.")
+        );
+      }
+    }
+  }
 
   private static class FetchCommandCountDecorator implements FetchCommand {
 
