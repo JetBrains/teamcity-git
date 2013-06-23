@@ -176,28 +176,33 @@ public class GitVcsSupport extends ServerVcsSupport
       //ignore error, will try to fetch
     }
 
+    //TODO[0]: here we have 2(!) fetch operations if we are not lucky enough
+    //TODO[0]: e.g. commit was not included into master branch
+    //TODO[0]: 1. fetchBranchData  - makes it checkout specified branch
+    //TODO[0]: 2. fetch entire repository - makes it checkout all standard objects
+
     LOG.debug("Cannot find commit " + commitSHA + " in repository " + root.debugInfo() + ", fetch branch " + root.getRef());
-    fetchBranchData(root, db);
+    final String refName = GitUtils.expandRef(root.getRef());
+    RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
+    fetch(db, root.getRepositoryFetchURL(), spec, root.getAuthSettings());
 
     try {
       return getCommit(db, commitSHA);
     } catch (IOException e) {
       LOG.debug("Cannot find commit " + commitSHA + " in the branch " + root.getRef() +
                 " of repository " + root.debugInfo() + ", fetch all branches");
-      RefSpec spec = new RefSpec().setSourceDestination("refs/heads/*", "refs/heads/*").setForceUpdate(true);
-      fetch(db, root.getRepositoryFetchURL(), spec, root.getAuthSettings());
+
+      //TODO[1]: what if I have non-standard branch spec here? How can I make it be fetched at once?
+      //TODO[2]: this fetch may checkout too many unrelated objects. Could we filter it somehow?
+      final Collection<RefSpec> specs = Arrays.asList(
+        new RefSpec().setSourceDestination("refs/heads/*", "refs/heads/*").setForceUpdate(true),
+        new RefSpec().setSourceDestination("refs/tags/*",  "refs/tags/*").setForceUpdate(true)
+      );
+      fetch(db, root.getRepositoryFetchURL(), specs, root.getAuthSettings());
       try {
         return getCommit(db, commitSHA);
       } catch (IOException e1) {
-        LOG.debug("Cannot find commit " + commitSHA + " in the branch " + root.getRef() +
-                  " of repository " + root.debugInfo() + ", fetch all tags");
-        spec = new RefSpec().setSourceDestination("refs/tags/*", "refs/tags/*").setForceUpdate(true);
-        fetch(db, root.getRepositoryFetchURL(), spec, root.getAuthSettings());
-        try {
-          return getCommit(db, commitSHA);
-        } catch (IOException e2) {
-          throw new VcsException("Cannot find commit " + commitSHA + " in repository " + root.debugInfo());
-        }
+        throw new VcsException("Cannot find commit " + commitSHA + " in repository " + root.debugInfo());
       }
     }
   }
@@ -319,20 +324,6 @@ public class GitVcsSupport extends ServerVcsSupport
   public boolean sourcesUpdatePossibleIfChangesNotFound(@NotNull VcsRoot root) {
     return false;
   }
-
-  /**
-   * Fetch data for the branch
-   *
-   * @param root git root
-   * @param repository the repository
-   * @throws Exception if there is a problem with fetching data
-   */
-  private void fetchBranchData(@NotNull GitVcsRoot root, @NotNull Repository repository) throws Exception {
-    final String refName = GitUtils.expandRef(root.getRef());
-    RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
-    fetch(repository, root.getRepositoryFetchURL(), spec, root.getAuthSettings());
-  }
-
 
   public void fetch(Repository db, URIish fetchURI, Collection<RefSpec> refspecs, AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     File repositoryDir = db.getDirectory();
