@@ -127,12 +127,18 @@ public class GitVcsSupport extends ServerVcsSupport
         continue;
       if (!gitRoot.isReportTags() && isTag(ref) && !fullRef.equals(ref.getName()))
         continue;
-      branchRevisions.put(ref.getName(), ref.getObjectId().name());
+      branchRevisions.put(ref.getName(), getRevision(ref));
     }
     if (branchRevisions.get(fullRef) == null) {
       throw new VcsException("Cannot find revision of the default branch '" + refInRoot + "' of vcs root " + LogUtil.describe(root));
     }
     return RepositoryStateData.createVersionState(fullRef, branchRevisions);
+  }
+
+  private String getRevision(@NotNull Ref ref) {
+    if (isTag(ref) && ref.getPeeledObjectId() != null)
+      return ref.getPeeledObjectId().name();
+    return ref.getObjectId().name();
   }
 
   public void buildPatch(@NotNull VcsRoot root,

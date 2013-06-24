@@ -25,10 +25,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
-import jetbrains.buildServer.serverSide.ServerListener;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
-import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
@@ -65,7 +63,6 @@ import java.util.regex.Pattern;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.getVcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
@@ -1422,6 +1419,20 @@ public class GitVcsSupportTest extends PatchTestCase {
     state = getSupport().getCurrentState(root);
     assertTrue(state.getBranchRevisions().containsKey("refs/tags/v0.5"));
     assertTrue(state.getBranchRevisions().containsKey("refs/tags/v1.0"));
+  }
+
+
+  @TestFor(issues = "TW-29778")
+  @Test
+  public void should_report_hash_of_commit_tag_points_to_instead_of_hash_of_tag() throws Exception {
+    VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
+      .withBranch("master")
+      .withReportTags(true)
+      .build();
+    RepositoryStateData state = getSupport().getCurrentState(root);
+    assertEquals("2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", state.getBranchRevisions().get("refs/tags/v0.5"));
+    assertEquals("5711cbfe566b6c92e331f95d4b236483f4532eed", state.getBranchRevisions().get("refs/tags/v0.7"));
+    assertEquals("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", state.getBranchRevisions().get("refs/tags/v1.0"));
   }
 
 
