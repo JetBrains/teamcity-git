@@ -4,8 +4,6 @@
       <root url="jar://$PROJECT_DIR$/lib/agent/trilead-ssh2.jar!/" />
     </CLASSES>
     <JAVADOC />
-    <SOURCES>
-      <root url="jar://$PROJECT_DIR$/lib/agent/src/trilead-ssh2-src.zip!/" />
-    </SOURCES>
+    <SOURCES />
   </library>
 </component>
