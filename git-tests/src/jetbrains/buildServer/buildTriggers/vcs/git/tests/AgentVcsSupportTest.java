@@ -386,8 +386,9 @@ public class AgentVcsSupportTest {
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
     Map<String, Ref> refs = r.getRefDatabase().getRefs("refs/");
     assertTrue(refs.containsKey("tags/v1.0"));
-    assertTrue(refs.containsKey("tags/v0.5"));//it is reachable from refs/tags/v1.0
-    assertEquals(2, refs.size());
+    assertTrue(refs.containsKey("tags/v0.7"));//it is reachable from refs/tags/v1.0
+    assertTrue(refs.containsKey("tags/v0.5"));//also reachable
+    assertEquals(3, refs.size());
   }
 
 

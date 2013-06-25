@@ -35,7 +35,7 @@ repo_for_fetch.3:
 repo.git, branch master:
 465ad9f630e451b9f2b782ffb09804c6a98c4bb9@1289483394000 *   v1.0 origin/master origin/HEAD master Merge branch 'feature-branch2'
                                                        |\
-5711cbfe566b6c92e331f95d4b236483f4532eed@1289483376000 | * add file
+5711cbfe566b6c92e331f95d4b236483f4532eed@1289483376000 | * v0.7 add file
                                                        |/
 2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6@1286183770000 *   v0.5 Merge branch 'feature-branch'
                                                        |\
