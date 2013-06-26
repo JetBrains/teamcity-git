@@ -317,4 +317,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
     }
     return fetcherProps;
   }
+
+  public boolean usePerBranchFetch() {
+    return TeamCityProperties.getBoolean("teamcity.git.usePerBranchFetch");
+  }
 }

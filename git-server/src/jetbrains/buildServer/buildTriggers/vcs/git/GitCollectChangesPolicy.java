@@ -18,20 +18,22 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.vcs.*;
+import org.eclipse.jgit.errors.NotSupportedException;
+import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
+import org.eclipse.jgit.transport.RefSpec;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
 /**
 * @author dmitry.neverov
@@ -70,8 +72,14 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
       Repository r = context.getRepository();
       ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
       revWalk.sort(RevSort.TOPO);
-      ensureRepositoryStateLoaded(context, toState, true);
-      ensureRepositoryStateLoaded(context, fromState, false);
+      if (myConfig.usePerBranchFetch()) {
+        ensureRepositoryStateLoadedOneFetchPerBranch(context, toState, true);
+        ensureRepositoryStateLoadedOneFetchPerBranch(context, fromState, false);
+      } else {
+        FetchAllRefs fetch = new FetchAllRefs(r, context.getGitRoot(), fromState, toState);
+        ensureRepositoryStateLoaded(context, r, toState, fetch, true);
+        ensureRepositoryStateLoaded(context, r, fromState, fetch, false);
+      }
       markStart(r, revWalk, toState);
       markUninteresting(r, revWalk, fromState, toState);
       while (revWalk.next() != null) {
@@ -85,7 +93,37 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     return changes;
   }
 
-  private void ensureRepositoryStateLoaded(@NotNull OperationContext context, @NotNull RepositoryStateData state, boolean throwErrors) throws Exception {
+  private void ensureRepositoryStateLoaded(@NotNull OperationContext context,
+                                           @NotNull Repository db,
+                                           @NotNull RepositoryStateData state,
+                                           @NotNull FetchAllRefs fetch,
+                                           boolean throwErrors) throws Exception {
+    GitVcsRoot root = context.getGitRoot();
+    for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
+      String revision = entry.getValue();
+      RevCommit commit = null;
+      try {
+        commit = myVcs.getCommit(db, revision);
+      } catch (IOException ex) {
+        //ignore error, will try to fetch
+      }
+
+      if (commit == null && !fetch.isInvoked())
+        fetch.run();
+
+      try {
+        myVcs.getCommit(db, revision);
+      } catch (Exception e) {
+        if (throwErrors) {
+          throw new VcsException("Cannot find revision " + revision + " in VCS root " + LogUtil.describe(root), e);
+        } else {
+          LOG.warn("Cannot find revision " + revision + " in VCS root " + LogUtil.describe(root));
+        }
+      }
+    }
+  }
+
+  private void ensureRepositoryStateLoadedOneFetchPerBranch(@NotNull OperationContext context, @NotNull RepositoryStateData state, boolean throwErrors) throws Exception {
     GitVcsRoot root = context.getGitRoot();
     for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
       String branch = entry.getKey();
@@ -267,5 +305,51 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
   private void logFromRevisionNotFound(@NotNull String lowerBoundSHA) {
     LOG.warn("From version " + lowerBoundSHA + " is not found, collect last " +
              myConfig.getNumberOfCommitsWhenFromVersionNotFound() + " commits");
+  }
+
+  private class FetchAllRefs {
+
+    private final Repository myDb;
+    private final GitVcsRoot myRoot;
+    private final Collection<RefSpec> myRefspecs;
+    private boolean myInvoked = false;
+
+    private FetchAllRefs(@NotNull Repository db,
+                         @NotNull GitVcsRoot root,
+                         @NotNull RepositoryStateData fromState,
+                         @NotNull RepositoryStateData toState) {
+      myDb = db;
+      myRoot = root;
+      myRefspecs = getAllRefSpecs(fromState, toState);
+    }
+
+    void run() throws NotSupportedException, VcsException, TransportException {
+      myInvoked = true;
+      myVcs.fetch(myDb, myRoot.getRepositoryFetchURL(), myRefspecs, myRoot.getAuthSettings());
+    }
+
+    boolean isInvoked() {
+      return myInvoked;
+    }
+
+    private Collection<RefSpec> getAllRefSpecs(@NotNull RepositoryStateData... states) {
+      List<RefSpec> specs = new ArrayList<RefSpec>();
+      for (String branch : getAllRefNames(states)) {
+        String ref = GitUtils.expandRef(branch);
+        specs.add(new RefSpec(ref + ":" + ref).setForceUpdate(true));
+      }
+      return specs;
+    }
+
+    private Set<String> getAllRefNames(@NotNull RepositoryStateData... states) {
+      Set<String> refs = new HashSet<String>();
+      for (RepositoryStateData state : states) {
+        for (String ref : state.getBranchRevisions().keySet()) {
+          if (!isEmpty(ref))
+            refs.add(GitUtils.expandRef(ref));
+        }
+      }
+      return refs;
+    }
   }
 }
