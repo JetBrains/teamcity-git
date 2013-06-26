@@ -1436,6 +1436,64 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  @Test
+  @TestFor(issues = "TW-29798")
+  public void do_not_do_fetch_per_branch() throws Exception {
+    VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
+      .withBranch("master")
+      .withReportTags(true)
+      .build();
+
+    //setup fetcher with counter
+    ServerPluginConfig config = myConfigBuilder.build();
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config), new FetcherProperties(config));
+    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
+    GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
+
+    RepositoryStateData state = git.getCurrentState(root);
+    RepositoryStateData s1 = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", state.getBranchRevisions().get("refs/heads/master")));//has a single branch
+    RepositoryStateData s2 = RepositoryStateData.createVersionState("refs/heads/master", state.getBranchRevisions());//has many branches
+
+    git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
+    assertEquals(fetchCounter.getFetchCount(), 1);
+
+    FileUtil.delete(config.getCachesDir());
+    fetchCounter.resetFetchCounter();
+
+    git.getCollectChangesPolicy().collectChanges(root, s2, s1, CheckoutRules.DEFAULT);
+    assertEquals(fetchCounter.getFetchCount(), 1);
+  }
+
+
+  @Test
+  //this test be removed if a single fetch works fine
+  public void should_be_able_to_do_fetch_per_branch() throws Exception {
+    VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
+      .withBranch("master")
+      .withReportTags(true)
+      .build();
+
+    //setup fetcher with counter
+    ServerPluginConfig config = myConfigBuilder.withPerBranchFetch(true).build();
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config), new FetcherProperties(config));
+    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
+    GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
+
+    RepositoryStateData state = git.getCurrentState(root);
+    RepositoryStateData s1 = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", state.getBranchRevisions().get("refs/heads/master")));//has a single branch
+    RepositoryStateData s2 = RepositoryStateData.createVersionState("refs/heads/master", state.getBranchRevisions());//has many branches
+
+    git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
+    assertTrue(fetchCounter.getFetchCount() > 1);
+
+    FileUtil.delete(config.getCachesDir());
+    fetchCounter.resetFetchCounter();
+
+    git.getCollectChangesPolicy().collectChanges(root, s2, s1, CheckoutRules.DEFAULT);
+    assertTrue(fetchCounter.getFetchCount() > 1);
+  }
+
+
   private static class FetchCommandCountDecorator implements FetchCommand {
 
     private final FetchCommand myDelegate;
@@ -1456,6 +1514,10 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     public synchronized int getFetchCount() {
       return myFetchCount;
+    }
+
+    public synchronized void resetFetchCounter() {
+      myFetchCount = 0;
     }
   }
 

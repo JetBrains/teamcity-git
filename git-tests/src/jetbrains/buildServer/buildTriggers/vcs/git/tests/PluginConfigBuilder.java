@@ -50,6 +50,7 @@ public class PluginConfigBuilder {
   private ServerPaths myPaths;
   private File myDotBuildServerDir;
   private Map<String, String> myFetcherProperties = new HashMap<String, String>();
+  private boolean myUsePerBranchFetch;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -188,6 +189,10 @@ public class PluginConfigBuilder {
       public Map<String, String> getFetcherProperties() {
         return myFetcherProperties;
       }
+
+      public boolean usePerBranchFetch() {
+        return myUsePerBranchFetch;
+      }
     };
   }
 
@@ -252,6 +257,11 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder withFetcherProperties(@NotNull String... props) {
     myFetcherProperties.putAll(map(props));
+    return this;
+  }
+
+  public PluginConfigBuilder withPerBranchFetch(boolean usePerBranchFetch) {
+    myUsePerBranchFetch = usePerBranchFetch;
     return this;
   }
 }

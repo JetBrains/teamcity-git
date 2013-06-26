@@ -197,11 +197,13 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  public RevCommit getCommit(Repository repository, String commitSHA) throws IOException {
+  @NotNull
+  public RevCommit getCommit(@NotNull Repository repository, @NotNull String commitSHA) throws IOException {
     return getCommit(repository, ObjectId.fromString(commitSHA));
   }
 
-  public RevCommit getCommit(Repository repository, ObjectId commitId) throws IOException {
+  @NotNull
+  public RevCommit getCommit(@NotNull Repository repository, @NotNull ObjectId commitId) throws IOException {
     final long start = System.currentTimeMillis();
     RevWalk walk = new RevWalk(repository);
     try {
