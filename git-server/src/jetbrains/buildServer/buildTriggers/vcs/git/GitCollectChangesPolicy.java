@@ -21,6 +21,7 @@ import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
@@ -311,7 +312,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
 
     private final Repository myDb;
     private final GitVcsRoot myRoot;
-    private final Collection<RefSpec> myRefspecs;
+    private final Set<String> myAllRefNames;
     private boolean myInvoked = false;
 
     private FetchAllRefs(@NotNull Repository db,
@@ -320,23 +321,24 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
                          @NotNull RepositoryStateData toState) {
       myDb = db;
       myRoot = root;
-      myRefspecs = getAllRefSpecs(fromState, toState);
+      myAllRefNames = getAllRefNames(fromState, toState);
     }
 
     void run() throws NotSupportedException, VcsException, TransportException {
       myInvoked = true;
-      myVcs.fetch(myDb, myRoot.getRepositoryFetchURL(), myRefspecs, myRoot.getAuthSettings());
+      myVcs.fetch(myDb, myRoot.getRepositoryFetchURL(), calculateRefSpecsForFetch(), myRoot.getAuthSettings());
     }
 
     boolean isInvoked() {
       return myInvoked;
     }
 
-    private Collection<RefSpec> getAllRefSpecs(@NotNull RepositoryStateData... states) {
+    private Collection<RefSpec> calculateRefSpecsForFetch() throws VcsException {
       List<RefSpec> specs = new ArrayList<RefSpec>();
-      for (String branch : getAllRefNames(states)) {
-        String ref = GitUtils.expandRef(branch);
-        specs.add(new RefSpec(ref + ":" + ref).setForceUpdate(true));
+      Map<String, Ref> remoteRepositoryRefs = myVcs.getRemoteRefs(myRoot);
+      for (String ref : myAllRefNames) {
+        if (remoteRepositoryRefs.containsKey(ref))
+          specs.add(new RefSpec(ref + ":" + ref).setForceUpdate(true));
       }
       return specs;
     }

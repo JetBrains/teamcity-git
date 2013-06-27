@@ -433,7 +433,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   @NotNull
-  private Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
+  public Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
     OperationContext context = createContext(root, "list remote refs");
     GitVcsRoot gitRoot = context.getGitRoot();
     try {
