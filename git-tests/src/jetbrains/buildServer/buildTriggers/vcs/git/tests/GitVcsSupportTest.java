@@ -1466,7 +1466,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
 
   @Test
-  //this test be removed if a single fetch works fine
+  //this test should be removed if a single fetch works fine
   public void should_be_able_to_do_fetch_per_branch() throws Exception {
     VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
       .withBranch("master")
@@ -1491,6 +1491,37 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     git.getCollectChangesPolicy().collectChanges(root, s2, s1, CheckoutRules.DEFAULT);
     assertTrue(fetchCounter.getFetchCount() > 1);
+  }
+
+
+  @Test
+  @TestFor(issues = "http://youtrack.jetbrains.com/issue/TW-29798#comment=27-537697")
+  public void fetch_should_not_fail_if_remote_repository_does_not_have_some_branches() throws Exception {
+    VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
+      .withBranch("master")
+      .withReportTags(true)
+      .build();
+
+    //setup fetcher with a counter
+    ServerPluginConfig config = myConfigBuilder.build();
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config), new FetcherProperties(config));
+    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
+    GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
+
+    RepositoryStateData state = git.getCurrentState(root);
+    RepositoryStateData s1 = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", state.getBranchRevisions().get("refs/heads/master")));//has a single branch
+    Map<String, String> branches = new HashMap<String, String>(state.getBranchRevisions());
+    branches.put("refs/heads/unknown.branch", branches.get(state.getDefaultBranchName()));//unknown branch that points to a commit that exists in remote repo
+    RepositoryStateData s2 = RepositoryStateData.createVersionState("refs/heads/master", branches);//has many branches, some of them don't exist in remote repository
+
+    git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
+    assertEquals(fetchCounter.getFetchCount(), 1);
+
+    FileUtil.delete(config.getCachesDir());
+    fetchCounter.resetFetchCounter();
+
+    git.getCollectChangesPolicy().collectChanges(root, s2, s1, CheckoutRules.DEFAULT);
+    assertEquals(fetchCounter.getFetchCount(), 1);
   }
 
 
