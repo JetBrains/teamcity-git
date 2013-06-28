@@ -329,6 +329,7 @@ public class UpdaterImpl implements Updater {
     Ref remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
     if (!fetchRequired && hasRevision(myTargetDirectory, myRevision) && remoteRef != null)
       return;
+    myLogger.message("Commit '" + myRevision + "' is not found in repository. Running 'git fetch'...");
     fetchDefaultBranch();
     if (hasRevision(myTargetDirectory, myRevision))
       return;
