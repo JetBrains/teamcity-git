@@ -20,7 +20,6 @@ import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import jetbrains.buildServer.ExecResult;
@@ -43,8 +42,6 @@ import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
-
-import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
 /**
 * @author dmitry.neverov
@@ -127,14 +124,12 @@ public class FetchCommandImpl implements FetchCommand {
 
       File threadDump = getThreadDumpFile(repository);
       gitPropertiesFile = myFetcherProperties.getPropertiesFile();
-      FetcherEventHandler processEventHandler = new FetcherEventHandler(debugInfo, settings, repository.getDirectory(), uri, specs, threadDump, gitPropertiesFile);
-      ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, processEventHandler);
+      FetcherEventHandler processEventHandler = new FetcherEventHandler(debugInfo);
+      byte[] fetchProcessInput = getFetchProcessInputBytes(settings, repository.getDirectory(), uri, specs, threadDump, gitPropertiesFile);
+      ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, fetchProcessInput, processEventHandler);
 
       if (PERFORMANCE_LOG.isDebugEnabled())
         PERFORMANCE_LOG.debug("[fetch in separate process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
-
-      if (processEventHandler.hasErrors())
-        processEventHandler.throwWrappedException();
 
       VcsException commandError = CommandLineUtil.getCommandLineError("git fetch", result);
       if (commandError != null) {
@@ -254,53 +249,14 @@ public class FetchCommandImpl implements FetchCommand {
 
   private class FetcherEventHandler implements SimpleCommandLineProcessRunner.ProcessRunCallback {
     private final String myRepositoryDebugInfo;
-    private final AuthSettings myAuthSettings;
-    private final File myRepositoryDir;
-    private final URIish myUri;
-    private final Collection<RefSpec> mySpecs;
-    private final List<Exception> myErrors = new ArrayList<Exception>();
-    private final File myThreadDump;
-    private final File myGitProperties;
 
-    FetcherEventHandler(@NotNull final String repositoryDebugInfo,
-                        @NotNull final AuthSettings authSettings,
-                        @NotNull final File repositoryDir,
-                        @NotNull final URIish uri,
-                        @NotNull final Collection<RefSpec> specs,
-                        @NotNull final File threadDump,
-                        @NotNull final File gitProperties) {
+    FetcherEventHandler(@NotNull final String repositoryDebugInfo) {
       myRepositoryDebugInfo = repositoryDebugInfo;
-      myAuthSettings = authSettings;
-      myRepositoryDir = repositoryDir;
-      myUri = uri;
-      mySpecs = specs;
-      myThreadDump = threadDump;
-      myGitProperties = gitProperties;
     }
 
     public void onProcessStarted(Process ps) {
       if (LOG.isDebugEnabled())
         LOG.debug("Fetch process for " + myRepositoryDebugInfo + " started");
-      OutputStream processInput = ps.getOutputStream();
-      try {
-        Map<String, String> properties = new HashMap<String, String>(myAuthSettings.toMap());
-        properties.put(Constants.REPOSITORY_DIR_PROPERTY_NAME, myRepositoryDir.getCanonicalPath());
-        properties.put(Constants.FETCH_URL, myUri.toString());
-        properties.put(Constants.REFSPEC, serializeSpecs());
-        properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
-        properties.put(Constants.THREAD_DUMP_FILE, myThreadDump.getAbsolutePath());
-        properties.put(Constants.FETCHER_INTERNAL_PROPERTIES_FILE, myGitProperties.getAbsolutePath());
-        processInput.write(VcsUtil.propertiesToStringSecure(properties).getBytes("UTF-8"));
-        processInput.flush();
-      } catch (IOException e) {
-        myErrors.add(e);
-      } finally {
-        try {
-          processInput.close();
-        } catch (IOException e) {
-          //ignore
-        }
-      }
     }
 
     public void onProcessFinished(Process ps) {
@@ -315,25 +271,37 @@ public class FetchCommandImpl implements FetchCommand {
     public Integer getMaxAcceptedOutputSize() {
       return null;
     }
+  }
 
-    boolean hasErrors() {
-      return !myErrors.isEmpty();
+  private byte[] getFetchProcessInputBytes(@NotNull AuthSettings authSettings,
+                                           @NotNull File repositoryDir,
+                                           @NotNull URIish uri,
+                                           @NotNull Collection<RefSpec> specs,
+                                           @NotNull File threadDump,
+                                           @NotNull File gitProperties) throws VcsException {
+    try {
+      Map<String, String> properties = new HashMap<String, String>(authSettings.toMap());
+      properties.put(Constants.REPOSITORY_DIR_PROPERTY_NAME, repositoryDir.getCanonicalPath());
+      properties.put(Constants.FETCH_URL, uri.toString());
+      properties.put(Constants.REFSPEC, serializeSpecs(specs));
+      properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
+      properties.put(Constants.THREAD_DUMP_FILE, threadDump.getAbsolutePath());
+      properties.put(Constants.FETCHER_INTERNAL_PROPERTIES_FILE, gitProperties.getAbsolutePath());
+      return VcsUtil.propertiesToStringSecure(properties).getBytes("UTF-8");
+    } catch (IOException e) {
+      throw new VcsException("Error while generating fetch process input", e);
     }
+  }
 
-    void throwWrappedException() throws VcsException {
-      throw new VcsException("Separate process fetch error", myErrors.get(0));
+  private String serializeSpecs(@NotNull final Collection<RefSpec> specs) {
+    StringBuilder sb = new StringBuilder();
+    Iterator<RefSpec> iter = specs.iterator();
+    while (iter.hasNext()) {
+      RefSpec spec = iter.next();
+      sb.append(spec);
+      if (iter.hasNext())
+        sb.append(",");
     }
-
-    private String serializeSpecs() {
-      StringBuilder sb = new StringBuilder();
-      Iterator<RefSpec> iter = mySpecs.iterator();
-      while (iter.hasNext()) {
-        RefSpec spec = iter.next();
-        sb.append(spec);
-        if (iter.hasNext())
-          sb.append(",");
-      }
-      return sb.toString();
-    }
+    return sb.toString();
   }
 }
