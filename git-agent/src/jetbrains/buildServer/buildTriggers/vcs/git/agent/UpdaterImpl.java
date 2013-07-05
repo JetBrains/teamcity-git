@@ -26,7 +26,7 @@ import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Tags;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Refs;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
@@ -142,6 +142,7 @@ public class UpdaterImpl implements Updater {
   private void updateSources() throws VcsException {
     GitFacade git = myGitFactory.create(myTargetDirectory);
     boolean branchChanged = false;
+    removeIndexLock();
     if (isRegularBranch(myFullBranchName)) {
       String branchName = getShortBranchName(myFullBranchName);
       Branches branches = git.branch().call();
@@ -158,6 +159,7 @@ public class UpdaterImpl implements Updater {
         }
       } else {
         branchChanged = true;
+        removeRefLock();
         if (!branches.contains(branchName)) {
           git.createBranch()
             .setName(branchName)
@@ -165,7 +167,6 @@ public class UpdaterImpl implements Updater {
             .setTrack(true)
             .call();
         }
-        removeRefLock();
         git.updateRef().setRef(myFullBranchName).setRevision(myRevision).call();
         myLogger.message("Checking out branch " + myFullBranchName + " in " + myRoot.getName() + " in " + myTargetDirectory + " with revision " + myRevision);
         git.checkout().setForce(true).setBranch(branchName).call();
@@ -176,7 +177,6 @@ public class UpdaterImpl implements Updater {
       branchChanged = true;
     } else {
       myLogger.message("Resetting " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);
-      removeIndexLock();
       git.checkout().setForce(true).setBranch(myRevision).call();
       branchChanged = true;
     }
@@ -320,8 +320,8 @@ public class UpdaterImpl implements Updater {
 
 
   private void doFetch() throws VcsException {
-    boolean outdatedTagsFound = removeOutdatedTags(myTargetDirectory);
-    ensureCommitLoaded(outdatedTagsFound);
+    boolean outdatedRefsFound = removeOutdatedRefs(myTargetDirectory);
+    ensureCommitLoaded(outdatedRefsFound);
   }
 
 
@@ -487,47 +487,21 @@ public class UpdaterImpl implements Updater {
   }
 
 
-  /**
-   * Remove outdated tags
-   * @param workingDir repository dir
-   * @return true if any tags were removed
-   */
-  protected boolean removeOutdatedTags(@NotNull File workingDir) {
-    boolean outdatedTagsRemoved = false;
-    Tags localTags = getLocalTags(workingDir);
-    if (localTags.isEmpty())
+  protected boolean removeOutdatedRefs(@NotNull File workingDir) throws VcsException {
+    boolean outdatedRefsRemoved = false;
+    GitFacade git = myGitFactory.create(workingDir);
+    Refs localRefs = new Refs(git.showRef().call());
+    if (localRefs.isEmpty())
       return false;
-    Tags remoteTags = getRemoteTags(workingDir);
-    for (Ref localTag : localTags.list()) {
-      if (remoteTags.isOutdated(localTag)) {
-        deleteTag(workingDir, localTag.getName());
-        outdatedTagsRemoved = true;
+    Refs remoteRefs = new Refs(git.lsRemote().setAuthSettings(myRoot.getAuthSettings())
+      .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
+      .call());
+    for (Ref localRef : localRefs.list()) {
+      if (remoteRefs.isOutdated(localRef)) {
+        git.updateRef().setRef(localRef.getName()).delete().call();
+        outdatedRefsRemoved = true;
       }
     }
-    return outdatedTagsRemoved;
-  }
-
-
-  private void deleteTag(@NotNull File workingDir, @NotNull String tagFullName) {
-    GitFacade git = myGitFactory.create(workingDir);
-    try {
-      git.deleteTag().setName(tagFullName).call();
-    } catch (VcsException e) {
-      LOG.warn("Cannot delete tag " + tagFullName, e);
-    }
-  }
-
-  private Tags getLocalTags(@NotNull File workingDir) {
-    GitFacade git = myGitFactory.create(workingDir);
-    return new Tags(git.showRef().showTags().call());
-  }
-
-  private Tags getRemoteTags(@NotNull File workingDir) {
-    GitFacade git = myGitFactory.create(workingDir);
-    List<Ref> refs = git.lsRemote().setAuthSettings(myRoot.getAuthSettings())
-      .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
-      .showTags()
-      .call();
-    return new Tags(refs);
+    return outdatedRefsRemoved;
   }
 }

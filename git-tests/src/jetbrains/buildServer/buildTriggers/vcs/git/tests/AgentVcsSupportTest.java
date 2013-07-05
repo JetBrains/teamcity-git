@@ -567,6 +567,20 @@ public class AgentVcsSupportTest {
   }
 
 
+  @TestFor(issues = "TW-28735")
+  public void fetch_branch_with_same_name_but_different_register() throws Exception {
+    AgentRunningBuild buildWithMirrorsEnabled = createRunningBuild(true);
+    myRoot = vcsRoot().withBranch("refs/heads/master").withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).build();
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, buildWithMirrorsEnabled, false);
+
+    //rename master->Master
+    Repository r = new RepositoryBuilder().setGitDir(myMainRepo).build();
+    r.renameRef("refs/heads/master", "refs/heads/Master").rename();
+
+    myRoot = vcsRoot().withBranch("refs/heads/Master").withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).build();
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, buildWithMirrorsEnabled, false);
+  }
+
 
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
     myVcsRootId++;
