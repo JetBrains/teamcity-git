@@ -28,6 +28,9 @@ public interface UpdateRefCommand {
   UpdateRefCommand setRef(@NotNull String ref);
 
   @NotNull
+  UpdateRefCommand delete();
+
+  @NotNull
   UpdateRefCommand setRevision(@NotNull String revision);
 
   void call() throws VcsException;

@@ -27,31 +27,31 @@ import java.util.Map;
 /**
  * Collection of tags in a repository
  */
-public class Tags {
+public class Refs {
 
-  private final Map<String, Ref> myTags = new HashMap<String, Ref>();
+  private final Map<String, Ref> myRefs = new HashMap<String, Ref>();
 
-  public Tags(@NotNull final List<Ref> tags) {
-    for (Ref r : tags)
-      myTags.put(r.getName(), r);
+  public Refs(@NotNull final List<Ref> refs) {
+    for (Ref r : refs)
+      myRefs.put(r.getName(), r);
   }
 
-  public Tags(@NotNull Map<String, Ref> tagMap) {
-    myTags.putAll(tagMap);
+  public Refs(@NotNull Map<String, Ref> refMap) {
+    myRefs.putAll(refMap);
   }
 
-  public boolean isOutdated(@NotNull Ref tag) {
-    Ref myTag = myTags.get(tag.getName());
-    if (myTag == null)
+  public boolean isOutdated(@NotNull Ref ref) {
+    Ref myRef = myRefs.get(ref.getName());
+    if (myRef == null)
       return true;
-    return !myTag.getObjectId().equals(tag.getObjectId());
+    return !myRef.getObjectId().equals(ref.getObjectId());
   }
 
   public Collection<Ref> list() {
-    return myTags.values();
+    return myRefs.values();
   }
 
   public boolean isEmpty() {
-    return myTags.isEmpty();
+    return myRefs.isEmpty();
   }
 }

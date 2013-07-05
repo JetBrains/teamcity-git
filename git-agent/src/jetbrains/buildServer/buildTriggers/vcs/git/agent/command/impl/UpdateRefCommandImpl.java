@@ -31,6 +31,7 @@ public class UpdateRefCommandImpl implements UpdateRefCommand {
   private final GitCommandLine myCmd;
   private String myRef;
   private String myRevision;
+  private boolean myDelete;
 
   public UpdateRefCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
@@ -48,8 +49,19 @@ public class UpdateRefCommandImpl implements UpdateRefCommand {
     return this;
   }
 
+  @NotNull
+  public UpdateRefCommand delete() {
+    myDelete = true;
+    return this;
+  }
+
   public void call() throws VcsException {
-    myCmd.addParameters("update-ref", "-m", "setting revision to checkout", myRef, myRevision);
+    myCmd.addParameter("update-ref");
+    if (myDelete)
+      myCmd.addParameter("-d");
+    myCmd.addParameter(myRef);
+    if (myRevision != null)
+      myCmd.addParameter(myRevision);
     ExecResult r = CommandUtil.runCommand(myCmd);
     CommandUtil.failIfNotEmptyStdErr(myCmd, r);
   }

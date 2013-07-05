@@ -72,7 +72,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       git.init().setBare(true).call();
       git.addRemote().setName("origin").setUrl(myRoot.getRepositoryFetchURL().toString()).call();
     } else {
-      boolean outdatedTagsFound = removeOutdatedTags(bareRepositoryDir);
+      boolean outdatedTagsFound = removeOutdatedRefs(bareRepositoryDir);
       if (!outdatedTagsFound) {
         LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
         Ref ref = getRef(bareRepositoryDir, GitUtils.expandRef(myRoot.getRef()));
@@ -82,6 +82,9 @@ public class UpdaterWithMirror extends UpdaterImpl {
         }
       }
     }
+    Ref ref = getRef(bareRepositoryDir, myFullBranchName);
+    if (ref == null)
+      fetchRequired = true;
     if (fetchRequired)
       fetchMirror(bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName), false);
     if (hasRevision(bareRepositoryDir, myRevision))
