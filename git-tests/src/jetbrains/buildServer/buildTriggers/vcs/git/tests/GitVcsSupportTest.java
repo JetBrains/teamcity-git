@@ -63,6 +63,7 @@ import java.util.regex.Pattern;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.getVcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
@@ -644,6 +645,15 @@ public class GitVcsSupportTest extends PatchTestCase {
                                 GitUtils.makeVersion("ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", 1238085489000L),
                                 CheckoutRules.DEFAULT);
     assertEquals(changes.size(), 3);
+  }
+
+  @Test
+  @TestFor(issues = "TW-30485")
+  public void collect_changes_between_states_should_understand_revisions_with_timestamps() throws Exception {
+    VcsRoot root = vcsRoot().withBranch("refs/heads/master").withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
+    RepositoryStateData fromStateInOldFormat = RepositoryStateData.createSingleVersionState(GitUtils.makeVersion("2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", 1286183770000L));
+    RepositoryStateData toState = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"));
+    getSupport().getCollectChangesPolicy().collectChanges(root, fromStateInOldFormat, toState, CheckoutRules.DEFAULT);
   }
 
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)

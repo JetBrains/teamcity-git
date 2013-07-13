@@ -101,7 +101,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
                                            boolean throwErrors) throws Exception {
     GitVcsRoot root = context.getGitRoot();
     for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
-      String revision = entry.getValue();
+      String revision = GitUtils.versionRevision(entry.getValue());
       RevCommit commit = null;
       try {
         commit = myVcs.getCommit(db, revision);
