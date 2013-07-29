@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
@@ -25,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Collection of tags in a repository
+ * Collection of refs in a repository
  */
 public class Refs {
 
@@ -42,9 +43,10 @@ public class Refs {
 
   public boolean isOutdated(@NotNull Ref ref) {
     Ref myRef = myRefs.get(ref.getName());
-    if (myRef == null)
+    if (myRef == null) //every ref is outdated if it is not among refs in repository
       return true;
-    return !myRef.getObjectId().equals(ref.getObjectId());
+    //tag also is outdated if its revision changed (because git doesn't update tags):
+    return GitUtils.isTag(ref) && !myRef.getObjectId().equals(ref.getObjectId());
   }
 
   public Collection<Ref> list() {
