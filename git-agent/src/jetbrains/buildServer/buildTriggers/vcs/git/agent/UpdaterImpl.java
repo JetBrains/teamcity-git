@@ -18,7 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -31,7 +30,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorrupte
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
-import jetbrains.buildServer.vcs.VcsUtil;
 import org.apache.log4j.Logger;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.*;
@@ -80,7 +78,7 @@ public class UpdaterImpl implements Updater {
 
   private String getBranch() {
     String defaultBranchName = GitUtils.expandRef(myRoot.getRef());
-    String rootBranchParam = ServerProvidedProperties.TEAMCITY_BUILD_VCS_BRANCH + "." + VcsUtil.getSimplifiedName(myRoot);
+    String rootBranchParam = GitUtils.getGitRootBranchParamName(myRoot);
     String customBranch = myBuild.getSharedConfigParameters().get(rootBranchParam);
     return customBranch != null ? customBranch : defaultBranchName;
   }
