@@ -51,6 +51,7 @@ public class PluginConfigBuilder {
   private File myDotBuildServerDir;
   private Map<String, String> myFetcherProperties = new HashMap<String, String>();
   private boolean myUsePerBranchFetch;
+  private int myGetConnectionRetryAttempts = -1;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -173,7 +174,7 @@ public class PluginConfigBuilder {
       }
 
       public int getConnectionRetryAttempts() {
-        return myDelegate.getConnectionRetryAttempts();
+        return myGetConnectionRetryAttempts != -1 ? myGetConnectionRetryAttempts : myDelegate.getConnectionRetryAttempts();
       }
 
       public boolean ignoreFetchedCommits() {
@@ -262,6 +263,11 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder withPerBranchFetch(boolean usePerBranchFetch) {
     myUsePerBranchFetch = usePerBranchFetch;
+    return this;
+  }
+
+  public PluginConfigBuilder withGetConnectionRetryAttempts(int retryAttemptsCount) {
+    myGetConnectionRetryAttempts = retryAttemptsCount;
     return this;
   }
 }
