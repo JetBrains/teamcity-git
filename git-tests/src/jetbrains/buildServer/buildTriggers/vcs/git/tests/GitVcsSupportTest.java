@@ -1361,10 +1361,10 @@ public class GitVcsSupportTest extends PatchTestCase {
       allowing(connection).close();
     }});
 
-    //setup TransportFactory so that it fails to get connection 2 times with well known exceptions
-    //and successfully gets it on the 3rd call
+    //setup TransportFactory so that it fails to get connection 3 times with well known exceptions
+    //and successfully gets it on the 4th call
     final AtomicInteger failCount = new AtomicInteger(0);
-    ServerPluginConfig config = myConfigBuilder.build();
+    ServerPluginConfig config = myConfigBuilder.withGetConnectionRetryAttempts(4).build();
     TransportFactory transportFactory = new TransportFactoryImpl(config) {
       @Override
       public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings)
@@ -1379,6 +1379,10 @@ public class GitVcsSupportTest extends PatchTestCase {
             if (failCount.get() == 1) {
               failCount.incrementAndGet();
               throw new TransportException("com.jcraft.jsch.JSchException: connection is closed by foreign host", new JSchException("test"));
+            }
+            if (failCount.get() == 2) {
+              failCount.incrementAndGet();
+              throw new TransportException("java.net.UnknownHostException: some.org", new JSchException("test"));
             }
             return connection;
           }
