@@ -28,20 +28,19 @@ import org.testng.annotations.Test;
 import java.net.URISyntaxException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertNull;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.AssertJUnit.*;
 
 @Test
 public class AuthSettingsTest {
 
+  @TestFor(issues = {"TW-24499", "TW-30655"})
   public void should_not_fail_when_password_is_empty() throws Exception {
     VcsRoot root = vcsRoot().withFetchUrl("http://some.org/repository")
       .withAuthMethod(AuthenticationMethod.PASSWORD)
       .withUsername("user")
       .build();
     CredentialsProvider c = new AuthSettings(root).toCredentialsProvider();
-    assertTrue(c.supports(new CredentialItem.Username(), new CredentialItem.Password()));
+    assertFalse(c.supports(new CredentialItem.Username(), new CredentialItem.Password()));
     c.get(new URIish("http://some.org/repository"), new CredentialItem.Username(), new CredentialItem.Password());
   }
 

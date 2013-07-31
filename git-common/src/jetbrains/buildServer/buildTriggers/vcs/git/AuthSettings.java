@@ -164,13 +164,11 @@ public class AuthSettings {
       @Override
       public boolean supports(CredentialItem... items) {
         for (CredentialItem i : items) {
-          if (myAuthMethod != AuthenticationMethod.ANONYMOUS && i instanceof CredentialItem.Username) {
+          if (i instanceof CredentialItem.Username && myAuthMethod != AuthenticationMethod.ANONYMOUS)
             continue;
-          } else if (myAuthMethod == AuthenticationMethod.PASSWORD && i instanceof CredentialItem.Password) {
+          if (i instanceof CredentialItem.Password && myAuthMethod == AuthenticationMethod.PASSWORD && myPassword != null)
             continue;
-          } else {
-            return false;
-          }
+          return false;
         }
         return true;
       }
