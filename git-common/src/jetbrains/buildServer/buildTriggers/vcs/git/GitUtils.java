@@ -16,13 +16,14 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.VcsUtil;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.Comparator;
 
@@ -153,20 +154,6 @@ public class GitUtils {
   }
 
   /**
-   * Get UTF8 bytes
-   *
-   * @param s a string to convert
-   * @return a UTF8 bytes for the string
-   */
-  public static byte[] getUtf8(String s) {
-    try {
-      return s.getBytes(UTF8.name());
-    } catch (UnsupportedEncodingException e) {
-      throw new RuntimeException("UTF-8 encoding not found", e);
-    }
-  }
-
-  /**
    * Normalize path removing ".." and "." elements assuming "/" as separator
    *
    * @param path the path to normalize
@@ -215,5 +202,13 @@ public class GitUtils {
 
   public static boolean isAnonymousGitWithUsername(@NotNull URIish uri) {
     return "git".equals(uri.getScheme()) && uri.getUser() != null;
+  }
+
+  /**
+   * Returns build parameter name with the vcs branch name for given
+   * git VCS root
+   */
+  public static String getGitRootBranchParamName(@NotNull VcsRoot root) {
+    return jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_ROOT_BUILD_BRANCH_PREFIX + VcsUtil.getSimplifiedName(root);
   }
 }

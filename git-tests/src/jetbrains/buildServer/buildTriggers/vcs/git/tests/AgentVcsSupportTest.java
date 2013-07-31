@@ -168,6 +168,22 @@ public class AgentVcsSupportTest {
   }
 
 
+  @TestFor(issues = "TW-31039")
+  @Test(dataProvider = "mirrors")
+  public void build_on_pull_request(Boolean useMirrors) throws Exception {
+    //Remote repo contains a pull request branch refs/changes/2/1 which is not under refs/heads/*,
+    //this branch points to a commit which is not reachable from the default branch in vcs root
+    //and from any other branches under refs/heads/.
+
+    //Ensure that once we pass a pull request branch name, checkout it successful
+    VcsRootImpl root = createRoot(myMainRepo, "master");
+    String pullRequestCommit = "ea5e05051fbfaa7d8da97586807b009cbfebae9d";
+    AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, String.valueOf(useMirrors),
+                                                     GitUtils.getGitRootBranchParamName(root), "refs/changes/2/1"));
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, pullRequestCommit, myCheckoutDir, build, false);
+  }
+
+
   /**
    * Test checkout submodules on agent. Machine that runs this test should have git installed.
    */
@@ -520,7 +536,7 @@ public class AgentVcsSupportTest {
     assertEquals("master", r.getBranch());
 
     build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, String.valueOf(useMirrors),
-                                   ServerProvidedProperties.TEAMCITY_BUILD_VCS_BRANCH + "." + VcsUtil.getSimplifiedName(root), "refs/heads/personal"));
+                                   GitUtils.getGitRootBranchParamName(root), "refs/heads/personal"));
     myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, commitFromFeatureBranch, myCheckoutDir, build, false);
     r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
     assertEquals("personal", r.getBranch());
@@ -566,20 +582,6 @@ public class AgentVcsSupportTest {
     assertTrue("Push didn't go to the remote repository", remote.hasObject(commitDuringTheBuild));
   }
 
-
-  @TestFor(issues = "TW-28735")
-  public void fetch_branch_with_same_name_but_different_register() throws Exception {
-    AgentRunningBuild buildWithMirrorsEnabled = createRunningBuild(true);
-    myRoot = vcsRoot().withBranch("refs/heads/master").withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).build();
-    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, buildWithMirrorsEnabled, false);
-
-    //rename master->Master
-    Repository r = new RepositoryBuilder().setGitDir(myMainRepo).build();
-    r.renameRef("refs/heads/master", "refs/heads/Master").rename();
-
-    myRoot = vcsRoot().withBranch("refs/heads/Master").withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).build();
-    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, buildWithMirrorsEnabled, false);
-  }
 
 
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
