@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -107,6 +108,9 @@ public class FetchCommandImpl implements FetchCommand {
         File workingDir = myCmd.getWorkingDirectory();
         File gitIndex = new File(new File(workingDir, ".git"), "index");
         throw new GitIndexCorruptedException(gitIndex, e);
+      }
+      if (message != null && message.contains("exception: Timeout exception")) {
+        throw new GitExecTimeout();
       }
       throw e;
     }
