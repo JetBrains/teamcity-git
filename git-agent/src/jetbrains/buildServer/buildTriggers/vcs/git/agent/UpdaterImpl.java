@@ -26,8 +26,10 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Refs;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
@@ -389,12 +391,19 @@ public class UpdaterImpl implements Updater {
       myLogger.message("Git index '" + gitIndex.getAbsolutePath() + "' is corrupted, remove it and repeat git fetch");
       FileUtil.delete(gitIndex);
       fetch.call();
+    } catch (GitExecTimeout e) {
+      if (!silent) {
+        myLogger.error("No output from git during " + timeout + " seconds. Try increasing idle timeout by setting parameter '"
+                       + PluginConfigImpl.IDLE_TIMEOUT +
+                       "' either in build or in agent configuration.");
+      }
+      throw e;
     }
   }
 
   private boolean isSilentFetch() {
     GitVersion version = myPluginConfig.getGitVersion();
-    return GIT_WITH_PROGRESS_VERSION.isGreaterThan(version);
+    return version.isLessThan(GIT_WITH_PROGRESS_VERSION);
   }
 
   private int getTimeout(boolean silentFetch) {
