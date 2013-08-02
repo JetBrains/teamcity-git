@@ -18,7 +18,7 @@
     <orderEntry type="library" name="TeamCity Third-Party" level="project" />
     <orderEntry type="library" name="Trilead SSH" level="project" />
     <orderEntry type="library" name="TeamCity Agent" level="project" />
-    <orderEntry type="library" name="jsch-0.1.44" level="project" />
+    <orderEntry type="library" name="jsch-0.1.50" level="project" />
     <orderEntry type="library" name="jgit" level="project" />
   </component>
 </module>
