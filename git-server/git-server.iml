@@ -17,7 +17,7 @@
     <orderEntry type="library" name="TeamCity Open API server" level="project" />
     <orderEntry type="library" name="TeamCity Third-Party" level="project" />
     <orderEntry type="module" module-name="git-common" />
-    <orderEntry type="library" name="jsch-0.1.44" level="project" />
+    <orderEntry type="library" name="jsch-0.1.50" level="project" />
     <orderEntry type="library" name="TeamCity Vcs Api" level="project" />
     <orderEntry type="library" name="jgit" level="project" />
     <orderEntry type="library" name="quartz-1.6.0" level="project" />
