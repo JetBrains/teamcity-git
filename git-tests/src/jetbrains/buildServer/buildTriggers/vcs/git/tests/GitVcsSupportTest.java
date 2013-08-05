@@ -1361,10 +1361,16 @@ public class GitVcsSupportTest extends PatchTestCase {
       allowing(connection).close();
     }});
 
-    //setup TransportFactory so that it fails to get connection 3 times with well known exceptions
-    //and successfully gets it on the 4th call
+    //setup TransportFactory so that it fails to get connection several times with well known exceptions
+    //and then successfully gets it on the last call
     final AtomicInteger failCount = new AtomicInteger(0);
-    ServerPluginConfig config = myConfigBuilder.withGetConnectionRetryAttempts(4).build();
+    final List<TransportException> recoverableErrors = Arrays.asList(
+      new TransportException("Session.connect: java.net.SocketException: Connection reset", new JSchException("test")),
+      new TransportException("com.jcraft.jsch.JSchException: connection is closed by foreign host", new JSchException("test")),
+      new TransportException("java.net.UnknownHostException: some.org", new JSchException("test")),
+      new TransportException("com.jcraft.jsch.JSchException: verify: false", new JSchException("test"))
+    );
+    ServerPluginConfig config = myConfigBuilder.withGetConnectionRetryAttempts(recoverableErrors.size() + 1).build();
     TransportFactory transportFactory = new TransportFactoryImpl(config) {
       @Override
       public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings)
@@ -1372,19 +1378,13 @@ public class GitVcsSupportTest extends PatchTestCase {
         return new Transport(r, url) {
           @Override
           public FetchConnection openFetch() throws NotSupportedException, TransportException {
-            if (failCount.get() == 0) {
+            if (failCount.get() < recoverableErrors.size()) {
+              TransportException error = recoverableErrors.get(failCount.get());
               failCount.incrementAndGet();
-              throw new TransportException("Session.connect: java.net.SocketException: Connection reset", new JSchException("test"));
+              throw error;
+            } else {
+              return connection;
             }
-            if (failCount.get() == 1) {
-              failCount.incrementAndGet();
-              throw new TransportException("com.jcraft.jsch.JSchException: connection is closed by foreign host", new JSchException("test"));
-            }
-            if (failCount.get() == 2) {
-              failCount.incrementAndGet();
-              throw new TransportException("java.net.UnknownHostException: some.org", new JSchException("test"));
-            }
-            return connection;
           }
 
           @Override
@@ -1402,7 +1402,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, new FetcherProperties(config));
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport()
-      .withPluginConfig(myConfigBuilder)
+      .withPluginConfig(config)
       .withTransportFactory(transportFactory)
       .withFetchCommand(fetchCounter)
       .build();
