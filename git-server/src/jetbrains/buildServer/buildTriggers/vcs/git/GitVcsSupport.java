@@ -17,11 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.locks.Lock;
-
 import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilder;
@@ -44,6 +39,11 @@ import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.locks.Lock;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
@@ -165,9 +165,9 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  RevCommit ensureCommitLoaded(@NotNull OperationContext context,
-                               @NotNull GitVcsRoot root,
-                               @NotNull String revision) throws Exception {
+  public RevCommit ensureCommitLoaded(@NotNull OperationContext context,
+                                      @NotNull GitVcsRoot root,
+                                      @NotNull String revision) throws Exception {
     final String commit = GitUtils.versionRevision(revision);
     return ensureRevCommitLoaded(context, root, commit);
   }
