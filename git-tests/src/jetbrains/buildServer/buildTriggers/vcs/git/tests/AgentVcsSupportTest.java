@@ -170,6 +170,31 @@ public class AgentVcsSupportTest {
   }
 
 
+  @TestFor(issues = "TW-31381")
+  public void recover_from_ref_lock_during_fetch() throws Exception {
+    File repo = dataFile("repo_for_fetch.2.personal");
+    File remoteRepo = myTempFiles.createTempDir();
+    copyRepository(repo, remoteRepo);
+
+    final String fetchUrl = GitUtils.toURL(remoteRepo);
+    VcsRootImpl root = vcsRoot().withBranch("refs/heads/master").withAgentGitPath(getGitPath()).withFetchUrl(fetchUrl).build();
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "add81050184d3c818560bdd8839f50024c188586", myCheckoutDir, myBuild, false);
+
+    //update remote branch master
+    delete(remoteRepo);
+    File updatedRepo = dataFile("repo_for_fetch.2");
+    copyRepository(updatedRepo, remoteRepo);
+
+    File mirror = myMirrorManager.getMirrorDir(fetchUrl);
+    FileUtil.createIfDoesntExist(new File(mirror, "refs/heads/master.lock"));
+    FileUtil.createIfDoesntExist(new File(myCheckoutDir, ".git/refs/heads/master.lock"));
+    FileUtil.createIfDoesntExist(new File(myCheckoutDir, ".git/refs/remotes/origin/master.lock"));
+
+
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, myBuild, false);
+  }
+
+
   @TestFor(issues = "TW-31039")
   @Test(dataProvider = "mirrors")
   public void build_on_pull_request(Boolean useMirrors) throws Exception {
