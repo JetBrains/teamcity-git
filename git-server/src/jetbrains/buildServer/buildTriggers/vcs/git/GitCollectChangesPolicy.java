@@ -107,11 +107,8 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
 
   @NotNull
   public List<ModificationData> fetchModificationInfo(@NotNull final VcsRoot root,
-                                                      @NotNull final String branchName,
-                                                      @NotNull final String revision,
+                                                      @NotNull final RepositoryStateData toState,
                                                       @NotNull final CheckoutRules checkoutRules) throws VcsException {
-    final RepositoryStateData toState = RepositoryStateData.createVersionState(branchName, Collections.singletonMap(branchName, revision));
-
     List<ModificationData> changes = new ArrayList<ModificationData>();
     OperationContext context = myVcs.createContext(root, "collecting changes");
     try {
@@ -124,7 +121,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
 
       final List<RevCommit> commits = getCommits(toState, r, revWalk);
       if (commits.isEmpty()) {
-        throw new VcsException("Commit " + revision + " was not found");
+        throw new VcsException("Commits were not found: " + new TreeSet<String>(toState.getBranchRevisions().values()) + " was not found");
       }
       for (RevCommit commit : commits) {
         for (RevCommit parent : commit.getParents()) {
