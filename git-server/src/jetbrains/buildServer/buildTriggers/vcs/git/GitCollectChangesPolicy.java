@@ -39,7 +39,7 @@ import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 /**
 * @author dmitry.neverov
 */
-public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, CollectChangesBetweenRepositories {
+public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, CollectChangesBetweenRepositories, ModificationInfoBuilder {
 
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
 
@@ -92,6 +92,14 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
       context.close();
     }
     return changes;
+  }
+
+  @NotNull
+  public List<ModificationData> fetchModificationInfo(@NotNull VcsRoot vcsRoot,
+                                                      @NotNull String branchName,
+                                                      @NotNull String revision,
+                                                      @NotNull CheckoutRules checkoutRules) throws VcsException {
+    return Collections.emptyList();
   }
 
   private void ensureRepositoryStateLoaded(@NotNull OperationContext context,

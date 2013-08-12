@@ -35,6 +35,7 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import jetbrains.buildServer.vcs.patches.PatchTestCase;
+import junit.framework.Assert;
 import org.apache.log4j.Level;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
@@ -52,7 +53,9 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -63,7 +66,6 @@ import java.util.regex.Pattern;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.getVcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
@@ -1538,6 +1540,11 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(fetchCounter.getFetchCount(), 1);
   }
 
+  @Test
+  public void testModificationInfoBuilderSupported() {
+    GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).build();
+    Assert.assertNotNull(git.getVcsExtension(ModificationInfoBuilder.class));
+  }
 
   private static class FetchCommandCountDecorator implements FetchCommand {
 
