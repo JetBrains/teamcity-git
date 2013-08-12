@@ -1552,7 +1552,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     final GitVcsSupport support = getSupport();
     final List<ModificationData> list = support.getCollectChangesPolicy()
-      .fetchModificationInfo(vcsRoot, "patch-tests", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", CheckoutRules.DEFAULT);
+      .fetchModificationInfo(vcsRoot, RepositoryStateData.createVersionState("patch-tests", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46"), CheckoutRules.DEFAULT);
 
     Assert.assertEquals(list.size(), 1);
     ModificationData next = list.iterator().next();
@@ -1572,7 +1572,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     final GitVcsSupport support = getSupport();
     final List<ModificationData> list = support.getCollectChangesPolicy()
-      .fetchModificationInfo(vcsRoot, "wrong-submodule", "f3f826ce85d6dad25156b2d7550cedeb1a422f4c", CheckoutRules.DEFAULT);
+      .fetchModificationInfo(vcsRoot, RepositoryStateData.createVersionState("wrong-submodule", "f3f826ce85d6dad25156b2d7550cedeb1a422f4c"), CheckoutRules.DEFAULT);
 
     Assert.assertEquals(list.size(), 1);
     ModificationData next = list.iterator().next();
