@@ -156,13 +156,15 @@ public class AgentVcsSupportTest {
     myRoot.addProperty(Constants.BRANCH_NAME, "master");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
-    //now we have 2 branches in local repository
+    //emulate incorrect git termination (in this it could leave refs/heads/<branch-name>.lock file)
+    FileUtil.createIfDoesntExist(new File(myCheckoutDir, ".git" + File.separator + GitUtils.expandRef("master") + ".lock"));
+    //should recover from locked ref if previous checkout was on the same branch:
+    myRoot.addProperty(Constants.BRANCH_NAME, "master");
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), firstCommitInPatchTests, myCheckoutDir, myBuild, false);
 
     //emulate incorrect git termination (in this it could leave refs/heads/<branch-name>.lock file)
-    FileUtil.createIfDoesntExist(new File(myCheckoutDir, ".git" + File.separator +
-                                                         GitUtils.expandRef("patch-tests") +
-                                                         ".lock"));
-
+    FileUtil.createIfDoesntExist(new File(myCheckoutDir, ".git" + File.separator + GitUtils.expandRef("patch-tests") + ".lock"));
+    //should recover from locked ref if previous checkout was on a different branch:
     myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), firstCommitInPatchTests, myCheckoutDir, myBuild, false);
   }
