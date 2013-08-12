@@ -143,6 +143,7 @@ public class UpdaterImpl implements Updater {
     GitFacade git = myGitFactory.create(myTargetDirectory);
     boolean branchChanged = false;
     removeIndexLock();
+    removeRefLock();
     if (isRegularBranch(myFullBranchName)) {
       String branchName = getShortBranchName(myFullBranchName);
       Branches branches = git.branch().call();
@@ -159,7 +160,6 @@ public class UpdaterImpl implements Updater {
         }
       } else {
         branchChanged = true;
-        removeRefLock();
         if (!branches.contains(branchName)) {
           git.createBranch()
             .setName(branchName)
