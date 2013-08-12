@@ -17,7 +17,10 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import java.io.File;
+import java.io.FileFilter;
+import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -94,6 +97,7 @@ public class UpdaterImpl implements Updater {
   protected void doUpdate() throws VcsException {
     logStartUpdating();
     initGitRepository();
+    removeRefLocks(new File(myTargetDirectory, ".git"));
     doFetch();
     updateSources();
   }
@@ -143,7 +147,6 @@ public class UpdaterImpl implements Updater {
     GitFacade git = myGitFactory.create(myTargetDirectory);
     boolean branchChanged = false;
     removeIndexLock();
-    removeRefLock();
     if (isRegularBranch(myFullBranchName)) {
       String branchName = getShortBranchName(myFullBranchName);
       Branches branches = git.branch().call();
@@ -293,20 +296,6 @@ public class UpdaterImpl implements Updater {
 
 
   /**
-   * If some git process crashed in this repository earlier it can leave lock files for ref.
-   * This method delete such lock file if it exists (with warning message), otherwise git operation will fail.
-   */
-  private void removeRefLock() {
-    String branchRef = myFullBranchName;
-    File refLock = new File(myTargetDirectory, ".git" + File.separator + branchRef + ".lock");
-    if (refLock.exists()) {
-      myLogger.warning("The .git/" + branchRef +
-                      ".lock file exists. This probably means a git process crashed in this repository earlier. Deleting lock file");
-      FileUtil.delete(refLock);
-    }
-  }
-
-  /**
    * If some git process crashed in this repository earlier it can leave lock files for index.
    * This method delete such lock file if it exists (with warning message), otherwise git operation will fail.
    */
@@ -398,6 +387,21 @@ public class UpdaterImpl implements Updater {
                        "' either in build or in agent configuration.");
       }
       throw e;
+    }
+  }
+
+  protected void removeRefLocks(@NotNull File dotGit) {
+    File refs = new File(dotGit, "refs");
+    if (!refs.isDirectory())
+      return;
+    Collection<File> locks = FileUtil.findFiles(new FileFilter() {
+      public boolean accept(File f) {
+        return f.isFile() && f.getName().endsWith(".lock");
+      }
+    }, refs);
+    for (File lock : locks) {
+      LOG.info("Remove a lock file " + lock.getAbsolutePath());
+      FileUtil.delete(lock);
     }
   }
 

@@ -94,6 +94,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
 
   private void fetchMirror(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone) throws VcsException {
+    removeRefLocks(repositoryDir);
     try {
       fetch(repositoryDir, refspec, shallowClone);
     } catch (VcsException e) {
