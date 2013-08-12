@@ -1542,8 +1542,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @Test
   public void testModificationInfoBuilderSupported() {
-    GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).build();
-    Assert.assertNotNull(git.getVcsExtension(ModificationInfoBuilder.class));
+    Assert.assertNotNull(getSupport().getVcsExtension(ModificationInfoBuilder.class));
   }
 
   private static class FetchCommandCountDecorator implements FetchCommand {
