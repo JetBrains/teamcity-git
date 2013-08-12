@@ -66,6 +66,7 @@ import java.util.regex.Pattern;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.getVcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
@@ -1543,6 +1544,43 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test
   public void testModificationInfoBuilderSupported() {
     Assert.assertNotNull(getSupport().getVcsExtension(ModificationInfoBuilder.class));
+  }
+
+  @Test
+  public void testBuildModificationInfo() throws VcsException {
+    final VcsRoot vcsRoot = getVcsRoot();
+
+    final GitVcsSupport support = getSupport();
+    final List<ModificationData> list = support.getCollectChangesPolicy()
+      .fetchModificationInfo(vcsRoot, "patch-tests", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", CheckoutRules.DEFAULT);
+
+    Assert.assertEquals(list.size(), 1);
+    ModificationData next = list.iterator().next();
+
+    System.out.println("next = " + next);
+
+    Assert.assertEquals(next.getParentRevisions(), Arrays.asList("a894d7d58ffde625019a9ecf8267f5f1d1e5c341"));
+    Assert.assertEquals(next.getChangeCount(), 1);
+
+    final VcsChange change = next.getChanges().get(0);
+    Assert.assertEquals(change.getRelativeFileName(), "dir1/file3.txt");
+  }
+
+  @Test
+  public void testBuildModificationInfo_MergeCommit() throws VcsException {
+    final VcsRoot vcsRoot = getVcsRoot();
+
+    final GitVcsSupport support = getSupport();
+    final List<ModificationData> list = support.getCollectChangesPolicy()
+      .fetchModificationInfo(vcsRoot, "wrong-submodule", "f3f826ce85d6dad25156b2d7550cedeb1a422f4c", CheckoutRules.DEFAULT);
+
+    Assert.assertEquals(list.size(), 1);
+    ModificationData next = list.iterator().next();
+
+    System.out.println("next = " + next);
+
+    Assert.assertEquals(new HashSet<String>(next.getParentRevisions()), new HashSet<String>(Arrays.asList("6fce8fe45550eb72796704a919dad68dc44be44a", "ee886e4adb70fbe3bdc6f3f6393598b3f02e8009")));
+    Assert.assertEquals(next.getChangeCount(), 3);
   }
 
   private static class FetchCommandCountDecorator implements FetchCommand {

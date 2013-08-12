@@ -73,14 +73,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
       Repository r = context.getRepository();
       ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
       revWalk.sort(RevSort.TOPO);
-      if (myConfig.usePerBranchFetch()) {
-        ensureRepositoryStateLoadedOneFetchPerBranch(context, toState, true);
-        ensureRepositoryStateLoadedOneFetchPerBranch(context, fromState, false);
-      } else {
-        FetchAllRefs fetch = new FetchAllRefs(r, context.getGitRoot(), fromState, toState);
-        ensureRepositoryStateLoaded(context, r, toState, fetch, true);
-        ensureRepositoryStateLoaded(context, r, fromState, fetch, false);
-      }
+      ensureRepositoryStateLoadedFor(context, r, toState, fromState);
       markStart(r, revWalk, toState);
       markUninteresting(r, revWalk, fromState, toState);
       while (revWalk.next() != null) {
@@ -94,12 +87,61 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     return changes;
   }
 
+  private void ensureRepositoryStateLoadedFor(@NotNull final OperationContext context,
+                                              @NotNull final Repository repo,
+                                              @NotNull final RepositoryStateData... states) throws Exception {
+    boolean isFirst = true;
+    if (myConfig.usePerBranchFetch()) {
+      for (RepositoryStateData state : states) {
+        ensureRepositoryStateLoadedOneFetchPerBranch(context, state, isFirst);
+        isFirst = false;
+      }
+    } else {
+      FetchAllRefs fetch = new FetchAllRefs(repo, context.getGitRoot(), states);
+      for (RepositoryStateData state : states) {
+        ensureRepositoryStateLoaded(context, repo, state, fetch, isFirst);
+        isFirst = false;
+      }
+    }
+  }
+
   @NotNull
-  public List<ModificationData> fetchModificationInfo(@NotNull VcsRoot vcsRoot,
-                                                      @NotNull String branchName,
-                                                      @NotNull String revision,
-                                                      @NotNull CheckoutRules checkoutRules) throws VcsException {
-    return Collections.emptyList();
+  public List<ModificationData> fetchModificationInfo(@NotNull final VcsRoot root,
+                                                      @NotNull final String branchName,
+                                                      @NotNull final String revision,
+                                                      @NotNull final CheckoutRules checkoutRules) throws VcsException {
+    final RepositoryStateData toState = RepositoryStateData.createVersionState(branchName, Collections.singletonMap(branchName, revision));
+
+    List<ModificationData> changes = new ArrayList<ModificationData>();
+    OperationContext context = myVcs.createContext(root, "collecting changes");
+    try {
+      Repository r = context.getRepository();
+      ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
+      revWalk.sort(RevSort.TOPO);
+      ensureRepositoryStateLoadedFor(context, r, toState);
+      markStart(r, revWalk, toState);
+
+
+      final List<RevCommit> commits = getCommits(toState, r, revWalk);
+      if (commits.isEmpty()) {
+        throw new VcsException("Commit " + revision + " was not found");
+      }
+      for (RevCommit commit : commits) {
+        for (RevCommit parent : commit.getParents()) {
+          revWalk.markUninteresting(parent);
+        }
+      }
+
+      while (revWalk.next() != null) {
+        changes.add(revWalk.createModificationData());
+      }
+    } catch (Exception e) {
+      throw context.wrapException(e);
+    } finally {
+      context.close();
+    }
+    return changes;
+
   }
 
   private void ensureRepositoryStateLoaded(@NotNull OperationContext context,
@@ -325,11 +367,10 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
 
     private FetchAllRefs(@NotNull Repository db,
                          @NotNull GitVcsRoot root,
-                         @NotNull RepositoryStateData fromState,
-                         @NotNull RepositoryStateData toState) {
+                         @NotNull RepositoryStateData... states) {
       myDb = db;
       myRoot = root;
-      myAllRefNames = getAllRefNames(fromState, toState);
+      myAllRefNames = getAllRefNames(states);
     }
 
     void run() throws NotSupportedException, VcsException, TransportException {
