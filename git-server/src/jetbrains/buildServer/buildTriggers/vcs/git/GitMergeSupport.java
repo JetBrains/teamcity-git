@@ -9,6 +9,7 @@ import org.eclipse.jgit.dircache.DirCacheBuilder;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.merge.MergeStrategy;
 import org.eclipse.jgit.merge.Merger;
+import org.eclipse.jgit.merge.ResolveMerger;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.PushConnection;
@@ -73,7 +74,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     Ref dstRef = db.getRef(dstBranch);
     ObjectId dstBranchLastCommit = dstRef.getObjectId();
 
-    Merger merger = MergeStrategy.SIMPLE_TWO_WAY_IN_CORE.newMerger(db);
+    ResolveMerger merger = (ResolveMerger) MergeStrategy.RESOLVE.newMerger(db, true);
     boolean mergeSuccessful = merger.merge(dstBranchLastCommit, ObjectId.fromString(srcRevision));
     if (!mergeSuccessful)
       return false;
