@@ -19,9 +19,7 @@ import org.eclipse.jgit.transport.Transport;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Date;
-import java.util.TimeZone;
+import java.util.*;
 
 public class GitMergeSupport implements MergeSupport, GitServerExtension {
 
@@ -45,17 +43,17 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
                                                      @NotNull String message,
                                                      @NotNull MergeOptions options) throws VcsException {
     OperationContext context = myVcs.createContext(root, "merge");
-    jetbrains.buildServer.vcs.MergeResult result = new jetbrains.buildServer.vcs.MergeResult();
     try {
       GitVcsRoot gitRoot = context.getGitRoot();
       Repository db = context.getRepository();
       int attemptsLeft = 3;
       boolean success = false;
+      jetbrains.buildServer.vcs.MergeResult result = new jetbrains.buildServer.vcs.MergeResult();
       while (!success && attemptsLeft > 0) {
-        success = doMerge(gitRoot, db, srcRevision, dstBranch, message);
+        result = new jetbrains.buildServer.vcs.MergeResult();
+        success = doMerge(gitRoot, db, srcRevision, dstBranch, message, result);
         attemptsLeft--;
       }
-      result.setSuccess(success);
       return result;
     } catch (Exception e) {
       throw context.wrapException(e);
@@ -69,7 +67,8 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
                           @NotNull Repository db,
                           @NotNull String srcRevision,
                           @NotNull String dstBranch,
-                          @NotNull String message) throws IOException, VcsException {
+                          @NotNull String message,
+                          @NotNull jetbrains.buildServer.vcs.MergeResult mergeResult) throws IOException, VcsException {
     RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(dstBranch)).setDestination(GitUtils.expandRef(dstBranch)).setForceUpdate(true);
     myVcs.fetch(db, gitRoot.getRepositoryFetchURL(), spec, gitRoot.getAuthSettings());
 
@@ -78,8 +77,13 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
 
     ResolveMerger merger = (ResolveMerger) MergeStrategy.RESOLVE.newMerger(db, true);
     boolean mergeSuccessful = merger.merge(dstBranchLastCommit, ObjectId.fromString(srcRevision));
-    if (!mergeSuccessful)
+    mergeResult.setSuccess(mergeSuccessful);
+    if (!mergeSuccessful) {
+      List<String> conflicts = merger.getUnmergedPaths();
+      Collections.sort(conflicts);
+      mergeResult.setConflicts(conflicts);
       return false;
+    }
 
     ObjectInserter inserter = db.newObjectInserter();
     DirCache dc = DirCache.newInCore();
