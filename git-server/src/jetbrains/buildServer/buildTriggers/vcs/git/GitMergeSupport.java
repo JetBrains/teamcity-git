@@ -4,11 +4,11 @@ import jetbrains.buildServer.vcs.MergeOptions;
 import jetbrains.buildServer.vcs.MergeSupport;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.dircache.DirCacheBuilder;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.merge.MergeStrategy;
-import org.eclipse.jgit.merge.Merger;
 import org.eclipse.jgit.merge.ResolveMerger;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -38,12 +38,14 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     myVcs.addExtension(this);
   }
 
-  public void merge(@NotNull VcsRoot root,
-                    @NotNull String srcRevision,
-                    @NotNull String dstBranch,
-                    @NotNull String message,
-                    @NotNull MergeOptions options) throws VcsException {
+  @NotNull
+  public jetbrains.buildServer.vcs.MergeResult merge(@NotNull VcsRoot root,
+                                                     @NotNull String srcRevision,
+                                                     @NotNull String dstBranch,
+                                                     @NotNull String message,
+                                                     @NotNull MergeOptions options) throws VcsException {
     OperationContext context = myVcs.createContext(root, "merge");
+    jetbrains.buildServer.vcs.MergeResult result = new jetbrains.buildServer.vcs.MergeResult();
     try {
       GitVcsRoot gitRoot = context.getGitRoot();
       Repository db = context.getRepository();
@@ -53,8 +55,8 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
         success = doMerge(gitRoot, db, srcRevision, dstBranch, message);
         attemptsLeft--;
       }
-      if (!success)
-        throw new VcsException("Merge failed");
+      result.setSuccess(success);
+      return result;
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
