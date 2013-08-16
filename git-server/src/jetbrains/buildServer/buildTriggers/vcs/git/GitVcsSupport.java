@@ -153,6 +153,7 @@ public class GitVcsSupport extends ServerVcsSupport
     OperationContext context = createContext(root, "patch building");
     String fromRevision = fromVersion != null ? GitUtils.versionRevision(fromVersion) : null;
     String toRevision = GitUtils.versionRevision(toVersion);
+    logBuildPatch(root, fromRevision, toRevision);
     GitPatchBuilder gitPatchBuilder = new GitPatchBuilder(myConfig, context, builder, fromRevision, toRevision, checkoutRules);
     try {
       ensureRevCommitLoaded(context, context.getGitRoot(), toRevision);
@@ -162,6 +163,18 @@ public class GitVcsSupport extends ServerVcsSupport
     } finally {
       context.close();
     }
+  }
+
+  private void logBuildPatch(@NotNull VcsRoot root, @Nullable String fromRevision, @NotNull String toRevision) {
+    StringBuilder msg = new StringBuilder();
+    msg.append("Build");
+    if (fromRevision != null)
+      msg.append(" incremental");
+    msg.append(" patch in VCS root ").append(LogUtil.describe(root));
+    if (fromRevision != null)
+      msg.append(" from revision ").append(fromRevision);
+    msg.append(" to revision ").append(toRevision);
+    LOG.info(msg.toString());
   }
 
   @NotNull
