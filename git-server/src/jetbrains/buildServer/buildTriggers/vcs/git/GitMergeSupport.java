@@ -1,10 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.vcs.MergeOptions;
-import jetbrains.buildServer.vcs.MergeSupport;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
-import org.eclipse.jgit.api.MergeResult;
+import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.dircache.DirCacheBuilder;
 import org.eclipse.jgit.lib.*;
@@ -37,20 +33,20 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
   }
 
   @NotNull
-  public jetbrains.buildServer.vcs.MergeResult merge(@NotNull VcsRoot root,
-                                                     @NotNull String srcRevision,
-                                                     @NotNull String dstBranch,
-                                                     @NotNull String message,
-                                                     @NotNull MergeOptions options) throws VcsException {
+  public MergeResult merge(@NotNull VcsRoot root,
+                           @NotNull String srcRevision,
+                           @NotNull String dstBranch,
+                           @NotNull String message,
+                           @NotNull MergeOptions options) throws VcsException {
     OperationContext context = myVcs.createContext(root, "merge");
     try {
       GitVcsRoot gitRoot = context.getGitRoot();
       Repository db = context.getRepository();
       int attemptsLeft = 3;
       boolean success = false;
-      jetbrains.buildServer.vcs.MergeResult result = new jetbrains.buildServer.vcs.MergeResult();
+      MergeResult result = new MergeResult();
       while (!success && attemptsLeft > 0) {
-        result = new jetbrains.buildServer.vcs.MergeResult();
+        result = new MergeResult();
         success = doMerge(gitRoot, db, srcRevision, dstBranch, message, result);
         attemptsLeft--;
       }
@@ -63,12 +59,43 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
   }
 
 
+  @NotNull
+  public Map<MergeTask, MergeResult> tryMerge(@NotNull VcsRoot root,
+                                              @NotNull List<MergeTask> tasks,
+                                              @NotNull MergeOptions options) throws VcsException {
+    Map<MergeTask, MergeResult> mergeResults = new HashMap<MergeTask, MergeResult>();
+    OperationContext context = myVcs.createContext(root, "merge");
+    try {
+      Repository db = context.getRepository();
+      for (MergeTask t : tasks) {
+        ObjectId src = ObjectId.fromString(t.getSourceRevision());
+        ObjectId dst = ObjectId.fromString(t.getDestinationRevision());
+        MergeResult mergeResult = new MergeResult();
+        ResolveMerger merger = (ResolveMerger) MergeStrategy.RESOLVE.newMerger(db, true);
+        try {
+          boolean success = merger.merge(dst, src);
+          mergeResult.setSuccess(success);
+          if (!success)
+            mergeResult.setConflicts(merger.getUnmergedPaths());
+        } catch (IOException mergeException) {
+          mergeResult.setSuccess(false);
+        }
+        mergeResults.put(t, mergeResult);
+      }
+    } catch (Exception e) {
+      throw context.wrapException(e);
+    } finally {
+      context.close();
+    }
+    return mergeResults;
+  }
+
   private boolean doMerge(@NotNull GitVcsRoot gitRoot,
                           @NotNull Repository db,
                           @NotNull String srcRevision,
                           @NotNull String dstBranch,
                           @NotNull String message,
-                          @NotNull jetbrains.buildServer.vcs.MergeResult mergeResult) throws IOException, VcsException {
+                          @NotNull MergeResult mergeResult) throws IOException, VcsException {
     RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(dstBranch)).setDestination(GitUtils.expandRef(dstBranch)).setForceUpdate(true);
     myVcs.fetch(db, gitRoot.getRepositoryFetchURL(), spec, gitRoot.getAuthSettings());
 
