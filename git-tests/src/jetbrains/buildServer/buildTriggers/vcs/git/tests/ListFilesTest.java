@@ -16,20 +16,14 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.log.Log4jFactory;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.util.cache.ResetCacheHandler;
-import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import org.hamcrest.Description;
 import org.hamcrest.TypeSafeMatcher;
 import org.jetbrains.annotations.NotNull;
-import org.jmock.Expectations;
-import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -51,11 +45,6 @@ import static org.testng.AssertJUnit.assertTrue;
  */
 @Test
 public class ListFilesTest {
-
-  static {
-    Logger.setFactory(new Log4jFactory());
-  }
-
   private TempFiles myTempFiles;
   private GitVcsSupport myGit;
   private VcsRoot myRoot;

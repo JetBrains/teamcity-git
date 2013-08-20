@@ -16,11 +16,9 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -45,11 +43,6 @@ import static org.testng.AssertJUnit.assertEquals;
  */
 @Test
 public class BranchSupportTest {
-
-  static {
-    Logger.setFactory(new Log4jFactory());
-  }
-
   private static final TempFiles ourTempFiles = new TempFiles();
   protected File myRepositoryDir;
   private ServerPaths myServerPaths;

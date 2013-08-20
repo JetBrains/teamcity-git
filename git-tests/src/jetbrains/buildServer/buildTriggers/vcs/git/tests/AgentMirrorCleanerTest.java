@@ -16,13 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.DirectoryCleanersProviderContext;
 import jetbrains.buildServer.agent.DirectoryCleanersRegistry;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentMirrorCleaner;
-import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsRootEntry;
@@ -43,11 +41,6 @@ import static jetbrains.buildServer.util.Util.map;
 
 @Test
 public class AgentMirrorCleanerTest {
-
-  static {
-    Logger.setFactory(new Log4jFactory());
-  }
-
   private Mockery myContext = new Mockery();
   private MirrorManager myMirrorManager;
   private AgentMirrorCleaner myAgentMirrorCleaner;

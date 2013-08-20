@@ -16,14 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.agent.AgentLifeCycleListener;
 import jetbrains.buildServer.agent.BuildAgent;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.BuildParametersMap;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentStartupGitDetector;
-import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.util.EventDispatcher;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
@@ -38,11 +36,6 @@ import java.util.Map;
  */
 @Test
 public class AgentStartupGitDetectorTest {
-
-  static {
-    Logger.setFactory(new Log4jFactory());
-  }
-
   private Mockery myContext;
   private AgentStartupGitDetector myDetector;
 

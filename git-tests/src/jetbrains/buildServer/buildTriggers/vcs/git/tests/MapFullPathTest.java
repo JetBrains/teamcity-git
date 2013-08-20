@@ -16,12 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitMapFullPath;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
-import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
@@ -57,11 +55,6 @@ import static org.testng.AssertJUnit.assertTrue;
 
 @Test
 public class MapFullPathTest {
-
-  static {
-    Logger.setFactory(new Log4jFactory());
-  }
-
   private TempFiles myTempFiles;
   private Mockery myContext;
   private File myRemoteRepositoryDir;
