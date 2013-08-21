@@ -20,6 +20,8 @@ public class GitBuildParametersProvider extends AbstractBuildParametersProvider 
   @Override
   public Map<String, String> getParameters(@NotNull SBuild build, boolean emulationMode) {
     Map<String, String> params = new HashMap<String, String>();
+    if (emulationMode)
+      return params;
     for (BuildRevision revision : build.getRevisions()) {
       RepositoryVersion repositoryVersion = revision.getRepositoryVersion();
       VcsRootInstance root = revision.getRoot();
