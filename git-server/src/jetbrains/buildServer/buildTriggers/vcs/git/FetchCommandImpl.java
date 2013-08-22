@@ -141,9 +141,10 @@ public class FetchCommandImpl implements FetchCommand {
         throw commandError;
       }
       if (result.getStderr().length() > 0) {
-        LOG.warn("Error output produced by git fetch");
-        LOG.warn(result.getStderr());
+        LOG.warn("Error output produced by git fetch:\n" + result.getStderr());
       }
+
+      LOG.debug("Fetch process output:\n" + result.getStdout());
     } finally {
       if (gitPropertiesFile != null)
         FileUtil.delete(gitPropertiesFile);

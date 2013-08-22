@@ -34,13 +34,11 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsUtil;
 import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.lib.ProgressMonitor;
+import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
-import org.eclipse.jgit.transport.FetchResult;
-import org.eclipse.jgit.transport.RefSpec;
-import org.eclipse.jgit.transport.Transport;
-import org.eclipse.jgit.transport.URIish;
+import org.eclipse.jgit.transport.*;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -89,7 +87,9 @@ public class Fetcher {
    * @throws VcsException
    * @throws URISyntaxException
    */
-  private static void fetch(final File repositoryDir, Map<String, String> vcsRootProperties, @NotNull ProgressMonitor progressMonitor) throws IOException, VcsException, URISyntaxException {
+  private static void fetch(@NotNull File repositoryDir,
+                            @NotNull Map<String, String> vcsRootProperties,
+                            @NotNull ProgressMonitor progressMonitor) throws IOException, VcsException, URISyntaxException {
     final String fetchUrl = vcsRootProperties.get(Constants.FETCH_URL);
     final String refspecs = vcsRootProperties.get(Constants.REFSPEC);
     AuthSettings auth = new AuthSettings(vcsRootProperties);
@@ -106,9 +106,26 @@ public class Fetcher {
       tn = transportFactory.createTransport(repository, new URIish(fetchUrl), auth);
       FetchResult result = tn.fetch(progressMonitor, parseRefspecs(refspecs));
       GitServerUtil.checkFetchSuccessful(result);
+      logFetchResults(result);
     } finally {
       if (tn != null)
         tn.close();
+    }
+  }
+
+  private static void logFetchResults(@NotNull FetchResult result) {
+    for (TrackingRefUpdate update : result.getTrackingRefUpdates()) {
+      StringBuilder msg = new StringBuilder();
+      msg.append("update ref remote name: ").append(update.getRemoteName())
+        .append(", local name: ").append(update.getLocalName())
+        .append(", old object id: ").append(update.getOldObjectId().name())
+        .append(", new object id: ").append(update.getNewObjectId().name())
+        .append(", result: ").append(update.getResult());
+      System.out.println(msg);
+    }
+    String additionalMsgs = result.getMessages();
+    if (additionalMsgs.length() > 0) {
+      System.out.println("Remote process messages: " + additionalMsgs);
     }
   }
 
