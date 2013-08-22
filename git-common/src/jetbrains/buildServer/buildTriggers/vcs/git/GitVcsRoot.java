@@ -17,8 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.text.StringUtil;
-import java.io.File;
-import java.util.Map;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -26,6 +24,9 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.util.Map;
 
 /**
  * Git Vcs Settings
@@ -235,44 +236,31 @@ public class GitVcsRoot implements VcsRoot {
     return myDelegate;
   }
 
+  @NotNull
   public String getVcsName() {
     return myDelegate.getVcsName();
   }
 
-  public String getProperty(String propertyName) {
+  public String getProperty(@NotNull String propertyName) {
     return myDelegate.getProperty(propertyName);
   }
 
-  public String getProperty(String propertyName, String defaultValue) {
+  public String getProperty(@NotNull String propertyName, String defaultValue) {
     return myDelegate.getProperty(propertyName, defaultValue);
   }
 
+  @NotNull
   public Map<String, String> getProperties() {
     return myDelegate.getProperties();
   }
 
-  public String convertToString() {
-    return myDelegate.convertToString();
-  }
-
-  public String convertToPresentableString() {
-    return myDelegate.convertToPresentableString();
-  }
-
-  public long getPropertiesHash() {
-    return myDelegate.getPropertiesHash();
-  }
-
+  @NotNull
   public String getName() {
     return myDelegate.getName();
   }
 
   public long getId() {
     return myDelegate.getId();
-  }
-
-  public Map<String, String> getPublicProperties() {
-    return myDelegate.getPublicProperties();
   }
 
   @Override

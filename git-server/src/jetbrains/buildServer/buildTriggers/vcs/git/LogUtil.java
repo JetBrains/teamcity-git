@@ -19,10 +19,4 @@ public class LogUtil {
   public static String describe(@Nullable final VcsRoot root) {
     return root == null ? NULL_OBJECT : root.toString();
   }
-
-  public static String describeInDetail(@Nullable final VcsRoot root) {
-    if(root == null)
-      return NULL_OBJECT;
-    return root.getName() + " {id=" + root.getId() + "; " + root.convertToPresentableString()+ "}";
-  }
 }
