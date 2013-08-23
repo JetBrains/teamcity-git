@@ -19,4 +19,8 @@ public class LogUtil {
   public static String describe(@Nullable final VcsRoot root) {
     return root == null ? NULL_OBJECT : root.toString();
   }
+
+  public static String describe(@Nullable final GitVcsRoot root) {
+    return root == null ? NULL_OBJECT : root.toString();
+  }
 }

@@ -31,7 +31,7 @@ import java.util.Map;
 /**
  * Git Vcs Settings
  */
-public class GitVcsRoot implements VcsRoot {
+public class GitVcsRoot {
 
   private final MirrorManager myMirrorManager;
   private final VcsRoot myDelegate;

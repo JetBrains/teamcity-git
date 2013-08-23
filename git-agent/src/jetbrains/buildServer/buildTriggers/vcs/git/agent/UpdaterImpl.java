@@ -83,7 +83,7 @@ public class UpdaterImpl implements Updater {
 
   private String getBranch() {
     String defaultBranchName = GitUtils.expandRef(myRoot.getRef());
-    String rootBranchParam = GitUtils.getGitRootBranchParamName(myRoot);
+    String rootBranchParam = GitUtils.getGitRootBranchParamName(myRoot.getOriginalRoot());
     String customBranch = myBuild.getSharedConfigParameters().get(rootBranchParam);
     return customBranch != null ? customBranch : defaultBranchName;
   }

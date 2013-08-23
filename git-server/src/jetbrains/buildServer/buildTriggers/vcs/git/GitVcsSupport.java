@@ -48,6 +48,7 @@ import java.util.concurrent.locks.Lock;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
+import static jetbrains.buildServer.util.CollectionsUtil.removeDuplicates;
 import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
 
@@ -123,10 +124,15 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public RepositoryStateData getCurrentState(@NotNull VcsRoot root) throws VcsException {
     GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root);
+    return getCurrentState(gitRoot);
+  }
+
+  @NotNull
+  public RepositoryStateData getCurrentState(@NotNull GitVcsRoot gitRoot) throws VcsException {
     String refInRoot = gitRoot.getRef();
     String fullRef = GitUtils.expandRef(refInRoot);
     Map<String, String> branchRevisions = new HashMap<String, String>();
-    for (Ref ref : getRemoteRefs(root).values()) {
+    for (Ref ref : getRemoteRefs(gitRoot.getOriginalRoot()).values()) {
       if (!ref.getName().startsWith("ref"))
         continue;
       if (!gitRoot.isReportTags() && isTag(ref) && !fullRef.equals(ref.getName()))
@@ -134,7 +140,7 @@ public class GitVcsSupport extends ServerVcsSupport
       branchRevisions.put(ref.getName(), getRevision(ref));
     }
     if (branchRevisions.get(fullRef) == null) {
-      throw new VcsException("Cannot find revision of the default branch '" + refInRoot + "' of vcs root " + LogUtil.describe(root));
+      throw new VcsException("Cannot find revision of the default branch '" + refInRoot + "' of vcs root " + LogUtil.describe(gitRoot));
     }
     return RepositoryStateData.createVersionState(fullRef, branchRevisions);
   }

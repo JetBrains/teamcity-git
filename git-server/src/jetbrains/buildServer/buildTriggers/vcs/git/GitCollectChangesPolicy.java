@@ -381,7 +381,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
 
     private Collection<RefSpec> calculateRefSpecsForFetch() throws VcsException {
       List<RefSpec> specs = new ArrayList<RefSpec>();
-      Map<String, Ref> remoteRepositoryRefs = myVcs.getRemoteRefs(myRoot);
+      Map<String, Ref> remoteRepositoryRefs = myVcs.getRemoteRefs(myRoot.getOriginalRoot());
       for (String ref : myAllRefNames) {
         if (remoteRepositoryRefs.containsKey(ref))
           specs.add(new RefSpec(ref + ":" + ref).setForceUpdate(true));

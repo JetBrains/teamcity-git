@@ -43,6 +43,10 @@ public class AuthSettings {
     this(root.getProperties());
   }
 
+  public AuthSettings(@NotNull GitVcsRoot root) {
+    this(root.getProperties());
+  }
+
   public AuthSettings(Map<String, String> properties) {
     myAuthMethod = readAuthMethod(properties);
     myIgnoreKnownHosts = "true".equals(properties.get(Constants.IGNORE_KNOWN_HOSTS));

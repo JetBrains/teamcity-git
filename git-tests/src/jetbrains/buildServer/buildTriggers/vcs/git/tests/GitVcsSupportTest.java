@@ -1052,7 +1052,9 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test
   public void fetch_process_should_have_necessary_options_from_internal_properties() throws Exception {
     String classpath = myConfigBuilder.build().getFetchClasspath() + File.pathSeparator +
-                       ClasspathUtil.composeClasspath(new Class[]{FetcherCheckingProperties.class}, null, null);
+                       ClasspathUtil.composeClasspath(new Class[]{FetcherCheckingProperties.class,
+                         PatchTestCase.class,
+                         org.testng.Assert.class}, null, null);
     myConfigBuilder.setSeparateProcessForFetch(true)
       .setFetchClasspath(classpath)
       .setFetcherClassName(FetcherCheckingProperties.class.getName()) //custom Fetcher that throws a error if it cannot find specific property
