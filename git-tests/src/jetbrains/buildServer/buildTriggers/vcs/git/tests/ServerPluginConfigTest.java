@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import com.jcraft.jsch.Proxy;
 import com.jcraft.jsch.ProxyHTTP;
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -83,7 +84,7 @@ public class ServerPluginConfigTest {
 
   public void test_default_idle_timeout() {
     ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
-    assertEquals(600, config.getIdleTimeoutSeconds());
+    assertEquals(PluginConfig.DEFAULT_IDLE_TIMEOUT, config.getIdleTimeoutSeconds());
   }
 
 

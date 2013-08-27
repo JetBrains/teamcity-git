@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
+import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import org.jmock.Expectations;
@@ -58,7 +59,7 @@ public class AgentConfigPluginTest {
 
   public void test_default_idle_timeout() {
     PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
-    assertEquals(600, config.getIdleTimeoutSeconds());
+    assertEquals(PluginConfig.DEFAULT_IDLE_TIMEOUT, config.getIdleTimeoutSeconds());
   }
 
 
@@ -72,7 +73,7 @@ public class AgentConfigPluginTest {
   public void test_negative_idle_timeout() {
     myBuildSharedConfigParameters.put("teamcity.git.idle.timeout.seconds", "-60");
     PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
-    assertEquals(600, config.getIdleTimeoutSeconds());
+    assertEquals(PluginConfig.DEFAULT_IDLE_TIMEOUT, config.getIdleTimeoutSeconds());
   }
 
 
