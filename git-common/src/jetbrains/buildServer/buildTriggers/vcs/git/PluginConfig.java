@@ -25,7 +25,7 @@ import java.io.File;
  */
 public interface PluginConfig extends MirrorConfig {
 
-  static int DEFAULT_IDLE_TIMEOUT = 600;
+  static int DEFAULT_IDLE_TIMEOUT = 1800;
 
   @NotNull
   File getCachesDir();
