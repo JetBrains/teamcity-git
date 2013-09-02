@@ -22,10 +22,12 @@ import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.util.filters.Filter;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRootEntry;
+import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.URIish;
@@ -190,10 +192,14 @@ public class GitMapFullPath {
     RevWalk revWalk = new RevWalk(db);
     revWalk.sort(RevSort.TOPO);
     for (ObjectId id : updatedHeads) {
-      revWalk.markStart(revWalk.parseCommit(id));
+      RevObject obj = revWalk.parseAny(id);
+      if (obj.getType() == Constants.OBJ_COMMIT)
+        revWalk.markStart((RevCommit) obj);
     }
     for (ObjectId id : uninteresting) {
-      revWalk.markUninteresting(revWalk.parseCommit(id));
+      RevObject obj = revWalk.parseAny(id);
+      if (obj.getType() == Constants.OBJ_COMMIT)
+        revWalk.markUninteresting((RevCommit) obj);
     }
     Set<String> newCommits = new HashSet<String>();
     RevCommit newCommit = null;
