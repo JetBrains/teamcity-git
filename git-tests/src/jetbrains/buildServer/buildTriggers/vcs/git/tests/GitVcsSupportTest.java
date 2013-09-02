@@ -52,7 +52,9 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -63,10 +65,10 @@ import java.util.regex.Pattern;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.getVcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
+import static jetbrains.buildServer.vcs.RepositoryStateData.createVersionState;
 
 /**
  * The tests for version detection functionality
@@ -1564,6 +1566,27 @@ public class GitVcsSupportTest extends PatchTestCase {
     public synchronized void resetFetchCounter() {
       myFetchCount = 0;
     }
+  }
+
+
+  @Test
+  @TestFor(issues = "TW-29770")
+  public void collect_changes_with_branch_pointing_to_a_non_commit() throws Exception {
+    //setup remote repo with a branch pointing to a non commit
+    VcsRoot root = vcsRoot().withBranch("refs/heads/master").withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
+
+    File brokenRef = new File(myMainRepositoryDir, "refs" + File.separator + "heads" + File.separator + "broken_branch");
+    FileUtil.writeFileAndReportErrors(brokenRef, "1fefad14fba39ac378e4e345e295fa1f90e343ae\n");//it's a tree, not a commit
+
+    RepositoryStateData state1 = createVersionState("refs/heads/master",
+                                                    map("refs/heads/master", "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6",
+                                                        "refs/heads/broken_branch", "1fefad14fba39ac378e4e345e295fa1f90e343ae"));
+    RepositoryStateData state2 = createVersionState("refs/heads/master",
+                                                    map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9",
+                                                        "refs/heads/broken_branch", "1fefad14fba39ac378e4e345e295fa1f90e343ae"));
+
+    //collect changes in this repo, no exception should be thrown
+    getSupport().getCollectChangesPolicy().collectChanges(root, state1, state2, CheckoutRules.DEFAULT);
   }
 
 

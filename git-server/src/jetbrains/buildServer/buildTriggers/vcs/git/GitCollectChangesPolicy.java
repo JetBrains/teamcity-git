@@ -18,12 +18,13 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.vcs.*;
+import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
@@ -101,6 +102,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
                                            boolean throwErrors) throws Exception {
     GitVcsRoot root = context.getGitRoot();
     for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
+      String ref = entry.getKey();
       String revision = GitUtils.versionRevision(entry.getValue());
       RevCommit commit = null;
       try {
@@ -114,6 +116,8 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
 
       try {
         myVcs.getCommit(db, revision);
+      } catch (IncorrectObjectTypeException e) {
+        LOG.warn("Ref " + ref + " points to a non-commit " + revision);
       } catch (Exception e) {
         if (throwErrors) {
           throw new VcsException("Cannot find revision " + revision + " in VCS root " + LogUtil.describe(root), e);
@@ -164,8 +168,11 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     List<RevCommit> revisions = new ArrayList<RevCommit>();
     for (String revision : state.getBranchRevisions().values()) {
       ObjectId id = ObjectId.fromString(GitUtils.versionRevision(revision));
-      if (r.hasObject(id))
-        revisions.add(walk.parseCommit(id));
+      if (r.hasObject(id)) {
+        RevObject obj = walk.parseAny(id);
+        if (obj.getType() == Constants.OBJ_COMMIT)
+          revisions.add((RevCommit) obj);
+      }
     }
     return revisions;
   }
