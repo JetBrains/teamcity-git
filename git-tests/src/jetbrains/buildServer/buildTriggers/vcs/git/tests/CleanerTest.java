@@ -46,7 +46,7 @@ public class CleanerTest extends BaseTestCase {
     ServerPaths paths = new ServerPaths(ourTempFiles.createTempDir().getAbsolutePath());
     PluginConfigBuilder configBuilder = new PluginConfigBuilder(paths)
       .setRunNativeGC(true)
-      .setMirrorExpirationTimeoutMillis(2000);
+      .setMirrorExpirationTimeoutMillis(5000);
 
     if (System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH) != null)
       configBuilder.setPathToGit(System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH));
