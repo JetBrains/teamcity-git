@@ -67,7 +67,10 @@ public final class RepositoryManagerImpl implements RepositoryManager {
 
   private final ConcurrentMap<File, Object> myUpdateLastUsedTimeLocks = new ConcurrentHashMap<File, Object>();
 
+  private final ServerPluginConfig myConfig;
+
   public RepositoryManagerImpl(@NotNull final ServerPluginConfig config, @NotNull final MirrorManager mirrorManager) {
+    myConfig = config;
     myExpirationTimeout = config.getMirrorExpirationTimeoutMillis();
     myMirrorManager = mirrorManager;
   }
@@ -139,9 +142,19 @@ public final class RepositoryManagerImpl implements RepositoryManager {
       if (existingRemote == null || !canonicalURI.toString().equals(existingRemote)) {
         r = createRepository(dir, canonicalURI);
       }
+      config.setInt("teamcity", "https", "solinger", myConfig.getHttpsSoLinger());
+      config.save();
       return r;
     } catch (Exception e) {
-      return createRepository(dir, canonicalURI);
+      final Repository r = createRepository(dir, canonicalURI);
+      final StoredConfig config = r.getConfig();
+      config.setInt("teamcity", "https", "solinger", myConfig.getHttpsSoLinger());
+      try {
+        config.save();
+      } catch (IOException e1) {
+        throw new VcsException(e1);
+      }
+      return r;
     }
   }
 

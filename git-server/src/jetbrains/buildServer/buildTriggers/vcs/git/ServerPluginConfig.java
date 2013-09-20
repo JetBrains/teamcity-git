@@ -102,4 +102,6 @@ public interface ServerPluginConfig extends PluginConfig {
 
   //Seems like fetch per branch is never required, will remove it if a single fetch works fine
   boolean usePerBranchFetch();
+
+  int getHttpsSoLinger();
 }
