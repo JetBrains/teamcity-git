@@ -321,4 +321,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public boolean usePerBranchFetch() {
     return TeamCityProperties.getBoolean("teamcity.git.usePerBranchFetch");
   }
+
+  public int getHttpsSoLinger() {
+    return TeamCityProperties.getInteger("teamcity.git.httpsSoLinger", 0);
+  }
 }

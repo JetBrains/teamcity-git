@@ -194,6 +194,10 @@ public class PluginConfigBuilder {
       public boolean usePerBranchFetch() {
         return myUsePerBranchFetch;
       }
+
+      public int getHttpsSoLinger() {
+        return 0;
+      }
     };
   }
 
