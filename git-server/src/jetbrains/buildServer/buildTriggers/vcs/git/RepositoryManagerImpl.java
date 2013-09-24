@@ -137,20 +137,25 @@ public final class RepositoryManagerImpl implements RepositoryManager {
       updateLastUsedTime(dir);
     try {
       Repository r = RepositoryCache.open(RepositoryCache.FileKey.exact(dir, FS.DETECTED), true);
-      final StoredConfig config = r.getConfig();
+      StoredConfig config = r.getConfig();
       final String existingRemote = config.getString("teamcity", null, "remote");
       if (existingRemote == null || !canonicalURI.toString().equals(existingRemote)) {
         r = createRepository(dir, canonicalURI);
       }
+      config = r.getConfig();
       config.setInt("teamcity", "https", "solinger", myConfig.getHttpsSoLinger());
-      config.save();
+      synchronized (getCreateLock(dir)) {
+        config.save();
+      }
       return r;
     } catch (Exception e) {
       final Repository r = createRepository(dir, canonicalURI);
       final StoredConfig config = r.getConfig();
       config.setInt("teamcity", "https", "solinger", myConfig.getHttpsSoLinger());
       try {
-        config.save();
+        synchronized (getCreateLock(dir)) {
+          config.save();
+        }
       } catch (IOException e1) {
         throw new VcsException(e1);
       }
