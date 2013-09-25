@@ -16,6 +16,21 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.serverSide.FileWatchingPropertiesModel;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.util.DiagnosticUtil;
+import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsUtil;
+import org.eclipse.jgit.lib.Config;
+import org.eclipse.jgit.lib.ProgressMonitor;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.storage.file.WindowCache;
+import org.eclipse.jgit.storage.file.WindowCacheConfig;
+import org.eclipse.jgit.transport.*;
+import org.jetbrains.annotations.NotNull;
+
 import java.io.*;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -25,21 +40,6 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import jetbrains.buildServer.serverSide.FileWatchingPropertiesModel;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
-import jetbrains.buildServer.util.DiagnosticUtil;
-import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsUtil;
-import org.eclipse.jgit.lib.Config;
-import org.eclipse.jgit.lib.ProgressMonitor;
-import org.eclipse.jgit.lib.RefUpdate;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.storage.file.WindowCache;
-import org.eclipse.jgit.storage.file.WindowCacheConfig;
-import org.eclipse.jgit.transport.*;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Method main of this class is supposed to be run in separate process to avoid OutOfMemoryExceptions in server's process
@@ -99,9 +99,7 @@ public class Fetcher {
     TransportFactory transportFactory = new TransportFactoryImpl(config);
     Transport tn = null;
     try {
-      //This method should be called with repository creation lock, but Fetcher is ran in separate process, so
-      //locks won't help. Fetcher is ran after we have ensured that repository exists, so we can call it without lock.
-      Repository repository = GitServerUtil.getRepository(repositoryDir, new URIish(fetchUrl));
+      Repository repository = new RepositoryBuilder().setBare().setGitDir(repositoryDir).build();
       workaroundRacyGit();
       tn = transportFactory.createTransport(repository, new URIish(fetchUrl), auth);
       FetchResult result = tn.fetch(progressMonitor, parseRefspecs(refspecs));
