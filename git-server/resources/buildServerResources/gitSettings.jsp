@@ -53,16 +53,16 @@
       </td>
     </tr>
     <bs:branchSpecTableRow/>
-    <tr>
+    <tr class="advancedSetting">
       <th><label for="reportTagRevisions">Use tags as branches:</label></th>
       <td>
         <props:checkboxProperty name="reportTagRevisions"/>
         <div class="smallNote" style="margin: 0">If enabled tags can be used in branch specification</div>
       </td>
     </tr>
-    <tr>
+    <tr class="advancedSetting">
       <th><label for="usernameStyle">Username style:</label></th>
-      <td><props:selectProperty name="usernameStyle">
+      <td><props:selectProperty name="usernameStyle" enableFilter="true">
         <props:option value="USERID">UserId</props:option>
         <props:option value="NAME">Author Name</props:option>
         <props:option value="FULL">Author Name and Email</props:option>
@@ -83,9 +83,9 @@
         </div>
       </td>
     </tr>
-    <tr>
+    <tr class="advancedSetting">
       <th><label for="submoduleCheckout">Submodules:</label></th>
-      <td><props:selectProperty name="submoduleCheckout">
+      <td><props:selectProperty name="submoduleCheckout" enableFilter="true">
         <props:option value="IGNORE">Ignore</props:option>
         <props:option value="CHECKOUT">Checkout</props:option>
       </props:selectProperty>
@@ -94,7 +94,7 @@
         </div>
       </td>
     </tr>
-    <tr>
+    <tr class="advancedSetting">
       <th><label for="userForTags">Username for tags:</label></th>
       <td><props:textProperty name="userForTags"/>
         <div class="smallNote" style="margin: 0">Format: User Name &lt;email&gt;</div>
@@ -104,7 +104,7 @@
   <l:settingsGroup title="Authentication Settings">
     <tr>
       <th><label for="authMethod">Authentication method:</label></th>
-      <td><props:selectProperty name="authMethod" onchange="gitSelectAuthentication()">
+      <td><props:selectProperty name="authMethod" onchange="gitSelectAuthentication()" enableFilter="true">
         <props:option value="ANONYMOUS">Anonymous</props:option>
         <props:option value="PRIVATE_KEY_DEFAULT">Default Private Key</props:option>
         <props:option value="PASSWORD">Password</props:option>
@@ -148,11 +148,11 @@
       <td><props:passwordProperty name="secure:passphrase"/></td>
     </tr>
   </l:settingsGroup>
-  <l:settingsGroup title="Server Settings">
-    <tr>
+  <l:settingsGroup title="Server Settings" className="advancedSetting">
+    <tr class="advancedSetting">
       <td colspan="2">Settings that are used in case of server-side checkout.</td>
     </tr>
-    <tr>
+    <tr class="advancedSetting">
       <th>
         <label for="serverSideAutoCrlf">Convert line-endings to CRLF:<bs:help file="Git+(JetBrains)" anchor="serverAutoCRLF"/></label>
       </th>
@@ -160,7 +160,7 @@
         <props:checkboxProperty name="serverSideAutoCrlf"/>
       </td>
     </tr>
-    <tr>
+    <tr class="advancedSetting">
       <th><label for="path">Custom clone directory on server:<bs:help file="Git+(JetBrains)" anchor="customCloneDir"/></label></th>
       <td><props:textProperty name="path" className="longField"/>
         <div class="smallNote" style="margin: 0;">
@@ -169,11 +169,11 @@
       </td>
     </tr>
   </l:settingsGroup>
-  <l:settingsGroup title="Agent Settings">
-    <tr>
+  <l:settingsGroup title="Agent Settings" className="advancedSetting">
+    <tr class="advancedSetting">
       <td colspan="2">Agent-specific settings that are used in case of agent checkout.<bs:help file="Git+(JetBrains)" anchor="agentSettings"/></td>
     </tr>
-    <tr>
+    <tr class="advancedSetting">
       <th><label for="agentGitPath">Path to Git: </label></th>
       <td><props:textProperty name="agentGitPath" className="longField"/>
         <div class="smallNote" style="margin: 0;">Provide path to a git executable
@@ -182,9 +182,9 @@
         </div>
       </td>
     </tr>
-    <tr>
+    <tr class="advancedSetting">
       <th><label for="agentCleanPolicy">Clean policy:</label></th>
-      <td><props:selectProperty name="agentCleanPolicy">
+      <td><props:selectProperty name="agentCleanPolicy" enableFilter="true">
         <props:option value="ON_BRANCH_CHANGE">On Branch Change</props:option>
         <props:option value="ALWAYS">Always</props:option>
         <props:option value="NEVER">Never</props:option>
@@ -193,9 +193,9 @@
         </div>
       </td>
     </tr>
-    <tr>
+    <tr class="advancedSetting">
       <th><label for="agentCleanFilesPolicy">Clean files policy:</label></th>
-      <td><props:selectProperty name="agentCleanFilesPolicy">
+      <td><props:selectProperty name="agentCleanFilesPolicy" enableFilter="true">
         <props:option value="ALL_UNTRACKED">All untracked files</props:option>
         <props:option value="IGNORED_ONLY">All ignored untracked files</props:option>
         <props:option value="NON_IGNORED_ONLY">All non-ignored untracked files</props:option>
