@@ -88,7 +88,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     return changes;
   }
 
-  private void ensureRepositoryStateLoadedFor(@NotNull final OperationContext context,
+  public void ensureRepositoryStateLoadedFor(@NotNull final OperationContext context,
                                               @NotNull final Repository repo,
                                               @NotNull final RepositoryStateData... states) throws Exception {
     boolean isFirst = true;
