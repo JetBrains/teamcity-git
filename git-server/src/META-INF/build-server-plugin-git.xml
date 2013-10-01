@@ -30,5 +30,5 @@
   <bean id="cleaner" class="jetbrains.buildServer.buildTriggers.vcs.git.CleanupRunner"/>
   <bean id="fetcherProperties" class="jetbrains.buildServer.buildTriggers.vcs.git.FetcherProperties"/>
   <bean id="mergeSupport" class="jetbrains.buildServer.buildTriggers.vcs.git.GitMergeSupport"/>
-  <bean id="mergeSupport" class="jetbrains.buildServer.buildTriggers.vcs.git.GitCommitsInfoBuilder"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitCommitsInfoBuilder"/>
 </beans>
