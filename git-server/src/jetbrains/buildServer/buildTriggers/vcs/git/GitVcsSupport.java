@@ -48,7 +48,6 @@ import java.util.concurrent.locks.Lock;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
-import static jetbrains.buildServer.util.CollectionsUtil.removeDuplicates;
 import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
 
@@ -535,7 +534,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @Override
   public ListFilesPolicy getListFilesPolicy() {
-    return new GitListFilesSupport(this);
+    return new GitListFilesSupport(this, myConfig);
   }
 
   @NotNull

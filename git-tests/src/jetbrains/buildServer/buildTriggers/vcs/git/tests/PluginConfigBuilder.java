@@ -198,6 +198,10 @@ public class PluginConfigBuilder {
       public int getHttpsSoLinger() {
         return 0;
       }
+
+      public int getListFilesTTLSeconds() {
+        return 0;
+      }
     };
   }
 

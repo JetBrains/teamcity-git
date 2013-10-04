@@ -325,4 +325,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public int getHttpsSoLinger() {
     return TeamCityProperties.getInteger("teamcity.git.httpsSoLinger", 0);
   }
+
+  public int getListFilesTTLSeconds() {
+    return TeamCityProperties.getInteger("teamcity.git.listFilesTTLSeconds", 60);
+  }
 }

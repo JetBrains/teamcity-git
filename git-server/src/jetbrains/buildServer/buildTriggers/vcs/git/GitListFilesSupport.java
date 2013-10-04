@@ -37,9 +37,14 @@ import java.util.List;
 public class GitListFilesSupport implements ListDirectChildrenPolicy {
 
   private final GitVcsSupport myVcs;
+  private final ServerPluginConfig myConfig;
+  private String myCurrentRevision;
+  private long myLastSyncTime = -1;
 
-  public GitListFilesSupport(@NotNull GitVcsSupport vcs) {
+  public GitListFilesSupport(@NotNull GitVcsSupport vcs,
+                             @NotNull ServerPluginConfig config) {
     myVcs = vcs;
+    myConfig = config;
   }
 
   @NotNull
@@ -95,7 +100,17 @@ public class GitListFilesSupport implements ListDirectChildrenPolicy {
 
   @NotNull
   private String getRevision(@NotNull VcsRoot root) throws VcsException {
-    return GitUtils.versionRevision(myVcs.getCurrentVersion(root));
+    if (isOutOfDate()) {
+      myCurrentRevision = GitUtils.versionRevision(myVcs.getCurrentVersion(root));
+      myLastSyncTime = System.currentTimeMillis();
+    }
+    return myCurrentRevision;
+  }
+
+  private boolean isOutOfDate() {
+    return myLastSyncTime == -1 ||
+           myCurrentRevision == null ||
+           System.currentTimeMillis() - myLastSyncTime > myConfig.getListFilesTTLSeconds() * 1000;
   }
 
   private boolean isRootPath(@Nullable String path) {

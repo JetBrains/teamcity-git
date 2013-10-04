@@ -104,4 +104,6 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean usePerBranchFetch();
 
   int getHttpsSoLinger();
+
+  int getListFilesTTLSeconds();
 }
