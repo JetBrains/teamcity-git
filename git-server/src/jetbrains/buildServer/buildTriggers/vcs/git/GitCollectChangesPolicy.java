@@ -167,9 +167,9 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
         LOG.warn("Ref " + ref + " points to a non-commit " + revision);
       } catch (Exception e) {
         if (throwErrors) {
-          throw new VcsException("Cannot find revision " + revision + " in VCS root " + LogUtil.describe(root), e);
+          throw new VcsException("Cannot find revision " + revision + " in branch " + ref + " in VCS root " + LogUtil.describe(root), e);
         } else {
-          LOG.warn("Cannot find revision " + revision + " in VCS root " + LogUtil.describe(root));
+          LOG.warn("Cannot find revision " + revision + " in branch " + ref + " in VCS root " + LogUtil.describe(root));
         }
       }
     }
