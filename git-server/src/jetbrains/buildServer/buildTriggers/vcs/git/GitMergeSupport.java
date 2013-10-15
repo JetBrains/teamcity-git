@@ -43,11 +43,11 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
       GitVcsRoot gitRoot = context.getGitRoot();
       Repository db = context.getRepository();
       int attemptsLeft = 3;
-      boolean success = false;
-      MergeResult result = new MergeResult();
-      while (!success && attemptsLeft > 0) {
-        result = new MergeResult();
-        success = doMerge(gitRoot, db, srcRevision, dstBranch, message, result);
+      MergeResult result = MergeResult.createMergeSuccessResult();
+      while (attemptsLeft > 0) {
+        result = doMerge(gitRoot, db, srcRevision, dstBranch, message);
+        if (result.isMergePerformed() && result.isSuccess())
+          return result;
         attemptsLeft--;
       }
       return result;
@@ -70,17 +70,17 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
       for (MergeTask t : tasks) {
         ObjectId src = ObjectId.fromString(t.getSourceRevision());
         ObjectId dst = ObjectId.fromString(t.getDestinationRevision());
-        MergeResult mergeResult = new MergeResult();
         ResolveMerger merger = (ResolveMerger) MergeStrategy.RESOLVE.newMerger(db, true);
         try {
           boolean success = merger.merge(dst, src);
-          mergeResult.setSuccess(success);
-          if (!success)
-            mergeResult.setConflicts(merger.getUnmergedPaths());
+          if (success) {
+            mergeResults.put(t, MergeResult.createMergeSuccessResult());
+          } else {
+            mergeResults.put(t, MergeResult.createMergeError(merger.getUnmergedPaths()));
+          }
         } catch (IOException mergeException) {
-          mergeResult.setSuccess(false);
+          mergeResults.put(t, MergeResult.createMergeError(mergeException.getMessage()));
         }
-        mergeResults.put(t, mergeResult);
       }
     } catch (Exception e) {
       throw context.wrapException(e);
@@ -90,12 +90,12 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     return mergeResults;
   }
 
-  private boolean doMerge(@NotNull GitVcsRoot gitRoot,
-                          @NotNull Repository db,
-                          @NotNull String srcRevision,
-                          @NotNull String dstBranch,
-                          @NotNull String message,
-                          @NotNull MergeResult mergeResult) throws IOException, VcsException {
+  @NotNull
+  private MergeResult doMerge(@NotNull GitVcsRoot gitRoot,
+                              @NotNull Repository db,
+                              @NotNull String srcRevision,
+                              @NotNull String dstBranch,
+                              @NotNull String message) throws IOException, VcsException {
     RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(dstBranch)).setDestination(GitUtils.expandRef(dstBranch)).setForceUpdate(true);
     myVcs.fetch(db, gitRoot.getRepositoryFetchURL(), spec, gitRoot.getAuthSettings());
 
@@ -104,12 +104,10 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
 
     ResolveMerger merger = (ResolveMerger) MergeStrategy.RESOLVE.newMerger(db, true);
     boolean mergeSuccessful = merger.merge(dstBranchLastCommit, ObjectId.fromString(srcRevision));
-    mergeResult.setSuccess(mergeSuccessful);
     if (!mergeSuccessful) {
       List<String> conflicts = merger.getUnmergedPaths();
       Collections.sort(conflicts);
-      mergeResult.setConflicts(conflicts);
-      return false;
+      return MergeResult.createMergeError(conflicts);
     }
 
     ObjectInserter inserter = db.newObjectInserter();
@@ -146,9 +144,9 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
           switch (ru.getStatus()) {
             case UP_TO_DATE:
             case OK:
-              return true;
+              return MergeResult.createMergeSuccessResult();
             default:
-              return false;
+              return MergeResult.createMergeError("Push failed, " + ru.getMessage());
           }
         } finally {
           c.close();
