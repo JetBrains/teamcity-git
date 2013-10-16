@@ -45,10 +45,16 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
       int attemptsLeft = 3;
       MergeResult result = MergeResult.createMergeSuccessResult();
       while (attemptsLeft > 0) {
-        result = doMerge(gitRoot, db, srcRevision, dstBranch, message);
-        if (result.isMergePerformed() && result.isSuccess())
-          return result;
-        attemptsLeft--;
+        try {
+          result = doMerge(gitRoot, db, srcRevision, dstBranch, message);
+          if (result.isMergePerformed() && result.isSuccess())
+            return result;
+          attemptsLeft--;
+        } catch (IOException e) {
+          return MergeResult.createMergeError(e.getMessage());
+        } catch (VcsException e) {
+          return MergeResult.createMergeError(e.getMessage());
+        }
       }
       return result;
     } catch (Exception e) {
