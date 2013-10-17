@@ -23,6 +23,8 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleCommitException;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleEntryException;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -487,7 +489,31 @@ public class GitVcsSupportTest extends PatchTestCase {
       support.collectChanges(root, MERGE_VERSION, "78cbbed3561de3417467ee819b1795ba14c03dfb", CheckoutRules.DEFAULT);
       fail("We should throw exception if submodules in the last commit are broken");
     } catch (Exception e) {
-      assertTrue(true);
+      assertTrue(e.getCause() instanceof MissingSubmoduleEntryException);
+      MissingSubmoduleEntryException e1 = (MissingSubmoduleEntryException) e.getCause();
+      assertEquals("The repository '" + root.getProperty(Constants.FETCH_URL) + "' " +
+                   "has a submodule in the commit '78cbbed3561de3417467ee819b1795ba14c03dfb' " +
+                   "at a path 'submodule-wihtout-entry', but has no entry for this path in .gitmodules configuration",
+                   e1.getMessage());
+    }
+  }
+
+
+  @Test
+  public void should_throw_descriptive_error_when_referenced_commit_not_found() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("reference-wrong-commit", true);
+    try {
+      support.collectChanges(root, MERGE_VERSION, "7253d358a2490321a1808a1c20561b4027d69f77", CheckoutRules.DEFAULT);
+    } catch (VcsException e) {
+      assertTrue(e.getCause() instanceof MissingSubmoduleCommitException);
+      MissingSubmoduleCommitException e1 = (MissingSubmoduleCommitException) e.getCause();
+      assertEquals("Cannot find the commit ded023a236d184753f826e62ac16b1612060e9d0 " +
+                   "in the repository '../submodule' used as a submodule " +
+                   "by the repository '" + root.getProperty(Constants.FETCH_URL) + "' " +
+                   "in the commit 7253d358a2490321a1808a1c20561b4027d69f77 " +
+                   "at a path 'submodule-with-dirs'",
+                   e1.getMessage());
     }
   }
 
