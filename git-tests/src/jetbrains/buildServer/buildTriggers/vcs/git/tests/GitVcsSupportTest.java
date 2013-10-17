@@ -505,6 +505,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     VcsRoot root = getRoot("reference-wrong-commit", true);
     try {
       support.collectChanges(root, MERGE_VERSION, "7253d358a2490321a1808a1c20561b4027d69f77", CheckoutRules.DEFAULT);
+      fail();
     } catch (VcsException e) {
       assertTrue(e.getCause() instanceof MissingSubmoduleCommitException);
       MissingSubmoduleCommitException e1 = (MissingSubmoduleCommitException) e.getCause();
