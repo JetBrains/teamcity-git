@@ -6,8 +6,6 @@ import org.eclipse.jgit.dircache.DirCacheBuilder;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.merge.MergeStrategy;
 import org.eclipse.jgit.merge.ResolveMerger;
-import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.PushConnection;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
@@ -15,7 +13,10 @@ import org.eclipse.jgit.transport.Transport;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class GitMergeSupport implements MergeSupport, GitServerExtension {
 
@@ -124,14 +125,11 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     inserter.flush();
     dcb.finish();
 
-    RevWalk revWalk = new RevWalk(db);
-    RevCommit commit = revWalk.parseCommit(ObjectId.fromString(srcRevision));
-
     ObjectId writtenTreeId = dc.writeTree(inserter);
 
     CommitBuilder commitBuilder = new CommitBuilder();
-    commitBuilder.setCommitter(new PersonIdent("teamcity", "teamcity@buildserver", new Date(), TimeZone.getDefault()));
-    commitBuilder.setAuthor(commit.getAuthorIdent());
+    commitBuilder.setCommitter(gitRoot.getTagger(db));
+    commitBuilder.setAuthor(gitRoot.getTagger(db));
     commitBuilder.setMessage(message);
     commitBuilder.addParentId(dstBranchLastCommit);
     commitBuilder.addParentId(ObjectId.fromString(srcRevision));

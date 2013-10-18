@@ -95,7 +95,7 @@
       </td>
     </tr>
     <tr class="advancedSetting">
-      <th><label for="userForTags">Username for tags:</label></th>
+      <th><label for="userForTags">Username for tags/merge:</label></th>
       <td><props:textProperty name="userForTags"/>
         <div class="smallNote" style="margin: 0">Format: User Name &lt;email&gt;</div>
       </td>
