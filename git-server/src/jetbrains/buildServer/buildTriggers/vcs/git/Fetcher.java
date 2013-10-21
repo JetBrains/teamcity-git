@@ -22,6 +22,7 @@ import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsUtil;
+import org.apache.log4j.*;
 import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.Repository;
@@ -56,6 +57,8 @@ public class Fetcher {
       String threadDumpFilePath = properties.remove(Constants.THREAD_DUMP_FILE);
       String repositoryPath = properties.remove(Constants.REPOSITORY_DIR_PROPERTY_NAME);
       debug = "true".equals(properties.remove(Constants.VCS_DEBUG_ENABLED));
+      BasicConfigurator.configure(new WriterAppender(new PatternLayout("[%d] %6p - %30.30c - %m %n"), System.out));
+      Logger.getRootLogger().setLevel(debug ? Level.DEBUG : Level.INFO);
       final String internalPropsFile = properties.remove(Constants.FETCHER_INTERNAL_PROPERTIES_FILE);
       new TeamCityProperties() {{
         setModel(new FileWatchingPropertiesModel(new File(internalPropsFile)));

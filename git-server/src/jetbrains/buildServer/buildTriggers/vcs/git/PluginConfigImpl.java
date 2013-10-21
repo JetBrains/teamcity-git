@@ -30,6 +30,7 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsPersonalSupport;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.commons.codec.Decoder;
+import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Layout;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.jetbrains.annotations.NotNull;
@@ -155,7 +156,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
       DiagnosticUtil.class,
       FileUtil.class,
       Layout.class,
-      VcsException.class
+      VcsException.class,
+      BasicConfigurator.class
     ));
 
     Collections.addAll(clazzez, GitVcsSupport.class.getInterfaces());
