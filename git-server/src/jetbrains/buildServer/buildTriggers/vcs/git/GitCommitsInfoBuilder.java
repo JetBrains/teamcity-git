@@ -15,7 +15,7 @@ import java.util.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 
-public class GitCommitsInfoBuilder implements CommitsInfoBuilder {
+public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExtension {
 
   private final GitVcsSupport myVcs;
 
