@@ -21,6 +21,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
   public GitCommitsInfoBuilder(@NotNull GitVcsSupport vcs) {
     myVcs = vcs;
+    myVcs.addExtension(this);
   }
 
   @NotNull
