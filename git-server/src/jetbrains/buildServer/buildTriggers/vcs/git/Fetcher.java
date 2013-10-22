@@ -58,7 +58,8 @@ public class Fetcher {
       String repositoryPath = properties.remove(Constants.REPOSITORY_DIR_PROPERTY_NAME);
       debug = "true".equals(properties.remove(Constants.VCS_DEBUG_ENABLED));
       BasicConfigurator.configure(new WriterAppender(new PatternLayout("[%d] %6p - %30.30c - %m %n"), System.out));
-      Logger.getRootLogger().setLevel(debug ? Level.DEBUG : Level.INFO);
+      Logger.getRootLogger().setLevel(Level.INFO);
+      Logger.getLogger("jetbrains.buildServer.buildTriggers.vcs.git").setLevel(debug ? Level.DEBUG : Level.INFO);
       final String internalPropsFile = properties.remove(Constants.FETCHER_INTERNAL_PROPERTIES_FILE);
       new TeamCityProperties() {{
         setModel(new FileWatchingPropertiesModel(new File(internalPropsFile)));
