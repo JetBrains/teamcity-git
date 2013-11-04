@@ -21,8 +21,10 @@ import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
-import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevSort;
@@ -45,11 +47,14 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
 
   private final GitVcsSupport myVcs;
+  private final CommitLoader myCommitLoader;
   private final ServerPluginConfig myConfig;
 
   public GitCollectChangesPolicy(@NotNull GitVcsSupport vcs,
+                                 @NotNull CommitLoader commitLoader,
                                  @NotNull ServerPluginConfig config) {
     myVcs = vcs;
+    myCommitLoader = commitLoader;
     myConfig = config;
   }
 
@@ -88,9 +93,55 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     return changes;
   }
 
+  @NotNull
+  public RepositoryStateData getCurrentState(@NotNull VcsRoot root) throws VcsException {
+    return myVcs.getCurrentState(root);
+  }
+
+  @NotNull
+  public List<ModificationData> collectChanges(@NotNull VcsRoot fromRoot,
+                                               @NotNull String fromVersion,
+                                               @NotNull VcsRoot toRoot,
+                                               @Nullable String toVersion,
+                                               @NotNull CheckoutRules checkoutRules) throws VcsException {
+    logCollectChanges(fromRoot, fromVersion, toRoot, toVersion);
+    if (toVersion == null) {
+      LOG.warn("Version of root " + LogUtil.describe(toRoot) + " is null, return empty list of changes");
+      return Collections.emptyList();
+    }
+    String forkPoint = getLastCommonVersion(fromRoot, fromVersion, toRoot, toVersion);
+    return collectChanges(toRoot, forkPoint, toVersion, checkoutRules);
+  }
+
+  @NotNull
+  public List<ModificationData> collectChanges(@NotNull VcsRoot root,
+                                               @NotNull String fromVersion,
+                                               @Nullable String currentVersion,
+                                               @NotNull CheckoutRules checkoutRules) throws VcsException {
+    List<ModificationData> result = new ArrayList<ModificationData>();
+    OperationContext context = myVcs.createContext(root, "collecting changes");
+    try {
+      logCollectChanges(fromVersion, currentVersion, context);
+      if (currentVersion == null) {
+        LOG.warn("Current version is null for " + context.getGitRoot().debugInfo() + ", return empty list of changes");
+        return result;
+      }
+      String upperBoundSHA = GitUtils.versionRevision(currentVersion);
+      myCommitLoader.loadCommit(context, context.getGitRoot(), upperBoundSHA);
+      String lowerBoundSHA = GitUtils.versionRevision(fromVersion);
+      Repository r = context.getRepository();
+      result.addAll(getModifications(context, r, upperBoundSHA, lowerBoundSHA));
+    } catch (Exception e) {
+      throw context.wrapException(e);
+    } finally {
+      context.close();
+    }
+    return result;
+  }
+
   public void ensureRepositoryStateLoadedFor(@NotNull final OperationContext context,
-                                              @NotNull final Repository repo,
-                                              @NotNull final RepositoryStateData... states) throws Exception {
+                                             @NotNull final Repository repo,
+                                             @NotNull final RepositoryStateData... states) throws Exception {
     boolean isFirst = true;
     if (myConfig.usePerBranchFetch()) {
       for (RepositoryStateData state : states) {
@@ -151,18 +202,15 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
       String ref = entry.getKey();
       String revision = GitUtils.versionRevision(entry.getValue());
-      RevCommit commit = null;
-      try {
-        commit = myVcs.getCommit(db, revision);
-      } catch (IOException ex) {
-        //ignore error, will try to fetch
-      }
+      RevCommit commit = myCommitLoader.findCommit(db, revision);
+      if (commit != null)
+        continue;
 
-      if (commit == null && !fetch.isInvoked())
+      if (!fetch.isInvoked())
         fetch.run();
 
       try {
-        myVcs.getCommit(db, revision);
+        myCommitLoader.getCommit(db, ObjectId.fromString(revision));
       } catch (IncorrectObjectTypeException e) {
         LOG.warn("Ref " + ref + " points to a non-commit " + revision);
       } catch (Exception e) {
@@ -182,7 +230,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
       String revision = entry.getValue();
       GitVcsRoot branchRoot = root.getRootForBranch(branch);
       try {
-        myVcs.ensureCommitLoaded(context, branchRoot, GitUtils.versionRevision(revision));
+        myCommitLoader.loadCommit(context, branchRoot, GitUtils.versionRevision(revision));
       } catch (Exception e) {
         if (throwErrors) {
           throw e;
@@ -225,52 +273,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
   }
 
 
-  @NotNull
-  public RepositoryStateData getCurrentState(@NotNull VcsRoot root) throws VcsException {
-    return myVcs.getCurrentState(root);
-  }
-
-  @NotNull
-  public List<ModificationData> collectChanges(@NotNull VcsRoot fromRoot,
-                                               @NotNull String fromVersion,
-                                               @NotNull VcsRoot toRoot,
-                                               @Nullable String toVersion,
-                                               @NotNull CheckoutRules checkoutRules) throws VcsException {
-    logCollectChanges(fromRoot, fromVersion, toRoot, toVersion);
-    if (toVersion == null) {
-      LOG.warn("Version of root " + LogUtil.describe(toRoot) + " is null, return empty list of changes");
-      return Collections.emptyList();
-    }
-    String forkPoint = getLastCommonVersion(fromRoot, fromVersion, toRoot, toVersion);
-    return collectChanges(toRoot, forkPoint, toVersion, checkoutRules);
-  }
-
-  @NotNull
-  public List<ModificationData> collectChanges(@NotNull VcsRoot root,
-                                               @NotNull String fromVersion,
-                                               @Nullable String currentVersion,
-                                               @NotNull CheckoutRules checkoutRules) throws VcsException {
-    List<ModificationData> result = new ArrayList<ModificationData>();
-    OperationContext context = myVcs.createContext(root, "collecting changes");
-    try {
-      logCollectChanges(fromVersion, currentVersion, context);
-      if (currentVersion == null) {
-        LOG.warn("Current version is null for " + context.getGitRoot().debugInfo() + ", return empty list of changes");
-        return result;
-      }
-      String upperBoundSHA = GitUtils.versionRevision(currentVersion);
-      myVcs.ensureCommitLoaded(context, context.getGitRoot(), upperBoundSHA);
-      String lowerBoundSHA = GitUtils.versionRevision(fromVersion);
-      Repository r = context.getRepository();
-      result.addAll(getModifications(context, r, upperBoundSHA, lowerBoundSHA));
-    } catch (Exception e) {
-      throw context.wrapException(e);
-    } finally {
-      context.close();
-    }
-    return result;
-  }
-
   private String getLastCommonVersion(@NotNull VcsRoot baseRoot,
                                       @NotNull String baseVersion,
                                       @NotNull VcsRoot tipRoot,
@@ -281,8 +283,8 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     logFindLastCommonAncestor(baseVersion, tipVersion, baseGitRoot, tipGitRoot);
     RevWalk walk = null;
     try {
-      RevCommit baseCommit = myVcs.ensureCommitLoaded(context, baseGitRoot, baseVersion);
-      RevCommit tipCommit = myVcs.ensureCommitLoaded(context, tipGitRoot, tipVersion);
+      RevCommit baseCommit = myCommitLoader.loadCommit(context, baseGitRoot, baseVersion);
+      RevCommit tipCommit = myCommitLoader.loadCommit(context, tipGitRoot, tipVersion);
       Repository tipRepository = context.getRepository(tipGitRoot);
       walk = new RevWalk(tipRepository);
       walk.setRevFilter(RevFilter.MERGE_BASE);
@@ -379,7 +381,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
 
     void run() throws NotSupportedException, VcsException, TransportException {
       myInvoked = true;
-      myVcs.fetch(myDb, myRoot.getRepositoryFetchURL(), calculateRefSpecsForFetch(), myRoot.getAuthSettings());
+      myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL(), calculateRefSpecsForFetch(), myRoot.getAuthSettings());
     }
 
     boolean isInvoked() {

@@ -17,11 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
-import jetbrains.buildServer.util.cache.ResetCacheHandler;
-import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
 import org.eclipse.jgit.lib.ObjectId;
@@ -33,8 +34,6 @@ import org.eclipse.jgit.storage.file.FileBasedConfig;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.eclipse.jgit.util.FS;
-import org.jmock.Expectations;
-import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -55,12 +54,15 @@ public class SubmoduleTest {
 
   private static TempFiles myTempFiles = new TempFiles();
   private GitVcsSupport myGitSupport;
+  private CommitLoader myCommitLoader;
 
   @BeforeMethod
   public void setUp() throws IOException {
     File dotBuildServer = myTempFiles.createTempDir();
     ServerPaths serverPaths = new ServerPaths(dotBuildServer.getAbsolutePath());
-    myGitSupport = gitSupport().withServerPaths(serverPaths).build();
+    final GitSupportBuilder builder = gitSupport().withServerPaths(serverPaths);
+    myGitSupport = builder.build();
+    myCommitLoader = builder.getCommitLoader();
   }
 
   @AfterMethod
@@ -143,7 +145,7 @@ public class SubmoduleTest {
           ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_ADDED_VERSION)));
         final RevCommit beforeSubmoduleAdded = revWalk.parseCommit(
           ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.BEFORE_SUBMODULE_ADDED_VERSION)));
-        SubmoduleResolver r = new MySubmoduleResolver(myGitSupport, rm, submoduleAdded, rs);
+        SubmoduleResolver r = new MySubmoduleResolver(myGitSupport, myCommitLoader, rm, submoduleAdded, rs);
         TreeWalk tw = new TreeWalk(rm);
         tw.setRecursive(true);
         tw.reset();
@@ -209,13 +211,11 @@ public class SubmoduleTest {
      */
     private final Repository myReferencedRepository;
     private final GitVcsSupport myGitSupport;
-    private final Repository myDb;
 
-    public MySubmoduleResolver(GitVcsSupport gitSupport, Repository db, RevCommit commit, Repository referencedRepository) {
-      super(gitSupport, db, commit);
+    public MySubmoduleResolver(GitVcsSupport gitSupport, CommitLoader commitLoader, Repository db, RevCommit commit, Repository referencedRepository) {
+      super(gitSupport, commitLoader, db, commit);
       this.myReferencedRepository = referencedRepository;
       myGitSupport = gitSupport;
-      myDb = db;
     }
 
     protected Repository resolveRepository(String path, String url) {
@@ -229,7 +229,7 @@ public class SubmoduleTest {
 
     @Override
     public SubmoduleResolver getSubResolver(RevCommit commit, String path) {
-      return new SubmoduleResolver(myGitSupport, myReferencedRepository, commit) {
+      return new SubmoduleResolver(myGitSupport, myCommitLoader, myReferencedRepository, commit) {
         protected Repository resolveRepository(String path, String url) throws IOException {
           throw new IOException("Repository not found");
         }

@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
+import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
@@ -26,6 +27,7 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -41,10 +43,15 @@ public abstract class SubmoduleResolver {
   private final RevCommit myCommit;
   private final Repository myDb;
   protected final GitVcsSupport myGitSupport;
+  protected final CommitLoader myCommitLoader;
   private SubmodulesConfig myConfig;
 
-  public SubmoduleResolver(GitVcsSupport gitSupport, Repository db, RevCommit commit) {
+  public SubmoduleResolver(@NotNull GitVcsSupport gitSupport,
+                           @NotNull CommitLoader commitLoader,
+                           @NotNull Repository db,
+                           @NotNull RevCommit commit) {
     myGitSupport = gitSupport;
+    myCommitLoader = commitLoader;
     myDb = db;
     myCommit = commit;
   }
@@ -73,7 +80,7 @@ public abstract class SubmoduleResolver {
     if (!isCommitExist(r, commit))
       fetch(r, path, submodule.getUrl());
     try {
-      return myGitSupport.getCommit(r, commit);
+      return myCommitLoader.getCommit(r, commit);
     } catch (MissingObjectException e) {
       throw new MissingSubmoduleCommitException(mainRepositoryUrl, myCommit.name(), path, submodule.getUrl(), commit.name());
     }

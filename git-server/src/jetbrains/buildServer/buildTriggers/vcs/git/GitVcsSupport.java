@@ -26,24 +26,18 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
-import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.FetchConnection;
-import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.locks.Lock;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
@@ -64,25 +58,24 @@ public class GitVcsSupport extends ServerVcsSupport
   private volatile String myDisplayName = null;
   private final ServerPluginConfig myConfig;
   private final TransportFactory myTransportFactory;
-  private final FetchCommand myFetchCommand;
   private final RepositoryManager myRepositoryManager;
   private final GitMapFullPath myMapFullPath;
+  private final CommitLoader myCommitLoader;
   private Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
 
   public GitVcsSupport(@NotNull ServerPluginConfig config,
                        @NotNull ResetCacheRegister resetCacheManager,
                        @NotNull TransportFactory transportFactory,
-                       @NotNull FetchCommand fetchCommand,
                        @NotNull RepositoryManager repositoryManager,
-                       @NotNull GitMapFullPath mapFullPath) {
+                       @NotNull GitMapFullPath mapFullPath,
+                       @NotNull CommitLoader commitLoader) {
     myConfig = config;
     myTransportFactory = transportFactory;
-    myFetchCommand = fetchCommand;
     myRepositoryManager = repositoryManager;
     myMapFullPath = mapFullPath;
+    myCommitLoader = commitLoader;
     setStreamFileThreshold();
     resetCacheManager.registerHandler(new GitResetCacheHandler(repositoryManager));
-    myMapFullPath.setGitVcs(this);
   }
 
   public void setExtensionHolder(@Nullable ExtensionHolder extensionHolder) {
@@ -161,7 +154,7 @@ public class GitVcsSupport extends ServerVcsSupport
     logBuildPatch(root, fromRevision, toRevision);
     GitPatchBuilder gitPatchBuilder = new GitPatchBuilder(myConfig, context, builder, fromRevision, toRevision, checkoutRules);
     try {
-      ensureRevCommitLoaded(context, context.getGitRoot(), toRevision);
+      myCommitLoader.loadCommit(context, context.getGitRoot(), toRevision);
       gitPatchBuilder.buildPatch();
     } catch (Exception e) {
       throw context.wrapException(e);
@@ -180,63 +173,6 @@ public class GitVcsSupport extends ServerVcsSupport
       msg.append(" from revision ").append(fromRevision);
     msg.append(" to revision ").append(toRevision);
     LOG.info(msg.toString());
-  }
-
-  @NotNull
-  public RevCommit ensureCommitLoaded(@NotNull OperationContext context,
-                                      @NotNull GitVcsRoot root,
-                                      @NotNull String revision) throws Exception {
-    final String commit = GitUtils.versionRevision(revision);
-    return ensureRevCommitLoaded(context, root, commit);
-  }
-
-  @NotNull
-  private RevCommit ensureRevCommitLoaded(@NotNull OperationContext context,
-                                          @NotNull GitVcsRoot root,
-                                          @NotNull String commitSHA) throws Exception {
-    Repository db = context.getRepository(root);
-    try {
-      return getCommit(db, commitSHA);
-    } catch (IOException ex) {
-      //ignore error, will try to fetch
-    }
-
-    LOG.debug("Cannot find commit " + commitSHA + " in repository " + root.debugInfo() + ", fetch branch " + root.getRef());
-    fetchBranchData(root, db);
-
-    try {
-      return getCommit(db, commitSHA);
-    } catch (IOException e) {
-      LOG.debug("Cannot find commit " + commitSHA + " in the branch " + root.getRef() +
-                " of repository " + root.debugInfo() + ", fetch all branches");
-      RefSpec spec = new RefSpec().setSourceDestination("refs/heads/*", "refs/heads/*").setForceUpdate(true);
-      fetch(db, root.getRepositoryFetchURL(), spec, root.getAuthSettings());
-      try {
-        return getCommit(db, commitSHA);
-      } catch (IOException e1) {
-        throw new VcsException("Cannot find commit " + commitSHA + " in repository " + root.debugInfo());
-      }
-    }
-  }
-
-  @NotNull
-  public RevCommit getCommit(@NotNull Repository repository, @NotNull String commitSHA) throws IOException {
-    return getCommit(repository, ObjectId.fromString(commitSHA));
-  }
-
-  @NotNull
-  public RevCommit getCommit(@NotNull Repository repository, @NotNull ObjectId commitId) throws IOException {
-    final long start = System.currentTimeMillis();
-    RevWalk walk = new RevWalk(repository);
-    try {
-      return walk.parseCommit(commitId);
-    } finally {
-      walk.release();
-      final long finish = System.currentTimeMillis();
-      if (PERFORMANCE_LOG.isDebugEnabled()) {
-        PERFORMANCE_LOG.debug("[RevWalk.parseCommit] repository=" + repository.getDirectory().getAbsolutePath() + ", commit=" + commitId.name() + ", took: " + (finish - start) + "ms");
-      }
-    }
   }
 
   @NotNull
@@ -327,52 +263,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return false;
   }
 
-  /**
-   * Fetch data for the branch
-   *
-   * @param root git root
-   * @param repository the repository
-   * @throws Exception if there is a problem with fetching data
-   */
-  private void fetchBranchData(@NotNull GitVcsRoot root, @NotNull Repository repository) throws Exception {
-    final String refName = GitUtils.expandRef(root.getRef());
-    RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
-    fetch(repository, root.getRepositoryFetchURL(), spec, root.getAuthSettings());
-  }
-
-
-  public void fetch(Repository db, URIish fetchURI, Collection<RefSpec> refspecs, AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
-    File repositoryDir = db.getDirectory();
-    assert repositoryDir != null : "Non-local repository";
-    Lock rmLock = myRepositoryManager.getRmLock(repositoryDir).readLock();
-    rmLock.lock();
-    try {
-      final long start = System.currentTimeMillis();
-      synchronized (myRepositoryManager.getWriteLock(repositoryDir)) {
-        final long finish = System.currentTimeMillis();
-        Map<String, Ref> oldRefs = new HashMap<String, Ref>(db.getAllRefs());
-        PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + (finish - start) + "ms");
-        myFetchCommand.fetch(db, fetchURI, refspecs, auth);
-        Map<String, Ref> newRefs = new HashMap<String, Ref>(db.getAllRefs());
-        myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
-      }
-    } finally {
-      rmLock.unlock();
-    }
-  }
-  /**
-   * Make fetch into local repository (it.s getDirectory() should be != null)
-   *
-   * @param db repository
-   * @param fetchURI uri to fetch
-   * @param refspec refspec
-   * @param auth auth settings
-   */
-  public void fetch(Repository db, URIish fetchURI, RefSpec refspec, AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
-    fetch(db, fetchURI, Collections.singletonList(refspec), auth);
-  }
-
-
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
     OperationContext context = createContext(vcsRoot, "connection test");
     TestConnectionCommand command = new TestConnectionCommand(this, myTransportFactory, myRepositoryManager);
@@ -392,22 +282,22 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   public OperationContext createContext(VcsRoot root, String operation) {
-    return new OperationContext(this, myRepositoryManager, root, operation);
+    return new OperationContext(this, myCommitLoader, myRepositoryManager, root, operation);
   }
 
   @NotNull
   public LabelingSupport getLabelingSupport() {
-    return new GitLabelingSupport(this, myRepositoryManager, myTransportFactory);
+    return new GitLabelingSupport(this, myCommitLoader, myRepositoryManager, myTransportFactory);
   }
 
   @NotNull
   public VcsFileContentProvider getContentProvider() {
-    return new GitVcsFileContentProvider(this, myConfig);
+    return new GitVcsFileContentProvider(this, myCommitLoader, myConfig);
   }
 
   @NotNull
   public GitCollectChangesPolicy getCollectChangesPolicy() {
-    return new GitCollectChangesPolicy(this, myConfig);
+    return new GitCollectChangesPolicy(this, myCommitLoader, myConfig);
   }
 
   @NotNull
@@ -534,7 +424,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @Override
   public ListFilesPolicy getListFilesPolicy() {
-    return new GitListFilesSupport(this, myConfig);
+    return new GitListFilesSupport(this, myCommitLoader, myConfig);
   }
 
   @NotNull

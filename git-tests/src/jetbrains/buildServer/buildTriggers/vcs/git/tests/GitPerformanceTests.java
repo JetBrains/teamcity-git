@@ -45,11 +45,11 @@ public class GitPerformanceTests extends BaseTestCase {
 
     final VcsRootImpl root = VcsRootBuilder.vcsRoot().withFetchUrl("E:\\Work\\idea-ultimate").build();
     final ServerPaths sp = new ServerPaths(createTempDir().getPath());
-    final GitVcsSupport support = GitSupportBuilder
+    final GitSupportBuilder builder = GitSupportBuilder
       .gitSupport()
       .withServerPaths(sp)
-      .withPluginConfig(new PluginConfigBuilder(sp).build())
-      .build();
+      .withPluginConfig(new PluginConfigBuilder(sp).build());
+    GitVcsSupport support = builder.build();
 
     final String state = support.getCurrentVersion(root);
     System.out.println("Current state: " + state);
@@ -60,7 +60,7 @@ public class GitPerformanceTests extends BaseTestCase {
     //make sure repository is cloned
     final OperationContext ctx = support.createContext(root, "fetch");
     try {
-      support.ensureCommitLoaded(ctx, ctx.getGitRoot(), state);
+      builder.getCommitLoader().loadCommit(ctx, ctx.getGitRoot(), state);
     } finally {
       ctx.close();
     }

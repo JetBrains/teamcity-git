@@ -19,14 +19,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.vcs.*;
-import org.eclipse.jgit.lib.CoreConfig;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
-import org.eclipse.jgit.treewalk.WorkingTreeOptions;
 import org.eclipse.jgit.treewalk.filter.PathFilterGroup;
 import org.eclipse.jgit.util.io.AutoCRLFOutputStream;
 import org.jetbrains.annotations.NotNull;
@@ -45,11 +43,14 @@ public class GitVcsFileContentProvider implements VcsFileContentProvider {
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsFileContentProvider.class.getName() + ".Performance");
 
   private final GitVcsSupport myVcs;
+  private final CommitLoader myCommitLoader;
   private final ServerPluginConfig myConfig;
 
   public GitVcsFileContentProvider(@NotNull GitVcsSupport vcs,
+                                   @NotNull CommitLoader commitLoader,
                                    @NotNull ServerPluginConfig config) {
     myVcs = vcs;
+    myCommitLoader = commitLoader;
     myConfig = config;
   }
 
@@ -76,7 +77,7 @@ public class GitVcsFileContentProvider implements VcsFileContentProvider {
       try {
         logStartProcessingFile(gitRoot, version, filePath);
         final String rev = GitUtils.versionRevision(version);
-        RevCommit c = myVcs.ensureCommitLoaded(context, gitRoot, rev);
+        RevCommit c = myCommitLoader.loadCommit(context, gitRoot, rev);
         tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
         tw.setRecursive(tw.getFilter().shouldBeRecursive());
         context.addTree(gitRoot, tw, r, c, true);

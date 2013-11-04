@@ -50,6 +50,7 @@ public class GitSupportBuilder {
   private TransportFactory myTransportFactory;
   private MirrorManager myMirrorManager;
   private GitMapFullPath myMapFullPath;
+  private CommitLoader myCommitLoader;
   private List<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
 
   public static GitSupportBuilder gitSupport() {
@@ -95,7 +96,8 @@ public class GitSupportBuilder {
       resetCacheManager = myResetCacheManager;
     }
     myMapFullPath = new GitMapFullPath(myPluginConfig);
-    GitVcsSupport git = new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myFetchCommand, myRepositoryManager, myMapFullPath);
+    myCommitLoader = new CommitLoaderImpl(myRepositoryManager, myFetchCommand, myMapFullPath);
+    GitVcsSupport git = new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader);
     git.addExtensions(myExtensions);
     git.setExtensionHolder(myExtensionHolder);
     return git;
@@ -152,5 +154,9 @@ public class GitSupportBuilder {
 
   public GitMapFullPath getMapFullPath() {
     return myMapFullPath;
+  }
+
+  public CommitLoader getCommitLoader() {
+    return myCommitLoader;
   }
 }

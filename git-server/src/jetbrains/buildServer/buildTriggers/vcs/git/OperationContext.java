@@ -48,16 +48,19 @@ public class OperationContext {
   private static Logger LOG = Logger.getInstance(OperationContext.class.getName());
 
   private final GitVcsSupport mySupport;
+  private final CommitLoader myCommitLoader;
   private final RepositoryManager myRepositoryManager;
   private final VcsRoot myRoot;
   private final String myOperation;
   private final Map<String, Repository> myRepositories = new HashMap<String, Repository>(); //repository path -> repository
 
   public OperationContext(@NotNull final GitVcsSupport support,
+                          @NotNull final CommitLoader commitLoader,
                           @NotNull final RepositoryManager repositoryManager,
                           @NotNull final VcsRoot root,
                           @NotNull final String operation) {
     mySupport = support;
+    myCommitLoader = commitLoader;
     myRepositoryManager = repositoryManager;
     myRoot = root;
     myOperation = operation;
@@ -171,7 +174,7 @@ public class OperationContext {
                       boolean ignoreSubmodulesErrors,
                       boolean logSubmoduleErrors) throws IOException, VcsException {
     if (root.isCheckoutSubmodules()) {
-      SubmoduleResolver submoduleResolver = new TeamCitySubmoduleResolver(this, db, commit);
+      SubmoduleResolver submoduleResolver = new TeamCitySubmoduleResolver(myCommitLoader, this, db, commit);
       SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(root.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
       tw.addTree(create(db, commit, submoduleResolver, root.getRepositoryFetchURL().toString(), "", checkoutPolicy, logSubmoduleErrors));
     } else {
@@ -180,11 +183,7 @@ public class OperationContext {
   }
 
   @Nullable
-  public RevCommit findCommit(@NotNull Repository r, String sha) {
-    try {
-      return mySupport.getCommit(r, sha);
-    } catch (Exception e) {
-      return null;
-    }
+  public RevCommit findCommit(@NotNull Repository r, @NotNull String sha) {
+    return myCommitLoader.findCommit(r, sha);
   }
 }

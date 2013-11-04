@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitMapFullPath;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
@@ -27,9 +28,6 @@ import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.RepositoryStateData;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootEntry;
-import org.eclipse.jgit.errors.MissingObjectException;
-import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.hamcrest.Description;
@@ -120,14 +118,13 @@ public class MapFullPathTest {
     final String existingCommit = "a7274ca8e024d98c7d59874f19f21d26ee31d41d";
     final String nonExistingCommit = "abababababababababababababababababababab";
 
-    final GitVcsSupport git = myContext.mock(GitVcsSupport.class);
+    final CommitLoader commitLoader = myContext.mock(CommitLoader.class);
     final RevCommit commit = myContext.mock(RevCommit.class);
-    myMapFullPath.setGitVcs(git);
+    myMapFullPath.setCommitLoader(commitLoader);
     myContext.checking(new Expectations() {{
       //ask for existing commit only once:
-      one(git).getCommit(with(any(Repository.class)), with(existingCommit)); will(returnValue(commit));
-      one(git).getCommit(with(any(Repository.class)), with(nonExistingCommit)); will(throwException(new MissingObjectException(ObjectId.fromString(nonExistingCommit), Constants.TYPE_COMMIT)));
-
+      one(commitLoader).findCommit(with(any(Repository.class)), with(existingCommit)); will(returnValue(commit));
+      one(commitLoader).findCommit(with(any(Repository.class)), with(nonExistingCommit)); will(returnValue(null));
     }});
 
     RepositoryStateData state0 = RepositoryStateData.createSingleVersionState("a7274ca8e024d98c7d59874f19f21d26ee31d41d");
@@ -151,9 +148,9 @@ public class MapFullPathTest {
   public void should_not_do_unnecessary_commit_lookup_when_repository_does_not_have_hint_revision() throws Exception {
     //root1 contains the commit
     //root2 doesn't
-    final GitVcsSupport git = myContext.mock(GitVcsSupport.class);
+    final CommitLoader commitLoader = myContext.mock(CommitLoader.class);
     final RevCommit commit = myContext.mock(RevCommit.class);
-    myMapFullPath.setGitVcs(git);
+    myMapFullPath.setCommitLoader(commitLoader);
 
     final String hintCommit = "a7274ca8e024d98c7d59874f19f21d26ee31d41d";
     final String lastCommonCommit1 = "add81050184d3c818560bdd8839f50024c188586";
@@ -161,11 +158,11 @@ public class MapFullPathTest {
     final String remoteUrl1 = myRemoteRepositoryDir.getAbsolutePath();
     final String remoteUrl2 = myRemoteRepositoryDir2.getAbsolutePath();
     myContext.checking(new Expectations() {{
-      one(git).getCommit(with(repositoryWithUrl(remoteUrl1)), with(hintCommit)); will(returnValue(commit));
-      one(git).getCommit(with(repositoryWithUrl(remoteUrl1)), with(lastCommonCommit1)); will(returnValue(commit));
-      one(git).getCommit(with(repositoryWithUrl(remoteUrl1)), with(lastCommonCommit2)); will(returnValue(commit));
+      one(commitLoader).findCommit(with(repositoryWithUrl(remoteUrl1)), with(hintCommit)); will(returnValue(commit));
+      one(commitLoader).findCommit(with(repositoryWithUrl(remoteUrl1)), with(lastCommonCommit1)); will(returnValue(commit));
+      one(commitLoader).findCommit(with(repositoryWithUrl(remoteUrl1)), with(lastCommonCommit2)); will(returnValue(commit));
       //only single check for repository which doesn't contain a hint commit:
-      one(git).getCommit(with(repositoryWithUrl(remoteUrl2)), with(hintCommit)); will(returnValue(null));
+      one(commitLoader).findCommit(with(repositoryWithUrl(remoteUrl2)), with(hintCommit)); will(returnValue(null));
     }});
 
     String fullPath1 = hintCommit + "-" + lastCommonCommit1 + "||.";

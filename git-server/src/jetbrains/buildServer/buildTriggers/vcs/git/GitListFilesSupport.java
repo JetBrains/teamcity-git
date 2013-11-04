@@ -37,13 +37,16 @@ import java.util.List;
 public class GitListFilesSupport implements ListDirectChildrenPolicy {
 
   private final GitVcsSupport myVcs;
+  private final CommitLoader myCommitLoader;
   private final ServerPluginConfig myConfig;
   private String myCurrentRevision;
   private long myLastSyncTime = -1;
 
   public GitListFilesSupport(@NotNull GitVcsSupport vcs,
+                             @NotNull CommitLoader commitLoader,
                              @NotNull ServerPluginConfig config) {
     myVcs = vcs;
+    myCommitLoader = commitLoader;
     myConfig = config;
   }
 
@@ -73,7 +76,7 @@ public class GitListFilesSupport implements ListDirectChildrenPolicy {
   @NotNull
   private ListFilesTreeWalk getTreeWalk(@NotNull OperationContext context, @NotNull String path, @NotNull String revision) throws Exception {
     Repository r = context.getRepository();
-    RevCommit commit = myVcs.ensureCommitLoaded(context, context.getGitRoot(), revision);
+    RevCommit commit = myCommitLoader.loadCommit(context, context.getGitRoot(), revision);
     ListFilesTreeWalk walk;
     if (isRootPath(path)) {
       walk = new ListFilesTreeWalk(r);

@@ -40,13 +40,16 @@ class GitLabelingSupport implements LabelingSupport {
   private final static Logger LOG = Logger.getInstance(GitLabelingSupport.class.getName());
 
   private final GitVcsSupport myVcs;
+  private final CommitLoader myCommitLoader;
   private final RepositoryManager myRepositoryManager;
   private final TransportFactory myTransportFactory;
 
   public GitLabelingSupport(@NotNull GitVcsSupport vcs,
+                            @NotNull CommitLoader commitLoader,
                             @NotNull RepositoryManager repositoryManager,
                             @NotNull TransportFactory transportFactory) {
     myVcs = vcs;
+    myCommitLoader = commitLoader;
     myRepositoryManager = repositoryManager;
     myTransportFactory = transportFactory;
   }
@@ -60,7 +63,7 @@ class GitLabelingSupport implements LabelingSupport {
     try {
       Repository r = context.getRepository();
       String commitSHA = GitUtils.versionRevision(version);
-      RevCommit commit = myVcs.ensureCommitLoaded(context, gitRoot, commitSHA);
+      RevCommit commit = myCommitLoader.loadCommit(context, gitRoot, commitSHA);
       Git git = new Git(r);
       git.tag().setTagger(gitRoot.getTagger(r))
         .setName(label)

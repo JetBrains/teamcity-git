@@ -51,8 +51,7 @@ public class GitMapFullPath {
   private static final Logger LOG = Logger.getInstance(GitMapFullPath.class.getName());
   private final ServerPluginConfig myConfig;
   private final RevisionsCache myCache;
-  private GitVcsSupport myGit;
-
+  private CommitLoader myCommitLoader;
 
   public GitMapFullPath(@NotNull ServerPluginConfig config) {
     myConfig = config;
@@ -60,8 +59,8 @@ public class GitMapFullPath {
   }
 
 
-  public void setGitVcs(@NotNull GitVcsSupport git) {
-    myGit = git;
+  public void setCommitLoader(@NotNull CommitLoader commitLoader) {
+    myCommitLoader = commitLoader;
   }
 
 
@@ -105,24 +104,10 @@ public class GitMapFullPath {
       return hasRevision;
     } else {
       LOG.debug("RevisionCache miss: root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + ", lookup commit in repository");
-      hasRevision = findCommit(context, revision) != null;
+      hasRevision = myCommitLoader.findCommit(context.getRepository(), revision) != null;
       LOG.debug("Root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + (hasRevision ? " was found" : " wasn't found") + ", cache the result");
       repositoryCache.saveRevision(revision, hasRevision);
       return hasRevision;
-    }
-  }
-
-
-  /**
-   * @return revCommit or null if repository has not such commit
-   */
-  @Nullable
-  private RevCommit findCommit(@NotNull OperationContext context, @NotNull String commit) throws VcsException {
-    final Repository repository = context.getRepository();
-    try {
-      return myGit.getCommit(repository, commit);
-    } catch (IOException e) {
-      return null;
     }
   }
 

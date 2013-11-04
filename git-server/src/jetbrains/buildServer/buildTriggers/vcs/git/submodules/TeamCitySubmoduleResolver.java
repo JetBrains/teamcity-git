@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
+import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.vcs.VcsException;
@@ -45,19 +46,20 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
   private final String myPathFromRoot;
   private final OperationContext myContext;
 
-
-  public TeamCitySubmoduleResolver(@NotNull final OperationContext context,
-                                   Repository db,
-                                   RevCommit commit) {
-    this(context, db, commit, "");
+  public TeamCitySubmoduleResolver(@NotNull CommitLoader commitLoader,
+                                   @NotNull OperationContext context,
+                                   @NotNull Repository db,
+                                   @NotNull RevCommit commit) {
+    this(commitLoader, context, db, commit, "");
   }
 
 
-  private TeamCitySubmoduleResolver(@NotNull final OperationContext context,
+  private TeamCitySubmoduleResolver(@NotNull CommitLoader commitLoader,
+                                    @NotNull OperationContext context,
                                     Repository db,
                                     RevCommit commit,
                                     String basePath) {
-    super(context.getSupport(), db, commit);
+    super(context.getSupport(), commitLoader, db, commit);
     myContext = context;
     myPathFromRoot = basePath;
   }
@@ -76,7 +78,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
     if (LOG.isDebugEnabled())
       LOG.debug("Fetching submodule " + submoduleUrl + " used at " + submodulePath + " for " + myContext.getGitRoot().debugInfo());
     URIish uri = resolveUrl(submoduleUrl);
-    myGitSupport.fetch(r, uri, Arrays.asList(new RefSpec("+refs/heads/*:refs/heads/*"), new RefSpec("+refs/tags/*:refs/tags/*")), myContext.getGitRoot().getAuthSettings());
+    myCommitLoader.fetch(r, uri, Arrays.asList(new RefSpec("+refs/heads/*:refs/heads/*"), new RefSpec("+refs/tags/*:refs/tags/*")), myContext.getGitRoot().getAuthSettings());
   }
 
   private boolean isRelative(String url) {
@@ -108,7 +110,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
       //exception means path does not contain submodule, use current repository
       db = getRepository();
     }
-    return new TeamCitySubmoduleResolver(myContext, db, commit, fullPath(path));
+    return new TeamCitySubmoduleResolver(myCommitLoader, myContext, db, commit, fullPath(path));
   }
 
   /**

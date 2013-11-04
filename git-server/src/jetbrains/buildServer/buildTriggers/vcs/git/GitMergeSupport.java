@@ -18,16 +18,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Arrays.asList;
+
 public class GitMergeSupport implements MergeSupport, GitServerExtension {
 
   private final GitVcsSupport myVcs;
+  private final CommitLoader myCommitLoader;
   private final RepositoryManager myRepositoryManager;
   private final TransportFactory myTransportFactory;
 
   public GitMergeSupport(@NotNull GitVcsSupport vcs,
+                         @NotNull CommitLoader commitLoader,
                          @NotNull RepositoryManager repositoryManager,
                          @NotNull TransportFactory transportFactory) {
     myVcs = vcs;
+    myCommitLoader = commitLoader;
     myRepositoryManager = repositoryManager;
     myTransportFactory = transportFactory;
     myVcs.addExtension(this);
@@ -104,7 +109,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
                               @NotNull String dstBranch,
                               @NotNull String message) throws IOException, VcsException {
     RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(dstBranch)).setDestination(GitUtils.expandRef(dstBranch)).setForceUpdate(true);
-    myVcs.fetch(db, gitRoot.getRepositoryFetchURL(), spec, gitRoot.getAuthSettings());
+    myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL(), asList(spec), gitRoot.getAuthSettings());
 
     Ref dstRef = db.getRef(dstBranch);
     ObjectId dstBranchLastCommit = dstRef.getObjectId();
