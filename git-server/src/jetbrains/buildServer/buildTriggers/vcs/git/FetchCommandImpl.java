@@ -18,16 +18,13 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.File;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
@@ -43,6 +40,14 @@ import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
 /**
 * @author dmitry.neverov
 */
@@ -54,13 +59,16 @@ public class FetchCommandImpl implements FetchCommand {
   private final ServerPluginConfig myConfig;
   private final TransportFactory myTransportFactory;
   private final FetcherProperties myFetcherProperties;
+  private final VcsRootSshKeyManager mySshKeyManager;
 
   public FetchCommandImpl(@NotNull ServerPluginConfig config,
                           @NotNull TransportFactory transportFactory,
-                          @NotNull FetcherProperties fetcherProperties) {
+                          @NotNull FetcherProperties fetcherProperties,
+                          @NotNull VcsRootSshKeyManager sshKeyManager) {
     myConfig = config;
     myTransportFactory = transportFactory;
     myFetcherProperties = fetcherProperties;
+    mySshKeyManager = sshKeyManager;
   }
 
 
@@ -117,6 +125,7 @@ public class FetchCommandImpl implements FetchCommand {
     final String debugInfo = getDebugInfo(repository, uri, specs);
 
     File gitPropertiesFile = null;
+    File teamcityPrivateKey = null;
     try {
       GeneralCommandLine cl = createFetcherCommandLine(repository, uri);
       if (LOG.isDebugEnabled())
@@ -125,7 +134,16 @@ public class FetchCommandImpl implements FetchCommand {
       File threadDump = getThreadDumpFile(repository);
       gitPropertiesFile = myFetcherProperties.getPropertiesFile();
       FetcherEventHandler processEventHandler = new FetcherEventHandler(debugInfo);
-      byte[] fetchProcessInput = getFetchProcessInputBytes(settings, repository.getDirectory(), uri, specs, threadDump, gitPropertiesFile);
+      teamcityPrivateKey = getTeamCityPrivateKey(settings);
+      AuthSettings preparedSettings = settings;
+      if (teamcityPrivateKey != null) {
+        Map<String, String> properties = settings.toMap();
+        properties.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.name());
+        properties.put(Constants.PRIVATE_KEY_PATH, teamcityPrivateKey.getAbsolutePath());
+        preparedSettings = new AuthSettings(properties, settings.getRoot());
+      }
+
+      byte[] fetchProcessInput = getFetchProcessInputBytes(preparedSettings, repository.getDirectory(), uri, specs, threadDump, gitPropertiesFile);
       ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, fetchProcessInput, processEventHandler);
 
       if (PERFORMANCE_LOG.isDebugEnabled())
@@ -146,8 +164,35 @@ public class FetchCommandImpl implements FetchCommand {
 
       LOG.debug("Fetch process output:\n" + result.getStdout());
     } finally {
+      if (teamcityPrivateKey != null)
+        FileUtil.delete(teamcityPrivateKey);
       if (gitPropertiesFile != null)
         FileUtil.delete(gitPropertiesFile);
+    }
+  }
+
+  private File getTeamCityPrivateKey(@NotNull AuthSettings authSettings) throws VcsException {
+    if (authSettings.getAuthMethod() != AuthenticationMethod.TEAMCITY_SSH_KEY)
+      return null;
+
+    String keyId = authSettings.getTeamCitySshKeyId();
+    if (keyId == null)
+      return null;
+
+    VcsRoot root = authSettings.getRoot();
+    if (root == null)
+      return null;
+
+    String privateKey = mySshKeyManager.getKey(root);
+    if (privateKey == null)
+      return null;
+
+    try {
+      File privateKeyFile = FileUtil.createTempFile("private", "key");
+      FileUtil.writeToFile(privateKeyFile, privateKey.getBytes());
+      return privateKeyFile;
+    } catch (IOException e) {
+      throw new VcsException(e);
     }
   }
 

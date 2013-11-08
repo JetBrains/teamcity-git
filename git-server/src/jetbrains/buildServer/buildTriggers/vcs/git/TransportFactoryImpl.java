@@ -23,6 +23,7 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
@@ -45,10 +46,13 @@ public class TransportFactoryImpl implements TransportFactory {
 
   private final ServerPluginConfig myConfig;
   private final Map<String,String> myJSchOptions;
+  private VcsRootSshKeyManager mySshKeyManager;
 
-  public TransportFactoryImpl(@NotNull ServerPluginConfig config) {
+  public TransportFactoryImpl(@NotNull ServerPluginConfig config,
+                              @NotNull VcsRootSshKeyManager sshKeyManager) {
     myConfig = config;
     myJSchOptions = getJSchCipherOptions();
+    mySshKeyManager = sshKeyManager;
   }
 
 
@@ -113,6 +117,8 @@ public class TransportFactoryImpl implements TransportFactory {
         return new DefaultJschConfigSessionFactory(myConfig, authSettings, myJSchOptions);
       case PRIVATE_KEY_FILE:
         return new CustomPrivateKeySessionFactory(myConfig, authSettings, myJSchOptions);
+      case TEAMCITY_SSH_KEY:
+        return new TeamCitySshKeySessionFactory(myConfig, authSettings, myJSchOptions, mySshKeyManager);
       case PASSWORD:
         return new PasswordJschConfigSessionFactory(myConfig, authSettings, myJSchOptions);
       default:
@@ -179,6 +185,43 @@ public class TransportFactoryImpl implements TransportFactory {
     protected JSch createDefaultJSch(FS fs) throws JSchException {
       final JSch jsch = new JSch();
       jsch.addIdentity(myAuthSettings.getPrivateKeyFilePath(), myAuthSettings.getPassphrase());
+      return jsch;
+    }
+
+    @Override
+    protected void configure(OpenSshConfig.Host hc, Session session) {
+      super.configure(hc, session);
+      session.setConfig("StrictHostKeyChecking", "no");
+    }
+  }
+
+
+  private static class TeamCitySshKeySessionFactory extends DefaultJschConfigSessionFactory {
+
+    private final VcsRootSshKeyManager mySshKeyManager;
+
+    private TeamCitySshKeySessionFactory(@NotNull ServerPluginConfig config,
+                                         @NotNull AuthSettings authSettings,
+                                         @NotNull Map<String,String> jschOptions,
+                                         @NotNull VcsRootSshKeyManager sshKeyManager) {
+      super(config, authSettings, jschOptions);
+      mySshKeyManager = sshKeyManager;
+    }
+
+    @Override
+    protected JSch getJSch(OpenSshConfig.Host hc, FS fs) throws JSchException {
+      return createDefaultJSch(fs);
+    }
+
+    @Override
+    protected JSch createDefaultJSch(FS fs) throws JSchException {
+      final JSch jsch = new JSch();
+      final VcsRoot root = myAuthSettings.getRoot();
+      if (root != null) {
+        String privateKey = mySshKeyManager.getKey(root);
+        if (privateKey != null)
+          jsch.addIdentity("", privateKey.getBytes(), null, myAuthSettings.getPassphrase() != null ? myAuthSettings.getPassphrase().getBytes() : null);
+      }
       return jsch;
     }
 

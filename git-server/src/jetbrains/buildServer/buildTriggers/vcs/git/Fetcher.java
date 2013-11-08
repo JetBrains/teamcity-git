@@ -102,7 +102,7 @@ public class Fetcher {
     PluginConfigImpl config = new PluginConfigImpl();
 
     configureStreamFileThreshold();
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
+    TransportFactory transportFactory = new TransportFactoryImpl(config, new EmptyVcsRootSshKeyManager());
     Transport tn = null;
     try {
       Repository repository = new RepositoryBuilder().setBare().setGitDir(repositoryDir).build();

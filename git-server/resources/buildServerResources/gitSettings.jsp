@@ -1,7 +1,3 @@
-<%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.Constants" %>
-<%@ page import="java.io.File" %>
-<%@include file="/include.jsp" %>
-<%@ taglib prefix="props" tagdir="/WEB-INF/tags/props" %>
 <%--
   ~ Copyright 2000-2012 JetBrains s.r.o.
   ~
@@ -18,8 +14,16 @@
   ~ limitations under the License.
   --%>
 
+<%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.Constants" %>
+<%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl" %>
+<%@ page import="java.io.File" %>
+<%@include file="/include.jsp" %>
+<%@ taglib prefix="props" tagdir="/WEB-INF/tags/props" %>
+<%@ taglib prefix="admin" tagdir="/WEB-INF/tags/admin" %>
+
 <jsp:useBean id="propertiesBean" scope="request" type="jetbrains.buildServer.controllers.BasePropertiesBean"/>
 <c:set var="gitPathEnv" value="<%= Constants.TEAMCITY_AGENT_GIT_PATH %>"/>
+<c:set var="teamcitySshKeysEnabled" value="<%= PluginConfigImpl.isTeamcitySshKeysEnabled() %>"/>
 <style>
 .gitUsernameStyleHighlight {
   color: rgb(97, 94, 192);
@@ -104,12 +108,16 @@
   <l:settingsGroup title="Authentication Settings">
     <tr>
       <th><label for="authMethod">Authentication method:</label></th>
-      <td><props:selectProperty name="authMethod" onchange="gitSelectAuthentication()" enableFilter="true">
-        <props:option value="ANONYMOUS">Anonymous</props:option>
-        <props:option value="PRIVATE_KEY_DEFAULT">Default Private Key</props:option>
-        <props:option value="PASSWORD">Password</props:option>
-        <props:option value="PRIVATE_KEY_FILE">Private Key</props:option>
-      </props:selectProperty>
+      <td>
+        <props:selectProperty name="authMethod" onchange="gitSelectAuthentication()" enableFilter="true">
+          <props:option value="ANONYMOUS">Anonymous</props:option>
+          <props:option value="PRIVATE_KEY_DEFAULT">Default Private Key</props:option>
+          <props:option value="PASSWORD">Password</props:option>
+          <props:option value="PRIVATE_KEY_FILE">Private Key</props:option>
+          <c:if test="${teamcitySshKeysEnabled}">
+            <props:option value="TEAMCITY_SSH_KEY">TeamCity SSH Key</props:option>
+          </c:if>
+        </props:selectProperty>
         <div id="sshPrivateKeyNote" class="smallNote" style="margin: 0">Valid only for SSH protocol and
           applicable to both fetch and push urls.
         </div>
@@ -141,6 +149,16 @@
           on the TeamCity server host.
         </div>
         <span class="error" id="error_privateKeyPath"></span>
+      </td>
+    </tr>
+    <c:if test="${not empty vcsPropertiesBean.belongsToProject}">
+      <c:set var="projectId" value="${vcsPropertiesBean.belongsToProject.externalId}" scope="request"/>
+    </c:if>
+    <tr id="gitTeamCityKeyRow">
+      <th><label for="privateKeyPath">TeamCity SSH Key: <l:star/></label></th>
+      <td>
+        <admin:sshKeys chooserName="teamcitySshKeyId" projectId="${projectId}"/>
+        <span class="error" id="error_teamcitySshKeyId"></span>
       </td>
     </tr>
     <tr id="gitPassphraseRow">
@@ -211,24 +229,29 @@
   window.gitSelectAuthentication = function() {
     var c = $('authMethod');
     switch (c.value) {
-      case 'PRIVATE_KEY_DEFAULT':
+      case 'TEAMCITY_SSH_KEY':
         BS.Util.hide('gitPasswordRow', 'gitPrivateKeyRow', 'gitPassphraseRow');
+        BS.Util.show('gitUsername', 'gitKnownHosts');
+        BS.Util.show('gitTeamCityKeyRow');
+        break;
+      case 'PRIVATE_KEY_DEFAULT':
+        BS.Util.hide('gitPasswordRow', 'gitPrivateKeyRow', 'gitPassphraseRow', 'gitTeamCityKeyRow');
         BS.Util.show('gitUsername', 'gitKnownHosts');
         BS.Util.show('sshPrivateKeyNote', 'defaultPrivateKeyNote');
         break;
       case 'PRIVATE_KEY_FILE':
-        BS.Util.hide('gitPasswordRow', 'gitKnownHosts');
+        BS.Util.hide('gitPasswordRow', 'gitKnownHosts', 'gitTeamCityKeyRow');
         BS.Util.show('gitUsername', 'gitPrivateKeyRow', 'gitPassphraseRow');
         BS.Util.hide('defaultPrivateKeyNote');
         BS.Util.show('sshPrivateKeyNote');
         break;
       case 'PASSWORD':
-        BS.Util.show('gitUsername', 'gitPasswordRow');
+        BS.Util.show('gitUsername', 'gitPasswordRow', 'gitTeamCityKeyRow');
         BS.Util.hide('gitPrivateKeyRow', 'gitPassphraseRow', 'gitKnownHosts');
         BS.Util.hide('sshPrivateKeyNote', 'defaultPrivateKeyNote');
         break;
       case 'ANONYMOUS':
-        BS.Util.hide('gitUsername', 'gitPasswordRow', 'gitPrivateKeyRow', 'gitPassphraseRow', 'gitKnownHosts');
+        BS.Util.hide('gitUsername', 'gitPasswordRow', 'gitPrivateKeyRow', 'gitPassphraseRow', 'gitKnownHosts', 'gitTeamCityKeyRow');
         BS.Util.hide('sshPrivateKeyNote', 'defaultPrivateKeyNote');
         break;
       default:

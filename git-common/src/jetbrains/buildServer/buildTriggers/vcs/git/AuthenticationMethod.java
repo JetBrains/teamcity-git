@@ -35,7 +35,9 @@ public enum AuthenticationMethod {
   /**
    * The password is used
    */
-  PASSWORD("Password");
+  PASSWORD("Password"),
+
+  TEAMCITY_SSH_KEY("TeamCity SSH Key");
 
   /**
    * Name of auth method for user, e.g. in error messages

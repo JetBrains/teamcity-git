@@ -18,7 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.buildTriggers.vcs.AbstractVcsPropertiesProcessor;
 import jetbrains.buildServer.serverSide.InvalidProperty;
-import jetbrains.buildServer.util.StringUtil;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -70,6 +69,11 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
       if (isEmpty(pkFile)) {
         rc.add(new InvalidProperty(Constants.PRIVATE_KEY_PATH, "The private key path must be specified."));
       }
+    }
+    if (authenticationMethod == AuthenticationMethod.TEAMCITY_SSH_KEY) {
+      String keyId = properties.get(Constants.TEAMCITY_SSH_KEY_ID);
+      if (isEmpty(keyId))
+        rc.add(new InvalidProperty(Constants.TEAMCITY_SSH_KEY_ID, "The TeamCity SSH key must be specified."));
     }
     return rc;
   }

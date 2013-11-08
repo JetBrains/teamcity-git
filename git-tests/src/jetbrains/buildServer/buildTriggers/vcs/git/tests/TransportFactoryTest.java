@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import bsh.commands.dir;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -33,13 +32,11 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.getVcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertNull;
 
 /**
  * @author dmitry.neverov
@@ -50,7 +47,6 @@ public class TransportFactoryTest {
   private TempFiles myTempFiles;
   private PluginConfigBuilder myConfigBuilder;
   private ServerPaths myServerPaths;
-
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -70,7 +66,8 @@ public class TransportFactoryTest {
   public void transport_should_have_timeout_specified_in_config() throws Exception {
     myConfigBuilder.setIdleTimeoutSeconds(20);
     ServerPluginConfig config = myConfigBuilder.build();
-    TransportFactory transportFactory = new TransportFactoryImpl(config);
+    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
+    TransportFactory transportFactory = new TransportFactoryImpl(config, manager);
     Transport transport = createTransport(transportFactory);
     assertEquals(20, transport.getTimeout());
   }
@@ -86,7 +83,7 @@ public class TransportFactoryTest {
       .withPassword("pwd")
       .build();
     AuthSettings authSettings = new AuthSettings(root);
-    TransportFactory factory = new TransportFactoryImpl(myConfigBuilder.build());
+    TransportFactory factory = new TransportFactoryImpl(myConfigBuilder.build(), new EmptyVcsRootSshKeyManager());
     factory.createTransport(r, authSettings.createAuthURI("git://some.org/repo.git"), authSettings);
   }
 

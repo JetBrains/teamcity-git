@@ -32,4 +32,5 @@
   <bean id="mergeSupport" class="jetbrains.buildServer.buildTriggers.vcs.git.GitMergeSupport"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitCommitsInfoBuilder"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.CommitLoaderImpl"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.VcsRootSshKeyManagerImpl"/>
 </beans>

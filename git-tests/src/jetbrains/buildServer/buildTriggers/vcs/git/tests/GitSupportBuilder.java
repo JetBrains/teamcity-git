@@ -64,12 +64,14 @@ public class GitSupportBuilder {
     if (myPluginConfig == null)
       myPluginConfig = myPluginConfigBuilder != null ? myPluginConfigBuilder.build() : new PluginConfigImpl(myServerPaths);
     if (myTransportFactory == null)
-      myTransportFactory = new TransportFactoryImpl(myPluginConfig);
+      myTransportFactory = new TransportFactoryImpl(myPluginConfig, new EmptyVcsRootSshKeyManager());
+
+    Mockery context = new Mockery();
     if (myFetchCommand == null) {
       if (myBeforeFetchHook == null) {
-        myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig));
+        myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
       } else {
-        final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig));
+        final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
         myFetchCommand = new FetchCommand() {
           public void fetch(@NotNull Repository db,
                             @NotNull URIish fetchURI,
@@ -86,7 +88,6 @@ public class GitSupportBuilder {
     myRepositoryManager = new RepositoryManagerImpl(myPluginConfig, myMirrorManager);
     final ResetCacheRegister resetCacheManager;
     if (myResetCacheManager == null) {
-      Mockery context = new Mockery();
       context.setImposteriser(ClassImposteriser.INSTANCE);
       resetCacheManager = context.mock(ResetCacheRegister.class);
       context.checking(new Expectations() {{

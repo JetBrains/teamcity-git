@@ -113,4 +113,6 @@ public interface Constants {
    * A prefix for build parameter with vcs branch name of git root
    */
   public static final String GIT_ROOT_BUILD_BRANCH_PREFIX = "teamcity.git.build.vcs.branch.";
+
+  public static final String TEAMCITY_SSH_KEY_ID = "teamcitySshKeyId";
 }

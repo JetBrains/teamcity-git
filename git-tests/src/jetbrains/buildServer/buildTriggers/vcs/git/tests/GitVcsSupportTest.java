@@ -66,9 +66,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.getVcsRoot;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.*;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
@@ -1305,7 +1303,8 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test
   public void getCurrentVersion_should_not_do_fetch() throws Exception {
     ServerPluginConfig config = myConfigBuilder.build();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config), new FetcherProperties(config));
+    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
 
@@ -1404,7 +1403,8 @@ public class GitVcsSupportTest extends PatchTestCase {
       new TransportException("com.jcraft.jsch.JSchException: verify: false", new JSchException("test"))
     );
     ServerPluginConfig config = myConfigBuilder.withGetConnectionRetryAttempts(recoverableErrors.size() + 1).build();
-    TransportFactory transportFactory = new TransportFactoryImpl(config) {
+    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
+    TransportFactory transportFactory = new TransportFactoryImpl(config, manager) {
       @Override
       public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings)
         throws NotSupportedException, VcsException {
@@ -1432,7 +1432,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       }
     };
 
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, new FetcherProperties(config));
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, new FetcherProperties(config), manager);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport()
       .withPluginConfig(config)
@@ -1493,7 +1493,8 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     //setup fetcher with counter
     ServerPluginConfig config = myConfigBuilder.build();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config), new FetcherProperties(config));
+    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
 
@@ -1522,7 +1523,8 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     //setup fetcher with counter
     ServerPluginConfig config = myConfigBuilder.withPerBranchFetch(true).build();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config), new FetcherProperties(config));
+    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
 
@@ -1551,7 +1553,8 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     //setup fetcher with a counter
     ServerPluginConfig config = myConfigBuilder.build();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config), new FetcherProperties(config));
+    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
 

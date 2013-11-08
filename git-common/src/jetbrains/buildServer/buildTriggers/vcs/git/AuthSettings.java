@@ -24,6 +24,7 @@ import org.eclipse.jgit.transport.CredentialItem;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.URISyntaxException;
 import java.util.HashMap;
@@ -32,22 +33,28 @@ import java.util.Map;
 
 public class AuthSettings {
 
+  private final VcsRoot myRoot;
   private final AuthenticationMethod myAuthMethod;
   private final boolean myIgnoreKnownHosts;
   private final String myPassphrase;
   private final String myPrivateKeyFilePath;
   private final String myUserName;
   private final String myPassword;
+  private final String myTeamCitySshKeyId;
 
   public AuthSettings(@NotNull VcsRoot root) {
-    this(root.getProperties());
+    this(root.getProperties(), root);
   }
 
   public AuthSettings(@NotNull GitVcsRoot root) {
-    this(root.getProperties());
+    this(root.getProperties(), root.getOriginalRoot());
   }
 
-  public AuthSettings(Map<String, String> properties) {
+  public AuthSettings(@NotNull Map<String, String> properties) {
+    this(properties, null);
+  }
+
+  public AuthSettings(@NotNull Map<String, String> properties, @Nullable VcsRoot root) {
     myAuthMethod = readAuthMethod(properties);
     myIgnoreKnownHosts = "true".equals(properties.get(Constants.IGNORE_KNOWN_HOSTS));
     if (myAuthMethod == AuthenticationMethod.PRIVATE_KEY_FILE) {
@@ -59,6 +66,13 @@ public class AuthSettings {
     }
     myUserName = readUsername(properties);
     myPassword = myAuthMethod != AuthenticationMethod.PASSWORD ? null : properties.get(Constants.PASSWORD);
+    myTeamCitySshKeyId = myAuthMethod != AuthenticationMethod.TEAMCITY_SSH_KEY ? null : properties.get(Constants.TEAMCITY_SSH_KEY_ID);
+    myRoot = root;
+  }
+
+  @Nullable
+  public VcsRoot getRoot() {
+    return myRoot;
   }
 
   private String readUsername(Map<String, String> properties) {
@@ -100,6 +114,11 @@ public class AuthSettings {
 
   public String getPassword() {
     return myPassword;
+  }
+
+  @Nullable
+  public String getTeamCitySshKeyId() {
+    return myTeamCitySshKeyId;
   }
 
   public URIish createAuthURI(String uri) throws VcsException {
