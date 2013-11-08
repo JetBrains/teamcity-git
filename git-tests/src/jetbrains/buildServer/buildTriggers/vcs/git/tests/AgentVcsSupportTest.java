@@ -27,6 +27,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
+import jetbrains.buildServer.ssh.SshKeyManager;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsUtil;
@@ -36,6 +37,7 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
@@ -109,7 +111,15 @@ public class AgentVcsSupportTest {
     myAgentConfiguration = createBuildAgentConfiguration();
     myConfigFactory = new PluginConfigFactoryImpl(myAgentConfiguration, detector);
     myMirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl());
-    myVcsSupport = new GitAgentVcsSupport(createSmartDirectoryCleaner(), new GitAgentSSHService(createBuildAgent(), myAgentConfiguration, new GitPluginDescriptor()), myConfigFactory, myMirrorManager);
+    SshKeyManagerProvider provider = new SshKeyManagerProvider() {
+      @Nullable
+      public SshKeyManager getSshKeyManager() {
+        return null;
+      }
+    };
+    myVcsSupport = new GitAgentVcsSupport(createSmartDirectoryCleaner(),
+                                          new GitAgentSSHService(createBuildAgent(), myAgentConfiguration, new GitPluginDescriptor(), provider),
+                                          myConfigFactory, myMirrorManager);
     myLogger = createLogger();
     myBuild = createRunningBuild(true);
 

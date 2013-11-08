@@ -19,7 +19,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import com.intellij.openapi.util.SystemInfo;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
+import jetbrains.buildServer.ssh.SshKeyManager;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 
@@ -33,6 +35,7 @@ public class NativeGitFacade implements GitFacade {
   private final String myGitPath;
   private final File myRepositoryDir;
   private final boolean myDeleteTempFiles;
+  private SshKeyManager mySshKeyManager;
 
   public NativeGitFacade(@NotNull GitAgentSSHService ssh,
                          @NotNull String gitPath,
@@ -159,7 +162,12 @@ public class NativeGitFacade implements GitFacade {
     GitCommandLine cmd = new GitCommandLine(mySsh, myAskPassGen, myDeleteTempFiles);
     cmd.setExePath(myGitPath);
     cmd.setWorkingDirectory(myRepositoryDir);
+    cmd.setSshKeyManager(mySshKeyManager);
     return cmd;
+  }
+
+  public void setSshKeyManager(@Nullable SshKeyManager sshKeyManager) {
+    mySshKeyManager = sshKeyManager;
   }
 
   @NotNull

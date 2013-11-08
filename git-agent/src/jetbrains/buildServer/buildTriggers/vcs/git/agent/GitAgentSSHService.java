@@ -19,7 +19,10 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import jetbrains.buildServer.agent.BuildAgent;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.plugins.beans.PluginDescriptor;
+import jetbrains.buildServer.ssh.SshKeyManager;
 import org.apache.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.git4idea.ssh.GitSSHHandler;
 import org.jetbrains.git4idea.ssh.GitSSHService;
 
@@ -36,12 +39,17 @@ public class GitAgentSSHService extends GitSSHService {
   private final BuildAgent myAgent;
   private final BuildAgentConfiguration myAgentConfiguration;
   private final PluginDescriptor myPluginDescriptor;
+  private final SshKeyManagerProvider mySshKeyManagerProvider;
 
 
-  public GitAgentSSHService(BuildAgent agent, BuildAgentConfiguration agentConfiguration, PluginDescriptor pluginDescriptor) {
+  public GitAgentSSHService(BuildAgent agent,
+                            BuildAgentConfiguration agentConfiguration,
+                            PluginDescriptor pluginDescriptor,
+                            @NotNull SshKeyManagerProvider sshKeyManagerProvider) {
     myAgent = agent;
     myAgentConfiguration = agentConfiguration;
     myPluginDescriptor = pluginDescriptor;
+    mySshKeyManagerProvider = sshKeyManagerProvider;
   }
 
   @Override
@@ -67,5 +75,10 @@ public class GitAgentSSHService extends GitSSHService {
   @Override
   protected void registerInternalHandler(String handlerName, GitSSHHandler handler) {
     myAgent.getXmlRpcHandlerManager().addHandler(handlerName, handler);
+  }
+
+  @Nullable
+  public SshKeyManager getSshKeyManager() {
+    return mySshKeyManagerProvider.getSshKeyManager();
   }
 }

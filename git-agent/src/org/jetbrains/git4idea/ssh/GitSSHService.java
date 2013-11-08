@@ -16,6 +16,7 @@
 
 package org.jetbrains.git4idea.ssh;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
 import gnu.trove.THashMap;
 import org.apache.commons.codec.DecoderException;
@@ -70,6 +71,8 @@ public abstract class GitSSHService {
       ScriptGenerator generator = new ScriptGenerator(GitSSHHandler.GIT_SSH_PREFIX, SSHMain.class, getTempDir());
       generator.addClasses(XmlRpcClientLite.class, DecoderException.class);
       generator.addClasses(FileUtil.class);
+      generator.addClasses(Logger.class);
+      generator.addClasses(org.apache.log4j.Logger.class);
       generator.addPath(getSshLibraryPath());
       generator.addResource(SSHMainBundle.class, "/org/jetbrains/git4idea/ssh/SSHMainBundle.properties");
       myScriptPath = generator.generate();

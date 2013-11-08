@@ -109,6 +109,8 @@ public class SSHMain {
    */
   @NonNls public static final String SSH_DSS_ALGORITHM = "ssh-dss";
 
+  private String myPrivateKeyPath;
+  private String myPassphrase;
 
   /**
    * A constructor
@@ -152,6 +154,8 @@ public class SSHMain {
    * @throws InterruptedException if thread was interrupted
    */
   private void start() throws IOException, InterruptedException {
+    myPrivateKeyPath = System.getenv(GitSSHHandler.TEAMCITY_PRIVATE_KEY_PATH);
+    myPassphrase = System.getenv(GitSSHHandler.TEAMCITY_PASSPHRASE);
     Connection c = new Connection(myHost.getHostName(), myHost.getPort());
     try {
       configureKnownHosts(c);
@@ -204,7 +208,12 @@ public class SSHMain {
         if (!c.isAuthMethodAvailable(myHost.getUser(), PUBLIC_KEY_METHOD)) {
           continue;
         }
-        File key = myHost.getIdentityFile();
+        File key;
+        if (myPrivateKeyPath != null) {
+          key = new File(myPrivateKeyPath);
+        } else {
+          key = myHost.getIdentityFile();
+        }
         if (key == null) {
           for (String a : myHost.getHostKeyAlgorithms()) {
             if (SSH_RSA_ALGORITHM.equals(a)) {
@@ -295,7 +304,7 @@ public class SSHMain {
       final File file = new File(keyPath);
       if (file.exists()) {
         // if encrypted ask user for passphrase
-        String passphrase = null;
+        String passphrase = myPassphrase;
         char[] text = FileUtil.loadFileText(file);
         if (isEncryptedKey(text)) {
           // need to ask passphrase from user

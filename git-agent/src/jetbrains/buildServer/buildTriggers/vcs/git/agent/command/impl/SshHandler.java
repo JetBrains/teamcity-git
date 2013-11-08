@@ -18,14 +18,18 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
+import jetbrains.buildServer.ssh.SshKeyManager;
+import jetbrains.buildServer.ssh.TeamCitySshKey;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.git4idea.ssh.GitSSHHandler;
 import org.jetbrains.git4idea.ssh.GitSSHService;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Vector;
+import java.util.*;
 
 /**
  * SSH handler implementation
@@ -40,6 +44,8 @@ public class SshHandler implements GitSSHService.Handler {
    */
   private final GitSSHService mySsh;
   private final AuthSettings myAuthSettings;
+  private final SshKeyManager mySshKeyManager;
+  private final List<File> myFilesToClean = new ArrayList<File>();
 
   /**
    * The constructor that registers the handler in the SSH service and command line
@@ -49,13 +55,34 @@ public class SshHandler implements GitSSHService.Handler {
    * @param cmd the command line to register with
    * @throws VcsException if there is a problem with registering the handler
    */
-  public SshHandler(GitSSHService ssh, AuthSettings authSettings, GeneralCommandLine cmd) throws VcsException {
+  public SshHandler(GitSSHService ssh,
+                    @Nullable SshKeyManager sshKeyManager,
+                    AuthSettings authSettings,
+                    GeneralCommandLine cmd) throws VcsException {
     mySsh = ssh;
+    mySshKeyManager = sshKeyManager;
     myAuthSettings = authSettings;
     Map<String, String> env = new HashMap<String, String>(System.getenv());
     env.put(GitSSHHandler.SSH_PORT_ENV, Integer.toString(mySsh.getXmlRcpPort()));
     if (myAuthSettings.isIgnoreKnownHosts()) {
       env.put(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV, "true");
+    }
+    if (authSettings.getAuthMethod() == AuthenticationMethod.TEAMCITY_SSH_KEY) {
+      String keyId = authSettings.getTeamCitySshKeyId();
+      if (keyId != null && mySshKeyManager != null) {
+        TeamCitySshKey key = mySshKeyManager.getKey(keyId);
+        if (key != null) {
+          try {
+            File privateKey = FileUtil.createTempFile("key", "");
+            myFilesToClean.add(privateKey);
+            FileUtil.writeFileAndReportErrors(privateKey, new String(key.getPrivateKey()));
+            env.put(GitSSHHandler.TEAMCITY_PRIVATE_KEY_PATH, privateKey.getCanonicalPath());
+            env.put(GitSSHHandler.TEAMCITY_PASSPHRASE, key.getPassphrase() != null ? key.getPassphrase() : "");
+          } catch (Exception e) {
+            throw new VcsException(e);
+          }
+        }
+      }
     }
     try {
       env.put(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath().toString());
@@ -71,6 +98,9 @@ public class SshHandler implements GitSSHService.Handler {
    * Unregister the handler
    */
   public void unregister() {
+    for (File f : myFilesToClean) {
+      FileUtil.delete(f);
+    }
     mySsh.unregisterHandler(myHandlerNo);
   }
 

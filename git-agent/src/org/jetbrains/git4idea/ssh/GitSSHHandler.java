@@ -50,6 +50,9 @@ public interface GitSSHHandler {
    */
   @NonNls String HANDLER_NAME = "Git4ideaSSHHandler";
 
+  String TEAMCITY_PRIVATE_KEY_PATH = "TEAMCITY_PRIVATE_KEY";
+  String TEAMCITY_PASSPHRASE = "TEAMCITY_PASSPHRASE";
+
   /**
    * Verify server host key
    *

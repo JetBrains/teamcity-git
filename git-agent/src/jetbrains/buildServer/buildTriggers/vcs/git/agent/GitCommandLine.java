@@ -25,6 +25,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.AskPassGenerato
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.SshHandler;
+import jetbrains.buildServer.ssh.SshKeyManager;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -42,6 +43,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private final boolean myDeleteTempFiles;
   private File myWorkingDirectory;
   private boolean myRepeatOnEmptyOutput = false;
+  private SshKeyManager mySshKeyManager;
 
   public GitCommandLine(@Nullable GitAgentSSHService ssh,
                         @NotNull AskPassGenerator askPassGen,
@@ -74,7 +76,7 @@ public class GitCommandLine extends GeneralCommandLine {
       if (settings.isUseNativeSsh()) {
         return CommandUtil.runCommand(this, settings.getTimeout());
       } else {
-        SshHandler h = new SshHandler(mySsh, authSettings, this);
+        SshHandler h = new SshHandler(mySsh, mySshKeyManager, authSettings, this);
         try {
           return CommandUtil.runCommand(this, settings.getTimeout());
         } finally {
@@ -112,5 +114,9 @@ public class GitCommandLine extends GeneralCommandLine {
 
   public boolean isRepeatOnEmptyOutput() {
     return myRepeatOnEmptyOutput;
+  }
+
+  public void setSshKeyManager(SshKeyManager sshKeyManager) {
+    mySshKeyManager = sshKeyManager;
   }
 }
