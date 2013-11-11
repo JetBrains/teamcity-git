@@ -198,19 +198,35 @@ public class AuthSettings {
 
       @Override
       public boolean get(URIish uri, CredentialItem... items) throws UnsupportedCredentialItem {
+        boolean allValuesSupplied = true;
         for (CredentialItem i : items) {
-          if (myAuthMethod != AuthenticationMethod.ANONYMOUS && i instanceof CredentialItem.Username) {
-            if (myUserName != null) {
-              ((CredentialItem.Username) i).setValue(myUserName);
-            } else {
-              ((CredentialItem.Username) i).setValue(uri.getUser());
-            }
-          } else if (myAuthMethod == AuthenticationMethod.PASSWORD && i instanceof CredentialItem.Password) {
-            ((CredentialItem.Password) i).setValue(myPassword != null ? myPassword.toCharArray() : null);
+          if (i instanceof CredentialItem.Username) {
+            allValuesSupplied &= supplyUsername(uri, (CredentialItem.Username) i);
+          } else if (i instanceof CredentialItem.Password) {
+            allValuesSupplied &= supplyPassword((CredentialItem.Password) i);
           } else {
             throw new UnsupportedCredentialItem(uri, i.getPromptText());
           }
         }
+        return allValuesSupplied;
+      }
+
+      private boolean supplyUsername(URIish uri, CredentialItem.Username item) {
+        if (myAuthMethod == AuthenticationMethod.ANONYMOUS)
+          return false;
+        String username = myUserName != null ? myUserName : uri.getUser();
+        if (username == null)
+          return false;
+        item.setValue(username);
+        return true;
+      }
+
+      private boolean supplyPassword(CredentialItem.Password item) {
+        if (myAuthMethod != AuthenticationMethod.PASSWORD)
+          return false;
+        if (myPassword == null)
+          return false;
+        item.setValue(myPassword.toCharArray());
         return true;
       }
     };
