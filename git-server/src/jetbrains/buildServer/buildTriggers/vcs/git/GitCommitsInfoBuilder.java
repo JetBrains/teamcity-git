@@ -52,7 +52,9 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
       List<CommitDataBean> commits = new ArrayList<CommitDataBean>();
       RevCommit c;
       while ((c = walk.next()) != null) {
-        CommitDataBean commit = new CommitDataBean(c.getId().getName(), c.getId().getName(), c.getAuthorIdent().getWhen());
+        final CommitDataBean commit = new CommitDataBean(c.getId().getName(), c.getId().getName(), c.getAuthorIdent().getWhen());
+        commit.setCommitAuthor(GitServerUtil.getUser(gitRoot, c));
+        commit.setCommitMessage(c.getFullMessage());
         for (RevCommit p : c.getParents()) {
           commit.addParentRevision(p.getId().getName());
         }
