@@ -246,8 +246,8 @@
         BS.Util.show('sshPrivateKeyNote');
         break;
       case 'PASSWORD':
-        BS.Util.show('gitUsername', 'gitPasswordRow', 'gitTeamCityKeyRow');
-        BS.Util.hide('gitPrivateKeyRow', 'gitPassphraseRow', 'gitKnownHosts');
+        BS.Util.show('gitUsername', 'gitPasswordRow');
+        BS.Util.hide('gitPrivateKeyRow', 'gitPassphraseRow', 'gitKnownHosts', 'gitTeamCityKeyRow');
         BS.Util.hide('sshPrivateKeyNote', 'defaultPrivateKeyNote');
         break;
       case 'ANONYMOUS':
