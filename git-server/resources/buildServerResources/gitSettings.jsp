@@ -157,8 +157,8 @@
     <tr id="gitTeamCityKeyRow">
       <th><label for="privateKeyPath">TeamCity SSH Key: <l:star/></label></th>
       <td>
-        <admin:sshKeys chooserName="teamcitySshKeyId" projectId="${projectId}"/>
-        <span class="error" id="error_teamcitySshKeyId"></span>
+        <admin:sshKeys projectId="${projectId}"/>
+        <span class="error" id="error_teamcitySshKey"></span>
       </td>
     </tr>
     <tr id="gitPassphraseRow">
