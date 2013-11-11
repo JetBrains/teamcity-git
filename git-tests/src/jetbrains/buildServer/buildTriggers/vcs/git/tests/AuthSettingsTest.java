@@ -45,6 +45,21 @@ public class AuthSettingsTest {
   }
 
 
+  public void credential_provider_should_return_true_when_all_items_provided() throws Exception {
+    VcsRoot root = vcsRoot().withFetchUrl("http://some.org/repository")
+      .withAuthMethod(AuthenticationMethod.PASSWORD)
+      .withUsername("user")
+      .build();
+    CredentialsProvider c = new AuthSettings(root).toCredentialsProvider();
+    assertFalse(c.supports(new CredentialItem.Username(), new CredentialItem.Password()));
+
+    final URIish uri = new URIish("http://some.org/repository");
+    assertTrue(c.get(uri, new CredentialItem.Username()));
+    assertFalse(c.get(uri, new CredentialItem.Password()));
+    assertFalse(c.get(uri, new CredentialItem.Username(), new CredentialItem.Password()));
+  }
+
+
   @TestFor(issues = "TW-27506")
   public void should_take_username_from_URL_into_account() throws URISyntaxException {
     String user = "usr";
