@@ -54,9 +54,9 @@ public class TransportFactoryImpl implements TransportFactory {
 
   public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings) throws NotSupportedException, VcsException {
     try {
-      final URIish authUrl = authSettings.createAuthURI(url);
       checkUrl(url);
-      final Transport t = Transport.open(r, authUrl);
+      URIish preparedURI = prepareURI(url);
+      final Transport t = Transport.open(r, preparedURI);
       t.setCredentialsProvider(authSettings.toCredentialsProvider());
       if (t instanceof SshTransport) {
         SshTransport ssh = (SshTransport)t;
@@ -67,6 +67,18 @@ public class TransportFactoryImpl implements TransportFactory {
     } catch (TransportException e) {
       throw new VcsException("Cannot create transport", e);
     }
+  }
+
+
+  @NotNull
+  private URIish prepareURI(@NotNull URIish uri) {
+    final String scheme = uri.getScheme();
+    //Remove a username from the http URI. A Username can contain forbidden
+    //characters, e.g. backslash (TW-21747). A username and a password will
+    //be supplied by CredentialProvider
+    if ("http".equals(scheme) || "https".equals(scheme))
+      return uri.setUser(null);
+    return uri;
   }
 
 
