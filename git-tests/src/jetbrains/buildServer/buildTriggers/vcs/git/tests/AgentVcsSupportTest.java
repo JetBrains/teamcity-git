@@ -26,8 +26,9 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.VcsRootSshKeyManagerProvider;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
-import jetbrains.buildServer.ssh.SshKeyManager;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsUtil;
@@ -111,9 +112,9 @@ public class AgentVcsSupportTest {
     myAgentConfiguration = createBuildAgentConfiguration();
     myConfigFactory = new PluginConfigFactoryImpl(myAgentConfiguration, detector);
     myMirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl());
-    SshKeyManagerProvider provider = new SshKeyManagerProvider() {
+    VcsRootSshKeyManagerProvider provider = new VcsRootSshKeyManagerProvider() {
       @Nullable
-      public SshKeyManager getSshKeyManager() {
+      public VcsRootSshKeyManager getSshKeyManager() {
         return null;
       }
     };

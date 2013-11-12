@@ -22,6 +22,8 @@ import com.jcraft.jsch.Cipher;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+import jetbrains.buildServer.ssh.TeamCitySshKey;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.errors.NotSupportedException;
@@ -230,9 +232,9 @@ public class TransportFactoryImpl implements TransportFactory {
       final JSch jsch = new JSch();
       final VcsRoot root = myAuthSettings.getRoot();
       if (root != null) {
-        String privateKey = mySshKeyManager.getKey(root);
-        if (privateKey != null)
-          jsch.addIdentity("", privateKey.getBytes(), null, myAuthSettings.getPassphrase() != null ? myAuthSettings.getPassphrase().getBytes() : null);
+        TeamCitySshKey sshKey = mySshKeyManager.getKey(root);
+        if (sshKey != null)
+          jsch.addIdentity("", sshKey.getPrivateKey(), null, myAuthSettings.getPassphrase() != null ? myAuthSettings.getPassphrase().getBytes() : null);
       }
       return jsch;
     }

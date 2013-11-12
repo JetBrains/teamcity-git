@@ -16,12 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import jetbrains.buildServer.ssh.SshKeyManager;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import org.jetbrains.annotations.Nullable;
 
-public interface SshKeyManagerProvider {
+public interface VcsRootSshKeyManagerProvider {
 
   @Nullable
-  SshKeyManager getSshKeyManager();
+  VcsRootSshKeyManager getSshKeyManager();
 
 }

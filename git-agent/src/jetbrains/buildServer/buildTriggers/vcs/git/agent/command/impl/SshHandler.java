@@ -19,8 +19,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
-import jetbrains.buildServer.ssh.SshKeyManager;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.Nullable;
@@ -44,7 +44,7 @@ public class SshHandler implements GitSSHService.Handler {
    */
   private final GitSSHService mySsh;
   private final AuthSettings myAuthSettings;
-  private final SshKeyManager mySshKeyManager;
+  private final VcsRootSshKeyManager mySshKeyManager;
   private final List<File> myFilesToClean = new ArrayList<File>();
 
   /**
@@ -56,7 +56,7 @@ public class SshHandler implements GitSSHService.Handler {
    * @throws VcsException if there is a problem with registering the handler
    */
   public SshHandler(GitSSHService ssh,
-                    @Nullable SshKeyManager sshKeyManager,
+                    @Nullable VcsRootSshKeyManager sshKeyManager,
                     AuthSettings authSettings,
                     GeneralCommandLine cmd) throws VcsException {
     mySsh = ssh;
@@ -70,7 +70,7 @@ public class SshHandler implements GitSSHService.Handler {
     if (authSettings.getAuthMethod() == AuthenticationMethod.TEAMCITY_SSH_KEY) {
       String keyId = authSettings.getTeamCitySshKeyId();
       if (keyId != null && mySshKeyManager != null) {
-        TeamCitySshKey key = mySshKeyManager.getKey(keyId);
+        TeamCitySshKey key = mySshKeyManager.getKey(authSettings.getRoot());
         if (key != null) {
           try {
             File privateKey = FileUtil.createTempFile("key", "");

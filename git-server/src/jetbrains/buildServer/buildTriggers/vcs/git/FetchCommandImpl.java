@@ -21,6 +21,8 @@ import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.ssh.TeamCitySshKey;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
@@ -183,13 +185,13 @@ public class FetchCommandImpl implements FetchCommand {
     if (root == null)
       return null;
 
-    String privateKey = mySshKeyManager.getKey(root);
+    TeamCitySshKey privateKey = mySshKeyManager.getKey(root);
     if (privateKey == null)
       return null;
 
     try {
       File privateKeyFile = FileUtil.createTempFile("private", "key");
-      FileUtil.writeToFile(privateKeyFile, privateKey.getBytes());
+      FileUtil.writeToFile(privateKeyFile, privateKey.getPrivateKey());
       return privateKeyFile;
     } catch (IOException e) {
       throw new VcsException(e);

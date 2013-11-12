@@ -19,7 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import jetbrains.buildServer.agent.BuildAgent;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.plugins.beans.PluginDescriptor;
-import jetbrains.buildServer.ssh.SshKeyManager;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -39,13 +39,13 @@ public class GitAgentSSHService extends GitSSHService {
   private final BuildAgent myAgent;
   private final BuildAgentConfiguration myAgentConfiguration;
   private final PluginDescriptor myPluginDescriptor;
-  private final SshKeyManagerProvider mySshKeyManagerProvider;
+  private final VcsRootSshKeyManagerProvider mySshKeyManagerProvider;
 
 
   public GitAgentSSHService(BuildAgent agent,
                             BuildAgentConfiguration agentConfiguration,
                             PluginDescriptor pluginDescriptor,
-                            @NotNull SshKeyManagerProvider sshKeyManagerProvider) {
+                            @NotNull VcsRootSshKeyManagerProvider sshKeyManagerProvider) {
     myAgent = agent;
     myAgentConfiguration = agentConfiguration;
     myPluginDescriptor = pluginDescriptor;
@@ -78,7 +78,7 @@ public class GitAgentSSHService extends GitSSHService {
   }
 
   @Nullable
-  public SshKeyManager getSshKeyManager() {
+  public VcsRootSshKeyManager getSshKeyManager() {
     return mySshKeyManagerProvider.getSshKeyManager();
   }
 }
