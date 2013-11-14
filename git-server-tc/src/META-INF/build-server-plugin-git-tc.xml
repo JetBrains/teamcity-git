@@ -7,8 +7,4 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitExtensionRegistry"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitBranchSupport"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitBuildParametersProvider"/>
-  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.VcsRootSshKeyManagerProviderImpl"/>
-
-  <!-- this might be a bug. I move it here to make Vcs-Worker run git -->
-  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.VcsRootSshKeyManagerImpl"/>
 </beans>
