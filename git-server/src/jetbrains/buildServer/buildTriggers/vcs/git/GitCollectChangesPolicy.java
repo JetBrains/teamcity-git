@@ -164,25 +164,33 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     List<ModificationData> changes = new ArrayList<ModificationData>();
     OperationContext context = myVcs.createContext(root, "collecting changes");
     try {
-      Repository r = context.getRepository();
-      ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
-      revWalk.sort(RevSort.TOPO);
+      final Repository r = context.getRepository();
       ensureRepositoryStateLoadedFor(context, r, toState);
-      markStart(r, revWalk, toState);
+
+      for (Map.Entry<String, String> e : toState.getBranchRevisions().entrySet()) {
+        final String branch = e.getKey();
+        final String commitId = e.getValue();
+        final RepositoryStateData oneCommitData = RepositoryStateData.createVersionState(branch, commitId);
+
+        final ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
+
+        revWalk.sort(RevSort.TOPO);
+        markStart(r, revWalk, oneCommitData);
 
 
-      final List<RevCommit> commits = getCommits(toState, r, revWalk);
-      if (commits.isEmpty()) {
-        throw new VcsException("Commits were not found: " + new TreeSet<String>(toState.getBranchRevisions().values()) + " was not found");
-      }
-      for (RevCommit commit : commits) {
-        for (RevCommit parent : commit.getParents()) {
-          revWalk.markUninteresting(parent);
+        final List<RevCommit> commits = getCommits(oneCommitData, r, revWalk);
+        if (commits.isEmpty()) {
+          throw new VcsException("Commits were not found: " + new TreeSet<String>(toState.getBranchRevisions().values()) + " was not found");
         }
-      }
+        for (RevCommit commit : commits) {
+          for (RevCommit parent : commit.getParents()) {
+            revWalk.markUninteresting(parent);
+          }
+        }
 
-      while (revWalk.next() != null) {
-        changes.add(revWalk.createModificationData());
+        while (revWalk.next() != null) {
+          changes.add(revWalk.createModificationData());
+        }
       }
     } catch (Exception e) {
       throw context.wrapException(e);

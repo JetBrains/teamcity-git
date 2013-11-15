@@ -30,6 +30,7 @@ import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
@@ -1598,6 +1599,48 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     final VcsChange change = next.getChanges().get(0);
     Assert.assertEquals(change.getRelativeFileName(), "dir1/file3.txt");
+  }
+
+  @Test
+  public void testBuildModificationInfo_parent_child() throws VcsException {
+    final VcsRoot vcsRoot = getVcsRoot();
+
+    final GitVcsSupport support = getSupport();
+    final List<ModificationData> list = support.getCollectChangesPolicy()
+      .fetchModificationInfo(vcsRoot, RepositoryStateData.createVersionState("unknown-default",
+                                                                             CollectionsUtil.asMap(
+                                                                               "patch-tests", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46",
+                                                                               "b", "a894d7d58ffde625019a9ecf8267f5f1d1e5c341")), CheckoutRules.DEFAULT);
+
+
+    Assert.assertEquals(list.size(), 2);
+
+    for (ModificationData data : list) {
+      final String commitId = data.getVersion();
+
+      if (commitId.equals("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46")) {
+        Assert.assertEquals(data.getParentRevisions(), Arrays.asList("a894d7d58ffde625019a9ecf8267f5f1d1e5c341"));
+      } else if (commitId.equals("a894d7d58ffde625019a9ecf8267f5f1d1e5c341")) {
+        Assert.assertEquals(data.getParentRevisions(), Arrays.asList("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653"));
+      } else {
+        Assert.fail("Unexpected commit: " + commitId);
+      }
+    }
+  }
+
+  @Test
+  public void testBuildModificationInfo_parent_gap_child() throws VcsException {
+    final VcsRoot vcsRoot = getVcsRoot();
+
+    final GitVcsSupport support = getSupport();
+    final List<ModificationData> list = support.getCollectChangesPolicy()
+      .fetchModificationInfo(vcsRoot, RepositoryStateData.createVersionState("unknown-default",
+                                                                             CollectionsUtil.asMap(
+                                                                               "patch-tests", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46",
+                                                                               "b", "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653")), CheckoutRules.DEFAULT);
+
+
+    Assert.assertEquals(list.size(), 2);
   }
 
   @Test
