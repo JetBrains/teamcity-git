@@ -128,10 +128,10 @@ public class GitServerUtil {
   }
 
   public static String getUser(GitVcsRoot root, RevCommit c) {
-    return getUser(c.getAuthorIdent(), root);
+    return getUser(root, c.getAuthorIdent());
   }
 
-  private static String getUser(PersonIdent id, GitVcsRoot root) {
+  public static String getUser(GitVcsRoot root, PersonIdent id) {
     switch (root.getUsernameStyle()) {
       case NAME:
         return id.getName();

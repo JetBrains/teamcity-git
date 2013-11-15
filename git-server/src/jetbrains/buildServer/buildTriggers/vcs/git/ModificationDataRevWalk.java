@@ -25,6 +25,7 @@ import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
@@ -86,16 +87,25 @@ class ModificationDataRevWalk extends RevWalk {
     if (myCurrentCommit == null)
       throw new IllegalStateException("Current commit is null");
 
+    final String commitId = myCurrentCommit.getId().name();
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Collecting changes in commit " + myCurrentCommit.getId().name() + ":" + myCurrentCommit.getShortMessage() +
+      LOG.debug("Collecting changes in commit " + commitId + ":" + myCurrentCommit.getShortMessage() +
                 " (" + myCurrentCommit.getCommitterIdent().getWhen() + ") for " + myGitRoot.debugInfo());
     }
-    String currentVersion = myCurrentCommit.getId().name();
-    String parentVersion = getFirstParentVersion(myCurrentCommit);
-    List<VcsChange> changes = getCommitChanges(myCurrentCommit, currentVersion, parentVersion);
-    ModificationData result = new ModificationData(myCurrentCommit.getAuthorIdent().getWhen(), changes, myCurrentCommit.getFullMessage(),
-                                                   GitServerUtil.getUser(myGitRoot, myCurrentCommit), myGitRoot.getOriginalRoot(),
-                                                   myCurrentCommit.getId().name(), myCurrentCommit.getId().name());
+
+    final String parentVersion = getFirstParentVersion(myCurrentCommit);
+    final List<VcsChange> changes = getCommitChanges(myCurrentCommit, commitId, parentVersion);
+
+    final PersonIdent authorIdent = myCurrentCommit.getAuthorIdent();
+    final ModificationData result = new ModificationData(
+      authorIdent.getWhen(),
+      changes,
+      myCurrentCommit.getFullMessage(),
+      GitServerUtil.getUser(myGitRoot, authorIdent),
+      myGitRoot.getOriginalRoot(),
+      commitId,
+      commitId);
+
     if (myCurrentCommit.getParentCount() > 0) {
       for (RevCommit parent : myCurrentCommit.getParents()) {
         parseBody(parent);
