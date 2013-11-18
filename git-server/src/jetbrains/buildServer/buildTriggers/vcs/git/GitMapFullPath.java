@@ -175,23 +175,27 @@ public class GitMapFullPath {
     }
 
     RevWalk revWalk = new RevWalk(db);
-    revWalk.sort(RevSort.TOPO);
-    for (ObjectId id : updatedHeads) {
-      RevObject obj = revWalk.parseAny(id);
-      if (obj.getType() == Constants.OBJ_COMMIT)
-        revWalk.markStart((RevCommit) obj);
+    try {
+      revWalk.sort(RevSort.TOPO);
+      for (ObjectId id : updatedHeads) {
+        RevObject obj = revWalk.parseAny(id);
+        if (obj.getType() == Constants.OBJ_COMMIT)
+          revWalk.markStart((RevCommit) obj);
+      }
+      for (ObjectId id : uninteresting) {
+        RevObject obj = revWalk.parseAny(id);
+        if (obj.getType() == Constants.OBJ_COMMIT)
+          revWalk.markUninteresting((RevCommit) obj);
+      }
+      Set<String> newCommits = new HashSet<String>();
+      RevCommit newCommit = null;
+      while ((newCommit = revWalk.next()) != null) {
+        newCommits.add(newCommit.name());
+      }
+      return newCommits;
+    } finally {
+      revWalk.dispose();
     }
-    for (ObjectId id : uninteresting) {
-      RevObject obj = revWalk.parseAny(id);
-      if (obj.getType() == Constants.OBJ_COMMIT)
-        revWalk.markUninteresting((RevCommit) obj);
-    }
-    Set<String> newCommits = new HashSet<String>();
-    RevCommit newCommit = null;
-    while ((newCommit = revWalk.next()) != null) {
-      newCommits.add(newCommit.name());
-    }
-    return newCommits;
   }
 
   /**
