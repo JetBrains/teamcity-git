@@ -17,11 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.locks.Lock;
-
 import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilder;
@@ -44,6 +39,11 @@ import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.locks.Lock;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
@@ -332,7 +332,10 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
 
-  public void fetch(Repository db, URIish fetchURI, Collection<RefSpec> refspecs, AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+  public void fetch(@NotNull Repository db,
+                    @NotNull URIish fetchURI,
+                    @NotNull Collection<RefSpec> refspecs,
+                    @NotNull AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
     Lock rmLock = myRepositoryManager.getRmLock(repositoryDir).readLock();

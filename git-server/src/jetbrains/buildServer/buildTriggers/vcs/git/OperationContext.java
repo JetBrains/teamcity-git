@@ -22,9 +22,11 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.TeamCitySubmoduleR
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.jetbrains.annotations.NotNull;
@@ -34,8 +36,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy.getPolicyWithErrorsIgnored;
 import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIteratorFactory.create;
@@ -52,6 +53,7 @@ public class OperationContext {
   private final VcsRoot myRoot;
   private final String myOperation;
   private final Map<String, Repository> myRepositories = new HashMap<String, Repository>(); //repository path -> repository
+  private final Set<String> myAlreadyFetched = new HashSet<String>();
 
   public OperationContext(@NotNull final GitVcsSupport support,
                           @NotNull final RepositoryManager repositoryManager,
@@ -106,8 +108,35 @@ public class OperationContext {
     return new GitVcsRoot(myRepositoryManager, root);
   }
 
-  private GitVcsRoot createGitRoot(VcsRoot root) throws VcsException {
-    return new GitVcsRoot(myRepositoryManager, root);
+  public void fetchSubmodule(@NotNull Repository db,
+                             @NotNull URIish fetchURI,
+                             @NotNull Collection<RefSpec> refSpecs,
+                             @NotNull AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+    if (alreadyFetched(fetchURI, refSpecs))
+      return;
+    try {
+      mySupport.fetch(db, fetchURI, refSpecs, auth);
+    } finally {
+      markAsFetched(fetchURI, refSpecs);
+    }
+  }
+
+  private boolean alreadyFetched(@NotNull URIish uri, @NotNull Collection<RefSpec> refSpecs) {
+    return myAlreadyFetched.contains(makeKey(uri, refSpecs));
+  }
+
+  private void markAsFetched(@NotNull URIish uri, @NotNull Collection<RefSpec> refSpecs) {
+    myAlreadyFetched.add(makeKey(uri, refSpecs));
+  }
+
+  @NotNull
+  private String makeKey(@NotNull URIish uri, @NotNull Collection<RefSpec> refSpecs) {
+    StringBuilder key = new StringBuilder();
+    key.append(uri.toASCIIString());
+    for (RefSpec refSpec : refSpecs) {
+      key.append(refSpec.toString());
+    }
+    return key.toString();
   }
 
   public VcsException wrapException(Exception ex) {
