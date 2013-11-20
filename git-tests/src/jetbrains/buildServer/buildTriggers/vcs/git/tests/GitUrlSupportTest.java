@@ -59,11 +59,6 @@ public class GitUrlSupportTest extends BaseTestCase {
   }
 
   @Test
-  public void test_get_provider_schema() {
-    assertEquals("git:ssh", mySupport.getProviderSchema());
-  }
-
-  @Test
   public void test_convert() throws MalformedURLException, VcsException, URISyntaxException {
     List<String> urls = Arrays.asList("scm:git:git://github.com/path_to_repository",
                                       "scm:git:http://github.com/path_to_repository",
