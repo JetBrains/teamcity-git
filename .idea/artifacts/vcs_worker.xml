@@ -1,0 +1,21 @@
+<component name="ArtifactManager">
+  <artifact name="vcs-worker">
+    <output-path>$PROJECT_DIR$/out/artifacts/vcs_worker</output-path>
+    <properties id="ant-postprocessing">
+      <options enabled="true">
+        <file>file://$PROJECT_DIR$/build/ant.build.xml</file>
+        <target>replace-tokens-in-teamcity-plugin-xml</target>
+      </options>
+    </properties>
+    <root id="root">
+      <element id="file-copy" path="$PROJECT_DIR$/teamcity-plugin.dist.xml" output-file-name="teamcity-plugin.xml" />
+      <element id="directory" name="lib">
+        <element id="library" level="project" name="jgit" />
+        <element id="library" level="project" name="jsch-0.1.50" />
+        <element id="library" level="project" name="quartz-1.6.0" />
+        <element id="artifact" artifact-name="git-common.jar" />
+        <element id="artifact" artifact-name="git-server.jar" />
+      </element>
+    </root>
+  </artifact>
+</component>

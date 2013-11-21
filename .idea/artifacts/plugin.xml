@@ -32,6 +32,11 @@
         </element>
       </element>
       <element id="file-copy" path="$PROJECT_DIR$/teamcity-plugin.dist.xml" output-file-name="teamcity-plugin.xml" />
+      <element id="directory" name="vcs-worker">
+        <element id="archive" name="jetbrains.git.zip">
+          <element id="artifact" artifact-name="vcs-worker" />
+        </element>
+      </element>
     </root>
   </artifact>
 </component>
