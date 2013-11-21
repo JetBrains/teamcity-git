@@ -117,7 +117,7 @@ public class GitCommandLine extends GeneralCommandLine {
     return myRepeatOnEmptyOutput;
   }
 
-  private void addEnvParam(@NotNull String name, @NotNull String value) {
+  public void addEnvParam(@NotNull String name, @NotNull String value) {
     Map<String, String> existing = getEnvParams();
     if (existing == null)
       existing = new HashMap<String, String>();

@@ -16,15 +16,14 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.vcs.VcsException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.git4idea.ssh.GitSSHHandler;
 import org.jetbrains.git4idea.ssh.GitSSHService;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Vector;
 
 /**
@@ -49,22 +48,22 @@ public class SshHandler implements GitSSHService.Handler {
    * @param cmd the command line to register with
    * @throws VcsException if there is a problem with registering the handler
    */
-  public SshHandler(GitSSHService ssh, AuthSettings authSettings, GeneralCommandLine cmd) throws VcsException {
+  public SshHandler(@NotNull GitSSHService ssh,
+                    @NotNull AuthSettings authSettings,
+                    @NotNull GitCommandLine cmd) throws VcsException {
     mySsh = ssh;
     myAuthSettings = authSettings;
-    Map<String, String> env = new HashMap<String, String>(System.getenv());
-    env.put(GitSSHHandler.SSH_PORT_ENV, Integer.toString(mySsh.getXmlRcpPort()));
-    if (myAuthSettings.isIgnoreKnownHosts()) {
-      env.put(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV, "true");
-    }
+    cmd.setPassParentEnvs(true);
+    cmd.addEnvParam(GitSSHHandler.SSH_PORT_ENV, Integer.toString(mySsh.getXmlRcpPort()));
+    if (myAuthSettings.isIgnoreKnownHosts())
+      cmd.addEnvParam(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV, "true");
     try {
-      env.put(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath().toString());
+      cmd.addEnvParam(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath().toString());
     } catch (IOException e) {
       throw new VcsException("SSH script cannot be generated", e);
     }
     myHandlerNo = ssh.registerHandler(this);
-    env.put(GitSSHHandler.SSH_HANDLER_ENV, Integer.toString(myHandlerNo));
-    cmd.setEnvParams(env);
+    cmd.addEnvParam(GitSSHHandler.SSH_HANDLER_ENV, Integer.toString(myHandlerNo));
   }
 
   /**

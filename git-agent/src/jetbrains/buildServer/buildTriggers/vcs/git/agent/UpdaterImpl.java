@@ -16,15 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FilenameFilter;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
-import jetbrains.buildServer.agent.*;
+import jetbrains.buildServer.agent.AgentRunningBuild;
+import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
+import jetbrains.buildServer.agent.BuildProgressLogger;
+import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
@@ -32,7 +27,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Refs;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
@@ -41,6 +35,13 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.*;
 
@@ -192,38 +193,89 @@ public class UpdaterImpl implements Updater {
 
 
   private void checkoutSubmodules(@NotNull final File repositoryDir) throws VcsException {
-    File gitmodules = new File(repositoryDir, ".gitmodules");
-    if (gitmodules.exists()) {
+    File dotGitModules = new File(repositoryDir, ".gitmodules");
+    try {
+      Config config = readGitModules(dotGitModules);
+      if (config == null)
+        return;
+
       myLogger.message("Checkout submodules in " + repositoryDir);
       GitFacade git = myGitFactory.create(repositoryDir);
       git.submoduleInit().call();
       git.submoduleSync().call();
+
+      Set<String> urlsForAuth = getUrlsForAuthentication(config);
       git.submoduleUpdate()
         .setAuthSettings(myRoot.getAuthSettings())
         .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
+        .setUrlForAuth(urlsForAuth)
         .setTimeout(SILENT_TIMEOUT)
         .call();
 
       if (recursiveSubmoduleCheckout()) {
-        try {
-          String gitmodulesContents = FileUtil.readText(gitmodules);
-          Config config = new Config();
-          config.fromText(gitmodulesContents);
-
-          Set<String> submodules = config.getSubsections("submodule");
-          for (String submoduleName : submodules) {
-            String submodulePath = config.getString("submodule", submoduleName, "path");
-            checkoutSubmodules(new File(repositoryDir, submodulePath.replaceAll("/", Matcher.quoteReplacement(File.separator))));
-          }
-        } catch (IOException e) {
-          throw new VcsException("Error while reading " + gitmodules, e);
-        } catch (ConfigInvalidException e) {
-          throw new VcsException("Error while parsing " + gitmodules, e);
+        for (String submodulePath : getSubmodulePaths(config)) {
+          checkoutSubmodules(new File(repositoryDir, submodulePath));
         }
       }
+
+    } catch (IOException e) {
+      throw new VcsException("Error while reading " + dotGitModules, e);
+    } catch (ConfigInvalidException e) {
+      throw new VcsException("Error while parsing " + dotGitModules, e);
     }
   }
 
+
+  @Nullable
+  private Config readGitModules(@NotNull File dotGitModules) throws IOException, ConfigInvalidException {
+    if (!dotGitModules.exists())
+      return null;
+    String content = FileUtil.readText(dotGitModules);
+    Config config = new Config();
+    config.fromText(content);
+    return config;
+  }
+
+
+  private Set<String> getUrlsForAuthentication(@NotNull Config config) {
+    if (!myPluginConfig.isUseMainRepoUserForSubmodules())
+      return Collections.emptySet();
+    Set<String> urls = new HashSet<String>();
+    Set<String> submodules = config.getSubsections("submodule");
+    for (String submoduleName : submodules) {
+      String url = config.getString("submodule", submoduleName, "url");
+      if (url != null && isRequireAuth(url))
+        urls.add(url);
+    }
+    return urls;
+  }
+
+
+  private boolean isRequireAuth(@NotNull String url) {
+    try {
+      URIish uri = new URIish(url);
+      String scheme = uri.getScheme();
+      if (scheme == null || "git".equals(scheme)) //no auth for anonymous protocol and for local repositories
+        return false;
+      String user = uri.getUser();
+      if (user != null) //respect a user specified in config
+        return false;
+      return true;
+    } catch (URISyntaxException e) {
+      return false;
+    }
+  }
+
+
+  private Set<String> getSubmodulePaths(@NotNull Config config) {
+    Set<String> paths = new HashSet<String>();
+    Set<String> submodules = config.getSubsections("submodule");
+    for (String submoduleName : submodules) {
+      String submodulePath = config.getString("submodule", submoduleName, "path");
+      paths.add(submodulePath.replaceAll("/", Matcher.quoteReplacement(File.separator)));
+    }
+    return paths;
+  }
 
   private boolean recursiveSubmoduleCheckout() {
     return SubmodulesCheckoutPolicy.CHECKOUT.equals(myRoot.getSubmodulesCheckoutPolicy()) ||

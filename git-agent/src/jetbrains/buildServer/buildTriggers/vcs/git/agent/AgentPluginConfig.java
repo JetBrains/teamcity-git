@@ -32,6 +32,8 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isDeleteTempFiles();
 
+  boolean isUseMainRepoUserForSubmodules();
+
   @NotNull
   GitVersion getGitVersion();
 
