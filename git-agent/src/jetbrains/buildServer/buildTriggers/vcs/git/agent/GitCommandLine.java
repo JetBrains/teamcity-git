@@ -32,7 +32,9 @@ import org.jetbrains.annotations.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GitCommandLine extends GeneralCommandLine {
 
@@ -67,6 +69,7 @@ public class GitCommandLine extends GeneralCommandLine {
                 FileUtil.delete(askPass);
             }
           });
+          addEnvParam("GIT_ASKPASS", askPass.getAbsolutePath());
         } catch (IOException e) {
           throw new VcsException(e);
         }
@@ -112,5 +115,14 @@ public class GitCommandLine extends GeneralCommandLine {
 
   public boolean isRepeatOnEmptyOutput() {
     return myRepeatOnEmptyOutput;
+  }
+
+  private void addEnvParam(@NotNull String name, @NotNull String value) {
+    Map<String, String> existing = getEnvParams();
+    if (existing == null)
+      existing = new HashMap<String, String>();
+    Map<String, String> newParams = new HashMap<String, String>(existing);
+    newParams.put(name, value);
+    setEnvParams(newParams);
   }
 }
