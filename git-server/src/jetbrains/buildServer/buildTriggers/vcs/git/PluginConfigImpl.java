@@ -76,7 +76,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
 
   public static boolean isTeamcitySshKeysEnabled() {
-    return TeamCityProperties.getBoolean("teamcity.git.enableTeamcitySshKeys");
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.enableTeamcitySshKeys");
   }
 
 
