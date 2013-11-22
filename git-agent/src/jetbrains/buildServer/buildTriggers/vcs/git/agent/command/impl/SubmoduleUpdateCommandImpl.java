@@ -80,7 +80,7 @@ public class SubmoduleUpdateCommandImpl implements SubmoduleUpdateCommand {
     if (user == null)
       return;
     for (String url : myUrlsForAuth) {
-      myCmd.addParameters("-c", "core." + url + ".username=" + user);
+      myCmd.addParameters("-c", "credential." + url + ".username=" + user);
     }
   }
 }
