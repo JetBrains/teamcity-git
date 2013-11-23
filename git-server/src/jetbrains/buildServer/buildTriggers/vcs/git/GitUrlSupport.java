@@ -38,7 +38,7 @@ public class GitUrlSupport implements UrlSupport {
 
   @Nullable
   public Map<String, String> convertToVcsRootProperties(@NotNull VcsUrl url) throws VcsException {
-    VcsUrl vcsUrl = url.asMavenVcsUrl();
+    MavenVcsUrl vcsUrl = url.asMavenVcsUrl();
     if (vcsUrl == null) return null;
 
     final String providerSchema = vcsUrl.getProviderSchema();
