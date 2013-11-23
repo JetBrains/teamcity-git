@@ -109,7 +109,7 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   @Test
   public void convert_scp_like_syntax_with_credentials() throws Exception {
-    MavenVcsUrl url = new MavenVcsUrl("scm:git:git@github.com:user/repo.git", "user", "pass");
+    MavenVcsUrl url = new MavenVcsUrl("scm:git:git@github.com:user/repo.git", new Credentials("user", "pass"));
     GitVcsRoot root = toGitRoot(url);
     assertEquals(new URIish("user@github.com:user/repo.git"), root.getRepositoryFetchURL());
     assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
@@ -122,15 +122,15 @@ public class GitUrlSupportTest extends BaseTestCase {
     if (url.getProviderSpecificPart().startsWith("ssh")) {
       assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
       assertTrue(root.getAuthSettings().isIgnoreKnownHosts());
-      assertEquals(url.getUsername(), root.getAuthSettings().toMap().get(Constants.USERNAME));
+      assertEquals(url.getCredentials().getUsername(), root.getAuthSettings().toMap().get(Constants.USERNAME));
       assertNull(root.getAuthSettings().toMap().get(Constants.PASSWORD));
     } else {
-      if (url.getUsername() != null && url.getPassword() != null &&
-          !StringUtil.isEmptyOrSpaces(url.getUsername()) &&
-          !StringUtil.isEmptyOrSpaces(url.getPassword())) {
+      if (url.getCredentials() != null &&
+          !StringUtil.isEmptyOrSpaces(url.getCredentials().getUsername()) &&
+          !StringUtil.isEmptyOrSpaces(url.getCredentials().getPassword())) {
         assertEquals(AuthenticationMethod.PASSWORD, root.getAuthSettings().getAuthMethod());
-        assertEquals(url.getUsername(), root.getAuthSettings().toMap().get(Constants.USERNAME));
-        assertEquals(url.getPassword(), root.getAuthSettings().toMap().get(Constants.PASSWORD));
+        assertEquals(url.getCredentials().getUsername(), root.getAuthSettings().toMap().get(Constants.USERNAME));
+        assertEquals(url.getCredentials().getPassword(), root.getAuthSettings().toMap().get(Constants.PASSWORD));
       } else {
         assertEquals(AuthenticationMethod.ANONYMOUS, root.getAuthSettings().getAuthMethod());
         assertNull(root.getAuthSettings().toMap().get(Constants.USERNAME));
