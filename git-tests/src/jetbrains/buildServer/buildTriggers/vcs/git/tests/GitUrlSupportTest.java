@@ -22,7 +22,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsUrl;
+import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.transport.URIish;
 import org.testng.annotations.AfterMethod;
@@ -68,7 +68,7 @@ public class GitUrlSupportTest extends BaseTestCase {
                                       "scm:git:ssh://github.com/nd/regex.git/pom.xml");
 
     for (String url : urls) {
-      VcsUrl vcsUrl = new VcsUrl(url);
+      MavenVcsUrl vcsUrl = new MavenVcsUrl(url);
       GitVcsRoot root = toGitRoot(vcsUrl);
       assertEquals(new URIish(vcsUrl.getProviderSpecificPart()), root.getRepositoryFetchURL());
       checkAuthMethod(vcsUrl, root);
@@ -77,7 +77,7 @@ public class GitUrlSupportTest extends BaseTestCase {
     String user = "user";
     String pass = "pass";
     for (String url : urls) {
-      VcsUrl vcsUrl = new VcsUrl(url, user, pass);
+      MavenVcsUrl vcsUrl = new MavenVcsUrl(url, new Credentials(user, pass));
       GitVcsRoot s = toGitRoot(vcsUrl);
       checkAuthMethod(vcsUrl, s);
     }
@@ -86,7 +86,7 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   @Test
   public void should_throw_exception_when_url_incorrect() throws MalformedURLException, VcsException {
-    VcsUrl url = new VcsUrl("scm:svn:ssh://svn.repo.com/path_to_repository");
+    MavenVcsUrl url = new MavenVcsUrl("scm:svn:ssh://svn.repo.com/path_to_repository");
     try {
       toGitRoot(url);
       fail("Should fail here");
@@ -99,7 +99,7 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   @Test
   public void convert_scp_like_syntax() throws Exception {
-    VcsUrl url = new VcsUrl("scm:git:git@github.com:user/repo.git");
+    MavenVcsUrl url = new MavenVcsUrl("scm:git:git@github.com:user/repo.git");
     GitVcsRoot root = toGitRoot(url);
     assertEquals(new URIish(url.getProviderSpecificPart()), root.getRepositoryFetchURL());
     assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
@@ -109,7 +109,7 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   @Test
   public void convert_scp_like_syntax_with_credentials() throws Exception {
-    VcsUrl url = new VcsUrl("scm:git:git@github.com:user/repo.git", "user", "pass");
+    MavenVcsUrl url = new MavenVcsUrl("scm:git:git@github.com:user/repo.git", "user", "pass");
     GitVcsRoot root = toGitRoot(url);
     assertEquals(new URIish("user@github.com:user/repo.git"), root.getRepositoryFetchURL());
     assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
@@ -118,7 +118,7 @@ public class GitUrlSupportTest extends BaseTestCase {
   }
 
 
-  private void checkAuthMethod(VcsUrl url, GitVcsRoot root) {
+  private void checkAuthMethod(MavenVcsUrl url, GitVcsRoot root) {
     if (url.getProviderSpecificPart().startsWith("ssh")) {
       assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
       assertTrue(root.getAuthSettings().isIgnoreKnownHosts());
@@ -139,7 +139,7 @@ public class GitUrlSupportTest extends BaseTestCase {
     }
   }
 
-  private GitVcsRoot toGitRoot(VcsUrl url) throws VcsException {
+  private GitVcsRoot toGitRoot(MavenVcsUrl url) throws VcsException {
     Map<String, String> properties = mySupport.convertToVcsRootProperties(url);
     VcsRootImpl myRoot = new VcsRootImpl(1, properties);
     return new GitVcsRoot(myMirrorManager, myRoot);
