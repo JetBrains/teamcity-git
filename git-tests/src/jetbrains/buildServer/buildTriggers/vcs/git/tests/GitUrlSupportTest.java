@@ -122,7 +122,9 @@ public class GitUrlSupportTest extends BaseTestCase {
     if (url.getProviderSpecificPart().startsWith("ssh")) {
       assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
       assertTrue(root.getAuthSettings().isIgnoreKnownHosts());
-      assertEquals(url.getCredentials().getUsername(), root.getAuthSettings().toMap().get(Constants.USERNAME));
+      if (url.getCredentials() != null) {
+        assertEquals(url.getCredentials().getUsername(), root.getAuthSettings().toMap().get(Constants.USERNAME));
+      }
       assertNull(root.getAuthSettings().toMap().get(Constants.PASSWORD));
     } else {
       if (url.getCredentials() != null &&
