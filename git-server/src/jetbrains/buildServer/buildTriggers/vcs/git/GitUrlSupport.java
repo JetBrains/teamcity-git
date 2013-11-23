@@ -37,8 +37,8 @@ public class GitUrlSupport implements UrlSupport {
   private static final Collection<String> PROVIDER_SCHEMA_LIST = StringUtil.split(PROVIDER_SCHEMA, ":");
 
   @Nullable
-  public Map<String, String> convertToVcsRootProperties(@NotNull String url) throws VcsException {
-    VcsUrl vcsUrl = parseUrl(url);
+  public Map<String, String> convertToVcsRootProperties(@NotNull VcsUrl url) throws VcsException {
+    VcsUrl vcsUrl = url.asMavenVcsUrl();
     if (vcsUrl == null) return null;
 
     final String providerSchema = vcsUrl.getProviderSchema();
@@ -52,29 +52,24 @@ public class GitUrlSupport implements UrlSupport {
       throw new VcsException(e.getMessage(), e);
     }
 
+    Credentials credentials = vcsUrl.getCredentials();
     Map<String, String> result = new HashMap<String, String>();
     result.put(Constants.FETCH_URL, vcsUrl.getProviderSpecificPart());
-    result.put(Constants.USERNAME, vcsUrl.getUsername());
+    if (credentials != null) {
+      result.put(Constants.USERNAME, vcsUrl.getUsername());
+    }
     final boolean scpSyntax = isScpSyntax(uri);
     if (scpSyntax || "ssh".equals(uri.getScheme())) {
-      if (scpSyntax && vcsUrl.getUsername() == null) {
+      if (scpSyntax && credentials == null) {
         result.put(Constants.USERNAME, uri.getUser());
       }
       result.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString());
       result.put(Constants.IGNORE_KNOWN_HOSTS, "true");
-    } else if (vcsUrl.getPassword() != null && !StringUtil.isEmptyOrSpaces(vcsUrl.getProviderSpecificPart())) {
+    } else if (credentials != null && !StringUtil.isEmptyOrSpaces(vcsUrl.getProviderSpecificPart())) {
       result.put(Constants.AUTH_METHOD, AuthenticationMethod.PASSWORD.toString());
-      result.put(Constants.PASSWORD, vcsUrl.getPassword());
+      result.put(Constants.PASSWORD, credentials.getPassword());
     }
     return result;
-  }
-
-  private VcsUrl parseUrl(@NotNull final String url) {
-    try {
-      return new VcsUrl(url);
-    } catch (MalformedURLException e) {
-      return null;
-    }
   }
 
   private boolean isScpSyntax(URIish uriish) {

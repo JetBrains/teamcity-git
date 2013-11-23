@@ -140,7 +140,7 @@ public class GitUrlSupportTest extends BaseTestCase {
   }
 
   private GitVcsRoot toGitRoot(VcsUrl url) throws VcsException {
-    Map<String, String> properties = mySupport.convertToVcsRootProperties(url.getUrl());
+    Map<String, String> properties = mySupport.convertToVcsRootProperties(url);
     VcsRootImpl myRoot = new VcsRootImpl(1, properties);
     return new GitVcsRoot(myMirrorManager, myRoot);
   }
