@@ -56,7 +56,7 @@ public class GitUrlSupport implements UrlSupport {
     Map<String, String> result = new HashMap<String, String>();
     result.put(Constants.FETCH_URL, vcsUrl.getProviderSpecificPart());
     if (credentials != null) {
-      result.put(Constants.USERNAME, vcsUrl.getUsername());
+      result.put(Constants.USERNAME, credentials.getUsername());
     }
     final boolean scpSyntax = isScpSyntax(uri);
     if (scpSyntax || "ssh".equals(uri.getScheme())) {
