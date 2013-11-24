@@ -65,21 +65,22 @@ public class GitUrlSupport implements UrlSupport {
     }
 
     Credentials credentials = url.getCredentials();
-    Map<String, String> props = new HashMap<String, String>();
+    Map<String, String> props = new HashMap<String, String>(myGitSupport.getDefaultVcsProperties());
     props.put(Constants.FETCH_URL, fetchUrl);
+    props.put(Constants.AUTH_METHOD, AuthenticationMethod.ANONYMOUS.toString());
+
     if (credentials != null) {
+      props.put(Constants.AUTH_METHOD, AuthenticationMethod.PASSWORD.toString());
       props.put(Constants.USERNAME, credentials.getUsername());
+      props.put(Constants.PASSWORD, credentials.getPassword());
     }
+
     final boolean scpSyntax = isScpSyntax(uri);
     if (scpSyntax || "ssh".equals(uri.getScheme())) {
       if (scpSyntax && credentials == null) {
         props.put(Constants.USERNAME, uri.getUser());
       }
       props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString());
-      props.put(Constants.IGNORE_KNOWN_HOSTS, "true");
-    } else if (credentials != null && !StringUtil.isEmptyOrSpaces(fetchUrl)) {
-      props.put(Constants.AUTH_METHOD, AuthenticationMethod.PASSWORD.toString());
-      props.put(Constants.PASSWORD, credentials.getPassword());
     }
 
     if (testRequired) {

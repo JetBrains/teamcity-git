@@ -124,7 +124,21 @@ public class GitUrlSupportTest extends BaseTestCase {
     VcsUrl url = new VcsUrl("http://git.jetbrains.org/teamcity/git-plugin.git");
     GitVcsRoot root = toGitRoot(url);
 
-    assertEquals("http://git.jetbrains.org/teamcity/git-plugin.git", root.getRepositoryFetchURL().toString());
+    assertEquals("http://git.jetbrains.org/teamcity/git-plugin.git", root.getProperty(Constants.FETCH_URL));
+    assertEquals("refs/heads/master", root.getProperty(Constants.BRANCH_NAME));
+    assertEquals(AuthenticationMethod.ANONYMOUS.name(), root.getProperty(Constants.AUTH_METHOD));
+  }
+
+  @Test
+  public void http_protocol_with_credentials() throws Exception {
+    VcsUrl url = new VcsUrl("http://git.jetbrains.org/teamcity/git-plugin.git", new Credentials("user1", "pwd1"));
+    GitVcsRoot root = toGitRoot(url);
+
+    assertEquals("http://git.jetbrains.org/teamcity/git-plugin.git", root.getProperty(Constants.FETCH_URL));
+    assertEquals("refs/heads/master", root.getProperty(Constants.BRANCH_NAME));
+    assertEquals(AuthenticationMethod.PASSWORD.name(), root.getProperty(Constants.AUTH_METHOD));
+    assertEquals("user1", root.getProperty(Constants.USERNAME));
+    assertEquals("pwd1", root.getProperty(Constants.PASSWORD));
   }
 
   @Test
