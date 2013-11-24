@@ -340,7 +340,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @Override
   public UrlSupport getUrlSupport() {
-    return new GitUrlSupport();
+    return new GitUrlSupport(this);
   }
 
 

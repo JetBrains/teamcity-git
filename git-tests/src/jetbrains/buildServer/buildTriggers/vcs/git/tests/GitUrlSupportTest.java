@@ -25,6 +25,7 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -36,21 +37,25 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
+
 /**
  * @author dmitry.neverov
  */
 public class GitUrlSupportTest extends BaseTestCase {
 
   private TempFiles myTempFiles = new TempFiles();
-  private GitUrlSupport mySupport;
+  private GitUrlSupport myUrlSupport;
   private MirrorManager myMirrorManager;
 
   @BeforeMethod
   public void setUp() throws IOException {
-    mySupport = new GitUrlSupport();
     ServerPaths paths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
     PluginConfig config = new PluginConfigBuilder(paths).build();
     myMirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+
+    GitVcsSupport vcsSupport = gitSupport().withServerPaths(paths).build();
+    myUrlSupport = new GitUrlSupport(vcsSupport);
   }
 
   @AfterMethod
@@ -86,8 +91,8 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   @Test
   public void should_throw_exception_when_url_incorrect() throws MalformedURLException, VcsException {
-    MavenVcsUrl url = new MavenVcsUrl("scm:svn:ssh://svn.repo.com/path_to_repository");
-    assertNull(mySupport.convertToVcsRootProperties(url));
+    VcsUrl url = new VcsUrl("scm:svn:ssh://svn.repo.com/path_to_repository");
+    assertNull(myUrlSupport.convertToVcsRootProperties(url));
   }
 
 
@@ -103,12 +108,29 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   @Test
   public void convert_scp_like_syntax_with_credentials() throws Exception {
-    MavenVcsUrl url = new MavenVcsUrl("scm:git:git@github.com:user/repo.git", new Credentials("user", "pass"));
+    VcsUrl url = new VcsUrl("scm:git:git@github.com:user/repo.git", new Credentials("user", "pass"));
     GitVcsRoot root = toGitRoot(url);
     assertEquals(new URIish("user@github.com:user/repo.git"), root.getRepositoryFetchURL());
     assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
     assertEquals("user", root.getAuthSettings().toMap().get(Constants.USERNAME));
     assertNull(root.getAuthSettings().toMap().get(Constants.PASSWORD));
+
+    assertEquals(root.getProperties(),
+                 myUrlSupport.convertToVcsRootProperties(new VcsUrl("git@github.com:user/repo.git", new Credentials("user", "pass"))));
+  }
+
+  @Test
+  public void http_protocol() throws Exception {
+    VcsUrl url = new VcsUrl("http://git.jetbrains.org/teamcity/git-plugin.git");
+    GitVcsRoot root = toGitRoot(url);
+
+    assertEquals("http://git.jetbrains.org/teamcity/git-plugin.git", root.getRepositoryFetchURL().toString());
+  }
+
+  @Test
+  public void http_protocol_svn_repo() throws Exception {
+    VcsUrl url = new VcsUrl("http://svn.jetbrains.org/teamcity/plugins/xml-tests-reporting/trunk/");
+    assertNull(myUrlSupport.convertToVcsRootProperties(url));
   }
 
 
@@ -135,8 +157,8 @@ public class GitUrlSupportTest extends BaseTestCase {
     }
   }
 
-  private GitVcsRoot toGitRoot(MavenVcsUrl url) throws VcsException {
-    Map<String, String> properties = mySupport.convertToVcsRootProperties(url);
+  private GitVcsRoot toGitRoot(@NotNull VcsUrl url) throws VcsException {
+    Map<String, String> properties = myUrlSupport.convertToVcsRootProperties(url);
     VcsRootImpl myRoot = new VcsRootImpl(1, properties);
     return new GitVcsRoot(myMirrorManager, myRoot);
   }

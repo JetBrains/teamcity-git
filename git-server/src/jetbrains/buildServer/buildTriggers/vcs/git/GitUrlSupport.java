@@ -18,6 +18,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
+import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.eclipse.jgit.errors.NoRemoteRepositoryException;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -35,41 +37,62 @@ public class GitUrlSupport implements UrlSupport {
 
   private static final String PROVIDER_SCHEMA = "git:ssh";
   private static final Collection<String> PROVIDER_SCHEMA_LIST = StringUtil.split(PROVIDER_SCHEMA, ":");
+  private final GitVcsSupport myGitSupport;
+
+  public GitUrlSupport(@NotNull GitVcsSupport gitSupport) {
+    myGitSupport = gitSupport;
+  }
 
   @Nullable
   public Map<String, String> convertToVcsRootProperties(@NotNull VcsUrl url) throws VcsException {
+    String fetchUrl = url.getUrl();
+    boolean testRequired = !fetchUrl.contains("git");
     MavenVcsUrl vcsUrl = url.asMavenVcsUrl();
-    if (vcsUrl == null) return null;
+    if (vcsUrl != null) {
+      final String providerSchema = vcsUrl.getProviderSchema();
+      if(!PROVIDER_SCHEMA_LIST.contains(providerSchema))
+        return null;
 
-    final String providerSchema = vcsUrl.getProviderSchema();
-    if(!PROVIDER_SCHEMA_LIST.contains(providerSchema))
-      return null;
+      fetchUrl = vcsUrl.getProviderSpecificPart();
+      testRequired = false;
+    }
 
     URIish uri;
     try {
-      uri = new URIish(vcsUrl.getProviderSpecificPart());
+      uri = new URIish(fetchUrl);
     } catch (URISyntaxException e) {
       throw new VcsException(e.getMessage(), e);
     }
 
-    Credentials credentials = vcsUrl.getCredentials();
-    Map<String, String> result = new HashMap<String, String>();
-    result.put(Constants.FETCH_URL, vcsUrl.getProviderSpecificPart());
+    Credentials credentials = url.getCredentials();
+    Map<String, String> props = new HashMap<String, String>();
+    props.put(Constants.FETCH_URL, fetchUrl);
     if (credentials != null) {
-      result.put(Constants.USERNAME, credentials.getUsername());
+      props.put(Constants.USERNAME, credentials.getUsername());
     }
     final boolean scpSyntax = isScpSyntax(uri);
     if (scpSyntax || "ssh".equals(uri.getScheme())) {
       if (scpSyntax && credentials == null) {
-        result.put(Constants.USERNAME, uri.getUser());
+        props.put(Constants.USERNAME, uri.getUser());
       }
-      result.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString());
-      result.put(Constants.IGNORE_KNOWN_HOSTS, "true");
-    } else if (credentials != null && !StringUtil.isEmptyOrSpaces(vcsUrl.getProviderSpecificPart())) {
-      result.put(Constants.AUTH_METHOD, AuthenticationMethod.PASSWORD.toString());
-      result.put(Constants.PASSWORD, credentials.getPassword());
+      props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString());
+      props.put(Constants.IGNORE_KNOWN_HOSTS, "true");
+    } else if (credentials != null && !StringUtil.isEmptyOrSpaces(fetchUrl)) {
+      props.put(Constants.AUTH_METHOD, AuthenticationMethod.PASSWORD.toString());
+      props.put(Constants.PASSWORD, credentials.getPassword());
     }
-    return result;
+
+    if (testRequired) {
+      try {
+        myGitSupport.getCurrentVersion(new VcsRootImpl(-1, Constants.VCS_NAME, props));
+      } catch (VcsException e) {
+        if (e.getCause() instanceof NoRemoteRepositoryException) {
+          return null; // definitely not git
+        }
+      }
+    }
+
+    return props;
   }
 
   private boolean isScpSyntax(URIish uriish) {
