@@ -87,13 +87,7 @@ public class GitUrlSupportTest extends BaseTestCase {
   @Test
   public void should_throw_exception_when_url_incorrect() throws MalformedURLException, VcsException {
     MavenVcsUrl url = new MavenVcsUrl("scm:svn:ssh://svn.repo.com/path_to_repository");
-    try {
-      toGitRoot(url);
-      fail("Should fail here");
-    } catch (VcsException e) {
-      assertTrue(true);
-      assertTrue(e.getMessage().contains("Unknown provider schema"));
-    }
+    assertNull(mySupport.convertToVcsRootProperties(url));
   }
 
 
