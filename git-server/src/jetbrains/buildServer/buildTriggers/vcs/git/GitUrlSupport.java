@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.errors.NoRemoteRepositoryException;
@@ -24,9 +23,7 @@ import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.net.MalformedURLException;
 import java.net.URISyntaxException;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,8 +32,6 @@ import java.util.Map;
  */
 public class GitUrlSupport implements UrlSupport {
 
-  private static final String PROVIDER_SCHEMA = "git:ssh";
-  private static final Collection<String> PROVIDER_SCHEMA_LIST = StringUtil.split(PROVIDER_SCHEMA, ":");
   private final GitVcsSupport myGitSupport;
 
   public GitUrlSupport(@NotNull GitVcsSupport gitSupport) {
@@ -45,17 +40,11 @@ public class GitUrlSupport implements UrlSupport {
 
   @Nullable
   public Map<String, String> convertToVcsRootProperties(@NotNull VcsUrl url) throws VcsException {
-    String fetchUrl = url.getUrl();
-    boolean testRequired = !fetchUrl.contains("git");
-    MavenVcsUrl vcsUrl = url.asMavenVcsUrl();
-    if (vcsUrl != null) {
-      final String providerSchema = vcsUrl.getProviderSchema();
-      if(!PROVIDER_SCHEMA_LIST.contains(providerSchema))
-        return null;
+    String scmName = getMavenScmName(url);
+    if (scmName != null && !"git".equals(scmName)) //some other scm provider
+      return null;
 
-      fetchUrl = vcsUrl.getProviderSpecificPart();
-      testRequired = false;
-    }
+    String fetchUrl = getFetchUrl(url);
 
     URIish uri;
     try {
@@ -64,39 +53,63 @@ public class GitUrlSupport implements UrlSupport {
       throw new VcsException(e.getMessage(), e);
     }
 
-    Credentials credentials = url.getCredentials();
     Map<String, String> props = new HashMap<String, String>(myGitSupport.getDefaultVcsProperties());
     props.put(Constants.FETCH_URL, fetchUrl);
-    props.put(Constants.AUTH_METHOD, AuthenticationMethod.ANONYMOUS.toString());
+    props.putAll(getAuthSettings(url, uri));
 
-    if (credentials != null) {
-      props.put(Constants.AUTH_METHOD, AuthenticationMethod.PASSWORD.toString());
-      props.put(Constants.USERNAME, credentials.getUsername());
-      props.put(Constants.PASSWORD, credentials.getPassword());
-    }
+    if ("git".equals(scmName) || "git".equals(uri.getScheme())) //git protocol or git scm provider
+      return props;
 
-    final boolean scpSyntax = isScpSyntax(uri);
-    if (scpSyntax || "ssh".equals(uri.getScheme())) {
-      if (scpSyntax && credentials == null) {
-        props.put(Constants.USERNAME, uri.getUser());
-      }
-      props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString());
-    }
-
-    if (testRequired) {
-      try {
-        myGitSupport.getCurrentVersion(new VcsRootImpl(-1, Constants.VCS_NAME, props));
-      } catch (VcsException e) {
-        if (e.getCause() instanceof NoRemoteRepositoryException) {
-          return null; // definitely not git
-        }
+    try {
+      myGitSupport.getCurrentVersion(new VcsRootImpl(-1, Constants.VCS_NAME, props));
+    } catch (VcsException e) {
+      if (e.getCause() instanceof NoRemoteRepositoryException) {
+        return null; // definitely not git
       }
     }
 
     return props;
   }
 
+  @NotNull
+  private Map<String, String> getAuthSettings(@NotNull VcsUrl url, @NotNull URIish uri) {
+    Map<String, String> authSettings = new HashMap<String, String>();
+    authSettings.put(Constants.AUTH_METHOD, getAuthMethod(url, uri).toString());
+    Credentials credentials = url.getCredentials();
+    if (credentials != null) {
+      authSettings.put(Constants.USERNAME, credentials.getUsername());
+      authSettings.put(Constants.PASSWORD, credentials.getPassword());
+    } else {
+      authSettings.put(Constants.USERNAME, uri.getUser());
+    }
+    return authSettings;
+  }
+
+  private AuthenticationMethod getAuthMethod(@NotNull VcsUrl url, @NotNull URIish uri) {
+    if (isScpSyntax(uri) || "ssh".equals(uri.getScheme()))
+      return AuthenticationMethod.PRIVATE_KEY_DEFAULT;
+    if (url.getCredentials() != null)
+      return AuthenticationMethod.PASSWORD;
+    return AuthenticationMethod.ANONYMOUS;
+  }
+
+  @Nullable
+  private String getMavenScmName(@NotNull VcsUrl url) {
+    MavenVcsUrl mavenUrl = url.asMavenVcsUrl();
+    if (mavenUrl == null)
+      return null;
+    return mavenUrl.getProviderSchema();
+  }
+
+  @NotNull
+  private String getFetchUrl(@NotNull VcsUrl url) {
+    MavenVcsUrl mavenUrl = url.asMavenVcsUrl();
+    if (mavenUrl != null)
+      return mavenUrl.getProviderSpecificPart();
+    return url.getUrl();
+  }
+
   private boolean isScpSyntax(URIish uriish) {
-    return uriish.getScheme() == null;
+    return uriish.getScheme() == null && uriish.isRemote();
   }
 }

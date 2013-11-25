@@ -90,8 +90,11 @@ public class GitUrlSupportTest extends BaseTestCase {
 
 
   @Test
-  public void should_throw_exception_when_url_incorrect() throws MalformedURLException, VcsException {
+  public void should_not_throw_exception_when_url_is_from_other_provider() throws MalformedURLException, VcsException {
     VcsUrl url = new VcsUrl("scm:svn:ssh://svn.repo.com/path_to_repository");
+    assertNull(myUrlSupport.convertToVcsRootProperties(url));
+
+    url = new VcsUrl("svn://svn.repo.com/path_to_repository");
     assertNull(myUrlSupport.convertToVcsRootProperties(url));
   }
 
@@ -145,6 +148,21 @@ public class GitUrlSupportTest extends BaseTestCase {
   public void http_protocol_svn_repo() throws Exception {
     VcsUrl url = new VcsUrl("http://svn.jetbrains.org/teamcity/plugins/xml-tests-reporting/trunk/");
     assertNull(myUrlSupport.convertToVcsRootProperties(url));
+  }
+
+  @Test
+  public void should_not_use_private_key_for_local_repository() throws VcsException {
+    VcsUrl url = new VcsUrl("/home/user/repository.git");
+    GitVcsRoot root = toGitRoot(url);
+    assertEquals(AuthenticationMethod.ANONYMOUS.name(), root.getProperty(Constants.AUTH_METHOD));
+  }
+
+
+  @Test
+  public void should_use_username_from_url() throws Exception {
+    VcsUrl url = new VcsUrl("scm:git:http://teamcity@acme.com/repository.git");
+    GitVcsRoot root = toGitRoot(url);
+    assertEquals("teamcity", root.getProperty(Constants.USERNAME));
   }
 
 
