@@ -39,9 +39,8 @@ import org.jetbrains.annotations.Nullable;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
+import java.net.URISyntaxException;
+import java.util.*;
 import java.util.regex.Matcher;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.*;
@@ -194,12 +193,19 @@ public class UpdaterImpl implements Updater {
 
 
   private void checkoutSubmodules(@NotNull final File repositoryDir) throws VcsException {
-    File gitmodules = new File(repositoryDir, ".gitmodules");
-    if (gitmodules.exists()) {
+    File dotGitModules = new File(repositoryDir, ".gitmodules");
+    try {
+      Config gitModules = readGitModules(dotGitModules);
+      if (gitModules == null)
+        return;
+
       myLogger.message("Checkout submodules in " + repositoryDir);
       GitFacade git = myGitFactory.create(repositoryDir);
       git.submoduleInit().call();
       git.submoduleSync().call();
+
+      addSubmoduleUsernames(repositoryDir, gitModules);
+
       git.submoduleUpdate()
         .setAuthSettings(myRoot.getAuthSettings())
         .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
@@ -207,25 +213,84 @@ public class UpdaterImpl implements Updater {
         .call();
 
       if (recursiveSubmoduleCheckout()) {
-        try {
-          String gitmodulesContents = FileUtil.readText(gitmodules);
-          Config config = new Config();
-          config.fromText(gitmodulesContents);
-
-          Set<String> submodules = config.getSubsections("submodule");
-          for (String submoduleName : submodules) {
-            String submodulePath = config.getString("submodule", submoduleName, "path");
-            checkoutSubmodules(new File(repositoryDir, submodulePath.replaceAll("/", Matcher.quoteReplacement(File.separator))));
-          }
-        } catch (IOException e) {
-          throw new VcsException("Error while reading " + gitmodules, e);
-        } catch (ConfigInvalidException e) {
-          throw new VcsException("Error while parsing " + gitmodules, e);
+        for (String submodulePath : getSubmodulePaths(gitModules)) {
+          checkoutSubmodules(new File(repositoryDir, submodulePath));
         }
       }
+
+    } catch (IOException e) {
+      throw new VcsException("Error while reading " + dotGitModules, e);
+    } catch (ConfigInvalidException e) {
+      throw new VcsException("Error while parsing " + dotGitModules, e);
     }
   }
 
+
+  private void addSubmoduleUsernames(@NotNull File repositoryDir, @NotNull Config gitModules) throws IOException, ConfigInvalidException {
+    if (!myPluginConfig.isUseMainRepoUserForSubmodules())
+      return;
+
+    AuthSettings auth = myRoot.getAuthSettings();
+    final String userName = auth.getUserName();
+    if (userName == null)
+      return;
+
+    Repository r = new RepositoryBuilder().setBare().setGitDir(new File(repositoryDir, ".git")).build();
+    StoredConfig gitConfig = r.getConfig();
+    if (gitConfig == null)
+      return;
+
+    Set<String> submodules = gitModules.getSubsections("submodule");
+    for (String submoduleName : submodules) {
+      String url = gitModules.getString("submodule", submoduleName, "url");
+      if (url == null || !isRequireAuth(url))
+        continue;
+      try {
+        URIish uri = new URIish(url);
+        gitConfig.setString("submodule", submoduleName, "url", uri.setUser(userName).toASCIIString());
+      } catch (URISyntaxException e) {
+      }
+    }
+    gitConfig.save();
+  }
+
+
+  @Nullable
+  private Config readGitModules(@NotNull File dotGitModules) throws IOException, ConfigInvalidException {
+    if (!dotGitModules.exists())
+      return null;
+    String content = FileUtil.readText(dotGitModules);
+    Config config = new Config();
+    config.fromText(content);
+    return config;
+  }
+
+
+  private boolean isRequireAuth(@NotNull String url) {
+    try {
+      URIish uri = new URIish(url);
+      String scheme = uri.getScheme();
+      if (scheme == null || "git".equals(scheme)) //no auth for anonymous protocol and for local repositories
+        return false;
+      String user = uri.getUser();
+      if (user != null) //respect a user specified in config
+        return false;
+      return true;
+    } catch (URISyntaxException e) {
+      return false;
+    }
+  }
+
+
+  private Set<String> getSubmodulePaths(@NotNull Config config) {
+    Set<String> paths = new HashSet<String>();
+    Set<String> submodules = config.getSubsections("submodule");
+    for (String submoduleName : submodules) {
+      String submodulePath = config.getString("submodule", submoduleName, "path");
+      paths.add(submodulePath.replaceAll("/", Matcher.quoteReplacement(File.separator)));
+    }
+    return paths;
+  }
 
   private boolean recursiveSubmoduleCheckout() {
     return SubmodulesCheckoutPolicy.CHECKOUT.equals(myRoot.getSubmodulesCheckoutPolicy()) ||
