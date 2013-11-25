@@ -20,8 +20,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Set;
-
 /**
  * @author dmitry.neverov
  */
@@ -35,9 +33,6 @@ public interface SubmoduleUpdateCommand {
 
   @NotNull
   SubmoduleUpdateCommand setTimeout(int timeout);
-
-  @NotNull
-  SubmoduleUpdateCommand setUrlForAuth(@NotNull Set<String> urls);
 
   void call() throws VcsException;
 }

@@ -195,8 +195,8 @@ public class UpdaterImpl implements Updater {
   private void checkoutSubmodules(@NotNull final File repositoryDir) throws VcsException {
     File dotGitModules = new File(repositoryDir, ".gitmodules");
     try {
-      Config config = readGitModules(dotGitModules);
-      if (config == null)
+      Config gitModules = readGitModules(dotGitModules);
+      if (gitModules == null)
         return;
 
       myLogger.message("Checkout submodules in " + repositoryDir);
@@ -204,16 +204,16 @@ public class UpdaterImpl implements Updater {
       git.submoduleInit().call();
       git.submoduleSync().call();
 
-      Set<String> urlsForAuth = getUrlsForAuthentication(config);
+      addSubmoduleUsernames(repositoryDir, gitModules);
+
       git.submoduleUpdate()
         .setAuthSettings(myRoot.getAuthSettings())
         .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
-        .setUrlForAuth(urlsForAuth)
         .setTimeout(SILENT_TIMEOUT)
         .call();
 
       if (recursiveSubmoduleCheckout()) {
-        for (String submodulePath : getSubmodulePaths(config)) {
+        for (String submodulePath : getSubmodulePaths(gitModules)) {
           checkoutSubmodules(new File(repositoryDir, submodulePath));
         }
       }
@@ -226,6 +226,35 @@ public class UpdaterImpl implements Updater {
   }
 
 
+  private void addSubmoduleUsernames(@NotNull File repositoryDir, @NotNull Config gitModules) throws IOException, ConfigInvalidException {
+    if (!myPluginConfig.isUseMainRepoUserForSubmodules())
+      return;
+
+    AuthSettings auth = myRoot.getAuthSettings();
+    final String userName = auth.getUserName();
+    if (userName == null)
+      return;
+
+    Repository r = new RepositoryBuilder().setBare().setGitDir(new File(repositoryDir, ".git")).build();
+    StoredConfig gitConfig = r.getConfig();
+    if (gitConfig == null)
+      return;
+
+    Set<String> submodules = gitModules.getSubsections("submodule");
+    for (String submoduleName : submodules) {
+      String url = gitModules.getString("submodule", submoduleName, "url");
+      if (url == null || !isRequireAuth(url))
+        continue;
+      try {
+        URIish uri = new URIish(url);
+        gitConfig.setString("submodule", submoduleName, "url", uri.setUser(userName).toASCIIString());
+      } catch (URISyntaxException e) {
+      }
+    }
+    gitConfig.save();
+  }
+
+
   @Nullable
   private Config readGitModules(@NotNull File dotGitModules) throws IOException, ConfigInvalidException {
     if (!dotGitModules.exists())
@@ -234,20 +263,6 @@ public class UpdaterImpl implements Updater {
     Config config = new Config();
     config.fromText(content);
     return config;
-  }
-
-
-  private Set<String> getUrlsForAuthentication(@NotNull Config config) {
-    if (!myPluginConfig.isUseMainRepoUserForSubmodules())
-      return Collections.emptySet();
-    Set<String> urls = new HashSet<String>();
-    Set<String> submodules = config.getSubsections("submodule");
-    for (String submoduleName : submodules) {
-      String url = config.getString("submodule", submoduleName, "url");
-      if (url != null && isRequireAuth(url))
-        urls.add(url);
-    }
-    return urls;
   }
 
 

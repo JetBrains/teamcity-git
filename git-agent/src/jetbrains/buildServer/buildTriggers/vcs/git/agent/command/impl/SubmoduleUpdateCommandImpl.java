@@ -22,9 +22,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleUpdate
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
 
 /**
@@ -36,7 +33,6 @@ public class SubmoduleUpdateCommandImpl implements SubmoduleUpdateCommand {
   private boolean myUseNativeSsh;
   private AuthSettings myAuthSettings;
   private int myTimeout;
-  private Set<String> myUrlsForAuth = new HashSet<String>();
 
   public SubmoduleUpdateCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
@@ -60,27 +56,11 @@ public class SubmoduleUpdateCommandImpl implements SubmoduleUpdateCommand {
     return this;
   }
 
-  @NotNull
-  public SubmoduleUpdateCommand setUrlForAuth(@NotNull Set<String> urls) {
-    myUrlsForAuth.addAll(urls);
-    return this;
-  }
-
   public void call() throws VcsException {
-    addCredentials();
     myCmd.addParameter("submodule");
     myCmd.addParameter("update");
     myCmd.run(with().timeout(myTimeout)
             .authSettings(myAuthSettings)
             .useNativeSsh(myUseNativeSsh));
-  }
-
-  private void addCredentials() {
-    String user = myAuthSettings.getUserName();
-    if (user == null)
-      return;
-    for (String url : myUrlsForAuth) {
-      myCmd.addParameters("-c", "credential." + url + ".username=" + user);
-    }
   }
 }
