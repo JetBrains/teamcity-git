@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.SystemInfo;
+import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -34,14 +35,17 @@ public class NativeGitFacade implements GitFacade {
   private final AskPassGenerator myAskPassGen;
   private final String myGitPath;
   private final File myRepositoryDir;
+  private final File myTmpDir;
   private final boolean myDeleteTempFiles;
   private VcsRootSshKeyManager mySshKeyManager;
 
   public NativeGitFacade(@NotNull GitAgentSSHService ssh,
                          @NotNull String gitPath,
                          @NotNull File repositoryDir,
+                         @NotNull File tmpDir,
                          boolean deleteTempFiles) {
     mySsh = ssh;
+    myTmpDir = tmpDir;
     myAskPassGen = makeAskPassGen();
     myGitPath = gitPath;
     myRepositoryDir = repositoryDir;
@@ -50,6 +54,7 @@ public class NativeGitFacade implements GitFacade {
 
   public NativeGitFacade(@NotNull String gitPath) {
     mySsh = null;
+    myTmpDir = new File(FileUtil.getTempDirectory());
     myAskPassGen = makeAskPassGen();
     myGitPath = gitPath;
     myRepositoryDir = new File(".");
@@ -172,7 +177,7 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   private AskPassGenerator makeAskPassGen() {
-    return SystemInfo.isUnix ? new UnixAskPassGen(new EscapeEchoArgumentUnix()) : new WinAskPassGen(new EscapeEchoArgumentWin());
+    return SystemInfo.isUnix ? new UnixAskPassGen(myTmpDir, new EscapeEchoArgumentUnix()) : new WinAskPassGen(myTmpDir, new EscapeEchoArgumentWin());
   }
 
 }

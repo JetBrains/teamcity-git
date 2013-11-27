@@ -28,15 +28,18 @@ import java.io.PrintWriter;
 
 public class UnixAskPassGen implements AskPassGenerator {
 
+  private final File myTempDir;
   private final EscapeEchoArgument myEscaper;
 
-  public UnixAskPassGen(@NotNull EscapeEchoArgument escaper) {
+  public UnixAskPassGen(@NotNull File tempDir,
+                        @NotNull EscapeEchoArgument escaper) {
+    myTempDir = tempDir;
     myEscaper = escaper;
   }
 
   @NotNull
   public File generate(@NotNull AuthSettings authSettings) throws IOException {
-    File script = FileUtil.createTempFile("pass", "");
+    File script = FileUtil.createTempFile(myTempDir, "pass", "", true);
     PrintWriter out = null;
     try {
       out = new PrintWriter(new FileWriter(script));

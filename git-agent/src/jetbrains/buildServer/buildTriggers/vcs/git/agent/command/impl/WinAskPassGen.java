@@ -28,15 +28,18 @@ import java.io.PrintWriter;
 
 public class WinAskPassGen implements AskPassGenerator {
 
+  private final File myTempDir;
   private final EscapeEchoArgument myEscaper;
 
-  public WinAskPassGen(@NotNull EscapeEchoArgument escaper) {
+  public WinAskPassGen(@NotNull File tempDir,
+                       @NotNull EscapeEchoArgument escaper) {
+    myTempDir = tempDir;
     myEscaper = escaper;
   }
 
   @NotNull
   public File generate(@NotNull AuthSettings authSettings) throws IOException {
-    File script = FileUtil.createTempFile("pass", ".bat");
+    File script = FileUtil.createTempFile(myTempDir, "pass", ".bat", true);
     PrintWriter out = null;
     try {
       out = new PrintWriter(new FileWriter(script));

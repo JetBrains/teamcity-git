@@ -27,17 +27,20 @@ public class GitFactoryImpl implements GitFactory {
 
   private final GitAgentSSHService mySsh;
   private final AgentPluginConfig myPluginConfig;
+  private final File myTmpDir;
 
   public GitFactoryImpl(@NotNull GitAgentSSHService ssh,
-                        @NotNull AgentPluginConfig pluginConfig) {
+                        @NotNull AgentPluginConfig pluginConfig,
+                        @NotNull File tmpDir) {
     mySsh = ssh;
     myPluginConfig = pluginConfig;
+    myTmpDir = tmpDir;
   }
 
 
   @NotNull
   public GitFacade create(@NotNull File repositoryDir) {
-    NativeGitFacade git = new NativeGitFacade(mySsh, myPluginConfig.getPathToGit(), repositoryDir, myPluginConfig.isDeleteTempFiles());
+    NativeGitFacade git = new NativeGitFacade(mySsh, myPluginConfig.getPathToGit(), repositoryDir, myTmpDir, myPluginConfig.isDeleteTempFiles());
     git.setSshKeyManager(mySsh.getSshKeyManager());
     return git;
   }

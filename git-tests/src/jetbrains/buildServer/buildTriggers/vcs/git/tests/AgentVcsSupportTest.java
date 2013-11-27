@@ -722,6 +722,7 @@ public class AgentVcsSupportTest {
     myMockery.checking(new Expectations() {{
       allowing(build).getBuildLogger(); will(returnValue(myLogger));
       allowing(build).getSharedConfigParameters(); will(returnValue(sharedConfigParameters));
+      allowing(build).getBuildTempDirectory(); will(returnValue(new File(FileUtil.getTempDirectory())));
     }});
     return build;
   }
@@ -758,7 +759,10 @@ public class AgentVcsSupportTest {
 
   private class PushCommand {
     void run(String gitPath, String workDirectory) throws Exception {
-      GitCommandLine cmd = new GitCommandLine(null, SystemInfo.isUnix ? new UnixAskPassGen(new EscapeEchoArgumentUnix()) : new WinAskPassGen(new EscapeEchoArgumentWin()), true);
+      File tmpDir = new File(FileUtil.getTempDirectory());
+      GitCommandLine cmd = new GitCommandLine(null, SystemInfo.isUnix ? new UnixAskPassGen(tmpDir, new EscapeEchoArgumentUnix())
+                                                                      : new WinAskPassGen(tmpDir, new EscapeEchoArgumentWin()),
+                                              true);
       cmd.setExePath(gitPath);
       cmd.setWorkingDirectory(new File(workDirectory));
       cmd.addParameters("push", "origin", "master");
