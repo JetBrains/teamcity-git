@@ -762,6 +762,7 @@ public class AgentVcsSupportTest {
       File tmpDir = new File(FileUtil.getTempDirectory());
       GitCommandLine cmd = new GitCommandLine(null, SystemInfo.isUnix ? new UnixAskPassGen(tmpDir, new EscapeEchoArgumentUnix())
                                                                       : new WinAskPassGen(tmpDir, new EscapeEchoArgumentWin()),
+                                              tmpDir,
                                               true);
       cmd.setExePath(gitPath);
       cmd.setWorkingDirectory(new File(workDirectory));

@@ -1,5 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests.command;
 
+import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
@@ -31,7 +32,8 @@ public class FetchCommandImplTest {
       }
     };
 
-    GitCommandLine failedCmd = new GitCommandLine(null, fakeGen, false) {
+    File tmpDir = new File(FileUtil.getTempDirectory());
+    GitCommandLine failedCmd = new GitCommandLine(null, fakeGen, tmpDir, false) {
       @Override
       public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
         throw new VcsException("fatal: index file smaller than expected");

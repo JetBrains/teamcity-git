@@ -42,6 +42,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private final GitAgentSSHService mySsh;
   private final AskPassGenerator myAskPassGen;
   private final List<Runnable> myPostActions = new ArrayList<Runnable>();
+  private final File myTmpDir;
   private final boolean myDeleteTempFiles;
   private File myWorkingDirectory;
   private boolean myRepeatOnEmptyOutput = false;
@@ -49,9 +50,11 @@ public class GitCommandLine extends GeneralCommandLine {
 
   public GitCommandLine(@Nullable GitAgentSSHService ssh,
                         @NotNull AskPassGenerator askPassGen,
+                        @NotNull File tmpDir,
                         boolean deleteTempFiles) {
     mySsh = ssh;
     myAskPassGen = askPassGen;
+    myTmpDir = tmpDir;
     myDeleteTempFiles = deleteTempFiles;
   }
 
@@ -79,7 +82,7 @@ public class GitCommandLine extends GeneralCommandLine {
       if (settings.isUseNativeSsh()) {
         return CommandUtil.runCommand(this, settings.getTimeout());
       } else {
-        SshHandler h = new SshHandler(mySsh, mySshKeyManager, authSettings, this);
+        SshHandler h = new SshHandler(mySsh, mySshKeyManager, authSettings, this, myTmpDir);
         try {
           return CommandUtil.runCommand(this, settings.getTimeout());
         } finally {

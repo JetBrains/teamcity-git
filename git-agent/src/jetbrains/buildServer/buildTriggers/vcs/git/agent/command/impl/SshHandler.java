@@ -61,7 +61,8 @@ public class SshHandler implements GitSSHService.Handler {
   public SshHandler(@NotNull GitSSHService ssh,
                     @Nullable VcsRootSshKeyManager sshKeyManager,
                     @NotNull AuthSettings authSettings,
-                    @NotNull GitCommandLine cmd) throws VcsException {
+                    @NotNull GitCommandLine cmd,
+                    @NotNull File tmpDir) throws VcsException {
     mySsh = ssh;
     myAuthSettings = authSettings;
     cmd.setPassParentEnvs(true);
@@ -76,7 +77,7 @@ public class SshHandler implements GitSSHService.Handler {
           TeamCitySshKey key = sshKeyManager.getKey(root);
           if (key != null) {
             try {
-              File privateKey = FileUtil.createTempFile("key", "");
+              File privateKey = FileUtil.createTempFile(tmpDir, "key", "", true);
               myFilesToClean.add(privateKey);
               FileUtil.writeFileAndReportErrors(privateKey, new String(key.getPrivateKey()));
               cmd.addEnvParam(GitSSHHandler.TEAMCITY_PRIVATE_KEY_PATH, privateKey.getCanonicalPath());
