@@ -79,7 +79,7 @@ public class GitUrlSupport implements UrlSupport {
     if (credentials != null) {
       authSettings.put(Constants.USERNAME, credentials.getUsername());
       authSettings.put(Constants.PASSWORD, credentials.getPassword());
-    } else {
+    } else if (uri.getUser() != null) {
       authSettings.put(Constants.USERNAME, uri.getUser());
     }
     return authSettings;
