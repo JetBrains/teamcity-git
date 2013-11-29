@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.buildTriggers.vcs.AbstractVcsPropertiesProcessor;
 import jetbrains.buildServer.serverSide.InvalidProperty;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -71,9 +72,9 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
       }
     }
     if (authenticationMethod == AuthenticationMethod.TEAMCITY_SSH_KEY) {
-      String keyId = properties.get(Constants.TEAMCITY_SSH_KEY_ID);
+      String keyId = properties.get(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME);
       if (isEmpty(keyId))
-        rc.add(new InvalidProperty(Constants.TEAMCITY_SSH_KEY_ID, "The TeamCity SSH key must be specified."));
+        rc.add(new InvalidProperty(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME, "The TeamCity SSH key must be specified."));
     }
     return rc;
   }
