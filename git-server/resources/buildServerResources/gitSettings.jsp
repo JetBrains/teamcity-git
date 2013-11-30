@@ -101,7 +101,7 @@
     <tr class="advancedSetting">
       <th><label for="userForTags">Username for tags/merge:</label></th>
       <td><props:textProperty name="userForTags"/>
-        <div class="smallNote" style="margin: 0">Format: User Name &lt;email&gt;</div>
+        <div class="smallNote" style="margin: 0">Format: Username &lt;email&gt;</div>
       </td>
     </tr>
   </l:settingsGroup>
@@ -127,10 +127,10 @@
       </td>
     </tr>
     <tr id="gitUsername">
-      <th><label for="username">User name:</label></th>
+      <th><label for="username">Username:</label></th>
       <td><props:textProperty name="username"/>
         <div class="smallNote" style="margin: 0">Username must be specified if there is no username in the clone URL.
-          The user name specified here overrides username from URL.
+          The username specified here overrides username from URL.
         </div>
       </td>
     </tr>
