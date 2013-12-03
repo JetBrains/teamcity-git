@@ -42,7 +42,7 @@ import java.util.*;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
-import static jetbrains.buildServer.util.CollectionsUtil.setOf;
+import static jetbrains.buildServer.util.CollectionsUtil.asMap;
 
 
 /**
@@ -433,14 +433,17 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   @Override
   public Map<String, String> getCheckoutProperties(@NotNull VcsRoot root) throws VcsException {
-    Set<String> repositoryPropertyKeys = setOf(Constants.FETCH_URL,
-                                               Constants.SUBMODULES_CHECKOUT,
-                                               Constants.AGENT_CLEAN_POLICY,
-                                               Constants.AGENT_CLEAN_FILES_POLICY);
+    Map<String, String> significantProps = asMap(Constants.FETCH_URL, "",
+                                               Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.IGNORE.name(),
+                                               Constants.AGENT_CLEAN_POLICY, AgentCleanPolicy.ON_BRANCH_CHANGE.name(),
+                                               Constants.AGENT_CLEAN_FILES_POLICY, AgentCleanFilesPolicy.ALL_UNTRACKED.name());
     Map<String, String> rootProperties = root.getProperties();
     Map<String, String> repositoryProperties = new HashMap<String, String>();
-    for (String key : repositoryPropertyKeys)
-      repositoryProperties.put(key, rootProperties.get(key));
+    for (Map.Entry<String, String> e : significantProps.entrySet()) {
+      String defVal = e.getValue();
+      String actualVal = rootProperties.get(e.getKey());
+      repositoryProperties.put(e.getKey(), actualVal == null ? defVal : actualVal);
+    }
 
     //include autocrlf settings only for non-default value
     //in order to avoid clean checkout
