@@ -51,7 +51,7 @@
     <tr>
       <th><label for="branch">Default branch: <l:star/></label></th>
       <td>
-        <props:textProperty name="branch"/>
+        <props:textProperty name="branch" className="longField"/>
         <div class="smallNote" style="margin: 0">Branch to be used if no branch from Branch Specification is set</div>
         <span class="error" id="error_branch"></span>
       </td>
@@ -61,12 +61,12 @@
       <th><label for="reportTagRevisions">Use tags as branches:</label></th>
       <td>
         <props:checkboxProperty name="reportTagRevisions"/>
-        <div class="smallNote" style="margin: 0">If enabled tags can be used in branch specification</div>
+        <label for="reportTagRevisions">If enabled tags can be used in branch specification</label>
       </td>
     </tr>
     <tr class="advancedSetting">
       <th><label for="usernameStyle">Username style:</label></th>
-      <td><props:selectProperty name="usernameStyle" enableFilter="true">
+      <td><props:selectProperty name="usernameStyle" enableFilter="true" className="mediumField">
         <props:option value="USERID">UserId</props:option>
         <props:option value="NAME">Author Name</props:option>
         <props:option value="FULL">Author Name and Email</props:option>
@@ -89,7 +89,7 @@
     </tr>
     <tr class="advancedSetting">
       <th><label for="submoduleCheckout">Submodules:</label></th>
-      <td><props:selectProperty name="submoduleCheckout" enableFilter="true">
+      <td><props:selectProperty name="submoduleCheckout" enableFilter="true" className="mediumField">
         <props:option value="IGNORE">Ignore</props:option>
         <props:option value="CHECKOUT">Checkout</props:option>
       </props:selectProperty>
@@ -100,7 +100,7 @@
     </tr>
     <tr class="advancedSetting">
       <th><label for="userForTags">Username for tags/merge:</label></th>
-      <td><props:textProperty name="userForTags"/>
+      <td><props:textProperty name="userForTags" className="longField"/>
         <div class="smallNote" style="margin: 0">Format: Username &lt;email&gt;</div>
       </td>
     </tr>
@@ -109,7 +109,7 @@
     <tr>
       <th><label for="authMethod">Authentication method:</label></th>
       <td>
-        <props:selectProperty name="authMethod" onchange="gitSelectAuthentication()" enableFilter="true">
+        <props:selectProperty name="authMethod" onchange="gitSelectAuthentication()" enableFilter="true" className="mediumField">
           <props:option value="ANONYMOUS">Anonymous</props:option>
           <props:option value="PRIVATE_KEY_DEFAULT">Default Private Key</props:option>
           <props:option value="PASSWORD">Password</props:option>
@@ -128,7 +128,7 @@
     </tr>
     <tr id="gitUsername">
       <th><label for="username">Username:</label></th>
-      <td><props:textProperty name="username"/>
+      <td><props:textProperty name="username" className="longField"/>
         <div class="smallNote" style="margin: 0">Username must be specified if there is no username in the clone URL.
           The username specified here overrides username from URL.
         </div>
@@ -140,7 +140,7 @@
     </tr>
     <tr id="gitPasswordRow">
       <th><label for="secure:password">Password:</label></th>
-      <td><props:passwordProperty name="secure:password"/></td>
+      <td><props:passwordProperty name="secure:password" className="longField"/></td>
     </tr>
     <tr id="gitPrivateKeyRow">
       <th><label for="privateKeyPath">Private key path: <l:star/></label></th>
@@ -163,7 +163,7 @@
     </tr>
     <tr id="gitPassphraseRow">
       <th><label for="secure:passphrase">Passphrase:</label></th>
-      <td><props:passwordProperty name="secure:passphrase"/></td>
+      <td><props:passwordProperty name="secure:passphrase" className="longField"/></td>
     </tr>
   </l:settingsGroup>
   <l:settingsGroup title="Server Settings" className="advancedSetting">
@@ -202,7 +202,7 @@
     </tr>
     <tr class="advancedSetting">
       <th><label for="agentCleanPolicy">Clean policy:</label></th>
-      <td><props:selectProperty name="agentCleanPolicy" enableFilter="true">
+      <td><props:selectProperty name="agentCleanPolicy" enableFilter="true" className="mediumField">
         <props:option value="ON_BRANCH_CHANGE">On Branch Change</props:option>
         <props:option value="ALWAYS">Always</props:option>
         <props:option value="NEVER">Never</props:option>
@@ -213,7 +213,7 @@
     </tr>
     <tr class="advancedSetting">
       <th><label for="agentCleanFilesPolicy">Clean files policy:</label></th>
-      <td><props:selectProperty name="agentCleanFilesPolicy" enableFilter="true">
+      <td><props:selectProperty name="agentCleanFilesPolicy" enableFilter="true" className="mediumField">
         <props:option value="ALL_UNTRACKED">All untracked files</props:option>
         <props:option value="IGNORED_ONLY">All ignored untracked files</props:option>
         <props:option value="NON_IGNORED_ONLY">All non-ignored untracked files</props:option>
