@@ -81,7 +81,8 @@ public class SshHandler implements GitSSHService.Handler {
               myFilesToClean.add(privateKey);
               FileUtil.writeFileAndReportErrors(privateKey, new String(key.getPrivateKey()));
               cmd.addEnvParam(GitSSHHandler.TEAMCITY_PRIVATE_KEY_PATH, privateKey.getCanonicalPath());
-//              cmd.addEnvParam(GitSSHHandler.TEAMCITY_PASSPHRASE, key.getPassphrase() != null ? key.getPassphrase() : "");
+              String passphrase = myAuthSettings.getPassphrase();
+              cmd.addEnvParam(GitSSHHandler.TEAMCITY_PASSPHRASE, passphrase != null ? passphrase : "");
             } catch (Exception e) {
               throw new VcsException(e);
             }
