@@ -133,6 +133,16 @@ public class GitUrlSupportTest extends BaseTestCase {
   }
 
   @Test
+  public void ssh_protocol() throws Exception {
+    VcsUrl url = new VcsUrl("ssh://git@git.labs.intellij.net/teamcity/jgit.git");
+    GitVcsRoot root = toGitRoot(url);
+
+    assertEquals("ssh://git@git.labs.intellij.net/teamcity/jgit.git", root.getProperty(Constants.FETCH_URL));
+    assertEquals("refs/heads/master", root.getProperty(Constants.BRANCH_NAME));
+    assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT.name(), root.getProperty(Constants.AUTH_METHOD));
+  }
+
+  @Test
   public void http_protocol_with_credentials() throws Exception {
     VcsUrl url = new VcsUrl("http://git.jetbrains.org/teamcity/git-plugin.git", new Credentials("user1", "pwd1"));
     GitVcsRoot root = toGitRoot(url);
@@ -191,6 +201,7 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   private GitVcsRoot toGitRoot(@NotNull VcsUrl url) throws VcsException {
     Map<String, String> properties = myUrlSupport.convertToVcsRootProperties(url);
+    assertNotNull(properties);
     VcsRootImpl myRoot = new VcsRootImpl(1, properties);
     return new GitVcsRoot(myMirrorManager, myRoot);
   }

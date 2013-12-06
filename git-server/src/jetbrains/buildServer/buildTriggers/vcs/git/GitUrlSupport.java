@@ -41,7 +41,7 @@ public class GitUrlSupport implements UrlSupport {
   @Nullable
   public Map<String, String> convertToVcsRootProperties(@NotNull VcsUrl url) throws VcsException {
     String scmName = getMavenScmName(url);
-    if (scmName != null && !"git".equals(scmName)) //some other scm provider
+    if (scmName != null && !"git".equals(scmName) && !"ssh".equals(scmName)) //some other scm provider
       return null;
 
     String fetchUrl = getFetchUrl(url);
