@@ -230,9 +230,8 @@
     var c = $('authMethod');
     switch (c.value) {
       case 'TEAMCITY_SSH_KEY':
-        BS.Util.hide('gitPasswordRow', 'gitPrivateKeyRow', 'gitPassphraseRow');
-        BS.Util.show('gitUsername', 'gitKnownHosts');
-        BS.Util.show('gitTeamCityKeyRow');
+        BS.Util.hide('gitPasswordRow', 'gitPrivateKeyRow');
+        BS.Util.show('gitUsername', 'gitKnownHosts', 'gitPassphraseRow', 'gitTeamCityKeyRow');
         break;
       case 'PRIVATE_KEY_DEFAULT':
         BS.Util.hide('gitPasswordRow', 'gitPrivateKeyRow', 'gitPassphraseRow', 'gitTeamCityKeyRow');
