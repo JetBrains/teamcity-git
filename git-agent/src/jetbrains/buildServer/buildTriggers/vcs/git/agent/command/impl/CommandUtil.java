@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
-import java.io.File;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
@@ -27,6 +26,9 @@ import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -49,12 +51,21 @@ public class CommandUtil {
     Throwable exception = res.getException();
     String stderr = res.getStderr().trim();
     String stdout = res.getStdout().trim();
-    final String message = "'" + cmdName + "' command failed." +
+    String message = "'" + cmdName + "' command failed." +
             (!StringUtil.isEmpty(stdout) ? "\n" + "stdout: " + stdout : "") +
             (!StringUtil.isEmpty(stderr) ? "\n" + "stderr: " + stderr : "") +
             (exception != null ?  "\n" + "exception: " + exception.getLocalizedMessage() : "");
+    if (exception != null && isImportant(exception)) {
+      Writer stackWriter = new StringWriter();
+      exception.printStackTrace(new PrintWriter(stackWriter));
+      message += "\n" + stackWriter.toString();
+    }
     logMessage(message, errorsLogLevel);
     throw new VcsException(message);
+  }
+
+  private static boolean isImportant(Throwable e) {
+    return e instanceof NullPointerException;
   }
 
   /**
