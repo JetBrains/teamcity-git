@@ -24,9 +24,10 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     myVcs.addExtension(this);
   }
 
-  @NotNull
-  public List<CommitDataBean> collectCommits(@NotNull VcsRoot root,
-                                             @NotNull CheckoutRules rules) throws VcsException {
+  public void collectCommits(@NotNull final VcsRoot root,
+                             @NotNull final CheckoutRules rules,
+                             @NotNull final CommitsConsumer consumer) throws VcsException {
+
     OperationContext ctx = myVcs.createContext(root, "collecting commits");
     try {
       GitVcsRoot gitRoot = makeRootWithTags(ctx, root);
@@ -49,7 +50,6 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
       }
 
       Map<String, Set<String>> index = getCommitToRefIndex(currentState);
-      List<CommitDataBean> commits = new ArrayList<CommitDataBean>();
       RevCommit c;
       while ((c = walk.next()) != null) {
         final CommitDataBean commit = new CommitDataBean(c.getId().getName(), c.getId().getName(), c.getAuthorIdent().getWhen());
@@ -70,16 +70,14 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
           }
         }
 
-        commits.add(commit);
+        consumer.consumeCommit(commit);
       }
-      return commits;
     } catch (Exception e) {
       throw new VcsException(e);
     } finally {
       ctx.close();
     }
   }
-
 
   @NotNull
   private GitVcsRoot makeRootWithTags(@NotNull OperationContext ctx, @NotNull VcsRoot root) throws VcsException {

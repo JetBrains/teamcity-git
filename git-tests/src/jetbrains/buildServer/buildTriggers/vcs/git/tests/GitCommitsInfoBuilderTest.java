@@ -7,10 +7,9 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.vcs.CheckoutRules;
-import jetbrains.buildServer.vcs.CommitDataBean;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.*;
+import jetbrains.vcs.api.CommitInfo;
+import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -49,7 +48,13 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
   public void test() throws VcsException {
     VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myRepositoryDir)).withBranch("master").build();
     GitVcsSupport vcs = gitSupport().withServerPaths(myServerPaths).build();
-    List<CommitDataBean> commits = new GitCommitsInfoBuilder(vcs).collectCommits(root, CheckoutRules.DEFAULT);
+    final List<CommitInfo> commits = new ArrayList<CommitInfo>();
+
+    new GitCommitsInfoBuilder(vcs).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
+      public void consumeCommit(@NotNull CommitInfo commit) {
+        commits.add(commit);
+      }
+    });
     List<String> allCommits = asList(
       "ea5e05051fbfaa7d8da97586807b009cbfebae9d",
       "27de3d118ca320d3a8a08320ff05aa0567996590",
@@ -97,7 +102,7 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
     );
 
     List<String> reported = new ArrayList<String>();
-    for (CommitDataBean c : commits) {
+    for (CommitInfo c : commits) {
       reported.add(c.getVersion());
 
     }
