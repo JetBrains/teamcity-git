@@ -233,10 +233,35 @@ public class TransportFactoryImpl implements TransportFactory {
       final VcsRoot root = myAuthSettings.getRoot();
       if (root != null) {
         TeamCitySshKey sshKey = mySshKeyManager.getKey(root);
-        if (sshKey != null)
-          jsch.addIdentity("", sshKey.getPrivateKey(), null, myAuthSettings.getPassphrase() != null ? myAuthSettings.getPassphrase().getBytes() : null);
+        if (sshKey != null) {
+          try {
+            jsch.addIdentity("", sshKey.getPrivateKey(), null, myAuthSettings.getPassphrase() != null ? myAuthSettings.getPassphrase().getBytes() : null);
+          } catch (JSchException e) {
+            String keyName = root.getProperty(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME);
+            if (keyName == null)
+              throw e;
+            throw new JSchException(getErrorMessage(keyName, e), e);
+          }
+        }
       }
       return jsch;
+    }
+
+    @NotNull
+    private String getErrorMessage(@NotNull String keyName, @NotNull JSchException e) {
+      String msg = e.getMessage();
+      if (msg == null) {
+        LOG.debug("Error while loading an uploaded key '" + keyName + "'", e);
+        return "Error while loading an uploaded key '" + keyName + "'";
+      }
+      int idx = msg.indexOf("[B@");
+      if (idx >= 0) {
+        msg = msg.substring(0, idx);
+        msg = msg.trim();
+        if (msg.endsWith(":"))
+          msg = msg.substring(0, msg.length() - 1);
+      }
+      return "Error while loading an uploaded key '" + keyName + "': " + msg;
     }
 
     @Override
