@@ -42,7 +42,7 @@ import java.util.*;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
-import static jetbrains.buildServer.util.CollectionsUtil.asMap;
+import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
 
 /**
@@ -222,6 +222,7 @@ public class GitVcsSupport extends ServerVcsSupport
     return root.getProperty(Constants.FETCH_URL) + "#" + (branch == null ? "master" : branch);
   }
 
+  @NotNull
   public Map<String, String> getDefaultVcsProperties() {
     final HashMap<String, String> map = new HashMap<String, String>();
     map.put(Constants.BRANCH_NAME, "refs/heads/master");
@@ -229,6 +230,7 @@ public class GitVcsSupport extends ServerVcsSupport
     map.put(Constants.AGENT_CLEAN_POLICY, AgentCleanPolicy.ON_BRANCH_CHANGE.name());
     map.put(Constants.AGENT_CLEAN_FILES_POLICY, AgentCleanFilesPolicy.ALL_UNTRACKED.name());
     map.put(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.IGNORE.name());
+    map.put(Constants.SERVER_SIDE_AUTO_CRLF, "false");
     return map;
   }
 
@@ -433,16 +435,17 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   @Override
   public Map<String, String> getCheckoutProperties(@NotNull VcsRoot root) throws VcsException {
-    Map<String, String> significantProps = asMap(Constants.FETCH_URL, "",
-                                               Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.IGNORE.name(),
-                                               Constants.AGENT_CLEAN_POLICY, AgentCleanPolicy.ON_BRANCH_CHANGE.name(),
-                                               Constants.AGENT_CLEAN_FILES_POLICY, AgentCleanFilesPolicy.ALL_UNTRACKED.name());
+    Map<String, String> defaults = getDefaultVcsProperties();
+    Set<String> significantProps = setOf(Constants.FETCH_URL,
+                                                 Constants.SUBMODULES_CHECKOUT,
+                                                 Constants.AGENT_CLEAN_POLICY,
+                                                 Constants.AGENT_CLEAN_FILES_POLICY);
     Map<String, String> rootProperties = root.getProperties();
     Map<String, String> repositoryProperties = new HashMap<String, String>();
-    for (Map.Entry<String, String> e : significantProps.entrySet()) {
-      String defVal = e.getValue();
-      String actualVal = rootProperties.get(e.getKey());
-      repositoryProperties.put(e.getKey(), actualVal == null ? defVal : actualVal);
+    for (String key : significantProps) {
+      String defVal = defaults.get(key);
+      String actualVal = rootProperties.get(key);
+      repositoryProperties.put(key, actualVal == null ? defVal : actualVal);
     }
 
     //include autocrlf settings only for non-default value

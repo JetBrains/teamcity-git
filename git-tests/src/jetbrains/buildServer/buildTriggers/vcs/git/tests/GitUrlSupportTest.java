@@ -134,10 +134,10 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   @Test
   public void ssh_protocol() throws Exception {
-    VcsUrl url = new VcsUrl("ssh://git@git.labs.intellij.net/teamcity/jgit.git");
+    VcsUrl url = new VcsUrl("ssh://git@github.com:JetBrains/kotlin.git");
     GitVcsRoot root = toGitRoot(url);
 
-    assertEquals("ssh://git@git.labs.intellij.net/teamcity/jgit.git", root.getProperty(Constants.FETCH_URL));
+    assertEquals("ssh://git@github.com:JetBrains/kotlin.git", root.getProperty(Constants.FETCH_URL));
     assertEquals("refs/heads/master", root.getProperty(Constants.BRANCH_NAME));
     assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT.name(), root.getProperty(Constants.AUTH_METHOD));
   }
