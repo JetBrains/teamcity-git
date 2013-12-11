@@ -61,7 +61,7 @@ public class GitUrlSupport implements UrlSupport {
       return props;
 
     try {
-      myGitSupport.getCurrentVersion(new VcsRootImpl(-1, Constants.VCS_NAME, props));
+      myGitSupport.testConnection(new VcsRootImpl(-1, Constants.VCS_NAME, props));
     } catch (VcsException e) {
       if (e.getCause() instanceof NoRemoteRepositoryException) {
         return null; // definitely not git
