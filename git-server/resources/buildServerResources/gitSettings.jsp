@@ -115,7 +115,7 @@
           <props:option value="PASSWORD">Password</props:option>
           <props:option value="PRIVATE_KEY_FILE">Private Key</props:option>
           <c:if test="${teamcitySshKeysEnabled}">
-            <props:option value="TEAMCITY_SSH_KEY">TeamCity SSH Key</props:option>
+            <props:option value="TEAMCITY_SSH_KEY">Uploaded Key</props:option>
           </c:if>
         </props:selectProperty>
         <div id="sshPrivateKeyNote" class="smallNote" style="margin: 0">Valid only for SSH protocol and
