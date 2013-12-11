@@ -437,9 +437,9 @@ public class GitVcsSupport extends ServerVcsSupport
   public Map<String, String> getCheckoutProperties(@NotNull VcsRoot root) throws VcsException {
     Map<String, String> defaults = getDefaultVcsProperties();
     Set<String> significantProps = setOf(Constants.FETCH_URL,
-                                                 Constants.SUBMODULES_CHECKOUT,
-                                                 Constants.AGENT_CLEAN_POLICY,
-                                                 Constants.AGENT_CLEAN_FILES_POLICY);
+                                         Constants.SUBMODULES_CHECKOUT,
+                                         Constants.AGENT_CLEAN_POLICY,
+                                         Constants.AGENT_CLEAN_FILES_POLICY);
     Map<String, String> rootProperties = root.getProperties();
     Map<String, String> repositoryProperties = new HashMap<String, String>();
     for (String key : significantProps) {
