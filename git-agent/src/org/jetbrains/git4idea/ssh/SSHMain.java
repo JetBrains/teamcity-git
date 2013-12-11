@@ -142,7 +142,9 @@ public class SSHMain {
       System.exit(app.myExitCode);
     }
     catch (Throwable t) {
-      t.printStackTrace();
+      if (t instanceof NullPointerException)
+        t.printStackTrace();
+      System.err.println(t.getMessage());
       System.exit(1);
     }
   }
