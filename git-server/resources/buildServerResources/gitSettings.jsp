@@ -153,7 +153,7 @@
       <c:set var="projectId" value="${vcsPropertiesBean.belongsToProject.externalId}" scope="request"/>
     </c:if>
     <tr id="gitTeamCityKeyRow">
-      <th><label for="privateKeyPath">TeamCity SSH Key: <l:star/></label></th>
+      <th><label for="teamcitySshKey">Uploaded Key: <l:star/></label></th>
       <td>
         <admin:sshKeys projectId="${projectId}"/>
         <span class="error" id="error_teamcitySshKey"></span>
