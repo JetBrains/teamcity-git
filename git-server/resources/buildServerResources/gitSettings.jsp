@@ -111,12 +111,14 @@
       <td>
         <props:selectProperty name="authMethod" onchange="gitSelectAuthentication()" enableFilter="true" className="mediumField">
           <props:option value="ANONYMOUS">Anonymous</props:option>
-          <props:option value="PRIVATE_KEY_DEFAULT">Default Private Key</props:option>
           <props:option value="PASSWORD">Password</props:option>
-          <props:option value="PRIVATE_KEY_FILE">Private Key</props:option>
-          <c:if test="${teamcitySshKeysEnabled}">
-            <props:option value="TEAMCITY_SSH_KEY">Uploaded Key</props:option>
-          </c:if>
+          <optgroup label="Private Key">
+            <props:option value="PRIVATE_KEY_DEFAULT">Default Private Key</props:option>
+            <props:option value="PRIVATE_KEY_FILE">Custom Private Key</props:option>
+            <c:if test="${teamcitySshKeysEnabled}">
+              <props:option value="TEAMCITY_SSH_KEY">Uploaded Key</props:option>
+            </c:if>
+          </optgroup>
         </props:selectProperty>
         <div id="sshPrivateKeyNote" class="smallNote" style="margin: 0">Valid only for SSH protocol and
           applicable to both fetch and push urls.
@@ -133,10 +135,6 @@
           The username specified here overrides username from URL.
         </div>
       </td>
-    </tr>
-    <tr id="gitKnownHosts">
-      <th><label for="ignoreKnownHosts">Ignore known hosts database:</label></th>
-      <td><props:checkboxProperty name="ignoreKnownHosts"/></td>
     </tr>
     <tr id="gitPasswordRow">
       <th><label for="secure:password">Password:</label></th>
@@ -164,6 +162,10 @@
     <tr id="gitPassphraseRow">
       <th><label for="secure:passphrase">Passphrase:</label></th>
       <td><props:passwordProperty name="secure:passphrase" className="longField"/></td>
+    </tr>
+    <tr id="gitKnownHosts">
+      <th><label for="ignoreKnownHosts">Ignore known hosts database:</label></th>
+      <td><props:checkboxProperty name="ignoreKnownHosts"/></td>
     </tr>
   </l:settingsGroup>
   <l:settingsGroup title="Server Settings" className="advancedSetting">
