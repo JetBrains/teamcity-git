@@ -260,9 +260,6 @@
     BS.VisibilityHandlers.updateVisibility($('vcsRootProperties'));
   };
   gitSelectAuthentication();
-  if ($('url').value == "") {
-    $('submoduleCheckout').selectedIndex = 1;
-  }
 
   illustrateUsernameStyle = function() {
     var style = $j("#usernameStyle").val();
