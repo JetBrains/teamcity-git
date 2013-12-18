@@ -336,4 +336,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public int getListFilesTTLSeconds() {
     return TeamCityProperties.getInteger("teamcity.git.listFilesTTLSeconds", 60);
   }
+
+  public static boolean showKnownHostsDbOption() {
+    return TeamCityProperties.getBoolean("teamcity.git.showKnownHostsDbOption");
+  }
 }

@@ -24,6 +24,7 @@
 <jsp:useBean id="propertiesBean" scope="request" type="jetbrains.buildServer.controllers.BasePropertiesBean"/>
 <c:set var="gitPathEnv" value="<%= Constants.TEAMCITY_AGENT_GIT_PATH %>"/>
 <c:set var="teamcitySshKeysEnabled" value="<%= PluginConfigImpl.isTeamcitySshKeysEnabled() %>"/>
+<c:set var="showKnownHostsDbOption" value="<%= PluginConfigImpl.showKnownHostsDbOption() %>"/>
 <style>
 .gitUsernameStyleHighlight {
   color: rgb(97, 94, 192);
@@ -160,10 +161,21 @@
       <th><label for="secure:passphrase">Passphrase:</label></th>
       <td><props:passwordProperty name="secure:passphrase" className="longField"/></td>
     </tr>
-    <tr id="gitKnownHosts" class="auth defaultKey customKey uploadedKey advancedSetting">
-      <th><label for="ignoreKnownHosts">Ignore known hosts database:</label></th>
-      <td><props:checkboxProperty name="ignoreKnownHosts"/></td>
-    </tr>
+    <c:choose>
+      <c:when test="${showKnownHostsDbOption or not vcsPropertiesBean.propertiesBean.properties['ignoreKnownHosts']}">
+        <tr id="gitKnownHosts" class="advancedSetting">
+          <div class="auth defaultKey customKey uploadedKey">
+            <th><label for="ignoreKnownHosts">Ignore known hosts database:</label></th>
+            <td><props:checkboxProperty name="ignoreKnownHosts"/>
+              <c:out value="${vcsPropertiesBean.propertiesBean.properties['ignoreKnownHosts']}"/>
+            </td>
+          </div>
+        </tr>
+      </c:when>
+      <c:otherwise>
+        <props:hiddenProperty name="ignoreKnownHosts" value="true"/>
+      </c:otherwise>
+    </c:choose>
   </l:settingsGroup>
   <l:settingsGroup title="Server Settings" className="advancedSetting">
     <tr class="advancedSetting">
