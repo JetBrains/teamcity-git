@@ -217,7 +217,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  public String describeVcsRoot(VcsRoot root) {
+  public String describeVcsRoot(@NotNull VcsRoot root) {
     final String branch = root.getProperty(Constants.BRANCH_NAME);
     return root.getProperty(Constants.FETCH_URL) + "#" + (branch == null ? "master" : branch);
   }
@@ -460,7 +460,7 @@ public class GitVcsSupport extends ServerVcsSupport
   @Override
   @Nullable
   protected <T extends VcsExtension> T getVcsCustomExtension(@NotNull final Class<T> extensionClass) {
-    if (ModificationInfoBuilder.class.equals(extensionClass)) {
+    if (ChangesInfoBuilder.class.equals(extensionClass)) {
       return extensionClass.cast(getCollectChangesPolicy());
     }
 

@@ -30,7 +30,6 @@ import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
-import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
@@ -39,6 +38,7 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import jetbrains.buildServer.vcs.patches.PatchTestCase;
+import jetbrains.vcs.api.ChangeData;
 import junit.framework.Assert;
 import org.apache.log4j.Level;
 import org.eclipse.jgit.errors.NotSupportedException;
@@ -1578,7 +1578,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @Test
   public void testModificationInfoBuilderSupported() {
-    Assert.assertNotNull(getSupport().getVcsExtension(ModificationInfoBuilder.class));
+    Assert.assertNotNull(getSupport().getVcsExtension(ChangesInfoBuilder.class));
   }
 
   @Test
@@ -1586,16 +1586,22 @@ public class GitVcsSupportTest extends PatchTestCase {
     final VcsRoot vcsRoot = getVcsRoot();
 
     final GitVcsSupport support = getSupport();
-    final List<ModificationData> list = support.getCollectChangesPolicy()
-      .fetchModificationInfo(vcsRoot, RepositoryStateData.createVersionState("patch-tests", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46"), CheckoutRules.DEFAULT);
+    final List<ChangeData> list = new ArrayList<ChangeData>();
+    support.getCollectChangesPolicy().fetchAllRefs(vcsRoot);
+    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, Arrays.asList("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46"), new ChangesConsumer() {
+        public void consumeChange(@NotNull ChangeData change) {
+          list.add(change);
+        }
+      }
+    );
 
     Assert.assertEquals(list.size(), 1);
-    ModificationData next = list.iterator().next();
+    ChangeData next = list.iterator().next();
 
     System.out.println("next = " + next);
 
     Assert.assertEquals(next.getParentRevisions(), Arrays.asList("a894d7d58ffde625019a9ecf8267f5f1d1e5c341"));
-    Assert.assertEquals(next.getChangeCount(), 1);
+    Assert.assertEquals(next.getChanges().size(), 1);
 
     final VcsChange change = next.getChanges().get(0);
     Assert.assertEquals(change.getRelativeFileName(), "dir1/file3.txt");
@@ -1606,16 +1612,19 @@ public class GitVcsSupportTest extends PatchTestCase {
     final VcsRoot vcsRoot = getVcsRoot();
 
     final GitVcsSupport support = getSupport();
-    final List<ModificationData> list = support.getCollectChangesPolicy()
-      .fetchModificationInfo(vcsRoot, RepositoryStateData.createVersionState("unknown-default",
-                                                                             CollectionsUtil.asMap(
-                                                                               "patch-tests", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46",
-                                                                               "b", "a894d7d58ffde625019a9ecf8267f5f1d1e5c341")), CheckoutRules.DEFAULT);
 
+    final List<ChangeData> list = new ArrayList<ChangeData>();
+    support.getCollectChangesPolicy().fetchAllRefs(vcsRoot);
+    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, Arrays.asList("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", "a894d7d58ffde625019a9ecf8267f5f1d1e5c341"), new ChangesConsumer() {
+                                                         public void consumeChange(@NotNull ChangeData change) {
+                                                           list.add(change);
+                                                         }
+                                                       }
+    );
 
     Assert.assertEquals(list.size(), 2);
 
-    for (ModificationData data : list) {
+    for (ChangeData data : list) {
       final String commitId = data.getVersion();
 
       if (commitId.equals("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46")) {
@@ -1633,12 +1642,15 @@ public class GitVcsSupportTest extends PatchTestCase {
     final VcsRoot vcsRoot = getVcsRoot();
 
     final GitVcsSupport support = getSupport();
-    final List<ModificationData> list = support.getCollectChangesPolicy()
-      .fetchModificationInfo(vcsRoot, RepositoryStateData.createVersionState("unknown-default",
-                                                                             CollectionsUtil.asMap(
-                                                                               "patch-tests", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46",
-                                                                               "b", "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653")), CheckoutRules.DEFAULT);
 
+    final List<ChangeData> list = new ArrayList<ChangeData>();
+    support.getCollectChangesPolicy().fetchAllRefs(vcsRoot);
+    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, Arrays.asList("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653"), new ChangesConsumer() {
+                                                         public void consumeChange(@NotNull ChangeData change) {
+                                                           list.add(change);
+                                                         }
+                                                       }
+    );
 
     Assert.assertEquals(list.size(), 2);
   }
@@ -1648,16 +1660,22 @@ public class GitVcsSupportTest extends PatchTestCase {
     final VcsRoot vcsRoot = getVcsRoot();
 
     final GitVcsSupport support = getSupport();
-    final List<ModificationData> list = support.getCollectChangesPolicy()
-      .fetchModificationInfo(vcsRoot, RepositoryStateData.createVersionState("wrong-submodule", "f3f826ce85d6dad25156b2d7550cedeb1a422f4c"), CheckoutRules.DEFAULT);
+    final List<ChangeData> list = new ArrayList<ChangeData>();
+    support.getCollectChangesPolicy().fetchAllRefs(vcsRoot);
+    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, Arrays.asList("f3f826ce85d6dad25156b2d7550cedeb1a422f4c"), new ChangesConsumer() {
+                                                         public void consumeChange(@NotNull ChangeData change) {
+                                                           list.add(change);
+                                                         }
+                                                       }
+    );
 
     Assert.assertEquals(list.size(), 1);
-    ModificationData next = list.iterator().next();
+    ChangeData next = list.iterator().next();
 
     System.out.println("next = " + next);
 
     Assert.assertEquals(new HashSet<String>(next.getParentRevisions()), new HashSet<String>(Arrays.asList("6fce8fe45550eb72796704a919dad68dc44be44a", "ee886e4adb70fbe3bdc6f3f6393598b3f02e8009")));
-    Assert.assertEquals(next.getChangeCount(), 3);
+    Assert.assertEquals(next.getChanges().size(), 3);
   }
 
   private static class FetchCommandCountDecorator implements FetchCommand {

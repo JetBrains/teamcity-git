@@ -42,7 +42,7 @@ import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 /**
 * @author dmitry.neverov
 */
-public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, CollectChangesBetweenRepositories, ModificationInfoBuilder {
+public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, CollectChangesBetweenRepositories, ChangesInfoBuilder {
 
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
 
@@ -157,19 +157,30 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     }
   }
 
-  @NotNull
-  public List<ModificationData> fetchModificationInfo(@NotNull final VcsRoot root,
-                                                      @NotNull final RepositoryStateData toState,
-                                                      @NotNull final CheckoutRules checkoutRules) throws VcsException {
-    List<ModificationData> changes = new ArrayList<ModificationData>();
+  public void fetchAllRefs(@NotNull VcsRoot root) throws VcsException {
+    final OperationContext context = myVcs.createContext(root, "fetch all");
+    try {
+      new FetchAllRefs(context.getRepository(), context.getGitRoot(), myVcs.getCurrentState(root)).run();
+    } catch (TransportException e) {
+      throw new VcsException(e.getMessage(), e);
+    } catch (NotSupportedException e) {
+      throw new VcsException(e.getMessage(), e);
+    } finally {
+      context.close();
+    }
+  }
+
+
+  public void fetchChangesInfo(@NotNull VcsRoot root,
+                               @NotNull CheckoutRules checkoutRules,
+                               @NotNull Collection<String> revisions,
+                               @NotNull ChangesConsumer consumer) throws VcsException {
     OperationContext context = myVcs.createContext(root, "collecting changes");
     try {
       final Repository r = context.getRepository();
-      ensureRepositoryStateLoadedFor(context, r, toState);
 
-      for (Map.Entry<String, String> e : toState.getBranchRevisions().entrySet()) {
-        final String branch = e.getKey();
-        final String commitId = e.getValue();
+      for (String commitId : revisions) {
+        final String branch = "fake-branch-" + commitId;
         final RepositoryStateData oneCommitData = RepositoryStateData.createVersionState(branch, commitId);
 
         final ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
@@ -177,11 +188,11 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
         revWalk.sort(RevSort.TOPO);
         markStart(r, revWalk, oneCommitData);
 
-
         final List<RevCommit> commits = getCommits(oneCommitData, r, revWalk);
         if (commits.isEmpty()) {
-          throw new VcsException("Commits were not found: " + new TreeSet<String>(toState.getBranchRevisions().values()) + " was not found");
+          throw new VcsException("Commit was not found: " + commitId);
         }
+
         for (RevCommit commit : commits) {
           for (RevCommit parent : commit.getParents()) {
             revWalk.markUninteresting(parent);
@@ -189,7 +200,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
         }
 
         while (revWalk.next() != null) {
-          changes.add(revWalk.createModificationData());
+          consumer.consumeChange(revWalk.createModificationData());
         }
       }
     } catch (Exception e) {
@@ -197,8 +208,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     } finally {
       context.close();
     }
-    return changes;
-
   }
 
   private void ensureRepositoryStateLoaded(@NotNull OperationContext context,
