@@ -15,6 +15,7 @@
         <element id="artifact" artifact-name="git-server-tc.jar" />
         <element id="artifact" artifact-name="git-common.jar" />
         <element id="library" level="project" name="quartz-1.6.0" />
+        <element id="library" level="project" name="org.eclipse.egit.github.core-2.4.0-SNAPSHOT" />
       </element>
       <element id="directory" name="agent">
         <element id="archive" name="jetbrains.git.zip">

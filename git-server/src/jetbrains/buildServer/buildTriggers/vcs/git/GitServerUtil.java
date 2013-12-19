@@ -252,4 +252,20 @@ public class GitServerUtil {
       }
     }
   }
+
+
+  public static boolean isCloned(@NotNull Repository db) throws VcsException, IOException {
+    if (!db.getObjectDatabase().exists())
+      return false;
+    ObjectReader reader = db.getObjectDatabase().newReader();
+    try {
+      for (Ref ref : db.getRefDatabase().getRefs(RefDatabase.ALL).values()) {
+        if (reader.has(ref.getObjectId()))
+          return true;
+      }
+    } finally {
+      reader.release();
+    }
+    return false;
+  }
 }

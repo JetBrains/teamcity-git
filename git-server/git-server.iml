@@ -21,6 +21,7 @@
     <orderEntry type="library" name="TeamCity Vcs Api" level="project" />
     <orderEntry type="library" name="jgit" level="project" />
     <orderEntry type="library" name="quartz-1.6.0" level="project" />
+    <orderEntry type="library" name="org.eclipse.egit.github.core-2.4.0-SNAPSHOT" level="project" />
   </component>
 </module>
 

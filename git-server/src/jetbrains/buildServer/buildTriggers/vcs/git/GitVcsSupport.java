@@ -430,7 +430,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @Override
   public ListFilesPolicy getListFilesPolicy() {
-    return new GitListFilesSupport(this, myCommitLoader, myConfig);
+    return new ListFilesDispatcher(this, myCommitLoader, myConfig);
   }
 
   @NotNull
