@@ -298,7 +298,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public VcsFileContentProvider getContentProvider() {
-    return new GitVcsFileContentProvider(this, myCommitLoader, myConfig);
+    return new GitFileContentDispatcher(this, myCommitLoader, myConfig);
   }
 
   @NotNull

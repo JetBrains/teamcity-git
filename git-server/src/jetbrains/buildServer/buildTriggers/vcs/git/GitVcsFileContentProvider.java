@@ -37,7 +37,7 @@ import java.util.Collections;
 /**
 * @author dmitry.neverov
 */
-public class GitVcsFileContentProvider implements VcsFileContentProvider {
+public class GitVcsFileContentProvider extends GitAbstractVcsFileContentProvider {
 
   private static final Logger LOG = Logger.getInstance(GitVcsFileContentProvider.class.getName());
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsFileContentProvider.class.getName() + ".Performance");
@@ -52,18 +52,6 @@ public class GitVcsFileContentProvider implements VcsFileContentProvider {
     myVcs = vcs;
     myCommitLoader = commitLoader;
     myConfig = config;
-  }
-
-  @NotNull
-  public byte[] getContent(@NotNull VcsModification vcsModification,
-                           @NotNull VcsChangeInfo change,
-                           @NotNull VcsChangeInfo.ContentType contentType,
-                           @NotNull VcsRoot vcsRoot) throws VcsException {
-    String version = contentType == VcsChangeInfo.ContentType.BEFORE_CHANGE
-                     ? change.getBeforeChangeRevisionNumber()
-                     : change.getAfterChangeRevisionNumber();
-    String file = change.getRelativeFileName();
-    return getContent(file, vcsRoot, version);
   }
 
   @NotNull
