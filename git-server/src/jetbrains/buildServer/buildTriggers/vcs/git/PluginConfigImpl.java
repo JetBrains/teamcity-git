@@ -258,7 +258,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
     String sshProxyType = TeamCityProperties.getProperty(TEAMCITY_GIT_SSH_PROXY_TYPE);
     if (!isEmpty(sshProxyType))
       proxySettings.add("-Dteamcity.git.sshProxyType=" + sshProxyType);
-    String sshProxyHost = TeamCityProperties.getProperty("teamcity.git.sshProxyHost");
+    String sshProxyHost = TeamCityProperties.getProperty(TEAMCITY_GIT_SSH_PROXY_HOST);
     if (!isEmpty(sshProxyHost))
       proxySettings.add("-Dteamcity.git.sshProxyHost=" + sshProxyHost);
     int sshProxyPort = TeamCityProperties.getInteger(TEAMCITY_GIT_SSH_PROXY_PORT, -1);
