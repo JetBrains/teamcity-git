@@ -61,6 +61,9 @@ public class AuthSettings {
     if (myAuthMethod == AuthenticationMethod.PRIVATE_KEY_FILE) {
       myPassphrase = properties.get(Constants.PASSPHRASE);
       myPrivateKeyFilePath = properties.get(Constants.PRIVATE_KEY_PATH);
+    } else if (myAuthMethod == AuthenticationMethod.TEAMCITY_SSH_KEY) {
+      myPassphrase = properties.get(Constants.PASSPHRASE);
+      myPrivateKeyFilePath = null;
     } else {
       myPassphrase = null;
       myPrivateKeyFilePath = null;
