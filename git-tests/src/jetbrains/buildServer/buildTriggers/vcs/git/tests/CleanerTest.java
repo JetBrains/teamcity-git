@@ -71,7 +71,7 @@ public class CleanerTest extends BaseTestCase {
     Thread.sleep(2 * myConfig.getMirrorExpirationTimeoutMillis());
 
     final VcsRoot root = GitTestUtil.getVcsRoot();
-    mySupport.getCurrentVersion(root);//it will create dir in cache directory
+    mySupport.getCurrentState(root);//it will create dir in cache directory
     File repositoryDir = getRepositoryDir(root);
 
     myCleanup.run();
@@ -84,7 +84,7 @@ public class CleanerTest extends BaseTestCase {
     assertEquals(1, files.length);
     assertEquals(repositoryDir, files[0]);
 
-    mySupport.getCurrentVersion(root);//check that repository is fine after git gc
+    mySupport.getCurrentState(root);//check that repository is fine after git gc
   }
 
 

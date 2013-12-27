@@ -21,6 +21,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.vcs.CheckoutRules;
+import jetbrains.buildServer.vcs.RepositoryStateData;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
@@ -51,7 +52,8 @@ public class GitPerformanceTests extends BaseTestCase {
       .withPluginConfig(new PluginConfigBuilder(sp).build());
     GitVcsSupport support = builder.build();
 
-    final String state = support.getCurrentVersion(root);
+    RepositoryStateData s = support.getCurrentState(root);
+    final String state = s.getBranchRevisions().get(s.getDefaultBranchName());
     System.out.println("Current state: " + state);
 
 

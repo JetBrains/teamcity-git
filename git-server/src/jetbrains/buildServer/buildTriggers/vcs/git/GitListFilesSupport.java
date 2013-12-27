@@ -104,7 +104,8 @@ public class GitListFilesSupport implements ListDirectChildrenPolicy {
   @NotNull
   private String getRevision(@NotNull VcsRoot root) throws VcsException {
     if (isOutOfDate()) {
-      myCurrentRevision = GitUtils.versionRevision(myVcs.getCurrentVersion(root));
+      RepositoryStateData state = myVcs.getCurrentState(root);
+      myCurrentRevision = GitUtils.versionRevision(state.getBranchRevisions().get(state.getDefaultBranchName()));
       myLastSyncTime = System.currentTimeMillis();
     }
     return myCurrentRevision;

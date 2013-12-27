@@ -245,25 +245,6 @@ public class GitVcsSupport extends ServerVcsSupport
     return GitUtils.VERSION_COMPARATOR;
   }
 
-  @NotNull
-  public String getCurrentVersion(@NotNull VcsRoot root) throws VcsException {
-    OperationContext context = createContext(root, "retrieving current version");
-    GitVcsRoot gitRoot = context.getGitRoot();
-    try {
-      Repository db = context.getRepository();
-      String refName = GitUtils.expandRef(gitRoot.getRef());
-      Map<String, Ref> refs = getRemoteRefs(db, gitRoot);
-      Ref remoteRef = refs.get(refName);
-      if (remoteRef == null)
-        throw new VcsException("The ref '" + refName + "' could not be resolved");
-      return remoteRef.getObjectId().name();
-    } catch (Exception e) {
-      throw context.wrapException(e);
-    } finally {
-      context.close();
-    }
-  }
-
 
   public boolean sourcesUpdatePossibleIfChangesNotFound(@NotNull VcsRoot root) {
     return false;

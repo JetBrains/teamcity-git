@@ -180,7 +180,8 @@ public class GitVcsSupportTest extends PatchTestCase {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("version-test");
-    String version = support.getCurrentVersion(root);
+    RepositoryStateData state = support.getCurrentState(root);
+    String version = state.getBranchRevisions().get(state.getDefaultBranchName());
     assertEquals(VERSION_TEST_HEAD, version);
   }
 
@@ -189,7 +190,8 @@ public class GitVcsSupportTest extends PatchTestCase {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("version-test");
-    String version = support.getCurrentVersion(root);
+    RepositoryStateData state = support.getCurrentState(root);
+    String version = state.getBranchRevisions().get(state.getDefaultBranchName());
     byte[] data1 = support.getContentProvider().getContent("readme.txt", root, version);
     byte[] data2 = FileUtil.loadFileBytes(dataFile("content", "readme.txt"));
     assertEquals(data1, data2);
@@ -206,7 +208,8 @@ public class GitVcsSupportTest extends PatchTestCase {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("patch-tests", true);
-    String version = support.getCurrentVersion(root);
+    RepositoryStateData state = support.getCurrentState(root);
+    String version = state.getBranchRevisions().get(state.getDefaultBranchName());
     byte[] data1 = support.getContentProvider().getContent("submodule/file.txt", root, version);
     byte[] data2 = FileUtil.loadFileBytes(dataFile("content", "submodule file.txt"));
     assertEquals(data1, data2);
@@ -714,8 +717,6 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @Test
   public void build_patch_between_unrelated_revisions_when_from_version_is_fetched() throws Exception {
-    //fetches fromRevision (592c5bcee6d906482177a62a6a44efa0cff9bbc7) into a repository clone on the server:
-    getSupport().getCurrentVersion(getRoot("patch-tests"));
     checkPatch("patch6", "rename-test", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9", false);
   }
 
@@ -955,8 +956,7 @@ public class GitVcsSupportTest extends PatchTestCase {
                      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" +
                      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" +
                      "bbbbbbbbbbbbbbbbbbbbb");//with such long param size of input for fetcher process is greater than 512 bytes
-    String version = support.getCurrentVersion(root);
-    assertEquals(VERSION_TEST_HEAD, version);
+    support.collectChanges(root, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", "f3f826ce85d6dad25156b2d7550cedeb1a422f4c", CheckoutRules.DEFAULT);
   }
 
 
@@ -1022,7 +1022,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     File customRootDir = new File(myTmpDir, "custom-dir");
     VcsRootImpl root = (VcsRootImpl) getRoot("master");
     root.addProperty(Constants.PATH, customRootDir.getAbsolutePath());
-    getSupport().getCurrentVersion(root);
+    getSupport().getCurrentState(root);
 
     File configFile = new File(customRootDir, "config");
     String config = FileUtil.readText(configFile);
@@ -1034,7 +1034,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     String newConfig = matcher.group(1) + matcher.group(2);
     writeFile(configFile, newConfig);
 
-    getSupport().getCurrentVersion(root);
+    getSupport().getCurrentState(root);
     config = FileUtil.readText(configFile);
     assertTrue(pattern.matcher(config).matches());
   }
@@ -1042,12 +1042,14 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @Test
   public void should_support_git_refs_format() throws IOException, VcsException {
-    String versionTest1 = getSupport().getCurrentVersion(getRoot("version-test"));
-    String versionTest2 = getSupport().getCurrentVersion(getRoot("refs/heads/version-test"));
-    assertEquals(versionTest1, versionTest2);
-    String master1 = getSupport().getCurrentVersion(getRoot("master"));
-    String master2 = getSupport().getCurrentVersion(getRoot("refs/heads/master"));
-    assertEquals(master1, master2);
+    RepositoryStateData state1 = getSupport().getCurrentState(getRoot("version-test"));
+    RepositoryStateData state2 = getSupport().getCurrentState(getRoot("refs/heads/version-test"));
+    assertEquals(state1.getBranchRevisions().get(state1.getDefaultBranchName()),
+                 state2.getBranchRevisions().get(state2.getDefaultBranchName()));
+    RepositoryStateData state3 = getSupport().getCurrentState(getRoot("master"));
+    RepositoryStateData state4 = getSupport().getCurrentState(getRoot("refs/heads/master"));
+    assertEquals(state3.getBranchRevisions().get(state3.getDefaultBranchName()),
+                 state4.getBranchRevisions().get(state4.getDefaultBranchName()));
   }
 
 
@@ -1187,7 +1189,8 @@ public class GitVcsSupportTest extends PatchTestCase {
     File customRootDir = new File(myTmpDir, "custom-dir");
     root.addProperty(Constants.PATH, customRootDir.getAbsolutePath());
 
-    String v1 = GitUtils.versionRevision(support.getCurrentVersion(root));
+    RepositoryStateData state = support.getCurrentState(root);
+    String v1 = GitUtils.versionRevision(state.getBranchRevisions().get(state.getDefaultBranchName()));
     support.collectChanges(root, "a7274ca8e024d98c7d59874f19f21d26ee31d41d", "add81050184d3c818560bdd8839f50024c188586", CheckoutRules.DEFAULT);
 
     copyRepository(dataFile("repo_for_fetch.2"), remoteRepositoryDir);//now remote repository contains new commits
@@ -1195,7 +1198,8 @@ public class GitVcsSupportTest extends PatchTestCase {
     File branchLockFile = createBranchLockFile(customRootDir, branch);
     assertTrue(branchLockFile.exists());
 
-    String v2 = GitUtils.versionRevision(support.getCurrentVersion(root));
+    state = support.getCurrentState(root);
+    String v2 = GitUtils.versionRevision(state.getBranchRevisions().get(state.getDefaultBranchName()));
     assertFalse(v2.equals(v1));//local repository is updated
 
     support.collectChanges(root, v1, v2, CheckoutRules.DEFAULT);
@@ -1212,16 +1216,19 @@ public class GitVcsSupportTest extends PatchTestCase {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("master", false, remoteRepositoryDir);
 
-    String v1 = GitUtils.versionRevision(support.getCurrentVersion(root));
+    RepositoryStateData state = support.getCurrentState(root);
+    String v1 = GitUtils.versionRevision(state.getBranchRevisions().get(state.getDefaultBranchName()));
     assertEquals(v1, "add81050184d3c818560bdd8839f50024c188586");
 
     copyRepository(dataFile("repo_for_fetch.2"), remoteRepositoryDir);//fast-forward update
 
-    String v2 = GitUtils.versionRevision(support.getCurrentVersion(root));
+    state = support.getCurrentState(root);
+    String v2 = GitUtils.versionRevision(state.getBranchRevisions().get(state.getDefaultBranchName()));
     assertEquals(v2, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168");
 
     copyRepository(dataFile("repo_for_fetch.3"), remoteRepositoryDir);//non-fast-forward update
-    String v3 = GitUtils.versionRevision(support.getCurrentVersion(root));
+    state = support.getCurrentState(root);
+    String v3 = GitUtils.versionRevision(state.getBranchRevisions().get(state.getDefaultBranchName()));
     assertEquals("bba7fbcc200b4968e6abd2f7d475dc15306cafc6", v3);
   }
 
@@ -1282,7 +1289,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   public void collect_changes_after_cache_reset() throws Exception {
     GitVcsSupport git = getSupport();
     VcsRoot root = getRoot("master");
-    git.getCurrentVersion(root);
     git.getCollectChangesPolicy().collectChanges(root, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", CheckoutRules.DEFAULT);
 
     ServerPluginConfig config = myConfigBuilder.build();
@@ -1315,10 +1321,10 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     VcsRootImpl root = getRoot("master", false, remoteRepositoryDir);
 
-    GitUtils.versionRevision(git.getCurrentVersion(root));
+    git.getCurrentState(root);
     assertEquals(0, fetchCounter.getFetchCount());
 
-    GitUtils.versionRevision(git.getCurrentVersion(root));
+    git.getCurrentState(root);
     assertEquals(0, fetchCounter.getFetchCount());
   }
 
