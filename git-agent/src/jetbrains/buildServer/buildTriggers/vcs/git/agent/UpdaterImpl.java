@@ -41,10 +41,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.*;
@@ -223,40 +220,43 @@ public class UpdaterImpl implements Updater {
       }
 
     } catch (IOException e) {
-      throw new VcsException("Error while reading " + dotGitModules, e);
+      Loggers.VCS.error("Submodules checkout failed", e);
+      throw new VcsException("Submodules checkout failed", e);
     } catch (ConfigInvalidException e) {
-      throw new VcsException("Error while parsing " + dotGitModules, e);
+      Loggers.VCS.error("Submodules checkout failed", e);
+      throw new VcsException("Submodules checkout failed", e);
     }
   }
 
 
-  private void addSubmoduleUsernames(@NotNull File repositoryDir, @NotNull Config gitModules) throws IOException, ConfigInvalidException {
+  private void addSubmoduleUsernames(@NotNull File repositoryDir, @NotNull Config gitModules)
+    throws IOException, ConfigInvalidException, VcsException {
     if (!myPluginConfig.isUseMainRepoUserForSubmodules())
       return;
 
-    Loggers.VCS.debug("Update submodule credentials");
+    Loggers.VCS.info("Update submodules credentials");
 
     AuthSettings auth = myRoot.getAuthSettings();
     final String userName = auth.getUserName();
     if (userName == null) {
-      Loggers.VCS.debug("Username is not specified in the main VCS root settings, skip updating credentials");
+      Loggers.VCS.info("Username is not specified in the main VCS root settings, skip updating credentials");
       return;
     }
 
-    Repository r = new RepositoryBuilder().setBare().setGitDir(new File(repositoryDir, ".git")).build();
+    Repository r = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
     StoredConfig gitConfig = r.getConfig();
 
     Set<String> submodules = gitModules.getSubsections("submodule");
     if (submodules.isEmpty()) {
-      Loggers.VCS.debug("No submodule sections found in " + new File(repositoryDir, ".gitmodules").getCanonicalPath()
-                        + ", skip updating credentials");
+      Loggers.VCS.info("No submodule sections found in " + new File(repositoryDir, ".gitmodules").getCanonicalPath()
+                       + ", skip updating credentials");
       return;
     }
     for (String submoduleName : submodules) {
       String url = gitModules.getString("submodule", submoduleName, "url");
-      Loggers.VCS.debug("Update credentials for submodule with url " + url);
+      Loggers.VCS.info("Update credentials for submodule with url " + url);
       if (url == null || !isRequireAuth(url)) {
-        Loggers.VCS.debug("Url " + url + " does not require authentication, skip updating credentials");
+        Loggers.VCS.info("Url " + url + " does not require authentication, skip updating credentials");
         continue;
       }
       try {
@@ -265,7 +265,7 @@ public class UpdaterImpl implements Updater {
         gitConfig.setString("submodule", submoduleName, "url", updatedUrl);
         Loggers.VCS.debug("Submodule url " + url + " changed to " + updatedUrl);
       } catch (URISyntaxException e) {
-        Loggers.VCS.debug("Error while parsing an url " + url + ", skip updating credentials", e);
+        Loggers.VCS.warn("Error while parsing an url " + url + ", skip updating submodule credentials", e);
       }
     }
     gitConfig.save();

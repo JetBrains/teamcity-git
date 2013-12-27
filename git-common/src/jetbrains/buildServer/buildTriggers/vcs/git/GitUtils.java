@@ -16,16 +16,20 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
-import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Comparator;
+import java.util.List;
 
 /**
  * Commands that allows working with git repositories
@@ -210,5 +214,24 @@ public class GitUtils {
    */
   public static String getGitRootBranchParamName(@NotNull VcsRoot root) {
     return jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_ROOT_BUILD_BRANCH_PREFIX + VcsUtil.getSimplifiedName(root);
+  }
+
+
+  public static File getGitDir(@NotNull File workingTreeDir) throws IOException, VcsException {
+    File dotGit = new File(workingTreeDir, ".git");
+    if (dotGit.isFile()) {
+      List<String> content = FileUtil.readFile(dotGit);
+      if (content.isEmpty())
+        throw new VcsException("Empty " + dotGit.getAbsolutePath());
+      String line = content.get(0);
+      if (!line.startsWith("gitdir:"))
+        throw new VcsException("Wrong format of " + dotGit.getAbsolutePath() + ": " + content);
+      String gitDirPath = line.substring("gitdir:".length()).trim();
+      File gitDir = new File(gitDirPath);
+      if (gitDir.isAbsolute())
+        return gitDir;
+      return new File(workingTreeDir, gitDirPath);
+    }
+    return dotGit;
   }
 }
