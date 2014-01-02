@@ -153,11 +153,11 @@
     <tr id="gitTeamCityKeyRow" class="auth uploadedKey">
       <th><label for="teamcitySshKey">Uploaded Key: <l:star/></label></th>
       <td>
-        <admin:sshKeys projectId="${projectId}"/>
+        <admin:sshKeys projectId="${projectId}" keySelectionCallback="uploadedKeySelected"/>
         <span class="error" id="error_teamcitySshKey"></span>
       </td>
     </tr>
-    <tr id="gitPassphraseRow" class="auth customKey uploadedKey">
+    <tr id="gitPassphraseRow" class="auth customKey">
       <th><label for="secure:passphrase">Passphrase:</label></th>
       <td><props:passwordProperty name="secure:passphrase" className="longField"/></td>
     </tr>
@@ -237,6 +237,15 @@
   </l:settingsGroup>
 </table>
 <script type="text/javascript">
+  uploadedKeySelected = function(encrypted) {
+    if (encrypted) {
+      $j('#gitPassphraseRow').show();
+    } else {
+      $j('#secure\\:passphrase').val('');
+      $j('#gitPassphraseRow').hide();
+    }
+  };
+
   gitSelectAuthentication = function(resetHiddenFields) {
     BS.Util.toggleDependentElements($('authMethod').value, 'auth', resetHiddenFields, {
       PRIVATE_KEY_DEFAULT : 'defaultKey',
