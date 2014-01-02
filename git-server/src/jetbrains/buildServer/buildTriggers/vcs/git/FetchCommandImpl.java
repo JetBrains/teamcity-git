@@ -213,7 +213,7 @@ public class FetchCommandImpl implements FetchCommand {
     File threadDumpsDir = getMonitoringDir(repository);
     threadDumpsDir.mkdirs();
     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH.mm.ss");
-    return new File(threadDumpsDir, sdf.format(Dates.now()));
+    return new File(threadDumpsDir, sdf.format(Dates.now()) + ".txt");
   }
 
   private File getMonitoringDir(@NotNull Repository repository) {
