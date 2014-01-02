@@ -74,7 +74,7 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
     if (authenticationMethod == AuthenticationMethod.TEAMCITY_SSH_KEY) {
       String keyId = properties.get(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME);
       if (isEmpty(keyId))
-        rc.add(new InvalidProperty(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME, "The TeamCity SSH key must be specified."));
+        rc.add(new InvalidProperty(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME, "The Uploaded key must be specified."));
     }
     return rc;
   }
