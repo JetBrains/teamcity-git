@@ -20,12 +20,16 @@ import org.eclipse.jgit.lib.ProgressMonitor;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.PrintStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * Exactly the same as {@link org.eclipse.jgit.lib.TextProgressMonitor}, but writes to the given PrintStream and System.out
  * @author dmitry.neverov
  */
 public class FetchProgressMonitor implements ProgressMonitor {
+
+  private final SimpleDateFormat myDateFormat = new SimpleDateFormat("[yyyy-MM-dd HH:mm:ss,SS]");
 
   private final PrintStream myPrintStream;
 
@@ -79,8 +83,14 @@ public class FetchProgressMonitor implements ProgressMonitor {
     output = true;
   }
 
+  @NotNull
+  private synchronized String getTimestamp() {
+    return myDateFormat.format(new Date());
+  }
+
   private void display(final int cmp) {
     final StringBuilder m = new StringBuilder();
+    m.append(getTimestamp()).append(" ");
     m.append(msg);
     m.append(": ");
     while (m.length() < 25)
