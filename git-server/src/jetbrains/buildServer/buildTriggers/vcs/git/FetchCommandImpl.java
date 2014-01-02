@@ -203,7 +203,7 @@ public class FetchCommandImpl implements FetchCommand {
     message.append("Fetch in root ").append(debugInfo)
       .append(" took more than ")
       .append(myConfig.getFetchTimeout())
-      .append(" second(s), try increase timeout using teamcity.git.fetch.timeout property.");
+      .append(" second(s), try increasing a timeout using the " + PluginConfigImpl.TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS + " property.");
     if (threadDump.exists())
       message.append(" Fetch progress details can be found in ").append(threadDump.getAbsolutePath());
     LOG.warn(message.toString());

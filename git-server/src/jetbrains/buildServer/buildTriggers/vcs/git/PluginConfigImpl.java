@@ -51,7 +51,7 @@ import static jetbrains.buildServer.util.CollectionsUtil.setOf;
  */
 public class PluginConfigImpl implements ServerPluginConfig {
 
-  private static final String TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS = "teamcity.git.idle.timeout.seconds";
+  public static final String TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS = "teamcity.git.idle.timeout.seconds";
   private static final String TEAMCITY_GIT_SSH_PROXY_TYPE = "teamcity.git.sshProxyType";
   private static final String TEAMCITY_GIT_SSH_PROXY_HOST = "teamcity.git.sshProxyHost";
   private static final String TEAMCITY_GIT_SSH_PROXY_PORT = "teamcity.git.sshProxyPort";
@@ -90,11 +90,6 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   public int getStreamFileThreshold() {
     return TeamCityProperties.getInteger("teamcity.git.stream.file.threshold.mb", 128);
-  }
-
-
-  public int getFetchTimeout() {
-    return TeamCityProperties.getInteger("teamcity.git.fetch.timeout", 600);
   }
 
 
@@ -182,6 +177,13 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return TeamCityProperties.getInteger(TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS, DEFAULT_IDLE_TIMEOUT);
   }
 
+  public int getFetchTimeout() {
+    int deprecatedFetchTimeout = TeamCityProperties.getInteger("teamcity.git.fetch.timeout", DEFAULT_IDLE_TIMEOUT);
+    int idleTimeout = getIdleTimeoutSeconds();
+    if (deprecatedFetchTimeout > idleTimeout)
+      return deprecatedFetchTimeout;
+    return idleTimeout;
+  }
 
   public long getMirrorExpirationTimeoutMillis() {
     int days = TeamCityProperties.getInteger("teamcity.git.mirror.expiration.timeout.days", 7);
