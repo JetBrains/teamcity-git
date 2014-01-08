@@ -21,8 +21,10 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.vcs.Credentials;
+import jetbrains.buildServer.vcs.MavenVcsUrl;
 import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.*;
+import jetbrains.buildServer.vcs.VcsUrl;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
@@ -124,10 +126,10 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   @Test
   public void http_protocol() throws Exception {
-    VcsUrl url = new VcsUrl("http://git.jetbrains.org/teamcity/git-plugin.git");
+    VcsUrl url = new VcsUrl("https://github.com/JetBrains/kotlin.git");
     GitVcsRoot root = toGitRoot(url);
 
-    assertEquals("http://git.jetbrains.org/teamcity/git-plugin.git", root.getProperty(Constants.FETCH_URL));
+    assertEquals("https://github.com/JetBrains/kotlin.git", root.getProperty(Constants.FETCH_URL));
     assertEquals("refs/heads/master", root.getProperty(Constants.BRANCH_NAME));
     assertEquals(AuthenticationMethod.ANONYMOUS.name(), root.getProperty(Constants.AUTH_METHOD));
   }
@@ -144,10 +146,10 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   @Test
   public void http_protocol_with_credentials() throws Exception {
-    VcsUrl url = new VcsUrl("http://git.jetbrains.org/teamcity/git-plugin.git", new Credentials("user1", "pwd1"));
+    VcsUrl url = new VcsUrl("https://github.com/JetBrains/kotlin.git", new Credentials("user1", "pwd1"));
     GitVcsRoot root = toGitRoot(url);
 
-    assertEquals("http://git.jetbrains.org/teamcity/git-plugin.git", root.getProperty(Constants.FETCH_URL));
+    assertEquals("https://github.com/JetBrains/kotlin.git", root.getProperty(Constants.FETCH_URL));
     assertEquals("refs/heads/master", root.getProperty(Constants.BRANCH_NAME));
     assertEquals(AuthenticationMethod.PASSWORD.name(), root.getProperty(Constants.AUTH_METHOD));
     assertEquals("user1", root.getProperty(Constants.USERNAME));
@@ -173,6 +175,12 @@ public class GitUrlSupportTest extends BaseTestCase {
     VcsUrl url = new VcsUrl("scm:git:http://teamcity@acme.com/repository.git");
     GitVcsRoot root = toGitRoot(url);
     assertEquals("teamcity", root.getProperty(Constants.USERNAME));
+  }
+
+  @Test
+  public void vault_url() throws Exception {
+    VcsUrl url = new VcsUrl("http://some.host.com/VaultService/VaultWeb/Default.aspx?repid=1709&path=$/");
+    assertNull(myUrlSupport.convertToVcsRootProperties(url));
   }
 
 

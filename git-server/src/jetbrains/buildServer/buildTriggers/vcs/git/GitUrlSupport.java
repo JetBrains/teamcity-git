@@ -18,7 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
-import org.eclipse.jgit.errors.NoRemoteRepositoryException;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -57,18 +56,15 @@ public class GitUrlSupport implements UrlSupport {
     props.put(Constants.FETCH_URL, fetchUrl);
     props.putAll(getAuthSettings(url, uri));
 
-    if ("git".equals(scmName) || "git".equals(uri.getScheme())) //git protocol or git scm provider
+    if ("git".equals(scmName) || "git".equals(uri.getScheme()) || uri.getPath().endsWith(".git")) //git protocol, or git scm provider, or .git suffix
       return props;
 
     try {
       myGitSupport.testConnection(new VcsRootImpl(-1, Constants.VCS_NAME, props));
+      return props;
     } catch (VcsException e) {
-      if (e.getCause() instanceof NoRemoteRepositoryException) {
-        return null; // definitely not git
-      }
+      return null; // probably not git
     }
-
-    return props;
   }
 
   @NotNull
