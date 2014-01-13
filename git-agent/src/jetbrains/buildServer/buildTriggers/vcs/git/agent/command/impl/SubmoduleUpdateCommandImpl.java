@@ -33,6 +33,7 @@ public class SubmoduleUpdateCommandImpl implements SubmoduleUpdateCommand {
   private boolean myUseNativeSsh;
   private AuthSettings myAuthSettings;
   private int myTimeout;
+  private boolean myForce;
 
   public SubmoduleUpdateCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
@@ -56,9 +57,17 @@ public class SubmoduleUpdateCommandImpl implements SubmoduleUpdateCommand {
     return this;
   }
 
+  @NotNull
+  public SubmoduleUpdateCommand setForce(boolean force) {
+    myForce = force;
+    return this;
+  }
+
   public void call() throws VcsException {
     myCmd.addParameter("submodule");
     myCmd.addParameter("update");
+    if (myForce)
+      myCmd.addParameter("--force");
     myCmd.run(with().timeout(myTimeout)
             .authSettings(myAuthSettings)
             .useNativeSsh(myUseNativeSsh));
