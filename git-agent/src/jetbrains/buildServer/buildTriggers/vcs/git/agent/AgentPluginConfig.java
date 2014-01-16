@@ -28,6 +28,8 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isUseLocalMirrors();
 
+  boolean isUseAlternates();
+
   boolean isUseShallowClone();
 
   boolean isDeleteTempFiles();

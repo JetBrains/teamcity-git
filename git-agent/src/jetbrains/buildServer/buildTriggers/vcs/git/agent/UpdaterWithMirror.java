@@ -119,13 +119,12 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
 
   @Override
-  protected void setupMirrors() throws VcsException {
-    if (!isRepositoryUseLocalMirror())
-      setUseLocalMirror();
+  protected void setupExistingRepository() throws VcsException {
+    setUseLocalMirror();
   }
 
   @Override
-  protected void postInit() throws VcsException {
+  protected void setupNewRepository() throws VcsException {
     setUseLocalMirror();
   }
 

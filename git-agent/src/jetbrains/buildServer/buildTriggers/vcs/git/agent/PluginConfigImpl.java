@@ -30,6 +30,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String IDLE_TIMEOUT = "teamcity.git.idle.timeout.seconds";
   public static final String USE_NATIVE_SSH = "teamcity.git.use.native.ssh";
   public static final String USE_MIRRORS = "teamcity.git.use.local.mirrors";
+  public static final String USE_ALTERNATES = "teamcity.git.useAlternates";
   public static final String USE_SHALLOW_CLONE = "teamcity.git.use.shallow.clone";
   public static final String TEAMCITY_DONT_DELETE_TEMP_FILES = "teamcity.dont.delete.temp.files";
   public static final String USE_MAIN_REPO_USER_FOR_SUBMODULES = "teamcity.git.useMainRepoUserForSubmodules";
@@ -83,6 +84,11 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return "true".equals(value);
   }
 
+
+  public boolean isUseAlternates() {
+    String value = myBuild.getSharedConfigParameters().get(USE_ALTERNATES);
+    return "true".equals(value);
+  }
 
   public boolean isUseShallowClone() {
     String valueFromBuildConfiguration = myBuild.getSharedConfigParameters().get(USE_SHALLOW_CLONE);

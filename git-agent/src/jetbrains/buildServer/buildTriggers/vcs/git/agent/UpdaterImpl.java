@@ -127,7 +127,7 @@ public class UpdaterImpl implements Updater {
         firstFetch = true;
       } else {
         try {
-          setupMirrors();
+          setupExistingRepository();
         } catch (Exception e) {
           LOG.warn("Do clean checkout due to errors while configure use of local mirrors", e);
           initDirectory();
@@ -138,10 +138,12 @@ public class UpdaterImpl implements Updater {
     return firstFetch;
   }
 
+  protected void setupNewRepository() throws VcsException {
+  }
 
-  protected void setupMirrors() throws VcsException {
-    if (isRepositoryUseLocalMirror())
-      setNotUseLocalMirror();
+
+  protected void setupExistingRepository() throws VcsException {
+    removeUrlSections();
   }
 
 
@@ -325,7 +327,7 @@ public class UpdaterImpl implements Updater {
   }
 
 
-  private void setNotUseLocalMirror() throws VcsException {
+  private void removeUrlSections() throws VcsException {
     Repository r = null;
     try {
       r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
@@ -352,23 +354,6 @@ public class UpdaterImpl implements Updater {
     } catch (VcsException e) {
       LOG.debug("Failed to read property", e);
       return "";
-    }
-  }
-
-
-  protected boolean isRepositoryUseLocalMirror() throws VcsException {
-    Repository r = null;
-    try {
-      r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
-      StoredConfig config = r.getConfig();
-      return !config.getSubsections("url").isEmpty();
-    } catch (IOException e) {
-      String msg = "Error while reading config file in repository " + myTargetDirectory.getAbsolutePath();
-      LOG.error(msg, e);
-      throw new VcsException(msg, e);
-    } finally {
-      if (r != null)
-        r.close();
     }
   }
 
@@ -400,6 +385,11 @@ public class UpdaterImpl implements Updater {
 
 
   protected void ensureCommitLoaded(boolean fetchRequired) throws VcsException {
+    fetchFromOriginalRepository(fetchRequired);
+  }
+
+
+  protected void fetchFromOriginalRepository(boolean fetchRequired) throws VcsException {
     Ref remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
     if (!fetchRequired && hasRevision(myTargetDirectory, myRevision) && remoteRef != null)
       return;
@@ -565,11 +555,7 @@ public class UpdaterImpl implements Updater {
     if (pushUrl != null && !pushUrl.equals(myRoot.getRepositoryFetchURL().toString())) {
       myGitFactory.create(myTargetDirectory).setConfig().setPropertyName("remote.origin.pushurl").setValue(pushUrl).call();
     }
-    postInit();
-  }
-
-
-  protected void postInit() throws VcsException {
+    setupNewRepository();
   }
 
 
