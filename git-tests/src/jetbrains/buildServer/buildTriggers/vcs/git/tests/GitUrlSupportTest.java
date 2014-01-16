@@ -157,14 +157,6 @@ public class GitUrlSupportTest extends BaseTestCase {
   }
 
   @Test
-  public void url_without_git_suffix() throws Exception {
-    VcsUrl url = new VcsUrl("https://github.com/hhariri/wasabi");
-    GitVcsRoot root = toGitRoot(url);
-
-    assertEquals("https://github.com/hhariri/wasabi.git", root.getProperty(Constants.FETCH_URL));
-  }
-
-  @Test
   public void http_protocol_svn_repo() throws Exception {
     VcsUrl url = new VcsUrl("http://svn.jetbrains.org/teamcity/plugins/xml-tests-reporting/trunk/");
     assertNull(myUrlSupport.convertToVcsRootProperties(url));
