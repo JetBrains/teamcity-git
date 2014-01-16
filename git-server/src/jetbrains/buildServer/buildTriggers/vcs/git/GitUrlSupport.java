@@ -60,7 +60,7 @@ public class GitUrlSupport implements UrlSupport {
       return props;
 
     try {
-      if (!fetchUrl.endsWith(".git")) {
+      if (fetchUrl.contains("github") && !fetchUrl.endsWith(".git")) {
         props.put(Constants.FETCH_URL, fetchUrl + ".git");
       }
 
