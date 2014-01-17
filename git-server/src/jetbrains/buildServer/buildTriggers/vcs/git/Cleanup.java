@@ -113,6 +113,10 @@ public class Cleanup {
   }
 
   private void runNativeGC() {
+    if (!isNativeGitInstalled()) {
+      LOG.info("Cannot find a native git, skip running git gc");
+      return;
+    }
     final long start = System.currentTimeMillis();
     final long gcTimeQuota = minutes2Milliseconds(myConfig.getNativeGCQuotaMinutes());
     LOG.info("Garbage collection started");
@@ -134,6 +138,21 @@ public class Cleanup {
     }
     final long finish = System.currentTimeMillis();
     LOG.info("Garbage collection finished, it took " + (finish - start) + "ms");
+  }
+
+  private boolean isNativeGitInstalled() {
+    String pathToGit = myConfig.getPathToGit();
+    GeneralCommandLine cmd = new GeneralCommandLine();
+    cmd.setWorkingDirectory(myRepositoryManager.getBaseMirrorsDir());
+    cmd.setExePath(pathToGit);
+    cmd.addParameter("version");
+    ExecResult result = SimpleCommandLineProcessRunner.runCommand(cmd, null);
+    VcsException commandError = CommandLineUtil.getCommandLineError("git version", result);
+    if (commandError != null) {
+      LOG.info("Cannot run a native git", commandError);
+      return false;
+    }
+    return true;
   }
 
   private void runNativeGC(final File bareGitDir) {
