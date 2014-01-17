@@ -211,7 +211,6 @@ public class UpdaterImpl implements Updater {
         .setAuthSettings(myRoot.getAuthSettings())
         .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
         .setTimeout(SILENT_TIMEOUT)
-        .setForce(true)
         .call();
 
       if (recursiveSubmoduleCheckout()) {
