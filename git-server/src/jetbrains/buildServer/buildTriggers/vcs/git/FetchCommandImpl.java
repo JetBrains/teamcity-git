@@ -225,6 +225,14 @@ public class FetchCommandImpl implements FetchCommand {
     cl.setWorkingDirectory(repository.getDirectory());
     cl.setExePath(myConfig.getFetchProcessJavaPath());
     cl.addParameters(myConfig.getProxySettingsForSeparateProcess());
+
+    String trustStore = System.getProperty("javax.net.ssl.trustStore");
+    String trustStorePassword = System.getProperty("javax.net.ssl.trustStorePassword");
+    if (trustStore != null)
+      cl.addParameter("-Djavax.net.ssl.trustStore=" + trustStore);
+    if (trustStorePassword != null)
+      cl.addParameter("-Djavax.net.ssl.trustStorePassword=" + trustStorePassword);
+
     cl.addParameters("-Xmx" + myConfig.getFetchProcessMaxMemory(),
                      "-cp", myConfig.getFetchClasspath(),
                      myConfig.getFetcherClassName(),
