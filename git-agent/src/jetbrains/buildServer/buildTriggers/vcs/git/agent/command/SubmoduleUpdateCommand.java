@@ -34,5 +34,8 @@ public interface SubmoduleUpdateCommand {
   @NotNull
   SubmoduleUpdateCommand setTimeout(int timeout);
 
+  @NotNull
+  SubmoduleUpdateCommand setForce(boolean force);
+
   void call() throws VcsException;
 }

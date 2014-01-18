@@ -41,7 +41,10 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.*;
@@ -51,6 +54,8 @@ public class UpdaterImpl implements Updater {
   private final static Logger LOG = Logger.getLogger(UpdaterImpl.class);
   /** Git version which supports --progress option in the fetch command */
   private final static GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
+  //--force option in git submodule update introduced in 1.7.6
+  private final static GitVersion GIT_WITH_FORCE_SUBMODULE_UPDATE = new GitVersion(1, 7, 6);
   private static final int SILENT_TIMEOUT = 24 * 60 * 60; //24 hours
 
   private final SmartDirectoryCleaner myDirectoryCleaner;
@@ -211,6 +216,7 @@ public class UpdaterImpl implements Updater {
         .setAuthSettings(myRoot.getAuthSettings())
         .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
         .setTimeout(SILENT_TIMEOUT)
+        .setForce(isForceUpdateSupported())
         .call();
 
       if (recursiveSubmoduleCheckout()) {
@@ -226,6 +232,11 @@ public class UpdaterImpl implements Updater {
       Loggers.VCS.error("Submodules checkout failed", e);
       throw new VcsException("Submodules checkout failed", e);
     }
+  }
+
+
+  private boolean isForceUpdateSupported() {
+    return !GIT_WITH_FORCE_SUBMODULE_UPDATE.isGreaterThan(myPluginConfig.getGitVersion());
   }
 
 
