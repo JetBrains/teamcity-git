@@ -24,6 +24,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Refs;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.RefImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.log.Loggers;
@@ -605,12 +606,29 @@ public class UpdaterImpl implements Updater {
     Refs remoteRefs = new Refs(git.lsRemote().setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
       .call());
+    //We remove both outdated local refs (e.g. refs/heads/topic) and outdated remote
+    //tracking branches (refs/remote/origin/topic), while git remote origin prune
+    //removes only the latter. We need that because in some cases git cannot handle
+    //rename of the branch (TW-28735).
     for (Ref localRef : localRefs.list()) {
-      if (remoteRefs.isOutdated(localRef)) {
+      Ref correspondingRemoteRef = createCorrespondingRemoteRef(localRef);
+      if (remoteRefs.isOutdated(correspondingRemoteRef)) {
         git.updateRef().setRef(localRef.getName()).delete().call();
         outdatedRefsRemoved = true;
       }
     }
     return outdatedRefsRemoved;
+  }
+
+  private boolean isRemoteTrackingBranch(@NotNull Ref localRef) {
+    return localRef.getName().startsWith("refs/remotes/origin");
+  }
+
+  @NotNull
+  private Ref createCorrespondingRemoteRef(@NotNull Ref localRef) {
+    if (!isRemoteTrackingBranch(localRef))
+      return localRef;
+    return new RefImpl("refs/heads" + localRef.getName().substring("refs/remotes/origin".length()),
+                       localRef.getObjectId().name());
   }
 }

@@ -22,9 +22,7 @@ import jetbrains.buildServer.agent.vcs.AgentVcsSupport;
 import jetbrains.buildServer.agent.vcs.UpdateByCheckoutRules2;
 import jetbrains.buildServer.agent.vcs.UpdatePolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.HashCalculator;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
-import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
@@ -42,15 +40,18 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private final GitAgentSSHService mySshService;
   private final PluginConfigFactory myConfigFactory;
   private final MirrorManager myMirrorManager;
+  private final GitMetaFactory myGitMetaFactory;
 
   public GitAgentVcsSupport(@NotNull SmartDirectoryCleaner directoryCleaner,
                             @NotNull GitAgentSSHService sshService,
                             @NotNull PluginConfigFactory configFactory,
-                            @NotNull MirrorManager mirrorManager) {
+                            @NotNull MirrorManager mirrorManager,
+                            @NotNull GitMetaFactory gitMetaFactory) {
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
     myConfigFactory = configFactory;
     myMirrorManager = mirrorManager;
+    myGitMetaFactory = gitMetaFactory;
   }
 
 
@@ -77,7 +78,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     validateCheckoutRules(root, rules);
     File targetDir = getTargetDir(root, rules, checkoutDirectory);
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
-    GitFactory gitFactory = new GitFactoryImpl(mySshService, config);
+    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config);
     Updater updater = config.isUseLocalMirrors() ?
                       new UpdaterWithMirror(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir):
                       new UpdaterImpl(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir);

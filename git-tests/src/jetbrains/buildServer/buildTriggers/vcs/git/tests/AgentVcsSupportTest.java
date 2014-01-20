@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2012 JetBrains s.r.o.
+ * Copyright 2000-2014 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.regex.Matcher;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.XmlRpcHandlerManager;
 import jetbrains.buildServer.agent.*;
@@ -34,10 +27,12 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.log.Log4jFactory;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
+import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsUtil;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.api.Git;
@@ -51,6 +46,14 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
@@ -79,6 +82,7 @@ public class AgentVcsSupportTest {
   private AgentRunningBuild myBuild;
   private PluginConfigFactory myConfigFactory;
   private MirrorManager myMirrorManager;
+  private BuildAgent myBuildAgent;
 
   static {
     Logger.setFactory(new Log4jFactory());
@@ -114,7 +118,11 @@ public class AgentVcsSupportTest {
     myAgentConfiguration = createBuildAgentConfiguration();
     myConfigFactory = new PluginConfigFactoryImpl(myAgentConfiguration, detector);
     myMirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl());
-    myVcsSupport = new GitAgentVcsSupport(createSmartDirectoryCleaner(), new GitAgentSSHService(createBuildAgent(), myAgentConfiguration, new GitPluginDescriptor()), myConfigFactory, myMirrorManager);
+    GitMetaFactory metaFactory = new GitMetaFactoryImpl();
+    myBuildAgent = createBuildAgent();
+    myVcsSupport = new GitAgentVcsSupport(createSmartDirectoryCleaner(),
+                                          new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new GitPluginDescriptor()),
+                                          myConfigFactory, myMirrorManager, metaFactory);
     myLogger = createLogger();
     myBuild = createRunningBuild(true);
 
@@ -125,6 +133,27 @@ public class AgentVcsSupportTest {
   @AfterMethod
   protected void tearDown() throws Exception {
     myTempFiles.cleanup();
+  }
+
+
+  @TestFor(issues = "TW-33401")
+  @Test(dataProvider = "mirrors")
+  public void should_not_remove_remote_tracking_branches(Boolean useMirrors) throws VcsException {
+    LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
+    GitAgentVcsSupport git = new GitAgentVcsSupport(createSmartDirectoryCleaner(),
+                                                    new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new GitPluginDescriptor()),
+                                                    myConfigFactory, myMirrorManager, loggingFactory);
+
+    AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, useMirrors.toString()));
+
+    git.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
+
+    //we already have everything we need for this update, no fetch should be executed
+    git.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
+
+    assertFalse("Refs removed: " + loggingFactory.getInvokedMethods(UpdateRefCommand.class),
+                loggingFactory.getInvokedMethods(UpdateRefCommand.class).contains("delete"));
+    assertTrue("Redundant fetch", loggingFactory.getInvokedMethods(FetchCommand.class).isEmpty());
   }
 
 
@@ -716,6 +745,7 @@ public class AgentVcsSupportTest {
     myMockery.checking(new Expectations() {{
       allowing(build).getBuildLogger(); will(returnValue(myLogger));
       allowing(build).getSharedConfigParameters(); will(returnValue(sharedConfigParameters));
+      allowing(build).getBuildTempDirectory(); will(returnValue(new File(FileUtil.getTempDirectory())));
     }});
     return build;
   }
