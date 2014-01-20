@@ -40,15 +40,18 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private final GitAgentSSHService mySshService;
   private final PluginConfigFactory myConfigFactory;
   private final MirrorManager myMirrorManager;
+  private final GitMetaFactory myGitMetaFactory;
 
   public GitAgentVcsSupport(@NotNull SmartDirectoryCleaner directoryCleaner,
                             @NotNull GitAgentSSHService sshService,
                             @NotNull PluginConfigFactory configFactory,
-                            @NotNull MirrorManager mirrorManager) {
+                            @NotNull MirrorManager mirrorManager,
+                            @NotNull GitMetaFactory gitMetaFactory) {
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
     myConfigFactory = configFactory;
     myMirrorManager = mirrorManager;
+    myGitMetaFactory = gitMetaFactory;
   }
 
 
@@ -75,7 +78,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     validateCheckoutRules(root, rules);
     File targetDir = getTargetDir(root, rules, checkoutDirectory);
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
-    GitFactory gitFactory = new GitFactoryImpl(mySshService, config, build.getBuildTempDirectory());
+    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, build.getBuildTempDirectory());
     Updater updater;
     if (config.isUseAlternates()) {
       updater = new UpdaterWithAlternates(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir);
