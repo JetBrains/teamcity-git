@@ -103,11 +103,10 @@ public abstract class SubmoduleResolver {
    *
    * @param submoduleUrl the URL to resolve
    * @return the resolved repository
-   * @throws IOException if repository could not be resolved
    * @throws VcsAuthenticationException in case of authentication problems
    * @throws URISyntaxException if there are errors in submodule repository URI
    */
-  protected abstract Repository resolveRepository(@NotNull String submoduleUrl) throws IOException, VcsException, URISyntaxException;
+  protected abstract Repository resolveRepository(@NotNull String submoduleUrl) throws VcsException, URISyntaxException;
 
   protected abstract void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException;
 

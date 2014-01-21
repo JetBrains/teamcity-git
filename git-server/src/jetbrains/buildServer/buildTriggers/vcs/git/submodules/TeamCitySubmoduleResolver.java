@@ -18,7 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
@@ -65,7 +64,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
   }
 
 
-  protected Repository resolveRepository(@NotNull String submoduleUrl) throws IOException, VcsException, URISyntaxException {
+  protected Repository resolveRepository(@NotNull String submoduleUrl) throws VcsException, URISyntaxException {
     LOG.debug("Resolve repository for URL: " + submoduleUrl);
     final URIish uri = resolveSubmoduleUrl(submoduleUrl);
     Repository r = myContext.getRepositoryFor(uri);

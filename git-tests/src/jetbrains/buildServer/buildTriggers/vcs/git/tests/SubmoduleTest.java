@@ -231,8 +231,8 @@ public class SubmoduleTest {
     @Override
     public SubmoduleResolver getSubResolver(RevCommit commit, String path) {
       return new SubmoduleResolver(myGitSupport, myCommitLoader, myReferencedRepository, commit) {
-        protected Repository resolveRepository(@NotNull String url) throws IOException {
-          throw new IOException("Repository not found");
+        protected Repository resolveRepository(@NotNull String url) {
+          throw new RuntimeException("Repository not found");
         }
         @Override
         protected void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
