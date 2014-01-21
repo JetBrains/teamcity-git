@@ -26,6 +26,7 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -253,6 +254,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
            mySubmodulesPolicy.equals(SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT_IGNORING_ERRORS);
   }
 
+  @NotNull
   private String getPathFromRoot(String path) {
     if ("".equals(myPathFromRoot) || myPathFromRoot.endsWith("/") || path.startsWith("/")) {
       return myPathFromRoot + path;
