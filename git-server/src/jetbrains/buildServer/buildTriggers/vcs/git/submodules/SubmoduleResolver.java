@@ -16,99 +16,19 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
-import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.errors.MissingObjectException;
-import org.eclipse.jgit.lib.BlobBasedConfig;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 
-/**
- * The resolver for submodules
- */
-public abstract class SubmoduleResolver {
+public interface SubmoduleResolver {
 
-  private static Logger LOG = Logger.getInstance(SubmoduleResolver.class.getName());
-
-  private final RevCommit myCommit;
-  private final Repository myDb;
-  protected final GitVcsSupport myGitSupport;
-  protected final CommitLoader myCommitLoader;
-  private SubmodulesConfig myConfig;
-
-  public SubmoduleResolver(@NotNull GitVcsSupport gitSupport,
-                           @NotNull CommitLoader commitLoader,
-                           @NotNull Repository db,
-                           @NotNull RevCommit commit) {
-    myGitSupport = gitSupport;
-    myCommitLoader = commitLoader;
-    myDb = db;
-    myCommit = commit;
-  }
-
-  /**
-   * Resolve the commit for submodule
-   *
-   * @param path   the within repository path
-   * @param commit the commit identifier
-   * @return the the resoled commit in other repository
-   * @throws IOException if there is an IO problem during resolving repository or mapping commit
-   * @throws VcsAuthenticationException if there are authentication problems
-   * @throws URISyntaxException if there are errors in submodule repository URI
-   */
-  public RevCommit getSubmoduleCommit(String path, ObjectId commit) throws IOException, VcsException, URISyntaxException {
-    ensureConfigLoaded();
-    String mainRepositoryUrl = myDb.getConfig().getString("teamcity", null, "remote");
-    if (myConfig == null)
-      throw new MissingSubmoduleConfigException(mainRepositoryUrl, myCommit.name(), path);
-
-    final Submodule submodule = myConfig.findSubmodule(path);
-    if (submodule == null)
-      throw new MissingSubmoduleEntryException(mainRepositoryUrl, myCommit.name(), path);
-
-    Repository r = resolveRepository(path, submodule.getUrl());
-    if (!isCommitExist(r, commit))
-      fetch(r, path, submodule.getUrl());
-    try {
-      return myCommitLoader.getCommit(r, commit);
-    } catch (MissingObjectException e) {
-      throw new MissingSubmoduleCommitException(mainRepositoryUrl, myCommit.name(), path, submodule.getUrl(), commit.name());
-    }
-  }
-
-  private boolean isCommitExist(final Repository r, final ObjectId commit) {
-    RevWalk walk = new RevWalk(r);
-    try {
-      walk.parseCommit(commit);
-      return true;
-    } catch (IOException e) {
-      return false;
-    }
-  }
-
-  /**
-   * Get repository by the URL. Note that the repository is retrieved but not cleaned up. This should be done by implementer of this component at later time.
-   *
-   * @param path the local path within repository
-   * @param submoduleUrl the URL to resolve
-   * @return the resolved repository
-   * @throws IOException if repository could not be resolved
-   * @throws VcsAuthenticationException in case of authentication problems
-   * @throws URISyntaxException if there are errors in submodule repository URI
-   */
-  protected abstract Repository resolveRepository(String path, String submoduleUrl) throws IOException, VcsException, URISyntaxException;
-
-  protected abstract void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException;
+  RevCommit getSubmoduleCommit(String path, ObjectId commit) throws IOException, VcsException, URISyntaxException;
 
   /**
    * Get submodule resolver for the path
@@ -117,54 +37,25 @@ public abstract class SubmoduleResolver {
    * @param path   the local path within repository
    * @return the submodule resolver that handles submodules inside the specified commit
    */
-  public abstract SubmoduleResolver getSubResolver(RevCommit commit, String path);
+  SubmoduleResolver getSubResolver(RevCommit commit, String path);
 
   /**
-   * Check if the specified directory is a submodule prefix
+   * Get repository by the URL. Note that the repository is retrieved but not cleaned up. This should be done by implementer of this component at later time.
    *
-   * @param path the path to check
-   * @return true if the path contains submodules
+   * @param submoduleUrl the URL to resolve
+   * @return the resolved repository
+   * @throws jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException in case of authentication problems
+   * @throws java.net.URISyntaxException if there are errors in submodule repository URI
    */
-  public boolean containsSubmodule(String path) {
-    ensureConfigLoaded();
-    return myConfig != null && myConfig.isSubmodulePrefix(path);
-  }
+  Repository resolveRepository(@NotNull String submoduleUrl) throws VcsException, URISyntaxException;
 
-  /**
-   * @return the current repository
-   */
-  public Repository getRepository() {
-    return myDb;
-  }
+  void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException;
 
-  /**
-   * Get submodule url by it's path in current repository
-   *
-   * @param submodulePath path of submodule in current repository
-   * @return submodule repository url or null if no submodules is registered for specified path
-   */
-  public String getSubmoduleUrl(String submodulePath) {
-    ensureConfigLoaded();
-    if (myConfig != null) {
-      Submodule submodule = myConfig.findSubmodule(submodulePath);
-      return submodule != null ? submodule.getUrl() : null;
-    } else {
-      return null;
-    }
-  }
+  URIish resolveSubmoduleUrl(@NotNull String url) throws URISyntaxException;
 
-  /**
-   * Ensure that submodule configuration has been loaded.
-   */
-  private void ensureConfigLoaded() {
-    if (myConfig == null) {
-      try {
-        myConfig = new SubmodulesConfig(myDb.getConfig(), new BlobBasedConfig(null, myDb, myCommit, ".gitmodules"));
-      } catch (FileNotFoundException e) {
-        // do nothing
-      } catch (Exception e) {
-        LOG.error("Unable to load or parse submodule configuration at: " + myCommit.getId().name(), e);
-      }
-    }
-  }
+  boolean containsSubmodule(String path);
+
+  Repository getRepository();
+
+  String getSubmoduleUrl(String submodulePath);
 }
