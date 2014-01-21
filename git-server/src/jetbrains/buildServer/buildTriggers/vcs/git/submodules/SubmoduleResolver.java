@@ -76,7 +76,7 @@ public abstract class SubmoduleResolver {
     if (submodule == null)
       throw new MissingSubmoduleEntryException(mainRepositoryUrl, myCommit.name(), path);
 
-    Repository r = resolveRepository(path, submodule.getUrl());
+    Repository r = resolveRepository(submodule.getUrl());
     if (!isCommitExist(r, commit))
       fetch(r, path, submodule.getUrl());
     try {
@@ -99,14 +99,13 @@ public abstract class SubmoduleResolver {
   /**
    * Get repository by the URL. Note that the repository is retrieved but not cleaned up. This should be done by implementer of this component at later time.
    *
-   * @param path the local path within repository
    * @param submoduleUrl the URL to resolve
    * @return the resolved repository
    * @throws IOException if repository could not be resolved
    * @throws VcsAuthenticationException in case of authentication problems
    * @throws URISyntaxException if there are errors in submodule repository URI
    */
-  protected abstract Repository resolveRepository(String path, String submoduleUrl) throws IOException, VcsException, URISyntaxException;
+  protected abstract Repository resolveRepository(@NotNull String submoduleUrl) throws IOException, VcsException, URISyntaxException;
 
   protected abstract void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException;
 

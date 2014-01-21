@@ -34,6 +34,7 @@ import org.eclipse.jgit.storage.file.FileBasedConfig;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.eclipse.jgit.util.FS;
+import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -218,7 +219,7 @@ public class SubmoduleTest {
       myGitSupport = gitSupport;
     }
 
-    protected Repository resolveRepository(String path, String url) {
+    protected Repository resolveRepository(@NotNull String url) {
       return myReferencedRepository;
     }
 
@@ -230,7 +231,7 @@ public class SubmoduleTest {
     @Override
     public SubmoduleResolver getSubResolver(RevCommit commit, String path) {
       return new SubmoduleResolver(myGitSupport, myCommitLoader, myReferencedRepository, commit) {
-        protected Repository resolveRepository(String path, String url) throws IOException {
+        protected Repository resolveRepository(@NotNull String url) throws IOException {
           throw new IOException("Repository not found");
         }
         @Override

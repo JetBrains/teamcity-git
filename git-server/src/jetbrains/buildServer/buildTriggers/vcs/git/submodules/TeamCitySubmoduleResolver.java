@@ -65,7 +65,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
   }
 
 
-  protected Repository resolveRepository(String path, String submoduleUrl) throws IOException, VcsException, URISyntaxException {
+  protected Repository resolveRepository(@NotNull String submoduleUrl) throws IOException, VcsException, URISyntaxException {
     LOG.debug("Resolve repository for URL: " + submoduleUrl);
     final URIish uri = resolveUrl(submoduleUrl);
     Repository r = myContext.getRepositoryFor(uri);
@@ -105,7 +105,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
   public SubmoduleResolver getSubResolver(RevCommit commit, String path) {
     Repository db = null;
     try {
-      db = resolveRepository(path, getSubmoduleUrl(path));
+      db = resolveRepository(getSubmoduleUrl(path));
     } catch (Exception e) {
       //exception means path does not contain submodule, use current repository
       db = getRepository();

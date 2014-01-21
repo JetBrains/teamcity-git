@@ -286,7 +286,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
       CanonicalTreeParser p = new CanonicalTreeParser();
       ObjectReader or = null;
       try {
-        Repository r = mySubmoduleResolver.resolveRepository(path, mySubmoduleResolver.getSubmoduleUrl(path));
+        Repository r = mySubmoduleResolver.resolveRepository(mySubmoduleResolver.getSubmoduleUrl(path));
         or = r.newObjectReader();
         p.reset(or, mySubmoduleCommit.getTree().getId());
       } catch (Exception e) {
