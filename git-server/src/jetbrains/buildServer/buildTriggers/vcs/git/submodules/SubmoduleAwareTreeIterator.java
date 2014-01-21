@@ -220,7 +220,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     return myIsOnSubmodule;
   }
 
-  private RevCommit getSubmoduleCommit(String path, ObjectId entryObjectId) throws CorruptObjectException, VcsException, URISyntaxException {
+  private RevCommit getSubmoduleCommit(@NotNull String path, @NotNull ObjectId entryObjectId) throws CorruptObjectException, VcsException, URISyntaxException {
     try {
       return mySubmoduleResolver.getSubmoduleCommit(path, entryObjectId);
     } catch (VcsAuthenticationException e) {

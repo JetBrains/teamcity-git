@@ -79,7 +79,8 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
    * @throws VcsAuthenticationException if there are authentication problems
    * @throws URISyntaxException if there are errors in submodule repository URI
    */
-  public RevCommit getSubmoduleCommit(String path, ObjectId commit) throws IOException, VcsException, URISyntaxException {
+  @NotNull
+  public RevCommit getSubmoduleCommit(@NotNull String path, @NotNull ObjectId commit) throws IOException, VcsException, URISyntaxException {
     ensureConfigLoaded();
     String mainRepositoryUrl = myDb.getConfig().getString("teamcity", null, "remote");
     if (myConfig == null)
