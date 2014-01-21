@@ -19,7 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.errors.MissingObjectException;
+import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
@@ -76,14 +76,13 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
    * @param path   the within repository path
    * @param commit the commit identifier
    * @return the the resoled commit in other repository
-   * @throws IOException if there is an IO problem during resolving repository or mapping commit
    * @throws VcsAuthenticationException if there are authentication problems
    * @throws URISyntaxException if there are errors in submodule repository URI
    */
   @NotNull
   public RevCommit getSubmoduleCommit(@NotNull String parentRepositoryUrl,
                                       @NotNull String path,
-                                      @NotNull ObjectId commit) throws IOException, VcsException, URISyntaxException {
+                                      @NotNull ObjectId commit) throws CorruptObjectException, VcsException, URISyntaxException {
     ensureConfigLoaded();
     if (myConfig == null)
       throw new MissingSubmoduleConfigException(parentRepositoryUrl, myCommit.name(), path);
@@ -93,11 +92,18 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
       throw new MissingSubmoduleEntryException(parentRepositoryUrl, myCommit.name(), path);
 
     Repository r = resolveRepository(submodule.getUrl());
-    if (!isCommitExist(r, commit))
-      fetch(r, path, submodule.getUrl());
+    String submoduleUrl = r.getConfig().getString("teamcity", null, "remote");
+
+    if (!isCommitExist(r, commit)) {
+      try {
+        fetch(r, path, submodule.getUrl());
+      } catch (Exception e) {
+        throw new SubmoduleFetchException(parentRepositoryUrl, path, submoduleUrl, myCommit, e);
+      }
+    }
     try {
       return myCommitLoader.getCommit(r, commit);
-    } catch (MissingObjectException e) {
+    } catch (Exception e) {
       throw new MissingSubmoduleCommitException(parentRepositoryUrl, myCommit.name(), path, submodule.getUrl(), commit.name());
     }
   }
