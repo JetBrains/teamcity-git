@@ -17,10 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.vcs.VcsException;
@@ -46,6 +43,7 @@ import java.net.URISyntaxException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIteratorFactory.create;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.Assert.*;
 
 /**
@@ -56,14 +54,15 @@ public class SubmoduleTest {
   private static TempFiles myTempFiles = new TempFiles();
   private GitVcsSupport myGitSupport;
   private CommitLoader myCommitLoader;
+  private GitSupportBuilder myBuilder;
 
   @BeforeMethod
   public void setUp() throws IOException {
     File dotBuildServer = myTempFiles.createTempDir();
     ServerPaths serverPaths = new ServerPaths(dotBuildServer.getAbsolutePath());
-    final GitSupportBuilder builder = gitSupport().withServerPaths(serverPaths);
-    myGitSupport = builder.build();
-    myCommitLoader = builder.getCommitLoader();
+    myBuilder = gitSupport().withServerPaths(serverPaths);
+    myGitSupport = myBuilder.build();
+    myCommitLoader = myBuilder.getCommitLoader();
   }
 
   @AfterMethod
@@ -146,7 +145,8 @@ public class SubmoduleTest {
           ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_ADDED_VERSION)));
         final RevCommit beforeSubmoduleAdded = revWalk.parseCommit(
           ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.BEFORE_SUBMODULE_ADDED_VERSION)));
-        SubmoduleResolverImpl r = new MySubmoduleResolver(myGitSupport, myCommitLoader, rm, submoduleAdded, rs);
+        SubmoduleResolverImpl r = new MySubmoduleResolver(myGitSupport, myGitSupport.createContext(vcsRoot().withFetchUrl("whatever").build(), "testing"),
+                                                          myCommitLoader, rm, submoduleAdded, rs);
         TreeWalk tw = new TreeWalk(rm);
         tw.setRecursive(true);
         tw.reset();
@@ -213,9 +213,14 @@ public class SubmoduleTest {
     private final Repository myReferencedRepository;
     private final GitVcsSupport myGitSupport;
 
-    public MySubmoduleResolver(GitVcsSupport gitSupport, CommitLoader commitLoader, Repository db, RevCommit commit, Repository referencedRepository) {
-      super(gitSupport, commitLoader, db, commit);
-      this.myReferencedRepository = referencedRepository;
+    public MySubmoduleResolver(@NotNull GitVcsSupport gitSupport,
+                               @NotNull OperationContext context,
+                               @NotNull CommitLoader commitLoader,
+                               @NotNull Repository db,
+                               @NotNull RevCommit commit,
+                               @NotNull Repository referencedRepository) {
+      super(gitSupport, context, commitLoader, db, commit, "");
+      myReferencedRepository = referencedRepository;
       myGitSupport = gitSupport;
     }
 
@@ -228,7 +233,7 @@ public class SubmoduleTest {
     }
 
     public SubmoduleResolverImpl getSubResolver(RevCommit commit, String path) {
-      return new SubmoduleResolverImpl(myGitSupport, myCommitLoader, myReferencedRepository, commit) {
+      return new SubmoduleResolverImpl(myGitSupport, myContext, myCommitLoader, myReferencedRepository, commit, path) {
         public Repository resolveRepository(@NotNull String url) {
           throw new RuntimeException("Repository not found");
         }

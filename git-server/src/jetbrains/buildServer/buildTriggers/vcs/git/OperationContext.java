@@ -18,7 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.submodules.TeamCitySubmoduleResolver;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -203,7 +202,7 @@ public class OperationContext {
                       boolean ignoreSubmodulesErrors,
                       boolean logSubmoduleErrors) throws IOException, VcsException {
     if (root.isCheckoutSubmodules()) {
-      SubmoduleResolverImpl submoduleResolver = new TeamCitySubmoduleResolver(myCommitLoader, this, db, commit);
+      SubmoduleResolverImpl submoduleResolver = new SubmoduleResolverImpl(mySupport, this, myCommitLoader, db, commit, "");
       SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(root.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
       tw.addTree(create(db, commit, submoduleResolver, root.getRepositoryFetchURL().toString(), "", checkoutPolicy, logSubmoduleErrors));
     } else {

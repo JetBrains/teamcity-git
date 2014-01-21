@@ -17,10 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
@@ -28,19 +25,29 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 
 /**
  * The resolver for submodules
  */
-public abstract class SubmoduleResolverImpl implements SubmoduleResolver {
+public class SubmoduleResolverImpl implements SubmoduleResolver {
 
   private static Logger LOG = Logger.getInstance(SubmoduleResolverImpl.class.getName());
+  /**
+   * Path from the root of the first repository.
+   * For root repository = "".
+   * For submodule repository = path of submodule.
+   * For sub-submodules = path of submodule/path of sub-submodule in submodule repository.
+   */
+  protected final String myPathFromRoot;
+  protected final OperationContext myContext;
 
   private final RevCommit myCommit;
   private final Repository myDb;
@@ -49,13 +56,17 @@ public abstract class SubmoduleResolverImpl implements SubmoduleResolver {
   private SubmodulesConfig myConfig;
 
   public SubmoduleResolverImpl(@NotNull GitVcsSupport gitSupport,
+                               @NotNull OperationContext context,
                                @NotNull CommitLoader commitLoader,
                                @NotNull Repository db,
-                               @NotNull RevCommit commit) {
+                               @NotNull RevCommit commit,
+                               @NotNull String pathFromRoot) {
     myGitSupport = gitSupport;
     myCommitLoader = commitLoader;
     myDb = db;
     myCommit = commit;
+    myContext = context;
+    myPathFromRoot = pathFromRoot;
   }
 
   /**
@@ -166,5 +177,41 @@ public abstract class SubmoduleResolverImpl implements SubmoduleResolver {
         LOG.error("Unable to load or parse submodule configuration at: " + myCommit.getId().name(), e);
       }
     }
+  }
+
+  public Repository resolveRepository(@NotNull String submoduleUrl) throws VcsException, URISyntaxException {
+    LOG.debug("Resolve repository for URL: " + submoduleUrl);
+    final URIish uri = resolveSubmoduleUrl(submoduleUrl);
+    Repository r = myContext.getRepositoryFor(uri);
+    LOG.debug("Repository dir for submodule " + submoduleUrl + " is " + r.getDirectory().getAbsolutePath());
+    return r;
+  }
+
+  public void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
+    if (LOG.isDebugEnabled())
+      LOG.debug("Fetching submodule " + submoduleUrl + " used at " + submodulePath + " for " + myContext.getGitRoot().debugInfo());
+    URIish uri = resolveSubmoduleUrl(submoduleUrl);
+    myContext.fetchSubmodule(r, uri, Arrays.asList(new RefSpec("+refs/heads/*:refs/heads/*"), new RefSpec("+refs/tags/*:refs/tags/*")), myContext.getGitRoot().getAuthSettings());
+  }
+
+  public SubmoduleResolverImpl getSubResolver(RevCommit commit, String path) {
+    Repository db = null;
+    try {
+      db = resolveRepository(getSubmoduleUrl(path));
+    } catch (Exception e) {
+      //exception means path does not contain submodule, use current repository
+      db = getRepository();
+    }
+    return new SubmoduleResolverImpl(myGitSupport, myContext, myCommitLoader, db, commit, fullPath(path));
+  }
+
+  /**
+   * Get full path using from local path
+   *
+   * @param path the path to examine
+   * @return the full including the base path
+   */
+  private String fullPath(String path) {
+    return myPathFromRoot.length() == 0 ? path : myPathFromRoot + "/" + path;
   }
 }
