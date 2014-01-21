@@ -67,7 +67,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
 
   protected Repository resolveRepository(@NotNull String submoduleUrl) throws IOException, VcsException, URISyntaxException {
     LOG.debug("Resolve repository for URL: " + submoduleUrl);
-    final URIish uri = resolveUrl(submoduleUrl);
+    final URIish uri = resolveSubmoduleUrl(submoduleUrl);
     Repository r = myContext.getRepositoryFor(uri);
     LOG.debug("Repository dir for submodule " + submoduleUrl + " is " + r.getDirectory().getAbsolutePath());
     return r;
@@ -77,29 +77,8 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
   protected void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
     if (LOG.isDebugEnabled())
       LOG.debug("Fetching submodule " + submoduleUrl + " used at " + submodulePath + " for " + myContext.getGitRoot().debugInfo());
-    URIish uri = resolveUrl(submoduleUrl);
+    URIish uri = resolveSubmoduleUrl(submoduleUrl);
     myContext.fetchSubmodule(r, uri, Arrays.asList(new RefSpec("+refs/heads/*:refs/heads/*"), new RefSpec("+refs/tags/*:refs/tags/*")), myContext.getGitRoot().getAuthSettings());
-  }
-
-  private boolean isRelative(String url) {
-    return url.startsWith(".");
-  }
-
-  private URIish resolveUrl(String url) throws URISyntaxException {
-    String uri = isRelative(url) ? resolveRelativeUrl(url) : url;
-    return new URIish(uri);
-  }
-
-  private String resolveRelativeUrl(String relativeUrl) throws URISyntaxException {
-    String baseUrl = getRepository().getConfig().getString("teamcity", null, "remote");
-    URIish u = new URIish(baseUrl);
-    String newPath = u.getPath();
-    if (newPath.length() == 0) {
-      newPath = relativeUrl;
-    } else {
-      newPath = GitUtils.normalizePath(newPath + '/' + relativeUrl);
-    }
-    return u.setPath(newPath).toPrivateString();
   }
 
   public SubmoduleResolver getSubResolver(RevCommit commit, String path) {

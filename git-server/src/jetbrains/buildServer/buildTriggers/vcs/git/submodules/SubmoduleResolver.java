@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
@@ -27,6 +28,7 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.FileNotFoundException;
@@ -108,6 +110,27 @@ public abstract class SubmoduleResolver {
   protected abstract Repository resolveRepository(@NotNull String submoduleUrl) throws IOException, VcsException, URISyntaxException;
 
   protected abstract void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException;
+
+  protected URIish resolveSubmoduleUrl(@NotNull String url) throws URISyntaxException {
+    String uri = isRelative(url) ? resolveRelativeUrl(url) : url;
+    return new URIish(uri);
+  }
+
+  private boolean isRelative(@NotNull String url) {
+    return url.startsWith(".");
+  }
+
+  private String resolveRelativeUrl(@NotNull String relativeUrl) throws URISyntaxException {
+    String baseUrl = getRepository().getConfig().getString("teamcity", null, "remote");
+    URIish u = new URIish(baseUrl);
+    String newPath = u.getPath();
+    if (newPath.length() == 0) {
+      newPath = relativeUrl;
+    } else {
+      newPath = GitUtils.normalizePath(newPath + '/' + relativeUrl);
+    }
+    return u.setPath(newPath).toPrivateString();
+  }
 
   /**
    * Get submodule resolver for the path
