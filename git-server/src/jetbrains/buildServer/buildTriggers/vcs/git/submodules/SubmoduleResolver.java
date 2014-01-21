@@ -29,7 +29,9 @@ import java.net.URISyntaxException;
 public interface SubmoduleResolver {
 
   @NotNull
-  RevCommit getSubmoduleCommit(@NotNull String path, @NotNull ObjectId commit) throws IOException, VcsException, URISyntaxException;
+  RevCommit getSubmoduleCommit(@NotNull String parentRepositoryUrl,
+                               @NotNull String path,
+                               @NotNull ObjectId commit) throws IOException, VcsException, URISyntaxException;
 
   /**
    * Get submodule resolver for the path

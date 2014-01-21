@@ -45,7 +45,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    */
   protected final AbstractTreeIterator myWrappedIterator;
   /**
-   * URL of repository for this iterator, used in error messages
+   * URL of repository for this iterator
    */
   private final String myUrl;
   /**
@@ -222,7 +222,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
 
   private RevCommit getSubmoduleCommit(@NotNull String path, @NotNull ObjectId entryObjectId) throws CorruptObjectException, VcsException, URISyntaxException {
     try {
-      return mySubmoduleResolver.getSubmoduleCommit(path, entryObjectId);
+      return mySubmoduleResolver.getSubmoduleCommit(myUrl, path, entryObjectId);
     } catch (VcsAuthenticationException e) {
       //in case of VcsAuthenticationException throw CorruptObjectException without object id,
       //because problem is related to whole repository, not to concrete object

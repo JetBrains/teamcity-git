@@ -72,6 +72,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
   /**
    * Resolve the commit for submodule
    *
+   * @param parentRepositoryUrl url of the parent repository
    * @param path   the within repository path
    * @param commit the commit identifier
    * @return the the resoled commit in other repository
@@ -80,15 +81,16 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
    * @throws URISyntaxException if there are errors in submodule repository URI
    */
   @NotNull
-  public RevCommit getSubmoduleCommit(@NotNull String path, @NotNull ObjectId commit) throws IOException, VcsException, URISyntaxException {
+  public RevCommit getSubmoduleCommit(@NotNull String parentRepositoryUrl,
+                                      @NotNull String path,
+                                      @NotNull ObjectId commit) throws IOException, VcsException, URISyntaxException {
     ensureConfigLoaded();
-    String mainRepositoryUrl = myDb.getConfig().getString("teamcity", null, "remote");
     if (myConfig == null)
-      throw new MissingSubmoduleConfigException(mainRepositoryUrl, myCommit.name(), path);
+      throw new MissingSubmoduleConfigException(parentRepositoryUrl, myCommit.name(), path);
 
     final Submodule submodule = myConfig.findSubmodule(path);
     if (submodule == null)
-      throw new MissingSubmoduleEntryException(mainRepositoryUrl, myCommit.name(), path);
+      throw new MissingSubmoduleEntryException(parentRepositoryUrl, myCommit.name(), path);
 
     Repository r = resolveRepository(submodule.getUrl());
     if (!isCommitExist(r, commit))
@@ -96,7 +98,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
     try {
       return myCommitLoader.getCommit(r, commit);
     } catch (MissingObjectException e) {
-      throw new MissingSubmoduleCommitException(mainRepositoryUrl, myCommit.name(), path, submodule.getUrl(), commit.name());
+      throw new MissingSubmoduleCommitException(parentRepositoryUrl, myCommit.name(), path, submodule.getUrl(), commit.name());
     }
   }
 
