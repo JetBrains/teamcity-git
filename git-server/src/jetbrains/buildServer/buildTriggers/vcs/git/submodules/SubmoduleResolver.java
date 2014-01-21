@@ -28,7 +28,10 @@ import java.net.URISyntaxException;
 
 public interface SubmoduleResolver {
 
-  RevCommit getSubmoduleCommit(String path, ObjectId commit) throws IOException, VcsException, URISyntaxException;
+  @NotNull
+  RevCommit getSubmoduleCommit(@NotNull String parentRepositoryUrl,
+                               @NotNull String path,
+                               @NotNull ObjectId commit) throws IOException, VcsException, URISyntaxException;
 
   /**
    * Get submodule resolver for the path
@@ -51,7 +54,7 @@ public interface SubmoduleResolver {
 
   void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException;
 
-  URIish resolveSubmoduleUrl(@NotNull String url) throws URISyntaxException;
+  URIish resolveSubmoduleUrl(@NotNull String submoduleUrl) throws URISyntaxException;
 
   boolean containsSubmodule(String path);
 

@@ -16,6 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
  * The entry in submodule configuration
  */
@@ -40,7 +42,7 @@ public class Submodule {
    * @param path the path in repository
    * @param url  the URL which is submodule is mapped to
    */
-  Submodule(String name, String path, String url) {
+  Submodule(@NotNull String name, @NotNull String path, @NotNull String url) {
     myName = name;
     myUrl = url;
     myPath = path;
@@ -49,6 +51,7 @@ public class Submodule {
   /**
    * @return the submodule name
    */
+  @NotNull
   public String getName() {
     return myName;
   }
@@ -56,6 +59,7 @@ public class Submodule {
   /**
    * @return the submodule path
    */
+  @NotNull
   public String getPath() {
     return myPath;
   }
@@ -63,6 +67,7 @@ public class Submodule {
   /**
    * @return the submodule URL
    */
+  @NotNull
   public String getUrl() {
     return myUrl;
   }
