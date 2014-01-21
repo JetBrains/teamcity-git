@@ -36,7 +36,8 @@ public class DirectSubmoduleAwareTreeIterator extends SubmoduleAwareTreeIterator
    * @param submodulesPolicy  should created iterator checkout submodules
    * @throws IOException in case of submodule processing problem
    */
-  public DirectSubmoduleAwareTreeIterator(AbstractTreeIterator wrappedIterator, SubmoduleResolver submoduleResolver,
+  public DirectSubmoduleAwareTreeIterator(AbstractTreeIterator wrappedIterator,
+                                          SubmoduleResolver submoduleResolver,
                                           String repositoryUrl, String pathFromRoot,
                                           SubmodulesCheckoutPolicy submodulesPolicy,
                                           boolean logSubmoduleErrors) throws IOException {

@@ -45,7 +45,7 @@ public class SubmoduleAwareTreeIteratorFactory {
    */
   public static SubmoduleAwareTreeIterator create(Repository db,
                                                   RevCommit commit,
-                                                  SubmoduleResolver subResolver,
+                                                  SubmoduleResolverImpl subResolver,
                                                   String repositoryUrl,
                                                   String pathFromRoot,
                                                   SubmodulesCheckoutPolicy submodulePolicy,

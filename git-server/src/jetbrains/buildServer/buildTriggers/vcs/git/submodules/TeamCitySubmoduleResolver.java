@@ -33,7 +33,7 @@ import java.util.Arrays;
 /**
  * The resolver for submodules that uses TeamCity repository mapping.
  */
-public class TeamCitySubmoduleResolver extends SubmoduleResolver {
+public class TeamCitySubmoduleResolver extends SubmoduleResolverImpl {
 
   private static Logger LOG = Logger.getInstance(TeamCitySubmoduleResolver.class.getName());
   /**
@@ -64,7 +64,7 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
   }
 
 
-  protected Repository resolveRepository(@NotNull String submoduleUrl) throws VcsException, URISyntaxException {
+  public Repository resolveRepository(@NotNull String submoduleUrl) throws VcsException, URISyntaxException {
     LOG.debug("Resolve repository for URL: " + submoduleUrl);
     final URIish uri = resolveSubmoduleUrl(submoduleUrl);
     Repository r = myContext.getRepositoryFor(uri);
@@ -72,15 +72,14 @@ public class TeamCitySubmoduleResolver extends SubmoduleResolver {
     return r;
   }
 
-  @Override
-  protected void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
+  public void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
     if (LOG.isDebugEnabled())
       LOG.debug("Fetching submodule " + submoduleUrl + " used at " + submodulePath + " for " + myContext.getGitRoot().debugInfo());
     URIish uri = resolveSubmoduleUrl(submoduleUrl);
     myContext.fetchSubmodule(r, uri, Arrays.asList(new RefSpec("+refs/heads/*:refs/heads/*"), new RefSpec("+refs/tags/*:refs/tags/*")), myContext.getGitRoot().getAuthSettings());
   }
 
-  public SubmoduleResolver getSubResolver(RevCommit commit, String path) {
+  public SubmoduleResolverImpl getSubResolver(RevCommit commit, String path) {
     Repository db = null;
     try {
       db = resolveRepository(getSubmoduleUrl(path));

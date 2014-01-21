@@ -146,7 +146,7 @@ public class SubmoduleTest {
           ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_ADDED_VERSION)));
         final RevCommit beforeSubmoduleAdded = revWalk.parseCommit(
           ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.BEFORE_SUBMODULE_ADDED_VERSION)));
-        SubmoduleResolver r = new MySubmoduleResolver(myGitSupport, myCommitLoader, rm, submoduleAdded, rs);
+        SubmoduleResolverImpl r = new MySubmoduleResolver(myGitSupport, myCommitLoader, rm, submoduleAdded, rs);
         TreeWalk tw = new TreeWalk(rm);
         tw.setRecursive(true);
         tw.reset();
@@ -206,7 +206,7 @@ public class SubmoduleTest {
   /**
    * Submodule resolver used in the tests
    */
-  private static class MySubmoduleResolver extends SubmoduleResolver {
+  private static class MySubmoduleResolver extends SubmoduleResolverImpl {
     /**
      * The referenced repository
      */
@@ -219,26 +219,23 @@ public class SubmoduleTest {
       myGitSupport = gitSupport;
     }
 
-    protected Repository resolveRepository(@NotNull String url) {
+    public Repository resolveRepository(@NotNull String url) {
       return myReferencedRepository;
     }
 
-    @Override
-    protected void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
+    public void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
       //do nothing, it was already fetched
     }
 
-    @Override
-    public SubmoduleResolver getSubResolver(RevCommit commit, String path) {
-      return new SubmoduleResolver(myGitSupport, myCommitLoader, myReferencedRepository, commit) {
-        protected Repository resolveRepository(@NotNull String url) {
+    public SubmoduleResolverImpl getSubResolver(RevCommit commit, String path) {
+      return new SubmoduleResolverImpl(myGitSupport, myCommitLoader, myReferencedRepository, commit) {
+        public Repository resolveRepository(@NotNull String url) {
           throw new RuntimeException("Repository not found");
         }
-        @Override
-        protected void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
+        public void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
           throw new UnsupportedOperationException("");
         }
-        public SubmoduleResolver getSubResolver(RevCommit commit, String path) {
+        public SubmoduleResolverImpl getSubResolver(RevCommit commit, String path) {
           throw new RuntimeException("There are no submodules");
         }
       };
