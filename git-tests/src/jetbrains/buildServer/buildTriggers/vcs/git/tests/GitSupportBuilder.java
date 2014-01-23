@@ -160,4 +160,8 @@ public class GitSupportBuilder {
   public CommitLoader getCommitLoader() {
     return myCommitLoader;
   }
+
+  public TransportFactory getTransportFactory() {
+    return myTransportFactory;
+  }
 }

@@ -22,6 +22,9 @@ import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
+import java.io.IOException;
+
 /**
  * @author dmitry.neverov
  */
@@ -81,6 +84,11 @@ public class VcsRootBuilder {
 
   public VcsRootBuilder withFetchUrl(String fetchUrl) {
     myFetchUrl = fetchUrl;
+    return this;
+  }
+
+  public VcsRootBuilder withFetchUrl(@NotNull File remoteRepositoryDir) throws IOException {
+    myFetchUrl = remoteRepositoryDir.getCanonicalPath();
     return this;
   }
 

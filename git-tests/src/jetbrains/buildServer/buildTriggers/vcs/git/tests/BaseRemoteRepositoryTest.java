@@ -62,4 +62,8 @@ public abstract class BaseRemoteRepositoryTest {
       throw new IllegalArgumentException("No remote repository found: " + remoteRepository);
     return GitUtils.toURL(remote);
   }
+
+  protected File getRemoteRepositoryDir(@NotNull String remoteRepository) {
+    return myRemoteRepositories.get(remoteRepository);
+  }
 }
