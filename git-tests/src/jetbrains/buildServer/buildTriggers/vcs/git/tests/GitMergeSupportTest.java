@@ -24,6 +24,8 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.util.List;
+
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.AssertJUnit.assertTrue;
@@ -57,6 +59,22 @@ public class GitMergeSupportTest extends BaseRemoteRepositoryTest {
     //cc69c22bd5d25779e58ad91008e685cbbe7f700a is not reachable from refs/heads/master
     MergeResult result = mergeSupport.merge(root, "cc69c22bd5d25779e58ad91008e685cbbe7f700a", "refs/heads/master", "merge", new MergeOptions());
     assertTrue(result.isSuccess());
+  }
+
+
+  public void should_not_create_merge_commit_when_destination_branch_tip_is_reachable_from_merged_commit() throws Exception {
+    GitSupportBuilder builder = gitSupport().withServerPaths(myPaths);
+    GitVcsSupport git = builder.build();
+    MergeSupport mergeSupport = new GitMergeSupport(git, builder.getCommitLoader(), builder.getRepositoryManager(), builder.getTransportFactory());
+    VcsRoot root = vcsRoot().withFetchUrl(getRemoteRepositoryDir("merge")).build();
+
+    RepositoryStateData stateBeforeMerge = git.getCurrentState(root);
+    //tip of the master is reachable from cc69c22bd5d25779e58ad91008e685cbbe7f700a
+    MergeResult result = mergeSupport.merge(root, "cc69c22bd5d25779e58ad91008e685cbbe7f700a", "refs/heads/master", "merge", new MergeOptions());
+    RepositoryStateData stateAfterMerge = git.getCurrentState(root);
+
+    List<ModificationData> changes = git.getCollectChangesPolicy().collectChanges(root, stateBeforeMerge, stateAfterMerge, CheckoutRules.DEFAULT);
+    assertTrue(changes.isEmpty());
   }
 
 }
