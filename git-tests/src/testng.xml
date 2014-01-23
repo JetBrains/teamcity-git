@@ -39,6 +39,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentMirrorCleanerTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.EchoArgumentEscapingTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.FetcherPropertiesTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitMergeSupportTest"/>
     </classes>
   </test>
 </suite>

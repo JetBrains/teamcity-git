@@ -68,7 +68,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
       MergeResult result = MergeResult.createMergeSuccessResult();
       while (attemptsLeft > 0) {
         try {
-          result = doMerge(gitRoot, db, srcRevision, dstBranch, message);
+          result = doMerge(context, gitRoot, db, srcRevision, dstBranch, message);
           if (result.isMergePerformed() && result.isSuccess())
             return result;
           attemptsLeft--;
@@ -119,13 +119,16 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
   }
 
   @NotNull
-  private MergeResult doMerge(@NotNull GitVcsRoot gitRoot,
+  private MergeResult doMerge(@NotNull OperationContext context,
+                              @NotNull GitVcsRoot gitRoot,
                               @NotNull Repository db,
                               @NotNull String srcRevision,
                               @NotNull String dstBranch,
                               @NotNull String message) throws IOException, VcsException {
     RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(dstBranch)).setDestination(GitUtils.expandRef(dstBranch)).setForceUpdate(true);
     myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL(), asList(spec), gitRoot.getAuthSettings());
+    if (myCommitLoader.findCommit(db, srcRevision) == null)
+      myCommitLoader.loadCommit(context, gitRoot, srcRevision);
 
     Ref dstRef = db.getRef(dstBranch);
     ObjectId dstBranchLastCommit = dstRef.getObjectId();

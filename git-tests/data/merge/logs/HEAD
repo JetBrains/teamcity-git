@@ -1,0 +1,19 @@
+0000000000000000000000000000000000000000 497ad26749fd36bcd5a3ef982fb9fefa915c9d4b Dmitry Neverov <dmitry.neverov@gmail.com> 1390495040 +0100	commit (initial): initial
+497ad26749fd36bcd5a3ef982fb9fefa915c9d4b e03fccd6cda217cd0efabeca9a857ea949d64f8a Dmitry Neverov <dmitry.neverov@gmail.com> 1390495046 +0100	commit: one
+e03fccd6cda217cd0efabeca9a857ea949d64f8a 2ffada4169e6bd7961d107f607fcdcc0e6c7749d Dmitry Neverov <dmitry.neverov@gmail.com> 1390495054 +0100	commit: two
+2ffada4169e6bd7961d107f607fcdcc0e6c7749d f727882267df4f8fe0bc58c18559591918aefc54 Dmitry Neverov <dmitry.neverov@gmail.com> 1390495057 +0100	commit: three
+f727882267df4f8fe0bc58c18559591918aefc54 e03fccd6cda217cd0efabeca9a857ea949d64f8a Dmitry Neverov <dmitry.neverov@gmail.com> 1390495080 +0100	checkout: moving from master to topic
+e03fccd6cda217cd0efabeca9a857ea949d64f8a 0003f1603abfe7fd784b95faa8ae4803598694a0 Dmitry Neverov <dmitry.neverov@gmail.com> 1390495092 +0100	commit: topic.1
+0003f1603abfe7fd784b95faa8ae4803598694a0 6ffbeea7e607c069bdfeea5ea10d7b139c06ecca Dmitry Neverov <dmitry.neverov@gmail.com> 1390495094 +0100	commit: topic.2
+6ffbeea7e607c069bdfeea5ea10d7b139c06ecca d2e06a930fb98746f2208791e6cd5bb41e57ed3f Dmitry Neverov <dmitry.neverov@gmail.com> 1390495095 +0100	commit: topic.3
+d2e06a930fb98746f2208791e6cd5bb41e57ed3f d2e06a930fb98746f2208791e6cd5bb41e57ed3f Dmitry Neverov <dmitry.neverov@gmail.com> 1390498425 +0100	checkout: moving from topic to topic2
+d2e06a930fb98746f2208791e6cd5bb41e57ed3f f727882267df4f8fe0bc58c18559591918aefc54 Dmitry Neverov <dmitry.neverov@gmail.com> 1390498429 +0100	checkout: moving from topic2 to f727882267df4f8fe0bc58c18559591918aefc54^0
+f727882267df4f8fe0bc58c18559591918aefc54 3af22043460f69bbcbd41a008a9c3071f6a2bfc7 Dmitry Neverov <dmitry.neverov@gmail.com> 1390498430 +0100	rebase: topic.1
+3af22043460f69bbcbd41a008a9c3071f6a2bfc7 8d9f45ee6a6dc886bb31ed9c0231e281a7e8fbc9 Dmitry Neverov <dmitry.neverov@gmail.com> 1390498430 +0100	rebase: topic.2
+8d9f45ee6a6dc886bb31ed9c0231e281a7e8fbc9 a25479ce62384bf15b5fb20b351801995b127e90 Dmitry Neverov <dmitry.neverov@gmail.com> 1390498430 +0100	rebase: topic.3
+a25479ce62384bf15b5fb20b351801995b127e90 a25479ce62384bf15b5fb20b351801995b127e90 Dmitry Neverov <dmitry.neverov@gmail.com> 1390498430 +0100	rebase finished: returning to refs/heads/topic2
+a25479ce62384bf15b5fb20b351801995b127e90 f727882267df4f8fe0bc58c18559591918aefc54 Dmitry Neverov <dmitry.neverov@gmail.com> 1390499389 +0100	checkout: moving from topic2 to master
+f727882267df4f8fe0bc58c18559591918aefc54 f727882267df4f8fe0bc58c18559591918aefc54 Dmitry Neverov <dmitry.neverov@gmail.com> 1390499400 +0100	checkout: moving from master to topic2
+f727882267df4f8fe0bc58c18559591918aefc54 d73cf95b203b77a4f9ca969ac454e69eaebbf697 Dmitry Neverov <dmitry.neverov@gmail.com> 1390499412 +0100	commit: topic2 1
+d73cf95b203b77a4f9ca969ac454e69eaebbf697 bcbb9d0b0a59b0f67da279dff3f0f9b425b5091b Dmitry Neverov <dmitry.neverov@gmail.com> 1390499414 +0100	commit: topic2 2
+bcbb9d0b0a59b0f67da279dff3f0f9b425b5091b cc69c22bd5d25779e58ad91008e685cbbe7f700a Dmitry Neverov <dmitry.neverov@gmail.com> 1390499416 +0100	commit: topic2 3
