@@ -22,6 +22,8 @@ import org.eclipse.jgit.dircache.DirCacheBuilder;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.merge.MergeStrategy;
 import org.eclipse.jgit.merge.ResolveMerger;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.PushConnection;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
@@ -127,40 +129,18 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
                               @NotNull String message) throws IOException, VcsException {
     RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(dstBranch)).setDestination(GitUtils.expandRef(dstBranch)).setForceUpdate(true);
     myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL(), asList(spec), gitRoot.getAuthSettings());
-    if (myCommitLoader.findCommit(db, srcRevision) == null)
-      myCommitLoader.loadCommit(context, gitRoot, srcRevision);
+    RevCommit srcCommit = myCommitLoader.findCommit(db, srcRevision);
+    if (srcCommit == null)
+      srcCommit = myCommitLoader.loadCommit(context, gitRoot, srcRevision);
 
     Ref dstRef = db.getRef(dstBranch);
-    ObjectId dstBranchLastCommit = dstRef.getObjectId();
-
-    ResolveMerger merger = (ResolveMerger) MergeStrategy.RESOLVE.newMerger(db, true);
-    boolean mergeSuccessful = merger.merge(dstBranchLastCommit, ObjectId.fromString(srcRevision));
-    if (!mergeSuccessful) {
-      List<String> conflicts = merger.getUnmergedPaths();
-      Collections.sort(conflicts);
-      return MergeResult.createMergeError(conflicts);
+    RevCommit dstBranchLastCommit = myCommitLoader.loadCommit(context, gitRoot, dstRef.getObjectId().name());
+    ObjectId commitId;
+    try {
+      commitId = mergeCommits(gitRoot, db, srcCommit, dstBranchLastCommit, message);
+    } catch (MergeFailedException e) {
+      return MergeResult.createMergeError(e.getConflicts());
     }
-
-    ObjectInserter inserter = db.newObjectInserter();
-    DirCache dc = DirCache.newInCore();
-    DirCacheBuilder dcb = dc.builder();
-
-    dcb.addTree(new byte[]{}, 0, db.getObjectDatabase().newReader(), merger.getResultTreeId());
-    inserter.flush();
-    dcb.finish();
-
-    ObjectId writtenTreeId = dc.writeTree(inserter);
-
-    CommitBuilder commitBuilder = new CommitBuilder();
-    commitBuilder.setCommitter(gitRoot.getTagger(db));
-    commitBuilder.setAuthor(gitRoot.getTagger(db));
-    commitBuilder.setMessage(message);
-    commitBuilder.addParentId(dstBranchLastCommit);
-    commitBuilder.addParentId(ObjectId.fromString(srcRevision));
-    commitBuilder.setTreeId(writtenTreeId);
-
-    ObjectId commitId = inserter.insert(commitBuilder);
-    inserter.flush();
 
     synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
       final Transport tn = myTransportFactory.createTransport(db, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings());
@@ -182,6 +162,65 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
       } finally {
         tn.close();
       }
+    }
+  }
+
+
+  private ObjectId mergeCommits(@NotNull GitVcsRoot gitRoot,
+                                @NotNull Repository db,
+                                @NotNull RevCommit srcCommit,
+                                @NotNull RevCommit dstCommit,
+                                @NotNull String message) throws IOException, MergeFailedException {
+    RevWalk walk = new RevWalk(db);
+    try {
+      if (walk.isMergedInto(walk.parseCommit(dstCommit), walk.parseCommit(srcCommit)))
+        return srcCommit;
+    } finally {
+      walk.release();
+    }
+
+    ResolveMerger merger = (ResolveMerger) MergeStrategy.RESOLVE.newMerger(db, true);
+    boolean mergeSuccessful = merger.merge(dstCommit, srcCommit);
+    if (!mergeSuccessful) {
+      List<String> conflicts = merger.getUnmergedPaths();
+      Collections.sort(conflicts);
+      throw new MergeFailedException(conflicts);
+    }
+
+    ObjectInserter inserter = db.newObjectInserter();
+    DirCache dc = DirCache.newInCore();
+    DirCacheBuilder dcb = dc.builder();
+
+    dcb.addTree(new byte[]{}, 0, db.getObjectDatabase().newReader(), merger.getResultTreeId());
+    inserter.flush();
+    dcb.finish();
+
+    ObjectId writtenTreeId = dc.writeTree(inserter);
+
+    CommitBuilder commitBuilder = new CommitBuilder();
+    commitBuilder.setCommitter(gitRoot.getTagger(db));
+    commitBuilder.setAuthor(gitRoot.getTagger(db));
+    commitBuilder.setMessage(message);
+    commitBuilder.addParentId(dstCommit);
+    commitBuilder.addParentId(srcCommit);
+    commitBuilder.setTreeId(writtenTreeId);
+
+    ObjectId commitId = inserter.insert(commitBuilder);
+    inserter.flush();
+    return commitId;
+  }
+
+
+  private static class MergeFailedException extends Exception {
+    private List<String> myConflicts;
+
+    private MergeFailedException(@NotNull List<String> conflicts) {
+      myConflicts = conflicts;
+    }
+
+    @NotNull
+    public List<String> getConflicts() {
+      return myConflicts;
     }
   }
 }
