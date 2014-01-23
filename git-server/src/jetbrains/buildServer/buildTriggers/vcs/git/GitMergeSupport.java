@@ -70,7 +70,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
       MergeResult result = MergeResult.createMergeSuccessResult();
       while (attemptsLeft > 0) {
         try {
-          result = doMerge(context, gitRoot, db, srcRevision, dstBranch, message);
+          result = doMerge(context, gitRoot, db, srcRevision, dstBranch, message, options);
           if (result.isMergePerformed() && result.isSuccess())
             return result;
           attemptsLeft--;
@@ -126,7 +126,8 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
                               @NotNull Repository db,
                               @NotNull String srcRevision,
                               @NotNull String dstBranch,
-                              @NotNull String message) throws IOException, VcsException {
+                              @NotNull String message,
+                              @NotNull MergeOptions options) throws IOException, VcsException {
     RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(dstBranch)).setDestination(GitUtils.expandRef(dstBranch)).setForceUpdate(true);
     myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL(), asList(spec), gitRoot.getAuthSettings());
     RevCommit srcCommit = myCommitLoader.findCommit(db, srcRevision);
@@ -137,7 +138,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     RevCommit dstBranchLastCommit = myCommitLoader.loadCommit(context, gitRoot, dstRef.getObjectId().name());
     ObjectId commitId;
     try {
-      commitId = mergeCommits(gitRoot, db, srcCommit, dstBranchLastCommit, message);
+      commitId = mergeCommits(gitRoot, db, srcCommit, dstBranchLastCommit, message, options);
     } catch (MergeFailedException e) {
       return MergeResult.createMergeError(e.getConflicts());
     }
@@ -170,13 +171,16 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
                                 @NotNull Repository db,
                                 @NotNull RevCommit srcCommit,
                                 @NotNull RevCommit dstCommit,
-                                @NotNull String message) throws IOException, MergeFailedException {
-    RevWalk walk = new RevWalk(db);
-    try {
-      if (walk.isMergedInto(walk.parseCommit(dstCommit), walk.parseCommit(srcCommit)))
-        return srcCommit;
-    } finally {
-      walk.release();
+                                @NotNull String message,
+                                @NotNull MergeOptions options) throws IOException, MergeFailedException {
+    if (!alwaysCreateMergeCommit(options)) {
+      RevWalk walk = new RevWalk(db);
+      try {
+        if (walk.isMergedInto(walk.parseCommit(dstCommit), walk.parseCommit(srcCommit)))
+          return srcCommit;
+      } finally {
+        walk.release();
+      }
     }
 
     ResolveMerger merger = (ResolveMerger) MergeStrategy.RESOLVE.newMerger(db, true);
@@ -208,6 +212,14 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     ObjectId commitId = inserter.insert(commitBuilder);
     inserter.flush();
     return commitId;
+  }
+
+
+  private boolean alwaysCreateMergeCommit(@NotNull MergeOptions options) {
+    String value = options.getOption("git.merge.alwaysCreateMergeCommit");
+    if (value == null)
+      return false;
+    return Boolean.valueOf(value);
   }
 
 
