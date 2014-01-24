@@ -23,7 +23,9 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.merge.MergeStrategy;
 import org.eclipse.jgit.merge.ResolveMerger;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.transport.PushConnection;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
@@ -31,10 +33,7 @@ import org.eclipse.jgit.transport.Transport;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static java.util.Arrays.asList;
 
@@ -167,6 +166,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
   }
 
 
+  @NotNull
   private ObjectId mergeCommits(@NotNull GitVcsRoot gitRoot,
                                 @NotNull Repository db,
                                 @NotNull RevCommit srcCommit,
@@ -180,6 +180,18 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
           return srcCommit;
       } finally {
         walk.release();
+      }
+    }
+
+    if (tryRebase(options)) {
+      try {
+        return rebase(gitRoot, db, srcCommit, dstCommit);
+      } catch (MergeFailedException e) {
+        if (enforceLinearHistory(options))
+          throw e;
+      } catch (IOException e) {
+        if (enforceLinearHistory(options))
+          throw e;
       }
     }
 
@@ -212,6 +224,117 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     ObjectId commitId = inserter.insert(commitBuilder);
     inserter.flush();
     return commitId;
+  }
+
+
+  @NotNull
+  private ObjectId rebase(@NotNull GitVcsRoot gitRoot,
+                          @NotNull Repository db,
+                          @NotNull RevCommit srcCommit,
+                          @NotNull RevCommit dstCommit) throws IOException, MergeFailedException {
+    RevWalk walk = new RevWalk(db);
+    try {
+      RevCommit src = walk.parseCommit(srcCommit);
+      RevCommit dst = walk.parseCommit(dstCommit);
+      walk.markStart(src);
+      walk.markStart(dst);
+      walk.setRevFilter(RevFilter.MERGE_BASE);
+      RevCommit base = walk.next();
+
+      Map<ObjectId, RevCommit> tree2commit = new HashMap<ObjectId, RevCommit>();
+      RevCommit c;
+
+      if (base != null) {
+        walk.reset();
+        walk.setRevFilter(RevFilter.ALL);
+        walk.markStart(dst);
+        walk.markUninteresting(base);
+        while ((c = walk.next()) != null) {
+          tree2commit.put(c.getTree().getId(), c);
+        }
+      }
+
+      walk.reset();
+      walk.markStart(src);
+      walk.markUninteresting(dst);
+      walk.sort(RevSort.TOPO);
+      walk.sort(RevSort.REVERSE);
+
+      Map<RevCommit, RevCommit> orig2rebased = new HashMap<RevCommit, RevCommit>();
+      List<RevCommit> toRebase = new ArrayList<RevCommit>();
+      while ((c = walk.next()) != null) {
+        ObjectId treeId = c.getTree().getId();
+        RevCommit existing = tree2commit.get(treeId);
+        if (existing != null) {
+          orig2rebased.put(c, existing);
+        } else {
+          toRebase.add(c);
+        }
+      }
+
+      orig2rebased.put(toRebase.get(0).getParent(0), dstCommit);
+      ObjectInserter inserter = db.newObjectInserter();
+      for (RevCommit commit : toRebase) {
+        RevCommit p = commit.getParent(0);
+        RevCommit b = orig2rebased.get(p);
+        ObjectId rebased = rebaseCommit(gitRoot, db, inserter, commit, b);
+        orig2rebased.put(commit, walk.parseCommit(rebased));
+      }
+
+      return orig2rebased.get(toRebase.get(toRebase.size() - 1));
+    } finally {
+      walk.release();
+    }
+  }
+
+
+  @NotNull
+  private ObjectId rebaseCommit(@NotNull GitVcsRoot gitRoot,
+                                @NotNull Repository db,
+                                @NotNull ObjectInserter inserter,
+                                @NotNull RevCommit original,
+                                @NotNull RevCommit base) throws IOException, MergeFailedException {
+    final RevCommit parentCommit = original.getParent(0);
+
+    if (base.equals(parentCommit))
+      return original;
+
+    ResolveMerger merger = (ResolveMerger) MergeStrategy.RESOLVE.newMerger(db, true);
+    merger.setBase(parentCommit);
+    merger.merge(original, base);
+
+    if (merger.getResultTreeId() == null)
+      throw new MergeFailedException(merger.getUnmergedPaths());
+
+
+    if (base.getTree().getId().equals(merger.getResultTreeId()))
+      return base;
+
+    final CommitBuilder cb = new CommitBuilder();
+    cb.setTreeId(merger.getResultTreeId());
+    cb.setParentId(base);
+    cb.setAuthor(original.getAuthorIdent());
+    cb.setCommitter(gitRoot.getTagger(db));
+    cb.setMessage(original.getFullMessage());
+    final ObjectId objectId = inserter.insert(cb);
+    inserter.flush();
+    return objectId;
+  }
+
+
+  private boolean tryRebase(@NotNull MergeOptions options) {
+    String value = options.getOption("git.merge.rebase");
+    if (value == null)
+      return false;
+    return Boolean.valueOf(value);
+  }
+
+
+  private boolean enforceLinearHistory(@NotNull MergeOptions options) {
+    String value = options.getOption("git.merge.enforceLinearHistory");
+    if (value == null)
+      return false;
+    return Boolean.valueOf(value);
   }
 
 
