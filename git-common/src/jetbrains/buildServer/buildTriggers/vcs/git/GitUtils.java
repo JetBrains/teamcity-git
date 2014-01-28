@@ -21,6 +21,7 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
@@ -233,5 +234,17 @@ public class GitUtils {
       return new File(workingTreeDir, gitDirPath);
     }
     return dotGit;
+  }
+
+  @NotNull
+  public static String getRevision(@NotNull final Ref ref) {
+    return getObjectId(ref).name();
+  }
+
+  @NotNull
+  public static ObjectId getObjectId(@NotNull final Ref ref) {
+    if (isTag(ref) && ref.getPeeledObjectId() != null)
+      return ref.getPeeledObjectId();
+    return ref.getObjectId();
   }
 }

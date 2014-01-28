@@ -41,6 +41,7 @@ import java.util.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getRevision;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
@@ -135,12 +136,6 @@ public class GitVcsSupport extends ServerVcsSupport
       throw new VcsException("Cannot find revision of the default branch '" + refInRoot + "' of vcs root " + LogUtil.describe(gitRoot));
     }
     return RepositoryStateData.createVersionState(fullRef, branchRevisions);
-  }
-
-  private String getRevision(@NotNull Ref ref) {
-    if (isTag(ref) && ref.getPeeledObjectId() != null)
-      return ref.getPeeledObjectId().name();
-    return ref.getObjectId().name();
   }
 
   public void buildPatch(@NotNull VcsRoot root,
