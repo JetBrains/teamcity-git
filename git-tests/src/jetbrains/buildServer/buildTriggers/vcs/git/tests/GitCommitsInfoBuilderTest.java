@@ -26,6 +26,7 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.vcs.api.CommitInfo;
 import org.jetbrains.annotations.NotNull;
+import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -119,8 +120,10 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
 
     List<String> reported = new ArrayList<String>();
     for (CommitInfo c : commits) {
-      reported.add(c.getVersion());
+      System.out.println(c.getVersion() + " " + c.getBranches() + " " + c.getTags() + " " + c.getHeadNames());
 
+      Assert.assertEquals(c.getBranches(), c.getHeadNames());
+      reported.add(c.getVersion());
     }
     assertTrue(reported.containsAll(allCommits));
   }

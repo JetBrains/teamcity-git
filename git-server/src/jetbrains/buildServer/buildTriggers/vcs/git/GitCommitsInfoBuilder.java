@@ -19,7 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.errors.MissingObjectException;
-import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevObject;
@@ -27,8 +27,12 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getObjectId;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 
 public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExtension {
@@ -47,15 +51,14 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     OperationContext ctx = myVcs.createContext(root, "collecting commits");
     try {
       GitVcsRoot gitRoot = makeRootWithTags(ctx, root);
-      RepositoryStateData currentState = myVcs.getCurrentState(gitRoot);
       Repository db = ctx.getRepository();
-      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, currentState);
+      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, myVcs.getCurrentState(gitRoot));
 
+      final Map<String,Ref> currentState = ctx.getRepository().getAllRefs();
       RevWalk walk = new RevWalk(db);
-      Set<String> uniqueTips = new HashSet<String>(currentState.getBranchRevisions().values());
-      for (String tip : uniqueTips) {
+      for (Ref tip : new HashSet<Ref>(currentState.values())) {
         try {
-          RevObject obj = walk.parseAny(ObjectId.fromString(tip));
+          RevObject obj = walk.parseAny(getObjectId(tip));
           if (obj instanceof RevCommit)
             walk.markStart((RevCommit) obj);
         } catch (MissingObjectException e) {
@@ -82,6 +85,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
               commit.addTag(ref);
             } else {
               commit.addBranch(ref);
+              commit.addHead(ref);
             }
           }
         }
@@ -104,11 +108,11 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
 
   @NotNull
-  private Map<String, Set<String>> getCommitToRefIndex(@NotNull RepositoryStateData state) {
+  private Map<String, Set<String>> getCommitToRefIndex(@NotNull Map<String, Ref> state) {
     Map<String, Set<String>> index = new HashMap<String, Set<String>>();
-    for (Map.Entry<String, String> e : state.getBranchRevisions().entrySet()) {
+    for (Map.Entry<String, Ref> e : state.entrySet()) {
       String ref = e.getKey();
-      String commit = e.getValue();
+      final String commit = GitUtils.getRevision(e.getValue());
       Set<String> refs = index.get(commit);
       if (refs == null) {
         refs = new HashSet<String>();

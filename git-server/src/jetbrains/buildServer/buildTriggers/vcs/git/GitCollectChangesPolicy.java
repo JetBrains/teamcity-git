@@ -79,7 +79,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
       Repository r = context.getRepository();
       ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
       revWalk.sort(RevSort.TOPO);
-      ensureRepositoryStateLoadedFor(context, r, toState, fromState);
+      ensureRepositoryStateLoadedFor(context, r, true, toState, fromState);
       markStart(r, revWalk, toState);
       markUninteresting(r, revWalk, fromState, toState);
       while (revWalk.next() != null) {
@@ -141,8 +141,9 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
 
   public void ensureRepositoryStateLoadedFor(@NotNull final OperationContext context,
                                              @NotNull final Repository repo,
+                                             final boolean failOnFirstError,
                                              @NotNull final RepositoryStateData... states) throws Exception {
-    boolean isFirst = true;
+    boolean isFirst = failOnFirstError;
     if (myConfig.usePerBranchFetch()) {
       for (RepositoryStateData state : states) {
         ensureRepositoryStateLoadedOneFetchPerBranch(context, state, isFirst);
