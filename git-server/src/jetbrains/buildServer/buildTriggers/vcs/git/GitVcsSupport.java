@@ -42,6 +42,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 
@@ -505,6 +506,9 @@ public class GitVcsSupport extends ServerVcsSupport
              message.contains("connection is closed by foreign host") ||
              message.contains("java.net.UnknownHostException:") || //TW-31027
              message.contains("com.jcraft.jsch.JSchException: verify: false"); //TW-31175
+    }
+    if (cause instanceof ConnectException) {
+      return message.contains("Connection time out");
     }
     return false;
   }
