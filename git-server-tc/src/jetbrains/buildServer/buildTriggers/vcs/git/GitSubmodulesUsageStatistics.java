@@ -37,7 +37,7 @@ public class GitSubmodulesUsageStatistics extends BaseVCSFeatureUsageStatisticsP
   @NotNull
   @Override
   protected String getFeatureDisplayName() {
-    return "Subversion VCS roots with externals support enabled";
+    return "Git VCS roots with submodules support enabled";
   }
 
   @Override
