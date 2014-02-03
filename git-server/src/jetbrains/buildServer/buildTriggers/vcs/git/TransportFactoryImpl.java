@@ -104,7 +104,8 @@ public class TransportFactoryImpl implements TransportFactory {
    * @throws VcsException if url points to not-existing local repository
    */
   private void checkUrl(final URIish url) throws VcsException {
-    if (!url.isRemote()) {
+    String scheme = url.getScheme();
+    if (!url.isRemote() && !"http".equals(scheme) && !"https".equals(scheme)) {
       File localRepository = new File(url.getPath());
       if (!localRepository.exists()) {
         String error = "Cannot access repository " + url.toString();
