@@ -7,4 +7,5 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitExtensionRegistry"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitBranchSupport"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitBuildParametersProvider"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitSubmodulesUsageStatistics"/>
 </beans>
