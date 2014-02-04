@@ -61,6 +61,26 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
     myTempFiles.cleanup();
   }
 
+  @Test(enabled = false)
+  public void test_idea_local() throws VcsException {
+    ///does not work for real repository: Fetcher call is mostly endless
+    VcsRoot root = vcsRoot()
+      .withFetchUrl("E:\\Work\\idea-ultimate")
+      .withBranch("master")
+      .build();
+
+    GitVcsSupport vcs = gitSupport().withServerPaths(myServerPaths).build();
+    final List<CommitInfo> commits = new ArrayList<CommitInfo>();
+
+    new GitCommitsInfoBuilder(vcs).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
+      public void consumeCommit(@NotNull CommitInfo commit) {
+        commits.add(commit);
+      }
+    });
+
+    System.out.println("Total files: " + commits.size());
+  }
+
 
   public void test() throws VcsException {
     VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myRepositoryDir)).withBranch("master").build();
@@ -120,7 +140,7 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
 
     List<String> reported = new ArrayList<String>();
     for (CommitInfo c : commits) {
-      System.out.println(c.getVersion() + " " + c.getBranches() + " " + c.getTags() + " " + c.getHeadNames());
+      System.out.println(c.getVersion() + " " + c.getBranches() + " " + c.getTags() + " " + c.getHeadNames() + "  " + c.getMountPoints());
 
       Assert.assertEquals(c.getBranches(), c.getHeadNames());
       reported.add(c.getVersion());

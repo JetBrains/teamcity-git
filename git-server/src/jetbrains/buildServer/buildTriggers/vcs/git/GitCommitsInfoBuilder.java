@@ -16,14 +16,17 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.errors.MissingObjectException;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.submodule.SubmoduleWalk;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -32,6 +35,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.VCS_NAME;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getObjectId;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 
@@ -76,6 +80,30 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
         commit.setCommitMessage(c.getFullMessage());
         for (RevCommit p : c.getParents()) {
           commit.addParentRevision(p.getId().getName());
+        }
+
+        SubmoduleWalk sw = new SubmoduleWalk(db);
+        sw.setRootTree(c.getTree());
+        sw.setTree(c.getTree());
+        sw = sw.loadModulesConfig();
+        try {
+          while(sw.next()) {
+            final String path = sw.getPath();
+            final ObjectId rev = sw.getObjectId();
+            final String url = sw.getModulesUrl();
+
+            if (path == null || rev == null || url == null) continue;
+            String resolvedUrl = SubmoduleResolverImpl.resolveSubmoduleUrl(db, url);
+
+            commit.addMountPoint(new CommitMountPointDataBean(
+              VCS_NAME,
+              resolvedUrl,
+              path,
+              rev.getName()
+            ));
+          }
+        } finally {
+          sw.release();
         }
 
         Set<String> refs = index.get(commit.getVersion());
