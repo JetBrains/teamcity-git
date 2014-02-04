@@ -119,16 +119,18 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
   }
 
   public URIish resolveSubmoduleUrl(@NotNull String url) throws URISyntaxException {
-    String uri = isRelative(url) ? resolveRelativeUrl(url) : url;
-    return new URIish(uri);
+    return new URIish(resolveSubmoduleUrl(getRepository(), url));
   }
 
-  private boolean isRelative(@NotNull String url) {
+  private static boolean isRelative(@NotNull String url) {
     return url.startsWith(".");
   }
 
-  private String resolveRelativeUrl(@NotNull String relativeUrl) throws URISyntaxException {
-    String baseUrl = getRepository().getConfig().getString("teamcity", null, "remote");
+  @NotNull
+  public static String resolveSubmoduleUrl(@NotNull final Repository repository, @NotNull final String relativeUrl) throws URISyntaxException {
+    if (!isRelative(relativeUrl)) return relativeUrl;
+
+    String baseUrl = repository.getConfig().getString("teamcity", null, "remote");
     URIish u = new URIish(baseUrl);
     String newPath = u.getPath();
     if (newPath.length() == 0) {
