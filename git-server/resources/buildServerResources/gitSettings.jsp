@@ -37,7 +37,7 @@
     <tr>
       <th><label for="url">Fetch URL: <l:star/></label></th>
       <td><props:textProperty name="url" className="longField"/>
-        <div class="smallNote" style="margin: 0;">It is used for fetching data from repository.</div>
+        <div class="smallNote" style="margin: 0;">It is used for fetching data from the repository.</div>
         <span class="error" id="error_url"></span></td>
     </tr>
     <tr>
@@ -53,7 +53,7 @@
       <th><label for="branch">Default branch: <l:star/></label></th>
       <td>
         <props:textProperty name="branch" className="longField"/>
-        <div class="smallNote" style="margin: 0">Branch to be used if no branch from Branch Specification is set</div>
+        <div class="smallNote" style="margin: 0">The branch to be used if no branch is set in Branch specification</div>
         <span class="error" id="error_branch"></span>
       </td>
     </tr>
@@ -62,7 +62,7 @@
       <th><label for="reportTagRevisions">Use tags as branches:</label></th>
       <td>
         <props:checkboxProperty name="reportTagRevisions"/>
-        <label for="reportTagRevisions">If enabled tags can be used in branch specification</label>
+        <label for="reportTagRevisions">Enable to use tags in the branch specification</label>
       </td>
     </tr>
     <tr class="advancedSetting">
@@ -94,8 +94,8 @@
         <props:option value="IGNORE">Ignore</props:option>
         <props:option value="CHECKOUT">Checkout</props:option>
       </props:selectProperty>
-        <div class="smallNote" style="margin: 0">If the option "Checkout" is selected, the submodules are
-          treated as part of the source tree.
+        <div class="smallNote" style="margin: 0">
+          Defines whether to checkout submodules
         </div>
       </td>
     </tr>
@@ -129,8 +129,8 @@
     <tr id="gitUsername" class="auth defaultKey customKey password uploadedKey">
       <th><label for="username">Username:</label></th>
       <td><props:textProperty name="username" className="longField"/>
-        <div class="smallNote" style="margin: 0">Username must be specified if there is no username in the clone URL.
-          The username specified here overrides username from URL.
+        <div class="smallNote" style="margin: 0">
+          Specify the username if there is no username in the clone URL. The username specified here overrides the username from the URL.
         </div>
       </td>
     </tr>
@@ -141,8 +141,8 @@
     <tr id="gitPrivateKeyRow" class="auth customKey">
       <th><label for="privateKeyPath">Private key path: <l:star/></label></th>
       <td><props:textProperty name="privateKeyPath" className="longField"/>
-        <div class="smallNote" style="margin: 0;">Specify path to the private key
-          on the TeamCity server host.
+        <div class="smallNote" style="margin: 0;">
+          Specify the path to the private key on the TeamCity server host.
         </div>
         <span class="error" id="error_privateKeyPath"></span>
       </td>
@@ -193,7 +193,7 @@
       <th><label for="path">Custom clone directory on server:<bs:help file="Git+(JetBrains)" anchor="customCloneDir"/></label></th>
       <td><props:textProperty name="path" className="longField"/>
         <div class="smallNote" style="margin: 0;">
-          A directory on TeamCity server where a bare cloned repository should be created. Leave blank to use default path.
+          A directory on the TeamCity server where a bare cloned repository is to be created. Leave blank to use the default path.
         </div>
       </td>
     </tr>
@@ -205,9 +205,8 @@
     <tr class="advancedSetting">
       <th><label for="agentGitPath">Path to Git: </label></th>
       <td><props:textProperty name="agentGitPath" className="longField"/>
-        <div class="smallNote" style="margin: 0;">Provide path to a git executable
-        to be used on agent. If the path is not specified, TeamCity will use
-        the location set up in ${gitPathEnv} environment  variable.
+        <div class="smallNote" style="margin: 0;">
+          The path to a git executable on the agent. If blank, the location set up in ${gitPathEnv} environment variable is used.
         </div>
       </td>
     </tr>
@@ -218,7 +217,8 @@
         <props:option value="ALWAYS">Always</props:option>
         <props:option value="NEVER">Never</props:option>
       </props:selectProperty>
-        <div class="smallNote" style="margin: 0">This option specifies when "git clean" command is run on agent.
+        <div class="smallNote" style="margin: 0">
+          This option specifies when the "git clean" command is run on the agent.
         </div>
       </td>
     </tr>
