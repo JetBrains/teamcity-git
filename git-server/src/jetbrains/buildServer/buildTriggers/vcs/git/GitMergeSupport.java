@@ -341,7 +341,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
   private boolean alwaysCreateMergeCommit(@NotNull MergeOptions options) {
     String value = options.getOption("git.merge.alwaysCreateMergeCommit");
     if (value == null)
-      return false;
+      return true;
     return Boolean.valueOf(value);
   }
 
