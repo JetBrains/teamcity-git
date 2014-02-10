@@ -75,7 +75,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
         try {
           result = doMerge(context, gitRoot, db, srcRevision, dstBranch, message, options);
           if (result.isMergePerformed() && result.isSuccess()) {
-            LOG.info("Merge complete root " + root + ", revision " + srcRevision + ", destination " + dstBranch);
+            LOG.info("Merge successfully finished in root " + root + ", revision " + srcRevision + ", destination " + dstBranch);
             return result;
           }
           attemptsLeft--;
