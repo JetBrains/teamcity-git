@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.dircache.DirCacheBuilder;
@@ -39,6 +40,8 @@ import static java.util.Arrays.asList;
 
 public class GitMergeSupport implements MergeSupport, GitServerExtension {
 
+  private static final Logger LOG = Logger.getInstance(GitMergeSupport.class.getName());
+
   private final GitVcsSupport myVcs;
   private final CommitLoader myCommitLoader;
   private final RepositoryManager myRepositoryManager;
@@ -61,6 +64,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
                            @NotNull String dstBranch,
                            @NotNull String message,
                            @NotNull MergeOptions options) throws VcsException {
+    LOG.info("Merge in root " + root + ", revision " + srcRevision + ", destination " + dstBranch);
     OperationContext context = myVcs.createContext(root, "merge");
     try {
       GitVcsRoot gitRoot = context.getGitRoot();
@@ -70,12 +74,17 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
       while (attemptsLeft > 0) {
         try {
           result = doMerge(context, gitRoot, db, srcRevision, dstBranch, message, options);
-          if (result.isMergePerformed() && result.isSuccess())
+          if (result.isMergePerformed() && result.isSuccess()) {
+            LOG.info("Merge complete root " + root + ", revision " + srcRevision + ", destination " + dstBranch);
             return result;
+          }
           attemptsLeft--;
+          LOG.info("Merge was not successful, root " + root + ", revision " + srcRevision + ", destination " + dstBranch + ", attempts left " + attemptsLeft);
         } catch (IOException e) {
+          LOG.info("Merge failed, root " + root + ", revision " + srcRevision + ", destination " + dstBranch, e);
           return MergeResult.createMergeError(e.getMessage());
         } catch (VcsException e) {
+          LOG.info("Merge failed, root " + root + ", revision " + srcRevision + ", destination " + dstBranch, e);
           return MergeResult.createMergeError(e.getMessage());
         }
       }
@@ -139,6 +148,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     try {
       commitId = mergeCommits(gitRoot, db, srcCommit, dstBranchLastCommit, message, options);
     } catch (MergeFailedException e) {
+      LOG.debug("Merge error, root " + gitRoot + ", revision " + srcRevision + ", destination " + dstBranch, e);
       return MergeResult.createMergeError(e.getConflicts());
     }
 
@@ -159,6 +169,9 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
         } finally {
           c.close();
         }
+      } catch (IOException e) {
+        LOG.debug("Error while pushing a merge commit, root " + gitRoot + ", revision " + srcRevision + ", destination " + dstBranch, e);
+        throw e;
       } finally {
         tn.close();
       }
@@ -176,22 +189,29 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     if (!alwaysCreateMergeCommit(options)) {
       RevWalk walk = new RevWalk(db);
       try {
-        if (walk.isMergedInto(walk.parseCommit(dstCommit), walk.parseCommit(srcCommit)))
+        if (walk.isMergedInto(walk.parseCommit(dstCommit), walk.parseCommit(srcCommit))) {
+          LOG.debug("Commit " + srcCommit.name() + " already merged into " + dstCommit + ", skip the merge");
           return srcCommit;
+        }
       } finally {
         walk.release();
       }
     }
 
     if (tryRebase(options)) {
+      LOG.debug("Run rebase, root " + gitRoot + ", revision " + srcCommit.name() + ", destination " + dstCommit.name());
       try {
         return rebase(gitRoot, db, srcCommit, dstCommit);
       } catch (MergeFailedException e) {
-        if (enforceLinearHistory(options))
+        if (enforceLinearHistory(options)) {
+          LOG.debug("Rebase failed, root " + gitRoot + ", revision " + srcCommit.name() + ", destination " + dstCommit.name(), e);
           throw e;
+        }
       } catch (IOException e) {
-        if (enforceLinearHistory(options))
+        if (enforceLinearHistory(options)) {
+          LOG.debug("Rebase failed, root " + gitRoot + ", revision " + srcCommit.name() + ", destination " + dstCommit.name(), e);
           throw e;
+        }
       }
     }
 
@@ -200,6 +220,8 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     if (!mergeSuccessful) {
       List<String> conflicts = merger.getUnmergedPaths();
       Collections.sort(conflicts);
+      LOG.debug("Merge failed with conflicts, root " + gitRoot + ", revision " + srcCommit.name() + ", destination " + dstCommit.name() +
+                ", conflicts " + conflicts);
       throw new MergeFailedException(conflicts);
     }
 
