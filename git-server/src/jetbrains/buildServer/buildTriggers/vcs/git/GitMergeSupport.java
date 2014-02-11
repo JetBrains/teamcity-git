@@ -361,10 +361,10 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
 
 
   private boolean alwaysCreateMergeCommit(@NotNull MergeOptions options) {
-    String value = options.getOption("teamcity.merge.alwaysCreateMergeCommit");
+    String value = options.getOption("teamcity.merge.policy");
     if (value == null)
-      return false;
-    return Boolean.valueOf(value);
+      return true;
+    return "alwaysCreateMergeCommit".equals(value);
   }
 
 
