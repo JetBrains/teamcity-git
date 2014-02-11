@@ -69,7 +69,7 @@ public class GitMergeSupportTest extends BaseRemoteRepositoryTest {
   public void should_not_create_merge_commit_when_destination_branch_tip_is_reachable_from_merged_commit() throws Exception {
     RepositoryStateData stateBeforeMerge = myGit.getCurrentState(myRoot);
     //tip of the master is reachable from cc69c22bd5d25779e58ad91008e685cbbe7f700a
-    myMergeSupport.merge(myRoot, "cc69c22bd5d25779e58ad91008e685cbbe7f700a", "refs/heads/master", "merge", new MergeOptions(map("git.merge.alwaysCreateMergeCommit", "false")));
+    myMergeSupport.merge(myRoot, "cc69c22bd5d25779e58ad91008e685cbbe7f700a", "refs/heads/master", "merge", new MergeOptions(map("teamcity.merge.policy", "fastForward")));
     RepositoryStateData stateAfterMerge = myGit.getCurrentState(myRoot);
 
     List<ModificationData> changes = myGit.getCollectChangesPolicy().collectChanges(myRoot, stateBeforeMerge, stateAfterMerge, CheckoutRules.DEFAULT);
