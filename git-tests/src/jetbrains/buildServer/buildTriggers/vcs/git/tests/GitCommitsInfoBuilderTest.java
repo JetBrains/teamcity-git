@@ -65,7 +65,8 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
   public void test_idea_local() throws VcsException {
     ///does not work for real repository: Fetcher call is mostly endless
     VcsRoot root = vcsRoot()
-      .withFetchUrl("E:\\Work\\idea-ultimate")
+      .withFetchUrl("E:\\Work\\idea-ultimate\\.git")
+      .withRepositoryPathOnServer("E:\\Work\\idea-ultimate\\.git")
       .withBranch("master")
       .build();
 
