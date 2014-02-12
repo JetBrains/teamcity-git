@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.*;
 import gnu.trove.TObjectHashingStrategy;
 import jetbrains.buildServer.agent.ClasspathUtil;
@@ -240,8 +241,13 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   private void addHttpNonProxyHosts(List<String> proxySettings) {
     String httpNonProxyHosts = TeamCityProperties.getProperty("http.nonProxyHosts");
-    if (!isEmpty(httpNonProxyHosts))
-      proxySettings.add("-Dhttp.nonProxyHosts=\"" + httpNonProxyHosts + "\"");
+    if (!isEmpty(httpNonProxyHosts)) {
+      if (SystemInfo.isUnix) {
+        proxySettings.add("-Dhttp.nonProxyHosts=" + httpNonProxyHosts);
+      } else {
+        proxySettings.add("-Dhttp.nonProxyHosts=\"" + httpNonProxyHosts + "\"");
+      }
+    }
   }
 
   private void addHttpsProxyHost(List<String> proxySettings) {
