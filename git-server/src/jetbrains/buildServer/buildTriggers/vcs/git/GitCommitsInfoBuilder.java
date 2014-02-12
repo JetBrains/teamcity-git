@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
@@ -30,6 +31,7 @@ import org.eclipse.jgit.submodule.SubmoduleWalk;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -52,73 +54,21 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
                              @NotNull final CheckoutRules rules,
                              @NotNull final CommitsConsumer consumer) throws VcsException {
 
-    OperationContext ctx = myVcs.createContext(root, "collecting commits");
+    final OperationContext ctx = myVcs.createContext(root, "collecting commits");
     try {
-      GitVcsRoot gitRoot = makeRootWithTags(ctx, root);
-      Repository db = ctx.getRepository();
+      final GitVcsRoot gitRoot = makeRootWithTags(ctx, root);
+      final Repository db = ctx.getRepository();
+
+      //fetch repo if needed
       myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, myVcs.getCurrentState(gitRoot));
 
       final Map<String,Ref> currentState = ctx.getRepository().getAllRefs();
-      RevWalk walk = new RevWalk(db);
-      for (Ref tip : new HashSet<Ref>(currentState.values())) {
-        try {
-          RevObject obj = walk.parseAny(getObjectId(tip));
-          if (obj instanceof RevCommit)
-            walk.markStart((RevCommit) obj);
-        } catch (MissingObjectException e) {
-          //log
-        } catch (IOException e) {
-          //log
-        }
-      }
-
-      Map<String, Set<String>> index = getCommitToRefIndex(currentState);
-      RevCommit c;
-      while ((c = walk.next()) != null) {
-        final CommitDataBean commit = new CommitDataBean(c.getId().getName(), c.getId().getName(), c.getAuthorIdent().getWhen());
-        commit.setCommitAuthor(GitServerUtil.getUser(gitRoot, c));
-        commit.setCommitMessage(c.getFullMessage());
-        for (RevCommit p : c.getParents()) {
-          commit.addParentRevision(p.getId().getName());
-        }
-
-        SubmoduleWalk sw = new SubmoduleWalk(db);
-        sw.setRootTree(c.getTree());
-        sw.setTree(c.getTree());
-        sw = sw.loadModulesConfig();
-        try {
-          while(sw.next()) {
-            final String path = sw.getPath();
-            final ObjectId rev = sw.getObjectId();
-            final String url = sw.getModulesUrl();
-
-            if (path == null || rev == null || url == null) continue;
-            String resolvedUrl = SubmoduleResolverImpl.resolveSubmoduleUrl(db, url);
-
-            commit.addMountPoint(new CommitMountPointDataBean(
-              VCS_NAME,
-              resolvedUrl,
-              path,
-              rev.getName()
-            ));
-          }
-        } finally {
-          sw.release();
-        }
-
-        Set<String> refs = index.get(commit.getVersion());
-        if (refs != null) {
-          for (String ref : refs) {
-            if (isTag(ref)) {
-              commit.addTag(ref);
-            } else {
-              commit.addBranch(ref);
-              commit.addHead(ref);
-            }
-          }
-        }
-
-        consumer.consumeCommit(commit);
+      final RevWalk walk = new RevWalk(db);
+      try {
+        initWalk(walk, currentState);
+        iterateCommits(gitRoot, db, walk, getCommitToRefIndex(currentState), consumer);
+      } finally {
+        walk.dispose();
       }
     } catch (Exception e) {
       throw new VcsException(e);
@@ -127,19 +77,115 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     }
   }
 
+  private void iterateCommits(@NotNull final GitVcsRoot gitRoot,
+                              @NotNull final Repository db,
+                              @NotNull final RevWalk walk,
+                              @NotNull final Map<String, Set<String>> refIndex,
+                              @NotNull final CommitsConsumer consumer) throws IOException, ConfigInvalidException, URISyntaxException {
+
+    RevCommit c;
+    while ((c = walk.next()) != null) {
+      final CommitDataBean commit = createCommit(gitRoot, c);
+      walkSubmodules(db, c, commit);
+      includeRefs(refIndex, commit);
+
+      consumer.consumeCommit(commit);
+    }
+  }
+
+  private void includeRefs(@NotNull final Map<String, Set<String>> refIndex,
+                           @NotNull final CommitDataBean commit) {
+    Set<String> refs = refIndex.get(commit.getVersion());
+    if (refs != null) {
+      for (String ref : refs) {
+        if (isTag(ref)) {
+          commit.addTag(ref);
+        } else {
+          commit.addBranch(ref);
+          commit.addHead(ref);
+        }
+      }
+    }
+  }
+
+  private void walkSubmodules(@NotNull final Repository db,
+                              @NotNull final RevCommit c,
+                              @NotNull final CommitDataBean commit)
+    throws IOException, ConfigInvalidException, URISyntaxException {
+    SubmoduleWalk sw = new SubmoduleWalk(db);
+
+    sw.setRootTree(c.getTree());
+    sw.setTree(c.getTree());
+    sw = sw.loadModulesConfig();
+
+    try {
+      while(sw.next()) {
+        includeSubmodule(db, commit, sw);
+      }
+    } finally {
+      sw.release();
+    }
+  }
+
+  private void includeSubmodule(@NotNull final Repository db,
+                                @NotNull final CommitDataBean commit,
+                                @NotNull final SubmoduleWalk sw) throws IOException, ConfigInvalidException, URISyntaxException {
+    final String path = sw.getPath();
+    final ObjectId rev = sw.getObjectId();
+    final String url = sw.getModulesUrl();
+
+    if (path == null || rev == null || url == null) return;
+    final String resolvedUrl = SubmoduleResolverImpl.resolveSubmoduleUrl(db, url);
+
+    commit.addMountPoint(new CommitMountPointDataBean(
+      VCS_NAME,
+      resolvedUrl,
+      path,
+      rev.getName()
+    ));
+  }
+
   @NotNull
-  private GitVcsRoot makeRootWithTags(@NotNull OperationContext ctx, @NotNull VcsRoot root) throws VcsException {
+  private CommitDataBean createCommit(@NotNull final GitVcsRoot gitRoot,
+                                      @NotNull final RevCommit c) {
+    final CommitDataBean commit = new CommitDataBean(c.getId().getName(), c.getId().getName(), c.getAuthorIdent().getWhen());
+    commit.setCommitAuthor(GitServerUtil.getUser(gitRoot, c));
+    commit.setCommitMessage(c.getFullMessage());
+    for (RevCommit p : c.getParents()) {
+      commit.addParentRevision(p.getId().getName());
+    }
+    return commit;
+  }
+
+  private void initWalk(@NotNull final RevWalk walk,
+                        @NotNull final Map<String, Ref> currentState) {
+    for (Ref tip : new HashSet<Ref>(currentState.values())) {
+      try {
+        final RevObject obj = walk.parseAny(getObjectId(tip));
+
+        if (obj instanceof RevCommit) {
+          walk.markStart((RevCommit) obj);
+        }
+      } catch (MissingObjectException e) {
+        //log
+      } catch (IOException e) {
+        //log
+      }
+    }
+  }
+
+  @NotNull
+  private GitVcsRoot makeRootWithTags(@NotNull final OperationContext ctx, @NotNull final VcsRoot root) throws VcsException {
     Map<String, String> params = new HashMap<String, String>(root.getProperties());
     params.put(Constants.REPORT_TAG_REVISIONS, "true");
     return ctx.getGitRoot(new VcsRootImpl(root.getId(), params));
   }
 
-
   @NotNull
-  private Map<String, Set<String>> getCommitToRefIndex(@NotNull Map<String, Ref> state) {
-    Map<String, Set<String>> index = new HashMap<String, Set<String>>();
+  private Map<String, Set<String>> getCommitToRefIndex(@NotNull final Map<String, Ref> state) {
+    final Map<String, Set<String>> index = new HashMap<String, Set<String>>();
     for (Map.Entry<String, Ref> e : state.entrySet()) {
-      String ref = e.getKey();
+      final String ref = e.getKey();
       final String commit = GitUtils.getRevision(e.getValue());
       Set<String> refs = index.get(commit);
       if (refs == null) {
