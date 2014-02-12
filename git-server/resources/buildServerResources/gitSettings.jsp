@@ -30,6 +30,16 @@
   color: rgb(97, 94, 192);
 }
 </style>
+<script type="text/javascript">
+  uploadedKeySelected = function(encrypted) {
+    if (encrypted) {
+      $j('#gitPassphraseRow').show();
+    } else {
+      $j('#secure\\:passphrase').val('');
+      $j('#gitPassphraseRow').hide();
+    }
+  };
+</script>
 <table class="runnerFormTable">
   <c:set var="userHome"
          value='<%=new File(System.getProperty("user.home"), ".ssh"+File.separator+"config").getAbsolutePath() %>'/>
@@ -237,15 +247,6 @@
   </l:settingsGroup>
 </table>
 <script type="text/javascript">
-  uploadedKeySelected = function(encrypted) {
-    if (encrypted) {
-      $j('#gitPassphraseRow').show();
-    } else {
-      $j('#secure\\:passphrase').val('');
-      $j('#gitPassphraseRow').hide();
-    }
-  };
-
   gitSelectAuthentication = function(resetHiddenFields) {
     BS.Util.toggleDependentElements($('authMethod').value, 'auth', resetHiddenFields, {
       PRIVATE_KEY_DEFAULT : 'defaultKey',
