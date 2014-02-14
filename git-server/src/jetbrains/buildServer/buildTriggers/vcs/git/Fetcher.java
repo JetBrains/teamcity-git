@@ -27,7 +27,7 @@ import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
-import org.eclipse.jgit.storage.file.WindowCache;
+import org.eclipse.jgit.internal.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
 import org.jetbrains.annotations.NotNull;
