@@ -213,20 +213,7 @@ class ModificationDataRevWalk extends RevWalk {
           final RevCommit commitWithFix = getPreviousCommitWithFixedSubmodule(commit, path);
           commitsWithFix.put(path, commitWithFix);
           if (commitWithFix != null) {
-            final VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
-            try {
-              tw2.setFilter(TreeFilter.ANY_DIFF);
-              tw2.setRecursive(true);
-              myContext.addTree(myGitRoot, tw2, myRepository, commit, true);
-              myContext.addTree(myGitRoot, tw2, myRepository, commitWithFix, true);
-              while (tw2.next()) {
-                if (tw2.getPathString().equals(path)) {
-                  addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
-                }
-              }
-            } finally {
-              tw2.release();
-            }
+            subWalk(path, commitWithFix);
             return;
           }
         }
@@ -235,20 +222,7 @@ class ModificationDataRevWalk extends RevWalk {
           final String brokenSubmodulePath = filter.getSubmodulePathForChildPath(path);
           final RevCommit commitWithFix = commitsWithFix.get(brokenSubmodulePath);
           if (commitWithFix != null) {
-            final VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
-            try {
-              tw2.setFilter(TreeFilter.ANY_DIFF);
-              tw2.setRecursive(true);
-              myContext.addTree(myGitRoot, tw2, myRepository, commit, true);
-              myContext.addTree(myGitRoot, tw2, myRepository, commitWithFix, true);
-              while (tw2.next()) {
-                if (tw2.getPathString().equals(path)) {
-                  addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
-                }
-              }
-            } finally {
-              tw2.release();
-            }
+            subWalk(path, commitWithFix);
             return;
           }
         }
@@ -256,13 +230,30 @@ class ModificationDataRevWalk extends RevWalk {
         addVcsChange();
       }
 
+      private void subWalk(@NotNull final String path, @NotNull final RevCommit commitWithFix) throws IOException, VcsException {
+        final VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
+        try {
+          tw2.setFilter(TreeFilter.ANY_DIFF);
+          tw2.setRecursive(true);
+          myContext.addTree(myGitRoot, tw2, myRepository, commit, true);
+          myContext.addTree(myGitRoot, tw2, myRepository, commitWithFix, true);
+          while (tw2.next()) {
+            if (tw2.getPathString().equals(path)) {
+              addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
+            }
+          }
+        } finally {
+          tw2.release();
+        }
+      }
+
       private void addVcsChange() {
         addVcsChange(currentVersion, parentVersion, tw);
       }
 
-      public void addVcsChange(String currentVersion,
-                               String parentVersion,
-                               @NotNull final VcsChangeTreeWalk tw) {
+      private void addVcsChange(@NotNull final String currentVersion,
+                                @NotNull final String parentVersion,
+                                @NotNull final VcsChangeTreeWalk tw) {
         final VcsChange change = tw.getVcsChange(currentVersion, parentVersion);
         if (change != null) changes.add(change);
       }
