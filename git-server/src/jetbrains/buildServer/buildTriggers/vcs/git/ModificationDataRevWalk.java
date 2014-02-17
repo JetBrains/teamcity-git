@@ -147,6 +147,9 @@ class ModificationDataRevWalk extends RevWalk {
     private final RevCommit commit;
     private final String currentVersion;
     private final String parentVersion;
+    private final List<VcsChange> changes = new ArrayList<VcsChange>();
+    private final String repositoryDebugInfo = myGitRoot.debugInfo();
+
 
     /**
      * @param commit current commit
@@ -168,8 +171,6 @@ class ModificationDataRevWalk extends RevWalk {
      */
     @NotNull
     public List<VcsChange> getCommitChanges() throws IOException, VcsException {
-      final List<VcsChange> changes = new ArrayList<VcsChange>();
-      final String repositoryDebugInfo = myGitRoot.debugInfo();
       final VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
       try {
         final IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(myGitRoot);
