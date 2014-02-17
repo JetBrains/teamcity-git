@@ -182,78 +182,86 @@ class ModificationDataRevWalk extends RevWalk {
           myContext.addTree(myGitRoot, tw, myRepository, parentCommit, true);
         }
 
-        walk(tw);
+        new VcsChangesTreeWalker(tw).walk();
       } finally {
         tw.release();
       }
     }
 
-    private void walk(@NotNull final VcsChangeTreeWalk tw) throws IOException, VcsException {
-      while (tw.next()) {
-        final String path = tw.getPathString();
+    private class VcsChangesTreeWalker {
+      private final VcsChangeTreeWalk tw;
 
-        if (!myGitRoot.isCheckoutSubmodules()) {
-          addVcsChange(tw);
-          continue;
-        }
+      private VcsChangesTreeWalker(@NotNull final VcsChangeTreeWalk tw) {
+        this.tw = tw;
+      }
 
-        if (filter.isBrokenSubmoduleEntry(path)) {
-          final RevCommit commitWithFix = getPreviousCommitWithFixedSubmodule(commit, path);
-          commitsWithFix.put(path, commitWithFix);
-          if (commitWithFix != null) {
-            final VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
-            try {
-              tw2.setFilter(TreeFilter.ANY_DIFF);
-              tw2.setRecursive(true);
-              myContext.addTree(myGitRoot, tw2, myRepository, commit, true);
-              myContext.addTree(myGitRoot, tw2, myRepository, commitWithFix, true);
-              while (tw2.next()) {
-                if (tw2.getPathString().equals(path)) {
-                  addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
+      private void walk() throws IOException, VcsException {
+        while (tw.next()) {
+          final String path = tw.getPathString();
+
+          if (!myGitRoot.isCheckoutSubmodules()) {
+            addVcsChange();
+            continue;
+          }
+
+          if (filter.isBrokenSubmoduleEntry(path)) {
+            final RevCommit commitWithFix = getPreviousCommitWithFixedSubmodule(commit, path);
+            commitsWithFix.put(path, commitWithFix);
+            if (commitWithFix != null) {
+              final VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
+              try {
+                tw2.setFilter(TreeFilter.ANY_DIFF);
+                tw2.setRecursive(true);
+                myContext.addTree(myGitRoot, tw2, myRepository, commit, true);
+                myContext.addTree(myGitRoot, tw2, myRepository, commitWithFix, true);
+                while (tw2.next()) {
+                  if (tw2.getPathString().equals(path)) {
+                    addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
+                  }
                 }
+              } finally {
+                tw2.release();
               }
-            } finally {
-              tw2.release();
+            } else {
+              addVcsChange();
+            }
+          } else if (filter.isChildOfBrokenSubmoduleEntry(path)) {
+            final String brokenSubmodulePath = filter.getSubmodulePathForChildPath(path);
+            final RevCommit commitWithFix = commitsWithFix.get(brokenSubmodulePath);
+            if (commitWithFix != null) {
+              final VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
+              try {
+                tw2.setFilter(TreeFilter.ANY_DIFF);
+                tw2.setRecursive(true);
+                myContext.addTree(myGitRoot, tw2, myRepository, commit, true);
+                myContext.addTree(myGitRoot, tw2, myRepository, commitWithFix, true);
+                while (tw2.next()) {
+                  if (tw2.getPathString().equals(path)) {
+                    addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
+                  }
+                }
+              } finally {
+                tw2.release();
+              }
+            } else {
+              addVcsChange();
             }
           } else {
-            addVcsChange(tw);
+            addVcsChange();
           }
-        } else if (filter.isChildOfBrokenSubmoduleEntry(path)) {
-          final String brokenSubmodulePath = filter.getSubmodulePathForChildPath(path);
-          final RevCommit commitWithFix = commitsWithFix.get(brokenSubmodulePath);
-          if (commitWithFix != null) {
-            final VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
-            try {
-              tw2.setFilter(TreeFilter.ANY_DIFF);
-              tw2.setRecursive(true);
-              myContext.addTree(myGitRoot, tw2, myRepository, commit, true);
-              myContext.addTree(myGitRoot, tw2, myRepository, commitWithFix, true);
-              while (tw2.next()) {
-                if (tw2.getPathString().equals(path)) {
-                  addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
-                }
-              }
-            } finally {
-              tw2.release();
-            }
-          } else {
-            addVcsChange(tw);
-          }
-        } else {
-          addVcsChange(tw);
         }
       }
-    }
 
-    private void addVcsChange(@NotNull final VcsChangeTreeWalk tw) {
-      addVcsChange(currentVersion, parentVersion, tw);
-    }
+      private void addVcsChange() {
+        addVcsChange(currentVersion, parentVersion, tw);
+      }
 
-    private void addVcsChange(String currentVersion,
-                              String parentVersion,
-                              @NotNull final VcsChangeTreeWalk tw) {
-      final VcsChange change = tw.getVcsChange(currentVersion, parentVersion);
-      if (change != null) changes.add(change);
+      public void addVcsChange(String currentVersion,
+                               String parentVersion,
+                               @NotNull final VcsChangeTreeWalk tw) {
+        final VcsChange change = tw.getVcsChange(currentVersion, parentVersion);
+        if (change != null) changes.add(change);
+      }
     }
 
     @Nullable
