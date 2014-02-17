@@ -239,56 +239,55 @@ class ModificationDataRevWalk extends RevWalk {
         tw.release();
       }
     }
-  }
 
-  private void addVcsChange(@NotNull final List<VcsChange> changes, String currentVersion, String parentVersion, @NotNull final VcsChangeTreeWalk tw) {
-    VcsChange change = tw.getVcsChange(currentVersion, parentVersion);
-    if (change != null)
-      changes.add(change);
-  }
+    private void addVcsChange(@NotNull final List<VcsChange> changes, String currentVersion, String parentVersion, @NotNull final VcsChangeTreeWalk tw) {
+      VcsChange change = tw.getVcsChange(currentVersion, parentVersion);
+      if (change != null)
+        changes.add(change);
+    }
 
+    @Nullable
+    private RevCommit getPreviousCommitWithFixedSubmodule(@NotNull final RevCommit fromCommit, @NotNull final String submodulePath)
+      throws IOException, VcsException {
+      if (mySearchDepth == 0)
+        return null;
 
-  @Nullable
-  private RevCommit getPreviousCommitWithFixedSubmodule(@NotNull final RevCommit fromCommit, @NotNull final String submodulePath)
-    throws IOException, VcsException {
-    if (mySearchDepth == 0)
-      return null;
+      final RevWalk revWalk = new RevWalk(myRepository);
+      try {
+        final RevCommit fromRev = revWalk.parseCommit(fromCommit.getId());
+        revWalk.markStart(fromRev);
+        revWalk.sort(RevSort.TOPO);
 
-    final RevWalk revWalk = new RevWalk(myRepository);
-    try {
-      final RevCommit fromRev = revWalk.parseCommit(fromCommit.getId());
-      revWalk.markStart(fromRev);
-      revWalk.sort(RevSort.TOPO);
-
-      RevCommit result = null;
-      RevCommit prevRev;
-      revWalk.next();
-      int depth = 0;
-      while (result == null && depth < mySearchDepth && (prevRev = revWalk.next()) != null) {
-        depth++;
-        TreeWalk prevTreeWalk = new TreeWalk(myRepository);
-        try {
-          prevTreeWalk.setFilter(TreeFilter.ALL);
-          prevTreeWalk.setRecursive(true);
-          myContext.addTree(myGitRoot, prevTreeWalk, myRepository, prevRev, true, false);
-          while(prevTreeWalk.next()) {
-            String path = prevTreeWalk.getPathString();
-            if (path.startsWith(submodulePath + "/")) {
-              SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
-              SubmoduleAwareTreeIterator parentIter = iter.getParent();
-              if (iter != null && !iter.isSubmoduleError() && parentIter != null && parentIter.isOnSubmodule()) {
-                result = prevRev;
-                break;
+        RevCommit result = null;
+        RevCommit prevRev;
+        revWalk.next();
+        int depth = 0;
+        while (result == null && depth < mySearchDepth && (prevRev = revWalk.next()) != null) {
+          depth++;
+          TreeWalk prevTreeWalk = new TreeWalk(myRepository);
+          try {
+            prevTreeWalk.setFilter(TreeFilter.ALL);
+            prevTreeWalk.setRecursive(true);
+            myContext.addTree(myGitRoot, prevTreeWalk, myRepository, prevRev, true, false);
+            while(prevTreeWalk.next()) {
+              String path = prevTreeWalk.getPathString();
+              if (path.startsWith(submodulePath + "/")) {
+                SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
+                SubmoduleAwareTreeIterator parentIter = iter.getParent();
+                if (iter != null && !iter.isSubmoduleError() && parentIter != null && parentIter.isOnSubmodule()) {
+                  result = prevRev;
+                  break;
+                }
               }
             }
+          } finally {
+            prevTreeWalk.release();
           }
-        } finally {
-          prevTreeWalk.release();
         }
+        return result;
+      } finally {
+        revWalk.release();
       }
-      return result;
-    } finally {
-      revWalk.release();
     }
   }
 }
