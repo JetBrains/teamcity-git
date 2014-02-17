@@ -33,6 +33,7 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -83,6 +84,7 @@ class ModificationDataRevWalk extends RevWalk {
   }
 
 
+  @NotNull
   public ModificationData createModificationData() throws IOException, VcsException {
     if (myCurrentCommit == null)
       throw new IllegalStateException("Current commit is null");
@@ -148,27 +150,27 @@ class ModificationDataRevWalk extends RevWalk {
    * @param parentVersion parent version to use in VcsChange objects
    * @return the commit changes
    */
+  @NotNull
   private List<VcsChange> getCommitChanges(final RevCommit commit,
                                            final String currentVersion,
                                            final String parentVersion) throws IOException, VcsException {
-    List<VcsChange> changes = new ArrayList<VcsChange>();
-    String repositoryDebugInfo = myGitRoot.debugInfo();
-    VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
+    final List<VcsChange> changes = new ArrayList<VcsChange>();
+    final String repositoryDebugInfo = myGitRoot.debugInfo();
+    final VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
     try {
-      IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(myGitRoot);
+      final IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(myGitRoot);
       tw.setFilter(filter);
       tw.setRecursive(true);
       myContext.addTree(myGitRoot, tw, myRepository, commit, shouldIgnoreSubmodulesErrors());
       for (RevCommit parentCommit : commit.getParents()) {
         myContext.addTree(myGitRoot, tw, myRepository, parentCommit, true);
       }
-      RevCommit commitWithFix = null;
-      Map<String, RevCommit> commitsWithFix = new HashMap<String, RevCommit>();
+      final Map<String, RevCommit> commitsWithFix = new HashMap<String, RevCommit>();
       while (tw.next()) {
-        String path = tw.getPathString();
+        final String path = tw.getPathString();
         if (myGitRoot.isCheckoutSubmodules()) {
           if (filter.isBrokenSubmoduleEntry(path)) {
-            commitWithFix = getPreviousCommitWithFixedSubmodule(commit, path);
+            final RevCommit commitWithFix = getPreviousCommitWithFixedSubmodule(commit, path);
             commitsWithFix.put(path, commitWithFix);
             if (commitWithFix != null) {
               VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
@@ -189,8 +191,8 @@ class ModificationDataRevWalk extends RevWalk {
               addVcsChange(changes, currentVersion, parentVersion, tw);
             }
           } else if (filter.isChildOfBrokenSubmoduleEntry(path)) {
-            String brokenSubmodulePath = filter.getSubmodulePathForChildPath(path);
-            commitWithFix = commitsWithFix.get(brokenSubmodulePath);
+            final String brokenSubmodulePath = filter.getSubmodulePathForChildPath(path);
+            final RevCommit commitWithFix = commitsWithFix.get(brokenSubmodulePath);
             if (commitWithFix != null) {
               VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
               try {
@@ -222,19 +224,20 @@ class ModificationDataRevWalk extends RevWalk {
     }
   }
 
-  private void addVcsChange(List<VcsChange> changes, String currentVersion, String parentVersion, VcsChangeTreeWalk tw) {
+  private void addVcsChange(@NotNull final List<VcsChange> changes, String currentVersion, String parentVersion, @NotNull final VcsChangeTreeWalk tw) {
     VcsChange change = tw.getVcsChange(currentVersion, parentVersion);
     if (change != null)
       changes.add(change);
   }
 
 
-  private RevCommit getPreviousCommitWithFixedSubmodule(RevCommit fromCommit, String submodulePath)
+  @Nullable
+  private RevCommit getPreviousCommitWithFixedSubmodule(@NotNull final RevCommit fromCommit, @NotNull final String submodulePath)
     throws IOException, VcsException {
     if (mySearchDepth == 0)
       return null;
 
-    RevWalk revWalk = new RevWalk(myRepository);
+    final RevWalk revWalk = new RevWalk(myRepository);
     try {
       final RevCommit fromRev = revWalk.parseCommit(fromCommit.getId());
       revWalk.markStart(fromRev);
