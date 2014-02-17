@@ -96,7 +96,7 @@ class ModificationDataRevWalk extends RevWalk {
     }
 
     final String parentVersion = getFirstParentVersion(myCurrentCommit);
-    final List<VcsChange> changes = new CommitChangesBuilder().getCommitChanges(myCurrentCommit, commitId, parentVersion);
+    final List<VcsChange> changes = new CommitChangesBuilder(myCurrentCommit, commitId, parentVersion).getCommitChanges();
 
     final PersonIdent authorIdent = myCurrentCommit.getAuthorIdent();
     final ModificationData result = new ModificationData(
@@ -144,18 +144,30 @@ class ModificationDataRevWalk extends RevWalk {
 
 
   private class CommitChangesBuilder {
+    private final RevCommit commit;
+    private final String currentVersion;
+    private final String parentVersion;
+
     /**
-     * Get changes for the commit
-     *
      * @param commit current commit
      * @param currentVersion teamcity version of current commit (sha@time)
      * @param parentVersion parent version to use in VcsChange objects
+     */
+    public CommitChangesBuilder(@NotNull final RevCommit commit,
+                                @NotNull final String currentVersion,
+                                @NotNull final String parentVersion) {
+      this.commit = commit;
+      this.currentVersion = currentVersion;
+      this.parentVersion = parentVersion;
+    }
+
+    /**
+     * Get changes for the commit
+     *
      * @return the commit changes
      */
     @NotNull
-    private List<VcsChange> getCommitChanges(@NotNull final RevCommit commit,
-                                             final String currentVersion,
-                                             final String parentVersion) throws IOException, VcsException {
+    public List<VcsChange> getCommitChanges() throws IOException, VcsException {
       final List<VcsChange> changes = new ArrayList<VcsChange>();
       final String repositoryDebugInfo = myGitRoot.debugInfo();
       final VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
