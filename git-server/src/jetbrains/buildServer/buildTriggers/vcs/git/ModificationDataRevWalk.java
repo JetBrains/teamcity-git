@@ -151,7 +151,7 @@ class ModificationDataRevWalk extends RevWalk {
    * @return the commit changes
    */
   @NotNull
-  private List<VcsChange> getCommitChanges(final RevCommit commit,
+  private List<VcsChange> getCommitChanges(@NotNull final RevCommit commit,
                                            final String currentVersion,
                                            final String parentVersion) throws IOException, VcsException {
     final List<VcsChange> changes = new ArrayList<VcsChange>();
