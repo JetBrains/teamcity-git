@@ -149,6 +149,7 @@ class ModificationDataRevWalk extends RevWalk {
     private final List<VcsChange> changes = new ArrayList<VcsChange>();
     private final String repositoryDebugInfo = myGitRoot.debugInfo();
     private final IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(myGitRoot);
+    private final Map<String, RevCommit> commitsWithFix = new HashMap<String, RevCommit>();
 
     /**
      * @param commit current commit
@@ -180,7 +181,7 @@ class ModificationDataRevWalk extends RevWalk {
         for (RevCommit parentCommit : commit.getParents()) {
           myContext.addTree(myGitRoot, tw, myRepository, parentCommit, true);
         }
-        final Map<String, RevCommit> commitsWithFix = new HashMap<String, RevCommit>();
+
         while (tw.next()) {
           final String path = tw.getPathString();
 
