@@ -277,7 +277,7 @@ class ModificationDataRevWalk extends RevWalk {
         int depth = 0;
         while (result == null && depth < mySearchDepth && (prevRev = revWalk.next()) != null) {
           depth++;
-          TreeWalk prevTreeWalk = new TreeWalk(myRepository);
+          final TreeWalk prevTreeWalk = new TreeWalk(myRepository);
           try {
             prevTreeWalk.setFilter(TreeFilter.ALL);
             prevTreeWalk.setRecursive(true);
@@ -285,8 +285,8 @@ class ModificationDataRevWalk extends RevWalk {
             while(prevTreeWalk.next()) {
               String path = prevTreeWalk.getPathString();
               if (path.startsWith(submodulePath + "/")) {
-                SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
-                SubmoduleAwareTreeIterator parentIter = iter.getParent();
+                final SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
+                final SubmoduleAwareTreeIterator parentIter = iter.getParent();
                 if (iter != null && !iter.isSubmoduleError() && parentIter != null && parentIter.isOnSubmodule()) {
                   result = prevRev;
                   break;
