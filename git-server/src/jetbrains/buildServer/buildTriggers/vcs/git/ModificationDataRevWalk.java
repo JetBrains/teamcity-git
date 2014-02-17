@@ -193,7 +193,7 @@ class ModificationDataRevWalk extends RevWalk {
             final RevCommit commitWithFix = getPreviousCommitWithFixedSubmodule(commit, path);
             commitsWithFix.put(path, commitWithFix);
             if (commitWithFix != null) {
-              VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
+              final VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
               try {
                 tw2.setFilter(TreeFilter.ANY_DIFF);
                 tw2.setRecursive(true);
@@ -214,7 +214,7 @@ class ModificationDataRevWalk extends RevWalk {
             final String brokenSubmodulePath = filter.getSubmodulePathForChildPath(path);
             final RevCommit commitWithFix = commitsWithFix.get(brokenSubmodulePath);
             if (commitWithFix != null) {
-              VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
+              final VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
               try {
                 tw2.setFilter(TreeFilter.ANY_DIFF);
                 tw2.setRecursive(true);
