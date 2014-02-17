@@ -225,7 +225,10 @@ class ModificationDataRevWalk extends RevWalk {
             } else {
               addVcsChange();
             }
-          } else if (filter.isChildOfBrokenSubmoduleEntry(path)) {
+            continue;
+          }
+
+          if (filter.isChildOfBrokenSubmoduleEntry(path)) {
             final String brokenSubmodulePath = filter.getSubmodulePathForChildPath(path);
             final RevCommit commitWithFix = commitsWithFix.get(brokenSubmodulePath);
             if (commitWithFix != null) {
@@ -246,9 +249,10 @@ class ModificationDataRevWalk extends RevWalk {
             } else {
               addVcsChange();
             }
-          } else {
-            addVcsChange();
+            continue;
           }
+
+          addVcsChange();
         }
       }
 
