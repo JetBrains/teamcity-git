@@ -22,8 +22,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTree
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.errors.IncorrectObjectTypeException;
-import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Repository;
@@ -69,7 +67,7 @@ class ModificationDataRevWalk extends RevWalk {
 
 
   @Override
-  public RevCommit next() throws MissingObjectException, IncorrectObjectTypeException, IOException {
+  public RevCommit next() throws IOException {
     myCurrentCommit = super.next();
     myNextCallCount++;
     if (myCurrentCommit != null && shouldLimitByNumberOfCommits() && myNextCallCount > myNumberOfCommitsToVisit) {
@@ -96,7 +94,9 @@ class ModificationDataRevWalk extends RevWalk {
     }
 
     final String parentVersion = getFirstParentVersion(myCurrentCommit);
-    final List<VcsChange> changes = new CommitChangesBuilder(myCurrentCommit, commitId, parentVersion).getCommitChanges();
+    final CommitChangesBuilder builder = new CommitChangesBuilder(myCurrentCommit, commitId, parentVersion);
+    builder.collectCommitChanges();
+    final List<VcsChange> changes = builder.getChanges();
 
     final PersonIdent authorIdent = myCurrentCommit.getAuthorIdent();
     final ModificationData result = new ModificationData(
@@ -142,7 +142,6 @@ class ModificationDataRevWalk extends RevWalk {
     }
   }
 
-
   private class CommitChangesBuilder {
     private final RevCommit commit;
     private final String currentVersion;
@@ -164,13 +163,15 @@ class ModificationDataRevWalk extends RevWalk {
       this.parentVersion = parentVersion;
     }
 
-    /**
-     * Get changes for the commit
-     *
-     * @return the commit changes
-     */
     @NotNull
-    public List<VcsChange> getCommitChanges() throws IOException, VcsException {
+    public List<VcsChange> getChanges() {
+      return changes;
+    }
+
+    /**
+     * collect changes for the commit
+     */
+    public void collectCommitChanges() throws IOException, VcsException {
       final VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
       try {
         tw.setFilter(filter);
@@ -184,7 +185,7 @@ class ModificationDataRevWalk extends RevWalk {
           final String path = tw.getPathString();
 
           if (!myGitRoot.isCheckoutSubmodules()) {
-            addVcsChange(changes, currentVersion, parentVersion, tw);
+            addVcsChange(tw);
             continue;
           }
 
@@ -200,14 +201,14 @@ class ModificationDataRevWalk extends RevWalk {
                 myContext.addTree(myGitRoot, tw2, myRepository, commitWithFix, true);
                 while (tw2.next()) {
                   if (tw2.getPathString().equals(path)) {
-                    addVcsChange(changes, currentVersion, commitWithFix.getId().name(), tw2);
+                    addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
                   }
                 }
               } finally {
                 tw2.release();
               }
             } else {
-              addVcsChange(changes, currentVersion, parentVersion, tw);
+              addVcsChange(tw);
             }
           } else if (filter.isChildOfBrokenSubmoduleEntry(path)) {
             final String brokenSubmodulePath = filter.getSubmodulePathForChildPath(path);
@@ -221,29 +222,33 @@ class ModificationDataRevWalk extends RevWalk {
                 myContext.addTree(myGitRoot, tw2, myRepository, commitWithFix, true);
                 while (tw2.next()) {
                   if (tw2.getPathString().equals(path)) {
-                    addVcsChange(changes, currentVersion, commitWithFix.getId().name(), tw2);
+                    addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
                   }
                 }
               } finally {
                 tw2.release();
               }
             } else {
-              addVcsChange(changes, currentVersion, parentVersion, tw);
+              addVcsChange(tw);
             }
           } else {
-            addVcsChange(changes, currentVersion, parentVersion, tw);
+            addVcsChange(tw);
           }
         }
-        return changes;
       } finally {
         tw.release();
       }
     }
 
-    private void addVcsChange(@NotNull final List<VcsChange> changes, String currentVersion, String parentVersion, @NotNull final VcsChangeTreeWalk tw) {
-      VcsChange change = tw.getVcsChange(currentVersion, parentVersion);
-      if (change != null)
-        changes.add(change);
+    private void addVcsChange(@NotNull final VcsChangeTreeWalk tw) {
+      addVcsChange(currentVersion, parentVersion, tw);
+    }
+
+    private void addVcsChange(String currentVersion,
+                              String parentVersion,
+                              @NotNull final VcsChangeTreeWalk tw) {
+      final VcsChange change = tw.getVcsChange(currentVersion, parentVersion);
+      if (change != null) changes.add(change);
     }
 
     @Nullable
