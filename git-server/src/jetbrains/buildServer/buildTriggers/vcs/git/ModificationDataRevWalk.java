@@ -222,10 +222,8 @@ class ModificationDataRevWalk extends RevWalk {
               } finally {
                 tw2.release();
               }
-            } else {
-              addVcsChange();
+              continue;
             }
-            continue;
           }
 
           if (filter.isChildOfBrokenSubmoduleEntry(path)) {
@@ -246,10 +244,8 @@ class ModificationDataRevWalk extends RevWalk {
               } finally {
                 tw2.release();
               }
-            } else {
-              addVcsChange();
+              continue;
             }
-            continue;
           }
 
           addVcsChange();
