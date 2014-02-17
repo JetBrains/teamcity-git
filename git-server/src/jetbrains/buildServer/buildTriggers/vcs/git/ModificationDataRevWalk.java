@@ -149,7 +149,7 @@ class ModificationDataRevWalk extends RevWalk {
     private final String parentVersion;
     private final List<VcsChange> changes = new ArrayList<VcsChange>();
     private final String repositoryDebugInfo = myGitRoot.debugInfo();
-
+    private final IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(myGitRoot);
 
     /**
      * @param commit current commit
@@ -173,7 +173,6 @@ class ModificationDataRevWalk extends RevWalk {
     public List<VcsChange> getCommitChanges() throws IOException, VcsException {
       final VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
       try {
-        final IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(myGitRoot);
         tw.setFilter(filter);
         tw.setRecursive(true);
         myContext.addTree(myGitRoot, tw, myRepository, commit, shouldIgnoreSubmodulesErrors());
