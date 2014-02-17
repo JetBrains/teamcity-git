@@ -130,8 +130,9 @@ class ModificationDataRevWalk extends RevWalk {
   }
 
 
-  private String getFirstParentVersion(RevCommit commit) throws IOException {
-    RevCommit[] parents = commit.getParents();
+  @NotNull
+  private String getFirstParentVersion(@NotNull final RevCommit commit) throws IOException {
+    final RevCommit[] parents = commit.getParents();
     if (parents.length == 0) {
       return ObjectId.zeroId().name();
     } else {
