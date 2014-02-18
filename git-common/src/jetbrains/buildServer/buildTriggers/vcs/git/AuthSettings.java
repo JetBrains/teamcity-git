@@ -208,6 +208,10 @@ public class AuthSettings {
             allValuesSupplied &= supplyUsername(uri, (CredentialItem.Username) i);
           } else if (i instanceof CredentialItem.Password) {
             allValuesSupplied &= supplyPassword((CredentialItem.Password) i);
+          } else if (i instanceof CredentialItem.StringType && "Passphrase for ".equals(i.getPromptText())) {
+            //we provider a passphrase to the jsch, if we are asked about it
+            //then the original passphrase was incorrect
+            throw new WrongPassphraseException(uri);
           } else {
             throw new UnsupportedCredentialItem(uri, i.getPromptText());
           }
