@@ -362,6 +362,8 @@ public class GitVcsSupport extends ServerVcsSupport
         } else {
           throw friendlyTransportException(te, gitRoot);
         }
+      } catch (WrongPassphraseException e) {
+        throw new VcsException(e.getMessage(), e);
       } finally {
         if (connection != null)
           connection.close();
