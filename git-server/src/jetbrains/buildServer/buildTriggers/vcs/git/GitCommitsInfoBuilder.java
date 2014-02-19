@@ -16,28 +16,23 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
+import jetbrains.buildServer.dataStructures.MultiMapToList;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
-import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.errors.MissingObjectException;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevObject;
-import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.submodule.SubmoduleWalk;
+import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.revwalk.*;
+import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.eclipse.jgit.treewalk.filter.PathFilter;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.VCS_NAME;
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getFullUserName;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getObjectId;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 
@@ -53,23 +48,16 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
   public void collectCommits(@NotNull final VcsRoot root,
                              @NotNull final CheckoutRules rules,
                              @NotNull final CommitsConsumer consumer) throws VcsException {
-
     final OperationContext ctx = myVcs.createContext(root, "collecting commits");
     try {
-      final GitVcsRoot gitRoot = makeRootWithTags(ctx, root);
       final Repository db = ctx.getRepository();
 
-      //fetch repo if needed
-      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, myVcs.getCurrentState(gitRoot));
+      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, myVcs.getCurrentState(makeRootWithTags(ctx, root)));
 
       final Map<String,Ref> currentState = ctx.getRepository().getAllRefs();
-      final RevWalk walk = new RevWalk(db);
-      try {
-        initWalk(walk, currentState);
-        iterateCommits(gitRoot, db, walk, getCommitToRefIndex(currentState), consumer);
-      } finally {
-        walk.dispose();
-      }
+      collectSubmodules(db, currentState, consumer);
+
+//      collectRevs(db, currentState, consumer);
     } catch (Exception e) {
       throw new VcsException(e);
     } finally {
@@ -77,20 +65,99 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     }
   }
 
-  private void iterateCommits(@NotNull final GitVcsRoot gitRoot,
-                              @NotNull final Repository db,
-                              @NotNull final RevWalk walk,
-                              @NotNull final Map<String, Set<String>> refIndex,
-                              @NotNull final CommitsConsumer consumer) throws IOException, ConfigInvalidException, URISyntaxException {
+  private void collectSubmodules(@NotNull final Repository db,
+                                 @NotNull final Map<String, Ref> currentState,
+                                 @NotNull final CommitsConsumer consumer) throws IOException {
+    final Map<String, Set<String>> index = getCommitToRefIndex(currentState);
 
-    RevCommit c;
-    while ((c = walk.next()) != null) {
-      final CommitDataBean commit = createCommit(gitRoot, c);
-      walkSubmodules(db, c, commit);
-      includeRefs(refIndex, commit);
+    final MultiMapToList<RevTree, RevCommit> treeToCommit = new MultiMapToList<RevTree, RevCommit>();
+    final MultiMapToList<RevBlob, RevTree> blobToTree = new MultiMapToList<RevBlob, RevTree>();
 
-      consumer.consumeCommit(commit);
+    final ObjectWalk w = new ObjectWalk(db);
+    try {
+      initWalk(w, currentState);
+      w.setTreeFilter(PathFilter.create(org.eclipse.jgit.lib.Constants.DOT_GIT_MODULES));
+
+      int cnt = 0;
+      RevCommit commit;
+      while((commit = w.next()) != null) {
+        //processCommit(index, commit, consumer);
+
+        cnt++;
+
+        System.out.println("commit " + commit.getId().name());
+        System.out.println("  tree " + commit.getTree().getId().name());
+      }
+
+      System.out.println("Commits: " + cnt);
+
+      System.out.println();
+
+      RevObject obj;
+      while((obj = w.nextObject()) != null) {
+        System.out.println(obj);
+
+        if(obj.getType() == org.eclipse.jgit.lib.Constants.OBJ_TREE) {
+          final RevTree tree = (RevTree)obj;
+          final CanonicalTreeParser tw = new CanonicalTreeParser();
+          tw.reset(w.getObjectReader(), tree);
+
+          tw.next(1);
+          while(!tw.eof()) {
+            final FileMode mode = tw.getEntryFileMode();
+
+            if (mode == FileMode.TREE) {
+              System.out.println("-- tree " + tw.getEntryPathString() + " => " + tw.getEntryObjectId().name());
+            }
+
+            if (mode == FileMode.GITLINK) {
+              System.out.println("-- mount " + tw.getEntryPathString() + " => " + tw.getEntryObjectId().name());
+            }
+
+            if (tw.getEntryPathString().equals(org.eclipse.jgit.lib.Constants.DOT_GIT_MODULES)) {
+              System.out.println("-- tree blob: " + tw.getEntryObjectId().name());
+            }
+            tw.next(1);
+          }
+        }
+
+        if(obj.getType() == org.eclipse.jgit.lib.Constants.OBJ_BLOB && org.eclipse.jgit.lib.Constants.DOT_GIT_MODULES.equals(w.getPathString())) {
+
+          System.out.println(w.getPathString());
+
+          ObjectLoader loader = w.getObjectReader().open(obj, org.eclipse.jgit.lib.Constants.OBJ_BLOB);
+          System.out.println(new String(loader.getBytes()));
+        }
+      }
+
+    } finally {
+      w.dispose();
     }
+  }
+
+  private void collectRevs(@NotNull final Repository db,
+                           @NotNull final Map<String, Ref> currentState,
+                           @NotNull final CommitsConsumer consumer) throws IOException {
+    final Map<String, Set<String>> index = getCommitToRefIndex(currentState);
+    final RevWalk walk = new RevWalk(db);
+
+    try {
+      initWalk(walk, currentState);
+      RevCommit c;
+      while ((c = walk.next()) != null) {
+        processCommit(index, c, consumer);
+      }
+    } finally {
+      walk.dispose();
+    }
+  }
+
+  private void processCommit(@NotNull final Map<String, Set<String>> refIndex,
+                             @NotNull final RevCommit c, @NotNull final CommitsConsumer consumer) {
+    final CommitDataBean commit = createCommit(c);
+    includeRefs(refIndex, commit);
+
+    consumer.consumeCommit(commit);
   }
 
   private void includeRefs(@NotNull final Map<String, Set<String>> refIndex,
@@ -108,48 +175,12 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     }
   }
 
-  private void walkSubmodules(@NotNull final Repository db,
-                              @NotNull final RevCommit c,
-                              @NotNull final CommitDataBean commit)
-    throws IOException, ConfigInvalidException, URISyntaxException {
-    SubmoduleWalk sw = new SubmoduleWalk(db);
-
-    sw.setRootTree(c.getTree());
-    sw.setTree(c.getTree());
-    sw = sw.loadModulesConfig();
-
-    try {
-      while(sw.next()) {
-        includeSubmodule(db, commit, sw);
-      }
-    } finally {
-      sw.release();
-    }
-  }
-
-  private void includeSubmodule(@NotNull final Repository db,
-                                @NotNull final CommitDataBean commit,
-                                @NotNull final SubmoduleWalk sw) throws IOException, ConfigInvalidException, URISyntaxException {
-    final String path = sw.getPath();
-    final ObjectId rev = sw.getObjectId();
-    final String url = sw.getModulesUrl();
-
-    if (path == null || rev == null || url == null) return;
-    final String resolvedUrl = SubmoduleResolverImpl.resolveSubmoduleUrl(db, url);
-
-    commit.addMountPoint(new CommitMountPointDataBean(
-      VCS_NAME,
-      resolvedUrl,
-      path,
-      rev.getName()
-    ));
-  }
-
   @NotNull
-  private CommitDataBean createCommit(@NotNull final GitVcsRoot gitRoot,
-                                      @NotNull final RevCommit c) {
-    final CommitDataBean commit = new CommitDataBean(c.getId().getName(), c.getId().getName(), c.getAuthorIdent().getWhen());
-    commit.setCommitAuthor(GitServerUtil.getUser(gitRoot, c));
+  private CommitDataBean createCommit(@NotNull final RevCommit c) {
+    final PersonIdent authorIdent = c.getAuthorIdent();
+    final CommitDataBean commit = new CommitDataBean(c.getId().getName(), c.getId().getName(), authorIdent.getWhen());
+
+    commit.setCommitAuthor(getFullUserName(authorIdent));
     commit.setCommitMessage(c.getFullMessage());
     for (RevCommit p : c.getParents()) {
       commit.addParentRevision(p.getId().getName());
@@ -159,6 +190,8 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
   private void initWalk(@NotNull final RevWalk walk,
                         @NotNull final Map<String, Ref> currentState) {
+    walk.sort(RevSort.TOPO);
+
     for (Ref tip : new HashSet<Ref>(currentState.values())) {
       try {
         final RevObject obj = walk.parseAny(getObjectId(tip));

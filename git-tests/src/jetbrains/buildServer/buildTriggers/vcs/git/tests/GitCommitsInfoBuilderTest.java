@@ -61,7 +61,7 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
     myTempFiles.cleanup();
   }
 
-  @Test(enabled = false)
+  @Test//(enabled = false)
   public void test_idea_local() throws VcsException {
     ///does not work for real repository: Fetcher call is mostly endless
     VcsRoot root = vcsRoot()
@@ -79,7 +79,50 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
       }
     });
 
-    System.out.println("Total files: " + commits.size());
+    System.out.println("Total commits: " + commits.size());
+  }
+
+
+  @Test//(enabled = false)
+  public void test_r2_local() throws VcsException {
+    ///does not work for real repository: Fetcher call is mostly endless
+    VcsRoot root = vcsRoot()
+      .withFetchUrl("E:\\Temp\\mock\\r2\\.git")
+      .withRepositoryPathOnServer("E:\\Temp\\mock\\r2\\.git")
+      .withBranch("master")
+      .build();
+
+    GitVcsSupport vcs = gitSupport().withServerPaths(myServerPaths).build();
+    final List<CommitInfo> commits = new ArrayList<CommitInfo>();
+
+    new GitCommitsInfoBuilder(vcs).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
+      public void consumeCommit(@NotNull CommitInfo commit) {
+        commits.add(commit);
+      }
+    });
+
+    System.out.println("Total commits: " + commits.size());
+  }
+
+  @Test//(enabled = false)
+  public void test_torrents_repo_local() throws VcsException {
+    ///does not work for real repository: Fetcher call is mostly endless
+    VcsRoot root = vcsRoot()
+      .withFetchUrl("E:\\Work\\TeamCity\\trunk\\teamcity-torrent-plugin\\.git")
+      .withRepositoryPathOnServer("E:\\Work\\TeamCity\\trunk\\teamcity-torrent-plugin\\.git")
+      .withBranch("master")
+      .build();
+
+    GitVcsSupport vcs = gitSupport().withServerPaths(myServerPaths).build();
+    final List<CommitInfo> commits = new ArrayList<CommitInfo>();
+
+    new GitCommitsInfoBuilder(vcs).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
+      public void consumeCommit(@NotNull CommitInfo commit) {
+        commits.add(commit);
+      }
+    });
+
+    System.out.println("Total commits: " + commits.size());
   }
 
 
