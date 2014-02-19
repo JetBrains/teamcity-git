@@ -138,7 +138,7 @@ public class GitServerUtil {
       case EMAIL:
         return id.getEmailAddress();
       case FULL:
-        return id.getName() + " <" + id.getEmailAddress() + ">";
+        return getFullUserName(id);
       case USERID:
         String email = id.getEmailAddress();
         final int i = email.lastIndexOf("@");
@@ -146,6 +146,10 @@ public class GitServerUtil {
       default:
         throw new IllegalStateException("Unsupported username style: " + root.getUsernameStyle());
     }
+  }
+
+  public static String getFullUserName(@NotNull final PersonIdent id) {
+    return id.getName() + " <" + id.getEmailAddress() + ">";
   }
 
   /**
