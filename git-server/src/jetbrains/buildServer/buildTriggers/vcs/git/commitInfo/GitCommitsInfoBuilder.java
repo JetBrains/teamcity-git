@@ -14,16 +14,19 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git;
+package jetbrains.buildServer.buildTriggers.vcs.git.commitInfo;
 
-import jetbrains.buildServer.dataStructures.MultiMapToList;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.errors.MissingObjectException;
-import org.eclipse.jgit.lib.*;
-import org.eclipse.jgit.revwalk.*;
-import org.eclipse.jgit.treewalk.CanonicalTreeParser;
-import org.eclipse.jgit.treewalk.filter.PathFilter;
+import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevObject;
+import org.eclipse.jgit.revwalk.RevSort;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -54,10 +57,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
       myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, myVcs.getCurrentState(makeRootWithTags(ctx, root)));
 
-      final Map<String,Ref> currentState = ctx.getRepository().getAllRefs();
-      collectSubmodules(db, currentState, consumer);
-
-//      collectRevs(db, currentState, consumer);
+      collectRevs(db, consumer);
     } catch (Exception e) {
       throw new VcsException(e);
     } finally {
@@ -65,79 +65,9 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     }
   }
 
-  private void collectSubmodules(@NotNull final Repository db,
-                                 @NotNull final Map<String, Ref> currentState,
-                                 @NotNull final CommitsConsumer consumer) throws IOException {
-    final Map<String, Set<String>> index = getCommitToRefIndex(currentState);
-
-    final MultiMapToList<RevTree, RevCommit> treeToCommit = new MultiMapToList<RevTree, RevCommit>();
-    final MultiMapToList<RevBlob, RevTree> blobToTree = new MultiMapToList<RevBlob, RevTree>();
-
-    final ObjectWalk w = new ObjectWalk(db);
-    try {
-      initWalk(w, currentState);
-      w.setTreeFilter(PathFilter.create(org.eclipse.jgit.lib.Constants.DOT_GIT_MODULES));
-
-      int cnt = 0;
-      RevCommit commit;
-      while((commit = w.next()) != null) {
-        //processCommit(index, commit, consumer);
-
-        cnt++;
-
-        System.out.println("commit " + commit.getId().name());
-        System.out.println("  tree " + commit.getTree().getId().name());
-      }
-
-      System.out.println("Commits: " + cnt);
-
-      System.out.println();
-
-      RevObject obj;
-      while((obj = w.nextObject()) != null) {
-        System.out.println(obj);
-
-        if(obj.getType() == org.eclipse.jgit.lib.Constants.OBJ_TREE) {
-          final RevTree tree = (RevTree)obj;
-          final CanonicalTreeParser tw = new CanonicalTreeParser();
-          tw.reset(w.getObjectReader(), tree);
-
-          tw.next(1);
-          while(!tw.eof()) {
-            final FileMode mode = tw.getEntryFileMode();
-
-            if (mode == FileMode.TREE) {
-              System.out.println("-- tree " + tw.getEntryPathString() + " => " + tw.getEntryObjectId().name());
-            }
-
-            if (mode == FileMode.GITLINK) {
-              System.out.println("-- mount " + tw.getEntryPathString() + " => " + tw.getEntryObjectId().name());
-            }
-
-            if (tw.getEntryPathString().equals(org.eclipse.jgit.lib.Constants.DOT_GIT_MODULES)) {
-              System.out.println("-- tree blob: " + tw.getEntryObjectId().name());
-            }
-            tw.next(1);
-          }
-        }
-
-        if(obj.getType() == org.eclipse.jgit.lib.Constants.OBJ_BLOB && org.eclipse.jgit.lib.Constants.DOT_GIT_MODULES.equals(w.getPathString())) {
-
-          System.out.println(w.getPathString());
-
-          ObjectLoader loader = w.getObjectReader().open(obj, org.eclipse.jgit.lib.Constants.OBJ_BLOB);
-          System.out.println(new String(loader.getBytes()));
-        }
-      }
-
-    } finally {
-      w.dispose();
-    }
-  }
-
   private void collectRevs(@NotNull final Repository db,
-                           @NotNull final Map<String, Ref> currentState,
                            @NotNull final CommitsConsumer consumer) throws IOException {
+    final Map<String,Ref> currentState = db.getAllRefs();
     final Map<String, Set<String>> index = getCommitToRefIndex(currentState);
     final RevWalk walk = new RevWalk(db);
 

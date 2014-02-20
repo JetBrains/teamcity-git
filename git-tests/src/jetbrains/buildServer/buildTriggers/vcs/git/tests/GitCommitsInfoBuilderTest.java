@@ -18,7 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitCommitsInfoBuilder;
+import jetbrains.buildServer.buildTriggers.vcs.git.commitInfo.GitCommitsInfoBuilder;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -61,7 +61,7 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
     myTempFiles.cleanup();
   }
 
-  @Test//(enabled = false)
+  @Test(enabled = false)
   public void test_idea_local() throws VcsException {
     ///does not work for real repository: Fetcher call is mostly endless
     VcsRoot root = vcsRoot()
@@ -82,8 +82,29 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
     System.out.println("Total commits: " + commits.size());
   }
 
+  @Test(enabled = false)
+  public void test_linux() throws VcsException {
+    ///does not work for real repository: Fetcher call is mostly endless
+    VcsRoot root = vcsRoot()
+      .withFetchUrl("F:\\Work\\linux\\.git")
+      .withRepositoryPathOnServer("F:\\Work\\linux\\.git")
+      .withBranch("master")
+      .build();
 
-  @Test//(enabled = false)
+    GitVcsSupport vcs = gitSupport().withServerPaths(myServerPaths).build();
+    final List<CommitInfo> commits = new ArrayList<CommitInfo>();
+
+    new GitCommitsInfoBuilder(vcs).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
+      public void consumeCommit(@NotNull CommitInfo commit) {
+        commits.add(commit);
+      }
+    });
+
+    System.out.println("Total commits: " + commits.size());
+  }
+
+
+  @Test(enabled = false)
   public void test_r2_local() throws VcsException {
     ///does not work for real repository: Fetcher call is mostly endless
     VcsRoot root = vcsRoot()
@@ -104,7 +125,7 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
     System.out.println("Total commits: " + commits.size());
   }
 
-  @Test//(enabled = false)
+  @Test(enabled = false)
   public void test_torrents_repo_local() throws VcsException {
     ///does not work for real repository: Fetcher call is mostly endless
     VcsRoot root = vcsRoot()
