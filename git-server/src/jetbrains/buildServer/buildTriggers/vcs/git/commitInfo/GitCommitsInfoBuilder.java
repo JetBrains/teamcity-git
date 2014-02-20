@@ -17,12 +17,14 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.commitInfo;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.Submodule;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmodulesConfig;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.errors.MissingObjectException;
-import org.eclipse.jgit.lib.PersonIdent;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevSort;
@@ -30,6 +32,7 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -57,7 +60,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
       myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, myVcs.getCurrentState(makeRootWithTags(ctx, root)));
 
-      collectRevs(db, consumer);
+      collect(db, consumer);
     } catch (Exception e) {
       throw new VcsException(e);
     } finally {
@@ -65,11 +68,17 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     }
   }
 
-  private void collectRevs(@NotNull final Repository db,
-                           @NotNull final CommitsConsumer consumer) throws IOException {
+  private void collect(@NotNull final Repository db,
+                       @NotNull final CommitsConsumer consumer) throws IOException {
     final Map<String,Ref> currentState = db.getAllRefs();
+
+    final ObjectDatabase cached = db.getObjectDatabase().newCachedDatabase();
     final Map<String, Set<String>> index = getCommitToRefIndex(currentState);
-    final RevWalk walk = new RevWalk(db);
+
+    final DotGitModulesResolver resolver = new DotGitModulesResolver(db);
+    final CommitTreeProcessor proc = new CommitTreeProcessor(resolver, db);
+
+    final RevWalk walk = new RevWalk(cached.newReader());
 
     try {
       initWalk(walk, currentState);
@@ -79,10 +88,38 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
         includeRefs(index, commit);
 
+        includeSubModules(db, proc, c, commit);
+
         consumer.consumeCommit(commit);
       }
     } finally {
       walk.dispose();
+    }
+  }
+
+  private void includeSubModules(@NotNull final Repository db,
+                                 @NotNull final CommitTreeProcessor proc,
+                                 @NotNull final RevCommit commit,
+                                 @NotNull final CommitDataBean bean) {
+    final SubInfo tree = proc.processCommitTree(commit);
+    if (tree == null) return;
+
+    final SubmodulesConfig config = tree.getConfig();
+    final Map<String,AnyObjectId> modules = tree.getSubmoduleToPath();
+
+    for (Submodule sub : config.getSubmodules()) {
+      final AnyObjectId mountedCommit = modules.get(sub.getPath());
+
+      if (mountedCommit == null) continue;
+
+      final String url;
+      try {
+        url = SubmoduleResolverImpl.resolveSubmoduleUrl(db, sub.getUrl());
+      } catch (URISyntaxException e) {
+        continue;
+      }
+
+      bean.addMountPoint(new CommitMountPointDataBean(Constants.VCS_NAME, url, sub.getPath(), mountedCommit.name()));
     }
   }
 
