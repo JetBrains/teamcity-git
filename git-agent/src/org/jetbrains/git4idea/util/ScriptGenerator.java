@@ -18,8 +18,9 @@ package org.jetbrains.git4idea.util;
 
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.util.SystemInfo;
-import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.util.PathUtil;
+import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.util.FileUtil;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.Nullable;
 
@@ -174,6 +175,7 @@ public class ScriptGenerator {
       out.close();
     }
     FileUtil.setExectuableAttribute(scriptPath.getPath(), true);
+    Loggers.VCS.debug(new String(FileUtil.loadFileText(scriptPath)));
     return scriptPath;
   }
 
