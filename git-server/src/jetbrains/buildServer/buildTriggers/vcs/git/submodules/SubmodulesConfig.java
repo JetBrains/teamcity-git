@@ -19,7 +19,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 import com.intellij.openapi.diagnostic.Logger;
 import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.lib.StoredConfig;
+import org.jetbrains.annotations.NotNull;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -62,6 +64,11 @@ public class SubmodulesConfig {
   public SubmodulesConfig(StoredConfig repositoryConfig, Config modulesConfig) {
     myRepositoryConfig = repositoryConfig;
     myModulesConfig = modulesConfig;
+  }
+
+  @NotNull
+  public Collection<Submodule> getSubmodules() {
+    return myPathToSubmodule.values();
   }
 
   /**
