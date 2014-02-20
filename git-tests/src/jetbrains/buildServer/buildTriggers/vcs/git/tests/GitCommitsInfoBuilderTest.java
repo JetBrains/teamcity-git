@@ -18,13 +18,17 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.commitInfo.GitCommitsInfoBuilder;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.commitInfo.GitCommitsInfoBuilder;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.vcs.*;
+import jetbrains.buildServer.vcs.CheckoutRules;
+import jetbrains.buildServer.vcs.CommitsInfoBuilder;
+import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.vcs.api.CommitInfo;
+import jetbrains.vcs.api.CommitMountPointInfo;
 import org.jetbrains.annotations.NotNull;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -33,8 +37,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
@@ -211,5 +214,38 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
       reported.add(c.getVersion());
     }
     assertTrue(reported.containsAll(allCommits));
+
+
+    System.out.println("actual submodules:");
+    Set<String> submodules = new TreeSet<String>();
+    for (CommitInfo commit : commits) {
+      for (CommitMountPointInfo info : commit.getMountPoints()) {
+        final String line = commit.getVersion() + ": " + info.getMountPath() + " => " + info.getMountRevision();
+        submodules.add(line);
+        System.out.println(line);
+      }
+    }
+
+    List<String> expectedSubmodules = new ArrayList<String>(Arrays.asList(
+      "7253d358a2490321a1808a1c20561b4027d69f77: submodule-wihtout-entry => 293a6e0d110fdbeed9729d87945876a0c52da182",
+      "7253d358a2490321a1808a1c20561b4027d69f77: submodule-with-dirs => ded023a236d184753f826e62ac16b1612060e9d0",
+      "27de3d118ca320d3a8a08320ff05aa0567996590: submodule => 6d944ac86dd5a45265873ddaa60e7ec343c1c4bb",
+      "39679cc440c83671fbf6ad8083d92517f9602300: submodule-wihtout-entry => 293a6e0d110fdbeed9729d87945876a0c52da182",
+      "39679cc440c83671fbf6ad8083d92517f9602300: submodule-with-dirs => 42fd2819d05e5b2b733f0a20e9b8b918e6e62141",
+      "9395143dd6c3e73abf9281be7a772c4d286e72a5: submodule-with-dirs => 42fd2819d05e5b2b733f0a20e9b8b918e6e62141",
+      "039e7395725ad8d2a143fd44645a3fb72b001217: submodule-with-dirs => 42fd2819d05e5b2b733f0a20e9b8b918e6e62141",
+      "777f79b3e89e63ac954fe0881470be3c72b8b0d4: submodule-with-dirs => 42fd2819d05e5b2b733f0a20e9b8b918e6e62141",
+      "f61e30ce576e76bff877ddf1d00acf22c5c1b07a: submodule-on-tag => 09f4eb4218bcbea3e3fa07ed552e1d4e9a6ffda7",
+      "6cf3cb6a87091d17466607858c699c35edf30d3b: submodule-wihtout-entry => 293a6e0d110fdbeed9729d87945876a0c52da182",
+      "6cf3cb6a87091d17466607858c699c35edf30d3b: submodule-with-dirs => 42fd2819d05e5b2b733f0a20e9b8b918e6e62141",
+      "e6b15b1f4741199857e2fa744eaadfe5a9d9aede: submodule-wihtout-entry => 293a6e0d110fdbeed9729d87945876a0c52da182",
+      "92112555d9eb3e433eaa91fe32ec001ae8fe3c52: submodule-wihtout-entry => 6d944ac86dd5a45265873ddaa60e7ec343c1c4bb",
+      "f5bdd3819df0358a43d9a8f94eaf96bb306e19fe: submodule-wihtout-entry => 6d944ac86dd5a45265873ddaa60e7ec343c1c4bb",
+      "ce6044093939bb47283439d97a1c80f759669ff5: first-level-submodule => 2ffafea06c7a385a78092dbc5e8a5a6225574397",
+      "d1a88fd33c516c1b607db75eb62244b2ea495c42: submodule => 6d944ac86dd5a45265873ddaa60e7ec343c1c4bb",
+      "37c371a6db0acefc77e3be99d16a44413e746591: submodule => 293a6e0d110fdbeed9729d87945876a0c52da182",
+      "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5: submodule => 6d944ac86dd5a45265873ddaa60e7ec343c1c4bb"
+    ));
+    Assert.assertTrue(submodules.containsAll(expectedSubmodules));
   }
 }
