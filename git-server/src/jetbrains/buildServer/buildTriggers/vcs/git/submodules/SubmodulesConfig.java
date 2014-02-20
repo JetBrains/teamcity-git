@@ -68,7 +68,22 @@ public class SubmodulesConfig {
 
   @NotNull
   public Collection<Submodule> getSubmodules() {
+    ensureLoaded();
     return myPathToSubmodule.values();
+  }
+
+  /**
+   * Tests if there is at least one git submodule under the given path
+   * @param path path to test
+   * @return true is yes
+   */
+  public boolean containsSubmodule(@NotNull final String path) {
+    ensureLoaded();
+
+    for (String subPath : myPathToSubmodule.keySet()) {
+      if (subPath.startsWith(path + "/")) return true;
+    }
+    return false;
   }
 
   /**
