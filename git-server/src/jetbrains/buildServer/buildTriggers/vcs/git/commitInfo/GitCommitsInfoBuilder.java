@@ -75,7 +75,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     final ObjectDatabase cached = db.getObjectDatabase().newCachedDatabase();
     final Map<String, Set<String>> index = getCommitToRefIndex(currentState);
 
-    final DotGitModulesResolver resolver = new DotGitModulesResolver(db);
+    final DotGitModulesResolver resolver = new CachedDotGitModulesResolver(new DotGitModulesResolverImpl(db));
     final CommitTreeProcessor proc = new CommitTreeProcessor(resolver, db);
 
     final RevWalk walk = new RevWalk(cached.newReader());
