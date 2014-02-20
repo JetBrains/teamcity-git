@@ -75,19 +75,15 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
       initWalk(walk, currentState);
       RevCommit c;
       while ((c = walk.next()) != null) {
-        processCommit(index, c, consumer);
+        final CommitDataBean commit = createCommit(c);
+
+        includeRefs(index, commit);
+
+        consumer.consumeCommit(commit);
       }
     } finally {
       walk.dispose();
     }
-  }
-
-  private void processCommit(@NotNull final Map<String, Set<String>> refIndex,
-                             @NotNull final RevCommit c, @NotNull final CommitsConsumer consumer) {
-    final CommitDataBean commit = createCommit(c);
-    includeRefs(refIndex, commit);
-
-    consumer.consumeCommit(commit);
   }
 
   private void includeRefs(@NotNull final Map<String, Set<String>> refIndex,
