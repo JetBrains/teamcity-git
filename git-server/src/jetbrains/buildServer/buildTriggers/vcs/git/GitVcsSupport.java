@@ -388,7 +388,7 @@ public class GitVcsSupport extends ServerVcsSupport
              message.contains("com.jcraft.jsch.JSchException: verify: false"); //TW-31175
     }
     if (cause instanceof ConnectException) {
-      return message.contains("Connection time out");
+      return message.contains("Connection timed out");
     }
     return false;
   }
