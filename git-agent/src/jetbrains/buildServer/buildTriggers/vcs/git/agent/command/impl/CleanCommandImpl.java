@@ -16,11 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -54,7 +54,18 @@ public class CleanCommandImpl implements CleanCommand {
       case NON_IGNORED_ONLY:
         break;
     }
-    ExecResult r = CommandUtil.runCommand(myCmd);
-    CommandUtil.failIfNotEmptyStdErr(myCmd, r);
+    int attemptsLeft = 2;
+    while (true) {
+      try {
+        ExecResult r = CommandUtil.runCommand(myCmd);
+        CommandUtil.failIfNotEmptyStdErr(myCmd, r);
+        return;
+      } catch (VcsException e) {
+        if (attemptsLeft < 0)
+          throw e;
+        Loggers.VCS.warn("Failed to clean files, attempts left " + attemptsLeft, e);
+        attemptsLeft--;
+      }
+    }
   }
 }
