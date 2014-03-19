@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.Proxy;
 import com.jcraft.jsch.ProxyHTTP;
 import jetbrains.buildServer.TempFiles;
@@ -110,7 +111,8 @@ public class ServerPluginConfigTest {
     ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
     assertEquals(asList("-Dhttp.proxyHost=" + httpProxyHost,
                         "-Dhttp.proxyPort=" + httpProxyPort,
-                        "-Dhttp.nonProxyHosts=\"" + httpNonProxyHosts + "\"",
+                        SystemInfo.isUnix ? "-Dhttp.nonProxyHosts=" + httpNonProxyHosts
+                                          : "-Dhttp.nonProxyHosts=\"" + httpNonProxyHosts + "\"",
                         "-Dhttps.proxyHost=" + httpsProxyHost,
                         "-Dhttps.proxyPort=" + httpsProxyPort),
                  config.getProxySettingsForSeparateProcess());
