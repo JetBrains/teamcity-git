@@ -37,7 +37,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.net.ConnectException;
 import java.util.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
@@ -344,6 +343,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   private Map<String, Ref> getRemoteRefs(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws Exception {
+    long retryInterval = myConfig.getConnectionRetryIntervalMillis();
     int attemptsLeft = myConfig.getConnectionRetryAttempts();
     while (true) {
       final long start = System.currentTimeMillis();
@@ -372,7 +372,8 @@ public class GitVcsSupport extends ServerVcsSupport
         final long finish = System.currentTimeMillis();
         PERFORMANCE_LOG.debug("[getRemoteRefs] repository: " + LogUtil.describe(gitRoot) + ", took " + (finish - start) + "ms");
       }
-      Thread.sleep(myConfig.getConnectionRetryIntervalMillis());
+      Thread.sleep(retryInterval);
+      retryInterval *= 2;
     }
   }
 
@@ -380,16 +381,16 @@ public class GitVcsSupport extends ServerVcsSupport
     String message = e.getMessage();
     if (message == null)
       return false;
+    if (message.contains("Connection timed out") ||
+        message.contains("Connection time out")) {
+      return true;
+    }
     Throwable cause = e.getCause();
     if (cause instanceof JSchException) {
       return message.contains("Session.connect: java.net.SocketException: Connection reset") ||
              message.contains("connection is closed by foreign host") ||
              message.contains("java.net.UnknownHostException:") || //TW-31027
              message.contains("com.jcraft.jsch.JSchException: verify: false"); //TW-31175
-    }
-    if (cause instanceof ConnectException) {
-      return message.contains("Connection timed out") ||
-             message.contains("Connection time out");
     }
     return false;
   }
