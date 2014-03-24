@@ -300,7 +300,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   public long getConnectionRetryIntervalMillis() {
-    return TeamCityProperties.getInteger("teamcity.git.connectionRetryIntervalSeconds", 2) * 1000L;
+    return TeamCityProperties.getInteger("teamcity.git.connectionRetryIntervalSeconds", 4) * 1000L;
   }
 
   public int getConnectionRetryAttempts() {
