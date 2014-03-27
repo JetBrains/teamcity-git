@@ -44,20 +44,20 @@ public class Cleanup {
   }
 
   public void run() {
-    LOG.debug("Cleanup started");
+    LOG.info("Git cleanup started");
     removeUnusedRepositories();
     cleanupMonitoringData();
     if (myConfig.isRunNativeGC()) {
       runNativeGC();
     }
-    LOG.debug("Cleanup finished");
+    LOG.info("Git cleanup finished");
   }
 
   private void removeUnusedRepositories() {
     List<File> unusedDirs = getUnusedDirs();
-    LOG.debug("Remove unused repositories started");
+    LOG.debug("Remove unused git repository clones started");
     for (File dir : unusedDirs) {
-      LOG.info("Remove unused dir " + dir.getAbsolutePath());
+      LOG.info("Remove unused git repository dir " + dir.getAbsolutePath());
       Lock rmLock = myRepositoryManager.getRmLock(dir).writeLock();
       rmLock.lock();
       boolean deleted = false;
@@ -67,13 +67,13 @@ public class Cleanup {
         rmLock.unlock();
       }
       if (deleted) {
-        LOG.debug("Remove unused dir " + dir.getAbsolutePath() + " finished");
+        LOG.debug("Remove unused git repository dir " + dir.getAbsolutePath() + " finished");
       } else {
-        LOG.error("Cannot delete unused dir " + dir.getAbsolutePath());
+        LOG.error("Cannot delete unused git repository dir " + dir.getAbsolutePath());
         myRepositoryManager.invalidate(dir);
       }
     }
-    LOG.debug("Remove unused repositories finished");
+    LOG.debug("Remove unused git repository clones finished");
   }
 
   @NotNull
@@ -90,20 +90,20 @@ public class Cleanup {
   }
 
   private void cleanupMonitoringData() {
-    LOG.debug("Start cleaning monitoring data");
+    LOG.debug("Start cleaning git monitoring data");
     for (File repository : getAllRepositoryDirs()) {
       File monitoring = new File(repository, myConfig.getMonitoringDirName());
       File[] files = monitoring.listFiles();
       if (files != null) {
         for (File monitoringData : files) {
           if (isExpired(monitoringData)) {
-            LOG.debug("Remove old monitoring data " + monitoringData.getAbsolutePath());
+            LOG.debug("Remove old git monitoring data " + monitoringData.getAbsolutePath());
             FileUtil.delete(monitoringData);
           }
         }
       }
     }
-    LOG.debug("Finish cleaning monitoring data");
+    LOG.debug("Finish cleaning git monitoring data");
   }
 
   private boolean isExpired(@NotNull File f) {
@@ -114,12 +114,12 @@ public class Cleanup {
 
   private void runNativeGC() {
     if (!isNativeGitInstalled()) {
-      LOG.info("Cannot find a native git, skip running git gc");
+      LOG.info("Cannot find native git, skip running git gc");
       return;
     }
     final long start = System.currentTimeMillis();
     final long gcTimeQuota = minutes2Milliseconds(myConfig.getNativeGCQuotaMinutes());
-    LOG.info("Garbage collection started");
+    LOG.info("Git garbage collection started");
     List<File> allDirs = getAllRepositoryDirs();
     int runGCCounter = 0;
     for (File gitDir : allDirs) {
@@ -131,13 +131,13 @@ public class Cleanup {
       if ((repositoryFinish - start) > gcTimeQuota) {
         final int restRepositories = allDirs.size() - runGCCounter;
         if (restRepositories > 0) {
-          LOG.info("Garbage collection quota exceeded, skip " + restRepositories + " repositories");
+          LOG.info("Git garbage collection quota exceeded, skip " + restRepositories + " repositories");
           break;
         }
       }
     }
     final long finish = System.currentTimeMillis();
-    LOG.info("Garbage collection finished, it took " + (finish - start) + "ms");
+    LOG.info("Git garbage collection finished, it took " + (finish - start) + "ms");
   }
 
   private boolean isNativeGitInstalled() {
@@ -149,7 +149,7 @@ public class Cleanup {
     ExecResult result = SimpleCommandLineProcessRunner.runCommand(cmd, null);
     VcsException commandError = CommandLineUtil.getCommandLineError("git version", result);
     if (commandError != null) {
-      LOG.info("Cannot run a native git", commandError);
+      LOG.info("Cannot run native git", commandError);
       return false;
     }
     return true;
