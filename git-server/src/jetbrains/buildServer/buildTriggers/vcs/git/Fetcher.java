@@ -108,6 +108,12 @@ public class Fetcher {
       Repository repository = new RepositoryBuilder().setBare().setGitDir(repositoryDir).build();
       workaroundRacyGit();
       tn = transportFactory.createTransport(repository, new URIish(fetchUrl), auth);
+      try {
+        GitServerUtil.pruneRemovedBranches(repository, tn);
+      } catch (Exception e) {
+        System.err.println("Error while pruning removed branches: " + e.getMessage());
+        e.printStackTrace(System.err);
+      }
       FetchResult result = tn.fetch(progressMonitor, parseRefspecs(refspecs));
       GitServerUtil.checkFetchSuccessful(result);
       logFetchResults(result);
