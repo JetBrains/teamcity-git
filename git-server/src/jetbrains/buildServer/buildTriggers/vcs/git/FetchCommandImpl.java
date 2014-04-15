@@ -250,14 +250,18 @@ public class FetchCommandImpl implements FetchCommand {
     final long fetchStart = System.currentTimeMillis();
     final Transport tn = myTransportFactory.createTransport(db, uri, auth);
     try {
+      try {
+        GitServerUtil.pruneRemovedBranches(db, tn);
+      } catch (Exception e) {
+        LOG.error("Error while pruning removed branches", e);
+      }
       FetchResult result = tn.fetch(NullProgressMonitor.INSTANCE, refSpecs);
       GitServerUtil.checkFetchSuccessful(result);
     } catch (OutOfMemoryError oom) {
       LOG.warn("There is not enough memory for git fetch, try to run fetch in a separate process.");
       clean(db);
-    } catch (Exception e) {
-      clean(db);
     } finally {
+      clean(db);
       tn.close();
       if (PERFORMANCE_LOG.isDebugEnabled()) {
         PERFORMANCE_LOG.debug("[fetch in server process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");

@@ -20,22 +20,21 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.internal.JGitText;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
+import org.eclipse.jgit.internal.JGitText;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileBasedConfig;
-import org.eclipse.jgit.transport.FetchResult;
-import org.eclipse.jgit.transport.TrackingRefUpdate;
-import org.eclipse.jgit.transport.URIish;
+import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.Map;
 
 /**
  * Utilities for server part of the plugin
@@ -254,6 +253,32 @@ public class GitServerUtil {
       if (status == RefUpdate.Result.REJECTED || status == RefUpdate.Result.LOCK_FAILURE || status == RefUpdate.Result.IO_FAILURE) {
         throw new VcsException("Fail to update '" + update.getLocalName() + "' (" + status.name() + ").");
       }
+    }
+  }
+
+
+  /**
+   * Removes branches of a bare repository which are not present in a remote repository
+   */
+  public static void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn) throws TransportException, NotSupportedException {
+    FetchConnection conn = null;
+    try {
+      conn = tn.openFetch();
+      Map<String, Ref> remoteRefMap = conn.getRefsMap();
+      for (Map.Entry<String, Ref> e : db.getAllRefs().entrySet()) {
+        if (!remoteRefMap.containsKey(e.getKey())) {
+          try {
+            RefUpdate refUpdate = db.getRefDatabase().newUpdate(e.getKey(), false);
+            refUpdate.setForceUpdate(true);
+            refUpdate.delete();
+          } catch (IOException e1) {
+            e1.printStackTrace();
+          }
+        }
+      }
+    } finally {
+      if (conn != null)
+        conn.close();
     }
   }
 
