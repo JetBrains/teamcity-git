@@ -278,6 +278,31 @@ public class AgentVcsSupportTest {
   }
 
 
+  @TestFor(issues = "TW-27043")
+  public void clean_files_in_submodules() throws Exception {
+    //vcs root with submodules which cleans all untracked files on every build:
+    myRoot.addProperty(Constants.BRANCH_NAME, "sub-submodule");
+    myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+    myRoot.addProperty(Constants.AGENT_CLEAN_FILES_POLICY, AgentCleanFilesPolicy.ALL_UNTRACKED.name());
+    myRoot.addProperty(Constants.AGENT_CLEAN_POLICY, AgentCleanPolicy.ALWAYS.name());
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "ce6044093939bb47283439d97a1c80f759669ff5", myCheckoutDir, myBuild, false);
+
+    //create untracked files inside submodules
+    File submoduleDir = new File(myCheckoutDir, "first-level-submodule");
+    File subSubmoduleDir = new File(submoduleDir, "sub-sub");
+    File untrackedFileSubmodule = new File(submoduleDir, "untracked");
+    File untrackedFileSubSubmodule = new File(subSubmoduleDir, "untracked");
+    assertTrue(untrackedFileSubmodule.createNewFile());
+    assertTrue(untrackedFileSubSubmodule.createNewFile());
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "ce6044093939bb47283439d97a1c80f759669ff5", myCheckoutDir, myBuild, false);
+
+    assertFalse(untrackedFileSubmodule.exists());
+    assertFalse(untrackedFileSubSubmodule.exists());
+  }
+
+
   /**
    * Test for TW-13009
    */
