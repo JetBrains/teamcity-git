@@ -334,6 +334,36 @@ public class UpdaterImpl implements Updater {
         branchChanged && myRoot.getCleanPolicy() == AgentCleanPolicy.ON_BRANCH_CHANGE) {
       myLogger.message("Cleaning " + myRoot.getName() + " in " + myTargetDirectory + " the file set " + myRoot.getCleanFilesPolicy());
       myGitFactory.create(myTargetDirectory).clean().setCleanPolicy(myRoot.getCleanFilesPolicy()).call();
+
+      if (myRoot.isCheckoutSubmodules())
+        cleanSubmodules(myTargetDirectory);
+    }
+  }
+
+
+  private void cleanSubmodules(@NotNull File repositoryDir) throws VcsException {
+    File dotGitModules = new File(repositoryDir, ".gitmodules");
+    Config gitModules;
+    try {
+      gitModules = readGitModules(dotGitModules);
+    } catch (Exception e) {
+      Loggers.VCS.error("Error while reading " + dotGitModules.getAbsolutePath() + ": " + e.getMessage());
+      throw new VcsException("Error while reading " + dotGitModules.getAbsolutePath(), e);
+    }
+
+    if (gitModules == null)
+      return;
+
+    for (String submodulePath : getSubmodulePaths(gitModules)) {
+      File submoduleDir = new File(repositoryDir, submodulePath);
+      try {
+        myLogger.message("Cleaning files in " + submoduleDir + " the file set " + myRoot.getCleanFilesPolicy());
+        myGitFactory.create(submoduleDir).clean().setCleanPolicy(myRoot.getCleanFilesPolicy()).call();
+      } catch (Exception e) {
+        Loggers.VCS.error("Error while cleaning files in " + submoduleDir.getAbsolutePath(), e);
+      }
+      if (recursiveSubmoduleCheckout())
+        cleanSubmodules(submoduleDir);
     }
   }
 
