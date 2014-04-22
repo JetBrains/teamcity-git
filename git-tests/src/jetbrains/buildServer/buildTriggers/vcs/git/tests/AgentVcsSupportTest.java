@@ -59,6 +59,7 @@ import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
+import static jetbrains.buildServer.util.FileUtil.writeFileAndReportErrors;
 import static jetbrains.buildServer.util.Util.map;
 import static org.testng.AssertJUnit.*;
 
@@ -300,6 +301,30 @@ public class AgentVcsSupportTest {
 
     assertFalse(untrackedFileSubmodule.exists());
     assertFalse(untrackedFileSubSubmodule.exists());
+  }
+
+
+  @TestFor(issues = "TW-35545")
+  public void clean_files_with_long_names() throws Exception {
+    myRoot.addProperty(Constants.AGENT_CLEAN_FILES_POLICY, AgentCleanFilesPolicy.ALL_UNTRACKED.name());
+    myRoot.addProperty(Constants.AGENT_CLEAN_POLICY, AgentCleanPolicy.ALWAYS.name());
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, myBuild, false);
+
+    File dirWithLongName = new File(myCheckoutDir, "dirWithLongName");
+    for (int i = 0; i < 20; i++) {
+      dirWithLongName = new File(dirWithLongName, "dirWithLongName");
+    }
+    dirWithLongName.mkdirs();
+
+    File fileWithLongName = new File(dirWithLongName, "test");
+    writeFileAndReportErrors(fileWithLongName, "test");
+
+    assertTrue(fileWithLongName.exists());
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, myBuild, false);
+
+    assertFalse(fileWithLongName.exists());
   }
 
 
