@@ -16,13 +16,24 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
+import com.intellij.openapi.util.SystemInfo;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.Predicate;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 /**
  * @author dmitry.neverov
@@ -54,18 +65,58 @@ public class CleanCommandImpl implements CleanCommand {
       case NON_IGNORED_ONLY:
         break;
     }
-    int attemptsLeft = 2;
-    while (true) {
-      try {
-        ExecResult r = CommandUtil.runCommand(myCmd);
-        CommandUtil.failIfNotEmptyStdErr(myCmd, r);
-        return;
-      } catch (VcsException e) {
-        if (attemptsLeft < 0)
-          throw e;
-        Loggers.VCS.warn("Failed to clean files, attempts left " + attemptsLeft, e);
-        attemptsLeft--;
+    try {
+      ExecResult r = CommandUtil.runCommand(myCmd);
+      CommandUtil.failIfNotEmptyStdErr(myCmd, r);
+    } catch (VcsException e) {
+      Loggers.VCS.warn("Failed to clean files", e);
+      if (!SystemInfo.isWindows)
+        throw e;
+      File workingDir = myCmd.getWorkingDirectory();
+      if (workingDir == null)
+        throw e;
+      handleLongFileNames(workingDir, e);
+    }
+  }
+
+
+  private void handleLongFileNames(@NotNull File rootDir, @NotNull VcsException originalError) throws VcsException {
+    List<String> files = new ArrayList<String>();
+    FileUtil.listFilesRecursively(rootDir, "", true, Integer.MAX_VALUE, new Predicate<File>() {
+      public boolean apply(File f) {
+        return true;
       }
+    }, files);
+
+    int targetDirLength = rootDir.getAbsolutePath().length();
+    List<String> longFileNames = new ArrayList<String>();
+    for (String f : files) {
+      if (targetDirLength + 1 + f.length() >= 256)
+        longFileNames.add(f);
+    }
+
+    if (longFileNames.isEmpty()) {
+      Loggers.VCS.info("No files with long names found");
+      throw originalError;
+    } else {
+      Loggers.VCS.info(longFileNames.size() + " files with long names found:");
+      for (String f : longFileNames) {
+        Loggers.VCS.info(f);
+      }
+      Loggers.VCS.info("Try removing files with long names manually");
+    }
+
+    try {
+      Status status = new Git(new RepositoryBuilder().setWorkTree(rootDir).build()).status().call();
+      Set<String> untracked = status.getUntracked();
+      for (String f : longFileNames) {
+        if (untracked.contains(f)) {
+          FileUtil.delete(new File(rootDir, f));
+          Loggers.VCS.info(f + " is removed");
+        }
+      }
+    } catch (Exception e1) {
+      Loggers.VCS.error("Error while cleaning files with long names", e1);
     }
   }
 }
