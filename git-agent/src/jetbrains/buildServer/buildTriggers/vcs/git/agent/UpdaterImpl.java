@@ -215,6 +215,7 @@ public class UpdaterImpl implements Updater {
 
       addSubmoduleUsernames(repositoryDir, gitModules);
 
+      long start = System.currentTimeMillis();
       git.submoduleUpdate()
         .setAuthSettings(myRoot.getAuthSettings())
         .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
@@ -227,6 +228,8 @@ public class UpdaterImpl implements Updater {
           checkoutSubmodules(new File(repositoryDir, submodulePath));
         }
       }
+      Loggers.VCS.info("Submodules update in " + repositoryDir.getAbsolutePath() + " is finished in " +
+                       (System.currentTimeMillis() - start) + " ms");
 
     } catch (IOException e) {
       Loggers.VCS.error("Submodules checkout failed", e);
