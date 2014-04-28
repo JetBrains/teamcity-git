@@ -16,13 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.commitInfo;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.Submodule;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmodulesConfig;
 import jetbrains.buildServer.vcs.*;
-import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -58,7 +57,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     try {
       final Repository db = ctx.getRepository();
 
-      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, myVcs.getCurrentState(makeRootWithTags(ctx, root)));
+      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, myVcs.getCurrentState(ctx.makeRootWithTags()));
 
       collect(db, consumer);
     } catch (Exception e) {
@@ -168,13 +167,6 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
         //log
       }
     }
-  }
-
-  @NotNull
-  private GitVcsRoot makeRootWithTags(@NotNull final OperationContext ctx, @NotNull final VcsRoot root) throws VcsException {
-    Map<String, String> params = new HashMap<String, String>(root.getProperties());
-    params.put(Constants.REPORT_TAG_REVISIONS, "true");
-    return ctx.getGitRoot(new VcsRootImpl(root.getId(), params));
   }
 
   @NotNull
