@@ -54,7 +54,7 @@ public class CleanCommandImpl implements CleanCommand {
   }
 
   public void call() throws VcsException {
-    myCmd.addParameters("clean", "-f", "-d");
+    myCmd.addParameters("clean", "-ff", "-d");
     switch (myCleanPolicy) {
       case ALL_UNTRACKED:
         myCmd.addParameter("-x");
