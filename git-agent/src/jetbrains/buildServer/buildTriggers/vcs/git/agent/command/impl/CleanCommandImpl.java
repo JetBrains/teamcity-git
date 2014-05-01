@@ -69,7 +69,7 @@ public class CleanCommandImpl implements CleanCommand {
       ExecResult r = CommandUtil.runCommand(myCmd);
       CommandUtil.failIfNotEmptyStdErr(myCmd, r);
     } catch (VcsException e) {
-      Loggers.VCS.warn("Failed to clean files", e);
+      Loggers.VCS.warn("Failed to clean files");
       if (!SystemInfo.isWindows)
         throw e;
       File workingDir = myCmd.getWorkingDirectory();
