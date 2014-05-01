@@ -113,6 +113,8 @@ public class CleanCommandImpl implements CleanCommand {
         if (untracked.contains(f)) {
           FileUtil.delete(new File(rootDir, f));
           Loggers.VCS.info(f + " is removed");
+        } else {
+          Loggers.VCS.info("The file " + f + " is tracked, don't remove it");
         }
       }
     } catch (Exception e1) {
