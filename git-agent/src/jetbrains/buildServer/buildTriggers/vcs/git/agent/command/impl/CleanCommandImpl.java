@@ -27,6 +27,7 @@ import jetbrains.buildServer.util.Predicate;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jetbrains.annotations.NotNull;
 
@@ -106,8 +107,10 @@ public class CleanCommandImpl implements CleanCommand {
       Loggers.VCS.info("Try removing files with long names manually");
     }
 
+    Repository repository = null;
     try {
-      Status status = new Git(new RepositoryBuilder().setWorkTree(rootDir).build()).status().call();
+      repository = new RepositoryBuilder().setWorkTree(rootDir).build();
+      Status status = new Git(repository).status().call();
       Set<String> untracked = status.getUntracked();
       for (String f : longFileNames) {
         if (untracked.contains(f)) {
@@ -119,6 +122,9 @@ public class CleanCommandImpl implements CleanCommand {
       }
     } catch (Exception e1) {
       Loggers.VCS.error("Error while cleaning files with long names", e1);
+    } finally {
+      if (repository != null)
+        repository.close();
     }
   }
 }
