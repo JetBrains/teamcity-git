@@ -304,8 +304,14 @@ public class AgentVcsSupportTest {
   }
 
 
+  @DataProvider(name = "ignoredLongFileNames")
+  public Object[][] ignoredLongFileNames() {
+    return new Object[][] {{true}, {false}};
+  }
+
   @TestFor(issues = "TW-35545")
-  public void clean_files_with_long_names() throws Exception {
+  @Test(dataProvider = "ignoredLongFileNames")
+  public void clean_files_with_long_names(Boolean filesWithLongNamesIgnored) throws Exception {
     myRoot.addProperty(Constants.AGENT_CLEAN_FILES_POLICY, AgentCleanFilesPolicy.ALL_UNTRACKED.name());
     myRoot.addProperty(Constants.AGENT_CLEAN_POLICY, AgentCleanPolicy.ALWAYS.name());
 
@@ -319,6 +325,11 @@ public class AgentVcsSupportTest {
 
     File fileWithLongName = new File(dirWithLongName, "test");
     writeFileAndReportErrors(fileWithLongName, "test");
+
+    if (filesWithLongNamesIgnored) {
+      File exclude = new File(myCheckoutDir, ".git/info/exclude".replaceAll("/", Matcher.quoteReplacement(File.separator)));
+      writeFileAndReportErrors(exclude, "dirWithLongName\n");
+    }
 
     assertTrue(fileWithLongName.exists());
 

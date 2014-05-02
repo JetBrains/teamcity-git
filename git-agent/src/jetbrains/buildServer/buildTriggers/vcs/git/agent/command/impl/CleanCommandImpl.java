@@ -25,13 +25,17 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.Predicate;
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.api.errors.JGitInternalException;
+import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.IndexDiff;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.treewalk.FileTreeIterator;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -110,10 +114,10 @@ public class CleanCommandImpl implements CleanCommand {
     Repository repository = null;
     try {
       repository = new RepositoryBuilder().setWorkTree(rootDir).build();
-      Status status = new Git(repository).status().call();
+      WorkingDirStatus status = getWorkingDirStatus(repository);
       Set<String> untracked = status.getUntracked();
       for (String f : longFileNames) {
-        if (untracked.contains(f)) {
+        if (untracked.contains(f) || status.isIgnored(f)) {
           FileUtil.delete(new File(rootDir, f));
           Loggers.VCS.info(f + " is removed");
         } else {
@@ -125,6 +129,35 @@ public class CleanCommandImpl implements CleanCommand {
     } finally {
       if (repository != null)
         repository.close();
+    }
+  }
+
+
+  @NotNull
+  private WorkingDirStatus getWorkingDirStatus(@NotNull Repository repo) {
+    FileTreeIterator workingTreeIt = new FileTreeIterator(repo);
+    try {
+      IndexDiff diff = new IndexDiff(repo, Constants.HEAD, workingTreeIt);
+      diff.diff();
+      return new WorkingDirStatus(diff);
+    } catch (IOException e) {
+      throw new JGitInternalException(e.getMessage(), e);
+    }
+  }
+
+  private static class WorkingDirStatus extends Status {
+    private IndexDiff myDiff;
+    private WorkingDirStatus(IndexDiff diff) {
+      super(diff);
+      myDiff = diff;
+    }
+
+    boolean isIgnored(@NotNull String file) {
+      for (String prefix : myDiff.getIgnoredNotInIndex()) {
+        if (file.startsWith(prefix))
+          return true;
+      }
+      return false;
     }
   }
 }
