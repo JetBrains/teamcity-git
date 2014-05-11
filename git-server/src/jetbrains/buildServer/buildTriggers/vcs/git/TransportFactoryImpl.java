@@ -30,6 +30,9 @@ import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.*;
+import org.eclipse.jgit.transport.http.HttpConnectionFactory;
+import org.eclipse.jgit.transport.http.JDKHttpConnectionFactory;
+import org.eclipse.jgit.transport.http.apache.HttpClientConnectionFactory;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 
@@ -49,6 +52,8 @@ public class TransportFactoryImpl implements TransportFactory {
   private final ServerPluginConfig myConfig;
   private final Map<String,String> myJSchOptions;
   private VcsRootSshKeyManager mySshKeyManager;
+  private volatile String myPrevFactoryName;
+  private final Object myConnectionFactoryLock = new Object();
 
   public TransportFactoryImpl(@NotNull ServerPluginConfig config,
                               @NotNull VcsRootSshKeyManager sshKeyManager) {
@@ -57,9 +62,9 @@ public class TransportFactoryImpl implements TransportFactory {
     mySshKeyManager = sshKeyManager;
   }
 
-
   public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings) throws NotSupportedException, VcsException {
     try {
+      updateConnectionFactory();
       checkUrl(url);
       URIish preparedURI = prepareURI(url);
       final Transport t = Transport.open(r, preparedURI);
@@ -72,6 +77,20 @@ public class TransportFactoryImpl implements TransportFactory {
       return t;
     } catch (TransportException e) {
       throw new VcsException("Cannot create transport", e);
+    }
+  }
+
+
+  private void updateConnectionFactory() {
+    String factoryName = myConfig.getHttpConnectionFactory();
+    if (factoryName.equals(myPrevFactoryName))
+      return;
+    synchronized (myConnectionFactoryLock) {
+      if (factoryName.equals(myPrevFactoryName))
+        return;
+      myPrevFactoryName = factoryName;
+      HttpConnectionFactory f = factoryName.equals("httpClient") ? new HttpClientConnectionFactory() : new JDKHttpConnectionFactory();
+      HttpTransport.setConnectionFactory(f);
     }
   }
 

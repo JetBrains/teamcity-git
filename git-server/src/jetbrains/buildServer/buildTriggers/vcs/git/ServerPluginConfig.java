@@ -106,4 +106,7 @@ public interface ServerPluginConfig extends PluginConfig {
   int getHttpsSoLinger();
 
   int getListFilesTTLSeconds();
+
+  @NotNull
+  String getHttpConnectionFactory();
 }
