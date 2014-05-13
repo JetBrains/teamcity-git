@@ -52,19 +52,19 @@ public class TransportFactoryImpl implements TransportFactory {
   private final ServerPluginConfig myConfig;
   private final Map<String,String> myJSchOptions;
   private VcsRootSshKeyManager mySshKeyManager;
-  private volatile String myPrevFactoryName;
-  private final Object myConnectionFactoryLock = new Object();
 
   public TransportFactoryImpl(@NotNull ServerPluginConfig config,
                               @NotNull VcsRootSshKeyManager sshKeyManager) {
     myConfig = config;
     myJSchOptions = getJSchCipherOptions();
     mySshKeyManager = sshKeyManager;
+    String factoryName = myConfig.getHttpConnectionFactory();
+    HttpConnectionFactory f = factoryName.equals("httpClient") ? new HttpClientConnectionFactory() : new JDKHttpConnectionFactory();
+    HttpTransport.setConnectionFactory(f);
   }
 
   public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings) throws NotSupportedException, VcsException {
     try {
-      updateConnectionFactory();
       checkUrl(url);
       URIish preparedURI = prepareURI(url);
       final Transport t = Transport.open(r, preparedURI);
@@ -77,20 +77,6 @@ public class TransportFactoryImpl implements TransportFactory {
       return t;
     } catch (TransportException e) {
       throw new VcsException("Cannot create transport", e);
-    }
-  }
-
-
-  private void updateConnectionFactory() {
-    String factoryName = myConfig.getHttpConnectionFactory();
-    if (factoryName.equals(myPrevFactoryName))
-      return;
-    synchronized (myConnectionFactoryLock) {
-      if (factoryName.equals(myPrevFactoryName))
-        return;
-      myPrevFactoryName = factoryName;
-      HttpConnectionFactory f = factoryName.equals("httpClient") ? new HttpClientConnectionFactory() : new JDKHttpConnectionFactory();
-      HttpTransport.setConnectionFactory(f);
     }
   }
 
