@@ -220,17 +220,21 @@ public class GitVcsRoot {
   }
 
   private PersonIdent parseIdent() {
-    int emailStartIdx = myUsernameForTags.indexOf("<");
-    if (emailStartIdx == -1)
-      return new PersonIdent(myUsernameForTags, "");
-    int emailEndIdx = myUsernameForTags.lastIndexOf(">");
-    if (emailEndIdx < emailStartIdx)
-      return new PersonIdent(myUsernameForTags, "");
-    String username = myUsernameForTags.substring(0, emailStartIdx).trim();
-    String email = myUsernameForTags.substring(emailStartIdx + 1, emailEndIdx);
-    return new PersonIdent(username, email);
+    return parseIdent(myUsernameForTags);
   }
 
+  @NotNull
+  public PersonIdent parseIdent(@NotNull String ident) {
+    int emailStartIdx = ident.indexOf("<");
+    if (emailStartIdx == -1)
+      return new PersonIdent(ident, "");
+    int emailEndIdx = ident.lastIndexOf(">");
+    if (emailEndIdx < emailStartIdx)
+      return new PersonIdent(ident, "");
+    String username = ident.substring(0, emailStartIdx).trim();
+    String email = ident.substring(emailStartIdx + 1, emailEndIdx);
+    return new PersonIdent(username, email);
+  }
 
   public VcsRoot getOriginalRoot() {
     return myDelegate;
