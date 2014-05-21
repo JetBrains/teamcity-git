@@ -31,9 +31,13 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsPersonalSupport;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.commons.codec.Decoder;
+import org.apache.commons.logging.LogFactory;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.HttpClient;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Layout;
 import org.eclipse.jgit.lib.ProgressMonitor;
+import org.eclipse.jgit.transport.http.apache.HttpClientConnectionFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.quartz.CronExpression;
@@ -158,7 +162,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
       FileUtil.class,
       Layout.class,
       VcsException.class,
-      BasicConfigurator.class
+      BasicConfigurator.class,
+      HttpClientConnectionFactory.class,
+      HttpClient.class,
+      LogFactory.class,
+      HttpEntity.class
     ));
 
     Collections.addAll(clazzez, GitVcsSupport.class.getInterfaces());
@@ -343,6 +351,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   public int getListFilesTTLSeconds() {
     return TeamCityProperties.getInteger("teamcity.git.listFilesTTLSeconds", 60);
+  }
+
+  @NotNull
+  public String getHttpConnectionFactory() {
+    return TeamCityProperties.getProperty("teamcity.git.httpConnectionFactory", "httpClient");
   }
 
   public static boolean showKnownHostsDbOption() {
