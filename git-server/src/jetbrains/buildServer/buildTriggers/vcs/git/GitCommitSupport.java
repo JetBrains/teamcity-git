@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.vcs.CommitPatchBuilder;
 import jetbrains.buildServer.vcs.CommitSupport;
 import jetbrains.buildServer.vcs.VcsException;
@@ -34,6 +35,7 @@ import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
@@ -97,9 +99,11 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       myTransportFactory = transportFactory;
     }
 
-    public void createFile(@NotNull String path, @NotNull InputStream input, long length) {
+    public void createFile(@NotNull String path, @NotNull InputStream content) {
       try {
-        myObjectMap.put(path, myObjectWriter.insert(Constants.OBJ_BLOB, length , input));
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        FileUtil.copy(content, bytes);
+        myObjectMap.put(path, myObjectWriter.insert(Constants.OBJ_BLOB, bytes.toByteArray()));
       } catch (IOException e) {
         e.printStackTrace();
       }
@@ -225,6 +229,11 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
 
     public void createDirectory(@NotNull final String path) {
     }
+
+    public void renameFile(@NotNull final String oldPath, @NotNull final String newPath, @NotNull InputStream content) {
+      deleteFile(oldPath);
+      createFile(newPath, content);
+    }
   }
 
   private static class ErrorCommitPatchBuilder implements CommitPatchBuilder {
@@ -237,13 +246,15 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       throw myError;
     }
 
-    public void createFile(@NotNull final String path, @NotNull final InputStream input, final long length) {
+    public void createFile(@NotNull final String path, @NotNull final InputStream input) {
     }
     public void createDirectory(@NotNull final String path) {
     }
     public void deleteFile(@NotNull final String path) {
     }
     public void deleteDirectory(@NotNull final String path) {
+    }
+    public void renameFile(@NotNull final String oldPath, @NotNull final String newPath, @NotNull InputStream content) {
     }
   }
 }

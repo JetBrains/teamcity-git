@@ -57,7 +57,7 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
 
     CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
     byte[] bytes = "test-content".getBytes();
-    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream(bytes), bytes.length);
+    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream(bytes));
     patchBuilder.commit("user", "Commit description");
 
     RepositoryStateData state2 = myGit.getCurrentState(myRoot);
