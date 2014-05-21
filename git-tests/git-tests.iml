@@ -24,6 +24,7 @@
     <orderEntry type="library" name="TeamCity Vcs Api" level="project" />
     <orderEntry type="module" module-name="git-server-tc" />
     <orderEntry type="library" name="quartz-1.6.0" level="project" />
+    <orderEntry type="library" name="httpclient-4.3.3" level="project" />
   </component>
 </module>
 

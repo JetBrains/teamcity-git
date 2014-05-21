@@ -202,6 +202,11 @@ public class PluginConfigBuilder {
       public int getListFilesTTLSeconds() {
         return 0;
       }
+
+      @NotNull
+      public String getHttpConnectionFactory() {
+        return "jdk";
+      }
     };
   }
 

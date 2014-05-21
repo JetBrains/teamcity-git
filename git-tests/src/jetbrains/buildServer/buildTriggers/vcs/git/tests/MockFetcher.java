@@ -17,7 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.Fetcher;
-import org.eclipse.jgit.storage.file.LockFile;
+import org.eclipse.jgit.internal.storage.file.LockFile;
 import org.eclipse.jgit.util.FS;
 
 import java.io.File;
