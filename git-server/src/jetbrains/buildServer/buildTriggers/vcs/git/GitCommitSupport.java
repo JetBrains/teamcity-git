@@ -207,6 +207,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
 
       TreeWalk treeWalk = new TreeWalk(myDb);
       treeWalk.addTree(lastCommit.getTree());
+      treeWalk.setRecursive(true);
       while (treeWalk.next()) {
         String path = treeWalk.getPathString();
         ObjectId newObjectId = myObjectMap.get(path);
