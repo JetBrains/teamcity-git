@@ -122,6 +122,8 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         GitVcsRoot gitRoot = myContext.getGitRoot();
         RevCommit lastCommit = getLastCommit(gitRoot);
         ObjectId treeId = createNewTree(lastCommit);
+        if (lastCommit.getTree().getId().equals(treeId))
+          return;
         ObjectId commitId = createCommit(gitRoot, lastCommit, treeId, userName, description);
 
         synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
