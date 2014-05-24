@@ -1723,8 +1723,8 @@ public class GitVcsSupportTest extends PatchTestCase {
       myDelegate = delegate;
     }
 
-    public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
-      myDelegate.fetch(db, fetchURI, refspecs, auth);
+    public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull FetchSettings settings) throws NotSupportedException, VcsException, TransportException {
+      myDelegate.fetch(db, fetchURI, refspecs, settings);
       inc();
     }
 

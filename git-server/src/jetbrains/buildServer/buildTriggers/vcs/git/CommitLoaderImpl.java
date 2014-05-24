@@ -79,7 +79,7 @@ public class CommitLoaderImpl implements CommitLoader {
       LOG.debug("Cannot find commit " + commitSHA + " in the branch " + root.getRef() +
                 " of repository " + root.debugInfo() + ", fetch all branches");
       RefSpec spec = new RefSpec().setSourceDestination("refs/heads/*", "refs/heads/*").setForceUpdate(true);
-      fetch(db, root.getRepositoryFetchURL(), asList(spec), root.getAuthSettings());
+      fetch(db, root.getRepositoryFetchURL(), asList(spec), new FetchSettings(root.getAuthSettings()));
       try {
         return getCommit(db, commitId);
       } catch (IOException e1) {
@@ -91,7 +91,7 @@ public class CommitLoaderImpl implements CommitLoader {
   public void fetch(@NotNull Repository db,
                     @NotNull URIish fetchURI,
                     @NotNull Collection<RefSpec> refspecs,
-                    @NotNull AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+                    @NotNull FetchSettings settings) throws NotSupportedException, VcsException, TransportException {
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
     Lock rmLock = myRepositoryManager.getRmLock(repositoryDir).readLock();
@@ -102,7 +102,7 @@ public class CommitLoaderImpl implements CommitLoader {
         final long finish = System.currentTimeMillis();
         Map<String, Ref> oldRefs = new HashMap<String, Ref>(db.getAllRefs());
         PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + (finish - start) + "ms");
-        myFetchCommand.fetch(db, fetchURI, refspecs, auth);
+        myFetchCommand.fetch(db, fetchURI, refspecs, settings);
         Map<String, Ref> newRefs = new HashMap<String, Ref>(db.getAllRefs());
         myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
       }
@@ -139,6 +139,6 @@ public class CommitLoaderImpl implements CommitLoader {
     throws VcsException, TransportException, NotSupportedException {
     final String refName = GitUtils.expandRef(root.getRef());
     RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
-    fetch(repository, root.getRepositoryFetchURL(), asList(spec), root.getAuthSettings());
+    fetch(repository, root.getRepositoryFetchURL(), asList(spec), new FetchSettings(root.getAuthSettings()));
   }
 }

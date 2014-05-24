@@ -117,6 +117,32 @@ public class FetchProgressMonitor implements ProgressMonitor {
     }
 
     myPrintStream.println(m);
+    displayStdout(cmp);
+  }
+
+  private void displayStdout(final int cmp) {
+    final StringBuilder m = new StringBuilder();
+    m.append(msg);
+    m.append(": ");
+    while (m.length() < 25)
+      m.append(' ');
+
+    if (totalWork == UNKNOWN) {
+      m.append(cmp);
+    } else {
+      final String twstr = String.valueOf(totalWork);
+      String cmpstr = String.valueOf(cmp);
+      while (cmpstr.length() < twstr.length())
+        cmpstr = " " + cmpstr;
+      final int pcnt = (cmp * 100 / totalWork);
+      if (pcnt < 100)
+        m.append(' ');
+      if (pcnt < 10)
+        m.append(' ');
+      m.append(pcnt);
+      m.append("%");
+    }
+
     System.out.println(m);
   }
 

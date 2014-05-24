@@ -76,10 +76,10 @@ public class GitSupportBuilder {
           public void fetch(@NotNull Repository db,
                             @NotNull URIish fetchURI,
                             @NotNull Collection<RefSpec> refspecs,
-                            @NotNull AuthSettings auth)
+                            @NotNull FetchSettings settings)
             throws NotSupportedException, TransportException, VcsException {
             myBeforeFetchHook.run();
-            originalCommand.fetch(db, fetchURI, refspecs, auth);
+            originalCommand.fetch(db, fetchURI, refspecs, settings);
           }
         };
       }

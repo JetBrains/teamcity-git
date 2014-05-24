@@ -30,11 +30,11 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
+import org.eclipse.jgit.internal.storage.file.FileRepository;
+import org.eclipse.jgit.internal.storage.file.LockFile;
 import org.eclipse.jgit.lib.NullProgressMonitor;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.internal.storage.file.FileRepository;
-import org.eclipse.jgit.internal.storage.file.LockFile;
 import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.Transport;
@@ -42,6 +42,7 @@ import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -74,13 +75,15 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
 
-  public void fetch(@NotNull final Repository db, @NotNull final URIish fetchURI,
-                    @NotNull final Collection<RefSpec> refspecs, @NotNull final AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+  public void fetch(@NotNull Repository db,
+                    @NotNull URIish fetchURI,
+                    @NotNull Collection<RefSpec> refspecs,
+                    @NotNull FetchSettings settings) throws NotSupportedException, VcsException, TransportException {
     unlockRefs(db);
     if (myConfig.isSeparateProcessForFetch()) {
-      fetchInSeparateProcess(db, auth, fetchURI, refspecs);
+      fetchInSeparateProcess(db, fetchURI, refspecs, settings);
     } else {
-      fetchInSameProcess(db, auth, fetchURI, refspecs);
+      fetchInSameProcess(db, fetchURI, refspecs, settings);
     }
   }
 
@@ -121,8 +124,10 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
 
-  private void fetchInSeparateProcess(@NotNull final Repository repository, @NotNull final AuthSettings settings,
-                                      @NotNull final URIish uri, @NotNull final Collection<RefSpec> specs) throws VcsException {
+  private void fetchInSeparateProcess(@NotNull Repository repository,
+                                      @NotNull URIish uri,
+                                      @NotNull Collection<RefSpec> specs,
+                                      @NotNull FetchSettings settings) throws VcsException {
     final long fetchStart = System.currentTimeMillis();
     final String debugInfo = getDebugInfo(repository, uri, specs);
 
@@ -136,17 +141,20 @@ public class FetchCommandImpl implements FetchCommand {
       File threadDump = getThreadDumpFile(repository);
       gitPropertiesFile = myFetcherProperties.getPropertiesFile();
       FetcherEventHandler processEventHandler = new FetcherEventHandler(debugInfo);
-      teamcityPrivateKey = getTeamCityPrivateKey(settings);
-      AuthSettings preparedSettings = settings;
+      teamcityPrivateKey = getTeamCityPrivateKey(settings.getAuthSettings());
+      AuthSettings preparedSettings = settings.getAuthSettings();
       if (teamcityPrivateKey != null) {
-        Map<String, String> properties = settings.toMap();
+        Map<String, String> properties = settings.getAuthSettings().toMap();
         properties.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.name());
         properties.put(Constants.PRIVATE_KEY_PATH, teamcityPrivateKey.getAbsolutePath());
-        preparedSettings = new AuthSettings(properties, settings.getRoot());
+        preparedSettings = new AuthSettings(properties, settings.getAuthSettings().getRoot());
       }
 
       byte[] fetchProcessInput = getFetchProcessInputBytes(preparedSettings, repository.getDirectory(), uri, specs, threadDump, gitPropertiesFile);
-      ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, fetchProcessInput, processEventHandler);
+      ByteArrayOutputStream stdoutBuffer = settings.createStdoutBuffer();
+      ByteArrayOutputStream stderrBuffer = new ByteArrayOutputStream();
+      ExecResult result = SimpleCommandLineProcessRunner.runCommandSecure(cl, cl.getCommandLineString(), fetchProcessInput,
+                                                                          processEventHandler, stdoutBuffer, stderrBuffer);
 
       if (PERFORMANCE_LOG.isDebugEnabled())
         PERFORMANCE_LOG.debug("[fetch in separate process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
@@ -241,14 +249,16 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
 
-  private void fetchInSameProcess(@NotNull final Repository db, @NotNull final AuthSettings auth,
-                                  @NotNull final URIish uri, @NotNull final Collection<RefSpec> refSpecs) throws NotSupportedException, VcsException, TransportException {
+  private void fetchInSameProcess(@NotNull Repository db,
+                                  @NotNull URIish uri,
+                                  @NotNull Collection<RefSpec> refSpecs,
+                                  @NotNull FetchSettings settings) throws NotSupportedException, VcsException, TransportException {
     final String debugInfo = getDebugInfo(db, uri, refSpecs);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Fetch in server process: " + debugInfo);
     }
     final long fetchStart = System.currentTimeMillis();
-    final Transport tn = myTransportFactory.createTransport(db, uri, auth);
+    final Transport tn = myTransportFactory.createTransport(db, uri, settings.getAuthSettings());
     try {
       try {
         GitServerUtil.pruneRemovedBranches(db, tn);

@@ -57,7 +57,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     try {
       final Repository db = ctx.getRepository();
 
-      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, myVcs.getCurrentState(ctx.makeRootWithTags()));
+      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, null, myVcs.getCurrentState(ctx.makeRootWithTags()));
 
       collect(db, consumer);
     } catch (Exception e) {

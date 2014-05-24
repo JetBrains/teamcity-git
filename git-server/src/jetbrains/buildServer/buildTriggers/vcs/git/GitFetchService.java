@@ -40,16 +40,12 @@ public class GitFetchService implements FetchService, GitServerExtension {
                               @NotNull final CheckoutRules rules,
                               @NotNull final FetchRepositoryCallback callback) throws VcsException {
 
-    final OperationContext ctx = myVcs.createContext(root, "Fetch");
+    OperationContext ctx = myVcs.createContext(root, "Fetch");
     try {
-
-      //TODO: make fetch provide progress even if the fetch was called in a external process
-
-      final Repository db = ctx.getRepository();
-      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, myVcs.getCurrentState(ctx.makeRootWithTags()));
-
+      Repository db = ctx.getRepository();
+      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, callback, myVcs.getCurrentState(ctx.makeRootWithTags()));
     } catch (Exception e) {
-      throw new VcsException("Failed to fetch repository. " + e.getMessage(), e);
+      throw ctx.wrapException(e);
     } finally {
       ctx.close();
     }

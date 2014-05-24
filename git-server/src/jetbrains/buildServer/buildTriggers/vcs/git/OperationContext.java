@@ -118,7 +118,7 @@ public class OperationContext {
     if (alreadyFetched(fetchURI, refSpecs))
       return;
     try {
-      myCommitLoader.fetch(db, fetchURI, refSpecs, auth);
+      myCommitLoader.fetch(db, fetchURI, refSpecs, new FetchSettings(auth));
     } finally {
       markAsFetched(fetchURI, refSpecs);
     }

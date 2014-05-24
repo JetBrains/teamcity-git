@@ -32,17 +32,11 @@ import java.util.Collection;
 public interface FetchCommand {
 
   /**
-   * Make fetch into local repository (db.getDirectory() should be not null)
-   *
-   *
-   * @param db repository
-   * @param fetchURI uri to fetch
-   * @param refspecs refspecs
-   * @param auth auth settings
-   * @throws NotSupportedException
-   * @throws TransportException
-   * @throws VcsException
+   * Makes a fetch into local repository (db.getDirectory() should be not null)
    */
-  public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull AuthSettings auth) throws NotSupportedException, TransportException, VcsException;
+  public void fetch(@NotNull Repository db,
+                    @NotNull URIish fetchURI,
+                    @NotNull Collection<RefSpec> refspecs,
+                    @NotNull FetchSettings settings) throws NotSupportedException, TransportException, VcsException;
 
 }

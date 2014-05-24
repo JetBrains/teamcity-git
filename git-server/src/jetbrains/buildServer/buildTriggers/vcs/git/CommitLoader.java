@@ -43,7 +43,7 @@ public interface CommitLoader {
   public void fetch(@NotNull Repository db,
                     @NotNull URIish fetchURI,
                     @NotNull Collection<RefSpec> refspecs,
-                    @NotNull AuthSettings auth) throws NotSupportedException, VcsException, TransportException;
+                    @NotNull FetchSettings settings) throws NotSupportedException, VcsException, TransportException;
 
   @NotNull
   RevCommit getCommit(@NotNull Repository repository, @NotNull ObjectId commitId) throws IOException;

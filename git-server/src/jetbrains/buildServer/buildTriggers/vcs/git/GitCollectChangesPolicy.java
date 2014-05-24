@@ -79,7 +79,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
       Repository r = context.getRepository();
       ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
       revWalk.sort(RevSort.TOPO);
-      ensureRepositoryStateLoadedFor(context, r, true, toState, fromState);
+      ensureRepositoryStateLoadedFor(context, r, true, null, toState, fromState);
       markStart(r, revWalk, toState);
       markUninteresting(r, revWalk, fromState, toState);
       while (revWalk.next() != null) {
@@ -142,6 +142,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
   public void ensureRepositoryStateLoadedFor(@NotNull final OperationContext context,
                                              @NotNull final Repository repo,
                                              final boolean failOnFirstError,
+                                             @Nullable FetchService.FetchRepositoryCallback progressCallback,
                                              @NotNull final RepositoryStateData... states) throws Exception {
     boolean isFirst = failOnFirstError;
     if (myConfig.usePerBranchFetch()) {
@@ -151,6 +152,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
       }
     } else {
       FetchAllRefs fetch = new FetchAllRefs(repo, context.getGitRoot(), states);
+      fetch.setProgressCallback(progressCallback);
       for (RepositoryStateData state : states) {
         ensureRepositoryStateLoaded(context, repo, state, fetch, isFirst);
         isFirst = false;
@@ -388,6 +390,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     private final GitVcsRoot myRoot;
     private final Set<String> myAllRefNames;
     private boolean myInvoked = false;
+    private FetchService.FetchRepositoryCallback myProgressCallback;
 
     private FetchAllRefs(@NotNull Repository db,
                          @NotNull GitVcsRoot root,
@@ -397,9 +400,15 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
       myAllRefNames = getAllRefNames(states);
     }
 
+    public void setProgressCallback(FetchService.FetchRepositoryCallback callback) {
+      myProgressCallback = callback;
+    }
+
     void run() throws NotSupportedException, VcsException, TransportException {
       myInvoked = true;
-      myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL(), calculateRefSpecsForFetch(), myRoot.getAuthSettings());
+      FetchSettings settings = new FetchSettings(myRoot.getAuthSettings());
+      settings.setProgressCallback(myProgressCallback);
+      myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL(), calculateRefSpecsForFetch(), settings);
     }
 
     boolean isInvoked() {
