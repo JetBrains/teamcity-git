@@ -196,10 +196,13 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       DirCache inCoreIndex = DirCache.newInCore();
       DirCacheBuilder tempBuilder = inCoreIndex.builder();
       for (Map.Entry<String, ObjectId> e : myObjectMap.entrySet()) {
-        DirCacheEntry dcEntry = new DirCacheEntry(e.getKey());
-        dcEntry.setObjectId(e.getValue());
-        dcEntry.setFileMode(FileMode.REGULAR_FILE);
-        tempBuilder.add(dcEntry);
+
+        if (!ObjectId.zeroId().equals(e.getValue())) {
+          DirCacheEntry dcEntry = new DirCacheEntry(e.getKey());
+          dcEntry.setObjectId(e.getValue());
+          dcEntry.setFileMode(FileMode.REGULAR_FILE);
+          tempBuilder.add(dcEntry);
+        }
       }
 
       TreeWalk treeWalk = new TreeWalk(myDb);
