@@ -28,6 +28,7 @@ import org.eclipse.jgit.dircache.DirCacheEntry;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.PushConnection;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
@@ -69,7 +70,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     OperationContext context = myVcs.createContext(root, "commit");
     try {
       Repository db = context.getRepository();
-      return new GitCommitPatchBuilder(context, myCommitLoader, db, myRepositoryManager, myTransportFactory);
+      return new GitCommitPatchBuilder(myVcs, context, myCommitLoader, db, myRepositoryManager, myTransportFactory);
     } catch (VcsException e) {
       return new ErrorCommitPatchBuilder(e);
     }
@@ -77,6 +78,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
 
 
   private static class GitCommitPatchBuilder implements CommitPatchBuilder {
+    private final GitVcsSupport myVcs;
     private final OperationContext myContext;
     private final CommitLoader myCommitLoader;
     private final Repository myDb;
@@ -86,11 +88,13 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     private final TransportFactory myTransportFactory;
 
 
-    private GitCommitPatchBuilder(@NotNull OperationContext context,
+    private GitCommitPatchBuilder(@NotNull GitVcsSupport vcs,
+                                  @NotNull OperationContext context,
                                   @NotNull CommitLoader commitLoader,
                                   @NotNull Repository db,
                                   @NotNull RepositoryManager repositoryManager,
                                   @NotNull TransportFactory transportFactory) {
+      myVcs = vcs;
       myContext = context;
       myCommitLoader = commitLoader;
       myDb = db;
@@ -216,6 +220,16 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
 
     @NotNull
     private RevCommit getLastCommit(final GitVcsRoot gitRoot) throws VcsException, IOException {
+      Map<String, Ref> refs = myVcs.getRemoteRefs(gitRoot.getOriginalRoot());
+      Ref ref = refs.get(GitUtils.expandRef(gitRoot.getRef()));
+      RevWalk revWalk = new RevWalk(myDb);
+      try {
+        return revWalk.parseCommit(ref.getObjectId());
+      } catch (Exception e) {
+        //will try to fetch
+      } finally {
+        revWalk.release();
+      }
       RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(gitRoot.getRef()))
         .setDestination(GitUtils.expandRef(gitRoot.getRef()))
         .setForceUpdate(true);
