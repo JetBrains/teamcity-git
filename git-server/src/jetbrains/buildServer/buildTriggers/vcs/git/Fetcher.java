@@ -190,7 +190,7 @@ public class Fetcher {
   }
 
   private static Collection<RefSpec> parseRefspecs(String refspecs) {
-    String[] specs = refspecs.split(",");
+    String[] specs = refspecs.split(Constants.RECORD_SEPARATOR);
     List<RefSpec> result = new ArrayList<RefSpec>();
     for (String spec : specs) {
       result.add(new RefSpec(spec).setForceUpdate(true));

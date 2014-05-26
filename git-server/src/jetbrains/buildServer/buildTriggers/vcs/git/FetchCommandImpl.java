@@ -370,7 +370,7 @@ public class FetchCommandImpl implements FetchCommand {
       RefSpec spec = iter.next();
       sb.append(spec);
       if (iter.hasNext())
-        sb.append(",");
+        sb.append(Constants.RECORD_SEPARATOR);
     }
     return sb.toString();
   }
