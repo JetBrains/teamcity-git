@@ -1743,6 +1743,22 @@ public class GitVcsSupportTest extends PatchTestCase {
 
 
   @Test
+  @TestFor(issues = "TW-36653")
+  public void comma_in_branch_name() throws Exception {
+    VcsRoot root = vcsRoot().withBranch("refs/heads/master").withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
+
+    File brokenRef = new File(myMainRepositoryDir, "refs" + File.separator + "heads" + File.separator + "aaa,bbb");
+    FileUtil.writeFileAndReportErrors(brokenRef, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6\n");
+
+    RepositoryStateData s1 = createVersionState("refs/heads/master", map("refs/heads/master", "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6"));
+    RepositoryStateData s2 = createVersionState("refs/heads/master", map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9",
+                                                                         "refs/heads/aaa,bbb", "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6"));
+
+    getSupport().getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);//no error
+  }
+
+
+  @Test
   @TestFor(issues = "TW-29770")
   public void collect_changes_with_branch_pointing_to_a_non_commit() throws Exception {
     //setup remote repo with a branch pointing to a non commit
