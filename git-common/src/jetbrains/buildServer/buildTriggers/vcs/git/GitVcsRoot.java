@@ -47,6 +47,7 @@ public class GitVcsRoot {
   private final String myBranchSpec;
   private final boolean myAutoCrlf;
   private final boolean myReportTags;
+  private final boolean myIgnoreMissingDefaultBranch;
   private File myCustomRepositoryDir;
 
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root) throws VcsException {
@@ -70,6 +71,7 @@ public class GitVcsRoot {
     myBranchSpec = getProperty(Constants.BRANCH_SPEC);
     myAutoCrlf = Boolean.valueOf(getProperty(Constants.SERVER_SIDE_AUTO_CRLF, "false"));
     myReportTags = Boolean.valueOf(getProperty(Constants.REPORT_TAG_REVISIONS, "false"));
+    myIgnoreMissingDefaultBranch = Boolean.valueOf(getProperty(Constants.IGNORE_MISSING_DEFAULT_BRANCH, "false"));
   }
 
   public GitVcsRoot getRootForBranch(@NotNull String branch) throws VcsException {
@@ -289,5 +291,9 @@ public class GitVcsRoot {
   public boolean isHttp() {
     return "http".equals(myRepositoryFetchURL.getScheme()) ||
            "https".equals(myRepositoryFetchURL.getScheme());
+  }
+
+  public boolean isIgnoreMissingDefaultBranch() {
+    return myIgnoreMissingDefaultBranch;
   }
 }
