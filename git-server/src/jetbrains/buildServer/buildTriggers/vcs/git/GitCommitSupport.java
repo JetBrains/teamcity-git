@@ -39,9 +39,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static java.util.Arrays.asList;
 
@@ -84,6 +82,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     private final Repository myDb;
     private final ObjectInserter myObjectWriter;
     private final Map<String, ObjectId> myObjectMap = new HashMap<String, ObjectId>();
+    private final Set<String> myDeletedDirs = new HashSet<String>();
     private final RepositoryManager myRepositoryManager;
     private final TransportFactory myTransportFactory;
 
@@ -214,6 +213,16 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         if (newObjectId != null)
           continue;
 
+        boolean deleted = false;
+        for (String dir : myDeletedDirs) {
+          if (path.startsWith(dir)) {
+            deleted = true;
+            break;
+          }
+        }
+        if (deleted)
+          continue;
+
         DirCacheEntry dcEntry = new DirCacheEntry(path);
         dcEntry.setFileMode(treeWalk.getFileMode(0));
         dcEntry.setObjectId(treeWalk.getObjectId(0));
@@ -245,6 +254,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     }
 
     public void deleteDirectory(@NotNull final String path) {
+      myDeletedDirs.add(path);
     }
 
     public void createDirectory(@NotNull final String path) {
