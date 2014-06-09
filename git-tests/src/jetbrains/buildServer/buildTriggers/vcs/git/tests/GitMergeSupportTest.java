@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitMergeSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.*;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -26,6 +27,7 @@ import org.testng.annotations.Test;
 
 import java.util.List;
 
+import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.Util.map;
@@ -89,5 +91,19 @@ public class GitMergeSupportTest extends BaseRemoteRepositoryTest {
     for (ModificationData change : changes) {
       assertEquals(1, change.getParentRevisions().size()); //no merge commits, changes from branch are rebased
     }
+  }
+
+
+  @TestFor(issues = "TW-36826")
+  public void multiple_merge_bases_support() throws Exception {
+    RepositoryStateData stateBeforeMerge = myGit.getCurrentState(myRoot);
+    MergeResult result = myMergeSupport.merge(myRoot, "080f42bbf244b09d98569644cdf8609777f23d15", "refs/heads/topic3", "merge", new MergeOptions());
+    assertTrue(result.isSuccess());
+    RepositoryStateData stateAfterMerge = myGit.getCurrentState(myRoot);
+
+    List<ModificationData> changes = myGit.getCollectChangesPolicy().collectChanges(myRoot, stateBeforeMerge, stateAfterMerge, CheckoutRules.DEFAULT);
+    ModificationData m = changes.get(0);
+    assertTrue(m.getParentRevisions().containsAll(asList(stateBeforeMerge.getBranchRevisions().get("refs/heads/topic"),
+                                                         stateBeforeMerge.getBranchRevisions().get("refs/heads/topic3"))));
   }
 }
