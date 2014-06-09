@@ -108,7 +108,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
       for (MergeTask t : tasks) {
         ObjectId src = ObjectId.fromString(t.getSourceRevision());
         ObjectId dst = ObjectId.fromString(t.getDestinationRevision());
-        ResolveMerger merger = (ResolveMerger) MergeStrategy.RESOLVE.newMerger(db, true);
+        ResolveMerger merger = (ResolveMerger) MergeStrategy.RECURSIVE.newMerger(db, true);
         try {
           boolean success = merger.merge(dst, src);
           if (success) {
@@ -215,7 +215,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
       }
     }
 
-    ResolveMerger merger = (ResolveMerger) MergeStrategy.RESOLVE.newMerger(db, true);
+    ResolveMerger merger = (ResolveMerger) MergeStrategy.RECURSIVE.newMerger(db, true);
     boolean mergeSuccessful = merger.merge(dstCommit, srcCommit);
     if (!mergeSuccessful) {
       List<String> conflicts = merger.getUnmergedPaths();
@@ -321,7 +321,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     if (base.equals(parentCommit))
       return original;
 
-    ResolveMerger merger = (ResolveMerger) MergeStrategy.RESOLVE.newMerger(db, true);
+    ResolveMerger merger = (ResolveMerger) MergeStrategy.RECURSIVE.newMerger(db, true);
     merger.setBase(parentCommit);
     merger.merge(original, base);
 

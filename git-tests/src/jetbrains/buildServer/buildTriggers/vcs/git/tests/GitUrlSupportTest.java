@@ -146,10 +146,11 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   @Test
   public void http_protocol_with_credentials() throws Exception {
-    VcsUrl url = new VcsUrl("https://github.com/JetBrains/kotlin.git", new Credentials("user1", "pwd1"));
+    VcsUrl url = new VcsUrl("https://github.com/JetBrains/kotlin", new Credentials("user1", "pwd1"));
     GitVcsRoot root = toGitRoot(url);
 
-    assertEquals("https://github.com/JetBrains/kotlin.git", root.getProperty(Constants.FETCH_URL));
+
+    assertEquals("https://github.com/JetBrains/kotlin", root.getProperty(Constants.FETCH_URL));
     assertEquals("refs/heads/master", root.getProperty(Constants.BRANCH_NAME));
     assertEquals(AuthenticationMethod.PASSWORD.name(), root.getProperty(Constants.AUTH_METHOD));
     assertEquals("user1", root.getProperty(Constants.USERNAME));
