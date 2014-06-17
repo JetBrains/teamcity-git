@@ -35,6 +35,7 @@ import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -116,13 +117,14 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       myObjectMap.put(path, ObjectId.zeroId());
     }
 
-    public void commit(@NotNull String userName, @NotNull String description) throws VcsException {
+    @Nullable
+    public String commit(@NotNull String userName, @NotNull String description) throws VcsException {
       try {
         GitVcsRoot gitRoot = myContext.getGitRoot();
         RevCommit lastCommit = getLastCommit(gitRoot);
         ObjectId treeId = createNewTree(lastCommit);
         if (lastCommit.getTree().getId().equals(treeId))
-          return;
+          return null;
         ObjectId commitId = createCommit(gitRoot, lastCommit, treeId, userName, description);
 
         synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
@@ -135,7 +137,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
               switch (ru.getStatus()) {
                 case UP_TO_DATE:
                 case OK:
-                  return;
+                  return commitId.name();
                 default:
                   throw new VcsException("Push failed");
               }
@@ -272,7 +274,8 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       myError = error;
     }
 
-    public void commit(@NotNull final String userName, @NotNull final String description) throws VcsException {
+    @Nullable
+    public String commit(@NotNull final String userName, @NotNull final String description) throws VcsException {
       throw myError;
     }
 
