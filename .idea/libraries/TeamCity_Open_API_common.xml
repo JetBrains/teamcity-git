@@ -6,6 +6,7 @@
       <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/xmlrpc-2.0.1.jar!/" />
       <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/trove-3.0.3.jar!/" />
       <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/trove4j.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/jdom.jar!/" />
     </CLASSES>
     <JAVADOC>
       <root url="jar://$TeamCityDistribution$/devPackage/javadoc/openApi-help.jar!/" />
