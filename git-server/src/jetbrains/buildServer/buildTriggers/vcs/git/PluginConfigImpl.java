@@ -38,6 +38,7 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Layout;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.transport.http.apache.HttpClientConnectionFactory;
+import org.jdom.Element;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.quartz.CronExpression;
@@ -160,6 +161,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
       EncryptUtil.class,
       DiagnosticUtil.class,
       FileUtil.class,
+      Element.class,
       Layout.class,
       VcsException.class,
       BasicConfigurator.class,
