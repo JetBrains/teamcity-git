@@ -132,11 +132,19 @@ public class UpdaterWithMirror extends UpdaterImpl {
   protected void ensureCommitLoaded(boolean fetchRequired) throws VcsException {
     if (myPluginConfig.isUseShallowClone()) {
       File mirrorRepositoryDir = myRoot.getRepositoryDir();
-      String tmpBranchName = createTmpBranch(mirrorRepositoryDir, myRevision);
-      String tmpBranchRef = "refs/heads/" + tmpBranchName;
-      String refspec = "+" + tmpBranchRef + ":" + GitUtils.createRemoteRef(myFullBranchName);
-      fetch(myTargetDirectory, refspec, true);
-      myGitFactory.create(mirrorRepositoryDir).deleteBranch().setName(tmpBranchName).call();
+      if (GitUtils.isTag(myFullBranchName)) {
+        //handle tags specially: if we fetch a temporary branch which points to a commit
+        //tags points to, git fetches both branch and tag, tries to make a local
+        //branch to track both of them and fails.
+        String refspec = "+" + myFullBranchName + ":" + myFullBranchName;
+        fetch(myTargetDirectory, refspec, true);
+      } else {
+        String tmpBranchName = createTmpBranch(mirrorRepositoryDir, myRevision);
+        String tmpBranchRef = "refs/heads/" + tmpBranchName;
+        String refspec = "+" + tmpBranchRef + ":" + GitUtils.createRemoteRef(myFullBranchName);
+        fetch(myTargetDirectory, refspec, true);
+        myGitFactory.create(mirrorRepositoryDir).deleteBranch().setName(tmpBranchName).call();
+      }
     } else {
       super.ensureCommitLoaded(fetchRequired);
     }
