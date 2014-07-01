@@ -29,6 +29,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
+import jetbrains.buildServer.serverSide.BasePropertiesModel;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -87,6 +89,7 @@ public class AgentVcsSupportTest {
 
   @BeforeMethod
   public void setUp() throws Exception {
+    new TeamCityProperties() {{setModel(new BasePropertiesModel() {});}};
     myTempFiles = new TempFiles();
 
     File repositoriesDir = myTempFiles.createTempDir();

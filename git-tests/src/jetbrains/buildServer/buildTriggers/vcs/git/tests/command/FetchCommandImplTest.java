@@ -25,9 +25,12 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.FetchCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
+import jetbrains.buildServer.serverSide.BasePropertiesModel;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -38,6 +41,11 @@ import static org.testng.AssertJUnit.fail;
 
 @Test
 public class FetchCommandImplTest {
+
+  @BeforeMethod
+  public void setUp() throws Exception {
+    new TeamCityProperties() {{setModel(new BasePropertiesModel() {});}};
+  }
 
   @TestFor(issues = "TW-18853")
   public void should_throw_special_exception_when_stderr_mentions_broken_index() throws VcsException {
