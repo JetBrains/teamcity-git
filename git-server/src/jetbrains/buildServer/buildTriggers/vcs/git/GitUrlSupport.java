@@ -16,6 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.util.positioning.PositionAware;
+import jetbrains.buildServer.util.positioning.PositionConstraint;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.transport.URIish;
@@ -29,7 +31,7 @@ import java.util.Map;
 /**
  * @author dmitry.neverov
  */
-public class GitUrlSupport implements UrlSupport {
+public class GitUrlSupport implements UrlSupport, PositionAware {
 
   private final GitVcsSupport myGitSupport;
 
@@ -107,5 +109,15 @@ public class GitUrlSupport implements UrlSupport {
 
   private boolean isScpSyntax(URIish uriish) {
     return uriish.getScheme() == null && uriish.isRemote();
+  }
+
+  @NotNull
+  public String getOrderId() {
+    return myGitSupport.getName();
+  }
+
+  @NotNull
+  public PositionConstraint getConstraint() {
+    return PositionConstraint.first(); // placed first to avoid problems with GitHub and SVN
   }
 }
