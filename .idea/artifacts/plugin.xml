@@ -16,7 +16,7 @@
         <element id="artifact" artifact-name="git-common.jar" />
         <element id="library" level="project" name="quartz-1.6.0" />
         <element id="library" level="project" name="org.eclipse.egit.github.core-2.4.0-SNAPSHOT" />
-        <element id="library" level="project" name="httpclient-4.3.3" />
+        <element id="library" level="project" name="httpclient-4.3.4" />
       </element>
       <element id="directory" name="agent">
         <element id="archive" name="jetbrains.git.zip">
@@ -29,7 +29,7 @@
               <element id="directory" name="ssh">
                 <element id="library" level="project" name="Trilead SSH" />
               </element>
-              <element id="library" level="project" name="httpclient-4.3.3" />
+              <element id="library" level="project" name="httpclient-4.3.4" />
             </element>
           </element>
         </element>

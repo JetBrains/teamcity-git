@@ -205,7 +205,7 @@ public class PluginConfigBuilder {
 
       @NotNull
       public String getHttpConnectionFactory() {
-        return "jdk";
+        return "httpClient";
       }
     };
   }
