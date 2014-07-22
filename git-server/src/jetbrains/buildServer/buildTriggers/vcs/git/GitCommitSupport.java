@@ -177,10 +177,10 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
           }
           break;
         case NAME:
-          commit.setAuthor(new PersonIdent(userName, userName + "@acme.com"));
+          commit.setAuthor(new PersonIdent(userName, userName + "@TeamCity"));
           break;
         case USERID:
-          commit.setAuthor(new PersonIdent(userName, userName + "@acme.com"));
+          commit.setAuthor(new PersonIdent(userName, userName + "@TeamCity"));
           break;
         case FULL:
           commit.setAuthor(gitRoot.parseIdent(userName));
