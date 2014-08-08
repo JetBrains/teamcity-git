@@ -51,9 +51,4 @@ public enum AuthenticationMethod {
   public String uiName() {
     return myUIName;
   }
-
-  @Override
-  public String toString() {
-    return myUIName;
-  }
 }
