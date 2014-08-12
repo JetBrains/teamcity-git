@@ -138,8 +138,13 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
                 case UP_TO_DATE:
                 case OK:
                   return commitId.name();
-                default:
-                  throw new VcsException("Push failed");
+                default: {
+                  StringBuilder error = new StringBuilder();
+                  error.append("Push failed, status: ").append(ru.getStatus());
+                  if (ru.getMessage() != null)
+                    error.append(", message: ").append(ru.getMessage());
+                  throw new VcsException(error.toString());
+                }
               }
             } finally {
               c.close();
