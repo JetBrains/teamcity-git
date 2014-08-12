@@ -142,7 +142,9 @@ public class TransportFactoryImpl implements TransportFactory {
       case PASSWORD:
         return new PasswordJschConfigSessionFactory(myConfig, authSettings, myJSchOptions);
       default:
-        throw new VcsAuthenticationException(url.toString(), "The authentication method " + authSettings.getAuthMethod() + " is not supported for SSH, please provide SSH key or credentials");
+        final AuthenticationMethod method = authSettings.getAuthMethod();
+        final String methodName = method == null ? "<null>" : method.uiName();
+        throw new VcsAuthenticationException(url.toString(), "The authentication method " + methodName + " is not supported for SSH, please provide SSH key or credentials");
     }
   }
 
