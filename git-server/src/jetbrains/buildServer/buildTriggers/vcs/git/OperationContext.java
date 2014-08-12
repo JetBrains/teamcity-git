@@ -21,7 +21,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverI
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
-import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
@@ -218,9 +217,9 @@ public class OperationContext {
 
   @NotNull
   public GitVcsRoot makeRootWithTags() throws VcsException {
-    Map<String, String> params = new HashMap<String, String>(myRoot.getProperties());
-    params.put(Constants.REPORT_TAG_REVISIONS, "true");
-    return this.getGitRoot(new VcsRootImpl(myRoot.getId(), params));
+    GitVcsRoot gitRoot = getGitRoot(myRoot);
+    gitRoot.setReportTags(true);
+    return gitRoot;
   }
 
 }

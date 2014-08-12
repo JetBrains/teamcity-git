@@ -46,7 +46,7 @@ public class GitVcsRoot {
   private final String myUsernameForTags;
   private final String myBranchSpec;
   private final boolean myAutoCrlf;
-  private final boolean myReportTags;
+  private boolean myReportTags;
   private final boolean myIgnoreMissingDefaultBranch;
   private File myCustomRepositoryDir;
 
@@ -147,6 +147,10 @@ public class GitVcsRoot {
 
   public boolean isReportTags() {
     return myReportTags;
+  }
+
+  public void setReportTags(final boolean reportTags) {
+    myReportTags = reportTags;
   }
 
   /**
