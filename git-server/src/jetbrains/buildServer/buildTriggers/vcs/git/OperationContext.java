@@ -47,7 +47,6 @@ public class OperationContext {
 
   private static Logger LOG = Logger.getInstance(OperationContext.class.getName());
 
-  private final GitVcsSupport mySupport;
   private final CommitLoader myCommitLoader;
   private final RepositoryManager myRepositoryManager;
   private final VcsRoot myRoot;
@@ -55,12 +54,10 @@ public class OperationContext {
   private final Map<String, Repository> myRepositories = new HashMap<String, Repository>(); //repository path -> repository
   private final Set<String> myAlreadyFetched = new HashSet<String>();
 
-  public OperationContext(@NotNull final GitVcsSupport support,
-                          @NotNull final CommitLoader commitLoader,
+  public OperationContext(@NotNull final CommitLoader commitLoader,
                           @NotNull final RepositoryManager repositoryManager,
                           @NotNull final VcsRoot root,
                           @NotNull final String operation) {
-    mySupport = support;
     myCommitLoader = commitLoader;
     myRepositoryManager = repositoryManager;
     myRoot = root;
@@ -70,10 +67,6 @@ public class OperationContext {
 
   public VcsRoot getRoot() {
     return myRoot;
-  }
-
-  public GitVcsSupport getSupport() {
-    return mySupport;
   }
 
   public Repository getRepository() throws VcsException {
@@ -202,7 +195,7 @@ public class OperationContext {
                       boolean ignoreSubmodulesErrors,
                       boolean logSubmoduleErrors) throws IOException, VcsException {
     if (root.isCheckoutSubmodules()) {
-      SubmoduleResolverImpl submoduleResolver = new SubmoduleResolverImpl(mySupport, this, myCommitLoader, db, commit, "");
+      SubmoduleResolverImpl submoduleResolver = new SubmoduleResolverImpl(this, myCommitLoader, db, commit, "");
       SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(root.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
       tw.addTree(create(db, commit, submoduleResolver, root.getRepositoryFetchURL().toString(), "", checkoutPolicy, logSubmoduleErrors));
     } else {

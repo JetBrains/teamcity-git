@@ -145,7 +145,7 @@ public class SubmoduleTest {
           ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.SUBMODULE_ADDED_VERSION)));
         final RevCommit beforeSubmoduleAdded = revWalk.parseCommit(
           ObjectId.fromString(GitUtils.versionRevision(GitVcsSupportTest.BEFORE_SUBMODULE_ADDED_VERSION)));
-        SubmoduleResolverImpl r = new MySubmoduleResolver(myGitSupport, myGitSupport.createContext(vcsRoot().withFetchUrl("whatever").build(), "testing"),
+        SubmoduleResolverImpl r = new MySubmoduleResolver(myGitSupport.createContext(vcsRoot().withFetchUrl("whatever").build(), "testing"),
                                                           myCommitLoader, rm, submoduleAdded, rs);
         TreeWalk tw = new TreeWalk(rm);
         tw.setRecursive(true);
@@ -211,17 +211,14 @@ public class SubmoduleTest {
      * The referenced repository
      */
     private final Repository myReferencedRepository;
-    private final GitVcsSupport myGitSupport;
 
-    public MySubmoduleResolver(@NotNull GitVcsSupport gitSupport,
-                               @NotNull OperationContext context,
+    public MySubmoduleResolver(@NotNull OperationContext context,
                                @NotNull CommitLoader commitLoader,
                                @NotNull Repository db,
                                @NotNull RevCommit commit,
                                @NotNull Repository referencedRepository) {
-      super(gitSupport, context, commitLoader, db, commit, "");
+      super(context, commitLoader, db, commit, "");
       myReferencedRepository = referencedRepository;
-      myGitSupport = gitSupport;
     }
 
     public Repository resolveRepository(@NotNull String url) {
@@ -233,7 +230,7 @@ public class SubmoduleTest {
     }
 
     public SubmoduleResolverImpl getSubResolver(RevCommit commit, String path) {
-      return new SubmoduleResolverImpl(myGitSupport, myContext, myCommitLoader, myReferencedRepository, commit, path) {
+      return new SubmoduleResolverImpl(myContext, myCommitLoader, myReferencedRepository, commit, path) {
         public Repository resolveRepository(@NotNull String url) {
           throw new RuntimeException("Repository not found");
         }

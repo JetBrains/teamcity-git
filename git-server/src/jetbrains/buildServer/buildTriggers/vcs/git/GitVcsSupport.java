@@ -264,7 +264,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   public OperationContext createContext(VcsRoot root, String operation) {
-    return new OperationContext(this, myCommitLoader, myRepositoryManager, root, operation);
+    return new OperationContext(myCommitLoader, myRepositoryManager, root, operation);
   }
 
   @NotNull

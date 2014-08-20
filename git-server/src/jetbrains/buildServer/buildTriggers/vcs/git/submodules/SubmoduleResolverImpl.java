@@ -51,17 +51,14 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
 
   private final RevCommit myCommit;
   private final Repository myDb;
-  protected final GitVcsSupport myGitSupport;
   protected final CommitLoader myCommitLoader;
   private SubmodulesConfig myConfig;
 
-  public SubmoduleResolverImpl(@NotNull GitVcsSupport gitSupport,
-                               @NotNull OperationContext context,
+  public SubmoduleResolverImpl(@NotNull OperationContext context,
                                @NotNull CommitLoader commitLoader,
                                @NotNull Repository db,
                                @NotNull RevCommit commit,
                                @NotNull String pathFromRoot) {
-    myGitSupport = gitSupport;
     myCommitLoader = commitLoader;
     myDb = db;
     myCommit = commit;
@@ -213,7 +210,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
       //exception means path does not contain submodule, use current repository
       db = getRepository();
     }
-    return new SubmoduleResolverImpl(myGitSupport, myContext, myCommitLoader, db, commit, fullPath(path));
+    return new SubmoduleResolverImpl(myContext, myCommitLoader, db, commit, fullPath(path));
   }
 
   /**
