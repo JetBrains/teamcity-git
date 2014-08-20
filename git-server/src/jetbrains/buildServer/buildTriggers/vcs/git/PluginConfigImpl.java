@@ -99,11 +99,6 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
 
-  public boolean isPrintDebugInfoOnEachCommit() {
-    return TeamCityProperties.getBoolean("teamcity.git.commit.debug.info");
-  }
-
-
   public String getFetchProcessJavaPath() {
     final String jdkHome = System.getProperty("java.home");
     File defaultJavaExec = new File(jdkHome.replace('/', File.separatorChar) + File.separator + "bin" + File.separator + "java");

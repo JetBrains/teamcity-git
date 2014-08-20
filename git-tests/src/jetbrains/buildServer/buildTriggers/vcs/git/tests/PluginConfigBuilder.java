@@ -82,10 +82,6 @@ public class PluginConfigBuilder {
         return myDelegate.getFetchTimeout();
       }
 
-      public boolean isPrintDebugInfoOnEachCommit() {
-        return myDelegate.isPrintDebugInfoOnEachCommit();
-      }
-
       public String getFetchProcessJavaPath() {
         return myDelegate.getFetchProcessJavaPath();
       }

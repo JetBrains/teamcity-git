@@ -35,9 +35,6 @@ public interface ServerPluginConfig extends PluginConfig {
   int getFetchTimeout();
 
 
-  boolean isPrintDebugInfoOnEachCommit();
-
-
   String getFetchProcessJavaPath();
 
 
