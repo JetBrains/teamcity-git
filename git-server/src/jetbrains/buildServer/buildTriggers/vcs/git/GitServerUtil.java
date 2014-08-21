@@ -18,8 +18,13 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.jcraft.jsch.JSchException;
+import jetbrains.buildServer.serverSide.FileWatchingPropertiesModel;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Level;
+import org.apache.log4j.PatternLayout;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
@@ -27,14 +32,16 @@ import org.eclipse.jgit.internal.JGitText;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileBasedConfig;
+import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.text.MessageFormat;
 import java.util.Map;
+
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
 /**
  * Utilities for server part of the plugin
@@ -296,5 +303,55 @@ public class GitServerUtil {
       reader.release();
     }
     return false;
+  }
+
+
+  /**
+   * Read input from System.in until it closed
+   *
+   * @return input as string
+   * @throws IOException
+   */
+  public static String readInput() throws IOException {
+    char[] chars = new char[512];
+    StringBuilder sb = new StringBuilder();
+    Reader processInput = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
+    int count = 0;
+    while ((count = processInput.read(chars)) != -1) {
+      final String str = new String(chars, 0, count);
+      sb.append(str);
+    }
+    return sb.toString();
+  }
+
+
+  public static void configureInternalProperties(@NotNull final File internalProperties) {
+    new TeamCityProperties() {{
+      setModel(new FileWatchingPropertiesModel(internalProperties));
+    }};
+  }
+
+
+  public static void configureStreamFileThreshold(int thresholdBytes) {
+    WindowCacheConfig cfg = new WindowCacheConfig();
+    cfg.setStreamFileThreshold(thresholdBytes);
+    cfg.install();
+  }
+
+
+  public static void configureExternalProcessLogger(boolean debugEnabled) {
+    org.apache.log4j.Logger.getRootLogger().addAppender(new ConsoleAppender(new PatternLayout("[%d] %6p - %30.30c - %m %n")));
+    org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
+    org.apache.log4j.Logger.getLogger("jetbrains.buildServer.buildTriggers.vcs.git").setLevel(debugEnabled ? Level.DEBUG : Level.INFO);
+  }
+
+
+  public static void writeAsProperties(@NotNull File f, @NotNull Map<String, String> props) throws IOException {
+    StringBuilder sb = new StringBuilder();
+    for (Map.Entry<String, String> e : props.entrySet()) {
+      if (!isEmpty(e.getValue()))
+        sb.append(e.getKey()).append("=").append(e.getValue()).append("\n");
+    }
+    FileUtil.writeFileAndReportErrors(f, sb.toString());
   }
 }

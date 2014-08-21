@@ -33,16 +33,15 @@ public class VcsChangeTreeWalk extends TreeWalk {
 
   private static final Logger LOG = Logger.getInstance(VcsChangeTreeWalk.class.getName());
 
-  private final ServerPluginConfig myConfig;
   private final String myRepositoryDebugInfo;
+  private final boolean myVerboseTreeWalkLog;
 
-
-  public VcsChangeTreeWalk(@NotNull ServerPluginConfig config,
-                           @NotNull Repository repo,
-                           @NotNull String repositoryDebugInfo) {
+  public VcsChangeTreeWalk(@NotNull Repository repo,
+                           @NotNull String repositoryDebugInfo,
+                           boolean verboseTreeWalkLog) {
     super(repo);
-    myConfig = config;
     myRepositoryDebugInfo = repositoryDebugInfo;
+    myVerboseTreeWalkLog = verboseTreeWalkLog;
   }
 
 
@@ -120,7 +119,7 @@ public class VcsChangeTreeWalk extends TreeWalk {
   }
 
   private boolean isExtraDebug() {
-    return LOG.isDebugEnabled() && myConfig.verboseTreeWalkLog();
+    return LOG.isDebugEnabled() && myVerboseTreeWalkLog;
   }
 
 

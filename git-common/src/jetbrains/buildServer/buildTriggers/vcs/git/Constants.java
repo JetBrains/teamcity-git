@@ -117,4 +117,11 @@ public interface Constants {
   String RECORD_SEPARATOR = new String(new char[]{30});
 
   String IGNORE_MISSING_DEFAULT_BRANCH = "IGNORE_MISSING_DEFAULT_BRANCH";
+
+  String PATCHER_FROM_REVISION = "patcher.fromRevision";
+  String PATCHER_TO_REVISION = "patcher.toRevision";
+  String PATCHER_CHECKOUT_RULES = "patcher.checkoutRules";
+  String PATCHER_CACHES_DIR = "patcher.cachesDir";
+  String PATCHER_PATCH_FILE = "patcher.patchFile";
+  String PATCHER_UPLOADED_KEY = "patcher.uploadedKey";
 }

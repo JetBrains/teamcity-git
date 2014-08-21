@@ -173,7 +173,7 @@ class ModificationDataRevWalk extends RevWalk {
      * collect changes for the commit
      */
     public void collectCommitChanges() throws IOException, VcsException {
-      final VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
+      final VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myRepository, repositoryDebugInfo, myConfig.verboseTreeWalkLog());
       try {
         tw.setFilter(filter);
         tw.setRecursive(true);
@@ -231,7 +231,7 @@ class ModificationDataRevWalk extends RevWalk {
       }
 
       private void subWalk(@NotNull final String path, @NotNull final RevCommit commitWithFix) throws IOException, VcsException {
-        final VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myConfig, myRepository, repositoryDebugInfo);
+        final VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myRepository, repositoryDebugInfo, myConfig.verboseTreeWalkLog());
         try {
           tw2.setFilter(TreeFilter.ANY_DIFF);
           tw2.setRecursive(true);

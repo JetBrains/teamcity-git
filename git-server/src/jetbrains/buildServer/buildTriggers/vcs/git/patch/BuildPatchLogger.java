@@ -18,7 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.ChangeType;
-import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import org.eclipse.jgit.lib.ObjectId;
 import org.jetbrains.annotations.NotNull;
@@ -30,12 +29,12 @@ import org.jetbrains.annotations.Nullable;
 public final class BuildPatchLogger {
   private final Logger myDelegate;
   private final String myRepoDebugInfo;
-  private final ServerPluginConfig myConfig;
+  private final boolean myVerboseTreeWalkLog;
 
-  public BuildPatchLogger(@NotNull Logger delegate, @NotNull String repositoryDebugInfo, @NotNull ServerPluginConfig config) {
+  public BuildPatchLogger(@NotNull Logger delegate, @NotNull String repositoryDebugInfo, boolean verboseTreeWalkLog) {
     myDelegate = delegate;
     myRepoDebugInfo = repositoryDebugInfo;
-    myConfig = config;
+    myVerboseTreeWalkLog = verboseTreeWalkLog;
   }
 
   public void logBuildCleanPatch(@NotNull String toRevision) {
@@ -57,12 +56,12 @@ public final class BuildPatchLogger {
   }
 
   public void logVisitFile(@NotNull String fileInfo) {
-    if (myDelegate.isDebugEnabled() && myConfig.verboseTreeWalkLog())
+    if (myDelegate.isDebugEnabled() && myVerboseTreeWalkLog)
       myDelegate.debug("Visit file " + fileInfo + " in " + myRepoDebugInfo);
   }
 
   public void logChangeType(@NotNull String path, @NotNull ChangeType changeType) {
-    if (myDelegate.isDebugEnabled() && myConfig.verboseTreeWalkLog())
+    if (myDelegate.isDebugEnabled() && myVerboseTreeWalkLog)
       myDelegate.debug("Change type of " + path + ": " + changeType);
   }
 
@@ -71,7 +70,7 @@ public final class BuildPatchLogger {
   }
 
   public void logFileModeChanged(@NotNull String modeDiff, @NotNull String fileInfo) {
-    if (myDelegate.isDebugEnabled() && myConfig.verboseTreeWalkLog())
+    if (myDelegate.isDebugEnabled() && myVerboseTreeWalkLog)
       myDelegate.debug("The mode change " + modeDiff + " is detected for " + fileInfo);
   }
 

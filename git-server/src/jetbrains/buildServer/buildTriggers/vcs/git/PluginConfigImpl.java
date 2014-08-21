@@ -21,6 +21,7 @@ import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.*;
 import gnu.trove.TObjectHashingStrategy;
 import jetbrains.buildServer.agent.ClasspathUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchProcess;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
@@ -30,6 +31,7 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsPersonalSupport;
 import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import org.apache.commons.codec.Decoder;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpEntity;
@@ -130,6 +132,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
 
+  public boolean isSeparateProcessForPatch() {
+    return TeamCityProperties.getBoolean("teamcity.git.buildPatchInSeparateProcess");
+  }
+
   public boolean isRunNativeGC() {
     return TeamCityProperties.getBoolean("teamcity.server.git.gc.enabled");
   }
@@ -143,7 +149,28 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   public String getFetchClasspath() {
-    Set<Class<?>> clazzez = new HashSet<Class<?>>(Arrays.asList(
+    Set<Class> classes = fetchProcessClasses();
+    return ClasspathUtil.composeClasspath(classes.toArray(new Class[classes.size()]), null, null);
+  }
+
+
+  public String getFetcherClassName() {
+    return Fetcher.class.getName();
+  }
+
+  public String getPatchClasspath() {
+    Set<Class> classes = fetchProcessClasses();
+    classes.add(PatchBuilderImpl.class);
+    return ClasspathUtil.composeClasspath(classes.toArray(new Class[classes.size()]), null, null);
+  }
+
+  public String getPatchBuilderClassName() {
+    return GitPatchProcess.class.getName();
+  }
+
+  private Set<Class> fetchProcessClasses() {
+    Set<Class> result = new HashSet<Class>();
+    result.addAll(Arrays.asList(
       Fetcher.class,
       VcsRoot.class,
       ProgressMonitor.class,
@@ -165,14 +192,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
       LogFactory.class,
       HttpEntity.class
     ));
-
-    Collections.addAll(clazzez, GitVcsSupport.class.getInterfaces());
-    return ClasspathUtil.composeClasspath(clazzez.toArray(new Class[clazzez.size()]), null, null);
-  }
-
-
-  public String getFetcherClassName() {
-    return Fetcher.class.getName();
+    Collections.addAll(result, GitVcsSupport.class.getInterfaces());
+    return result;
   }
 
   public int getFixedSubmoduleCommitSearchDepth() {

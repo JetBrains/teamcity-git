@@ -16,19 +16,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.serverSide.FileWatchingPropertiesModel;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsUtil;
-import org.apache.log4j.*;
-import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
-import org.eclipse.jgit.internal.storage.file.WindowCache;
-import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -53,19 +47,15 @@ public class Fetcher {
     boolean debug = false;
     ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
     try {
-      Map<String, String> properties = VcsUtil.stringToProperties(readInput());
+      Map<String, String> properties = VcsUtil.stringToProperties(GitServerUtil.readInput());
       String threadDumpFilePath = properties.remove(Constants.THREAD_DUMP_FILE);
       String repositoryPath = properties.remove(Constants.REPOSITORY_DIR_PROPERTY_NAME);
       debug = "true".equals(properties.remove(Constants.VCS_DEBUG_ENABLED));
 
-      Logger.getRootLogger().addAppender(new ConsoleAppender(new PatternLayout("[%d] %6p - %30.30c - %m %n")));
-      Logger.getRootLogger().setLevel(Level.INFO);
-      Logger.getLogger("jetbrains.buildServer.buildTriggers.vcs.git").setLevel(debug ? Level.DEBUG : Level.INFO);
+      GitServerUtil.configureExternalProcessLogger(debug);
 
-      final String internalPropsFile = properties.remove(Constants.FETCHER_INTERNAL_PROPERTIES_FILE);
-      new TeamCityProperties() {{
-        setModel(new FileWatchingPropertiesModel(new File(internalPropsFile)));
-      }};
+      String internalPropsFile = properties.remove(Constants.FETCHER_INTERNAL_PROPERTIES_FILE);
+      GitServerUtil.configureInternalProperties(new File(internalPropsFile));
 
       ByteArrayOutputStream output = new ByteArrayOutputStream();
       FetchProgressMonitor progress = new FetchProgressMonitor(new PrintStream(output));
@@ -101,7 +91,8 @@ public class Fetcher {
     AuthSettings auth = new AuthSettings(vcsRootProperties);
     PluginConfigImpl config = new PluginConfigImpl();
 
-    configureStreamFileThreshold();
+    GitServerUtil.configureStreamFileThreshold(Integer.MAX_VALUE);
+
     TransportFactory transportFactory = new TransportFactoryImpl(config, new EmptyVcsRootSshKeyManager());
     Transport tn = null;
     try {
@@ -138,33 +129,6 @@ public class Fetcher {
       System.out.println("Remote process messages: " + additionalMsgs);
     }
   }
-
-  private static void configureStreamFileThreshold() {
-    Config rc = new Config();
-    rc.setLong("core", null, "streamfilethreshold", Integer.MAX_VALUE);
-    WindowCacheConfig cfg = new WindowCacheConfig();
-    cfg.fromConfig(rc);
-    WindowCache.reconfigure(cfg);
-  }
-
-  /**
-   * Read input from System.in until it closed
-   *
-   * @return input as string
-   * @throws IOException
-   */
-  private static String readInput() throws IOException {
-    char[] chars = new char[512];
-    StringBuilder sb = new StringBuilder();
-    Reader processInput = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
-    int count = 0;
-    while ((count = processInput.read(chars)) != -1) {
-      final String str = new String(chars, 0, count);
-      sb.append(str);
-    }
-    return sb.toString();
-  }
-
 
   private static boolean isImportant(Throwable t) {
     return t instanceof NullPointerException ||

@@ -38,15 +38,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-
-/**
-* @author dmitry.neverov
-*/
-public final class GitPatchBuilder {
+public class GitPatchBuilder {
 
   private final static Logger LOG = Logger.getInstance(GitPatchBuilder.class.getName());
 
-  private final ServerPluginConfig myConfig;
   private final OperationContext myContext;
   private final GitVcsRoot myGitRoot;
   private final PatchBuilder myBuilder;
@@ -58,14 +53,14 @@ public final class GitPatchBuilder {
   private BuildPatchLogger myLogger;
   private Repository myRepository;
   private VcsChangeTreeWalk myTreeWalk;
+  private final boolean myVerboseTreeWalkLog;
 
-  public GitPatchBuilder(@NotNull ServerPluginConfig config,
-                         @NotNull OperationContext context,
+  public GitPatchBuilder(@NotNull OperationContext context,
                          @NotNull PatchBuilder builder,
                          @Nullable String fromRevision,
                          @NotNull String toRevision,
-                         @NotNull CheckoutRules rules) throws VcsException {
-    myConfig = config;
+                         @NotNull CheckoutRules rules,
+                         boolean verboseTreeWalkLog) throws VcsException {
     myContext = context;
     myGitRoot = context.getGitRoot();
     myBuilder = builder;
@@ -74,13 +69,14 @@ public final class GitPatchBuilder {
     myRules = rules;
     myCleanCheckout = fromRevision == null;
     myTreeWalk = null;
+    myVerboseTreeWalkLog = verboseTreeWalkLog;
   }
 
   public void buildPatch() throws Exception {
-    myLogger = new BuildPatchLogger(LOG, myGitRoot.debugInfo(), myConfig);
+    myLogger = new BuildPatchLogger(LOG, myGitRoot.debugInfo(), myVerboseTreeWalkLog);
     myRepository = myContext.getRepository();
     try {
-      myTreeWalk = new VcsChangeTreeWalk(myConfig, myRepository, myGitRoot.debugInfo());
+      myTreeWalk = new VcsChangeTreeWalk(myRepository, myGitRoot.debugInfo(), myVerboseTreeWalkLog);
       myTreeWalk.setFilter(TreeFilter.ANY_DIFF);
       myTreeWalk.setRecursive(true);
       addToCommitTree();
@@ -95,6 +91,8 @@ public final class GitPatchBuilder {
 
   private void addToCommitTree() throws IOException, VcsException {
     RevCommit toCommit = myContext.findCommit(myRepository, myToRevision);
+    if (toCommit == null)
+      throw new VcsException("Cannot find commit " + myToRevision + " in repository " + myRepository.getDirectory().getAbsolutePath());
     myContext.addTree(myGitRoot, myTreeWalk, myRepository, toCommit, false);
   }
 

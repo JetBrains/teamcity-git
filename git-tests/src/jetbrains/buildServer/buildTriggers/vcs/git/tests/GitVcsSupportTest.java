@@ -36,7 +36,6 @@ import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
-import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import jetbrains.buildServer.vcs.patches.PatchTestCase;
 import jetbrains.vcs.api.ChangeData;
 import junit.framework.Assert;
@@ -57,7 +56,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -74,9 +72,6 @@ import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
 import static jetbrains.buildServer.vcs.RepositoryStateData.createVersionState;
 
-/**
- * The tests for version detection functionality
- */
 public class GitVcsSupportTest extends PatchTestCase {
 
   public static final String VERSION_TEST_HEAD = "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653";
@@ -452,38 +447,21 @@ public class GitVcsSupportTest extends PatchTestCase {
   /*
    * o fix submodule entry again but track newer revision | e6b15b1f4741199857e2fa744eaadfe5a9d9aede
    * |                                                    |
-   * |                                                    |
-   * v                                                    |
    * o broke submodule entry again                        | feac610f381e697acf4c1c8ad82b7d76c7643b04
    * |                                                    |
-   * |                                                    |
-   * v                                                    |
    * o fix submodule entry again                          | 92112555d9eb3e433eaa91fe32ec001ae8fe3c52
    * |                                                    |
-   * |                                                    |
-   * v                                                    |
    * o broke submodule entry again                        | 778cc3d0105ca1b6b2587804ebfe89c2557a7e46
    * |                                                    |
-   * |                                                    |
-   * v                                                    |
    * o finally add correct entry                          | f5bdd3819df0358a43d9a8f94eaf96bb306e19fe
    * |                                                    |
-   * |                                                    |
-   * v                                                    |
    * o add entry for unrelated submodule                  | 78cbbed3561de3417467ee819b1795ba14c03dfb
    * |                                                    |
-   * |                                                    |
-   * v                                                    |
    * o add empty .gitmodules                              | 233daeefb335b60c7b5700afde97f745d86cb40d
    * |                                                    |
-   * |                                                    |
-   * v                                                    |
    * o add submodule wihtout entry in .gitmodules         | 6eae9acd29db2dba146929634a4bb1e6e72a31fd
    * |                                                    |
-   * |                                                    |
-   * v                                                    |
    * o no submodules                                      | f3f826ce85d6dad25156b2d7550cedeb1a422f4c (merge_version)
-   *
    */
   @TestFor(issues = "TW-13127")
   @Test
@@ -662,15 +640,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void check_buildPatch_understands_revisions_with_timestamps(boolean fetchInSeparateProcess) throws Exception {
-    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
-    checkPatch("cleanPatch1", null, GitUtils.makeVersion("a894d7d58ffde625019a9ecf8267f5f1d1e5c341", 1237391915000L));
-    checkPatch("patch1",
-               GitUtils.makeVersion("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", 1238420977000L),
-               GitUtils.makeVersion("0dd03338d20d2e8068fbac9f24899d45d443df38", 1238421020000L));
-  }
-
   @Test
   public void collect_changes_should_understand_revisions_with_timestamps() throws Exception {
     VcsRoot root = getRoot("master");
@@ -690,57 +659,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     getSupport().getCollectChangesPolicy().collectChanges(root, fromStateInOldFormat, toState, CheckoutRules.DEFAULT);
   }
 
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void testPatches(boolean fetchInSeparateProcess) throws IOException, VcsException {
-    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
-    checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
-    checkPatch("patch1", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", "0dd03338d20d2e8068fbac9f24899d45d443df38");
-    checkPatch("patch2", "7e916b0edd394d0fca76456af89f4ff7f7f65049", "049a98762a29677da352405b27b3d910cb94eb3b");
-    checkPatch("patch3", null, "1837cf38309496165054af8bf7d62a9fe8997202");
-    checkPatch("patch4", "1837cf38309496165054af8bf7d62a9fe8997202", "592c5bcee6d906482177a62a6a44efa0cff9bbc7");
-    checkPatch("patch-case", "rename-test", "cbf1073bd3f938e7d7d85718dbc6c3bee10360d9", "2eed4ae6732536f76a65136a606f635e8ada63b9", true);
-  }
-
-
-  @Test
-  public void build_patch_from_later_revision_to_earlier() throws Exception {
-    checkPatch("patch5", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46");
-  }
-
-
-  //Due to changes in the logic of choosing checkout directory on the agent (builds
-  //from the same repository go to the same dir even if the branches are different), git-plugin
-  //should be able to decide if it can build an incremental patch, or full patch is required.
-  //There are 2 possible cases: revision from which we build the patch is found in the local clone
-  //of repository on the server or not. If revision is not found - git-plugin should build a full patch.
-  //2 following tests test this behaviour
-
-  @Test
-  public void build_patch_between_unrelated_revisions_when_from_version_is_fetched() throws Exception {
-    checkPatch("patch6", "rename-test", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9", false);
-  }
-
-
-  @Test
-  public void build_patch_between_unrelated_revisions_when_from_version_is_not_fetched() throws Exception {
-    //fromRevision (592c5bcee6d906482177a62a6a44efa0cff9bbc7) is not found in a repository clone on the server:
-    VcsRoot root = getRoot("rename-test");
-    checkPatch(root, "patch7", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9", new CheckoutRules("+:.=>path"));
-  }
-
-
-  @TestFor(issues = "TW-16530")
-  @Test
-  public void build_patch_should_respect_autocrlf() throws Exception {
-    VcsRoot root = vcsRoot().withAutoCrlf(true).withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
-
-    setExpectedSeparator("\r\n");
-    checkPatch(root, "patch-eol", null, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", new CheckoutRules("-:dir"));
-
-    String content = new String(getSupport().getContentProvider().getContent("readme.txt", root, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"));
-    assertEquals(content, "Test repository for teamcity.change 1\r\nadd feature\r\n");
-  }
-
 
   @Test
   public void default_autocrlf_should_not_be_included_in_checkout_properties() throws VcsException {
@@ -757,55 +675,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     Map<String, String> checkoutProperties = getSupport().getCheckoutProperties(root);
     assertTrue(checkoutProperties.containsKey(Constants.SERVER_SIDE_AUTO_CRLF),
                "Autocrlf is not reported in checkout properties");
-  }
-
-
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void testSubmodulePatches(boolean fetchInSeparateProcess) throws IOException, VcsException {
-    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
-    checkPatch("submodule-added-ignore", BEFORE_SUBMODULE_ADDED_VERSION, SUBMODULE_ADDED_VERSION);
-    checkPatch("submodule-removed-ignore", SUBMODULE_ADDED_VERSION, BEFORE_SUBMODULE_ADDED_VERSION);
-    checkPatch("submodule-modified-ignore", SUBMODULE_ADDED_VERSION, SUBMODULE_MODIFIED_VERSION);
-    checkPatch("submodule-added", "patch-tests", BEFORE_SUBMODULE_ADDED_VERSION, SUBMODULE_ADDED_VERSION, true);
-    checkPatch("submodule-removed", "patch-tests", SUBMODULE_ADDED_VERSION, BEFORE_SUBMODULE_ADDED_VERSION, true);
-    checkPatch("submodule-modified", "patch-tests", SUBMODULE_ADDED_VERSION, SUBMODULE_MODIFIED_VERSION, true);
-  }
-
-
-  private void checkPatch(final String name, @Nullable final String fromVersion, final String toVersion) throws IOException, VcsException {
-    checkPatch(name, "patch-tests", fromVersion, toVersion, false);
-  }
-
-  /**
-   * Check single patch
-   *
-   * @param name             the name of patch
-   * @param branchName       the name of branch to use
-   * @param fromVersion      from version
-   * @param toVersion        to version
-   * @param enableSubmodules if true, submodules are enabled
-   * @throws IOException  in case of test failure
-   * @throws VcsException in case of test failure
-   */
-  private void checkPatch(String name, String branchName, String fromVersion, String toVersion, boolean enableSubmodules) throws IOException, VcsException {
-    setName(name);
-    GitVcsSupport support = getSupport();
-    VcsRoot root = getRoot(branchName, enableSubmodules);
-    final ByteArrayOutputStream output = new ByteArrayOutputStream();
-    final PatchBuilderImpl builder = new PatchBuilderImpl(output);
-    support.buildPatch(root, fromVersion, toVersion, builder, new CheckoutRules(""));
-    builder.close();
-    checkPatchResult(output.toByteArray());
-  }
-
-  private void checkPatch(@NotNull VcsRoot root, String name, @Nullable String fromVersion, String toVersion, CheckoutRules rules) throws IOException, VcsException {
-    setName(name);
-    GitVcsSupport support = getSupport();
-    final ByteArrayOutputStream output = new ByteArrayOutputStream();
-    final PatchBuilderImpl builder = new PatchBuilderImpl(output);
-    support.buildPatch(root, fromVersion, toVersion, builder, rules);
-    builder.close();
-    checkPatchResult(output.toByteArray());
   }
 
 
@@ -1356,12 +1225,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     VcsRoot root = getRoot("master", false);
     List<ModificationData> modifications = getSupport().getCollectChangesPolicy().collectChanges(root, fromState, toState, CheckoutRules.DEFAULT);
     assertEquals(4, modifications.size());
-  }
-
-
-  @Test
-  public void should_build_patch_on_revision_in_branch_when_cache_is_empty() throws Exception {
-    checkPatch("patch.non.default.branch", "master", null, "3df61e6f11a5a9b919cb3f786a83fdd09f058617", false);
   }
 
 

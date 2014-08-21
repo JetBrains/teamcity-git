@@ -22,9 +22,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
-
-import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
 public class FetcherProperties {
 
@@ -39,12 +36,7 @@ public class FetcherProperties {
   public File getPropertiesFile() throws VcsException {
     try {
       File props = FileUtil.createTempFile("git", "props");
-      StringBuilder sb = new StringBuilder();
-      for (Map.Entry<String, String> e : myConfig.getFetcherProperties().entrySet()) {
-        if (!isEmpty(e.getValue()))
-          sb.append(e.getKey()).append("=").append(e.getValue()).append("\n");
-      }
-      FileUtil.writeFileAndReportErrors(props, sb.toString());
+      GitServerUtil.writeAsProperties(props, myConfig.getFetcherProperties());
       return props;
     } catch (IOException e) {
       throw new VcsException("Cannot create properties file for git fetch process", e);

@@ -39,6 +39,7 @@ public class PluginConfigBuilder {
 
   private PluginConfigImpl myDelegate;
   private Boolean mySeparateProcessForFetch;
+  private Boolean mySeparateProcessForPatch;
   private Boolean myRunNativeGC;
   private String  myPathToGit;
   private String  myFetchClassPath;
@@ -94,6 +95,10 @@ public class PluginConfigBuilder {
         return mySeparateProcessForFetch != null ? mySeparateProcessForFetch : myDelegate.isSeparateProcessForFetch();
       }
 
+      public boolean isSeparateProcessForPatch() {
+        return mySeparateProcessForPatch != null ? mySeparateProcessForPatch : myDelegate.isSeparateProcessForPatch();
+      }
+
       public boolean isRunNativeGC() {
         return myRunNativeGC != null ? myRunNativeGC : myDelegate.isRunNativeGC();
       }
@@ -112,6 +117,14 @@ public class PluginConfigBuilder {
 
       public String getFetcherClassName() {
         return myFetcherClassName != null ? myFetcherClassName : myDelegate.getFetcherClassName();
+      }
+
+      public String getPatchClasspath() {
+        return myDelegate.getPatchClasspath();
+      }
+
+      public String getPatchBuilderClassName() {
+        return myDelegate.getPatchBuilderClassName();
       }
 
       public int getFixedSubmoduleCommitSearchDepth() {
@@ -209,6 +222,12 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setSeparateProcessForFetch(boolean separateProcess) {
     mySeparateProcessForFetch = separateProcess;
+    return this;
+  }
+
+
+  PluginConfigBuilder setSeparateProcessForPatch(boolean useSeparateProcessForPatch) {
+    mySeparateProcessForPatch = useSeparateProcessForPatch;
     return this;
   }
 

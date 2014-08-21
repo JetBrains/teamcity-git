@@ -98,7 +98,8 @@ public class GitSupportBuilder {
     }
     myMapFullPath = new GitMapFullPath(myPluginConfig);
     myCommitLoader = new CommitLoaderImpl(myRepositoryManager, myFetchCommand, myMapFullPath);
-    GitVcsSupport git = new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader);
+    GitVcsSupport git = new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
+                                          new EmptyVcsRootSshKeyManager());
     git.addExtensions(myExtensions);
     git.setExtensionHolder(myExtensionHolder);
     return git;

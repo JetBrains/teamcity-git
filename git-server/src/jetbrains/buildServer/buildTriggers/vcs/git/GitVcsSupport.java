@@ -19,8 +19,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.ExtensionHolder;
-import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilder;
+import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
@@ -28,7 +29,6 @@ import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.internal.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.FetchConnection;
 import org.eclipse.jgit.transport.Transport;
@@ -62,6 +62,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private final RepositoryManager myRepositoryManager;
   private final GitMapFullPath myMapFullPath;
   private final CommitLoader myCommitLoader;
+  private final VcsRootSshKeyManager mySshKeyManager;
   private Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
 
   public GitVcsSupport(@NotNull ServerPluginConfig config,
@@ -69,12 +70,14 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull TransportFactory transportFactory,
                        @NotNull RepositoryManager repositoryManager,
                        @NotNull GitMapFullPath mapFullPath,
-                       @NotNull CommitLoader commitLoader) {
+                       @NotNull CommitLoader commitLoader,
+                       @NotNull VcsRootSshKeyManager sshKeyManager) {
     myConfig = config;
     myTransportFactory = transportFactory;
     myRepositoryManager = repositoryManager;
     myMapFullPath = mapFullPath;
     myCommitLoader = commitLoader;
+    mySshKeyManager = sshKeyManager;
     setStreamFileThreshold();
     resetCacheManager.registerHandler(new GitResetCacheHandler(repositoryManager));
   }
@@ -92,9 +95,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   private void setStreamFileThreshold() {
-    WindowCacheConfig cfg = new WindowCacheConfig();
-    cfg.setStreamFileThreshold(myConfig.getStreamFileThreshold() * WindowCacheConfig.MB);
-    WindowCache.reconfigure(cfg);
+    GitServerUtil.configureStreamFileThreshold(myConfig.getStreamFileThreshold() * WindowCacheConfig.MB);
   }
 
   @NotNull
@@ -147,7 +148,8 @@ public class GitVcsSupport extends ServerVcsSupport
     String fromRevision = fromVersion != null ? GitUtils.versionRevision(fromVersion) : null;
     String toRevision = GitUtils.versionRevision(toVersion);
     logBuildPatch(root, fromRevision, toRevision);
-    GitPatchBuilder gitPatchBuilder = new GitPatchBuilder(myConfig, context, builder, fromRevision, toRevision, checkoutRules);
+    GitPatchBuilderDispatcher
+      gitPatchBuilder = new GitPatchBuilderDispatcher(myConfig, mySshKeyManager, context, builder, fromRevision, toRevision, checkoutRules);
     try {
       myCommitLoader.loadCommit(context, context.getGitRoot(), toRevision);
       gitPatchBuilder.buildPatch();

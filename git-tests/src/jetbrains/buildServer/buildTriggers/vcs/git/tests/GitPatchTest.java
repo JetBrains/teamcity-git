@@ -1,0 +1,243 @@
+/*
+ * Copyright 2000-2014 JetBrains s.r.o.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package jetbrains.buildServer.buildTriggers.vcs.git.tests;
+
+import jetbrains.buildServer.ExtensionHolder;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
+import jetbrains.buildServer.serverSide.BasePropertiesModel;
+import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.util.TestFor;
+import jetbrains.buildServer.util.cache.ResetCacheHandler;
+import jetbrains.buildServer.util.cache.ResetCacheRegister;
+import jetbrains.buildServer.vcs.CheckoutRules;
+import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
+import jetbrains.buildServer.vcs.patches.PatchTestCase;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jmock.Expectations;
+import org.jmock.Mockery;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
+
+@Test
+public class GitPatchTest extends PatchTestCase {
+
+  private File myMainRepositoryDir;
+  private PluginConfigBuilder myConfigBuilder;
+  private ResetCacheRegister myResetCacheManager;
+
+  @BeforeMethod
+  public void setUp() throws Exception {
+    super.setUp();
+
+    new TeamCityProperties() {{
+      setModel(new BasePropertiesModel() {});
+    }};
+    Mockery context = new Mockery();
+    ServerPaths serverPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
+    myConfigBuilder = new PluginConfigBuilder(serverPaths);
+    File repoGitDir = dataFile("repo.git");
+    File tmpDir = myTempFiles.createTempDir();
+    myMainRepositoryDir = new File(tmpDir, "repo.git");
+    copyRepository(repoGitDir, myMainRepositoryDir);
+    copyRepository(dataFile("submodule.git"), new File(tmpDir, "submodule"));
+    copyRepository(dataFile("submodule.git"), new File(tmpDir, "submodule.git"));
+    copyRepository(dataFile("sub-submodule.git"), new File(tmpDir, "sub-submodule.git"));
+    myResetCacheManager = context.mock(ResetCacheRegister.class);
+    context.checking(new Expectations() {{
+      allowing(myResetCacheManager).registerHandler(with(any(ResetCacheHandler.class)));
+    }});
+  }
+
+
+  @Override
+  protected String getTestDataPath() {
+    return dataFile().getPath();
+  }
+
+
+  @DataProvider(name = "patchInSeparateProcess")
+  public static Object[][] createData() {
+    return new Object[][] {
+      new Object[] { Boolean.TRUE },
+      new Object[] { Boolean.FALSE }
+    };
+  }
+
+
+  @Test(dataProvider = "patchInSeparateProcess")
+  public void check_buildPatch_understands_revisions_with_timestamps(boolean patchInSeparateProcess) throws Exception {
+    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
+    checkPatch("cleanPatch1", null, GitUtils.makeVersion("a894d7d58ffde625019a9ecf8267f5f1d1e5c341", 1237391915000L));
+    checkPatch("patch1",
+               GitUtils.makeVersion("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", 1238420977000L),
+               GitUtils.makeVersion("0dd03338d20d2e8068fbac9f24899d45d443df38", 1238421020000L));
+  }
+
+
+  @Test(dataProvider = "patchInSeparateProcess")
+  public void testPatches(boolean patchInSeparateProcess) throws IOException, VcsException {
+    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
+    checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
+    checkPatch("patch1", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", "0dd03338d20d2e8068fbac9f24899d45d443df38");
+    checkPatch("patch2", "7e916b0edd394d0fca76456af89f4ff7f7f65049", "049a98762a29677da352405b27b3d910cb94eb3b");
+    checkPatch("patch3", null, "1837cf38309496165054af8bf7d62a9fe8997202");
+    checkPatch("patch4", "1837cf38309496165054af8bf7d62a9fe8997202", "592c5bcee6d906482177a62a6a44efa0cff9bbc7");
+    checkPatch("patch-case", "rename-test", "cbf1073bd3f938e7d7d85718dbc6c3bee10360d9", "2eed4ae6732536f76a65136a606f635e8ada63b9", true);
+  }
+
+
+  @Test(dataProvider = "patchInSeparateProcess")
+  public void build_patch_from_later_revision_to_earlier(boolean patchInSeparateProcess) throws Exception {
+    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
+    checkPatch("patch5", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46");
+  }
+
+
+  //Due to changes in the logic of choosing checkout directory on the agent (builds
+  //from the same repository go to the same dir even if the branches are different), git-plugin
+  //should be able to decide if it can build an incremental patch, or full patch is required.
+  //There are 2 possible cases: revision from which we build the patch is found in the local clone
+  //of repository on the server or not. If revision is not found - git-plugin should build a full patch.
+  //2 following tests test this behaviour
+  @Test(dataProvider = "patchInSeparateProcess")
+  public void build_patch_between_unrelated_revisions_when_from_version_is_fetched(boolean patchInSeparateProcess) throws Exception {
+    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
+    checkPatch("patch6", "rename-test", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9", false);
+  }
+
+
+  @Test(dataProvider = "patchInSeparateProcess")
+  public void build_patch_between_unrelated_revisions_when_from_version_is_not_fetched(boolean patchInSeparateProcess) throws Exception {
+    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
+    VcsRoot root = getRoot("rename-test");
+    checkPatch(root, "patch7", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9",
+               new CheckoutRules("+:.=>path"));//592c5bcee6d906482177a62a6a44efa0cff9bbc7 is not found in a repository clone on the server
+  }
+
+
+  @TestFor(issues = "TW-16530")
+  @Test(dataProvider = "patchInSeparateProcess")
+  public void build_patch_should_respect_autocrlf(boolean patchInSeparateProcess) throws Exception {
+    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
+    VcsRoot root = vcsRoot().withAutoCrlf(true).withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
+
+    setExpectedSeparator("\r\n");
+    checkPatch(root, "patch-eol", null, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", new CheckoutRules("-:dir"));
+
+    String content = new String(getSupport().getContentProvider().getContent("readme.txt", root, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"));
+    assertEquals(content, "Test repository for teamcity.change 1\r\nadd feature\r\n");
+  }
+
+
+  @Test(dataProvider = "patchInSeparateProcess")
+  public void testSubmodulePatches(boolean patchInSeparateProcess) throws IOException, VcsException {
+    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
+    checkPatch("submodule-added-ignore", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5");
+    checkPatch("submodule-removed-ignore", "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", "592c5bcee6d906482177a62a6a44efa0cff9bbc7");
+    checkPatch("submodule-modified-ignore", "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", "37c371a6db0acefc77e3be99d16a44413e746591");
+    checkPatch("submodule-added", "patch-tests", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", true);
+    checkPatch("submodule-removed", "patch-tests", "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", true);
+    checkPatch("submodule-modified", "patch-tests", "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", "37c371a6db0acefc77e3be99d16a44413e746591", true);
+  }
+
+
+  @Test(dataProvider = "patchInSeparateProcess")
+  public void should_build_patch_on_revision_in_branch_when_cache_is_empty(boolean patchInSeparateProcess) throws Exception {
+    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
+    checkPatch("patch.non.default.branch", "master", null, "3df61e6f11a5a9b919cb3f786a83fdd09f058617", false);
+  }
+
+
+
+  private void checkPatch(String name, @Nullable String fromVersion, @NotNull String toVersion) throws IOException, VcsException {
+    checkPatch(name, "patch-tests", fromVersion, toVersion, false);
+  }
+
+  private void checkPatch(String name, @NotNull String branchName, @Nullable String fromVersion, @NotNull String toVersion, boolean enableSubmodules) throws IOException, VcsException {
+    setName(name);
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot(branchName, enableSubmodules);
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    PatchBuilderImpl builder = new PatchBuilderImpl(output);
+    support.buildPatch(root, fromVersion, toVersion, builder, CheckoutRules.DEFAULT);
+    builder.close();
+    checkPatchResult(output.toByteArray());
+  }
+
+  private void checkPatch(@NotNull VcsRoot root, String name, @Nullable String fromVersion, @NotNull String toVersion, @NotNull CheckoutRules rules) throws IOException, VcsException {
+    setName(name);
+    GitVcsSupport support = getSupport();
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    PatchBuilderImpl builder = new PatchBuilderImpl(output);
+    support.buildPatch(root, fromVersion, toVersion, builder, rules);
+    builder.close();
+    checkPatchResult(output.toByteArray());
+  }
+
+
+  private GitVcsSupport getSupport() {
+    return getSupport(null);
+  }
+
+  private GitVcsSupport getSupport(@Nullable ExtensionHolder holder) {
+    return gitSupport().withPluginConfig(myConfigBuilder)
+      .withResetCacheManager(myResetCacheManager)
+      .withExtensionHolder(holder)
+      .build();
+  }
+
+  protected VcsRoot getRoot(@NotNull String branchName) throws IOException {
+    return getRoot(branchName, false);
+  }
+
+  /**
+   * Create a VCS root for the current parameters and specified branch
+   *
+   * @param branchName       the branch name
+   * @param enableSubmodules if true, submodules are enabled
+   * @return a created vcs root object
+   * @throws IOException if the root could not be created
+   */
+  protected VcsRoot getRoot(@NotNull String branchName, boolean enableSubmodules) throws IOException {
+    return getRoot(branchName, enableSubmodules, myMainRepositoryDir);
+  }
+
+  private VcsRootImpl getRoot(@NotNull String branchName, boolean enableSubmodules, File repositoryDir) {
+    return vcsRoot().withId(1)
+      .withFetchUrl(GitUtils.toURL(repositoryDir))
+      .withBranch(branchName)
+      .withSubmodulePolicy(enableSubmodules ? SubmodulesCheckoutPolicy.CHECKOUT : SubmodulesCheckoutPolicy.IGNORE)
+      .build();
+  }
+}

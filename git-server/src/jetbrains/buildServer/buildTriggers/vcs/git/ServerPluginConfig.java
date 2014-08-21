@@ -43,6 +43,7 @@ public interface ServerPluginConfig extends PluginConfig {
 
   boolean isSeparateProcessForFetch();
 
+  boolean isSeparateProcessForPatch();
 
   boolean isRunNativeGC();
 
@@ -55,6 +56,9 @@ public interface ServerPluginConfig extends PluginConfig {
 
   String getFetcherClassName();
 
+  String getPatchClasspath();
+
+  String getPatchBuilderClassName();
 
   int getFixedSubmoduleCommitSearchDepth();
 
