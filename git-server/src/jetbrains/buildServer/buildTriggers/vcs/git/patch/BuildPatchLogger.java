@@ -48,7 +48,7 @@ public final class BuildPatchLogger {
   }
 
   public void logFromRevisionNotFound(@NotNull String fromRevision) {
-    myDelegate.info("The commit " + fromRevision + " is not available in the repository, build a clean patch");
+    myDelegate.info("The commit " + fromRevision + " is not available in the repository, build a full patch");
   }
 
   public void logFileExcludedByCheckoutRules(@NotNull String path, @NotNull CheckoutRules rules) {

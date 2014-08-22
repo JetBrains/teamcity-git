@@ -106,6 +106,34 @@ public class GitPatchTest extends PatchTestCase {
 
 
   @Test(dataProvider = "patchInSeparateProcess")
+  public void build_patch_several_roots(boolean patchInSeparateProcess) throws Exception {
+    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
+
+    //A build configuration can have several VCS roots, TeamCity builds patches in them one by one
+    //in unspecified order and then combines them into a single patch. That means a patch for
+    //individual VCS root should never delete the root directory, because this action could delete
+    //sources of another VCS root. Also patches should not contain an 'EXIT' command, otherwise
+    //when agent applies a combined patch it will stop after first 'EXIT'.
+
+    //patch8 is combination of patch1 and patch6
+    setName("patch8");
+    //patch1
+    GitVcsSupport support = getSupport();
+    VcsRoot root1 = getRoot("patch-tests", false);
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    PatchBuilderImpl builder = new PatchBuilderImpl(output);
+    support.buildPatch(root1, null, "0dd03338d20d2e8068fbac9f24899d45d443df38", builder, CheckoutRules.DEFAULT);
+
+    //patch6
+    VcsRoot root2 = getRoot("rename-test", false);
+    //pass an unknown fromRevision 'a...a' to ensure we don't remove the root dir if the fromRevision is not found
+    support.buildPatch(root2, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "2eed4ae6732536f76a65136a606f635e8ada63b9", builder, CheckoutRules.DEFAULT);
+    builder.close();
+    checkPatchResult(output.toByteArray());
+  }
+
+
+  @Test(dataProvider = "patchInSeparateProcess")
   public void testPatches(boolean patchInSeparateProcess) throws IOException, VcsException {
     myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
     checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
@@ -121,28 +149,6 @@ public class GitPatchTest extends PatchTestCase {
   public void build_patch_from_later_revision_to_earlier(boolean patchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
     checkPatch("patch5", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46");
-  }
-
-
-  //Due to changes in the logic of choosing checkout directory on the agent (builds
-  //from the same repository go to the same dir even if the branches are different), git-plugin
-  //should be able to decide if it can build an incremental patch, or full patch is required.
-  //There are 2 possible cases: revision from which we build the patch is found in the local clone
-  //of repository on the server or not. If revision is not found - git-plugin should build a full patch.
-  //2 following tests test this behaviour
-  @Test(dataProvider = "patchInSeparateProcess")
-  public void build_patch_between_unrelated_revisions_when_from_version_is_fetched(boolean patchInSeparateProcess) throws Exception {
-    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
-    checkPatch("patch6", "rename-test", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9", false);
-  }
-
-
-  @Test(dataProvider = "patchInSeparateProcess")
-  public void build_patch_between_unrelated_revisions_when_from_version_is_not_fetched(boolean patchInSeparateProcess) throws Exception {
-    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
-    VcsRoot root = getRoot("rename-test");
-    checkPatch(root, "patch7", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9",
-               new CheckoutRules("+:.=>path"));//592c5bcee6d906482177a62a6a44efa0cff9bbc7 is not found in a repository clone on the server
   }
 
 

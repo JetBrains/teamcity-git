@@ -32,7 +32,6 @@ import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +49,7 @@ public class GitPatchBuilder {
   private final String myToRevision;
   private final CheckoutRules myRules;
   private final PatchFileAction myFileAction;
-  private boolean myCleanCheckout;
+  private boolean myFullCheckout;
   private BuildPatchLogger myLogger;
   private Repository myRepository;
   private VcsChangeTreeWalk myTreeWalk;
@@ -78,7 +77,7 @@ public class GitPatchBuilder {
     myFromRevision = fromRevision;
     myToRevision = toRevision;
     myRules = rules;
-    myCleanCheckout = fromRevision == null;
+    myFullCheckout = fromRevision == null;
     myTreeWalk = null;
     myVerboseTreeWalkLog = verboseTreeWalkLog;
     myFileAction = patchFileAction;
@@ -109,7 +108,7 @@ public class GitPatchBuilder {
   }
 
   private void addFromCommitTree() throws IOException, VcsException {
-    if (myCleanCheckout) {
+    if (myFullCheckout) {
       myLogger.logBuildCleanPatch(myToRevision);
       myTreeWalk.addTree(new EmptyTreeIterator());
     } else {
@@ -119,8 +118,7 @@ public class GitPatchBuilder {
       if (fromCommit == null) {
         myLogger.logFromRevisionNotFound(myFromRevision);
         myTreeWalk.addTree(new EmptyTreeIterator());
-        cleanCheckoutDir();
-        myCleanCheckout = true;
+        myFullCheckout = true;
       } else {
         myContext.addTree(myGitRoot, myTreeWalk, myRepository, fromCommit, true);
       }
@@ -157,10 +155,6 @@ public class GitPatchBuilder {
     }
   }
 
-  private void cleanCheckoutDir() throws IOException {
-    myBuilder.deleteDirectory(new File(myRules.map("")), true);
-  }
-
   private void changeOrCreateFile(@NotNull String path, @NotNull String mappedPath) throws Exception {
     String mode = myTreeWalk.getModeDiff();
     if (mode != null)
@@ -172,8 +166,8 @@ public class GitPatchBuilder {
       .withMode(mode)
       .withPath(path)
       .withMappedPath(mappedPath);
-    if (myCleanCheckout) {
-      loadContent.call();// clean patch, we aren't going to see any deletes
+    if (myFullCheckout) {
+      loadContent.call();// full checkout, we aren't going to see any deletes
     } else {
       myFileAction.call("-", mappedPath);
       myActions.add(loadContent);

@@ -28,10 +28,7 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsUtil;
-import jetbrains.buildServer.vcs.patches.LowLevelPatchTranslator;
-import jetbrains.buildServer.vcs.patches.LowLevelPatcher;
-import jetbrains.buildServer.vcs.patches.PatchBuilder;
-import jetbrains.buildServer.vcs.patches.PatchBuilderEx;
+import jetbrains.buildServer.vcs.patches.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -97,7 +94,7 @@ public final class GitPatchBuilderDispatcher {
       VcsException patchError = CommandLineUtil.getCommandLineError("build patch", result);
       if (patchError != null)
         throw patchError;
-      new LowLevelPatcher(new FileInputStream(patchFile)).applyPatch(new LowLevelPatchTranslator(((PatchBuilderEx)myBuilder).getLowLevelBuilder()));
+      new LowLevelPatcher(new FileInputStream(patchFile)).applyPatch(new NoExitLowLevelPatchTranslator(((PatchBuilderEx)myBuilder).getLowLevelBuilder()));
     } finally {
       FileUtil.delete(patchFile);
       if (internalProperties != null)
@@ -108,7 +105,8 @@ public final class GitPatchBuilderDispatcher {
   private byte[] getInput(@NotNull File patchFile, @NotNull File internalProperties) throws IOException {
     Map<String, String> props = new HashMap<String, String>();
     props.put(Constants.FETCHER_INTERNAL_PROPERTIES_FILE, internalProperties.getCanonicalPath());
-    props.put(Constants.PATCHER_FROM_REVISION, myFromRevision);
+    if (myFromRevision != null)
+      props.put(Constants.PATCHER_FROM_REVISION, myFromRevision);
     props.put(Constants.PATCHER_TO_REVISION, myToRevision);
     props.put(Constants.PATCHER_CHECKOUT_RULES, myRules.getAsString());
     props.put(Constants.PATCHER_CACHES_DIR, myConfig.getCachesDir().getCanonicalPath());
@@ -165,6 +163,16 @@ public final class GitPatchBuilderDispatcher {
 
   private final class NoOpLineListener implements LineAwareByteArrayOutputStream.LineListener {
     public void newLineDetected(@NotNull final String line) {
+    }
+  }
+
+
+  private final class NoExitLowLevelPatchTranslator extends LowLevelPatchTranslator {
+    public NoExitLowLevelPatchTranslator(@NotNull final LowLevelPatchBuilder builder) {
+      super(builder);
+    }
+    @Override
+    public void exit(@NotNull final String message) throws IOException {
     }
   }
 }
