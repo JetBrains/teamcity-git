@@ -34,6 +34,7 @@ public interface ServerPluginConfig extends PluginConfig {
 
   int getFetchTimeout();
 
+  int getPatchProcessIdleTimeoutSeconds();
 
   String getFetchProcessJavaPath();
 

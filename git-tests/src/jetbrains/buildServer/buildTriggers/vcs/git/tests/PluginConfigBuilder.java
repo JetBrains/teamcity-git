@@ -83,6 +83,10 @@ public class PluginConfigBuilder {
         return myDelegate.getFetchTimeout();
       }
 
+      public int getPatchProcessIdleTimeoutSeconds() {
+        return myDelegate.getPatchProcessIdleTimeoutSeconds();
+      }
+
       public String getFetchProcessJavaPath() {
         return myDelegate.getFetchProcessJavaPath();
       }

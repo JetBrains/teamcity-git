@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
@@ -34,9 +35,11 @@ import jetbrains.buildServer.vcs.patches.PatchBuilderEx;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -86,8 +89,11 @@ public final class GitPatchBuilderDispatcher {
     try {
       GitServerUtil.writeAsProperties(internalProperties, getPatchProcessProperties());
       byte[] patchProcessInput = getInput(patchFile, internalProperties);
+      LineAwareByteArrayOutputStream.LineListener listener = new NoOpLineListener();
+      ByteArrayOutputStream stdout = new LineAwareByteArrayOutputStream(Charset.forName("UTF-8"), listener, false);
+      ByteArrayOutputStream stderr = new ByteArrayOutputStream();
       ExecResult result = SimpleCommandLineProcessRunner.runCommandSecure(patchCmd, patchCmd.getCommandLineString(), patchProcessInput,
-                                                                          new SimpleCommandLineProcessRunner.RunCommandEventsAdapter());
+                                                                          new PatchProcessEventsHandler(), stdout, stderr);
       VcsException patchError = CommandLineUtil.getCommandLineError("build patch", result);
       if (patchError != null)
         throw patchError;
@@ -145,5 +151,20 @@ public final class GitPatchBuilderDispatcher {
                      myConfig.getPatchBuilderClassName(),
                      myGitRoot.getRepositoryFetchURL().toString());
     return cmd;
+  }
+
+
+  private final class PatchProcessEventsHandler extends SimpleCommandLineProcessRunner.RunCommandEventsAdapter {
+    @Nullable
+    @Override
+    public Integer getOutputIdleSecondsTimeout() {
+      return myConfig.getPatchProcessIdleTimeoutSeconds();
+    }
+  }
+
+
+  private final class NoOpLineListener implements LineAwareByteArrayOutputStream.LineListener {
+    public void newLineDetected(@NotNull final String line) {
+    }
   }
 }

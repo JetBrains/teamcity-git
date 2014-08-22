@@ -212,6 +212,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return idleTimeout;
   }
 
+  public int getPatchProcessIdleTimeoutSeconds() {
+    return TeamCityProperties.getInteger("teamcity.git.patchProcessIdleTimeoutSeconds", 1800);
+  }
+
   public long getMirrorExpirationTimeoutMillis() {
     int days = TeamCityProperties.getInteger("teamcity.git.mirror.expiration.timeout.days", 7);
     return days * Dates.ONE_DAY;

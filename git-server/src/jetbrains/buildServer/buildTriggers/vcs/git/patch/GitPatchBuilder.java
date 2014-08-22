@@ -49,6 +49,7 @@ public class GitPatchBuilder {
   private final String myFromRevision;
   private final String myToRevision;
   private final CheckoutRules myRules;
+  private final PatchFileAction myFileAction;
   private boolean myCleanCheckout;
   private BuildPatchLogger myLogger;
   private Repository myRepository;
@@ -61,6 +62,16 @@ public class GitPatchBuilder {
                          @NotNull String toRevision,
                          @NotNull CheckoutRules rules,
                          boolean verboseTreeWalkLog) throws VcsException {
+    this(context, builder, fromRevision, toRevision, rules, verboseTreeWalkLog, new PatchFileAction());
+  }
+
+  public GitPatchBuilder(@NotNull OperationContext context,
+                         @NotNull PatchBuilder builder,
+                         @Nullable String fromRevision,
+                         @NotNull String toRevision,
+                         @NotNull CheckoutRules rules,
+                         boolean verboseTreeWalkLog,
+                         @NotNull PatchFileAction patchFileAction) throws VcsException {
     myContext = context;
     myGitRoot = context.getGitRoot();
     myBuilder = builder;
@@ -70,6 +81,7 @@ public class GitPatchBuilder {
     myCleanCheckout = fromRevision == null;
     myTreeWalk = null;
     myVerboseTreeWalkLog = verboseTreeWalkLog;
+    myFileAction = patchFileAction;
   }
 
   public void buildPatch() throws Exception {
@@ -163,11 +175,13 @@ public class GitPatchBuilder {
     if (myCleanCheckout) {
       loadContent.call();// clean patch, we aren't going to see any deletes
     } else {
+      myFileAction.call("-", mappedPath);
       myActions.add(loadContent);
     }
   }
 
   private void deleteFile(@NotNull String mappedFile) throws IOException {
+    myFileAction.call("DELETE", mappedFile);
     myBuilder.deleteFile(GitUtils.toFile(mappedFile), true);
   }
 
@@ -188,6 +202,6 @@ public class GitPatchBuilder {
   }
 
   private LoadContentAction loadContent() {
-    return new LoadContentAction(myGitRoot, myBuilder, myLogger);
+    return new LoadContentAction(myGitRoot, myBuilder, myLogger, myFileAction);
   }
 }

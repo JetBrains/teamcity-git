@@ -23,11 +23,12 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.util.io.AutoCRLFInputStream;
-import org.eclipse.jgit.util.io.AutoCRLFOutputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.concurrent.Callable;
 
 /**
@@ -37,6 +38,7 @@ class LoadContentAction implements Callable<Void> {
   private final GitVcsRoot myRoot;
   private final PatchBuilder myBuilder;
   private final BuildPatchLogger myLogger;
+  private final PatchFileAction myFileAction;
   private Repository myRepository;
   private ObjectId myObjectId;
   private String myPath;
@@ -45,10 +47,12 @@ class LoadContentAction implements Callable<Void> {
 
   LoadContentAction(@NotNull GitVcsRoot root,
                     @NotNull PatchBuilder builder,
-                    @NotNull BuildPatchLogger logger) {
+                    @NotNull BuildPatchLogger logger,
+                    @NotNull PatchFileAction fileAction) {
     myRoot = root;
     myBuilder = builder;
     myLogger = logger;
+    myFileAction = fileAction;
   }
 
   LoadContentAction fromRepository(@NotNull Repository repository) {
@@ -77,6 +81,7 @@ class LoadContentAction implements Callable<Void> {
   }
 
   public Void call() throws Exception {
+    myFileAction.call("CREATE", myMappedPath);
     InputStream objectStream = null;
     try {
       ObjectLoader loader = getObjectLoader();

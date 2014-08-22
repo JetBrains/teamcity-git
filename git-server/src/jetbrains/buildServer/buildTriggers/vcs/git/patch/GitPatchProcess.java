@@ -54,11 +54,12 @@ public class GitPatchProcess {
     try {
       PatchBuilderImpl patchBuilder = new PatchBuilderImpl(fos);
       new GitPatchBuilder(context,
-                                  patchBuilder,
-                                  settings.getFromRevision(),
-                                  settings.getToRevision(),
-                                  settings.getCheckoutRules(),
-                                  settings.isVerboseTreeWalkLog()).buildPatch();
+                          patchBuilder,
+                          settings.getFromRevision(),
+                          settings.getToRevision(),
+                          settings.getCheckoutRules(),
+                          settings.isVerboseTreeWalkLog(),
+                          new PrintFile()).buildPatch();
       patchBuilder.close();
     } catch (Throwable t) {
       if (settings.isDebugEnabled() || isImportant(t)) {
@@ -248,5 +249,13 @@ public class GitPatchProcess {
            t instanceof Error ||
            t instanceof InterruptedException ||
            t instanceof InterruptedIOException;
+  }
+
+
+  private final static class PrintFile extends PatchFileAction {
+    @Override
+    void call(@NotNull final String action, @NotNull final String file) {
+      System.out.println(action + " " + file);
+    }
   }
 }
