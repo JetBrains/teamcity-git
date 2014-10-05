@@ -39,11 +39,10 @@ public class GitFetchService implements FetchService, GitServerExtension {
   public void fetchRepository(@NotNull final VcsRoot root,
                               @NotNull final CheckoutRules rules,
                               @NotNull final FetchRepositoryCallback callback) throws VcsException {
-
-    OperationContext ctx = myVcs.createContext(root, "Fetch");
+    OperationContext ctx = myVcs.createContext(root, "Fetch", new FetchCallbackProgress(callback));
     try {
       Repository db = ctx.getRepository();
-      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, callback, myVcs.getCurrentState(ctx.makeRootWithTags()));
+      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, myVcs.getCurrentState(ctx.makeRootWithTags()));
     } catch (Exception e) {
       throw ctx.wrapException(e);
     } finally {

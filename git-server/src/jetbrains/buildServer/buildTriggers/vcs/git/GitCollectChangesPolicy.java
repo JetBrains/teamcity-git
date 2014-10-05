@@ -47,13 +47,16 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
 
   private final GitVcsSupport myVcs;
+  private final VcsOperationProgressProvider myProgressProvider;
   private final CommitLoader myCommitLoader;
   private final ServerPluginConfig myConfig;
 
   public GitCollectChangesPolicy(@NotNull GitVcsSupport vcs,
+                                 @NotNull VcsOperationProgressProvider progressProvider,
                                  @NotNull CommitLoader commitLoader,
                                  @NotNull ServerPluginConfig config) {
     myVcs = vcs;
+    myProgressProvider = progressProvider;
     myCommitLoader = commitLoader;
     myConfig = config;
   }
@@ -74,12 +77,12 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
                                                @NotNull RepositoryStateData toState,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     List<ModificationData> changes = new ArrayList<ModificationData>();
-    OperationContext context = myVcs.createContext(root, "collecting changes");
+    OperationContext context = myVcs.createContext(root, "collecting changes", createProgress());
     try {
       Repository r = context.getRepository();
       ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
       revWalk.sort(RevSort.TOPO);
-      ensureRepositoryStateLoadedFor(context, r, true, null, toState, fromState);
+      ensureRepositoryStateLoadedFor(context, r, true, toState, fromState);
       markStart(r, revWalk, toState);
       markUninteresting(r, revWalk, fromState, toState);
       while (revWalk.next() != null) {
@@ -119,7 +122,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
                                                @Nullable String currentVersion,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     List<ModificationData> result = new ArrayList<ModificationData>();
-    OperationContext context = myVcs.createContext(root, "collecting changes");
+    OperationContext context = myVcs.createContext(root, "collecting changes", createProgress());
     try {
       logCollectChanges(fromVersion, currentVersion, context);
       if (currentVersion == null) {
@@ -142,7 +145,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
   public void ensureRepositoryStateLoadedFor(@NotNull final OperationContext context,
                                              @NotNull final Repository repo,
                                              final boolean failOnFirstError,
-                                             @Nullable FetchService.FetchRepositoryCallback progressCallback,
                                              @NotNull final RepositoryStateData... states) throws Exception {
     boolean isFirst = failOnFirstError;
     if (myConfig.usePerBranchFetch()) {
@@ -151,8 +153,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
         isFirst = false;
       }
     } else {
-      FetchAllRefs fetch = new FetchAllRefs(repo, context.getGitRoot(), states);
-      fetch.setProgressCallback(progressCallback);
+      FetchAllRefs fetch = new FetchAllRefs(context.getProgress(), repo, context.getGitRoot(), states);
       for (RepositoryStateData state : states) {
         ensureRepositoryStateLoaded(context, repo, state, fetch, isFirst);
         isFirst = false;
@@ -163,7 +164,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
   public void fetchAllRefs(@NotNull VcsRoot root) throws VcsException {
     final OperationContext context = myVcs.createContext(root, "fetch all");
     try {
-      new FetchAllRefs(context.getRepository(), context.getGitRoot(), myVcs.getCurrentState(root)).run();
+      new FetchAllRefs(context.getProgress(), context.getRepository(), context.getGitRoot(), myVcs.getCurrentState(root)).run();
     } catch (TransportException e) {
       throw new VcsException(e.getMessage(), e);
     } catch (NotSupportedException e) {
@@ -384,30 +385,35 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
              myConfig.getNumberOfCommitsWhenFromVersionNotFound() + " commits");
   }
 
-  private class FetchAllRefs {
+  @NotNull
+  private GitProgress createProgress() {
+    try {
+      return new GitVcsOperationProgress(myProgressProvider.getProgress());
+    } catch (IllegalStateException e) {
+      return GitProgress.NO_OP;
+    }
+  }
 
+  private class FetchAllRefs {
+    private final GitProgress myProgress;
     private final Repository myDb;
     private final GitVcsRoot myRoot;
     private final Set<String> myAllRefNames;
     private boolean myInvoked = false;
-    private FetchService.FetchRepositoryCallback myProgressCallback;
 
-    private FetchAllRefs(@NotNull Repository db,
+    private FetchAllRefs(@NotNull GitProgress progress,
+                         @NotNull Repository db,
                          @NotNull GitVcsRoot root,
                          @NotNull RepositoryStateData... states) {
+      myProgress = progress;
       myDb = db;
       myRoot = root;
       myAllRefNames = getAllRefNames(states);
     }
 
-    public void setProgressCallback(FetchService.FetchRepositoryCallback callback) {
-      myProgressCallback = callback;
-    }
-
     void run() throws NotSupportedException, VcsException, TransportException {
       myInvoked = true;
-      FetchSettings settings = new FetchSettings(myRoot.getAuthSettings());
-      settings.setProgressCallback(myProgressCallback);
+      FetchSettings settings = new FetchSettings(myRoot.getAuthSettings(), myProgress);
       myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL(), calculateRefSpecsForFetch(), settings);
     }
 

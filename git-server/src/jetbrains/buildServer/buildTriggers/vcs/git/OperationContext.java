@@ -53,15 +53,18 @@ public class OperationContext {
   private final String myOperation;
   private final Map<String, Repository> myRepositories = new HashMap<String, Repository>(); //repository path -> repository
   private final Set<String> myAlreadyFetched = new HashSet<String>();
+  private final GitProgress myProgress;
 
   public OperationContext(@NotNull final CommitLoader commitLoader,
                           @NotNull final RepositoryManager repositoryManager,
                           @NotNull final VcsRoot root,
-                          @NotNull final String operation) {
+                          @NotNull final String operation,
+                          @NotNull final GitProgress progress) {
     myCommitLoader = commitLoader;
     myRepositoryManager = repositoryManager;
     myRoot = root;
     myOperation = operation;
+    myProgress = progress;
   }
 
 
@@ -215,4 +218,8 @@ public class OperationContext {
     return gitRoot;
   }
 
+  @NotNull
+  public GitProgress getProgress() {
+    return myProgress;
+  }
 }

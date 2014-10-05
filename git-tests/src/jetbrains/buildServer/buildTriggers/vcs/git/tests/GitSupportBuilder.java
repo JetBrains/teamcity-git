@@ -21,6 +21,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
+import jetbrains.buildServer.vcs.MockVcsOperationProgressProvider;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
@@ -99,7 +100,7 @@ public class GitSupportBuilder {
     myMapFullPath = new GitMapFullPath(myPluginConfig);
     myCommitLoader = new CommitLoaderImpl(myRepositoryManager, myFetchCommand, myMapFullPath);
     GitVcsSupport git = new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
-                                          new EmptyVcsRootSshKeyManager());
+                                          new EmptyVcsRootSshKeyManager(), new MockVcsOperationProgressProvider());
     git.addExtensions(myExtensions);
     git.setExtensionHolder(myExtensionHolder);
     return git;

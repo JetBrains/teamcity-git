@@ -63,6 +63,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private final GitMapFullPath myMapFullPath;
   private final CommitLoader myCommitLoader;
   private final VcsRootSshKeyManager mySshKeyManager;
+  private final VcsOperationProgressProvider myProgressProvider;
   private Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
 
   public GitVcsSupport(@NotNull ServerPluginConfig config,
@@ -71,13 +72,15 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull RepositoryManager repositoryManager,
                        @NotNull GitMapFullPath mapFullPath,
                        @NotNull CommitLoader commitLoader,
-                       @NotNull VcsRootSshKeyManager sshKeyManager) {
+                       @NotNull VcsRootSshKeyManager sshKeyManager,
+                       @NotNull VcsOperationProgressProvider progressProvider) {
     myConfig = config;
     myTransportFactory = transportFactory;
     myRepositoryManager = repositoryManager;
     myMapFullPath = mapFullPath;
     myCommitLoader = commitLoader;
     mySshKeyManager = sshKeyManager;
+    myProgressProvider = progressProvider;
     setStreamFileThreshold();
     resetCacheManager.registerHandler(new GitResetCacheHandler(repositoryManager));
   }
@@ -266,7 +269,11 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   public OperationContext createContext(VcsRoot root, String operation) {
-    return new OperationContext(myCommitLoader, myRepositoryManager, root, operation);
+    return createContext(root, operation, GitProgress.NO_OP);
+  }
+
+  public OperationContext createContext(@NotNull VcsRoot root, @NotNull String operation, @NotNull GitProgress progress) {
+    return new OperationContext(myCommitLoader, myRepositoryManager, root, operation, progress);
   }
 
   @NotNull
@@ -281,7 +288,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public GitCollectChangesPolicy getCollectChangesPolicy() {
-    return new GitCollectChangesPolicy(this, myCommitLoader, myConfig);
+    return new GitCollectChangesPolicy(this, myProgressProvider, myCommitLoader, myConfig);
   }
 
   @NotNull

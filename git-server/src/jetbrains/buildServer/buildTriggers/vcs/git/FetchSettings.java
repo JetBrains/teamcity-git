@@ -17,19 +17,22 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
-import jetbrains.buildServer.vcs.FetchService;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.Charset;
 
 public class FetchSettings {
   private final AuthSettings myAuthSettings;
-  private FetchService.FetchRepositoryCallback myProgressCallback;
+  private final GitProgress myProgress;
 
   public FetchSettings(@NotNull AuthSettings authSettings) {
+    this(authSettings, GitProgress.NO_OP);
+  }
+
+  public FetchSettings(@NotNull AuthSettings authSettings, @NotNull GitProgress progress) {
     myAuthSettings = authSettings;
+    myProgress = progress;
   }
 
   @NotNull
@@ -37,18 +40,19 @@ public class FetchSettings {
     return myAuthSettings;
   }
 
-  public void setProgressCallback(@Nullable FetchService.FetchRepositoryCallback progressCallback) {
-    myProgressCallback = progressCallback;
-  }
-
   @NotNull
   public ByteArrayOutputStream createStdoutBuffer() {
     ByteArrayOutputStream stdoutBuffer;
-    if (myProgressCallback != null) {
-      stdoutBuffer = new LineAwareByteArrayOutputStream(Charset.forName("UTF-8"), new JGitProgressParser(myProgressCallback));
+    if (myProgress != GitProgress.NO_OP) {
+      stdoutBuffer = new LineAwareByteArrayOutputStream(Charset.forName("UTF-8"), new JGitProgressParser(myProgress));
     } else {
       stdoutBuffer = new ByteArrayOutputStream();
     }
     return stdoutBuffer;
+  }
+
+  @NotNull
+  public GitProgress getProgress() {
+    return myProgress;
   }
 }

@@ -149,10 +149,10 @@ public class FetchCommandImpl implements FetchCommand {
         properties.put(Constants.PRIVATE_KEY_PATH, teamcityPrivateKey.getAbsolutePath());
         preparedSettings = new AuthSettings(properties, settings.getAuthSettings().getRoot());
       }
-
       byte[] fetchProcessInput = getFetchProcessInputBytes(preparedSettings, repository.getDirectory(), uri, specs, threadDump, gitPropertiesFile);
       ByteArrayOutputStream stdoutBuffer = settings.createStdoutBuffer();
       ByteArrayOutputStream stderrBuffer = new ByteArrayOutputStream();
+      settings.getProgress().reportProgress("git fetch " + uri);
       ExecResult result = SimpleCommandLineProcessRunner.runCommandSecure(cl, cl.getCommandLineString(), fetchProcessInput,
                                                                           processEventHandler, stdoutBuffer, stderrBuffer);
 
@@ -174,6 +174,7 @@ public class FetchCommandImpl implements FetchCommand {
 
       LOG.debug("Fetch process output:\n" + result.getStdout());
     } finally {
+      settings.getProgress().reportProgress("git fetch " + uri + " finished");
       if (teamcityPrivateKey != null)
         FileUtil.delete(teamcityPrivateKey);
       if (gitPropertiesFile != null)

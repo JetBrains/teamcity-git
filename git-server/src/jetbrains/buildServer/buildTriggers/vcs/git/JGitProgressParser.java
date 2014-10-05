@@ -17,19 +17,22 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
-import jetbrains.buildServer.vcs.FetchService;
 import org.jetbrains.annotations.NotNull;
+
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
 public class JGitProgressParser implements LineAwareByteArrayOutputStream.LineListener {
 
-  private final FetchService.FetchRepositoryCallback myCallback;
+  private final GitProgress myProgress;
 
-  public JGitProgressParser(@NotNull FetchService.FetchRepositoryCallback callback) {
-    myCallback = callback;
+  public JGitProgressParser(@NotNull GitProgress progress) {
+    myProgress = progress;
   }
 
   public void newLineDetected(@NotNull String line) {
     String trimmed = line.trim();
+    if (isEmpty(trimmed))
+      return;
     String separator = ": ";
     int separatorIdx = trimmed.lastIndexOf(separator);
     if (separatorIdx == -1)
@@ -39,12 +42,12 @@ public class JGitProgressParser implements LineAwareByteArrayOutputStream.LineLi
     if (percents.endsWith("%")) {
       try {
         int progress = Integer.parseInt(percents.substring(0, percents.length() - 1));
-        myCallback.update(progress / 100.0f, stage);
+        myProgress.reportProgress(progress / 100.0f, stage);
       } catch (NumberFormatException e) {
-        myCallback.update(-1, stage);
+        myProgress.reportProgress(-1, trimmed);
       }
     } else {
-      myCallback.update(-1, stage);
+      myProgress.reportProgress(-1, trimmed);
     }
   }
 }
