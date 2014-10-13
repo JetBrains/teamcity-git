@@ -90,7 +90,9 @@ public class GitServerUtil {
       }
       return r;
     } catch (Exception ex) {
-      throw new VcsException("The repository at directory '" + dir + "' cannot be opened or created, reason: " + ex.getMessage(), ex);
+      if (ex instanceof NullPointerException)
+        LOG.warn("The repository at directory '" + dir + "' cannot be opened or created", ex);
+      throw new VcsException("The repository at directory '" + dir + "' cannot be opened or created, reason: " + ex.toString(), ex);
     }
   }
 
