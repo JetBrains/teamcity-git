@@ -78,7 +78,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     validateCheckoutRules(root, rules);
     File targetDir = getTargetDir(root, rules, checkoutDirectory);
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
-    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, build.getBuildTempDirectory());
+    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, build.getBuildLogger(), build.getBuildTempDirectory());
     Updater updater;
     if (config.isUseAlternates()) {
       updater = new UpdaterWithAlternates(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir);

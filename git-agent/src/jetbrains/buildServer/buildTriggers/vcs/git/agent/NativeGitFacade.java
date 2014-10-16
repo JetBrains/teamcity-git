@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
+import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -38,6 +39,7 @@ public class NativeGitFacade implements GitFacade {
   private final File myTmpDir;
   private final boolean myDeleteTempFiles;
   private VcsRootSshKeyManager mySshKeyManager;
+  private BuildProgressLogger myLogger;
 
   public NativeGitFacade(@NotNull GitAgentSSHService ssh,
                          @NotNull String gitPath,
@@ -173,6 +175,7 @@ public class NativeGitFacade implements GitFacade {
     cmd.setExePath(myGitPath);
     cmd.setWorkingDirectory(myRepositoryDir);
     cmd.setSshKeyManager(mySshKeyManager);
+    cmd.setLogger(myLogger);
     return cmd;
   }
 
@@ -185,4 +188,7 @@ public class NativeGitFacade implements GitFacade {
     return SystemInfo.isUnix ? new UnixAskPassGen(myTmpDir, new EscapeEchoArgumentUnix()) : new WinAskPassGen(myTmpDir, new EscapeEchoArgumentWin());
   }
 
+  public void setLogger(@NotNull BuildProgressLogger logger) {
+    myLogger = logger;
+  }
 }

@@ -19,19 +19,24 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.LineAwareByteArrayOutputStream;
+import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.AskPassGenerator;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitProgressListener;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.SshHandler;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +52,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private File myWorkingDirectory;
   private boolean myRepeatOnEmptyOutput = false;
   private VcsRootSshKeyManager mySshKeyManager;
+  private BuildProgressLogger myLogger;
 
   public GitCommandLine(@Nullable GitAgentSSHService ssh,
                         @NotNull AskPassGenerator askPassGen,
@@ -134,4 +140,23 @@ public class GitCommandLine extends GeneralCommandLine {
     newParams.put(name, value);
     setEnvParams(newParams);
   }
+
+  public void setLogger(BuildProgressLogger logger) {
+    myLogger = logger;
+  }
+
+  @Nullable
+  public BuildProgressLogger getLogger() {
+    return myLogger;
+  }
+
+  @NotNull
+  public ByteArrayOutputStream createStderrBuffer() {
+    if (myLogger == null)
+      return new ByteArrayOutputStream();
+    LineAwareByteArrayOutputStream buffer = new LineAwareByteArrayOutputStream(Charset.forName("UTF-8"), new GitProgressListener(myLogger));
+    buffer.setCREndsLine(true);
+    return buffer;
+  }
+
 }

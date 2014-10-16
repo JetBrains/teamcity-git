@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentPluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitFactory;
@@ -32,7 +33,7 @@ public class LoggingGitMetaFactory implements GitMetaFactory {
   private final Map<String, List<String>> myInvokedMethods = new HashMap<String, List<String>>();
 
   @NotNull
-  public GitFactory createFactory(@NotNull GitAgentSSHService sshService, @NotNull AgentPluginConfig config, @NotNull File tempDir) {
+  public GitFactory createFactory(@NotNull GitAgentSSHService sshService, @NotNull AgentPluginConfig config, @NotNull BuildProgressLogger logger, @NotNull File tempDir) {
     myInvokedMethods.clear();//reset methods on every updateSources call
     return new GitFactoryProxy(sshService, config, tempDir, myInvokedMethods);
   }

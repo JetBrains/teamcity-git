@@ -19,16 +19,14 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
+import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.Writer;
+import java.io.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -94,18 +92,23 @@ public class CommandUtil {
 
   public static ExecResult runCommand(@NotNull GitCommandLine cli, final int timeout, final String... errorsLogLevel) throws VcsException {
     int attemptsLeft = 2;
+    BuildProgressLogger logger = cli.getLogger();
     while (true) {
       try {
         String cmdStr = cli.getCommandLineString();
         File workingDir = cli.getWorkingDirectory();
         String inDir = workingDir != null ? "[" + workingDir.getAbsolutePath() + "]" : "";
         Loggers.VCS.info(inDir + ": " + cmdStr);
-        ExecResult res = SimpleCommandLineProcessRunner.runCommand(cli, null, new SimpleCommandLineProcessRunner.ProcessRunCallbackAdapter() {
+        if (logger != null)
+          logger.message(inDir + ": " + cmdStr);
+        ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderrBuffer = cli.createStderrBuffer();
+        ExecResult res = SimpleCommandLineProcessRunner.runCommandSecure(cli, cli.getCommandLineString(), null, new SimpleCommandLineProcessRunner.ProcessRunCallbackAdapter() {
           @Override
           public Integer getOutputIdleSecondsTimeout() {
             return timeout;
           }
-        });
+        }, stdoutBuffer, stderrBuffer);
         CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
         String out = res.getStdout().trim();
         Loggers.VCS.debug(out);

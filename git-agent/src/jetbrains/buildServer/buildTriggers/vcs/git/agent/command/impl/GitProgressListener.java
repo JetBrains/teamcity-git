@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent;
+package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
+import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
+public class GitProgressListener implements LineAwareByteArrayOutputStream.LineListener {
+  private final BuildProgressLogger myLogger;
 
-public class GitMetaFactoryImpl implements GitMetaFactory {
+  public GitProgressListener(BuildProgressLogger logger) {
+    myLogger = logger;
+  }
 
-  @NotNull
-  public GitFactory createFactory(@NotNull GitAgentSSHService sshService,
-                                  @NotNull AgentPluginConfig config,
-                                  @NotNull BuildProgressLogger logger,
-                                  @NotNull File tempDir) {
-    return new GitFactoryImpl(sshService, config, logger, tempDir);
+  public void newLineDetected(@NotNull String line) {
+    myLogger.message(line);
   }
 }
