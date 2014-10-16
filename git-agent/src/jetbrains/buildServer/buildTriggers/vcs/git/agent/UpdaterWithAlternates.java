@@ -27,6 +27,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UpdaterWithAlternates extends UpdaterWithMirror {
 
@@ -71,9 +73,42 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
     File alternates = new File(objectsInfo, "alternates");
     try {
       FileUtil.writeFileAndReportErrors(alternates, new File(myRoot.getRepositoryDir(), "objects").getCanonicalPath());
+      copyRefs();
     } catch (IOException e) {
       LOG.warn("Error while configuring alternates at " + alternates.getAbsoluteFile(), e);
       throw new VcsException(e);
     }
+  }
+
+  private void copyRefs() {
+    File targetDotGit = new File(myTargetDirectory, ".git");
+    try {
+      copyPackedRefs(targetDotGit);
+    } catch (Exception e) {
+      LOG.warn("Error while packing refs, will copy them one by one", e);
+      copyRefsOneByOne(targetDotGit);
+    }
+  }
+
+  private void copyRefsOneByOne(@NotNull File targetDotGit) {
+    File srcDir = new File(myRoot.getRepositoryDir(), "refs");
+    File dstDir = new File(targetDotGit, "refs");
+    List<String> files = new ArrayList<String>();
+    FileUtil.listFilesRecursively(srcDir, "", false, Integer.MAX_VALUE, null, files);
+    for (String f : files) {
+      File dstRef = new File(dstDir, f);
+      if (!dstRef.exists()) {
+        try {
+          FileUtil.copy(new File(srcDir, f), dstRef);
+        } catch (IOException e) {
+          LOG.warn("Error while copying refs, refs will be created during fetch", e);
+        }
+      }
+    }
+  }
+
+  private void copyPackedRefs(@NotNull File targetDotGit) throws VcsException, IOException {
+    myGitFactory.create(myRoot.getRepositoryDir()).packRefs().call();
+    FileUtil.copy(new File(myRoot.getRepositoryDir(), "packed-refs"), new File(targetDotGit, "packed-refs"));
   }
 }

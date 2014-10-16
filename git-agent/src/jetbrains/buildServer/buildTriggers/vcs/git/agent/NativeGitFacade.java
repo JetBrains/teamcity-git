@@ -163,6 +163,11 @@ public class NativeGitFacade implements GitFacade {
   }
 
   @NotNull
+  public PackRefs packRefs() {
+    return new PackRefsImpl(createCommandLine());
+  }
+
+  @NotNull
   private GitCommandLine createCommandLine() {
     GitCommandLine cmd = new GitCommandLine(mySsh, myAskPassGen, myTmpDir, myDeleteTempFiles);
     cmd.setExePath(myGitPath);
