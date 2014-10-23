@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitCommitSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.*;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -52,7 +53,8 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     myRoot = vcsRoot().withFetchUrl(getRemoteRepositoryDir("merge")).build();
   }
 
-  public void t() throws Exception {
+
+  public void test_commit() throws Exception {
     RepositoryStateData state1 = myGit.getCurrentState(myRoot);
 
     CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
@@ -67,5 +69,22 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     assertEquals("user", m.getUserName());
     assertEquals("Commit description", m.getDescription());
     assertEquals("file-to-commit", m.getChanges().get(0).getFileName());
+  }
+
+
+  @TestFor(issues = "TW-38226")
+  public void should_canonicalize_line_endings_on_commit() throws Exception {
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
+    String committedContent = "a\r\nb\r\nc\r\n";
+    byte[] bytes = committedContent.getBytes();
+    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream(bytes));
+    patchBuilder.commit("user", "Commit description");
+
+    RepositoryStateData state2 = myGit.getCurrentState(myRoot);
+    byte[] content = myGit.getContentProvider().getContent("file-to-commit", myRoot, state2.getBranchRevisions().get(state2.getDefaultBranchName()));
+    assertEquals("Line-endings were not normalized", "a\nb\nc\n", new String(content));
+
+    VcsRoot autoCrlfRoot = vcsRoot().withAutoCrlf(true).withFetchUrl(getRemoteRepositoryDir("merge")).build();
+    assertEquals(committedContent, new String(myGit.getContentProvider().getContent("file-to-commit", autoCrlfRoot, state2.getBranchRevisions().get(state2.getDefaultBranchName()))));
   }
 }

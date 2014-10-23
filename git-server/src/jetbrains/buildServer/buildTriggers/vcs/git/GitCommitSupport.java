@@ -34,9 +34,11 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.util.io.EolCanonicalizingInputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -107,10 +109,38 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       try {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         FileUtil.copy(content, bytes);
-        myObjectMap.put(path, myObjectWriter.insert(Constants.OBJ_BLOB, bytes.toByteArray()));
+        //taken from WorkingTreeIterator
+        EolCanonicalizingInputStream eolStream = new EolCanonicalizingInputStream(new ByteArrayInputStream(bytes.toByteArray()), true, true);
+        long length;
+        try {
+          length = computeLength(eolStream);
+        } catch (EolCanonicalizingInputStream.IsBinaryException e) {
+          //binary file, insert as is:
+          myObjectMap.put(path, myObjectWriter.insert(Constants.OBJ_BLOB, bytes.toByteArray()));
+          return;
+        } finally {
+          eolStream.close();
+        }
+        eolStream = new EolCanonicalizingInputStream(new ByteArrayInputStream(bytes.toByteArray()), true, true);
+        myObjectMap.put(path, myObjectWriter.insert(Constants.OBJ_BLOB, length, eolStream));
       } catch (IOException e) {
         e.printStackTrace();
       }
+    }
+
+
+    private long computeLength(InputStream in) throws IOException {
+      // Since we only care about the length, use skip. The stream
+      // may be able to more efficiently wade through its data.
+      //
+      long length = 0;
+      for (;;) {
+        long n = in.skip(1 << 20);
+        if (n <= 0)
+          break;
+        length += n;
+      }
+      return length;
     }
 
     public void deleteFile(@NotNull String path) {
