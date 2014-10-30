@@ -187,6 +187,10 @@ public class UpdaterImpl implements Updater {
     } else if (isTag(myFullBranchName)) {
       String shortName = myFullBranchName.substring("refs/tags/".length());
       git.checkout().setForce(true).setBranch(shortName).call();
+      Ref tag = getRef(myTargetDirectory, myFullBranchName);
+      if (tag != null && !tag.getObjectId().name().equals(myRevision)) {
+        git.checkout().setBranch(myRevision).setForce(true).call();
+      }
       branchChanged = true;
     } else {
       myLogger.message("Resetting " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);

@@ -457,7 +457,8 @@ public class AgentVcsSupportTest {
       }
     }
 
-    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled,
+                               false);
   }
 
 
@@ -523,6 +524,18 @@ public class AgentVcsSupportTest {
   }
 
 
+  @TestFor(issues = "TW-38247")
+  public void checkout_revision_reachable_from_tag() throws Exception {
+    myRoot.addProperty(Constants.BRANCH_NAME, "refs/tags/v1.0");
+    String revisionInBuild = "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6";
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, revisionInBuild, myCheckoutDir, myBuild, false);
+
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    String workingDirRevision = r.getAllRefs().get("HEAD").getObjectId().name();
+    assertEquals("Wrong revision on agent", revisionInBuild, workingDirRevision);
+  }
+
+
   public void do_not_create_branch_when_checkout_tag() throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "refs/tags/v1.0");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
@@ -553,7 +566,9 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
     myRoot.addProperty(Constants.BRANCH_NAME, "refs/tags/v1.0");
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitUtils.makeVersion("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", 1289483394000L), myCheckoutDir, myBuild, false);
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""),
+                               GitUtils.makeVersion("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", 1289483394000L), myCheckoutDir, myBuild,
+                               false);
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
     Ref headRef = r.getRef("HEAD");
     assertEquals("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", headRef.getObjectId().name());
