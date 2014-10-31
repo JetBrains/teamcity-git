@@ -50,7 +50,7 @@ public class BranchSupportTest {
   @BeforeMethod
   public void setUp() throws IOException {
     File teamcitySystemDir = ourTempFiles.createTempDir();
-    myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath(), teamcitySystemDir.getAbsolutePath());
+    myServerPaths = new ServerPaths(teamcitySystemDir.getAbsolutePath());
     File masterRep = dataFile("repo.git");
     myRepositoryDir = ourTempFiles.createTempDir();
     FileUtil.copyDir(masterRep, myRepositoryDir);
