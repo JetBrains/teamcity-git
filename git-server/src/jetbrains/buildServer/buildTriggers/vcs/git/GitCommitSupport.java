@@ -18,10 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
-import jetbrains.buildServer.vcs.CommitPatchBuilder;
-import jetbrains.buildServer.vcs.CommitSupport;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.dircache.DirCacheBuilder;
 import org.eclipse.jgit.dircache.DirCacheEntry;
@@ -36,7 +33,6 @@ import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.util.io.EolCanonicalizingInputStream;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -147,14 +143,15 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       myObjectMap.put(path, ObjectId.zeroId());
     }
 
-    @Nullable
-    public String commit(@NotNull String userName, @NotNull String description) throws VcsException {
+    @NotNull
+    public CommitResult commit(@NotNull String userName, @NotNull String description) throws VcsException {
       try {
         GitVcsRoot gitRoot = myContext.getGitRoot();
         RevCommit lastCommit = getLastCommit(gitRoot);
         ObjectId treeId = createNewTree(lastCommit);
         if (lastCommit.getTree().getId().equals(treeId))
-          return null;
+          return CommitResult.createCommitNotPerformedResult("repository is up-to-date");
+
         ObjectId commitId = createCommit(gitRoot, lastCommit, treeId, userName, description);
 
         synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
@@ -167,7 +164,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
               switch (ru.getStatus()) {
                 case UP_TO_DATE:
                 case OK:
-                  return commitId.name();
+                  return CommitResult.createSuccessResult(commitId.name());
                 default: {
                   StringBuilder error = new StringBuilder();
                   error.append("Push failed, status: ").append(ru.getStatus());
@@ -309,8 +306,8 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       myError = error;
     }
 
-    @Nullable
-    public String commit(@NotNull final String userName, @NotNull final String description) throws VcsException {
+    @NotNull
+    public CommitResult commit(@NotNull final String userName, @NotNull final String description) throws VcsException {
       throw myError;
     }
 
