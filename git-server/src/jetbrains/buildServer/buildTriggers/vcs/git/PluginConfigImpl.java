@@ -133,7 +133,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
 
   public boolean isSeparateProcessForPatch() {
-    return TeamCityProperties.getBoolean("teamcity.git.buildPatchInSeparateProcess");
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.buildPatchInSeparateProcess");
   }
 
   public boolean isRunNativeGC() {
