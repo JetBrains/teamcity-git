@@ -73,8 +73,14 @@ public final class GitPatchBuilderDispatcher {
 
   public void buildPatch() throws Exception {
     if (myConfig.isSeparateProcessForPatch()) {
+      LOG.info("Build patch in separate process, root: " + LogUtil.describe(myGitRoot) +
+               ", fromRevision: " + myFromRevision +
+               ", toRevision: " + myToRevision);
       buildPatchInSeparateProcess();
     } else {
+      LOG.info("Build patch in server process, root: " + LogUtil.describe(myGitRoot) +
+               ", fromRevision: " + myFromRevision +
+               ", toRevision: " + myToRevision);
       buildPatchInSameProcess();
     }
   }
