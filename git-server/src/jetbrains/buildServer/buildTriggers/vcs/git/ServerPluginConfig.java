@@ -29,8 +29,10 @@ import java.util.Map;
  */
 public interface ServerPluginConfig extends PluginConfig {
 
-  int getStreamFileThreshold();
-
+  /**
+   * @return streaming threshold in megabytes (ensures it is a positive number)
+   */
+  int getStreamFileThresholdMb();
 
   int getFetchTimeout();
 

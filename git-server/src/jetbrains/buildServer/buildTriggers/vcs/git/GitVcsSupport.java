@@ -98,7 +98,14 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   private void setStreamFileThreshold() {
-    GitServerUtil.configureStreamFileThreshold(myConfig.getStreamFileThreshold() * WindowCacheConfig.MB);
+    int thresholdBytes = myConfig.getStreamFileThresholdMb() * WindowCacheConfig.MB;
+    if (thresholdBytes <= 0) {
+      //Config returns a threshold > 0, threshold in bytes can became non-positive due to integer overflow.
+      //Since users set a value larger than the max possible one, most likely they wanted a threshold
+      //to be large, so use maximum possible value.
+      thresholdBytes = Integer.MAX_VALUE;
+    }
+    GitServerUtil.configureStreamFileThreshold(thresholdBytes);
   }
 
   @NotNull

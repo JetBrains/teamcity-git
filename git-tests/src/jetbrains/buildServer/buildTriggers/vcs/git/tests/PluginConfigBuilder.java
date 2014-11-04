@@ -53,6 +53,7 @@ public class PluginConfigBuilder {
   private Map<String, String> myFetcherProperties = new HashMap<String, String>();
   private boolean myUsePerBranchFetch;
   private int myGetConnectionRetryAttempts = -1;
+  private Integer myStreamFileThreshold = null;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -75,8 +76,8 @@ public class PluginConfigBuilder {
         return myDelegate.getCachesDir();
       }
 
-      public int getStreamFileThreshold() {
-        return myDelegate.getStreamFileThreshold();
+      public int getStreamFileThresholdMb() {
+        return myStreamFileThreshold != null ? myStreamFileThreshold : myDelegate.getStreamFileThresholdMb();
       }
 
       public int getFetchTimeout() {
@@ -300,6 +301,11 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder withGetConnectionRetryAttempts(int retryAttemptsCount) {
     myGetConnectionRetryAttempts = retryAttemptsCount;
+    return this;
+  }
+
+  public PluginConfigBuilder setStreamFileThreshold(final Integer streamFileThreshold) {
+    myStreamFileThreshold = streamFileThreshold;
     return this;
   }
 }

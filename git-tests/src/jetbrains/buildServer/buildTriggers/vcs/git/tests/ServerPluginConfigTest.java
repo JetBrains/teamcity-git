@@ -96,6 +96,20 @@ public class ServerPluginConfigTest {
   }
 
 
+  public void should_correct_negative_stream_threshold() {
+    System.setProperty("teamcity.git.stream.file.threshold.mb", "-1");
+    ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
+    assertTrue(config.getStreamFileThresholdMb() > 0);
+  }
+
+
+  public void should_correct_zero_stream_threshold() {
+    System.setProperty("teamcity.git.stream.file.threshold.mb", "0");
+    ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
+    assertTrue(config.getStreamFileThresholdMb() > 0);
+  }
+
+
   public void test_proxy_settings() {
     final String httpProxyHost = "some.org";
     final String httpProxyPort = "3128";

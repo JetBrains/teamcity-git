@@ -185,6 +185,17 @@ public class GitPatchTest extends PatchTestCase {
   }
 
 
+  @TestFor(issues = "TW-36551")
+  @Test(dataProvider = "patchInSeparateProcess")
+  public void should_validate_streamFileThreshold(boolean patchInSeparateProcess) throws Exception {
+    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
+    myConfigBuilder.setStreamFileThreshold(10240); //10Gb, bigger than max int value
+    checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
+
+    myConfigBuilder.setStreamFileThreshold(-1);
+    checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
+  }
+
 
   private void checkPatch(String name, @Nullable String fromVersion, @NotNull String toVersion) throws IOException, VcsException {
     checkPatch(name, "patch-tests", fromVersion, toVersion, false);
