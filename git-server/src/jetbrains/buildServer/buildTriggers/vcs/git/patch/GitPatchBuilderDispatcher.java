@@ -82,9 +82,8 @@ public final class GitPatchBuilderDispatcher {
   private void buildPatchInSeparateProcess() throws Exception {
     GeneralCommandLine patchCmd = createPatchCommandLine();
     File patchFile = FileUtil.createTempFile("git", "patch");
-    File internalProperties = FileUtil.createTempFile("git", "props");
+    File internalProperties = getPatchPropertiesFile();
     try {
-      GitServerUtil.writeAsProperties(internalProperties, getPatchProcessProperties());
       byte[] patchProcessInput = getInput(patchFile, internalProperties);
       LineAwareByteArrayOutputStream.LineListener listener = new NoOpLineListener();
       ByteArrayOutputStream stdout = new LineAwareByteArrayOutputStream(Charset.forName("UTF-8"), listener, false);
@@ -97,9 +96,15 @@ public final class GitPatchBuilderDispatcher {
       new LowLevelPatcher(new FileInputStream(patchFile)).applyPatch(new NoExitLowLevelPatchTranslator(((PatchBuilderEx)myBuilder).getLowLevelBuilder()));
     } finally {
       FileUtil.delete(patchFile);
-      if (internalProperties != null)
-        FileUtil.delete(internalProperties);
+      FileUtil.delete(internalProperties);
     }
+  }
+
+  @NotNull
+  private File getPatchPropertiesFile() throws IOException {
+    File internalProperties = FileUtil.createTempFile("gitPatch", "props");
+    GitServerUtil.writeAsProperties(internalProperties, getPatchProcessProperties());
+    return internalProperties;
   }
 
   private byte[] getInput(@NotNull File patchFile, @NotNull File internalProperties) throws IOException {
