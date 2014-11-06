@@ -193,14 +193,14 @@
     </tr>
     <tr class="advancedSetting">
       <th>
-        <label for="serverSideAutoCrlf">Convert line-endings to CRLF:<bs:help file="Git+(JetBrains)" anchor="serverAutoCRLF"/></label>
+        <label for="serverSideAutoCrlf">Convert line-endings to CRLF:<bs:help file="Git" anchor="serverAutoCRLF"/></label>
       </th>
       <td>
         <props:checkboxProperty name="serverSideAutoCrlf"/>
       </td>
     </tr>
     <tr class="advancedSetting">
-      <th><label for="path">Custom clone directory on server:<bs:help file="Git+(JetBrains)" anchor="customCloneDir"/></label></th>
+      <th><label for="path">Custom clone directory on server:<bs:help file="Git" anchor="customCloneDir"/></label></th>
       <td><props:textProperty name="path" className="longField"/>
         <div class="smallNote" style="margin: 0;">
           A directory on the TeamCity server where a bare cloned repository is to be created. Leave blank to use the default path.
@@ -210,7 +210,7 @@
   </l:settingsGroup>
   <l:settingsGroup title="Agent Settings" className="advancedSetting">
     <tr class="advancedSetting">
-      <td colspan="2">Agent-specific settings that are used in case of agent checkout.<bs:help file="Git+(JetBrains)" anchor="agentSettings"/></td>
+      <td colspan="2">Agent-specific settings that are used in case of agent checkout.<bs:help file="Git" anchor="agentSettings"/></td>
     </tr>
     <tr class="advancedSetting">
       <th><label for="agentGitPath">Path to Git: </label></th>
