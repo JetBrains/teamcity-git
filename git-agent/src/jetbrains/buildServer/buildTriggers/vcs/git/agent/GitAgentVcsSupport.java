@@ -80,7 +80,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
     GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, build.getBuildLogger(), build.getBuildTempDirectory());
     Updater updater;
-    if (config.isUseAlternates()) {
+    if (config.isUseAlternates(new AgentGitVcsRoot(myMirrorManager, targetDir, root))) {
       updater = new UpdaterWithAlternates(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir);
     } else if (config.isUseLocalMirrors()) {
       updater = new UpdaterWithMirror(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir);

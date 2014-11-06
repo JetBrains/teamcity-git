@@ -18,6 +18,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
+import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -26,6 +28,8 @@ import java.io.File;
  * @author dmitry.neverov
  */
 public class PluginConfigImpl implements AgentPluginConfig {
+
+  private final static Logger LOG = Logger.getLogger(PluginConfigImpl.class);
 
   public static final String IDLE_TIMEOUT = "teamcity.git.idle.timeout.seconds";
   public static final String USE_NATIVE_SSH = "teamcity.git.use.native.ssh";
@@ -85,9 +89,18 @@ public class PluginConfigImpl implements AgentPluginConfig {
   }
 
 
-  public boolean isUseAlternates() {
+  public boolean isUseAlternates(@NotNull GitVcsRoot root) {
     String value = myBuild.getSharedConfigParameters().get(USE_ALTERNATES);
-    return "true".equals(value);
+    if (value != null) {
+      LOG.info("Use the teamcity.git.useAlternates option specified in the build");
+      return Boolean.parseBoolean(value);
+    }
+    Boolean rootSetting = root.isUseAlternates();
+    if (rootSetting != null) {
+      LOG.info("Use the useAlternates option specified in the VCS root");
+      return rootSetting;
+    }
+    return false;
   }
 
   public boolean isUseShallowClone() {

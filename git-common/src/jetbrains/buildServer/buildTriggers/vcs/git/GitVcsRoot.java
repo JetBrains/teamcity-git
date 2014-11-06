@@ -49,6 +49,7 @@ public class GitVcsRoot {
   private boolean myReportTags;
   private final boolean myIgnoreMissingDefaultBranch;
   private File myCustomRepositoryDir;
+  private final Boolean myUseAlternates;
 
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root) throws VcsException {
     this(mirrorManager, root, root.getProperty(Constants.BRANCH_NAME));
@@ -72,6 +73,7 @@ public class GitVcsRoot {
     myAutoCrlf = Boolean.valueOf(getProperty(Constants.SERVER_SIDE_AUTO_CRLF, "false"));
     myReportTags = Boolean.valueOf(getProperty(Constants.REPORT_TAG_REVISIONS, "false"));
     myIgnoreMissingDefaultBranch = Boolean.valueOf(getProperty(Constants.IGNORE_MISSING_DEFAULT_BRANCH, "false"));
+    myUseAlternates = readUseAlternates();
   }
 
   public GitVcsRoot getRootForBranch(@NotNull String branch) throws VcsException {
@@ -90,9 +92,22 @@ public class GitVcsRoot {
     return parseIdent();
   }
 
+  @Nullable
+  public Boolean isUseAlternates() {
+    return myUseAlternates;
+  }
+
   private File getPath() {
     String path = getProperty(Constants.PATH);
     return path == null ? null : new File(path);
+  }
+
+  @Nullable
+  private Boolean readUseAlternates() {
+    String useAgentMirrors = getProperty(Constants.USE_ALTERNATES);
+    if (useAgentMirrors == null)
+      return null;
+    return Boolean.parseBoolean(useAgentMirrors);
   }
 
   private UserNameStyle readUserNameStyle() {

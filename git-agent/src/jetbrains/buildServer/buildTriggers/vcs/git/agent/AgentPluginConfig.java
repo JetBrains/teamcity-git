@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
 import org.jetbrains.annotations.NotNull;
 
@@ -28,7 +29,7 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isUseLocalMirrors();
 
-  boolean isUseAlternates();
+  boolean isUseAlternates(@NotNull GitVcsRoot root);
 
   boolean isUseShallowClone();
 

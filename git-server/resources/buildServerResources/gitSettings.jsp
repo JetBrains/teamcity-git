@@ -244,6 +244,10 @@
         </div>
       </td>
     </tr>
+    <tr class="advancedSetting">
+      <th><label for="useAlternates">Use git alternates:</label></th>
+      <td><props:checkboxProperty name="useAlternates"/></td>
+    </tr>
   </l:settingsGroup>
 </table>
 <script type="text/javascript">

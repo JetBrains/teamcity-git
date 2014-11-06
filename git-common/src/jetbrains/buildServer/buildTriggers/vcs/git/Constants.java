@@ -124,4 +124,6 @@ public interface Constants {
   String PATCHER_CACHES_DIR = "patcher.cachesDir";
   String PATCHER_PATCH_FILE = "patcher.patchFile";
   String PATCHER_UPLOADED_KEY = "patcher.uploadedKey";
+
+  String USE_ALTERNATES = "useAlternates";
 }
