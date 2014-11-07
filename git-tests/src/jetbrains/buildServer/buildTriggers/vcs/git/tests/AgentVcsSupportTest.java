@@ -884,7 +884,8 @@ public class AgentVcsSupportTest {
       GitCommandLine cmd = new GitCommandLine(null, SystemInfo.isUnix ? new UnixAskPassGen(tmpDir, new EscapeEchoArgumentUnix())
                                                                       : new WinAskPassGen(tmpDir, new EscapeEchoArgumentWin()),
                                               tmpDir,
-                                              true);
+                                              true,
+                                              GitProgressLogger.NO_OP);
       cmd.setExePath(gitPath);
       cmd.setWorkingDirectory(new File(workDirectory));
       cmd.addParameters("push", "origin", "master");

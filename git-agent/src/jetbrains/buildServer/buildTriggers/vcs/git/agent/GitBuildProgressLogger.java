@@ -19,15 +19,23 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
+public class GitBuildProgressLogger implements GitProgressLogger {
 
-public class GitMetaFactoryImpl implements GitMetaFactory {
+  private final BuildProgressLogger myLogger;
 
-  @NotNull
-  public GitFactory createFactory(@NotNull GitAgentSSHService sshService,
-                                  @NotNull AgentPluginConfig config,
-                                  @NotNull GitProgressLogger logger,
-                                  @NotNull File tempDir) {
-    return new GitFactoryImpl(sshService, config, logger, tempDir);
+  public GitBuildProgressLogger(@NotNull BuildProgressLogger logger) {
+    myLogger = logger;
+  }
+
+  public void openBlock(@NotNull String name) {
+    myLogger.activityStarted(name, "CUSTOM_GIT_PROGRESS");
+  }
+
+  public void message(@NotNull String message) {
+    myLogger.message(message);
+  }
+
+  public void closeBlock(@NotNull String name) {
+    myLogger.activityFinished(name, "CUSTOM_GIT_PROGRESS");
   }
 }

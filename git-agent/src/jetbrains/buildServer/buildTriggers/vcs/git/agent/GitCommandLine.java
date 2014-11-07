@@ -20,7 +20,6 @@ import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
-import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.AskPassGenerator;
@@ -49,19 +48,21 @@ public class GitCommandLine extends GeneralCommandLine {
   private final List<Runnable> myPostActions = new ArrayList<Runnable>();
   private final File myTmpDir;
   private final boolean myDeleteTempFiles;
+  private final GitProgressLogger myLogger;
   private File myWorkingDirectory;
   private boolean myRepeatOnEmptyOutput = false;
   private VcsRootSshKeyManager mySshKeyManager;
-  private BuildProgressLogger myLogger;
 
   public GitCommandLine(@Nullable GitAgentSSHService ssh,
                         @NotNull AskPassGenerator askPassGen,
                         @NotNull File tmpDir,
-                        boolean deleteTempFiles) {
+                        boolean deleteTempFiles,
+                        @NotNull GitProgressLogger logger) {
     mySsh = ssh;
     myAskPassGen = askPassGen;
     myTmpDir = tmpDir;
     myDeleteTempFiles = deleteTempFiles;
+    myLogger = logger;
   }
 
   public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
@@ -141,19 +142,13 @@ public class GitCommandLine extends GeneralCommandLine {
     setEnvParams(newParams);
   }
 
-  public void setLogger(BuildProgressLogger logger) {
-    myLogger = logger;
-  }
-
-  @Nullable
-  public BuildProgressLogger getLogger() {
+  @NotNull
+  public GitProgressLogger getLogger() {
     return myLogger;
   }
 
   @NotNull
   public ByteArrayOutputStream createStderrBuffer() {
-    if (myLogger == null)
-      return new ByteArrayOutputStream();
     LineAwareByteArrayOutputStream buffer = new LineAwareByteArrayOutputStream(Charset.forName("UTF-8"), new GitProgressListener(myLogger));
     buffer.setCREndsLine(true);
     return buffer;

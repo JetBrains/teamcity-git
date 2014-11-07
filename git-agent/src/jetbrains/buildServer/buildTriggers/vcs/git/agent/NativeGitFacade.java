@@ -18,7 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
-import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -38,29 +37,32 @@ public class NativeGitFacade implements GitFacade {
   private final File myRepositoryDir;
   private final File myTmpDir;
   private final boolean myDeleteTempFiles;
+  private final GitProgressLogger myLogger;
   private VcsRootSshKeyManager mySshKeyManager;
-  private BuildProgressLogger myLogger;
 
   public NativeGitFacade(@NotNull GitAgentSSHService ssh,
                          @NotNull String gitPath,
                          @NotNull File repositoryDir,
                          @NotNull File tmpDir,
-                         boolean deleteTempFiles) {
+                         boolean deleteTempFiles,
+                         @NotNull GitProgressLogger logger) {
     mySsh = ssh;
     myTmpDir = tmpDir;
     myAskPassGen = makeAskPassGen();
     myGitPath = gitPath;
     myRepositoryDir = repositoryDir;
     myDeleteTempFiles = deleteTempFiles;
+    myLogger = logger;
   }
 
-  public NativeGitFacade(@NotNull String gitPath) {
+  public NativeGitFacade(@NotNull String gitPath, @NotNull GitProgressLogger logger) {
     mySsh = null;
     myTmpDir = new File(FileUtil.getTempDirectory());
     myAskPassGen = makeAskPassGen();
     myGitPath = gitPath;
     myRepositoryDir = new File(".");
     myDeleteTempFiles = true;
+    myLogger = logger;
   }
 
 
@@ -171,11 +173,10 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   private GitCommandLine createCommandLine() {
-    GitCommandLine cmd = new GitCommandLine(mySsh, myAskPassGen, myTmpDir, myDeleteTempFiles);
+    GitCommandLine cmd = new GitCommandLine(mySsh, myAskPassGen, myTmpDir, myDeleteTempFiles, myLogger);
     cmd.setExePath(myGitPath);
     cmd.setWorkingDirectory(myRepositoryDir);
     cmd.setSshKeyManager(mySshKeyManager);
-    cmd.setLogger(myLogger);
     return cmd;
   }
 
@@ -186,9 +187,5 @@ public class NativeGitFacade implements GitFacade {
   @NotNull
   private AskPassGenerator makeAskPassGen() {
     return SystemInfo.isUnix ? new UnixAskPassGen(myTmpDir, new EscapeEchoArgumentUnix()) : new WinAskPassGen(myTmpDir, new EscapeEchoArgumentWin());
-  }
-
-  public void setLogger(@NotNull BuildProgressLogger logger) {
-    myLogger = logger;
   }
 }

@@ -17,13 +17,13 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
-import jetbrains.buildServer.agent.BuildProgressLogger;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitProgressLogger;
 import org.jetbrains.annotations.NotNull;
 
 public class GitProgressListener implements LineAwareByteArrayOutputStream.LineListener {
-  private final BuildProgressLogger myLogger;
+  private final GitProgressLogger myLogger;
 
-  public GitProgressListener(BuildProgressLogger logger) {
+  public GitProgressListener(@NotNull GitProgressLogger logger) {
     myLogger = logger;
   }
 

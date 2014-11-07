@@ -70,7 +70,7 @@ public class GitDetectorImpl implements GitDetector {
 
   private GitVersion getGitVersion(String path) throws VcsException {
     try {
-      return new NativeGitFacade(path).version().call();
+      return new NativeGitFacade(path, GitProgressLogger.NO_OP).version().call();
     } catch (VcsException e) {
       throw new VcsException("Unable to run git at path " + path, e);
     }

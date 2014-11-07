@@ -78,7 +78,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     validateCheckoutRules(root, rules);
     File targetDir = getTargetDir(root, rules, checkoutDirectory);
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
-    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, build.getBuildLogger(), build.getBuildTempDirectory());
+    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, getLogger(build), build.getBuildTempDirectory());
     Updater updater;
     if (config.isUseAlternates(new AgentGitVcsRoot(myMirrorManager, targetDir, root))) {
       updater = new UpdaterWithAlternates(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir);
@@ -88,6 +88,11 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       updater = new UpdaterImpl(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir);
     }
     updater.update();
+  }
+
+  @NotNull
+  private GitBuildProgressLogger getLogger(@NotNull AgentRunningBuild build) {
+    return new GitBuildProgressLogger(build.getBuildLogger().getFlowLogger("-1"));
   }
 
 

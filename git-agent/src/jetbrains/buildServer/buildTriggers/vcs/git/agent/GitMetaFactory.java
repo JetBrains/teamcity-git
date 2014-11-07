@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import jetbrains.buildServer.agent.BuildProgressLogger;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -26,7 +25,7 @@ public interface GitMetaFactory {
   @NotNull
   GitFactory createFactory(@NotNull GitAgentSSHService sshService,
                            @NotNull AgentPluginConfig config,
-                           @NotNull BuildProgressLogger logger,
+                           @NotNull GitProgressLogger logger,
                            @NotNull File tempDir);
 
 }
