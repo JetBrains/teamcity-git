@@ -98,6 +98,7 @@ public class FetchCommandImpl implements FetchCommand {
       myCmd.addParameter("--depth=" + myDepth);
     myCmd.addParameter("origin");
     myCmd.addParameter(myRefspec);
+    myCmd.setHasProgress(true);
     try {
       myCmd.run(with().timeout(myTimeout)
                   .authSettings(myAuthSettings)

@@ -20,7 +20,6 @@ import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitProgressLogger;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
@@ -92,14 +91,14 @@ public class CommandUtil {
 
   public static ExecResult runCommand(@NotNull GitCommandLine cli, final int timeout, final String... errorsLogLevel) throws VcsException {
     int attemptsLeft = 2;
-    GitProgressLogger logger = cli.getLogger();
     while (true) {
       try {
         String cmdStr = cli.getCommandLineString();
         File workingDir = cli.getWorkingDirectory();
         String inDir = workingDir != null ? "[" + workingDir.getAbsolutePath() + "]" : "";
-        Loggers.VCS.info(inDir + ": " + cmdStr);
-        logger.message(inDir + ": " + cmdStr);
+        String msg = inDir + ": " + cmdStr;
+        Loggers.VCS.info(msg);
+        cli.logStart(msg);
         ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
         ByteArrayOutputStream stderrBuffer = cli.createStderrBuffer();
         ExecResult res = SimpleCommandLineProcessRunner.runCommandSecure(cli, cli.getCommandLineString(), null, new SimpleCommandLineProcessRunner.ProcessRunCallbackAdapter() {
@@ -108,6 +107,7 @@ public class CommandUtil {
             return timeout;
           }
         }, stdoutBuffer, stderrBuffer);
+        cli.logFinish(msg);
         CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
         String out = res.getStdout().trim();
         Loggers.VCS.debug(out);

@@ -52,6 +52,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private File myWorkingDirectory;
   private boolean myRepeatOnEmptyOutput = false;
   private VcsRootSshKeyManager mySshKeyManager;
+  private boolean myHasProgress = false;
 
   public GitCommandLine(@Nullable GitAgentSSHService ssh,
                         @NotNull AskPassGenerator askPassGen,
@@ -154,4 +155,20 @@ public class GitCommandLine extends GeneralCommandLine {
     return buffer;
   }
 
+  public void logStart(@NotNull String msg) {
+    if (myHasProgress) {
+      myLogger.openBlock(msg);
+    } else {
+      myLogger.message(msg);
+    }
+  }
+
+  public void logFinish(@NotNull String msg) {
+    if (myHasProgress)
+      myLogger.closeBlock(msg);
+  }
+
+  public void setHasProgress(final boolean hasProgress) {
+    myHasProgress = hasProgress;
+  }
 }
