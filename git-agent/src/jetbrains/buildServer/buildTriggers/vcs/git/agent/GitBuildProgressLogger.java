@@ -19,23 +19,30 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class GitBuildProgressLogger implements GitProgressLogger {
 
   private final BuildProgressLogger myLogger;
+  private final AtomicInteger myBlockMessageCount = new AtomicInteger(0);
 
   public GitBuildProgressLogger(@NotNull BuildProgressLogger logger) {
     myLogger = logger;
   }
 
   public void openBlock(@NotNull String name) {
+    myBlockMessageCount.set(0);
     myLogger.activityStarted(name, "CUSTOM_GIT_PROGRESS");
   }
 
   public void message(@NotNull String message) {
+    myBlockMessageCount.incrementAndGet();
     myLogger.message(message);
   }
 
   public void closeBlock(@NotNull String name) {
+    if (myBlockMessageCount.get() == 0)
+      myLogger.message("");
     myLogger.activityFinished(name, "CUSTOM_GIT_PROGRESS");
   }
 }
