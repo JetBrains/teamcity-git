@@ -166,7 +166,6 @@ public class UpdaterImpl implements Updater {
       String branchName = getShortBranchName(myFullBranchName);
       Branches branches = git.branch().call();
       if (branches.isCurrentBranch(branchName)) {
-        myLogger.message("Resetting " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);
         removeIndexLock();
         try {
           git.reset().setHard(true).setRevision(myRevision).call();
@@ -186,7 +185,6 @@ public class UpdaterImpl implements Updater {
             .call();
         }
         git.updateRef().setRef(myFullBranchName).setRevision(myRevision).call();
-        myLogger.message("Checking out branch " + myFullBranchName + " in " + myRoot.getName() + " in " + myTargetDirectory + " with revision " + myRevision);
         git.checkout().setForce(true).setBranch(branchName).call();
       }
     } else if (isTag(myFullBranchName)) {
@@ -198,7 +196,6 @@ public class UpdaterImpl implements Updater {
       }
       branchChanged = true;
     } else {
-      myLogger.message("Resetting " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);
       git.checkout().setForce(true).setBranch(myRevision).call();
       branchChanged = true;
     }
