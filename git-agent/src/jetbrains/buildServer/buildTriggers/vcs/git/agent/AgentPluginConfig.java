@@ -27,7 +27,7 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isUseNativeSSH();
 
-  boolean isUseLocalMirrors();
+  boolean isUseLocalMirrors(@NotNull GitVcsRoot root);
 
   boolean isUseAlternates(@NotNull GitVcsRoot root);
 

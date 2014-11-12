@@ -245,8 +245,14 @@
       </td>
     </tr>
     <tr class="advancedSetting">
-      <th><label for="useAlternates">Use git alternates:</label></th>
-      <td><props:checkboxProperty name="useAlternates"/></td>
+      <th><label for="useAlternates">Use mirrors:</label></th>
+      <td>
+        <props:checkboxProperty name="useAlternates"/>
+        <div class="smallNote" style="margin: 0" >
+          When this option is enabled TeamCity creates a separate clone of the repository on each agent
+          and use it in checkout directory via git alternates.
+        </div>
+      </td>
     </tr>
   </l:settingsGroup>
 </table>

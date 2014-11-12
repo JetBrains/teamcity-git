@@ -18,17 +18,23 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
-import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentMirrorConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
+import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.jetbrains.annotations.NotNull;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
+import static jetbrains.buildServer.util.Util.map;
 import static org.testng.AssertJUnit.*;
 
 /**
@@ -41,7 +47,7 @@ public class AgentConfigPluginTest {
   private BuildAgentConfiguration myAgentConfig;
   private AgentRunningBuild myBuild;
   private Map<String, String> myBuildSharedConfigParameters;
-
+  private MirrorManager myMirrorManager;
 
   @BeforeMethod
   public void setUp() {
@@ -53,7 +59,10 @@ public class AgentConfigPluginTest {
     myMockery.checking(new Expectations() {{
       allowing(myBuild).getSharedConfigParameters();
       will(returnValue(myBuildSharedConfigParameters));
+      allowing(myAgentConfig).getCacheDirectory("git"); will(returnValue(new File("")));
     }});
+
+    myMirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfig), new HashCalculatorImpl());
   }
 
 
@@ -90,16 +99,58 @@ public class AgentConfigPluginTest {
   }
 
 
-  public void should_not_use_local_mirrors_by_default() {
+  public void should_not_use_local_mirrors_by_default() throws Exception {
     PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
-    assertFalse(config.isUseLocalMirrors());
+    GitVcsRoot root = gitVcsRoot();
+    assertFalse(config.isUseLocalMirrors(root));
   }
 
 
-  public void test_change_use_local_mirrors() {
+  public void test_change_use_local_mirrors() throws Exception {
     myBuildSharedConfigParameters.put("teamcity.git.use.local.mirrors", "true");
     PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
-    assertTrue(config.isUseLocalMirrors());
+    GitVcsRoot root = gitVcsRoot();
+    assertTrue(config.isUseLocalMirrors(root));
+  }
+
+
+  public void when_mirrors_are_enabled_in_vcs_root_alternates_should_be_used() throws Exception {
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    GitVcsRoot root = gitVcsRoot(Constants.USE_AGENT_MIRRORS, "true");
+    assertTrue(config.isUseAlternates(root));
+  }
+
+
+  public void when_mirrors_are_enabled_in_vcs_root_mirrors_without_alternates_can_be_used() throws Exception {
+    myBuildSharedConfigParameters.put(PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY , PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY_MIRRORS_ONLY);
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    GitVcsRoot root = gitVcsRoot(Constants.USE_AGENT_MIRRORS, "true");
+    assertFalse(config.isUseAlternates(root));
+    assertTrue(config.isUseLocalMirrors(root));
+  }
+
+
+  public void build_mirror_settings_take_precedence_over_root__alternates() throws Exception {
+    myBuildSharedConfigParameters.put(PluginConfigImpl.USE_ALTERNATES, "true");
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    GitVcsRoot root = gitVcsRoot(Constants.USE_AGENT_MIRRORS, "false");
+    assertTrue(config.isUseAlternates(root));
+  }
+
+
+  public void build_mirror_settings_take_precedence_over_root__mirrors() throws Exception {
+    myBuildSharedConfigParameters.put(PluginConfigImpl.USE_MIRRORS, "true");
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    GitVcsRoot root = gitVcsRoot(Constants.USE_AGENT_MIRRORS, "false");
+    assertTrue(config.isUseLocalMirrors(root));
+  }
+
+
+  @NotNull
+  private GitVcsRoot gitVcsRoot(String... properties) throws VcsException {
+    Map<String, String> props = new HashMap<String, String>(map(properties));
+    props.put(Constants.FETCH_URL, "git://some.org");
+    return new GitVcsRoot(myMirrorManager, new VcsRootImpl(1, Constants.VCS_NAME, props));
   }
 
 

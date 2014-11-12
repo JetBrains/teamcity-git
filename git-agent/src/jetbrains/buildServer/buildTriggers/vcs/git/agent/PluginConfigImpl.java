@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
+import jetbrains.buildServer.util.StringUtil;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
@@ -38,6 +39,9 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String USE_SHALLOW_CLONE = "teamcity.git.use.shallow.clone";
   public static final String TEAMCITY_DONT_DELETE_TEMP_FILES = "teamcity.dont.delete.temp.files";
   public static final String USE_MAIN_REPO_USER_FOR_SUBMODULES = "teamcity.git.useMainRepoUserForSubmodules";
+  public static final String VCS_ROOT_MIRRORS_STRATEGY = "teamcity.git.mirrorStrategy";
+  public static final String VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES = "alternates";
+  public static final String VCS_ROOT_MIRRORS_STRATEGY_MIRRORS_ONLY = "mirrors";
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
@@ -83,24 +87,47 @@ public class PluginConfigImpl implements AgentPluginConfig {
   }
 
 
-  public boolean isUseLocalMirrors() {
-    String value = myBuild.getSharedConfigParameters().get(USE_MIRRORS);
-    return "true".equals(value);
+  public boolean isUseLocalMirrors(@NotNull GitVcsRoot root) {
+    String buildSetting = myBuild.getSharedConfigParameters().get(USE_MIRRORS);
+    if (!StringUtil.isEmpty(buildSetting)) {
+      LOG.info("Use the '" + USE_MIRRORS + "' option specified in the build");
+      return Boolean.parseBoolean(buildSetting);
+    }
+
+    Boolean rootSetting = root.isUseAgentMirrors();
+    String mirrorStrategy = getMirrorStrategy();
+    if (rootSetting != null && rootSetting && VCS_ROOT_MIRRORS_STRATEGY_MIRRORS_ONLY.equals(mirrorStrategy)) {
+      LOG.info("Use the mirrors option specified in the VCS root");
+      return true;
+    }
+
+    return false;
   }
 
 
   public boolean isUseAlternates(@NotNull GitVcsRoot root) {
-    String value = myBuild.getSharedConfigParameters().get(USE_ALTERNATES);
-    if (value != null) {
-      LOG.info("Use the teamcity.git.useAlternates option specified in the build");
-      return Boolean.parseBoolean(value);
+    String buildSetting = myBuild.getSharedConfigParameters().get(USE_ALTERNATES);
+    if (!StringUtil.isEmpty(buildSetting)) {
+      LOG.info("Use the '" + USE_ALTERNATES + "' option specified in the build");
+      return Boolean.parseBoolean(buildSetting);
     }
-    Boolean rootSetting = root.isUseAlternates();
-    if (rootSetting != null) {
-      LOG.info("Use the useAlternates option specified in the VCS root");
-      return rootSetting;
+
+    Boolean rootSetting = root.isUseAgentMirrors();
+    String mirrorStrategy = getMirrorStrategy();
+    if (rootSetting != null && rootSetting && VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES.equals(mirrorStrategy)) {
+      LOG.info("Use the mirrors option specified in the VCS root");
+      return true;
     }
+
     return false;
+  }
+
+  @NotNull
+  private String getMirrorStrategy() {
+    String strategy = myBuild.getSharedConfigParameters().get(VCS_ROOT_MIRRORS_STRATEGY);
+    if (!StringUtil.isEmpty(strategy))
+      return strategy;
+    return VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES;
   }
 
   public boolean isUseShallowClone() {
