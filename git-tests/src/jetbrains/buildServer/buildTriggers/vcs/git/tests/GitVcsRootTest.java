@@ -16,18 +16,25 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
-import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
+import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.serverSide.BasePropertiesModel;
+import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.transport.URIish;
-import org.jmock.Mockery;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.IOException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertNull;
+import static org.testng.AssertJUnit.assertTrue;
 
 /**
  * @author dmitry.neverov
@@ -36,11 +43,16 @@ import static org.testng.AssertJUnit.assertNull;
 public class GitVcsRootTest {
 
   private MirrorManager myMirrorManager;
+  private File myDefaultCachesDir;
 
   @BeforeMethod
-  public void setUp() {
-    Mockery context = new Mockery();
-    myMirrorManager = context.mock(MirrorManager.class);
+  public void setUp() throws IOException {
+    new TeamCityProperties() {{setModel(new BasePropertiesModel() {});}};
+    TempFiles tempFiles = new TempFiles();
+    myDefaultCachesDir = tempFiles.createTempDir();
+    ServerPaths serverPaths = new ServerPaths(myDefaultCachesDir.getAbsolutePath());
+    ServerPluginConfig config = new PluginConfigBuilder(serverPaths).build();
+    myMirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
   }
 
   public void fetch_url_for_repository_in_local_filesystem_should_not_contain_password() throws Exception {
@@ -60,4 +72,18 @@ public class GitVcsRootTest {
     assertNull("User is not stripped from the url with anonymous protocol", gitRoot.getRepositoryFetchURL().getUser());
   }
 
+  @TestFor(issues = "TW-36401")
+  public void disabling_custom_clones() throws Exception {
+    File cloneDir = new File("");
+    VcsRoot root = vcsRoot().withRepositoryPathOnServer(cloneDir.getAbsolutePath()).withFetchUrl("http://some.org/repo").build();
+    GitVcsRoot gitRoot1 = new GitVcsRoot(myMirrorManager, root);
+    assertEquals(cloneDir.getAbsoluteFile(), gitRoot1.getRepositoryDir());
+    try {
+      System.setProperty(Constants.CUSTOM_CLONE_PATH_ENABLED, "false");
+      GitVcsRoot gitRoot2 = new GitVcsRoot(myMirrorManager, root);
+      assertTrue(FileUtil.isAncestor(myDefaultCachesDir, gitRoot2.getRepositoryDir(), true));
+    } finally {
+      System.getProperties().remove(Constants.CUSTOM_CLONE_PATH_ENABLED);
+    }
+  }
 }

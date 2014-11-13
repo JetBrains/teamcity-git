@@ -16,6 +16,8 @@
 
 <%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.Constants" %>
 <%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl" %>
+<%@ page import="jetbrains.buildServer.serverSide.TeamCityProperties" %>
+<%@ page import="jetbrains.buildServer.util.StringUtil" %>
 <%@ page import="java.io.File" %>
 <%@include file="/include.jsp" %>
 <%@ taglib prefix="props" tagdir="/WEB-INF/tags/props" %>
@@ -25,6 +27,9 @@
 <c:set var="gitPathEnv" value="<%= Constants.TEAMCITY_AGENT_GIT_PATH %>"/>
 <c:set var="teamcitySshKeysEnabled" value="<%= PluginConfigImpl.isTeamcitySshKeysEnabled() %>"/>
 <c:set var="showKnownHostsDbOption" value="<%= PluginConfigImpl.showKnownHostsDbOption() %>"/>
+<c:set var="showCustomClonePath" value="<%= TeamCityProperties.getBooleanOrTrue(Constants.CUSTOM_CLONE_PATH_ENABLED) &&
+                                            (TeamCityProperties.getBoolean(Constants.SHOW_CUSTOM_CLONE_PATH)
+                                            || !StringUtil.isEmpty(propertiesBean.getProperties().get(Constants.PATH))) %>"/>
 <style>
 .gitUsernameStyleHighlight {
   color: rgb(97, 94, 192);
@@ -199,14 +204,16 @@
         <props:checkboxProperty name="serverSideAutoCrlf"/>
       </td>
     </tr>
-    <tr class="advancedSetting">
-      <th><label for="path">Custom clone directory on server:<bs:help file="Git" anchor="customCloneDir"/></label></th>
-      <td><props:textProperty name="path" className="longField"/>
-        <div class="smallNote" style="margin: 0;">
-          A directory on the TeamCity server where a bare cloned repository is to be created. Leave blank to use the default path.
-        </div>
-      </td>
-    </tr>
+    <c:if test="${showCustomClonePath}">
+      <tr class="advancedSetting">
+        <th><label for="path">Custom clone directory on server:<bs:help file="Git" anchor="customCloneDir"/></label></th>
+        <td><props:textProperty name="path" className="longField"/>
+          <div class="smallNote" style="margin: 0;">
+            A directory on the TeamCity server where a bare cloned repository is to be created. Leave blank to use the default path.
+          </div>
+        </td>
+      </tr>
+    </c:if>
   </l:settingsGroup>
   <l:settingsGroup title="Agent Settings" className="advancedSetting">
     <tr class="advancedSetting">

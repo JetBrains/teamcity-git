@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.text.StringUtil;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -97,7 +98,10 @@ public class GitVcsRoot {
     return myUseAgentMirrors;
   }
 
+  @Nullable
   private File getPath() {
+    if (!TeamCityProperties.getBooleanOrTrue(Constants.CUSTOM_CLONE_PATH_ENABLED))
+      return null;
     String path = getProperty(Constants.PATH);
     return path == null ? null : new File(path);
   }
