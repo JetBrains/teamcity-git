@@ -21,6 +21,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.*;
+import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -60,7 +61,7 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
     byte[] bytes = "test-content".getBytes();
     patchBuilder.createFile("file-to-commit", new ByteArrayInputStream(bytes));
-    patchBuilder.commit("user", "Commit description");
+    patchBuilder.commit(new CommitSettingsImpl("user", "Commit description"));
     patchBuilder.dispose();
 
     RepositoryStateData state2 = myGit.getCurrentState(myRoot);
@@ -79,7 +80,7 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     String committedContent = "a\r\nb\r\nc\r\n";
     byte[] bytes = committedContent.getBytes();
     patchBuilder.createFile("file-to-commit", new ByteArrayInputStream(bytes));
-    patchBuilder.commit("user", "Commit description");
+    patchBuilder.commit(new CommitSettingsImpl("user", "Commit description"));
     patchBuilder.dispose();
 
     RepositoryStateData state2 = myGit.getCurrentState(myRoot);
@@ -88,5 +89,25 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
 
     VcsRoot autoCrlfRoot = vcsRoot().withAutoCrlf(true).withFetchUrl(getRemoteRepositoryDir("merge")).build();
     assertEquals(committedContent, new String(myGit.getContentProvider().getContent("file-to-commit", autoCrlfRoot, state2.getBranchRevisions().get(state2.getDefaultBranchName()))));
+  }
+
+  private class CommitSettingsImpl implements CommitSettings {
+    private final String myUserName;
+    private final String myDescription;
+
+    public CommitSettingsImpl(@NotNull String userName, @NotNull String description) {
+      myUserName = userName;
+      myDescription = description;
+    }
+
+    @NotNull
+    public String getUserName() {
+      return myUserName;
+    }
+
+    @NotNull
+    public String getDescription() {
+      return myDescription;
+    }
   }
 }

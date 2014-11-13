@@ -144,7 +144,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     }
 
     @NotNull
-    public CommitResult commit(@NotNull String userName, @NotNull String description) throws VcsException {
+    public CommitResult commit(@NotNull CommitSettings commitSettings) throws VcsException {
       try {
         GitVcsRoot gitRoot = myContext.getGitRoot();
         RevCommit lastCommit = getLastCommit(gitRoot);
@@ -152,7 +152,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         if (lastCommit.getTree().getId().equals(treeId))
           return CommitResult.createCommitNotPerformedResult("repository is up-to-date");
 
-        ObjectId commitId = createCommit(gitRoot, lastCommit, treeId, userName, description);
+        ObjectId commitId = createCommit(gitRoot, lastCommit, treeId, commitSettings.getUserName(), commitSettings.getDescription());
 
         synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
           final Transport tn = myTransportFactory.createTransport(myDb, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings());
@@ -308,7 +308,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       myError = error;
     }
     @NotNull
-    public CommitResult commit(@NotNull final String userName, @NotNull final String description) throws VcsException {
+    public CommitResult commit(@NotNull final CommitSettings commitSettings) throws VcsException {
       throw myError;
     }
     public void createFile(@NotNull final String path, @NotNull final InputStream input) {
