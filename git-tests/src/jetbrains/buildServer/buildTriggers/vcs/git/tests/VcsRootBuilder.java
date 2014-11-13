@@ -43,6 +43,7 @@ public class VcsRootBuilder {
   private String myAgentGitPath;
   private boolean myAutoCrlf = false;
   private boolean myReportTags = false;
+  private Boolean myUseMirrors;
 
   public static VcsRootBuilder vcsRoot() {
     return new VcsRootBuilder();
@@ -59,6 +60,8 @@ public class VcsRootBuilder {
     result.addProperty(Constants.BRANCH_NAME, myBranchName);
     result.addProperty(Constants.USERNAME_FOR_TAGS, myUsernameForTags);
     result.addProperty(Constants.BRANCH_SPEC, myBranchSpec);
+    if (myUseMirrors != null)
+      result.addProperty(Constants.USE_AGENT_MIRRORS, String.valueOf(myUseMirrors));
     if (myUsername != null)
       result.addProperty(Constants.USERNAME, myUsername);
     if (myPassword != null)
@@ -145,6 +148,11 @@ public class VcsRootBuilder {
 
   public VcsRootBuilder withReportTags(boolean doReportTags) {
     myReportTags = doReportTags;
+    return this;
+  }
+
+  public VcsRootBuilder withUseMirrors(boolean doUseMirrors) {
+    myUseMirrors = doUseMirrors;
     return this;
   }
 }

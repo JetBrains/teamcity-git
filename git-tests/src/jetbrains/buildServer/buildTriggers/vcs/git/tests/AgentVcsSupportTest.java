@@ -441,6 +441,44 @@ public class AgentVcsSupportTest {
   }
 
 
+  public void stop_using_alternates_when_mirrors_are_disabled_in_vcs_root_option() throws Exception {
+    myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).withUseMirrors(true).build();
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, myBuild, false);
+
+    myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).withUseMirrors(false).build();
+    AgentRunningBuild build2 = createRunningBuild(false);
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build2, false);
+
+    assertFalse("Build uses alternates when they disabled in VCS root settings",
+                new File(myCheckoutDir, ".git/objects/info/alternates").exists());
+  }
+
+
+  public void stop_using_alternates_when_mirror_strategy_changed() throws Exception {
+    myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).withUseMirrors(true).build();
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, myBuild, false);
+
+    AgentRunningBuild build2 = createRunningBuild(map(PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY, PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY_MIRRORS_ONLY));
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build2, false);
+
+    assertFalse("Build uses alternates when they disabled in VCS root settings", new File(myCheckoutDir, ".git/objects/info/alternates").exists());
+  }
+
+
+  public void stop_using_mirrors_when_mirrors_are_disabled_in_vcs_root_option() throws Exception {
+    myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).withUseMirrors(true).build();
+    AgentRunningBuild build1 = createRunningBuild(map(PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY, PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY_MIRRORS_ONLY));
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build1, false);
+
+    myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).withUseMirrors(false).build();
+    AgentRunningBuild build2 = createRunningBuild(false);
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build2, false);
+
+    StoredConfig config = new RepositoryBuilder().setWorkTree(myCheckoutDir).build().getConfig();
+    assertTrue(config.getSubsections("url").isEmpty());
+  }
+
+
   @TestFor(issues = "TW-25839")
   public void update_should_not_fail_if_local_mirror_is_corrupted() throws Exception {
     AgentRunningBuild buildWithMirrorsEnabled = createRunningBuild(true);

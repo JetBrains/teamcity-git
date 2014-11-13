@@ -150,6 +150,7 @@ public class UpdaterImpl implements Updater {
 
   protected void setupExistingRepository() throws VcsException {
     removeUrlSections();
+    disableAlternates();
   }
 
 
@@ -395,6 +396,11 @@ public class UpdaterImpl implements Updater {
       if (r != null)
         r.close();
     }
+  }
+
+
+  protected void disableAlternates() {
+    FileUtil.delete(new File(myTargetDirectory, ".git" + File.separator + "objects" + File.separator + "info" + File.separator + "alternates"));
   }
 
 
