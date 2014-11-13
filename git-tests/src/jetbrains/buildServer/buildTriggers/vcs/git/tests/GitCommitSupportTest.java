@@ -61,6 +61,7 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     byte[] bytes = "test-content".getBytes();
     patchBuilder.createFile("file-to-commit", new ByteArrayInputStream(bytes));
     patchBuilder.commit("user", "Commit description");
+    patchBuilder.dispose();
 
     RepositoryStateData state2 = myGit.getCurrentState(myRoot);
     List<ModificationData> changes = myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);
@@ -79,6 +80,7 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     byte[] bytes = committedContent.getBytes();
     patchBuilder.createFile("file-to-commit", new ByteArrayInputStream(bytes));
     patchBuilder.commit("user", "Commit description");
+    patchBuilder.dispose();
 
     RepositoryStateData state2 = myGit.getCurrentState(myRoot);
     byte[] content = myGit.getContentProvider().getContent("file-to-commit", myRoot, state2.getBranchRevisions().get(state2.getDefaultBranchName()));

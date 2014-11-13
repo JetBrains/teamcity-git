@@ -101,7 +101,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       myTransportFactory = transportFactory;
     }
 
-    public void createFile(@NotNull String path, @NotNull InputStream content) {
+    public void createFile(@NotNull String path, @NotNull InputStream content) throws VcsException {
       try {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         FileUtil.copy(content, bytes);
@@ -120,7 +120,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         eolStream = new EolCanonicalizingInputStream(new ByteArrayInputStream(bytes.toByteArray()), true, true);
         myObjectMap.put(path, myObjectWriter.insert(Constants.OBJ_BLOB, length, eolStream));
       } catch (IOException e) {
-        e.printStackTrace();
+        throw new VcsException("Error while inserting file content to repository, file: " + path, e);
       }
     }
 
@@ -185,8 +185,6 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         }
       } catch (Exception e) {
         throw myContext.wrapException(e);
-      } finally {
-        myContext.close();
       }
     }
 
@@ -294,9 +292,13 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     public void createDirectory(@NotNull final String path) {
     }
 
-    public void renameFile(@NotNull final String oldPath, @NotNull final String newPath, @NotNull InputStream content) {
+    public void renameFile(@NotNull final String oldPath, @NotNull final String newPath, @NotNull InputStream content) throws VcsException {
       deleteFile(oldPath);
       createFile(newPath, content);
+    }
+
+    public void dispose() {
+      myContext.close();
     }
   }
 
@@ -305,12 +307,10 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     private ErrorCommitPatchBuilder(@NotNull VcsException error) {
       myError = error;
     }
-
     @NotNull
     public CommitResult commit(@NotNull final String userName, @NotNull final String description) throws VcsException {
       throw myError;
     }
-
     public void createFile(@NotNull final String path, @NotNull final InputStream input) {
     }
     public void createDirectory(@NotNull final String path) {
@@ -320,6 +320,8 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     public void deleteDirectory(@NotNull final String path) {
     }
     public void renameFile(@NotNull final String oldPath, @NotNull final String newPath, @NotNull InputStream content) {
+    }
+    public void dispose() {
     }
   }
 }
