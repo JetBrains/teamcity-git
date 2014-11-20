@@ -63,14 +63,10 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
   }
 
   @NotNull
-  public CommitPatchBuilder getCommitPatchBuilder(@NotNull VcsRoot root) {
+  public CommitPatchBuilder getCommitPatchBuilder(@NotNull VcsRoot root) throws VcsException {
     OperationContext context = myVcs.createContext(root, "commit");
-    try {
-      Repository db = context.getRepository();
-      return new GitCommitPatchBuilder(myVcs, context, myCommitLoader, db, myRepositoryManager, myTransportFactory);
-    } catch (VcsException e) {
-      return new ErrorCommitPatchBuilder(e);
-    }
+    Repository db = context.getRepository();
+    return new GitCommitPatchBuilder(myVcs, context, myCommitLoader, db, myRepositoryManager, myTransportFactory);
   }
 
 
@@ -299,29 +295,6 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
 
     public void dispose() {
       myContext.close();
-    }
-  }
-
-  private static class ErrorCommitPatchBuilder implements CommitPatchBuilder {
-    private final VcsException myError;
-    private ErrorCommitPatchBuilder(@NotNull VcsException error) {
-      myError = error;
-    }
-    @NotNull
-    public CommitResult commit(@NotNull final CommitSettings commitSettings) throws VcsException {
-      throw myError;
-    }
-    public void createFile(@NotNull final String path, @NotNull final InputStream input) {
-    }
-    public void createDirectory(@NotNull final String path) {
-    }
-    public void deleteFile(@NotNull final String path) {
-    }
-    public void deleteDirectory(@NotNull final String path) {
-    }
-    public void renameFile(@NotNull final String oldPath, @NotNull final String newPath, @NotNull InputStream content) {
-    }
-    public void dispose() {
     }
   }
 }
