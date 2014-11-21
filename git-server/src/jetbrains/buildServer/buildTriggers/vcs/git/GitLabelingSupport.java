@@ -32,6 +32,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
 
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
+
 /**
 * @author dmitry.neverov
 */
@@ -86,7 +88,10 @@ class GitLabelingSupport implements LabelingSupport {
               case OK:
                 break;
               default:
-                throw new VcsException("The remote tag was not created (" + ru.getStatus() + "): " + label);
+                String msg = ru.getMessage();
+                throw new VcsException("The remote '" + label+ "' tag was not created" +
+                                       ", status: " + ru.getStatus() +
+                                       (!isEmpty(msg) ? ", message: " + msg : ""));
             }
           } finally {
             c.close();
