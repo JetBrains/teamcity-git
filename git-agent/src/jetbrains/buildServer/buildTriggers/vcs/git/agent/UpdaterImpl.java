@@ -182,19 +182,19 @@ public class UpdaterImpl implements Updater {
         }
         git.updateRef().setRef(myFullBranchName).setRevision(myRevision).call();
         myLogger.message("Checking out branch " + myFullBranchName + " in " + myRoot.getName() + " in " + myTargetDirectory + " with revision " + myRevision);
-        git.checkout().setForce(true).setBranch(branchName).call();
+        git.checkout().setForce(true).setBranch(branchName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
       }
     } else if (isTag(myFullBranchName)) {
       String shortName = myFullBranchName.substring("refs/tags/".length());
-      git.checkout().setForce(true).setBranch(shortName).call();
+      git.checkout().setForce(true).setBranch(shortName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
       Ref tag = getRef(myTargetDirectory, myFullBranchName);
       if (tag != null && !tag.getObjectId().name().equals(myRevision)) {
-        git.checkout().setBranch(myRevision).setForce(true).call();
+        git.checkout().setBranch(myRevision).setForce(true).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
       }
       branchChanged = true;
     } else {
       myLogger.message("Resetting " + myRoot.getName() + " in " + myTargetDirectory + " to revision " + myRevision);
-      git.checkout().setForce(true).setBranch(myRevision).call();
+      git.checkout().setForce(true).setBranch(myRevision).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
       branchChanged = true;
     }
 

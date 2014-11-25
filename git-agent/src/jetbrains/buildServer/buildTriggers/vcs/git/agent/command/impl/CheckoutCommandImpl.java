@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CheckoutCommand;
 import jetbrains.buildServer.vcs.VcsException;
@@ -30,6 +29,7 @@ public class CheckoutCommandImpl implements CheckoutCommand {
   private final GitCommandLine myCmd;
   private boolean myForce;
   private String myBranch;
+  private Integer myTimeout;
 
   public CheckoutCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
@@ -47,11 +47,18 @@ public class CheckoutCommandImpl implements CheckoutCommand {
     return this;
   }
 
+  @NotNull
+  public CheckoutCommand setTimeout(int timeout) {
+    myTimeout = timeout;
+    return this;
+  }
+
   public void call() throws VcsException {
     myCmd.addParameters("checkout", "-q");
     if (myForce)
       myCmd.addParameter("-f");
     myCmd.addParameter(myBranch);
-    CommandUtil.runCommand(myCmd);
+    int timeout = myTimeout != null ? myTimeout : CommandUtil.DEFAULT_COMMAND_TIMEOUT_SEC;
+    CommandUtil.runCommand(myCmd, timeout);
   }
 }
