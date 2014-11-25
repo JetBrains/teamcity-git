@@ -21,6 +21,7 @@ import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.util.StringUtil;
 import org.apache.log4j.Logger;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -164,15 +165,28 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return myGitVersion;
   }
 
+  public int getCheckoutIdleTimeoutSeconds() {
+    String valueFromBuild = myBuild.getSharedConfigParameters().get(IDLE_TIMEOUT);
+    if (valueFromBuild != null) {
+      return parseTimeout(valueFromBuild, CommandUtil.DEFAULT_COMMAND_TIMEOUT_SEC);
+    } else {
+      return CommandUtil.DEFAULT_COMMAND_TIMEOUT_SEC;
+    }
+  }
+
   private int parseTimeout(String valueFromBuild) {
+    return parseTimeout(valueFromBuild, DEFAULT_IDLE_TIMEOUT);
+  }
+
+  private int parseTimeout(String valueFromBuild, int defaultValue) {
     try {
       int timeout = Integer.parseInt(valueFromBuild);
       if (timeout > 0)
         return timeout;
       else
-        return DEFAULT_IDLE_TIMEOUT;
+        return defaultValue;
     } catch (NumberFormatException e) {
-      return DEFAULT_IDLE_TIMEOUT;
+      return defaultValue;
     }
   }
 }

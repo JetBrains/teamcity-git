@@ -30,6 +30,9 @@ public interface CheckoutCommand {
   @NotNull
   CheckoutCommand setBranch(@NotNull String branch);
 
+  @NotNull
+  CheckoutCommand setTimeout(int timeout);
+
   void call() throws VcsException;
 
 }

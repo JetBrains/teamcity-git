@@ -186,18 +186,18 @@ public class UpdaterImpl implements Updater {
             .call();
         }
         git.updateRef().setRef(myFullBranchName).setRevision(myRevision).call();
-        git.checkout().setForce(true).setBranch(branchName).call();
+        git.checkout().setForce(true).setBranch(branchName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
       }
     } else if (isTag(myFullBranchName)) {
       String shortName = myFullBranchName.substring("refs/tags/".length());
-      git.checkout().setForce(true).setBranch(shortName).call();
+      git.checkout().setForce(true).setBranch(shortName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
       Ref tag = getRef(myTargetDirectory, myFullBranchName);
       if (tag != null && !tag.getObjectId().name().equals(myRevision)) {
-        git.checkout().setBranch(myRevision).setForce(true).call();
+        git.checkout().setBranch(myRevision).setForce(true).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
       }
       branchChanged = true;
     } else {
-      git.checkout().setForce(true).setBranch(myRevision).call();
+      git.checkout().setForce(true).setBranch(myRevision).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
       branchChanged = true;
     }
 
