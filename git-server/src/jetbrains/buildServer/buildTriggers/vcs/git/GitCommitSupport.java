@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.dircache.DirCacheBuilder;
@@ -148,7 +149,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         if (lastCommit.getTree().getId().equals(treeId))
           return CommitResult.createCommitNotPerformedResult("repository is up-to-date");
 
-        ObjectId commitId = createCommit(gitRoot, lastCommit, treeId, commitSettings.getUserName(), commitSettings.getDescription());
+        ObjectId commitId = createCommit(gitRoot, lastCommit, treeId, commitSettings.getUserName(), nonEmptyMessage(commitSettings));
 
         synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
           final Transport tn = myTransportFactory.createTransport(myDb, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings());
@@ -182,6 +183,14 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       } catch (Exception e) {
         throw myContext.wrapException(e);
       }
+    }
+
+    @NotNull
+    private String nonEmptyMessage(@NotNull CommitSettings commitSettings) {
+      String msg = commitSettings.getDescription();
+      if (!StringUtil.isEmpty(msg))
+        return msg;
+      return "no comments";
     }
 
     private ObjectId createCommit(@NotNull GitVcsRoot gitRoot,
