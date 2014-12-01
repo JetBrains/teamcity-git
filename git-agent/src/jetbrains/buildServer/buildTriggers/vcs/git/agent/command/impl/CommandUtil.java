@@ -101,12 +101,7 @@ public class CommandUtil {
         cli.logStart(msg);
         ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
         ByteArrayOutputStream stderrBuffer = cli.createStderrBuffer();
-        ExecResult res = SimpleCommandLineProcessRunner.runCommandSecure(cli, cli.getCommandLineString(), null, new SimpleCommandLineProcessRunner.ProcessRunCallbackAdapter() {
-          @Override
-          public Integer getOutputIdleSecondsTimeout() {
-            return timeout;
-          }
-        }, stdoutBuffer, stderrBuffer);
+        ExecResult res = SimpleCommandLineProcessRunner.runCommandSecure(cli, cli.getCommandLineString(), null, new ProcessTimeoutCallback(timeout), stdoutBuffer, stderrBuffer);
         cli.logFinish(msg);
         CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
         String out = res.getStdout().trim();
