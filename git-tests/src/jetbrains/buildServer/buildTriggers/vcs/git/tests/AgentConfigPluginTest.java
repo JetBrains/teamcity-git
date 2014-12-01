@@ -20,8 +20,11 @@ import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentMirrorConfig;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
+import jetbrains.buildServer.serverSide.BasePropertiesModel;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.jetbrains.annotations.NotNull;
@@ -51,6 +54,7 @@ public class AgentConfigPluginTest {
 
   @BeforeMethod
   public void setUp() {
+    new TeamCityProperties() {{setModel(new BasePropertiesModel() {});}};
     myMockery = new Mockery();
     myAgentConfig = myMockery.mock(BuildAgentConfiguration.class);
     myBuild = myMockery.mock(AgentRunningBuild.class);
@@ -67,40 +71,40 @@ public class AgentConfigPluginTest {
 
 
   public void test_default_idle_timeout() {
-    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, new GitExec("git", GitVersion.MIN));
     assertEquals(PluginConfig.DEFAULT_IDLE_TIMEOUT, config.getIdleTimeoutSeconds());
   }
 
 
   public void test_idle_timeout() {
     myBuildSharedConfigParameters.put("teamcity.git.idle.timeout.seconds", "60");
-    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, new GitExec("git", GitVersion.MIN));
     assertEquals(60, config.getIdleTimeoutSeconds());
   }
 
 
   public void test_negative_idle_timeout() {
     myBuildSharedConfigParameters.put("teamcity.git.idle.timeout.seconds", "-60");
-    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, new GitExec("git", GitVersion.MIN));
     assertEquals(PluginConfig.DEFAULT_IDLE_TIMEOUT, config.getIdleTimeoutSeconds());
   }
 
 
   public void should_not_use_native_ssh_by_default() {
-    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, new GitExec("git", GitVersion.MIN));
     assertFalse(config.isUseNativeSSH());
   }
 
 
   public void test_change_use_native_ssh() {
     myBuildSharedConfigParameters.put("teamcity.git.use.native.ssh", "true");
-    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, new GitExec("git", GitVersion.MIN));
     assertTrue(config.isUseNativeSSH());
   }
 
 
   public void should_not_use_local_mirrors_by_default() throws Exception {
-    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, new GitExec("git", GitVersion.MIN));
     GitVcsRoot root = gitVcsRoot();
     assertFalse(config.isUseLocalMirrors(root));
   }
@@ -108,14 +112,14 @@ public class AgentConfigPluginTest {
 
   public void test_change_use_local_mirrors() throws Exception {
     myBuildSharedConfigParameters.put("teamcity.git.use.local.mirrors", "true");
-    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, new GitExec("git", GitVersion.MIN));
     GitVcsRoot root = gitVcsRoot();
     assertTrue(config.isUseLocalMirrors(root));
   }
 
 
   public void when_mirrors_are_enabled_in_vcs_root_alternates_should_be_used() throws Exception {
-    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, new GitExec("git", GitVersion.MIN));
     GitVcsRoot root = gitVcsRoot(Constants.USE_AGENT_MIRRORS, "true");
     assertTrue(config.isUseAlternates(root));
   }
@@ -123,7 +127,7 @@ public class AgentConfigPluginTest {
 
   public void when_mirrors_are_enabled_in_vcs_root_mirrors_without_alternates_can_be_used() throws Exception {
     myBuildSharedConfigParameters.put(PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY , PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY_MIRRORS_ONLY);
-    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, new GitExec("git", GitVersion.MIN));
     GitVcsRoot root = gitVcsRoot(Constants.USE_AGENT_MIRRORS, "true");
     assertFalse(config.isUseAlternates(root));
     assertTrue(config.isUseLocalMirrors(root));
@@ -132,7 +136,7 @@ public class AgentConfigPluginTest {
 
   public void build_mirror_settings_take_precedence_over_root__alternates() throws Exception {
     myBuildSharedConfigParameters.put(PluginConfigImpl.USE_ALTERNATES, "true");
-    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, new GitExec("git", GitVersion.MIN));
     GitVcsRoot root = gitVcsRoot(Constants.USE_AGENT_MIRRORS, "false");
     assertTrue(config.isUseAlternates(root));
   }
@@ -140,7 +144,7 @@ public class AgentConfigPluginTest {
 
   public void build_mirror_settings_take_precedence_over_root__mirrors() throws Exception {
     myBuildSharedConfigParameters.put(PluginConfigImpl.USE_MIRRORS, "true");
-    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN);
+    PluginConfigImpl config = new PluginConfigImpl(myAgentConfig, myBuild, new GitExec("git", GitVersion.MIN));
     GitVcsRoot root = gitVcsRoot(Constants.USE_AGENT_MIRRORS, "false");
     assertTrue(config.isUseLocalMirrors(root));
   }
@@ -155,7 +159,7 @@ public class AgentConfigPluginTest {
 
 
   public void test_path_to_git() {
-    assertEquals("git", new PluginConfigImpl(myAgentConfig, myBuild, "git", GitVersion.MIN).getPathToGit());
-    assertEquals("/usr/bin/git", new PluginConfigImpl(myAgentConfig, myBuild, "/usr/bin/git", GitVersion.MIN).getPathToGit());
+    assertEquals("git", new PluginConfigImpl(myAgentConfig, myBuild, new GitExec("git", GitVersion.MIN)).getPathToGit());
+    assertEquals("/usr/bin/git", new PluginConfigImpl(myAgentConfig, myBuild, new GitExec("/usr/bin/git", GitVersion.MIN)).getPathToGit());
   }
 }

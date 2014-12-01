@@ -37,8 +37,8 @@ public final class PluginConfigFactoryImpl implements PluginConfigFactory {
 
 
   public AgentPluginConfig createConfig(AgentRunningBuild build, VcsRoot root) throws VcsException {
-    Pair<String, GitVersion> pathAndVersion = myGitDetector.getGitPathAndVersion(root, myAgentConfig, build);
-    return new PluginConfigImpl(myAgentConfig, build, pathAndVersion.first, pathAndVersion.second);
+    GitExec gitExec = myGitDetector.getGitPathAndVersion(root, myAgentConfig, build);
+    return new PluginConfigImpl(myAgentConfig, build, gitExec);
   }
 
 }

@@ -40,6 +40,9 @@ public interface AgentPluginConfig extends PluginConfig {
   @NotNull
   GitVersion getGitVersion();
 
+  @NotNull
+  public GitExec getGitExec();
+
   int getCheckoutIdleTimeoutSeconds();
 
 }

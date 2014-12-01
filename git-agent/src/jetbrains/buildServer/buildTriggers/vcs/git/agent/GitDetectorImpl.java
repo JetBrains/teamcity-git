@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.SystemInfo;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
@@ -39,7 +38,7 @@ public class GitDetectorImpl implements GitDetector {
 
 
   @NotNull
-  public Pair<String, GitVersion> getGitPathAndVersion(@NotNull VcsRoot root, @NotNull BuildAgentConfiguration config, @NotNull AgentRunningBuild build) throws VcsException {
+  public GitExec getGitPathAndVersion(@NotNull VcsRoot root, @NotNull BuildAgentConfiguration config, @NotNull AgentRunningBuild build) throws VcsException {
     String path = getPathFromRoot(root, config);
     if (path != null) {
       Loggers.VCS.info("Using vcs root's git: " + path);
@@ -55,7 +54,7 @@ public class GitDetectorImpl implements GitDetector {
     GitVersion version = getGitVersion(path);
     checkVersionIsSupported(path, version);
 
-    return Pair.create(path, version);
+    return new GitExec(path, version);
   }
 
 
@@ -68,6 +67,7 @@ public class GitDetectorImpl implements GitDetector {
   }
 
 
+  @NotNull
   private GitVersion getGitVersion(String path) throws VcsException {
     try {
       return new NativeGitFacade(path, GitProgressLogger.NO_OP).version().call();

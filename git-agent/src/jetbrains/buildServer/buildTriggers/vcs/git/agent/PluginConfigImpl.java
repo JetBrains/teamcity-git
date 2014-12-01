@@ -46,18 +46,14 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
-  private final String myPathToGit;
-  private final GitVersion myGitVersion;
-
+  private final GitExec myGitExec;
 
   public PluginConfigImpl(@NotNull BuildAgentConfiguration agentConfig,
                           @NotNull AgentRunningBuild build,
-                          @NotNull String pathToGit,
-                          @NotNull GitVersion version) {
+                          @NotNull GitExec gitExec) {
     myAgentConfig = agentConfig;
     myBuild = build;
-    myPathToGit = pathToGit;
-    myGitVersion = version;
+    myGitExec = gitExec;
   }
 
 
@@ -78,7 +74,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
   @NotNull
   public String getPathToGit() {
-    return myPathToGit;
+    return myGitExec.getPath();
   }
 
 
@@ -162,7 +158,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
   @NotNull
   public GitVersion getGitVersion() {
-    return myGitVersion;
+    return myGitExec.getVersion();
+  }
+
+  @NotNull
+  public GitExec getGitExec() {
+    return myGitExec;
   }
 
   public int getCheckoutIdleTimeoutSeconds() {
