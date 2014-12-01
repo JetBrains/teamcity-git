@@ -17,8 +17,10 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleSyncCommand;
+import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
 
 /**
  * @author dmitry.neverov
@@ -86,4 +88,7 @@ public interface GitFacade {
 
   @NotNull
   PackRefs packRefs();
+
+  @NotNull
+  String resolvePath(@NotNull File f) throws VcsException;
 }

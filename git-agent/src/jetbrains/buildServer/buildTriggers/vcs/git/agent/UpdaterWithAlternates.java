@@ -72,12 +72,17 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
     objectsInfo.mkdirs();
     File alternates = new File(objectsInfo, "alternates");
     try {
-      FileUtil.writeFileAndReportErrors(alternates, new File(myRoot.getRepositoryDir(), "objects").getCanonicalPath());
+      FileUtil.writeFileAndReportErrors(alternates, getAlternatePath());
       copyRefs();
     } catch (IOException e) {
       LOG.warn("Error while configuring alternates at " + alternates.getAbsoluteFile(), e);
       throw new VcsException(e);
     }
+  }
+
+  @NotNull
+  private String getAlternatePath() throws VcsException {
+    return myGitFactory.create(myTargetDirectory).resolvePath(new File(myRoot.getRepositoryDir(), "objects"));
   }
 
   private void copyRefs() {

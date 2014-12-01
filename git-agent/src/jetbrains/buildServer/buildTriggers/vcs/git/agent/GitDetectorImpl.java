@@ -24,6 +24,10 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.util.regex.Pattern;
 
 /**
  * @author dmitry.neverov
@@ -53,8 +57,37 @@ public class GitDetectorImpl implements GitDetector {
     }
     GitVersion version = getGitVersion(path);
     checkVersionIsSupported(path, version);
+    return new GitExec(path, version, getCygwinBinPath(path));
+  }
 
-    return new GitExec(path, version);
+  @Nullable
+  private String getCygwinBinPath(@NotNull String gitPath) {
+    if (!SystemInfo.isWindows)
+      return null;
+    try {
+      File git = new File(gitPath);
+      if (git.isAbsolute()) {
+        File cygpath = new File(git.getParentFile(), "cygpath.exe");
+        if (cygpath.canExecute())
+          return git.getParentFile().getCanonicalPath();
+        return null;
+      } else {
+        String path = System.getenv("PATH");
+        if (path == null) {
+          Loggers.VCS.info("Cannot detect cygwin path, PATH environment variable is empty");
+          return null;
+        }
+        String[] paths = path.split(Pattern.quote(File.pathSeparator));
+        for (String p : paths) {
+          if (new File(p, "git.exe").canExecute() && new File(p, "cygpath.exe").canExecute())
+            return p;
+        }
+        return null;
+      }
+    } catch (Exception e) {
+      Loggers.VCS.info("Error while detecting cygwin path", e);
+      return null;
+    }
   }
 
 

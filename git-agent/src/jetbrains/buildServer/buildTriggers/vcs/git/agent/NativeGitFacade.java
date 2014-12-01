@@ -16,11 +16,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
+import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,6 +42,7 @@ public class NativeGitFacade implements GitFacade {
   private final File myTmpDir;
   private final boolean myDeleteTempFiles;
   private final GitProgressLogger myLogger;
+  private final GitExec myGitExec;
   private VcsRootSshKeyManager mySshKeyManager;
 
   public NativeGitFacade(@NotNull GitAgentSSHService ssh,
@@ -45,7 +50,8 @@ public class NativeGitFacade implements GitFacade {
                          @NotNull File repositoryDir,
                          @NotNull File tmpDir,
                          boolean deleteTempFiles,
-                         @NotNull GitProgressLogger logger) {
+                         @NotNull GitProgressLogger logger,
+                         @NotNull GitExec gitExec) {
     mySsh = ssh;
     myTmpDir = tmpDir;
     myAskPassGen = makeAskPassGen();
@@ -53,6 +59,7 @@ public class NativeGitFacade implements GitFacade {
     myRepositoryDir = repositoryDir;
     myDeleteTempFiles = deleteTempFiles;
     myLogger = logger;
+    myGitExec = gitExec;
   }
 
   public NativeGitFacade(@NotNull String gitPath, @NotNull GitProgressLogger logger) {
@@ -63,6 +70,7 @@ public class NativeGitFacade implements GitFacade {
     myRepositoryDir = new File(".");
     myDeleteTempFiles = true;
     myLogger = logger;
+    myGitExec = null;
   }
 
 
@@ -169,6 +177,28 @@ public class NativeGitFacade implements GitFacade {
   @NotNull
   public PackRefs packRefs() {
     return new PackRefsImpl(createCommandLine());
+  }
+
+  @NotNull
+  public String resolvePath(@NotNull File f) throws VcsException {
+    try {
+      if (myGitExec.isCygwin()) {
+        String cygwinBin = myGitExec.getCygwinBinPath();
+        GeneralCommandLine cmd = new GeneralCommandLine();
+        cmd.setWorkDirectory(cygwinBin);
+        cmd.setExePath(new File(cygwinBin, "cygpath.exe").getCanonicalPath());
+        cmd.addParameter(f.getCanonicalPath());
+        ExecResult res = SimpleCommandLineProcessRunner.runCommandSecure(cmd, cmd.getCommandLineString(), null, new ProcessTimeoutCallback(30));
+        Throwable error = res.getException();
+        if (error != null)
+          throw error;
+        return res.getStdout().trim();
+      } else {
+        return f.getCanonicalPath();
+      }
+    } catch (Throwable e) {
+      throw new VcsException("Error while resolving path " + f.getAbsolutePath(), e);
+    }
   }
 
   @NotNull
