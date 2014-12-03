@@ -17,7 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.commitInfo;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitServerExtension;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.Submodule;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmodulesConfig;
@@ -38,7 +40,6 @@ import java.util.Map;
 import java.util.Set;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getFullUserName;
-import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getObjectId;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 
 public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExtension {
@@ -57,9 +58,10 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     try {
       final Repository db = ctx.getRepository();
 
-      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, myVcs.getCurrentState(ctx.makeRootWithTags()));
+      final RepositoryStateData currentStateWithTags = myVcs.getCurrentState(ctx.makeRootWithTags());
+      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, currentStateWithTags);
 
-      collect(db, consumer);
+      collect(db, consumer, currentStateWithTags.getBranchRevisions());
     } catch (Exception e) {
       throw new VcsException(e);
     } finally {
@@ -68,11 +70,11 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
   }
 
   private void collect(@NotNull final Repository db,
-                       @NotNull final CommitsConsumer consumer) throws IOException {
-    final Map<String,Ref> currentState = db.getAllRefs();
+                       @NotNull final CommitsConsumer consumer,
+                       @NotNull final Map<String, String> currentStateWithTags) throws IOException {
 
     final ObjectDatabase cached = db.getObjectDatabase().newCachedDatabase();
-    final Map<String, Set<String>> index = getCommitToRefIndex(currentState);
+    final Map<String, Set<String>> index = getCommitToRefIndex(currentStateWithTags);
 
     final DotGitModulesResolver resolver = new CachedDotGitModulesResolver(new DotGitModulesResolverImpl(db));
     final CommitTreeProcessor proc = new CommitTreeProcessor(resolver, db);
@@ -80,7 +82,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     final RevWalk walk = new RevWalk(cached.newReader());
 
     try {
-      initWalk(walk, currentState);
+      initWalk(walk, currentStateWithTags);
       RevCommit c;
       while ((c = walk.next()) != null) {
         final CommitDataBean commit = createCommit(c);
@@ -151,13 +153,12 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
   }
 
   private void initWalk(@NotNull final RevWalk walk,
-                        @NotNull final Map<String, Ref> currentState) {
+                        @NotNull final Map<String, String> currentState) {
     walk.sort(RevSort.TOPO);
 
-    for (Ref tip : new HashSet<Ref>(currentState.values())) {
+    for (String tip : new HashSet<String>(currentState.values())) {
       try {
-        final RevObject obj = walk.parseAny(getObjectId(tip));
-
+        final RevObject obj = walk.parseAny(ObjectId.fromString(tip));
         if (obj instanceof RevCommit) {
           walk.markStart((RevCommit) obj);
         }
@@ -170,19 +171,18 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
   }
 
   @NotNull
-  private Map<String, Set<String>> getCommitToRefIndex(@NotNull final Map<String, Ref> state) {
+  private Map<String, Set<String>> getCommitToRefIndex(@NotNull final Map<String, String> state) {
     final Map<String, Set<String>> index = new HashMap<String, Set<String>>();
-    for (Map.Entry<String, Ref> e : state.entrySet()) {
+    for (Map.Entry<String, String> e : state.entrySet()) {
       final String ref = e.getKey();
-      final String commit = GitUtils.getRevision(e.getValue());
+      final String commit = e.getValue();
       Set<String> refs = index.get(commit);
       if (refs == null) {
-        refs = new HashSet<String>();
+        refs = new HashSet<String>(1);
         index.put(commit, refs);
       }
       refs.add(ref);
     }
     return index;
   }
-
 }
