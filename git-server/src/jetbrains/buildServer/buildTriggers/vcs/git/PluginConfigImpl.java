@@ -22,15 +22,18 @@ import com.jcraft.jsch.*;
 import gnu.trove.TObjectHashingStrategy;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchProcess;
+import jetbrains.buildServer.messages.serviceMessages.ServiceMessage;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.vcs.AbstractPatchBuilder;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsPersonalSupport;
 import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.patches.LowLevelPatchBuilder;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import org.apache.commons.codec.Decoder;
 import org.apache.commons.logging.LogFactory;
@@ -164,7 +167,9 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   public String getPatchClasspath() {
     Set<Class> classes = fetchProcessClasses();
+    classes.add(AbstractPatchBuilder.class);
     classes.add(PatchBuilderImpl.class);
+    classes.add(LowLevelPatchBuilder.class);
     return ClasspathUtil.composeClasspath(classes.toArray(new Class[classes.size()]), null, null);
   }
 
@@ -194,7 +199,9 @@ public class PluginConfigImpl implements ServerPluginConfig {
       HttpClientConnectionFactory.class,
       HttpClient.class,
       LogFactory.class,
-      HttpEntity.class
+      HttpEntity.class,
+      CachePaths.class,
+      ServiceMessage.class
     ));
     Collections.addAll(result, GitVcsSupport.class.getInterfaces());
     return result;
