@@ -84,12 +84,13 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
   @TestFor(issues = "TW-9933")
   public void test_not_existing_local_repository() throws Exception {
     File notExisting = new File(myTempFiles.createTempDir(), "not-existing");
-    VcsRootImpl root = vcsRoot().withFetchUrl(GitUtils.toURL(notExisting)).build();
+    String url = GitUtils.toURL(notExisting);
+    VcsRootImpl root = vcsRoot().withFetchUrl(url).build();
     try {
       myGit.testConnection(root);
       fail("Should throw an exception for not-existing repository");
     } catch (VcsException e) {
-      assertTrue(e.getMessage().contains("Cannot access repository"));
+      assertTrue(e.getMessage().contains("Cannot access the '" + url + "' repository"));
       assertFalse(e.getMessage().endsWith("\n"));
     }
   }
