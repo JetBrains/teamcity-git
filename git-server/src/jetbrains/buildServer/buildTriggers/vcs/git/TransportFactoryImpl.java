@@ -113,7 +113,7 @@ public class TransportFactoryImpl implements TransportFactory {
     if (!url.isRemote() && !"http".equals(scheme) && !"https".equals(scheme)) {
       File localRepository = new File(url.getPath());
       if (!localRepository.exists()) {
-        String error = "Cannot access repository " + url.toString();
+        String error = "Cannot access the '" + url.toString() + "' repository";
         if (SystemInfo.isWindows) {
           error += ". If TeamCity is run as a Windows service, it cannot access network mapped drives. Make sure this is not your case.";
         }

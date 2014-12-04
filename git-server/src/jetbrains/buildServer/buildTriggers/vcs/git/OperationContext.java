@@ -21,6 +21,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverI
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import org.eclipse.jgit.errors.NoRemoteRepositoryException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
@@ -155,6 +156,8 @@ public class OperationContext {
       } else {
         message = t.toString();
       }
+    } else if (ex instanceof NoRemoteRepositoryException) {
+      message = "cannot locate repository at " + ex.getMessage();
     } else {
       message = ex.toString();
     }
