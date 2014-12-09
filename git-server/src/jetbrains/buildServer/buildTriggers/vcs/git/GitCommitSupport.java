@@ -143,8 +143,10 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     @NotNull
     public CommitResult commit(@NotNull CommitSettings commitSettings) throws VcsException {
       try {
+        LOG.info("Committing change '" + commitSettings.getDescription() + "'");
         GitVcsRoot gitRoot = myContext.getGitRoot();
         RevCommit lastCommit = getLastCommit(gitRoot);
+        LOG.info("Parent commit " + lastCommit.name());
         ObjectId treeId = createNewTree(lastCommit);
         if (lastCommit.getTree().getId().equals(treeId))
           return CommitResult.createCommitNotPerformedResult("repository is up-to-date");
@@ -161,6 +163,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
               switch (ru.getStatus()) {
                 case UP_TO_DATE:
                 case OK:
+                  LOG.info("Change '" + commitSettings.getDescription() + "' was successfully committed");
                   return CommitResult.createSuccessResult(commitId.name());
                 default: {
                   StringBuilder error = new StringBuilder();
@@ -174,7 +177,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
               c.close();
             }
           } catch (IOException e) {
-            LOG.debug("Error while pushing a commit, root " + gitRoot + ", revision " + commitId + ", destination " + GitUtils.expandRef(gitRoot.getRef()), e);
+            LOG.warn("Error while pushing a commit, root " + gitRoot + ", revision " + commitId + ", destination " + GitUtils.expandRef(gitRoot.getRef()), e);
             throw e;
           } finally {
             tn.close();
