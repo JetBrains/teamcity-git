@@ -21,11 +21,14 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.*;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.util.List;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
@@ -106,6 +109,26 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     } catch (VcsException e) {
       assertTrue(e.getMessage().contains("The '" + nonExistingBranch + "' destination branch doesn't exist"));
     }
+  }
+
+
+  @TestFor(issues = "TW-39051")
+  public void should_create_branch_if_repository_has_no_branches() throws Exception {
+    String nonExistingBranch = "refs/heads/nonExisting";
+
+    File remoteRepo = myTempFiles.createTempDir();
+    Repository r = new RepositoryBuilder().setBare().setGitDir(remoteRepo).build();
+    r.create(true);
+    VcsRoot root = vcsRoot().withFetchUrl(remoteRepo).withBranch(nonExistingBranch).build();
+
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(root);
+    byte[] bytes = "test-content".getBytes();
+    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream(bytes));
+    patchBuilder.commit(new CommitSettingsImpl("user", "Commit description"));
+    patchBuilder.dispose();
+
+    RepositoryStateData state2 = myGit.getCurrentState(root);
+    assertNotNull(state2.getBranchRevisions().get(nonExistingBranch));
   }
 
 

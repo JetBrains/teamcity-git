@@ -148,7 +148,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         RevCommit lastCommit = getLastCommit(gitRoot);
         LOG.info("Parent commit " + lastCommit.name());
         ObjectId treeId = createNewTree(lastCommit);
-        if (lastCommit.getTree().getId().equals(treeId))
+        if (!ObjectId.zeroId().equals(lastCommit.getId()) && lastCommit.getTree().getId().equals(treeId))
           return CommitResult.createCommitNotPerformedResult("repository is up-to-date");
 
         ObjectId commitId = createCommit(gitRoot, lastCommit, treeId, commitSettings.getUserName(), nonEmptyMessage(commitSettings));
@@ -203,7 +203,8 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
                                   @NotNull String description) throws IOException, VcsException {
       CommitBuilder commit = new CommitBuilder();
       commit.setTreeId(treeId);
-      commit.setParentIds(parentCommit);
+      if (!ObjectId.zeroId().equals(parentCommit.getId()))
+        commit.setParentIds(parentCommit);
       commit.setCommitter(gitRoot.getTagger(myDb));
       switch (gitRoot.getUsernameStyle()) {
         case EMAIL:
@@ -231,11 +232,10 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     }
 
     @NotNull
-    private ObjectId createNewTree(final RevCommit lastCommit) throws IOException {
+    private ObjectId createNewTree(@NotNull RevCommit lastCommit) throws IOException {
       DirCache inCoreIndex = DirCache.newInCore();
       DirCacheBuilder tempBuilder = inCoreIndex.builder();
       for (Map.Entry<String, ObjectId> e : myObjectMap.entrySet()) {
-
         if (!ObjectId.zeroId().equals(e.getValue())) {
           DirCacheEntry dcEntry = new DirCacheEntry(e.getKey());
           dcEntry.setObjectId(e.getValue());
@@ -245,42 +245,45 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       }
 
       TreeWalk treeWalk = new TreeWalk(myDb);
-      treeWalk.addTree(lastCommit.getTree());
-      treeWalk.setRecursive(true);
-      while (treeWalk.next()) {
-        String path = treeWalk.getPathString();
-        ObjectId newObjectId = myObjectMap.get(path);
-        if (newObjectId != null)
-          continue;
+      if (!ObjectId.zeroId().equals(lastCommit.getId())) {
+        treeWalk.addTree(lastCommit.getTree());
+        treeWalk.setRecursive(true);
+        while (treeWalk.next()) {
+          String path = treeWalk.getPathString();
+          ObjectId newObjectId = myObjectMap.get(path);
+          if (newObjectId != null)
+            continue;
 
-        boolean deleted = false;
-        for (String dir : myDeletedDirs) {
-          if (path.startsWith(dir)) {
-            deleted = true;
-            break;
+          boolean deleted = false;
+          for (String dir : myDeletedDirs) {
+            if (path.startsWith(dir)) {
+              deleted = true;
+              break;
+            }
           }
+          if (deleted)
+            continue;
+
+          DirCacheEntry dcEntry = new DirCacheEntry(path);
+          dcEntry.setFileMode(treeWalk.getFileMode(0));
+          dcEntry.setObjectId(treeWalk.getObjectId(0));
+          tempBuilder.add(dcEntry);
         }
-        if (deleted)
-          continue;
-
-        DirCacheEntry dcEntry = new DirCacheEntry(path);
-        dcEntry.setFileMode(treeWalk.getFileMode(0));
-        dcEntry.setObjectId(treeWalk.getObjectId(0));
-        tempBuilder.add(dcEntry);
       }
-
       tempBuilder.finish();
       return inCoreIndex.writeTree(myObjectWriter);
     }
 
     @NotNull
-    private RevCommit getLastCommit(final GitVcsRoot gitRoot) throws VcsException, IOException {
+    private RevCommit getLastCommit(@NotNull GitVcsRoot gitRoot) throws VcsException, IOException {
       Map<String, Ref> refs = myVcs.getRemoteRefs(gitRoot.getOriginalRoot());
       Ref ref = refs.get(GitUtils.expandRef(gitRoot.getRef()));
-      if (ref == null)
+      if (!refs.isEmpty() && ref == null)
         throw new VcsException("The '" + gitRoot.getRef() + "' destination branch doesn't exist");
       RevWalk revWalk = new RevWalk(myDb);
       try {
+        if (ref == null)
+          return revWalk.lookupCommit(ObjectId.zeroId());
         return revWalk.parseCommit(ref.getObjectId());
       } catch (Exception e) {
         //will try to fetch
