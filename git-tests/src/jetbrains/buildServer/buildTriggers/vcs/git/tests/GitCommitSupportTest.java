@@ -30,7 +30,7 @@ import java.util.List;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
-import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.*;
 
 @Test
 public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
@@ -90,6 +90,24 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     VcsRoot autoCrlfRoot = vcsRoot().withAutoCrlf(true).withFetchUrl(getRemoteRepositoryDir("merge")).build();
     assertEquals(committedContent, new String(myGit.getContentProvider().getContent("file-to-commit", autoCrlfRoot, state2.getBranchRevisions().get(state2.getDefaultBranchName()))));
   }
+
+
+  @TestFor(issues = "TW-39051")
+  public void should_throw_meaningful_error_if_destination_branch_doesnt_exist() throws Exception {
+    String nonExistingBranch = "refs/heads/nonExisting";
+    try {
+      VcsRoot root = vcsRoot().withFetchUrl(getRemoteRepositoryDir("merge")).withBranch(nonExistingBranch).build();
+      CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(root);
+      byte[] bytes = "test-content".getBytes();
+      patchBuilder.createFile("file-to-commit", new ByteArrayInputStream(bytes));
+      patchBuilder.commit(new CommitSettingsImpl("user", "Commit description"));
+      patchBuilder.dispose();
+      fail();
+    } catch (VcsException e) {
+      assertTrue(e.getMessage().contains("The '" + nonExistingBranch + "' destination branch doesn't exist"));
+    }
+  }
+
 
   private class CommitSettingsImpl implements CommitSettings {
     private final String myUserName;

@@ -277,6 +277,8 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     private RevCommit getLastCommit(final GitVcsRoot gitRoot) throws VcsException, IOException {
       Map<String, Ref> refs = myVcs.getRemoteRefs(gitRoot.getOriginalRoot());
       Ref ref = refs.get(GitUtils.expandRef(gitRoot.getRef()));
+      if (ref == null)
+        throw new VcsException("The '" + gitRoot.getRef() + "' destination branch doesn't exist");
       RevWalk revWalk = new RevWalk(myDb);
       try {
         return revWalk.parseCommit(ref.getObjectId());
