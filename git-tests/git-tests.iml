@@ -19,7 +19,7 @@
     <orderEntry type="module" module-name="git-agent" />
     <orderEntry type="library" name="TeamCity Agent" level="project" />
     <orderEntry type="library" name="TeamCity server" level="project" />
-    <orderEntry type="library" name="jsch-0.1.50" level="project" />
+    <orderEntry type="library" name="jsch-0.1.51" level="project" />
     <orderEntry type="library" name="jgit" level="project" />
     <orderEntry type="library" name="TeamCity Vcs Api" level="project" />
     <orderEntry type="module" module-name="git-server-tc" />
@@ -27,4 +27,3 @@
     <orderEntry type="library" name="httpclient-4.3.4" level="project" />
   </component>
 </module>
-
