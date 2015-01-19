@@ -159,6 +159,7 @@ public final class GitPatchBuilderDispatcher {
                      "-cp", myConfig.getPatchClasspath(),
                      myConfig.getPatchBuilderClassName(),
                      myGitRoot.getRepositoryFetchURL().toString());
+    cmd.setPassParentEnvs(myConfig.passEnvToChildProcess());
     return cmd;
   }
 

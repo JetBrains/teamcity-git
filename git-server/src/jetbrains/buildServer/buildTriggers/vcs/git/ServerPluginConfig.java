@@ -63,6 +63,8 @@ public interface ServerPluginConfig extends PluginConfig {
 
   String getPatchBuilderClassName();
 
+  public boolean passEnvToChildProcess();
+
   int getFixedSubmoduleCommitSearchDepth();
 
 

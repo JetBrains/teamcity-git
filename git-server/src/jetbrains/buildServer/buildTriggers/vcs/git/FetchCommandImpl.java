@@ -234,6 +234,7 @@ public class FetchCommandImpl implements FetchCommand {
     cl.setWorkingDirectory(repository.getDirectory());
     cl.setExePath(myConfig.getFetchProcessJavaPath());
     cl.addParameters(myConfig.getProxySettingsForSeparateProcess());
+    cl.setPassParentEnvs(myConfig.passEnvToChildProcess());
 
     String trustStore = System.getProperty("javax.net.ssl.trustStore");
     String trustStorePassword = System.getProperty("javax.net.ssl.trustStorePassword");

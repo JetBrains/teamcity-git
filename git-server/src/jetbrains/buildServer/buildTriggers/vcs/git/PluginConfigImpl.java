@@ -177,6 +177,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return GitPatchProcess.class.getName();
   }
 
+  public boolean passEnvToChildProcess() {
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.passEnvToChildProcess");
+  }
+
   private Set<Class> fetchProcessClasses() {
     Set<Class> result = new HashSet<Class>();
     result.addAll(Arrays.asList(

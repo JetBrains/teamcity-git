@@ -132,6 +132,10 @@ public class PluginConfigBuilder {
         return myDelegate.getPatchBuilderClassName();
       }
 
+      public boolean passEnvToChildProcess() {
+        return myDelegate.passEnvToChildProcess();
+      }
+
       public int getFixedSubmoduleCommitSearchDepth() {
         return myFixedSubmoduleCommitSearchDepth != null ? myFixedSubmoduleCommitSearchDepth : myDelegate.getFixedSubmoduleCommitSearchDepth();
       }
