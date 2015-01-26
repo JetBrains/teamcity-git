@@ -5,8 +5,8 @@
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.50.zip!/jsch-0.1.50/src/main/java" />
-      <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.50.zip!/jsch-0.1.50/examples" />
+      <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.51.zip!/examples" />
+      <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.51.zip!/src/main/java" />
     </SOURCES>
   </library>
 </component>
