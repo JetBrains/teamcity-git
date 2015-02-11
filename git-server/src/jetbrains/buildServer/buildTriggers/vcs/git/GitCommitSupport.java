@@ -149,7 +149,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         LOG.info("Parent commit " + lastCommit.name());
         ObjectId treeId = createNewTree(lastCommit);
         if (!ObjectId.zeroId().equals(lastCommit.getId()) && lastCommit.getTree().getId().equals(treeId))
-          return CommitResult.createCommitNotPerformedResult("repository is up-to-date");
+          return CommitResult.createRepositoryUpToDateResult(lastCommit.getId().name());
 
         ObjectId commitId = createCommit(gitRoot, lastCommit, treeId, commitSettings.getUserName(), nonEmptyMessage(commitSettings));
 
