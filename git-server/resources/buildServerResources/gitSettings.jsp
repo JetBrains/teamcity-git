@@ -256,8 +256,8 @@
       <td>
         <props:checkboxProperty name="useAlternates"/>
         <div class="smallNote" style="margin: 0" >
-          When this option is enabled TeamCity creates a separate clone of the repository on each agent
-          and use it in checkout directory via git alternates.
+          When this option is enabled, TeamCity creates a separate clone of the repository on each agent
+          and uses it in the checkout directory via git alternates.
         </div>
       </td>
     </tr>
