@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
+import jetbrains.buildServer.parameters.ReferencesResolverUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
 import jetbrains.buildServer.util.filters.Filter;
 import jetbrains.buildServer.vcs.VcsException;
@@ -119,7 +120,11 @@ public class GitMapFullPath {
     try {
       uri = new URIish(url);
     } catch (final URISyntaxException e) {
-      LOG.error(e);
+      if (ReferencesResolverUtil.containsReference(url)) {
+        LOG.warn("Unresolved parameter in url " + url + ", root " + LogUtil.describe(root));
+      } else {
+        LOG.warnAndDebugDetails("Error while parsing VCS root url " + url + ", root " + LogUtil.describe(root), e);
+      }
       return false;
     }
 

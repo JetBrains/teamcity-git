@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.text.StringUtil;
+import jetbrains.buildServer.parameters.ReferencesResolverUtil;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -133,8 +134,10 @@ public class AuthSettings {
     URIish result;
     try {
       result = new URIish(uri);
-    } catch (URISyntaxException e) {
-      throw new VcsException("Invalid URI: " + uri);
+    } catch (Exception e) {
+      if (ReferencesResolverUtil.containsReference(uri))
+        throw new VcsException("Unresolved parameter in url: " + uri, e);
+      throw new VcsException("Invalid URI: " + uri, e);
     }
     return createAuthURI(result, fixErrors);
   }
