@@ -324,7 +324,10 @@ public class GitVcsSupport extends ServerVcsSupport
     try {
       return myMapFullPath.mapFullPath(context, rootEntry, fullPath);
     } catch (VcsException e) {
-      LOG.error(e);
+      LOG.warnAndDebugDetails("Error while mapping path for root " + LogUtil.describe(rootEntry.getVcsRoot()), e);
+      return Collections.emptySet();
+    } catch (Throwable t) {
+      LOG.error("Error while mapping path for root " + LogUtil.describe(rootEntry.getVcsRoot()), t);
       return Collections.emptySet();
     } finally {
       context.close();
