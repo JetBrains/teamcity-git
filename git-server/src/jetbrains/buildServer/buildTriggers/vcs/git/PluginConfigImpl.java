@@ -67,7 +67,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private static final String TEAMCITY_GIT_SSH_PROXY_HOST = "teamcity.git.sshProxyHost";
   private static final String TEAMCITY_GIT_SSH_PROXY_PORT = "teamcity.git.sshProxyPort";
   private static final String TEAMCITY_GIT_ALWAYS_CHECK_CIPHERS = "teamcity.git.always.check.ciphers";
-
+  private static final String HTTP_CONNECTION_FACTORY = "teamcity.git.httpConnectionFactory";
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
   private final File myCachesDir;
@@ -75,7 +75,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
                                                            TEAMCITY_GIT_SSH_PROXY_TYPE,
                                                            TEAMCITY_GIT_SSH_PROXY_HOST,
                                                            TEAMCITY_GIT_SSH_PROXY_PORT,
-                                                           TEAMCITY_GIT_ALWAYS_CHECK_CIPHERS);
+                                                           TEAMCITY_GIT_ALWAYS_CHECK_CIPHERS,
+                                                           HTTP_CONNECTION_FACTORY);
 
   public PluginConfigImpl() {
     myCachesDir = null;
@@ -392,7 +393,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   @NotNull
   public String getHttpConnectionFactory() {
-    return TeamCityProperties.getProperty("teamcity.git.httpConnectionFactory", "httpClient");
+    return TeamCityProperties.getProperty(HTTP_CONNECTION_FACTORY, "httpClient");
   }
 
   public static boolean showKnownHostsDbOption() {
