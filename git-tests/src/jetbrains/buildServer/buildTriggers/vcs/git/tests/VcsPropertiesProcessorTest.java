@@ -75,6 +75,17 @@ public class VcsPropertiesProcessorTest extends TestCase {
   }
 
 
+  @TestFor(issues = "TW-30747")
+  public void branchSpec_no_plus_pattern_started_from_slash() {
+    Collection<InvalidProperty> invalids = myProcessor.process(
+      map(Constants.FETCH_URL, "git://some.org/repository",
+          Constants.BRANCH_NAME, "refs/heads/master",
+          Constants.BRANCH_SPEC, "/refs/heads/*"));
+    assertEquals(1, invalids.size());
+    assertEquals(Constants.BRANCH_SPEC, invalids.iterator().next().getPropertyName());
+  }
+
+
   @TestFor(issues = "TW-23174")
   public void branchSpec_count_empty_lines() {
     Collection<InvalidProperty> invalids = myProcessor.process(
