@@ -226,6 +226,11 @@ public class PluginConfigBuilder {
       public String getHttpConnectionFactory() {
         return "httpClient";
       }
+
+      @NotNull
+      public String getHttpConnectionSslProtocol() {
+        return myDelegate.getHttpConnectionSslProtocol();
+      }
     };
   }
 

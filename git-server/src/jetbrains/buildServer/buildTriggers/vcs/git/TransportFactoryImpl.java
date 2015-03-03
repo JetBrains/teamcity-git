@@ -31,7 +31,6 @@ import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.transport.http.HttpConnectionFactory;
-import org.eclipse.jgit.transport.http.JDKHttpConnectionFactory;
 import org.eclipse.jgit.transport.http.apache.HttpClientConnectionFactory;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
@@ -59,7 +58,7 @@ public class TransportFactoryImpl implements TransportFactory {
     myJSchOptions = getJSchCipherOptions();
     mySshKeyManager = sshKeyManager;
     String factoryName = myConfig.getHttpConnectionFactory();
-    HttpConnectionFactory f = factoryName.equals("httpClient") ? new HttpClientConnectionFactory() : new JDKHttpConnectionFactory();
+    HttpConnectionFactory f = factoryName.equals("httpClient") ? new HttpClientConnectionFactory() : new TeamCityJDKHttpConnectionFactory(myConfig);
     HttpTransport.setConnectionFactory(f);
   }
 

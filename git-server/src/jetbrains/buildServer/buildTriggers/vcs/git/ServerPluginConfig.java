@@ -115,4 +115,7 @@ public interface ServerPluginConfig extends PluginConfig {
 
   @NotNull
   String getHttpConnectionFactory();
+
+  @NotNull
+  String getHttpConnectionSslProtocol();
 }
