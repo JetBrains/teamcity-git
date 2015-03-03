@@ -1269,11 +1269,12 @@ public class GitVcsSupportTest extends PatchTestCase {
     final AtomicInteger failCount = new AtomicInteger(0);
     final List<TransportException> recoverableErrors = Arrays.asList(
       new TransportException("Session.connect: java.net.SocketException: Connection reset", new JSchException("test")),
+      new TransportException("Session.connect: java.net.SocketException: Software caused connection abort", new JSchException("test")),
       new TransportException("com.jcraft.jsch.JSchException: connection is closed by foreign host", new JSchException("test")),
       new TransportException("java.net.UnknownHostException: some.org", new JSchException("test")),
       new TransportException("com.jcraft.jsch.JSchException: verify: false", new JSchException("test"))
     );
-    ServerPluginConfig config = myConfigBuilder.withGetConnectionRetryAttempts(recoverableErrors.size() + 1).build();
+    ServerPluginConfig config = myConfigBuilder.withGetConnectionRetryAttempts(recoverableErrors.size() + 1).withConnectionRetryIntervalMillis(0).build();
     VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
     TransportFactory transportFactory = new TransportFactoryImpl(config, manager) {
       @Override

@@ -53,6 +53,7 @@ public class PluginConfigBuilder {
   private Map<String, String> myFetcherProperties = new HashMap<String, String>();
   private boolean myUsePerBranchFetch;
   private int myGetConnectionRetryAttempts = -1;
+  private long myConnectionRetryIntervalMillis = -1;
   private Integer myStreamFileThreshold = null;
 
   public static PluginConfigBuilder pluginConfig() {
@@ -188,7 +189,7 @@ public class PluginConfigBuilder {
       }
 
       public long getConnectionRetryIntervalMillis() {
-        return myDelegate.getConnectionRetryIntervalMillis();
+        return myConnectionRetryIntervalMillis != -1 ? myConnectionRetryIntervalMillis : myDelegate.getConnectionRetryIntervalMillis();
       }
 
       public int getConnectionRetryAttempts() {
@@ -305,6 +306,11 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder withGetConnectionRetryAttempts(int retryAttemptsCount) {
     myGetConnectionRetryAttempts = retryAttemptsCount;
+    return this;
+  }
+
+  public PluginConfigBuilder withConnectionRetryIntervalMillis(long intervalMillis) {
+    myConnectionRetryIntervalMillis = intervalMillis;
     return this;
   }
 
