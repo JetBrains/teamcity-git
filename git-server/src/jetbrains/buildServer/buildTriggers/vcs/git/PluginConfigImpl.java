@@ -173,6 +173,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
     classes.add(AbstractPatchBuilder.class);
     classes.add(PatchBuilderImpl.class);
     classes.add(LowLevelPatchBuilder.class);
+    classes.add(org.slf4j.Logger.class);
+    classes.add(org.slf4j.impl.StaticLoggerBinder.class);
     return ClasspathUtil.composeClasspath(classes.toArray(new Class[classes.size()]), null, null);
   }
 
@@ -208,7 +210,9 @@ public class PluginConfigImpl implements ServerPluginConfig {
       LogFactory.class,
       HttpEntity.class,
       CachePaths.class,
-      ServiceMessage.class
+      ServiceMessage.class,
+      org.slf4j.Logger.class,
+      org.slf4j.impl.StaticLoggerBinder.class
     ));
     Collections.addAll(result, GitVcsSupport.class.getInterfaces());
     return result;

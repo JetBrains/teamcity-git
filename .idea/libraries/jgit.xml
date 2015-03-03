@@ -1,13 +1,13 @@
 <component name="libraryTable">
   <library name="jgit">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-3.3.1.201403241930-r.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit.http.apache-3.3.1.201403241930-r.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit-3.7.0.201502260915-r.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/org.eclipse.jgit.http.apache-3.7.0.201502260915-r.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit.http.apache-3.3.1.201403241930-r-sources.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit-3.3.1.201403241930-r-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit-3.7.0.201502260915-r-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/src/org.eclipse.jgit.http.apache-3.7.0.201502260915-r-sources.jar!/" />
     </SOURCES>
   </library>
 </component>
