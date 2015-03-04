@@ -870,13 +870,13 @@ public class GitVcsSupportTest extends PatchTestCase {
     myConfigBuilder.setSeparateProcessForFetch(true);
 
     String noDebugError = getFetchExceptionMessage();
-    assertFalse(noDebugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"));//no stacktrace
+    assertFalse(noDebugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"), "output: " + noDebugError);//no stacktrace
     assertFalse(noDebugError.endsWith("\n"));
 
     Loggers.VCS.setLevel(Level.DEBUG);
     String debugError = getFetchExceptionMessage();
-    assertTrue(debugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"));
-    assertFalse(debugError.endsWith("\n"));
+    assertTrue(debugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"), "output: " + noDebugError);
+    assertFalse(debugError.endsWith("\n"), "output: " + noDebugError);
   }
 
 
