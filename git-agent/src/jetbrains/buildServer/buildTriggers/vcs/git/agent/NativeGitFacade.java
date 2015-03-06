@@ -180,6 +180,16 @@ public class NativeGitFacade implements GitFacade {
   }
 
   @NotNull
+  public GcCommand gc() {
+    return new GcCommandImpl(createCommandLine());
+  }
+
+  @NotNull
+  public RepackCommand repack() {
+    return new RepackCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   public String resolvePath(@NotNull File f) throws VcsException {
     try {
       if (myGitExec.isCygwin()) {

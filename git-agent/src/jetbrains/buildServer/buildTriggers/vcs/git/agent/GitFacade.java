@@ -90,5 +90,11 @@ public interface GitFacade {
   PackRefs packRefs();
 
   @NotNull
+  GcCommand gc();
+
+  @NotNull
+  RepackCommand repack();
+
+  @NotNull
   String resolvePath(@NotNull File f) throws VcsException;
 }

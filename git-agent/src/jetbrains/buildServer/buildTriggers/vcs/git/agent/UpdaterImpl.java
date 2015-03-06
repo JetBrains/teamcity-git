@@ -67,7 +67,7 @@ public class UpdaterImpl implements Updater {
   protected final String myRevision;
   protected final AgentGitVcsRoot myRoot;
   protected final String myFullBranchName;
-  private final AgentRunningBuild myBuild;
+  protected final AgentRunningBuild myBuild;
 
   public UpdaterImpl(@NotNull AgentPluginConfig pluginConfig,
                      @NotNull MirrorManager mirrorManager,

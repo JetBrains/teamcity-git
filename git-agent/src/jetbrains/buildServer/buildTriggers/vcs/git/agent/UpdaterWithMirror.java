@@ -32,7 +32,9 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * @author dmitry.neverov
@@ -85,11 +87,46 @@ public class UpdaterWithMirror extends UpdaterImpl {
     Ref ref = getRef(bareRepositoryDir, myFullBranchName);
     if (ref == null)
       fetchRequired = true;
-    if (fetchRequired)
-      fetchMirror(bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName), false);
+    if (!fetchRequired)
+      return;
+    if (optimizeMirrorBeforeFetch()) {
+      GitFacade git = myGitFactory.create(bareRepositoryDir);
+      git.gc().call();
+      git.repack().call();
+      removeOrphanedIdxFiles(bareRepositoryDir);
+    }
+    fetchMirror(bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName), false);
     if (hasRevision(bareRepositoryDir, myRevision))
       return;
     fetchMirror(bareRepositoryDir, "+refs/heads/*:refs/heads/*", false);
+  }
+
+
+  private boolean optimizeMirrorBeforeFetch() {
+    return "true".equals(myBuild.getSharedConfigParameters().get("teamcity.git.optimizeMirrorBeforeFetch"));
+  }
+
+
+  private void removeOrphanedIdxFiles(@NotNull File dotGitDir) {
+    File packDir = new File(new File(dotGitDir, "objects"), "pack");
+    File[] files = packDir.listFiles();
+    if (files == null)
+      return;
+
+    Set<String> packs = new HashSet<String>();
+    for (File f : files) {
+      String name = f.getName();
+      if (name.endsWith(".pack"))
+        packs.add(name.substring(0, name.length() - 5));
+    }
+
+    for (File f : files) {
+      String name = f.getName();
+      if (name.endsWith(".idx")) {
+        if (!packs.contains(name.substring(0, name.length() - 4)))
+          FileUtil.delete(f);
+      }
+    }
   }
 
 
