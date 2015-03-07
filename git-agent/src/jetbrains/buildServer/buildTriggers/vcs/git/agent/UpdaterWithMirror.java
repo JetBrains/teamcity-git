@@ -67,12 +67,14 @@ public class UpdaterWithMirror extends UpdaterImpl {
     boolean fetchRequired = true;
     if (!isValidGitRepo(bareRepositoryDir))
       FileUtil.delete(bareRepositoryDir);
+    boolean newMirror = false;
     if (!bareRepositoryDir.exists()) {
       LOG.info("Init " + mirrorDescription);
       bareRepositoryDir.mkdirs();
       GitFacade git = myGitFactory.create(bareRepositoryDir);
       git.init().setBare(true).call();
       git.addRemote().setName("origin").setUrl(myRoot.getRepositoryFetchURL().toString()).call();
+      newMirror = true;
     } else {
       boolean outdatedTagsFound = removeOutdatedRefs(bareRepositoryDir);
       if (!outdatedTagsFound) {
@@ -89,7 +91,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       fetchRequired = true;
     if (!fetchRequired)
       return;
-    if (optimizeMirrorBeforeFetch()) {
+    if (!newMirror && optimizeMirrorBeforeFetch()) {
       GitFacade git = myGitFactory.create(bareRepositoryDir);
       git.gc().call();
       git.repack().call();
