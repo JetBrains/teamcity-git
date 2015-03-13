@@ -160,12 +160,12 @@ public class TeamCityJDKHttpConnectionFactory implements HttpConnectionFactory {
     public void configure(KeyManager[] km, TrustManager[] tm, SecureRandom random) throws NoSuchAlgorithmException, KeyManagementException {
       SSLContext ctx = SSLContext.getInstance(myConfig.getHttpConnectionSslProtocol()); //$NON-NLS-1$
       ctx.init(km, tm, random);
-      ((HttpsURLConnection) wrappedUrlConnection).setSSLSocketFactory(new SSLSocketFactoryWithSoLinger(ctx.getSocketFactory()));
+      ((HttpsURLConnection) wrappedUrlConnection).setSSLSocketFactory(new SSLSocketFactoryWithSoLinger(ctx.getSocketFactory(), myConfig.getHttpsSoLinger()));
     }
 
     private void workaroundSslDeadlock() throws IOException {
       SSLSocketFactory defaultFactory = ((HttpsURLConnection) wrappedUrlConnection).getSSLSocketFactory();
-      ((HttpsURLConnection) wrappedUrlConnection).setSSLSocketFactory(new SSLSocketFactoryWithSoLinger(defaultFactory));
+      ((HttpsURLConnection) wrappedUrlConnection).setSSLSocketFactory(new SSLSocketFactoryWithSoLinger(defaultFactory, myConfig.getHttpsSoLinger()));
     }
 
     public void setAttribute(String name, Object value) {
@@ -175,9 +175,11 @@ public class TeamCityJDKHttpConnectionFactory implements HttpConnectionFactory {
   private static class SSLSocketFactoryWithSoLinger extends SSLSocketFactory {
 
     private final SSLSocketFactory delegate;
+    private final int mySoLinger;
 
-    private SSLSocketFactoryWithSoLinger(SSLSocketFactory delegate) {
+    private SSLSocketFactoryWithSoLinger(SSLSocketFactory delegate, int soLinger) {
       this.delegate = delegate;
+      mySoLinger = soLinger;
     }
 
     @Override
@@ -226,7 +228,8 @@ public class TeamCityJDKHttpConnectionFactory implements HttpConnectionFactory {
     }
 
     private void setSoLinger(Socket s) throws SocketException {
-      s.setSoLinger(true, 0);
+      if (mySoLinger >= 0)
+        s.setSoLinger(true, mySoLinger);
     }
   }
 }
