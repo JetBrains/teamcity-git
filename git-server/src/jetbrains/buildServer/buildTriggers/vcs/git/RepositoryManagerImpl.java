@@ -19,7 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryCache;
 import org.eclipse.jgit.lib.StoredConfig;
@@ -143,33 +142,11 @@ public final class RepositoryManagerImpl implements RepositoryManager {
       if (existingRemote == null || !canonicalURI.toString().equals(existingRemote)) {
         r = createRepository(dir, canonicalURI);
       }
-      setSoLinger(r, dir);
       return r;
     } catch (Exception e) {
-      final Repository r = createRepository(dir, canonicalURI);
-      try {
-        setSoLinger(r, dir);
-      } catch (Exception e1) {
-        throw new VcsException(e1);
-      }
-      return r;
+      return createRepository(dir, canonicalURI);
     }
   }
-
-  private void setSoLinger(@NotNull Repository r, @NotNull File dir) throws IOException, ConfigInvalidException {
-    StoredConfig config = r.getConfig();
-    int soLinger = config.getInt("teamcity", "https", "solinger", 0);
-    if (soLinger != myConfig.getHttpsSoLinger()) {
-      synchronized (getCreateLock(dir)) {
-        config.load();
-        if (soLinger != myConfig.getHttpsSoLinger()) {
-          config.setInt("teamcity", "https", "solinger", myConfig.getHttpsSoLinger());
-          config.save();
-        }
-      }
-    }
-  }
-
 
   public void closeRepository(@NotNull Repository repository) {
     RepositoryCache.close(repository);
