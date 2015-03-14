@@ -21,7 +21,6 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryCache;
-import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
@@ -36,6 +35,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getWrongUrlError;
 
 /**
  * @author dmitry.neverov
@@ -66,6 +67,8 @@ public final class RepositoryManagerImpl implements RepositoryManager {
   private final ConcurrentMap<File, ReadWriteLock> myRmLocks = new ConcurrentHashMap<File, ReadWriteLock>();
 
   private final ConcurrentMap<File, Object> myUpdateLastUsedTimeLocks = new ConcurrentHashMap<File, Object>();
+
+  private final AutoCloseRepositoryCache myRepositoryCache = new AutoCloseRepositoryCache();
 
   private final ServerPluginConfig myConfig;
 
@@ -135,22 +138,19 @@ public final class RepositoryManagerImpl implements RepositoryManager {
     final URIish canonicalURI = getCanonicalURI(fetchUrl);
     if (isDefaultMirrorDir(dir))
       updateLastUsedTime(dir);
-    try {
-      Repository r = RepositoryCache.open(RepositoryCache.FileKey.exact(dir, FS.DETECTED), true);
-      StoredConfig config = r.getConfig();
-      final String existingRemote = config.getString("teamcity", null, "remote");
-      if (existingRemote == null || !canonicalURI.toString().equals(existingRemote)) {
-        r = createRepository(dir, canonicalURI);
-      }
-      return r;
-    } catch (Exception e) {
+    Repository result = myRepositoryCache.get(RepositoryCache.FileKey.exact(dir, FS.DETECTED));
+    if (result == null)
       return createRepository(dir, canonicalURI);
+    String existingRemote = result.getConfig().getString("teamcity", null, "remote");
+    if (!canonicalURI.toString().equals(existingRemote)) {
+      myRepositoryCache.release(result);
+      throw getWrongUrlError(dir, existingRemote, fetchUrl);
     }
+    return result;
   }
 
   public void closeRepository(@NotNull Repository repository) {
-    RepositoryCache.close(repository);
-    repository.close();
+    myRepositoryCache.release(repository);
   }
 
   @NotNull
@@ -160,8 +160,7 @@ public final class RepositoryManagerImpl implements RepositoryManager {
     try {
       synchronized (getCreateLock(dir)) {
         Repository result = GitServerUtil.getRepository(dir, fetchUrl);
-        RepositoryCache.register(result);
-        return result;
+        return myRepositoryCache.add(RepositoryCache.FileKey.exact(dir, FS.DETECTED), result);
       }
     } finally {
       rmLock.unlock();

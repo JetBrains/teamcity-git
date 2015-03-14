@@ -80,9 +80,7 @@ public class GitServerUtil {
         final StoredConfig config = r.getConfig();
         final String existingRemote = config.getString("teamcity", null, "remote");
         if (existingRemote != null && !remote.toString().equals(existingRemote)) {
-          throw new VcsException(
-            "The specified directory " + dir + " is already used for another remote " + existingRemote +
-            " and cannot be used for others (" + remote.toString() + "). Please specify the other directory explicitly.");
+          throw getWrongUrlError(dir, existingRemote, remote);
         } else if (existingRemote == null) {
           config.setString("teamcity", null, "remote", remote.toString());
           config.save();
@@ -94,6 +92,13 @@ public class GitServerUtil {
         LOG.warn("The repository at directory '" + dir + "' cannot be opened or created", ex);
       throw new VcsException("The repository at directory '" + dir + "' cannot be opened or created, reason: " + ex.toString(), ex);
     }
+  }
+
+  @NotNull
+  static VcsException getWrongUrlError(@NotNull File dir, @NotNull String currentRemote, @NotNull URIish wrongRemote) {
+    return new VcsException(
+      "The specified directory " + dir + " is already used for another remote " + currentRemote +
+      " and cannot be used for others (" + wrongRemote.toString() + "). Please specify the other directory explicitly.");
   }
 
   private static void ensureRepositoryIsValid(File dir) throws InterruptedException, IOException, ConfigInvalidException {
