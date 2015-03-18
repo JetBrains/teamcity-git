@@ -208,7 +208,7 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
       fail("should fail during transport creation");
     } catch (VcsException e) {
       assertTrue(e.getMessage(),
-                 e.getMessage().contains("Wrong username: '" + wrongUsername + "', github expects a username 'git'"));
+                 e.getMessage().contains("Wrong username: '" + wrongUsername + "', GitHub expects a username 'git'"));
     }
   }
 }
