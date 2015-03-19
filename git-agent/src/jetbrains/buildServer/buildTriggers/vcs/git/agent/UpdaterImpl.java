@@ -34,6 +34,7 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -276,6 +277,7 @@ public class UpdaterImpl implements Updater {
                        + ", skip updating credentials");
       return;
     }
+    File modulesDir = new File(r.getDirectory(), Constants.MODULES);
     for (String submoduleName : submodules) {
       String url = gitModules.getString("submodule", submoduleName, "url");
       Loggers.VCS.info("Update credentials for submodule with url " + url);
@@ -287,12 +289,27 @@ public class UpdaterImpl implements Updater {
         URIish uri = new URIish(url);
         String updatedUrl = uri.setUser(userName).toASCIIString();
         gitConfig.setString("submodule", submoduleName, "url", updatedUrl);
+        String submodulePath = gitModules.getString("submodule", submoduleName, "path");
+        if (submodulePath != null && myPluginConfig.isUpdateSubmoduleOriginUrl()) {
+          File submoduleDir = new File(modulesDir, submodulePath);
+          if (submoduleDir.isDirectory() && new File(submoduleDir, Constants.CONFIG).isFile())
+            updateOriginUrl(submoduleDir, updatedUrl);
+        }
         Loggers.VCS.debug("Submodule url " + url + " changed to " + updatedUrl);
       } catch (URISyntaxException e) {
         Loggers.VCS.warn("Error while parsing an url " + url + ", skip updating submodule credentials", e);
+      } catch (Exception e) {
+        Loggers.VCS.warn("Error while updating the '" + submoduleName + "' submodule url", e);
       }
     }
     gitConfig.save();
+  }
+
+  private void updateOriginUrl(@NotNull File repoDir, @NotNull String url) throws IOException {
+    Repository r = new RepositoryBuilder().setBare().setGitDir(repoDir).build();
+    StoredConfig config = r.getConfig();
+    config.setString("remote", "origin", "url", url);
+    config.save();
   }
 
 

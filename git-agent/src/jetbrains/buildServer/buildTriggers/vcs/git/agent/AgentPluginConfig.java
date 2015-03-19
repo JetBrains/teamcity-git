@@ -45,4 +45,6 @@ public interface AgentPluginConfig extends PluginConfig {
 
   int getCheckoutIdleTimeoutSeconds();
 
+  boolean isUpdateSubmoduleOriginUrl();
+
 }

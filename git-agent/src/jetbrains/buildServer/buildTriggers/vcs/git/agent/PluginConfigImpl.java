@@ -175,6 +175,11 @@ public class PluginConfigImpl implements AgentPluginConfig {
     }
   }
 
+  public boolean isUpdateSubmoduleOriginUrl() {
+    String value = myBuild.getSharedConfigParameters().get("teamcity.git.updateSubmoduleOriginUrl");
+    return !"false".equals(value);
+  }
+
   private int parseTimeout(String valueFromBuild) {
     return parseTimeout(valueFromBuild, DEFAULT_IDLE_TIMEOUT);
   }
