@@ -64,6 +64,7 @@ class GitLabelingSupport implements LabelingSupport {
     OperationContext context = myVcs.createContext(root, "labelling");
     GitVcsRoot gitRoot = context.getGitRoot();
     try {
+      long start = System.currentTimeMillis();
       Repository r = context.getRepository();
       String commitSHA = GitUtils.versionRevision(version);
       RevCommit commit = myCommitLoader.loadCommit(context, gitRoot, commitSHA);
@@ -74,16 +75,19 @@ class GitLabelingSupport implements LabelingSupport {
         .call();
       String tagRef = GitUtils.tagName(label);
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Tag created  " + label + "=" + version + " for " + gitRoot.debugInfo());
+        LOG.debug("Tag created  " + label + "=" + version + " for " + gitRoot.debugInfo() +
+                  " in " + (System.currentTimeMillis() - start) + "ms");
       }
       synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
+        long pushStart = System.currentTimeMillis();
         final Transport tn = myTransportFactory.createTransport(r, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings());
         try {
           final PushConnection c = tn.openPush();
           try {
             RemoteRefUpdate ru = new RemoteRefUpdate(r, tagRef, tagRef, false, null, null);
             c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(tagRef, ru));
-            LOG.info("Tag  " + label + "=" + version + " pushed with status " + ru.getStatus() + " for " + gitRoot.debugInfo());
+            LOG.info("Tag  " + label + "=" + version + " was pushed with status " + ru.getStatus() + " for " + gitRoot.debugInfo() +
+                     " in " + (System.currentTimeMillis() - pushStart) + "ms");
             switch (ru.getStatus()) {
               case UP_TO_DATE:
               case OK:
