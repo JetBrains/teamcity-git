@@ -56,6 +56,7 @@ class GitLabelingSupport implements LabelingSupport {
     myTransportFactory = transportFactory;
   }
 
+  @NotNull
   public String label(@NotNull String label,
                       @NotNull String version,
                       @NotNull VcsRoot root,
