@@ -67,6 +67,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.*;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
@@ -708,24 +709,24 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  //Due to changes in the logic of choosing checkout directory on the agent (builds
-  //from the same repository go to the same dir even if the branches are different), git-plugin
-  //should be able to decide if it can build an incremental patch, or full patch is required.
-  //There are 2 possible cases: revision from which we build the patch is found in the local clone
-  //of repository on the server or not. If revision is not found - git-plugin should build a full patch.
-  //2 following tests test this behaviour
-
-  @Test
-  public void build_patch_between_unrelated_revisions_when_from_version_is_fetched() throws Exception {
-    checkPatch("patch6", "rename-test", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9", false);
-  }
-
-
   @Test
   public void build_patch_between_unrelated_revisions_when_from_version_is_not_fetched() throws Exception {
     //fromRevision (592c5bcee6d906482177a62a6a44efa0cff9bbc7) is not found in a repository clone on the server:
     VcsRoot root = getRoot("rename-test");
     checkPatch(root, "patch7", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "2eed4ae6732536f76a65136a606f635e8ada63b9", new CheckoutRules("+:.=>path"));
+  }
+
+
+  @TestFor(issues = "TW-40689")
+  @Test
+  public void patch_from_unknown_commit_excluded_root_dir() throws Exception {
+    VcsRoot root = getRoot("rename-test");
+    String unknownCommit = "hahahahahahahahahahahahahahahahahahahaha";
+    checkPatch(root, "patch3", unknownCommit, "1837cf38309496165054af8bf7d62a9fe8997202",
+               new CheckoutRules(asList("-:.", //this rule caused NPE
+                                        "+:dir with space=>dir with space",
+                                        "+:dir1=>dir1",
+                                        "+:file_in_branch.txt")));
   }
 
 
@@ -967,7 +968,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     final VcsSupportContext anotherGitPlugin = context.mock(VcsSupportContext.class);
     final VcsSupportCore anotherGitPluginCore = context.mock(VcsSupportCore.class);
     context.checking(new Expectations() {{
-      allowing(holder).getServices(VcsSupportContext.class); will(returnValue(Arrays.asList(anotherGitPlugin)));
+      allowing(holder).getServices(VcsSupportContext.class); will(returnValue(asList(anotherGitPlugin)));
       allowing(anotherGitPlugin).getCore(); will(returnValue(anotherGitPluginCore));
       allowing(anotherGitPluginCore).getName(); will(returnValue("git"));
     }});
@@ -984,7 +985,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     final VcsSupportCore anotherVcsPluginCore = context.mock(VcsSupportCore.class);
     context.checking(new Expectations() {{
       allowing(holder).getServices(VcsSupportContext.class);
-      will(returnValue(Arrays.asList(anotherVcsPlugin)));
+      will(returnValue(asList(anotherVcsPlugin)));
       allowing(anotherVcsPlugin).getCore();
       will(returnValue(anotherVcsPluginCore));
       allowing(anotherVcsPluginCore).getName();
@@ -1404,7 +1405,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     //setup TransportFactory so that it fails to get connection several times with well known exceptions
     //and then successfully gets it on the last call
     final AtomicInteger failCount = new AtomicInteger(0);
-    final List<TransportException> recoverableErrors = Arrays.asList(
+    final List<TransportException> recoverableErrors = asList(
       new TransportException("Session.connect: java.net.SocketException: Connection reset", new JSchException("test")),
       new TransportException("com.jcraft.jsch.JSchException: connection is closed by foreign host", new JSchException("test")),
       new TransportException("java.net.UnknownHostException: some.org", new JSchException("test")),
@@ -1594,7 +1595,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     final GitVcsSupport support = getSupport();
     final List<ChangeData> list = new ArrayList<ChangeData>();
     support.getCollectChangesPolicy().fetchAllRefs(vcsRoot);
-    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, Arrays.asList("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46"), new ChangesConsumer() {
+    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, asList("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46"), new ChangesConsumer() {
         public void consumeChange(@NotNull ChangeData change) {
           list.add(change);
         }
@@ -1606,7 +1607,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     System.out.println("next = " + next);
 
-    Assert.assertEquals(next.getParentRevisions(), Arrays.asList("a894d7d58ffde625019a9ecf8267f5f1d1e5c341"));
+    Assert.assertEquals(next.getParentRevisions(), asList("a894d7d58ffde625019a9ecf8267f5f1d1e5c341"));
     Assert.assertEquals(next.getChanges().size(), 1);
 
     final VcsChange change = next.getChanges().get(0);
@@ -1621,7 +1622,8 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     final List<ChangeData> list = new ArrayList<ChangeData>();
     support.getCollectChangesPolicy().fetchAllRefs(vcsRoot);
-    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, Arrays.asList("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", "a894d7d58ffde625019a9ecf8267f5f1d1e5c341"), new ChangesConsumer() {
+    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, asList("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46",
+                                                                                              "a894d7d58ffde625019a9ecf8267f5f1d1e5c341"), new ChangesConsumer() {
                                                          public void consumeChange(@NotNull ChangeData change) {
                                                            list.add(change);
                                                          }
@@ -1634,9 +1636,9 @@ public class GitVcsSupportTest extends PatchTestCase {
       final String commitId = data.getVersion();
 
       if (commitId.equals("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46")) {
-        Assert.assertEquals(data.getParentRevisions(), Arrays.asList("a894d7d58ffde625019a9ecf8267f5f1d1e5c341"));
+        Assert.assertEquals(data.getParentRevisions(), asList("a894d7d58ffde625019a9ecf8267f5f1d1e5c341"));
       } else if (commitId.equals("a894d7d58ffde625019a9ecf8267f5f1d1e5c341")) {
-        Assert.assertEquals(data.getParentRevisions(), Arrays.asList("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653"));
+        Assert.assertEquals(data.getParentRevisions(), asList("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653"));
       } else {
         Assert.fail("Unexpected commit: " + commitId);
       }
@@ -1651,7 +1653,8 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     final List<ChangeData> list = new ArrayList<ChangeData>();
     support.getCollectChangesPolicy().fetchAllRefs(vcsRoot);
-    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, Arrays.asList("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653"), new ChangesConsumer() {
+    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, asList("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46",
+                                                                                              "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653"), new ChangesConsumer() {
                                                          public void consumeChange(@NotNull ChangeData change) {
                                                            list.add(change);
                                                          }
@@ -1668,7 +1671,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     final GitVcsSupport support = getSupport();
     final List<ChangeData> list = new ArrayList<ChangeData>();
     support.getCollectChangesPolicy().fetchAllRefs(vcsRoot);
-    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, Arrays.asList("f3f826ce85d6dad25156b2d7550cedeb1a422f4c"), new ChangesConsumer() {
+    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, asList("f3f826ce85d6dad25156b2d7550cedeb1a422f4c"), new ChangesConsumer() {
                                                          public void consumeChange(@NotNull ChangeData change) {
                                                            list.add(change);
                                                          }
@@ -1680,7 +1683,8 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     System.out.println("next = " + next);
 
-    Assert.assertEquals(new HashSet<String>(next.getParentRevisions()), new HashSet<String>(Arrays.asList("6fce8fe45550eb72796704a919dad68dc44be44a", "ee886e4adb70fbe3bdc6f3f6393598b3f02e8009")));
+    Assert.assertEquals(new HashSet<String>(next.getParentRevisions()), new HashSet<String>(
+      asList("6fce8fe45550eb72796704a919dad68dc44be44a", "ee886e4adb70fbe3bdc6f3f6393598b3f02e8009")));
     Assert.assertEquals(next.getChanges().size(), 3);
   }
 

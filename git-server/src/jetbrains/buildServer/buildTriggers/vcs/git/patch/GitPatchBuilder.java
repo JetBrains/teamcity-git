@@ -32,7 +32,6 @@ import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -109,7 +108,6 @@ public final class GitPatchBuilder {
       if (fromCommit == null) {
         myLogger.logFromRevisionNotFound(myFromRevision);
         myTreeWalk.addTree(new EmptyTreeIterator());
-        cleanCheckoutDir();
         myCleanCheckout = true;
       } else {
         myContext.addTree(myGitRoot, myTreeWalk, myRepository, fromCommit, true);
@@ -145,10 +143,6 @@ public final class GitPatchBuilder {
           throw new IllegalStateException("Unknown change type");
       }
     }
-  }
-
-  private void cleanCheckoutDir() throws IOException {
-    myBuilder.deleteDirectory(new File(myRules.map("")), true);
   }
 
   private void changeOrCreateFile(@NotNull String path, @NotNull String mappedPath) throws Exception {
