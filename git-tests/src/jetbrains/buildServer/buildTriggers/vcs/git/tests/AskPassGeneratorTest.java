@@ -86,7 +86,17 @@ public class AskPassGeneratorTest {
     GeneralCommandLine cmd = new GeneralCommandLine();
     cmd.setExePath(createGenerator().generate(new AuthSettings(root)).getCanonicalPath());
     ExecResult result = SimpleCommandLineProcessRunner.runCommand(cmd, null);
-    assertEquals(password, result.getStdout());
+    assertEquals(password, trimNewLines(result.getStdout()));
+  }
+
+
+  @NotNull
+  private String trimNewLines(@NotNull String s) {
+    for (int i = s.length() - 1; i >= 0; i--) {
+      if (s.charAt(i) != '\n')
+        return s.substring(0, i + 1);
+    }
+    return s;
   }
 
 
