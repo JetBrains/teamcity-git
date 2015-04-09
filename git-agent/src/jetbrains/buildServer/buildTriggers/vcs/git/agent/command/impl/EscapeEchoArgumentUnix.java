@@ -23,20 +23,25 @@ public class EscapeEchoArgumentUnix implements EscapeEchoArgument {
   @NotNull
   public String escape(@NotNull String s) {
     StringBuilder sb = new StringBuilder();
-    sb.append("\"");
+    sb.append("\'");
     for (int i = 0; i < s.length(); i++) {
       char c = s.charAt(i);
       switch (c) {
-        case '"':
-          sb.append("\\");
-          sb.append("\"");
+        case '\'':
+          sb.append("\\'");
+          break;
+        case '\\':
+          sb.append("\\\\");
+          break;
+        case '%':
+          sb.append("%%");
           break;
         default:
           sb.append(c);
           break;
       }
     }
-    sb.append("\"");
+    sb.append("\'");
     return sb.toString();
   }
 

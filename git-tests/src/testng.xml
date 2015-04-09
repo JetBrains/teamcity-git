@@ -40,6 +40,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.EchoArgumentEscapingTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.FetcherPropertiesTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitMergeSupportTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AskPassGeneratorTest"/>
     </classes>
   </test>
 </suite>
