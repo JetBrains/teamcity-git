@@ -37,8 +37,8 @@ public class EchoArgumentEscapingTest {
 
   public void unix_escaping() {
     EscapeEchoArgumentUnix escaper = new EscapeEchoArgumentUnix();
-    assertEquals("\"ab\"", escaper.escape("ab"));
-    assertEquals("\"a\\\"b\"", escaper.escape("a\"b"));
+    assertEquals("'ab'", escaper.escape("ab"));
+    assertEquals("'a\\\\\"b'", escaper.escape("a\\\"b"));
   }
 
 }
