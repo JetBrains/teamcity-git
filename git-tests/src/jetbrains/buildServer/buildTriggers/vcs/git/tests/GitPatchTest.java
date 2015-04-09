@@ -44,6 +44,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 
+import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
@@ -132,6 +133,18 @@ public class GitPatchTest extends PatchTestCase {
     checkPatchResult(output.toByteArray());
   }
 
+
+  @TestFor(issues = "TW-40689")
+  @Test
+  public void patch_from_unknown_commit_excluded_root_dir() throws Exception {
+    VcsRoot root = getRoot("rename-test");
+    String unknownCommit = "hahahahahahahahahahahahahahahahahahahaha";
+    checkPatch(root, "patch3", unknownCommit, "1837cf38309496165054af8bf7d62a9fe8997202",
+               new CheckoutRules(asList("-:.", //this rule caused NPE
+                                        "+:dir with space=>dir with space",
+                                        "+:dir1=>dir1",
+                                        "+:file_in_branch.txt")));
+  }
 
   @Test(dataProvider = "patchInSeparateProcess")
   public void testPatches(boolean patchInSeparateProcess) throws IOException, VcsException {
