@@ -602,6 +602,16 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  @TestFor(issues = "TW-40543")
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void should_support_submodule_on_pull_request(boolean fetchInSeparateProcess) throws Exception {
+    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("submodule-on-pull-request", true);
+    support.collectChanges(root, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", "a0b44c815bcedbe50b6528d277d9ee3ac037132a", CheckoutRules.DEFAULT);
+  }
+
+
   private void checkCollectBuildChangesSubSubmodules(boolean fetchInSeparateProcess, boolean recursiveSubmoduleCheckout)
     throws IOException, VcsException {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);

@@ -199,7 +199,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
     if (LOG.isDebugEnabled())
       LOG.debug("Fetching submodule " + submoduleUrl + " used at " + submodulePath + " for " + myContext.getGitRoot().debugInfo());
     URIish uri = resolveSubmoduleUrl(submoduleUrl);
-    myContext.fetchSubmodule(r, uri, Arrays.asList(new RefSpec("+refs/heads/*:refs/heads/*"), new RefSpec("+refs/tags/*:refs/tags/*")), myContext.getGitRoot().getAuthSettings());
+    myContext.fetchSubmodule(r, uri, Arrays.asList(new RefSpec("+refs/*:refs/*")), myContext.getGitRoot().getAuthSettings());
   }
 
   public SubmoduleResolverImpl getSubResolver(RevCommit commit, String path) {
