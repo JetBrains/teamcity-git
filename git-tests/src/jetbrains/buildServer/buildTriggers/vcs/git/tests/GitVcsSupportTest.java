@@ -608,7 +608,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("submodule-on-pull-request", true);
-    support.collectChanges(root, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", "a0b44c815bcedbe50b6528d277d9ee3ac037132a", CheckoutRules.DEFAULT);
+    support.collectChanges(root, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", "ab8ac5c5bf9694d3102b25e0be4fdb2a8beeffe9", CheckoutRules.DEFAULT);
   }
 
 
