@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleFetchException;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -65,7 +66,18 @@ public class GitPatchProcess {
       if (settings.isDebugEnabled() || isImportant(t)) {
         t.printStackTrace(System.err);
       } else {
-        System.err.println(t.getMessage());
+        String msg = t.getMessage();
+        boolean printStackTrace = false;
+        if (t instanceof SubmoduleFetchException) {
+          Throwable cause = t.getCause();
+          if (cause != null) {
+            msg += " " + cause.getMessage();
+            printStackTrace = isImportant(cause);
+          }
+        }
+        System.err.println(msg);
+        if (printStackTrace)
+          t.printStackTrace(System.err);
       }
       System.exit(1);
     } finally {
