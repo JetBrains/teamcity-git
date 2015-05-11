@@ -64,6 +64,7 @@ public class GitPatchProcess {
       patchBuilder.close();
     } catch (Throwable t) {
       if (settings.isDebugEnabled() || isImportant(t)) {
+        System.err.println(t.getMessage());
         t.printStackTrace(System.err);
       } else {
         String msg = t.getMessage();
