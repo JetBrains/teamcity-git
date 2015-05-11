@@ -22,6 +22,7 @@ import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
@@ -123,6 +124,7 @@ public final class GitPatchBuilderDispatcher {
     props.put(Constants.PATCHER_CACHES_DIR, myConfig.getCachesDir().getCanonicalPath());
     props.put(Constants.PATCHER_PATCH_FILE, patchFile.getCanonicalPath());
     props.put(Constants.PATCHER_UPLOADED_KEY, getUploadedKey());
+    props.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
     props.putAll(myGitRoot.getProperties());
     return VcsUtil.propertiesToStringSecure(props).getBytes("UTF-8");
   }
