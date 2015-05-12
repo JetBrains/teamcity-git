@@ -73,6 +73,9 @@ public interface ServerPluginConfig extends PluginConfig {
   @NotNull
   List<String> getProxySettingsForSeparateProcess();
 
+  @NotNull
+  List<String> getSslTrustStoreSettingsForSeparateProcess();
+
   /**
    * @return proxy for jsch of null if no proxy required
    */

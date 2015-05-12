@@ -156,6 +156,11 @@ public class PluginConfigBuilder {
         return myDelegate.getProxySettingsForSeparateProcess();
       }
 
+      @NotNull
+      public List<String> getSslTrustStoreSettingsForSeparateProcess() {
+        return myDelegate.getSslTrustStoreSettingsForSeparateProcess();
+      }
+
       @Nullable
       public Proxy getJschProxy() {
         return null;

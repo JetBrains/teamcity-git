@@ -255,6 +255,21 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return proxySettings;
   }
 
+  @NotNull
+  public List<String> getSslTrustStoreSettingsForSeparateProcess() {
+    List<String> result = new ArrayList<String>();
+
+    String trustStore = System.getProperty("javax.net.ssl.trustStore");
+    if (trustStore != null)
+      result.add("-Djavax.net.ssl.trustStore=" + trustStore);
+
+    String trustStorePassword = System.getProperty("javax.net.ssl.trustStorePassword");
+    if (trustStorePassword != null)
+      result.add("-Djavax.net.ssl.trustStorePassword=" + trustStorePassword);
+
+    return result;
+  }
+
   public int getNumberOfCommitsWhenFromVersionNotFound() {
     return TeamCityProperties.getInteger("teamcity.git.from.version.not.found.commits.number", 10);
   }
