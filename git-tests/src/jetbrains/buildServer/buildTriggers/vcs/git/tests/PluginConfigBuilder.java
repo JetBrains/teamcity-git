@@ -55,6 +55,8 @@ public class PluginConfigBuilder {
   private int myGetConnectionRetryAttempts = -1;
   private long myConnectionRetryIntervalMillis = -1;
   private Integer myStreamFileThreshold = null;
+  private String myPatchBuilderClassName;
+  private String myPatchClassPath;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -126,11 +128,11 @@ public class PluginConfigBuilder {
       }
 
       public String getPatchClasspath() {
-        return myDelegate.getPatchClasspath();
+        return myPatchClassPath != null ? myPatchClassPath : myDelegate.getPatchClasspath();
       }
 
       public String getPatchBuilderClassName() {
-        return myDelegate.getPatchBuilderClassName();
+        return myPatchBuilderClassName != null ? myPatchBuilderClassName : myDelegate.getPatchBuilderClassName();
       }
 
       public boolean passEnvToChildProcess() {
@@ -151,7 +153,7 @@ public class PluginConfigBuilder {
 
       @NotNull
       public List<String> getProxySettingsForSeparateProcess() {
-        return Collections.emptyList();
+        return myDelegate.getProxySettingsForSeparateProcess();
       }
 
       @Nullable
@@ -321,6 +323,16 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setStreamFileThreshold(final Integer streamFileThreshold) {
     myStreamFileThreshold = streamFileThreshold;
+    return this;
+  }
+
+  public PluginConfigBuilder setPatchClassPath(String classPath) {
+    myPatchClassPath = classPath;
+    return this;
+  }
+
+  public PluginConfigBuilder setPatchBuilderClassName(String className) {
+    myPatchBuilderClassName = className;
     return this;
   }
 }

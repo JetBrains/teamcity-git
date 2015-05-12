@@ -23,6 +23,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Properties;
+import java.util.Set;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 
@@ -69,4 +72,18 @@ public class GitTestUtil {
     }
   }
 
+  public static Properties copyCurrentProperties() {
+    Properties result = new Properties();
+    result.putAll(System.getProperties());
+    return result;
+  }
+
+
+  public static void restoreProperties(@NotNull Properties properties) {
+    Set<Object> currentKeys = new HashSet<Object>(System.getProperties().keySet());
+    for (Object key : currentKeys) {
+      System.clearProperty((String)key);
+    }
+    System.setProperties(properties);
+  }
 }
