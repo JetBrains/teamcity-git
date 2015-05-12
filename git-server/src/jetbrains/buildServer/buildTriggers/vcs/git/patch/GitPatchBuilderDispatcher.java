@@ -157,6 +157,7 @@ public final class GitPatchBuilderDispatcher {
     GeneralCommandLine cmd = new GeneralCommandLine();
     cmd.setWorkingDirectory(myContext.getRepository(myGitRoot).getDirectory());
     cmd.setExePath(myConfig.getFetchProcessJavaPath());
+    cmd.addParameters(myConfig.getProxySettingsForSeparateProcess());
     cmd.addParameters("-Xmx" + myConfig.getFetchProcessMaxMemory(),
                      "-cp", myConfig.getPatchClasspath(),
                      myConfig.getPatchBuilderClassName(),

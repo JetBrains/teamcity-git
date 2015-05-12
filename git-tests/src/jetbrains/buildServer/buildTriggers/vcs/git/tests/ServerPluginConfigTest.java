@@ -30,10 +30,8 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -56,30 +54,14 @@ public class ServerPluginConfigTest {
     myTempFiles = new TempFiles();
     File dotBuildServer = myTempFiles.createTempDir();
     myServerPaths = new ServerPaths(dotBuildServer.getAbsolutePath());
-    myPropertiesBeforeTest = copyCurrentProperties();
+    myPropertiesBeforeTest = GitTestUtil.copyCurrentProperties();
   }
 
 
   @AfterMethod
   public void tearDown() {
-    restoreProperties();
+    GitTestUtil.restoreProperties(myPropertiesBeforeTest);
     myTempFiles.cleanup();
-  }
-
-
-  private Properties copyCurrentProperties() {
-    Properties result = new Properties();
-    result.putAll(System.getProperties());
-    return result;
-  }
-
-
-  private void restoreProperties() {
-    Set<Object> currentKeys = new HashSet<Object>(System.getProperties().keySet());
-    for (Object key : currentKeys) {
-      System.clearProperty((String)key);
-    }
-    System.setProperties(myPropertiesBeforeTest);
   }
 
 

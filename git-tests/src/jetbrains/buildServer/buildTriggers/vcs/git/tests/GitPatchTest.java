@@ -17,9 +17,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.ExtensionHolder;
+import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
+import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchProcess;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -36,6 +38,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -43,6 +46,7 @@ import org.testng.annotations.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.Properties;
 
 import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
@@ -56,6 +60,7 @@ public class GitPatchTest extends PatchTestCase {
   private File myMainRepositoryDir;
   private PluginConfigBuilder myConfigBuilder;
   private ResetCacheRegister myResetCacheManager;
+  private Properties myPropertiesBeforeTest;
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -78,8 +83,16 @@ public class GitPatchTest extends PatchTestCase {
     context.checking(new Expectations() {{
       allowing(myResetCacheManager).registerHandler(with(any(ResetCacheHandler.class)));
     }});
+    myPropertiesBeforeTest = GitTestUtil.copyCurrentProperties();
   }
 
+
+  @Override
+  @AfterMethod
+  public void tearDown() throws Exception {
+    super.tearDown();
+    GitTestUtil.restoreProperties(myPropertiesBeforeTest);
+  }
 
   @Override
   protected String getTestDataPath() {
@@ -103,6 +116,25 @@ public class GitPatchTest extends PatchTestCase {
     checkPatch("patch1",
                GitUtils.makeVersion("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", 1238420977000L),
                GitUtils.makeVersion("0dd03338d20d2e8068fbac9f24899d45d443df38", 1238421020000L));
+  }
+
+
+  @TestFor(issues = "TW-40897")
+  public void should_pass_proxy_settings_to_patch_in_separate_process() throws Exception {
+    String classpath = myConfigBuilder.build().getPatchClasspath() + File.pathSeparator +
+                       ClasspathUtil.composeClasspath(new Class[]{CheckProxyPropertiesPatchBuilder.class}, null, null);
+    myConfigBuilder.setSeparateProcessForPatch(true)
+      .setPatchClassPath(classpath)
+      .setPatchBuilderClassName(CheckProxyPropertiesPatchBuilder.class.getName());
+    System.setProperty("http.proxyHost", "httpProxyHost");
+    System.setProperty("http.proxyPort", "81");
+    System.setProperty("https.proxyHost", "httpsProxyHost");
+    System.setProperty("https.proxyPort", "82");
+    System.setProperty("http.nonProxyHosts", "some.org");
+    System.setProperty("teamcity.git.sshProxyType", "http");
+    System.setProperty("teamcity.git.sshProxyHost", "sshProxyHost");
+    System.setProperty("teamcity.git.sshProxyPort", "83");
+    checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
   }
 
 
@@ -269,5 +301,29 @@ public class GitPatchTest extends PatchTestCase {
       .withBranch(branchName)
       .withSubmodulePolicy(enableSubmodules ? SubmodulesCheckoutPolicy.CHECKOUT : SubmodulesCheckoutPolicy.IGNORE)
       .build();
+  }
+
+
+  public static class CheckProxyPropertiesPatchBuilder {
+    public static void main(String... args) throws Exception {
+      assertSystemProperty("http.proxyHost", "httpProxyHost");
+      assertSystemProperty("http.proxyPort", "81");
+      assertSystemProperty("https.proxyHost", "httpsProxyHost");
+      assertSystemProperty("https.proxyPort", "82");
+      assertSystemProperty("http.nonProxyHosts", "some.org");
+      assertSystemProperty("teamcity.git.sshProxyType", "http");
+      assertSystemProperty("teamcity.git.sshProxyHost", "sshProxyHost");
+      assertSystemProperty("teamcity.git.sshProxyPort", "83");
+      GitPatchProcess.main(args);
+    }
+
+    private static void assertSystemProperty(@NotNull String name, @NotNull String expectedValue) {
+      String actualValue = System.getProperty(name);
+      if (!expectedValue.equals(actualValue)) {
+        if (actualValue == null)
+          throw new RuntimeException("System property " + name + " is not specified, expected value " + expectedValue);
+        throw new RuntimeException("System property " + name + " = " + actualValue + ", expected value " + expectedValue);
+      }
+    }
   }
 }
