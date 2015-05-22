@@ -35,4 +35,5 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.CommitLoaderImpl"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitFetchService"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitCommitSupport"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.patch.BulkPatchBuilderImpl"/>
 </beans>
