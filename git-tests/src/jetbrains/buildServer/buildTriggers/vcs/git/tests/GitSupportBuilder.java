@@ -106,6 +106,12 @@ public class GitSupportBuilder {
     return git;
   }
 
+  @NotNull
+  public ServerPluginConfig getPluginConfig() {
+    if (myPluginConfig == null) throw new Error("Plugin config is not yet created. Call #build()");
+    return myPluginConfig;
+  }
+
   public GitSupportBuilder withPluginConfig(@NotNull PluginConfigBuilder config) {
     myPluginConfigBuilder = config;
     return this;
