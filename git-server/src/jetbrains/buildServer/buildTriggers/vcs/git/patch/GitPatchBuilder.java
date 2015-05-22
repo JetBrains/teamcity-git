@@ -22,9 +22,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTree
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
-import org.eclipse.jgit.lib.FileMode;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
@@ -87,7 +85,7 @@ public class GitPatchBuilder {
     myLogger = new BuildPatchLogger(LOG, myGitRoot.debugInfo(), myVerboseTreeWalkLog);
     myRepository = myContext.getRepository();
     try {
-      myTreeWalk = new VcsChangeTreeWalk(myRepository, myGitRoot.debugInfo(), myVerboseTreeWalkLog);
+      myTreeWalk = new VcsChangeTreeWalk(newObjectReaderForTree(), myGitRoot.debugInfo(), myVerboseTreeWalkLog);
       myTreeWalk.setFilter(TreeFilter.ANY_DIFF);
       myTreeWalk.setRecursive(true);
       addToCommitTree();
@@ -98,6 +96,11 @@ public class GitPatchBuilder {
       if (myTreeWalk != null)
         myTreeWalk.release();
     }
+  }
+
+  @NotNull
+  protected ObjectReader newObjectReaderForTree() {
+    return myRepository.newObjectReader();
   }
 
   private void addToCommitTree() throws IOException, VcsException {
@@ -160,18 +163,45 @@ public class GitPatchBuilder {
     if (mode != null)
       myLogger.logFileModeChanged(mode, myTreeWalk.treeWalkInfo(path));
     ObjectId id = myTreeWalk.getObjectId(0);
-    Repository r = getRepositoryOfTree();
-    LoadContentAction loadContent = loadContent().fromRepository(r)
-      .withObjectId(id)
-      .withMode(mode)
-      .withPath(path)
-      .withMappedPath(mappedPath);
+    LoadContentAction loadContent = getLoadContentAction(path, mappedPath, mode, id);
     if (myFullCheckout) {
       loadContent.call();// full checkout, we aren't going to see any deletes
     } else {
       myFileAction.call("-", mappedPath);
       myActions.add(loadContent);
     }
+  }
+
+  private static final ContentLoaderFactory CONTENT_LOADER_FACTORY = new ContentLoaderFactory() {
+    @Nullable
+    public ObjectLoader open(@NotNull final Repository repo, @NotNull final ObjectId id) throws IOException {
+      return repo.open(id);
+    }
+  };
+
+
+  @NotNull
+  protected LoadContentAction getLoadContentAction(@NotNull final String path,
+                                                   @NotNull final String mappedPath,
+                                                   final String mode,
+                                                   @NotNull final ObjectId id) {
+    final Repository repository = getRepositoryOfTree();
+    return new LoadContentAction(
+      contentLoaderFactory(),
+      myGitRoot,
+      myBuilder,
+      myLogger,
+      myFileAction,
+      repository,
+      id,
+      path,
+      mappedPath,
+      mode);
+  }
+
+  @NotNull
+  protected ContentLoaderFactory contentLoaderFactory() {
+    return CONTENT_LOADER_FACTORY;
   }
 
   private void deleteFile(@NotNull String mappedFile) throws IOException {
@@ -195,7 +225,4 @@ public class GitPatchBuilder {
     return result;
   }
 
-  private LoadContentAction loadContent() {
-    return new LoadContentAction(myGitRoot, myBuilder, myLogger, myFileAction);
-  }
 }

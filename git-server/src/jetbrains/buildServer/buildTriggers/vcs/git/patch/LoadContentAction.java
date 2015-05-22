@@ -24,7 +24,6 @@ import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.util.io.AutoCRLFInputStream;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -34,50 +33,38 @@ import java.util.concurrent.Callable;
 /**
 * @author dmitry.neverov
 */
-class LoadContentAction implements Callable<Void> {
+public class LoadContentAction implements Callable<Void> {
+  @NotNull private final ContentLoaderFactory myContentFactory;
   private final GitVcsRoot myRoot;
   private final PatchBuilder myBuilder;
   private final BuildPatchLogger myLogger;
   private final PatchFileAction myFileAction;
-  private Repository myRepository;
-  private ObjectId myObjectId;
-  private String myPath;
-  private String myMappedPath;
-  private String myMode;
+  private final Repository myRepository;
+  private final ObjectId myObjectId;
+  private final String myPath;
+  private final String myMappedPath;
+  private final String myMode;
 
-  LoadContentAction(@NotNull GitVcsRoot root,
-                    @NotNull PatchBuilder builder,
-                    @NotNull BuildPatchLogger logger,
-                    @NotNull PatchFileAction fileAction) {
+  public LoadContentAction(@NotNull final ContentLoaderFactory contentFactory,
+                           final GitVcsRoot root,
+                           final PatchBuilder builder,
+                           final BuildPatchLogger logger,
+                           final PatchFileAction fileAction,
+                           final Repository repository,
+                           final ObjectId objectId,
+                           final String path,
+                           final String mappedPath,
+                           final String mode) {
+    myContentFactory = contentFactory;
     myRoot = root;
     myBuilder = builder;
     myLogger = logger;
     myFileAction = fileAction;
-  }
-
-  LoadContentAction fromRepository(@NotNull Repository repository) {
     myRepository = repository;
-    return this;
-  }
-
-  LoadContentAction withPath(@Nullable String path) {
-    myPath = path;
-    return this;
-  }
-
-  LoadContentAction withMappedPath(@NotNull String mappedPath) {
-    myMappedPath = mappedPath;
-    return this;
-  }
-
-  LoadContentAction withMode(@Nullable String mode) {
-    myMode = mode;
-    return this;
-  }
-
-  LoadContentAction withObjectId(@NotNull ObjectId objectId) {
     myObjectId = objectId;
-    return this;
+    myPath = path;
+    myMappedPath = mappedPath;
+    myMode = mode;
   }
 
   public Void call() throws Exception {
@@ -102,8 +89,9 @@ class LoadContentAction implements Callable<Void> {
     return null;
   }
 
-  private ObjectLoader getObjectLoader() throws IOException {
-    ObjectLoader loader = myRepository.open(myObjectId);
+  @NotNull
+  protected ObjectLoader getObjectLoader() throws IOException {
+    ObjectLoader loader = myContentFactory.open(myRepository, myObjectId);
     if (loader == null)
       throw new IOException("Unable to find blob " + myObjectId.name() + (myPath == null ? "" : "(" + myPath + ")") + " in repository " + myRepository);
     return loader;
