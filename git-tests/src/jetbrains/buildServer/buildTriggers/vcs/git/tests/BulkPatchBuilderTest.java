@@ -27,6 +27,7 @@ import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.CommitsInfoBuilder;
+import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.vcs.api.CommitInfo;
 import org.jetbrains.annotations.NotNull;
@@ -35,6 +36,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.io.Closeable;
 import java.io.File;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -69,8 +71,6 @@ public class BulkPatchBuilderTest extends BaseTestCase {
   public void setUp() throws Exception {
     super.setUp();
     ServerPaths myPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    PluginConfigBuilder config = new PluginConfigBuilder();
-
     GitSupportBuilder builder = gitSupport().withServerPaths(myPaths);
     myGit = builder.build();
     myCommitSupport = new GitCommitsInfoBuilder(myGit);
@@ -84,7 +84,39 @@ public class BulkPatchBuilderTest extends BaseTestCase {
 
   @Test
   public void test_merged_patch() throws Exception {
-    VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myRepositoryDir)).withBranch("master").build();
+    final VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myRepositoryDir)).withBranch("master").build();
+
+    final ArrayList<String> log = new ArrayList<String>();
+    final BulkPatchBuilder patcher = patcher(new PatchLogger() {
+      public void log(@NotNull final String message) {
+        log.add(message);
+      }
+    });
+
+    runFullPatch(root, patcher);
+    Assert.assertTrue(log.size() > 0);
+  }
+
+  @Test(enabled = false)
+  public void test_local_idea() throws Exception {
+    ///does not work for real repository: Fetcher call is mostly endless
+    VcsRoot root = vcsRoot()
+      .withFetchUrl("/Users/jo/Work/idea/idea-ultimate/.git")
+      .withRepositoryPathOnServer("/Users/jo/Work/idea/idea-ultimate/.git")
+      .withBranch("master")
+      .build();
+
+    final BulkPatchBuilder patcher = patcher(new PatchLogger() {
+      public void log(@NotNull final String message) {
+
+      }
+    });
+
+    runFullPatch(root, patcher);
+  }
+
+  private void runFullPatch(@NotNull final VcsRoot root,
+                            @NotNull final BulkPatchBuilder patcher) throws VcsException {
     final List<String> commits = new ArrayList<String>();
 
     myCommitSupport.collectCommits(root, CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
@@ -93,16 +125,17 @@ public class BulkPatchBuilderTest extends BaseTestCase {
       }
     });
 
+    Assert.assertTrue(commits.size() > 0);
 
-    final ArrayList<String> log = new ArrayList<String>();
-    myBulkBuilder.buildIncrementalPatch(root, CheckoutRules.DEFAULT, commits, null, patcher(log));
-
-    Assert.assertTrue(log.size() > 0);
+    myBulkBuilder.buildIncrementalPatch(root, CheckoutRules.DEFAULT, commits, commits.iterator().next(), patcher);
   }
 
+  private interface PatchLogger {
+    void log(@NotNull String message);
+  }
 
   @NotNull
-  private BulkPatchBuilder patcher(@NotNull final List<String> log) {
+  private BulkPatchBuilder patcher(@NotNull final PatchLogger log) {
     return (BulkPatchBuilder)Proxy.newProxyInstance(
       getClass().getClassLoader(),
       new Class<?>[]{BulkPatchBuilder.class},
@@ -112,8 +145,22 @@ public class BulkPatchBuilderTest extends BaseTestCase {
                              final Object[] objects) throws Throwable {
 
           final String message = method.getName() + " " + Arrays.toString(objects);
-          log.add(message);
-          System.out.println("PATCH: " + message);
+          log.log(message);
+
+          if (objects != null) {
+            for (Object object : objects) {
+              if (object instanceof Closeable) {
+                FileUtil.close((Closeable)object);
+              }
+            }
+          }
+
+          if (method.getName().equals("toString")) return "mock!";
+
+          if (method.getName().equals("startPatch")) {
+            System.out.println("PATCH:> " + message);
+          }
+
           return null;
         }
       });

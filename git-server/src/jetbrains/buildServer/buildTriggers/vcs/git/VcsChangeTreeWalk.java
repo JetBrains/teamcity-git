@@ -20,6 +20,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.vcs.VcsChange;
 import org.eclipse.jgit.lib.FileMode;
+import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
@@ -35,6 +36,14 @@ public class VcsChangeTreeWalk extends TreeWalk {
 
   private final String myRepositoryDebugInfo;
   private final boolean myVerboseTreeWalkLog;
+
+  public VcsChangeTreeWalk(@NotNull ObjectReader repo,
+                           @NotNull String repositoryDebugInfo,
+                           boolean verboseTreeWalkLog) {
+    super(repo);
+    myRepositoryDebugInfo = repositoryDebugInfo;
+    myVerboseTreeWalkLog = verboseTreeWalkLog;
+  }
 
   public VcsChangeTreeWalk(@NotNull Repository repo,
                            @NotNull String repositoryDebugInfo,

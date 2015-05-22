@@ -24,6 +24,10 @@ import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectLoader;
+import org.eclipse.jgit.lib.ObjectReader;
+import org.eclipse.jgit.lib.Repository;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -60,12 +64,32 @@ public class BulkPatchBuilderImpl implements GitServerExtension {
     @Nullable String prevBase = knownBaseRevision;
     final OperationContext ctx = myVcs.createContext(root, "bulk patch " + revisions.size() + " commits");
     try {
-      for (String rev : revisions) {
+      final Repository myRepo = ctx.getRepository();
+      final ObjectReader contentsReader = myRepo.getObjectDatabase().newReader();
+      final ObjectReader treesReader = myRepo.getObjectDatabase().newReader();
 
+      for (String rev : revisions) {
         patchBuilder.startPatch(rev, prevBase);
 
-        new GitPatchBuilder(ctx, patchBuilder, prevBase, rev, rules, myConfig.verboseTreeWalkLog())
-          .buildPatch();
+        new GitPatchBuilder(ctx, patchBuilder, prevBase, rev, rules, myConfig.verboseTreeWalkLog()) {
+          @NotNull
+          @Override
+          protected ObjectReader newObjectReaderForTree() {
+            return treesReader;
+          }
+
+          @NotNull
+          @Override
+          protected ContentLoaderFactory contentLoaderFactory() {
+            return new ContentLoaderFactory() {
+              @Nullable
+              public ObjectLoader open(@NotNull final Repository repo, @NotNull final ObjectId id) throws IOException {
+                assert repo == myRepo;
+                return contentsReader.open(id);
+              }
+            };
+          }
+        }.buildPatch();
 
         patchBuilder.endPatch();
         prevBase = rev;
