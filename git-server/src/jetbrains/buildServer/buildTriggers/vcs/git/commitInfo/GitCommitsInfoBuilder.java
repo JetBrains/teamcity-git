@@ -61,7 +61,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
       final RepositoryStateData currentStateWithTags = myVcs.getCurrentState(ctx.makeRootWithTags());
       myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, currentStateWithTags);
 
-      collect(db, consumer, currentStateWithTags.getBranchRevisions());
+      collect(db, consumer, currentStateWithTags.getBranchRevisions(), ctx.getGitRoot().isIncludeCommitInfoSubmodules());
     } catch (Exception e) {
       throw new VcsException(e);
     } finally {
@@ -71,7 +71,8 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
   private void collect(@NotNull final Repository db,
                        @NotNull final CommitsConsumer consumer,
-                       @NotNull final Map<String, String> currentStateWithTags) throws IOException {
+                       @NotNull final Map<String, String> currentStateWithTags,
+                       final boolean includeSubmodules) throws IOException {
 
     final ObjectDatabase cached = db.getObjectDatabase().newCachedDatabase();
     final Map<String, Set<String>> index = getCommitToRefIndex(currentStateWithTags);
@@ -89,7 +90,9 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
         includeRefs(index, commit);
 
-        includeSubModules(db, proc, c, commit);
+        if (includeSubmodules) {
+          includeSubModules(db, proc, c, commit);
+        }
 
         consumer.consumeCommit(commit);
       }

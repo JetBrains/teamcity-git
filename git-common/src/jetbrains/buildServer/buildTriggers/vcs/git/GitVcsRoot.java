@@ -49,6 +49,7 @@ public class GitVcsRoot {
   private final boolean myAutoCrlf;
   private boolean myReportTags;
   private final boolean myIgnoreMissingDefaultBranch;
+  private final boolean myIncludeCommitInfoSubmodules;
   private File myCustomRepositoryDir;
   private final Boolean myUseAgentMirrors;
 
@@ -74,6 +75,7 @@ public class GitVcsRoot {
     myAutoCrlf = Boolean.valueOf(getProperty(Constants.SERVER_SIDE_AUTO_CRLF, "false"));
     myReportTags = Boolean.valueOf(getProperty(Constants.REPORT_TAG_REVISIONS, "false"));
     myIgnoreMissingDefaultBranch = Boolean.valueOf(getProperty(Constants.IGNORE_MISSING_DEFAULT_BRANCH, "false"));
+    myIncludeCommitInfoSubmodules = Boolean.valueOf(getProperty(Constants.INCLUDE_COMMIT_INFO_SUBMODULES, "false"));
     myUseAgentMirrors = readAgentMirrors();
   }
 
@@ -318,5 +320,9 @@ public class GitVcsRoot {
 
   public boolean isIgnoreMissingDefaultBranch() {
     return myIgnoreMissingDefaultBranch;
+  }
+
+  public boolean isIncludeCommitInfoSubmodules() {
+    return myIncludeCommitInfoSubmodules;
   }
 }

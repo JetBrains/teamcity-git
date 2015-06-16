@@ -27,6 +27,7 @@ import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.CommitsInfoBuilder;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.vcs.api.CommitInfo;
 import jetbrains.vcs.api.CommitMountPointInfo;
 import org.jetbrains.annotations.NotNull;
@@ -151,7 +152,9 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
 
 
   public void test() throws VcsException {
-    VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myRepositoryDir)).withBranch("master").build();
+    VcsRootImpl root = vcsRoot().withFetchUrl(GitUtils.toURL(myRepositoryDir)).withBranch("master").build();
+    root.addProperty("INCLUDE_COMMIT_INFO_SUBMODULES", "true");
+
     GitVcsSupport vcs = gitSupport().withServerPaths(myServerPaths).build();
     final List<CommitInfo> commits = new ArrayList<CommitInfo>();
 

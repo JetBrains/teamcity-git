@@ -117,6 +117,7 @@ public interface Constants {
   String RECORD_SEPARATOR = new String(new char[]{30});
 
   String IGNORE_MISSING_DEFAULT_BRANCH = "IGNORE_MISSING_DEFAULT_BRANCH";
+  String INCLUDE_COMMIT_INFO_SUBMODULES = "INCLUDE_COMMIT_INFO_SUBMODULES";
 
   String PATCHER_FROM_REVISION = "patcher.fromRevision";
   String PATCHER_TO_REVISION = "patcher.toRevision";
