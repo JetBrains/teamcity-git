@@ -161,14 +161,25 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     }
   }
 
-  public void fetchAllRefs(@NotNull VcsRoot root) throws VcsException {
-    final OperationContext context = myVcs.createContext(root, "fetch all");
+  @NotNull
+  public RepositoryStateData fetchAllRefs(@NotNull final OperationContext context,
+                                          @NotNull final GitVcsRoot root) throws VcsException {
     try {
-      new FetchAllRefs(context.getProgress(), context.getRepository(), context.getGitRoot(), myVcs.getCurrentState(root)).run();
+      final RepositoryStateData currentState = myVcs.getCurrentState(root);
+      new FetchAllRefs(context.getProgress(), context.getRepository(), context.getGitRoot(), currentState).run();
+      return currentState;
     } catch (TransportException e) {
       throw new VcsException(e.getMessage(), e);
     } catch (NotSupportedException e) {
       throw new VcsException(e.getMessage(), e);
+    }
+  }
+
+  @NotNull
+  public RepositoryStateData fetchAllRefs(@NotNull VcsRoot root) throws VcsException {
+    final OperationContext context = myVcs.createContext(root, "fetch all");
+    try {
+      return fetchAllRefs(context, context.getGitRoot());
     } finally {
       context.close();
     }

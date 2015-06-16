@@ -16,12 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.vcs.CheckoutRules;
-import jetbrains.buildServer.vcs.FetchService;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
-import org.eclipse.jgit.lib.Repository;
+import jetbrains.buildServer.vcs.*;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created 28.04.2014 20:26
@@ -30,6 +29,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public class GitFetchService implements FetchService, GitServerExtension {
   @NotNull private final GitVcsSupport myVcs;
+  private final ConcurrentHashMap<File, RepositoryStateData> myRepositoryStateDataCache = new ConcurrentHashMap<File, RepositoryStateData>();
 
   public GitFetchService(@NotNull final GitVcsSupport support) {
     myVcs = support;
@@ -39,14 +39,37 @@ public class GitFetchService implements FetchService, GitServerExtension {
   public void fetchRepository(@NotNull final VcsRoot root,
                               @NotNull final CheckoutRules rules,
                               @NotNull final FetchRepositoryCallback callback) throws VcsException {
-    OperationContext ctx = myVcs.createContext(root, "Fetch", new FetchCallbackProgress(callback));
+    final OperationContext ctx = myVcs.createContext(root, "Fetch", new FetchCallbackProgress(callback));
     try {
-      Repository db = ctx.getRepository();
-      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, myVcs.getCurrentState(ctx.makeRootWithTags()));
+      fetchRepositoryImpl(ctx);
     } catch (Exception e) {
       throw ctx.wrapException(e);
     } finally {
       ctx.close();
     }
+  }
+
+  @NotNull
+  private RepositoryStateData fetchRepositoryImpl(@NotNull final OperationContext ctx) throws VcsException {
+    try {
+      final RepositoryStateData currentState = myVcs.getCollectChangesPolicy().fetchAllRefs(ctx, ctx.makeRootWithTags());
+      myRepositoryStateDataCache.put(key(ctx), currentState);
+      return currentState;
+    } catch (Exception e) {
+      throw ctx.wrapException(e);
+    }
+  }
+
+  @NotNull
+  public RepositoryStateData getOrCreateRepositoryState(@NotNull final OperationContext ctx) throws VcsException {
+    final RepositoryStateData cache = myRepositoryStateDataCache.get(key(ctx));
+    if (cache != null) return cache;
+
+    return fetchRepositoryImpl(ctx);
+  }
+
+  @NotNull
+  private File key(@NotNull final OperationContext ctx) throws VcsException {
+    return ctx.getGitRoot().getRepositoryDir();
   }
 }

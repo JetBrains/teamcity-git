@@ -18,15 +18,14 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitFetchService;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.commitInfo.GitCommitsInfoBuilder;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.vcs.CheckoutRules;
-import jetbrains.buildServer.vcs.CommitsInfoBuilder;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.vcs.api.CommitInfo;
 import jetbrains.vcs.api.CommitMountPointInfo;
@@ -77,7 +76,7 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
     GitVcsSupport vcs = gitSupport().withServerPaths(myServerPaths).build();
     final List<CommitInfo> commits = new ArrayList<CommitInfo>();
 
-    new GitCommitsInfoBuilder(vcs).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
+    new GitCommitsInfoBuilder(vcs, new GitFetchService(vcs)).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
       public void consumeCommit(@NotNull CommitInfo commit) {
         commits.add(commit);
       }
@@ -98,7 +97,7 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
     GitVcsSupport vcs = gitSupport().withServerPaths(myServerPaths).build();
     final List<CommitInfo> commits = new ArrayList<CommitInfo>();
 
-    new GitCommitsInfoBuilder(vcs).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
+    new GitCommitsInfoBuilder(vcs, new GitFetchService(vcs)).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
       public void consumeCommit(@NotNull CommitInfo commit) {
         commits.add(commit);
       }
@@ -120,7 +119,7 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
     GitVcsSupport vcs = gitSupport().withServerPaths(myServerPaths).build();
     final List<CommitInfo> commits = new ArrayList<CommitInfo>();
 
-    new GitCommitsInfoBuilder(vcs).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
+    new GitCommitsInfoBuilder(vcs, new GitFetchService(vcs)).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
       public void consumeCommit(@NotNull CommitInfo commit) {
         commits.add(commit);
       }
@@ -141,7 +140,7 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
     GitVcsSupport vcs = gitSupport().withServerPaths(myServerPaths).build();
     final List<CommitInfo> commits = new ArrayList<CommitInfo>();
 
-    new GitCommitsInfoBuilder(vcs).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
+    new GitCommitsInfoBuilder(vcs, new GitFetchService(vcs)).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
       public void consumeCommit(@NotNull CommitInfo commit) {
         commits.add(commit);
       }
@@ -150,6 +149,39 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
     System.out.println("Total commits: " + commits.size());
   }
 
+  public void test_fetch_service_cache() throws Exception {
+    VcsRootImpl root = vcsRoot().withFetchUrl(GitUtils.toURL(myRepositoryDir)).withBranch("master").build();
+    root.addProperty("INCLUDE_COMMIT_INFO_SUBMODULES", "true");
+
+    GitVcsSupport vcs = gitSupport().withServerPaths(myServerPaths).build();
+
+
+    final GitFetchService svc = new GitFetchService(vcs);
+
+    //init cache
+    svc.fetchRepository(root, CheckoutRules.DEFAULT, new FetchService.FetchRepositoryCallback() {
+      public void update(final float progress, @NotNull final String message) {
+
+      }
+    });
+
+    final OperationContext oc = vcs.createContext(root, "test");
+    try {
+      assertTime(2, "cache should be used", 2, new Runnable() {
+        public void run() {
+          try {
+            for (int i = 0; i < 1000; i++) {
+              svc.getOrCreateRepositoryState(oc);
+            }
+          } catch (Throwable t) {
+            throw new Error(t);
+          }
+        }
+      });
+    } finally {
+      oc.close();
+    }
+  }
 
   public void test() throws VcsException {
     VcsRootImpl root = vcsRoot().withFetchUrl(GitUtils.toURL(myRepositoryDir)).withBranch("master").build();
@@ -158,11 +190,15 @@ public class GitCommitsInfoBuilderTest extends BaseTestCase {
     GitVcsSupport vcs = gitSupport().withServerPaths(myServerPaths).build();
     final List<CommitInfo> commits = new ArrayList<CommitInfo>();
 
-    new GitCommitsInfoBuilder(vcs).collectCommits(root,CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
-      public void consumeCommit(@NotNull CommitInfo commit) {
-        commits.add(commit);
-      }
-    });
+    new GitCommitsInfoBuilder(vcs, new GitFetchService(vcs))
+      .collectCommits(
+        root,
+        CheckoutRules.DEFAULT,
+        new CommitsInfoBuilder.CommitsConsumer() {
+          public void consumeCommit(@NotNull CommitInfo commit) {
+            commits.add(commit);
+          }
+        });
     List<String> allCommits = asList(
       "ea5e05051fbfaa7d8da97586807b009cbfebae9d",
       "27de3d118ca320d3a8a08320ff05aa0567996590",
