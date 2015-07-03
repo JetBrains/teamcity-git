@@ -16,14 +16,20 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.buildTriggers.vcs.git.github.GitHubRepo;
+import jetbrains.buildServer.buildTriggers.vcs.git.github.GitHubUtil;
 import jetbrains.buildServer.util.positioning.PositionAware;
 import jetbrains.buildServer.util.positioning.PositionConstraint;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.eclipse.egit.github.core.Repository;
+import org.eclipse.egit.github.core.client.GitHubClient;
+import org.eclipse.egit.github.core.service.RepositoryService;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
@@ -58,6 +64,10 @@ public class GitUrlSupport implements UrlSupport, PositionAware {
     props.put(Constants.FETCH_URL, fetchUrl);
     props.putAll(getAuthSettings(url, uri));
 
+    GitHubRepo ghRepo = GitHubUtil.getGitHubRepo(uri);
+    if (ghRepo != null)
+      refineGithubSettings(ghRepo, props);
+
     if ("git".equals(scmName) || "git".equals(uri.getScheme()) || uri.getPath().endsWith(".git")) //git protocol, or git scm provider, or .git suffix
       return props;
 
@@ -66,6 +76,20 @@ public class GitUrlSupport implements UrlSupport, PositionAware {
       return props;
     } catch (VcsException e) {
       return null; // probably not git
+    }
+  }
+
+  private void refineGithubSettings(@NotNull GitHubRepo ghRepo, @NotNull Map<String, String> props) {
+    GitHubClient client = new GitHubClient();
+    AuthSettings auth = new AuthSettings(props);
+    if (auth.getAuthMethod() == AuthenticationMethod.PASSWORD && auth.getUserName() != null && auth.getPassword() != null) {
+      client.setCredentials(auth.getUserName(), auth.getPassword());
+    }
+    try {
+      Repository r = new RepositoryService(client).getRepository(ghRepo.owner(), ghRepo.repo());
+      props.put(Constants.BRANCH_NAME, GitUtils.expandRef(r.getMasterBranch()));
+    } catch (IOException e) {
+      //ignore, cannot refine settings
     }
   }
 
