@@ -30,6 +30,7 @@ import java.io.File;
 /**
  * @author dmitry.neverov
  */
+@SuppressWarnings("ConstantConditions")
 @Test
 public class GitServerUtilTest extends TestCase {
 
@@ -48,4 +49,24 @@ public class GitServerUtilTest extends TestCase {
     db = GitServerUtil.getRepository(dir, new URIish("git://some.org/repository"));
   }
 
+
+  public void convertMemorySizeToBytes() {
+    assertNull(GitServerUtil.convertMemorySizeToBytes(null));
+    assertNull(GitServerUtil.convertMemorySizeToBytes(""));
+    assertNull(GitServerUtil.convertMemorySizeToBytes(" "));
+    assertNull(GitServerUtil.convertMemorySizeToBytes("512x"));
+    assertNull(GitServerUtil.convertMemorySizeToBytes("x512m"));
+
+    assertEquals(GitServerUtil.KB, (long)GitServerUtil.convertMemorySizeToBytes("1k"));
+    assertEquals(GitServerUtil.KB, (long)GitServerUtil.convertMemorySizeToBytes("1K"));
+    assertEquals(2 * GitServerUtil.KB, (long)GitServerUtil.convertMemorySizeToBytes("2K"));
+
+    assertEquals(GitServerUtil.MB, (long)GitServerUtil.convertMemorySizeToBytes("1m"));
+    assertEquals(GitServerUtil.MB, (long)GitServerUtil.convertMemorySizeToBytes("1M"));
+    assertEquals(2 * GitServerUtil.MB, (long)GitServerUtil.convertMemorySizeToBytes("2M"));
+
+    assertEquals(GitServerUtil.GB, (long)GitServerUtil.convertMemorySizeToBytes("1g"));
+    assertEquals(GitServerUtil.GB, (long)GitServerUtil.convertMemorySizeToBytes("1G"));
+    assertEquals(2 * GitServerUtil.GB, (long)GitServerUtil.convertMemorySizeToBytes("2G"));
+  }
 }

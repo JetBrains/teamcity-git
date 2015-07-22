@@ -97,6 +97,13 @@ public final class GitPatchBuilderDispatcher {
       ByteArrayOutputStream stderr = new ByteArrayOutputStream();
       ExecResult result = SimpleCommandLineProcessRunner.runCommandSecure(patchCmd, patchCmd.getCommandLineString(), patchProcessInput,
                                                                           new PatchProcessEventsHandler(), stdout, stderr);
+      if (GitServerUtil.isCannotCreateJvmError(result)) {
+        String configuredXmx = myConfig.getExplicitFetchProcessMaxMemory();
+        Long xmxBytes = GitServerUtil.convertMemorySizeToBytes(configuredXmx);
+        Long physicalMemory = GitServerUtil.getFreePhysicalMemorySize();
+        if (xmxBytes != null && physicalMemory != null && xmxBytes > physicalMemory)
+          LOG.warn("Not enough memory for git patch, teamcity.git.fetch.process.max.memory=" + configuredXmx);
+      }
       VcsException patchError = CommandLineUtil.getCommandLineError("build patch", result);
       if (patchError != null)
         throw patchError;

@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.ExtensionHolder;
-import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
@@ -49,6 +48,7 @@ import java.io.IOException;
 import java.util.Properties;
 
 import static java.util.Arrays.asList;
+import static jetbrains.buildServer.agent.ClasspathUtil.composeClasspath;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
@@ -122,7 +122,7 @@ public class GitPatchTest extends PatchTestCase {
   @TestFor(issues = "TW-40897")
   public void should_pass_proxy_settings_to_patch_in_separate_process() throws Exception {
     String classpath = myConfigBuilder.build().getPatchClasspath() + File.pathSeparator +
-                       ClasspathUtil.composeClasspath(new Class[]{CheckProxyPropertiesPatchBuilder.class}, null, null);
+                       composeClasspath(new Class[]{CheckProxyPropertiesPatchBuilder.class}, null, null);
     myConfigBuilder.setSeparateProcessForPatch(true)
       .setPatchClassPath(classpath)
       .setPatchBuilderClassName(CheckProxyPropertiesPatchBuilder.class.getName());
@@ -218,7 +218,8 @@ public class GitPatchTest extends PatchTestCase {
     checkPatch("submodule-removed-ignore", "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", "592c5bcee6d906482177a62a6a44efa0cff9bbc7");
     checkPatch("submodule-modified-ignore", "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", "37c371a6db0acefc77e3be99d16a44413e746591");
     checkPatch("submodule-added", "patch-tests", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", true);
-    checkPatch("submodule-removed", "patch-tests", "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", "592c5bcee6d906482177a62a6a44efa0cff9bbc7", true);
+    checkPatch("submodule-removed", "patch-tests", "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", "592c5bcee6d906482177a62a6a44efa0cff9bbc7",
+               true);
     checkPatch("submodule-modified", "patch-tests", "b5d65401a4e8a09b80b8d73ca4392f1913e99ff5", "37c371a6db0acefc77e3be99d16a44413e746591", true);
   }
 
@@ -239,6 +240,24 @@ public class GitPatchTest extends PatchTestCase {
 
     myConfigBuilder.setStreamFileThreshold(-1);
     checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
+  }
+
+
+  //this test for debugging, it doesn't check logging
+  private void build_patch_with_incorrect_memory_settings() throws Exception {
+    System.setProperty("teamcity.git.fetch.process.max.memory", "64G");
+    myConfigBuilder.setSeparateProcessForPatch(true)
+      .setFetchProcessMaxMemory("64G")
+      .setPatchClassPath(composeClasspath(new Class[]{CouldNotCreateJvmError.class}, null, null))
+      .setPatchBuilderClassName(CouldNotCreateJvmError.class.getName());
+
+    try {
+      checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
+    } catch (Exception e) {
+      //expected
+    } finally {
+      System.getProperties().remove("teamcity.git.fetch.process.max.memory");
+    }
   }
 
 
@@ -301,6 +320,13 @@ public class GitPatchTest extends PatchTestCase {
       .withBranch(branchName)
       .withSubmodulePolicy(enableSubmodules ? SubmodulesCheckoutPolicy.CHECKOUT : SubmodulesCheckoutPolicy.IGNORE)
       .build();
+  }
+
+
+  public static class CouldNotCreateJvmError {
+    public static void main(String... args) throws Exception {
+      throw new Exception("Error: Could not create the Java Virtual Machine.");
+    }
   }
 
 

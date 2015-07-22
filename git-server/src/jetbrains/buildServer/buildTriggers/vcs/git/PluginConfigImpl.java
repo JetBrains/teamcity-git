@@ -119,7 +119,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
 
   public String getFetchProcessMaxMemory() {
-    String maxMemory = TeamCityProperties.getProperty("teamcity.git.fetch.process.max.memory");
+    String maxMemory = getExplicitFetchProcessMaxMemory();
     if (!isEmpty(maxMemory))
       return maxMemory;
     try {
@@ -136,6 +136,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return "512M";
   }
 
+
+  @Nullable
+  public String getExplicitFetchProcessMaxMemory() {
+    return TeamCityProperties.getPropertyOrNull("teamcity.git.fetch.process.max.memory");
+  }
 
   public boolean isSeparateProcessForFetch() {
     return TeamCityProperties.getBooleanOrTrue("teamcity.git.fetch.separate.process");

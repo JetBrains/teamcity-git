@@ -25,7 +25,6 @@ import org.jetbrains.annotations.Nullable;
 import org.quartz.CronExpression;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +56,7 @@ public class PluginConfigBuilder {
   private Integer myStreamFileThreshold = null;
   private String myPatchBuilderClassName;
   private String myPatchClassPath;
+  private String myFetchProcessMaxMemory;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -96,7 +96,12 @@ public class PluginConfigBuilder {
       }
 
       public String getFetchProcessMaxMemory() {
-        return myDelegate.getFetchProcessMaxMemory();
+        return myFetchProcessMaxMemory != null ? myFetchProcessMaxMemory : myDelegate.getFetchProcessMaxMemory();
+      }
+
+      @Nullable
+      public String getExplicitFetchProcessMaxMemory() {
+        return myDelegate.getExplicitFetchProcessMaxMemory();
       }
 
       public boolean isSeparateProcessForFetch() {
@@ -274,6 +279,12 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setFetcherClassName(String className) {
     myFetcherClassName = className;
+    return this;
+  }
+
+
+  PluginConfigBuilder setFetchProcessMaxMemory(String fetchProcessMaxMemory) {
+    myFetchProcessMaxMemory = fetchProcessMaxMemory;
     return this;
   }
 

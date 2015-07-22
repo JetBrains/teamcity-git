@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.jcraft.jsch.JSchException;
+import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.serverSide.FileWatchingPropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
@@ -36,8 +37,11 @@ import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.text.MessageFormat;
 import java.util.Map;
 
@@ -47,6 +51,10 @@ import static com.intellij.openapi.util.text.StringUtil.isEmpty;
  * Utilities for server part of the plugin
  */
 public class GitServerUtil {
+
+  public static final long KB = 1024;
+  public static final long MB = 1024 * KB;
+  public static final long GB = 1024 * MB;
 
   private static Logger LOG = Logger.getInstance(GitServerUtil.class.getName());
 
@@ -361,5 +369,55 @@ public class GitServerUtil {
         sb.append(e.getKey()).append("=").append(e.getValue()).append("\n");
     }
     FileUtil.writeFileAndReportErrors(f, sb.toString());
+  }
+
+
+  public static boolean isCannotCreateJvmError(@NotNull ExecResult result) {
+    return result.getStderr().contains("Could not create the Java Virtual Machine");
+  }
+
+  @Nullable
+  public static Long convertMemorySizeToBytes(@Nullable String memory) {
+    if (memory == null)
+      return null;
+    memory = memory.trim();
+    if (memory.isEmpty())
+      return null;
+    int unit = memory.charAt(memory.length() - 1);
+    long amount;
+    try {
+      amount = Long.parseLong(memory.substring(0, memory.length() - 1));
+    } catch (NumberFormatException e) {
+      return null;
+    }
+    switch (unit) {
+      case 'k':
+      case 'K':
+        return amount * KB;
+      case 'm':
+      case 'M':
+        return amount * MB;
+      case 'g':
+      case 'G':
+        return amount * GB;
+      default:
+        return null;
+    }
+  }
+
+
+  @Nullable
+  public static Long getFreePhysicalMemorySize() {
+    try {
+      Class.forName("com.sun.management.OperatingSystemMXBean");
+    } catch (ClassNotFoundException e) {
+      return null;
+    }
+    OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+    if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
+      return ((com.sun.management.OperatingSystemMXBean) osBean).getFreePhysicalMemorySize();
+    }
+    return null;
+
   }
 }

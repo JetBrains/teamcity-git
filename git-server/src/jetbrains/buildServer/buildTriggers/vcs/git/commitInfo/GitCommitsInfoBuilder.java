@@ -17,9 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.commitInfo;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitServerExtension;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.Submodule;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmodulesConfig;
@@ -45,9 +43,11 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExtension {
 
   private final GitVcsSupport myVcs;
+  private final GitFetchService myFetchService;
 
-  public GitCommitsInfoBuilder(@NotNull GitVcsSupport vcs) {
+  public GitCommitsInfoBuilder(@NotNull GitVcsSupport vcs, @NotNull GitFetchService fetchService) {
     myVcs = vcs;
+    myFetchService = fetchService;
     myVcs.addExtension(this);
   }
 
@@ -56,12 +56,10 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
                              @NotNull final CommitsConsumer consumer) throws VcsException {
     final OperationContext ctx = myVcs.createContext(root, "collecting commits");
     try {
-      final Repository db = ctx.getRepository();
+      //fetch service is called before, so we may re-use results of it to avoid extra CPU waste
+      final RepositoryStateData currentStateWithTags = myFetchService.getOrCreateRepositoryState(ctx);
 
-      final RepositoryStateData currentStateWithTags = myVcs.getCurrentState(ctx.makeRootWithTags());
-      myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, db, false, currentStateWithTags);
-
-      collect(db, consumer, currentStateWithTags.getBranchRevisions());
+      collect(ctx.getRepository(), consumer, currentStateWithTags.getBranchRevisions(), ctx.getGitRoot().isIncludeCommitInfoSubmodules());
     } catch (Exception e) {
       throw new VcsException(e);
     } finally {
@@ -71,7 +69,8 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
   private void collect(@NotNull final Repository db,
                        @NotNull final CommitsConsumer consumer,
-                       @NotNull final Map<String, String> currentStateWithTags) throws IOException {
+                       @NotNull final Map<String, String> currentStateWithTags,
+                       final boolean includeSubmodules) throws IOException {
 
     final ObjectDatabase cached = db.getObjectDatabase().newCachedDatabase();
     final Map<String, Set<String>> index = getCommitToRefIndex(currentStateWithTags);
@@ -89,7 +88,9 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
         includeRefs(index, commit);
 
-        includeSubModules(db, proc, c, commit);
+        if (includeSubmodules) {
+          includeSubModules(db, proc, c, commit);
+        }
 
         consumer.consumeCommit(commit);
       }
