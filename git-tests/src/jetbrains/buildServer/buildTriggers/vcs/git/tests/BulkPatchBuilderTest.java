@@ -23,15 +23,18 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.commitInfo.GitCommitsInfoBuilder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.BulkPatchBuilderImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.patch.BulkPatchBuilderImpl.BulkPatchBuilder;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.vcs.BulkPatchService.BulkPatchBuilder;
+import jetbrains.buildServer.vcs.BulkPatchService.BulkPatchBuilderRequest;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.CommitsInfoBuilder;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import jetbrains.vcs.api.CommitInfo;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -39,6 +42,7 @@ import org.testng.annotations.Test;
 
 import java.io.Closeable;
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -101,9 +105,10 @@ public class BulkPatchBuilderTest extends BaseTestCase {
   @Test(enabled = false)
   public void test_local_idea() throws Exception {
     ///does not work for real repository: Fetcher call is mostly endless
+    final String ultimate_local = "E:\\Work\\idea-ultimate\\.git";
     VcsRoot root = vcsRoot()
-      .withFetchUrl("/Users/jo/Work/idea/idea-ultimate/.git")
-      .withRepositoryPathOnServer("/Users/jo/Work/idea/idea-ultimate/.git")
+      .withFetchUrl(ultimate_local)
+      .withRepositoryPathOnServer(ultimate_local)
       .withBranch("master")
       .build();
 
@@ -117,7 +122,7 @@ public class BulkPatchBuilderTest extends BaseTestCase {
   }
 
   private void runFullPatch(@NotNull final VcsRoot root,
-                            @NotNull final BulkPatchBuilder patcher) throws VcsException {
+                            @NotNull final BulkPatchBuilder patcher) throws VcsException, IOException {
     final List<String> commits = new ArrayList<String>();
 
     myCommitSupport.collectCommits(root, CheckoutRules.DEFAULT, new CommitsInfoBuilder.CommitsConsumer() {
@@ -128,7 +133,30 @@ public class BulkPatchBuilderTest extends BaseTestCase {
 
     Assert.assertTrue(commits.size() > 0);
 
-    myBulkBuilder.buildIncrementalPatch(root, CheckoutRules.DEFAULT, commits, commits.iterator().next(), patcher);
+    final List<BulkPatchBuilderRequest> request = new ArrayList<BulkPatchBuilderRequest>();
+    String prev = commits.get(0);
+    for (final String commit : commits) {
+      final String base = prev;
+      prev = commit;
+      request.add(new BulkPatchBuilderRequest() {
+        @Nullable
+        public String getFromVersion() {
+          return base;
+        }
+
+        @NotNull
+        public String getToVersion() {
+          return commit;
+        }
+
+        @Override
+        public String toString() {
+          return getFromVersion() + "->" + getToVersion();
+        }
+      });
+    }
+
+    myBulkBuilder.buildPatches(root, CheckoutRules.DEFAULT, request, patcher);
   }
 
   private interface PatchLogger {
@@ -139,7 +167,7 @@ public class BulkPatchBuilderTest extends BaseTestCase {
   private BulkPatchBuilder patcher(@NotNull final PatchLogger log) {
     return (BulkPatchBuilder)Proxy.newProxyInstance(
       getClass().getClassLoader(),
-      new Class<?>[]{BulkPatchBuilder.class},
+      new Class<?>[]{BulkPatchBuilder.class, PatchBuilder.class},
       new InvocationHandler() {
         public Object invoke(final Object o,
                              final Method method,
@@ -160,6 +188,7 @@ public class BulkPatchBuilderTest extends BaseTestCase {
 
           if (method.getName().equals("startPatch")) {
             System.out.println("PATCH:> " + message);
+            return o;
           }
 
           return null;
