@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitFetchService;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.commitInfo.GitCommitsInfoBuilder;
@@ -73,7 +74,7 @@ public class BulkPatchBuilderTest extends BaseTestCase {
     ServerPaths myPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
     GitSupportBuilder builder = gitSupport().withServerPaths(myPaths);
     myGit = builder.build();
-    myCommitSupport = new GitCommitsInfoBuilder(myGit);
+    myCommitSupport = new GitCommitsInfoBuilder(myGit, new GitFetchService(myGit));
     myBulkBuilder = new BulkPatchBuilderImpl(builder.getPluginConfig(), myGit);
 
     myRepositoryDir = myTempFiles.createTempDir();
