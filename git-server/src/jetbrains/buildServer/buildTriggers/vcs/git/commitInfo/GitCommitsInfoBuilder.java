@@ -22,6 +22,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.Submodule;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmodulesConfig;
 import jetbrains.buildServer.vcs.*;
+import org.apache.log4j.Logger;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -32,15 +33,13 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getFullUserName;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 
 public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExtension {
+  private static final Logger LOG = Logger.getLogger(GitCommitsInfoBuilder.class.getName());
 
   private final GitVcsSupport myVcs;
   private final GitFetchService myFetchService;
@@ -142,12 +141,24 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
   @NotNull
   private CommitDataBean createCommit(@NotNull final RevCommit c) {
-    final PersonIdent authorIdent = c.getAuthorIdent();
-    final CommitDataBean commit = new CommitDataBean(c.getId().getName(), c.getId().getName(), authorIdent.getWhen());
+    final String id = c.getId().getName();
+    final RevCommit[] parents = c.getParents();
 
-    commit.setCommitAuthor(getFullUserName(authorIdent));
-    commit.setCommitMessage(c.getFullMessage());
-    for (RevCommit p : c.getParents()) {
+    CommitDataBean commit;
+
+    try {
+      final PersonIdent authorIdent = c.getAuthorIdent();
+      commit = new CommitDataBean(id, id, authorIdent.getWhen());
+      commit.setCommitAuthor(getFullUserName(authorIdent));
+      commit.setCommitMessage(c.getFullMessage());
+    } catch (Throwable t) {
+      LOG.debug("Failed to read commit author or message for " + id + ". " + t.getMessage(), t);
+      commit = new CommitDataBean(id, id, new Date(/*11 aug 1984*/461062365000L));
+      commit.setCommitAuthor("unknown user");
+      commit.setCommitMessage("No description provided");
+    }
+
+    for (RevCommit p : parents) {
       commit.addParentRevision(p.getId().getName());
     }
     return commit;
