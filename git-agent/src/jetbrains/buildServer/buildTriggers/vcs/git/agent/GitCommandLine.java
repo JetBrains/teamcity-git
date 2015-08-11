@@ -17,11 +17,13 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
+import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.AskPassGenerator;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings;
@@ -74,15 +76,19 @@ public class GitCommandLine extends GeneralCommandLine {
       if (authSettings.getAuthMethod() == AuthenticationMethod.PASSWORD) {
         try {
           final File askPass = myAskPassGen.generate(authSettings);
+          String askPassPath = askPass.getAbsolutePath();
+          if (askPassPath.contains(" ") && SystemInfo.isWindows) {
+            askPassPath = GitUtils.getShortFileName(askPass);
+          }
           getParametersList().addAt(0, "-c");
-          getParametersList().addAt(1, "core.askpass=" + askPass.getAbsolutePath());
+          getParametersList().addAt(1, "core.askpass=" + askPassPath);
           addPostAction(new Runnable() {
             public void run() {
               if (myDeleteTempFiles)
                 FileUtil.delete(askPass);
             }
           });
-          addEnvParam("GIT_ASKPASS", askPass.getAbsolutePath());
+          addEnvParam("GIT_ASKPASS", askPassPath);
         } catch (IOException e) {
           throw new VcsException(e);
         }
