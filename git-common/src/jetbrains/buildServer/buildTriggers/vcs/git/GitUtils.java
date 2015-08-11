@@ -16,6 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.execution.configurations.GeneralCommandLine;
+import com.intellij.openapi.util.SystemInfo;
+import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -230,5 +234,29 @@ public class GitUtils {
     if (isTag(ref) && ref.getPeeledObjectId() != null)
       return ref.getPeeledObjectId();
     return ref.getObjectId();
+  }
+
+
+  /**
+   * Returns short file name for the given file on windows. The file must exist.
+   * @param f file of interest
+   * @return see above
+   * @throws UnsupportedOperationException if called on non windows platform
+   * @throws IOException in case of IO error
+   */
+  public static String getShortFileName(@NotNull File f) throws UnsupportedOperationException, IOException {
+    if (!SystemInfo.isWindows)
+      throw new UnsupportedOperationException();
+
+    GeneralCommandLine cmd = new GeneralCommandLine();
+    cmd.setExePath("cmd.exe");
+    cmd.addParameters("/c", "for %F in (\"" + f.getCanonicalPath() + "\") do @echo %~sF");
+
+    ExecResult res = SimpleCommandLineProcessRunner.runCommand(cmd, null);
+    Throwable error = res.getException();
+    if (error != null)
+      throw new IOException(error);
+
+    return res.getStdout().trim();
   }
 }

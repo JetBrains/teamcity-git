@@ -91,7 +91,7 @@ public class SshHandler implements GitSSHService.Handler {
       }
     }
     try {
-      cmd.addEnvParam(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath().toString());
+      cmd.addEnvParam(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath());
     } catch (IOException e) {
       throw new VcsException("SSH script cannot be generated", e);
     }

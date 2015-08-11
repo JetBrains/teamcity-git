@@ -16,9 +16,14 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import com.intellij.openapi.util.SystemInfo;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.util.FileUtil;
+import org.testng.SkipException;
 import org.testng.annotations.Test;
+
+import java.io.File;
 
 /**
  * @author dmitry.neverov
@@ -39,6 +44,24 @@ public class GitUtilsTest extends BaseTestCase {
     assertEquals("refs/remotes/origin/master", GitUtils.createRemoteRef("refs/heads/master"));
     assertEquals("refs/remotes/origin/remote-run/tw/12345", GitUtils.createRemoteRef("refs/remote-run/tw/12345"));
     assertEquals("refs/tags/v1.0", GitUtils.createRemoteRef("refs/tags/v1.0"));
+  }
+
+
+  @Test
+  public void short_file_name_should_not_contain_spaces() throws Exception {
+    if (!SystemInfo.isWindows)
+      throw new SkipException("Windows only test");
+
+    File tmpDir = createTempDir();
+    File dirWithSpaces = new File(tmpDir, "dir with spaces");
+    File fileWithSpaces = new File(dirWithSpaces, "file with spaces");
+    final String content = "content";
+    writeTextToFile(fileWithSpaces, content);
+
+    String shortFileName = GitUtils.getShortFileName(fileWithSpaces);
+    assertFalse(shortFileName.contains(" "));
+    assertTrue("File references by a short name doesn't exist", new File(shortFileName).exists());
+    assertEquals("Short name file content doesn't match", content, FileUtil.readText(new File(shortFileName)));
   }
 
 }
