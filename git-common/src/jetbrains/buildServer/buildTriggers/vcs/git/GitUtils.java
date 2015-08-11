@@ -28,7 +28,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.Comparator;
 import java.util.List;
 
@@ -36,11 +35,6 @@ import java.util.List;
  * Commands that allows working with git repositories
  */
 public class GitUtils {
-  /**
-   * The UTF8 character set
-   */
-  public static final Charset UTF8 = Charset.forName("UTF-8");
-
   /**
    * Convert remote URL to JGIT form
    *
@@ -146,16 +140,6 @@ public class GitUtils {
    */
   public static File toFile(String path) {
     return new File(path.replace('/', File.separatorChar));
-  }
-
-  /**
-   * Ref name for the tag
-   *
-   * @param label the tag name
-   * @return the reference name
-   */
-  public static String tagName(String label) {
-    return "refs/tags/" + label;
   }
 
   /**
