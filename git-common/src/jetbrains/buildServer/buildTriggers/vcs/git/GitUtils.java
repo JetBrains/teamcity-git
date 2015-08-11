@@ -16,6 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.execution.configurations.GeneralCommandLine;
+import com.intellij.openapi.util.SystemInfo;
+import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -28,7 +32,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.Comparator;
 import java.util.List;
 
@@ -36,11 +39,6 @@ import java.util.List;
  * Commands that allows working with git repositories
  */
 public class GitUtils {
-  /**
-   * The UTF8 character set
-   */
-  public static final Charset UTF8 = Charset.forName("UTF-8");
-
   /**
    * Convert remote URL to JGIT form
    *
@@ -149,16 +147,6 @@ public class GitUtils {
   }
 
   /**
-   * Ref name for the tag
-   *
-   * @param label the tag name
-   * @return the reference name
-   */
-  public static String tagName(String label) {
-    return "refs/tags/" + label;
-  }
-
-  /**
    * Normalize path removing ".." and "." elements assuming "/" as separator
    *
    * @param path the path to normalize
@@ -246,5 +234,29 @@ public class GitUtils {
     if (isTag(ref) && ref.getPeeledObjectId() != null)
       return ref.getPeeledObjectId();
     return ref.getObjectId();
+  }
+
+
+  /**
+   * Returns short file name for the given file on windows. The file must exist.
+   * @param f file of interest
+   * @return see above
+   * @throws UnsupportedOperationException if called on non windows platform
+   * @throws IOException in case of IO error
+   */
+  public static String getShortFileName(@NotNull File f) throws UnsupportedOperationException, IOException {
+    if (!SystemInfo.isWindows)
+      throw new UnsupportedOperationException();
+
+    GeneralCommandLine cmd = new GeneralCommandLine();
+    cmd.setExePath("cmd.exe");
+    cmd.addParameters("/c", "for %F in (\"" + f.getCanonicalPath() + "\") do @echo %~sF");
+
+    ExecResult res = SimpleCommandLineProcessRunner.runCommand(cmd, null);
+    Throwable error = res.getException();
+    if (error != null)
+      throw new IOException(error);
+
+    return res.getStdout().trim();
   }
 }

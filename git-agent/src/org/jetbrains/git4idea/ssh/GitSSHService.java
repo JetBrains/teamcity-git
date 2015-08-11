@@ -17,8 +17,10 @@
 package org.jetbrains.git4idea.ssh;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
 import gnu.trove.THashMap;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import org.apache.commons.codec.DecoderException;
 import org.apache.xmlrpc.XmlRpcClientLite;
 import org.jetbrains.annotations.NotNull;
@@ -46,7 +48,8 @@ public abstract class GitSSHService {
   /**
    * Path to the generated script
    */
-  private File myScriptPath;
+  private File myScript;
+  private String myScriptPath;
   /**
    * Registered handlers
    */
@@ -66,8 +69,8 @@ public abstract class GitSSHService {
    * @throws IOException if script cannot be generated
    */
   @NotNull
-  public synchronized File getScriptPath() throws IOException {
-    if (myScriptPath == null || !myScriptPath.exists()) {
+  public synchronized String getScriptPath() throws IOException {
+    if (myScript == null || myScriptPath == null || !myScript.exists()) {
       ScriptGenerator generator = new ScriptGenerator(GitSSHHandler.GIT_SSH_PREFIX, SSHMain.class, getTempDir());
       generator.addClasses(XmlRpcClientLite.class, DecoderException.class);
       generator.addClasses(FileUtil.class);
@@ -75,7 +78,11 @@ public abstract class GitSSHService {
       generator.addClasses(org.apache.log4j.Logger.class);
       generator.addPath(getSshLibraryPath());
       generator.addResource(SSHMainBundle.class, "/org/jetbrains/git4idea/ssh/SSHMainBundle.properties");
-      myScriptPath = generator.generate();
+      myScript = generator.generate();
+      myScriptPath = myScript.getCanonicalPath();
+      if (SystemInfo.isWindows && myScriptPath.contains(" ")) {
+        myScriptPath = GitUtils.getShortFileName(myScript);
+      }
     }
     return myScriptPath;
   }
