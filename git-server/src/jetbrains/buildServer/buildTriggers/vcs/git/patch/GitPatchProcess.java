@@ -71,10 +71,7 @@ public class GitPatchProcess {
         boolean printStackTrace = false;
         if (t instanceof SubmoduleFetchException) {
           Throwable cause = t.getCause();
-          if (cause != null) {
-            msg += " " + cause.getMessage();
-            printStackTrace = isImportant(cause);
-          }
+          printStackTrace = cause != null && isImportant(cause);
         }
         System.err.println(msg);
         if (printStackTrace)

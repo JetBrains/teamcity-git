@@ -35,7 +35,8 @@ public class SubmoduleFetchException extends CorruptObjectException {
     super("Cannot fetch the '" + submoduleUrl
           + "' repository used as a submodule at the '" + submodulePath
           + "' path in the '" + mainRepositoryUrl
-          + "' repository in the " + mainRepositoryCommit.name() + " commit");
+          + "' repository in the " + mainRepositoryCommit.name() + " commit"
+          + ", cause: " + cause.getClass().getName() + ": " + cause.getMessage());
     initCause(cause);
   }
 
