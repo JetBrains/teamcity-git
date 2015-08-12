@@ -35,6 +35,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.concurrent.locks.ReadWriteLock;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -67,6 +68,8 @@ class GitLabelingSupport implements LabelingSupport {
                       @NotNull CheckoutRules checkoutRules) throws VcsException {
     OperationContext context = myVcs.createContext(root, "labelling");
     GitVcsRoot gitRoot = context.getGitRoot();
+    ReadWriteLock rmLock = myRepositoryManager.getRmLock(gitRoot.getRepositoryDir());
+    rmLock.readLock().lock();
     try {
       long start = System.currentTimeMillis();
       Repository r = context.getRepository();
@@ -83,37 +86,35 @@ class GitLabelingSupport implements LabelingSupport {
         LOG.debug("Tag created  " + label + "=" + version + " for " + gitRoot.debugInfo() +
                   " in " + (System.currentTimeMillis() - start) + "ms");
       }
-      synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
-        long pushStart = System.currentTimeMillis();
-        final Transport tn = myTransportFactory.createTransport(r, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings());
-        try {
-          final PushConnection c = tn.openPush();
-          try {
-            RemoteRefUpdate ru = new RemoteRefUpdate(r, tagRef.getName(), tagRef.getObjectId(), tagRef.getName(), false, null, null);
-            c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(tagRef.getName(), ru));
-            LOG.info("Tag  " + label + "=" + version + " was pushed with status " + ru.getStatus() + " for " + gitRoot.debugInfo() +
-                     " in " + (System.currentTimeMillis() - pushStart) + "ms");
-            switch (ru.getStatus()) {
-              case UP_TO_DATE:
-              case OK:
-                break;
-              default:
-                String msg = ru.getMessage();
-                throw new VcsException("The remote '" + label+ "' tag was not created" +
-                                       ", status: " + ru.getStatus() +
-                                       (!isEmpty(msg) ? ", message: " + msg : ""));
-            }
-          } finally {
-            c.close();
-          }
-          return label;
-        } finally {
-          tn.close();
+      long pushStart = System.currentTimeMillis();
+      final Transport tn = myTransportFactory.createTransport(r, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings());
+      PushConnection c = null;
+      try {
+        c = tn.openPush();
+        RemoteRefUpdate ru = new RemoteRefUpdate(r, tagRef.getName(), tagRef.getObjectId(), tagRef.getName(), false, null, null);
+        c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(tagRef.getName(), ru));
+        LOG.info("Tag  " + label + "=" + version + " was pushed with status " + ru.getStatus() + " for " + gitRoot.debugInfo() +
+                 " in " + (System.currentTimeMillis() - pushStart) + "ms");
+        switch (ru.getStatus()) {
+          case UP_TO_DATE:
+          case OK:
+            break;
+          default:
+            String msg = ru.getMessage();
+            throw new VcsException("The remote '" + label+ "' tag was not created" +
+                                   ", status: " + ru.getStatus() +
+                                   (!isEmpty(msg) ? ", message: " + msg : ""));
         }
+        return label;
+      } finally {
+        if (c != null)
+          c.close();
+        tn.close();
       }
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
+      rmLock.readLock().unlock();
       context.close();
     }
   }
