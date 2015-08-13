@@ -420,4 +420,9 @@ public class GitServerUtil {
     return null;
 
   }
+
+
+  public static boolean isAmazonCodeCommit(@Nullable String host) {
+    return host != null && host.startsWith("git-codecommit") && host.endsWith("amazonaws.com");
+  }
 }

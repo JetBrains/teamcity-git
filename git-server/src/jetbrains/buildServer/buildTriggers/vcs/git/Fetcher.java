@@ -20,6 +20,7 @@ import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsUtil;
+import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
@@ -100,7 +101,7 @@ public class Fetcher {
       workaroundRacyGit();
       tn = transportFactory.createTransport(repository, new URIish(fetchUrl), auth);
       try {
-        GitServerUtil.pruneRemovedBranches(repository, tn);
+        pruneRemovedBranches(repository, transportFactory, tn, new URIish(fetchUrl), auth);
       } catch (Exception e) {
         System.err.println("Error while pruning removed branches: " + e.getMessage());
         e.printStackTrace(System.err);
@@ -111,6 +112,25 @@ public class Fetcher {
     } finally {
       if (tn != null)
         tn.close();
+    }
+  }
+
+  private static void pruneRemovedBranches(@NotNull Repository db,
+                                           @NotNull TransportFactory transportFactory,
+                                           @NotNull Transport tn,
+                                           @NotNull URIish uri,
+                                           @NotNull AuthSettings authSettings) throws NotSupportedException, VcsException, org.eclipse.jgit.errors.TransportException {
+    if ("ssh".equals(uri.getScheme()) && GitServerUtil.isAmazonCodeCommit(uri.getHost())) {
+      Transport transport = null;
+      try {
+        transport = transportFactory.createTransport(db, uri, authSettings);
+        GitServerUtil.pruneRemovedBranches(db, transport);
+      } finally {
+        if (transport != null)
+          transport.close();
+      }
+    } else {
+      GitServerUtil.pruneRemovedBranches(db, tn);
     }
   }
 

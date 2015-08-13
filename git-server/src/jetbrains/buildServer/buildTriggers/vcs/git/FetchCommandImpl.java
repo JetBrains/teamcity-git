@@ -256,11 +256,7 @@ public class FetchCommandImpl implements FetchCommand {
     final long fetchStart = System.currentTimeMillis();
     final Transport tn = myTransportFactory.createTransport(db, uri, settings.getAuthSettings());
     try {
-      try {
-        GitServerUtil.pruneRemovedBranches(db, tn);
-      } catch (Exception e) {
-        LOG.error("Error while pruning removed branches", e);
-      }
+      pruneRemovedBranches(db, tn, uri, settings.getAuthSettings());
       FetchResult result = tn.fetch(NullProgressMonitor.INSTANCE, refSpecs);
       GitServerUtil.checkFetchSuccessful(result);
     } catch (OutOfMemoryError oom) {
@@ -271,6 +267,26 @@ public class FetchCommandImpl implements FetchCommand {
       tn.close();
       if (PERFORMANCE_LOG.isDebugEnabled()) {
         PERFORMANCE_LOG.debug("[fetch in server process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
+      }
+    }
+  }
+
+  private void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn, @NotNull URIish uri, @NotNull AuthSettings authSettings) throws NotSupportedException, VcsException, TransportException {
+    String host = uri.getHost();
+    if ("ssh".equals(uri.getScheme()) && GitServerUtil.isAmazonCodeCommit(uri.getHost())) {
+      Transport transport = null;
+      try {
+        transport = myTransportFactory.createTransport(db, uri, authSettings);
+        GitServerUtil.pruneRemovedBranches(db, transport);
+      } finally {
+        if (transport != null)
+          transport.close();
+      }
+    } else {
+      try {
+        GitServerUtil.pruneRemovedBranches(db, tn);
+      } catch (Exception e) {
+        LOG.error("Error while pruning removed branches", e);
       }
     }
   }
