@@ -32,19 +32,26 @@ public final class CommandLineUtil {
 
   @Nullable
   public static VcsException getCommandLineError(@NotNull String cmdName, @NotNull ExecResult res) {
+    return getCommandLineError(cmdName, res, true, true);
+  }
+
+
+  @Nullable
+  public static VcsException getCommandLineError(@NotNull String cmdName, @NotNull ExecResult res, boolean includeStdOut, boolean includeStdErr) {
     //noinspection ThrowableResultOfMethodCallIgnored
     Throwable exception = res.getException();
-    if (res.getExitCode() != 0 || exception != null) {
+    int exitCode = res.getExitCode();
+    if (exitCode != 0 || exception != null) {
       String stderr = res.getStderr();
       String stdout = res.getStdout();
       final String message = "'" + cmdName + "' command failed." +
-              (exception != null ? "\nexception: " + exception.getMessage() : "") +
-              (!StringUtil.isEmpty(stderr) ? "\nstderr: " + stderr.trim() : "") +
-              (!StringUtil.isEmpty(stdout) ? "\nstdout: " + stdout.trim() : "");
+                             (exception != null ? "\nexception: " + exception.getMessage() : "") +
+                             (includeStdErr && !StringUtil.isEmpty(stderr) ? "\nstderr: " + stderr.trim() : "") +
+                             (includeStdOut && !StringUtil.isEmpty(stdout) ? "\nstdout: " + stdout.trim() : "") +
+                             (exitCode != 0 ? "\nexit code: " + exitCode : "");
       return new VcsException(message);
     } else {
       return null;
     }
   }
-
 }

@@ -40,6 +40,7 @@ public class PluginConfigBuilder {
   private Boolean mySeparateProcessForFetch;
   private Boolean mySeparateProcessForPatch;
   private Boolean myRunNativeGC;
+  private Boolean myRunJGitGC;
   private String  myPathToGit;
   private String  myFetchClassPath;
   private String  myFetcherClassName;
@@ -99,6 +100,10 @@ public class PluginConfigBuilder {
         return myFetchProcessMaxMemory != null ? myFetchProcessMaxMemory : myDelegate.getFetchProcessMaxMemory();
       }
 
+      public String getGcProcessMaxMemory() {
+        return myDelegate.getGcProcessMaxMemory();
+      }
+
       @Nullable
       public String getExplicitFetchProcessMaxMemory() {
         return myDelegate.getExplicitFetchProcessMaxMemory();
@@ -114,6 +119,10 @@ public class PluginConfigBuilder {
 
       public boolean isRunNativeGC() {
         return myRunNativeGC != null ? myRunNativeGC : myDelegate.isRunNativeGC();
+      }
+
+      public boolean isRunJGitGC() {
+        return myRunJGitGC != null ? myRunJGitGC : myDelegate.isRunJGitGC();
       }
 
       public String getPathToGit() {
@@ -261,6 +270,12 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setRunNativeGC(boolean run) {
     myRunNativeGC = run;
+    return this;
+  }
+
+
+  PluginConfigBuilder setRunJGitGC(boolean run) {
+    myRunJGitGC = run;
     return this;
   }
 

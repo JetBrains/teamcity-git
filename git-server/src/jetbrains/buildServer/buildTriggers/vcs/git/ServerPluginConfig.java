@@ -43,6 +43,8 @@ public interface ServerPluginConfig extends PluginConfig {
 
   String getFetchProcessMaxMemory();
 
+  String getGcProcessMaxMemory();
+
   @Nullable
   String getExplicitFetchProcessMaxMemory();
 
@@ -52,6 +54,8 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean isSeparateProcessForPatch();
 
   boolean isRunNativeGC();
+
+  boolean isRunJGitGC();
 
 
   int getNativeGCQuotaMinutes();

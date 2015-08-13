@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.googlecode.javaewah.EWAHCompressedBitmap;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.*;
@@ -137,6 +138,21 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
 
+  public String getGcProcessMaxMemory() {
+    try {
+      Class.forName("com.sun.management.OperatingSystemMXBean");
+    } catch (ClassNotFoundException e) {
+      return "768M";
+    }
+    OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+    if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
+      long freeRAM = ((com.sun.management.OperatingSystemMXBean) osBean).getFreePhysicalMemorySize();
+      if (freeRAM > GB)
+        return "1024M";
+    }
+    return "768M";
+  }
+
   @Nullable
   public String getExplicitFetchProcessMaxMemory() {
     return TeamCityProperties.getPropertyOrNull("teamcity.git.fetch.process.max.memory");
@@ -153,6 +169,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   public boolean isRunNativeGC() {
     return TeamCityProperties.getBoolean("teamcity.server.git.gc.enabled");
+  }
+
+  public boolean isRunJGitGC() {
+    return TeamCityProperties.getBoolean("teamcity.git.gcEnabled");
   }
 
   public String getPathToGit() {
@@ -180,6 +200,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
     classes.add(LowLevelPatchBuilder.class);
     classes.add(org.slf4j.Logger.class);
     classes.add(org.slf4j.impl.StaticLoggerBinder.class);
+    classes.add(EWAHCompressedBitmap.class);
     return ClasspathUtil.composeClasspath(classes.toArray(new Class[classes.size()]), null, null);
   }
 
@@ -217,7 +238,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
       CachePaths.class,
       ServiceMessage.class,
       org.slf4j.Logger.class,
-      org.slf4j.impl.StaticLoggerBinder.class
+      org.slf4j.impl.StaticLoggerBinder.class,
+      EWAHCompressedBitmap.class
     ));
     Collections.addAll(result, GitVcsSupport.class.getInterfaces());
     return result;

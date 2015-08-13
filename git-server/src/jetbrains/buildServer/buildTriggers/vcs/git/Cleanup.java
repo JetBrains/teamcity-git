@@ -25,8 +25,10 @@ import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 
@@ -47,7 +49,9 @@ public class Cleanup {
     LOG.info("Git cleanup started");
     removeUnusedRepositories();
     cleanupMonitoringData();
-    if (myConfig.isRunNativeGC()) {
+    if (myConfig.isRunJGitGC()) {
+      runJGitGC();
+    } else if (myConfig.isRunNativeGC()) {
       runNativeGC();
     }
     LOG.info("Git cleanup finished");
@@ -140,6 +144,37 @@ public class Cleanup {
     LOG.info("Git garbage collection finished, it took " + (finish - start) + "ms");
   }
 
+  private void runJGitGC() {
+    final long start = System.currentTimeMillis();
+    final long gcTimeQuota = minutes2Milliseconds(myConfig.getNativeGCQuotaMinutes());
+    LOG.info("Git garbage collection started");
+    List<File> allDirs = getAllRepositoryDirs();
+    int runGCCounter = 0;
+    for (File gitDir : allDirs) {
+      synchronized (myRepositoryManager.getWriteLock(gitDir)) {
+        try {
+          LOG.info("Start garbage collection in " + gitDir.getAbsolutePath());
+          long repositoryStart = System.currentTimeMillis();
+          runJGitGC(gitDir);
+          LOG.info("Garbage collection finished in " + gitDir.getAbsolutePath() + ", duration: " + (System.currentTimeMillis() - repositoryStart));
+        } catch (Exception e) {
+          LOG.warnAndDebugDetails("Error while running garbage collection in " + gitDir.getAbsolutePath(), e);
+        }
+      }
+      runGCCounter++;
+      final long repositoryFinish = System.currentTimeMillis();
+      if ((repositoryFinish - start) > gcTimeQuota) {
+        final int restRepositories = allDirs.size() - runGCCounter;
+        if (restRepositories > 0) {
+          LOG.info("Git garbage collection quota exceeded, skip " + restRepositories + " repositories");
+          break;
+        }
+      }
+    }
+    final long finish = System.currentTimeMillis();
+    LOG.info("Git garbage collection finished, it took " + (finish - start) + "ms");
+  }
+
   private boolean isNativeGitInstalled() {
     String pathToGit = myConfig.getPathToGit();
     GeneralCommandLine cmd = new GeneralCommandLine();
@@ -153,6 +188,26 @@ public class Cleanup {
       return false;
     }
     return true;
+  }
+
+  private void runJGitGC(final File bareGitDir) throws IOException, VcsException {
+    GeneralCommandLine cmd = new GeneralCommandLine();
+    cmd.setWorkingDirectory(bareGitDir);
+    cmd.setExePath(myConfig.getFetchProcessJavaPath());
+    cmd.addParameters("-Xmx" + myConfig.getGcProcessMaxMemory(),
+                      "-cp", myConfig.getFetchClasspath(),
+                      GitGcProcess.class.getName(),
+                      bareGitDir.getCanonicalPath());
+    ExecResult result = SimpleCommandLineProcessRunner.runCommand(cmd, null, new SimpleCommandLineProcessRunner.RunCommandEventsAdapter() {
+      @Nullable
+      @Override
+      public Integer getOutputIdleSecondsTimeout() {
+        return 60 * myConfig.getNativeGCQuotaMinutes();
+      }
+    });
+    VcsException commandError = CommandLineUtil.getCommandLineError("git gc", result, false, true);
+    if (commandError != null)
+      throw commandError;
   }
 
   private void runNativeGC(final File bareGitDir) {
@@ -176,7 +231,7 @@ public class Cleanup {
           LOG.info("Finish 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc', it took " + (finish - start) + "ms");
         }
         public Integer getOutputIdleSecondsTimeout() {
-          return 3 * 60 * 60;//3 hours
+          return 60 * myConfig.getNativeGCQuotaMinutes();
         }
         public Integer getMaxAcceptedOutputSize() {
           return null;
