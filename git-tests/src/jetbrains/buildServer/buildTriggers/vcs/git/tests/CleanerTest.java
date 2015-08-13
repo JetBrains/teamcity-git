@@ -20,10 +20,12 @@ import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -40,22 +42,15 @@ public class CleanerTest extends BaseTestCase {
   private GitVcsSupport mySupport;
   private RepositoryManager myRepositoryManager;
   private ServerPluginConfig myConfig;
+  private PluginConfigBuilder myConfigBuilder;
 
   @BeforeMethod
   public void setUp() throws IOException {
     ServerPaths paths = new ServerPaths(ourTempFiles.createTempDir().getAbsolutePath());
-    PluginConfigBuilder configBuilder = new PluginConfigBuilder(paths)
-      .setRunNativeGC(true)
-      .setMirrorExpirationTimeoutMillis(5000);
+    myConfigBuilder = new PluginConfigBuilder(paths).setMirrorExpirationTimeoutMillis(5000);
 
     if (System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH) != null)
-      configBuilder.setPathToGit(System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH));
-
-    myConfig = configBuilder.build();
-    GitSupportBuilder gitBuilder = gitSupport().withPluginConfig(myConfig);
-    mySupport = gitBuilder.build();
-    myRepositoryManager = gitBuilder.getRepositoryManager();
-    myCleanup = new Cleanup(myConfig, myRepositoryManager);
+      myConfigBuilder.setPathToGit(System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH));
   }
 
   @AfterMethod
@@ -64,13 +59,25 @@ public class CleanerTest extends BaseTestCase {
   }
 
 
-  public void test_clean() throws VcsException, InterruptedException {
+  @Test(dataProvider = "true,false")
+  public void test_clean(Boolean useJgitGC) throws VcsException, InterruptedException {
+    if (useJgitGC) {
+      myConfigBuilder.setRunJGitGC(true);
+      myConfigBuilder.setRunNativeGC(false);
+    } else {
+      myConfigBuilder.setRunJGitGC(false);
+      myConfigBuilder.setRunNativeGC(true);
+    }
+    initCleanup();
+
     File baseMirrorsDir = myRepositoryManager.getBaseMirrorsDir();
     generateGarbage(baseMirrorsDir);
 
     Thread.sleep(2 * myConfig.getMirrorExpirationTimeoutMillis());
 
     final VcsRoot root = GitTestUtil.getVcsRoot();
+    mySupport.getCollectChangesPolicy().collectChanges(root, "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", "a894d7d58ffde625019a9ecf8267f5f1d1e5c341", CheckoutRules.DEFAULT);
+
     mySupport.getCurrentState(root);//it will create dir in cache directory
     File repositoryDir = getRepositoryDir(root);
 
@@ -88,6 +95,15 @@ public class CleanerTest extends BaseTestCase {
   }
 
 
+  private void initCleanup() {
+    myConfig = myConfigBuilder.build();
+    GitSupportBuilder gitBuilder = gitSupport().withPluginConfig(myConfig);
+    mySupport = gitBuilder.build();
+    myRepositoryManager = gitBuilder.getRepositoryManager();
+    myCleanup = new Cleanup(myConfig, myRepositoryManager);
+  }
+
+
   private File getRepositoryDir(VcsRoot root) throws VcsException {
     GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root);
     return gitRoot.getRepositoryDir();
@@ -98,5 +114,14 @@ public class CleanerTest extends BaseTestCase {
     for (int i = 0; i < 10; i++) {
       new File(dir, "git-AHAHAHA"+i+".git").mkdir();
     }
+  }
+
+
+  @DataProvider(name = "true,false")
+  public static Object[][] createData() {
+    return new Object[][] {
+      new Object[] { Boolean.TRUE },
+      new Object[] { Boolean.FALSE }
+    };
   }
 }

@@ -25,5 +25,6 @@
     <orderEntry type="library" name="httpclient-4.3.4" level="project" />
     <orderEntry type="library" name="TeamCity patches" level="project" />
     <orderEntry type="library" name="slf4j-api-1.7.5" level="project" />
+    <orderEntry type="library" name="JavaEWAH-0.7.9" level="project" />
   </component>
 </module>
