@@ -252,6 +252,11 @@ public class PluginConfigBuilder {
       public String getHttpConnectionSslProtocol() {
         return myDelegate.getHttpConnectionSslProtocol();
       }
+
+      @NotNull
+      public List<String> getAmazonHosts() {
+        return myDelegate.getAmazonHosts();
+      }
     };
   }
 

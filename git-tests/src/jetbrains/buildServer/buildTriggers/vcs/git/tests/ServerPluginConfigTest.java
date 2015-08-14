@@ -20,10 +20,13 @@ import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.Proxy;
 import com.jcraft.jsch.ProxyHTTP;
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
+import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.TestFor;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -36,6 +39,7 @@ import java.util.Properties;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
 import static org.testng.AssertJUnit.*;
 
 /**
@@ -51,6 +55,10 @@ public class ServerPluginConfigTest {
 
   @BeforeMethod
   public void setUp() throws Exception {
+    new TeamCityProperties() {{
+      setModel(new BasePropertiesModel() {});
+    }};
+
     myTempFiles = new TempFiles();
     File dotBuildServer = myTempFiles.createTempDir();
     myServerPaths = new ServerPaths(dotBuildServer.getAbsolutePath());
@@ -133,5 +141,15 @@ public class ServerPluginConfigTest {
     assertThat(separateProcessProxySettings, hasItem("-Dteamcity.git.sshProxyType=" + sshProxyType));
     assertThat(separateProcessProxySettings, hasItem("-Dteamcity.git.sshProxyHost=" + sshProxyHost));
     assertThat(separateProcessProxySettings, hasItem("-Dteamcity.git.sshProxyPort=" + sshProxyPort));
+  }
+
+
+  public void amazon_hosts() {
+    ServerPluginConfig config = new PluginConfigImpl();
+    assertTrue(config.getAmazonHosts().isEmpty());
+    System.setProperty(Constants.AMAZON_HOSTS, "host1");
+    assertThat(config.getAmazonHosts(), hasItems("host1"));
+    System.setProperty(Constants.AMAZON_HOSTS, "host1,host2");
+    assertThat(config.getAmazonHosts(), hasItems("host1", "host2"));
   }
 }
