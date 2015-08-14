@@ -17,9 +17,14 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
+import org.eclipse.jgit.lib.NullProgressMonitor;
+import org.eclipse.jgit.lib.ProgressMonitor;
+import org.eclipse.jgit.lib.TextProgressMonitor;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.Writer;
 import java.nio.charset.Charset;
 
 public class FetchSettings {
@@ -49,6 +54,23 @@ public class FetchSettings {
       stdoutBuffer = new ByteArrayOutputStream();
     }
     return stdoutBuffer;
+  }
+
+  @NotNull
+  public ProgressMonitor createProgressMonitor() {
+    if (myProgress == GitProgress.NO_OP)
+      return NullProgressMonitor.INSTANCE;
+    Writer w = new Writer() {
+      @Override
+      public void write(final String str) throws IOException {
+        myProgress.reportProgress(str.trim());
+      }
+      @Override public void write(final char[] cbuf, final int off, final int len) throws IOException {}
+      @Override public void flush() throws IOException {}
+      @Override public void close() throws IOException {}
+    };
+
+    return new TextProgressMonitor(w);
   }
 
   @NotNull
