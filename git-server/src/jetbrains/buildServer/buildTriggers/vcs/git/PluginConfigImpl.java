@@ -56,6 +56,8 @@ import java.text.ParseException;
 import java.util.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
+import static com.intellij.openapi.util.text.StringUtil.isEmptyOrSpaces;
+import static java.util.Arrays.asList;
 import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
 /**
@@ -79,7 +81,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
                                                            TEAMCITY_GIT_SSH_PROXY_PORT,
                                                            TEAMCITY_GIT_ALWAYS_CHECK_CIPHERS,
                                                            HTTP_CONNECTION_FACTORY,
-                                                           HTTP_CONNECTION_SSL_PROTOCOL);
+                                                           HTTP_CONNECTION_SSL_PROTOCOL,
+                                                           Constants.AMAZON_HOSTS);
 
   public PluginConfigImpl() {
     myCachesDir = null;
@@ -214,7 +217,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   private Set<Class> fetchProcessClasses() {
     Set<Class> result = new HashSet<Class>();
-    result.addAll(Arrays.asList(
+    result.addAll(asList(
       Fetcher.class,
       VcsRoot.class,
       ProgressMonitor.class,
@@ -451,5 +454,14 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   public static boolean showKnownHostsDbOption() {
     return TeamCityProperties.getBoolean("teamcity.git.showKnownHostsDbOption");
+  }
+
+  @NotNull
+  public List<String> getAmazonHosts() {
+    String amazonHosts = TeamCityProperties.getProperty(Constants.AMAZON_HOSTS);
+    if (isEmptyOrSpaces(amazonHosts))
+      return Collections.emptyList();
+    String[] hosts = amazonHosts.split(",");
+    return asList(hosts);
   }
 }

@@ -129,4 +129,5 @@ public interface Constants {
 
   String SHOW_CUSTOM_CLONE_PATH = "teamcity.git.showCustomClonePath";
   String CUSTOM_CLONE_PATH_ENABLED = "teamcity.git.customClonePathEnabled";
+  String AMAZON_HOSTS = "teamcity.git.amazonHosts";
 }

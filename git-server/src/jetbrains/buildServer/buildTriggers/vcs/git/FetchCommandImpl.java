@@ -272,8 +272,7 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
   private void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn, @NotNull URIish uri, @NotNull AuthSettings authSettings) throws NotSupportedException, VcsException, TransportException {
-    String host = uri.getHost();
-    if ("ssh".equals(uri.getScheme()) && GitServerUtil.isAmazonCodeCommit(uri.getHost())) {
+    if ("ssh".equals(uri.getScheme()) && GitServerUtil.isAmazonCodeCommit(uri.getHost(), myConfig)) {
       Transport transport = null;
       try {
         transport = myTransportFactory.createTransport(db, uri, authSettings);

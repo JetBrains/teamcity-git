@@ -128,4 +128,7 @@ public interface ServerPluginConfig extends PluginConfig {
 
   @NotNull
   String getHttpConnectionSslProtocol();
+
+  @NotNull
+  List<String> getAmazonHosts();
 }

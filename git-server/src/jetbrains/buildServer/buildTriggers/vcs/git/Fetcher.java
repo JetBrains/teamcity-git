@@ -101,7 +101,7 @@ public class Fetcher {
       workaroundRacyGit();
       tn = transportFactory.createTransport(repository, new URIish(fetchUrl), auth);
       try {
-        pruneRemovedBranches(repository, transportFactory, tn, new URIish(fetchUrl), auth);
+        pruneRemovedBranches(config, repository, transportFactory, tn, new URIish(fetchUrl), auth);
       } catch (Exception e) {
         System.err.println("Error while pruning removed branches: " + e.getMessage());
         e.printStackTrace(System.err);
@@ -115,12 +115,13 @@ public class Fetcher {
     }
   }
 
-  private static void pruneRemovedBranches(@NotNull Repository db,
+  private static void pruneRemovedBranches(@NotNull ServerPluginConfig config,
+                                           @NotNull Repository db,
                                            @NotNull TransportFactory transportFactory,
                                            @NotNull Transport tn,
                                            @NotNull URIish uri,
                                            @NotNull AuthSettings authSettings) throws NotSupportedException, VcsException, org.eclipse.jgit.errors.TransportException {
-    if ("ssh".equals(uri.getScheme()) && GitServerUtil.isAmazonCodeCommit(uri.getHost())) {
+    if ("ssh".equals(uri.getScheme()) && GitServerUtil.isAmazonCodeCommit(uri.getHost(), config)) {
       Transport transport = null;
       try {
         transport = transportFactory.createTransport(db, uri, authSettings);

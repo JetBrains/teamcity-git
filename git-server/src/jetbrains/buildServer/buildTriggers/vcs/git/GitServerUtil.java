@@ -43,6 +43,7 @@ import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.text.MessageFormat;
+import java.util.List;
 import java.util.Map;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
@@ -422,7 +423,12 @@ public class GitServerUtil {
   }
 
 
-  public static boolean isAmazonCodeCommit(@Nullable String host) {
-    return host != null && host.startsWith("git-codecommit") && host.endsWith("amazonaws.com");
+  public static boolean isAmazonCodeCommit(@Nullable String host, @NotNull ServerPluginConfig config) {
+    if (host == null)
+      return false;
+    if (host.startsWith("git-codecommit") && host.endsWith("amazonaws.com"))
+      return true;
+    List<String> amazonHosts = config.getAmazonHosts();
+    return amazonHosts.contains(host);
   }
 }
