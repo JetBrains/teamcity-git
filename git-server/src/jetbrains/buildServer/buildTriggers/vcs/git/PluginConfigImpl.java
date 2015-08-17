@@ -145,15 +145,15 @@ public class PluginConfigImpl implements ServerPluginConfig {
     try {
       Class.forName("com.sun.management.OperatingSystemMXBean");
     } catch (ClassNotFoundException e) {
-      return "768M";
+      return "1024M";
     }
     OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
     if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
       long freeRAM = ((com.sun.management.OperatingSystemMXBean) osBean).getFreePhysicalMemorySize();
       if (freeRAM > GB)
-        return "1024M";
+        return "1200M";
     }
-    return "768M";
+    return "1024M";
   }
 
   @Nullable
