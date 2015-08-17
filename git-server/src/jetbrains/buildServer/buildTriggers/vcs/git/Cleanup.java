@@ -250,7 +250,7 @@ public class Cleanup {
         }
         public void onProcessFinished(Process ps) {
           final long finish = System.currentTimeMillis();
-          LOG.info("Finish 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc', it took " + (finish - start) + "ms");
+          LOG.info("Finish 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc', duration: " + (finish - start) + "ms");
         }
         public Integer getOutputIdleSecondsTimeout() {
           return 60 * myConfig.getNativeGCQuotaMinutes();
