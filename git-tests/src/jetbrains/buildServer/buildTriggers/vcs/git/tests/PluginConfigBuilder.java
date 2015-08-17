@@ -46,6 +46,7 @@ public class PluginConfigBuilder {
   private String  myFetcherClassName;
   private Integer myFixedSubmoduleCommitSearchDepth;
   private Integer myIdleTimeoutSeconds;
+  private Integer myFetchTimeoutSeconds;
   private Long myMirrorExpirationTimeoutMillis;
   private int myNumberOfCommitsWhenFromVersionNotFound = -1;
   private ServerPaths myPaths;
@@ -85,7 +86,7 @@ public class PluginConfigBuilder {
       }
 
       public int getFetchTimeout() {
-        return myDelegate.getFetchTimeout();
+        return myFetchTimeoutSeconds != null ? myFetchTimeoutSeconds : myDelegate.getFetchTimeout();
       }
 
       public int getPatchProcessIdleTimeoutSeconds() {
@@ -369,6 +370,12 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setPatchBuilderClassName(String className) {
     myPatchBuilderClassName = className;
+    return this;
+  }
+
+
+  public PluginConfigBuilder setFetchTimeout(final Integer fetchTimeoutSeconds) {
+    myFetchTimeoutSeconds = fetchTimeoutSeconds;
     return this;
   }
 }
