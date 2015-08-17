@@ -29,7 +29,10 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
 public class Cleanup {
@@ -86,7 +89,7 @@ public class Cleanup {
   }
 
   private List<File> getAllRepositoryDirs() {
-    return FileUtil.getSubDirectories(myRepositoryManager.getBaseMirrorsDir());
+    return new ArrayList<File>(FileUtil.getSubDirectories(myRepositoryManager.getBaseMirrorsDir()));
   }
 
   private long minutes2Milliseconds(int quotaInMinutes) {
@@ -121,18 +124,19 @@ public class Cleanup {
       LOG.info("Cannot find native git, skip running git gc");
       return;
     }
-    final long start = System.currentTimeMillis();
-    final long gcTimeQuota = minutes2Milliseconds(myConfig.getNativeGCQuotaMinutes());
+    final long startNanos = System.nanoTime();
+    final long gcTimeQuotaNanos = TimeUnit.MINUTES.toNanos(myConfig.getNativeGCQuotaMinutes());
     LOG.info("Git garbage collection started");
     List<File> allDirs = getAllRepositoryDirs();
+    Collections.shuffle(allDirs);
     int runGCCounter = 0;
     for (File gitDir : allDirs) {
       synchronized (myRepositoryManager.getWriteLock(gitDir)) {
         runNativeGC(gitDir);
       }
       runGCCounter++;
-      final long repositoryFinish = System.currentTimeMillis();
-      if ((repositoryFinish - start) > gcTimeQuota) {
+      final long repositoryFinishNanos = System.nanoTime();
+      if ((repositoryFinishNanos - startNanos) > gcTimeQuotaNanos) {
         final int restRepositories = allDirs.size() - runGCCounter;
         if (restRepositories > 0) {
           LOG.info("Git garbage collection quota exceeded, skip " + restRepositories + " repositories");
@@ -140,30 +144,32 @@ public class Cleanup {
         }
       }
     }
-    final long finish = System.currentTimeMillis();
-    LOG.info("Git garbage collection finished, it took " + (finish - start) + "ms");
+    final long finishNanos = System.nanoTime();
+    LOG.info("Git garbage collection finished, it took " + TimeUnit.NANOSECONDS.toMillis(finishNanos - startNanos) + "ms");
   }
 
   private void runJGitGC() {
-    final long start = System.currentTimeMillis();
-    final long gcTimeQuota = minutes2Milliseconds(myConfig.getNativeGCQuotaMinutes());
+    final long startNanos = System.nanoTime();
+    final long gcTimeQuotaNanos = TimeUnit.MINUTES.toNanos(myConfig.getNativeGCQuotaMinutes());
     LOG.info("Git garbage collection started");
     List<File> allDirs = getAllRepositoryDirs();
+    Collections.shuffle(allDirs);
     int runGCCounter = 0;
     for (File gitDir : allDirs) {
       synchronized (myRepositoryManager.getWriteLock(gitDir)) {
         try {
           LOG.info("Start garbage collection in " + gitDir.getAbsolutePath());
-          long repositoryStart = System.currentTimeMillis();
+          long repositoryStartNanos = System.nanoTime();
           runJGitGC(gitDir);
-          LOG.info("Garbage collection finished in " + gitDir.getAbsolutePath() + ", duration: " + (System.currentTimeMillis() - repositoryStart));
+          LOG.info("Garbage collection finished in " + gitDir.getAbsolutePath() + ", duration: " +
+                   TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - repositoryStartNanos) + "ms");
         } catch (Exception e) {
           LOG.warnAndDebugDetails("Error while running garbage collection in " + gitDir.getAbsolutePath(), e);
         }
       }
       runGCCounter++;
-      final long repositoryFinish = System.currentTimeMillis();
-      if ((repositoryFinish - start) > gcTimeQuota) {
+      final long repositoryFinishNanos = System.nanoTime();
+      if ((repositoryFinishNanos - startNanos) > gcTimeQuotaNanos) {
         final int restRepositories = allDirs.size() - runGCCounter;
         if (restRepositories > 0) {
           LOG.info("Git garbage collection quota exceeded, skip " + restRepositories + " repositories");
@@ -171,8 +177,8 @@ public class Cleanup {
         }
       }
     }
-    final long finish = System.currentTimeMillis();
-    LOG.info("Git garbage collection finished, it took " + (finish - start) + "ms");
+    final long finishNanos = System.nanoTime();
+    LOG.info("Git garbage collection finished, it took " + TimeUnit.NANOSECONDS.toMillis(finishNanos - startNanos) + "ms");
   }
 
   private boolean isNativeGitInstalled() {
