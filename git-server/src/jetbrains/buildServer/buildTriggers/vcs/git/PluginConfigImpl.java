@@ -142,18 +142,21 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
 
   public String getGcProcessMaxMemory() {
+    String xmx = TeamCityProperties.getProperty("teamcity.git.gcXmx");
+    if (!isEmpty(xmx))
+      return xmx;
     try {
       Class.forName("com.sun.management.OperatingSystemMXBean");
     } catch (ClassNotFoundException e) {
-      return "1024M";
+      return "768M";
     }
     OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
     if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
       long freeRAM = ((com.sun.management.OperatingSystemMXBean) osBean).getFreePhysicalMemorySize();
       if (freeRAM > GB)
-        return "1200M";
+        return "1024M";
     }
-    return "1024M";
+    return "768M";
   }
 
   @Nullable
