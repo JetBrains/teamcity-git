@@ -142,6 +142,9 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
 
   public String getGcProcessMaxMemory() {
+    String xmx = TeamCityProperties.getProperty("teamcity.git.gcXmx");
+    if (!isEmpty(xmx))
+      return xmx;
     try {
       Class.forName("com.sun.management.OperatingSystemMXBean");
     } catch (ClassNotFoundException e) {
