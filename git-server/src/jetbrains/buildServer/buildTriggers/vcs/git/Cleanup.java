@@ -155,6 +155,8 @@ public class Cleanup {
     List<File> allDirs = getAllRepositoryDirs();
     Collections.shuffle(allDirs);
     int runGCCounter = 0;
+    Boolean nativeGitInstalled = null;
+    boolean enableNativeGitLogged = false;
     for (File gitDir : allDirs) {
       synchronized (myRepositoryManager.getWriteLock(gitDir)) {
         try {
@@ -165,6 +167,20 @@ public class Cleanup {
                    TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - repositoryStartNanos) + "ms");
         } catch (Exception e) {
           LOG.warnAndDebugDetails("Error while running garbage collection in " + gitDir.getAbsolutePath(), e);
+          if ((System.nanoTime() - startNanos) < gcTimeQuotaNanos) { //if quota is not exceeded try running a native git
+            if (nativeGitInstalled == null) {
+              LOG.info("Check if native git is installed");
+              nativeGitInstalled = isNativeGitInstalled();
+            }
+            if (nativeGitInstalled) {
+              runNativeGC(gitDir);
+            } else {
+              if (!enableNativeGitLogged) {
+                LOG.info("Cannot find a native git, please install it and provide a path to git in the 'teamcity.server.git.executable.path' internal property.");
+                enableNativeGitLogged = true;
+              }
+            }
+          }
         }
       }
       runGCCounter++;
