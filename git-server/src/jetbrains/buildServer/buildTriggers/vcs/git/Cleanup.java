@@ -29,6 +29,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 
@@ -86,7 +88,7 @@ public class Cleanup {
   }
 
   private List<File> getAllRepositoryDirs() {
-    return FileUtil.getSubDirectories(myRepositoryManager.getBaseMirrorsDir());
+    return new ArrayList<File>(FileUtil.getSubDirectories(myRepositoryManager.getBaseMirrorsDir()));
   }
 
   private long minutes2Milliseconds(int quotaInMinutes) {
@@ -125,6 +127,7 @@ public class Cleanup {
     final long gcTimeQuota = minutes2Milliseconds(myConfig.getNativeGCQuotaMinutes());
     LOG.info("Git garbage collection started");
     List<File> allDirs = getAllRepositoryDirs();
+    Collections.shuffle(allDirs);
     int runGCCounter = 0;
     for (File gitDir : allDirs) {
       synchronized (myRepositoryManager.getWriteLock(gitDir)) {
@@ -149,6 +152,7 @@ public class Cleanup {
     final long gcTimeQuota = minutes2Milliseconds(myConfig.getNativeGCQuotaMinutes());
     LOG.info("Git garbage collection started");
     List<File> allDirs = getAllRepositoryDirs();
+    Collections.shuffle(allDirs);
     int runGCCounter = 0;
     for (File gitDir : allDirs) {
       synchronized (myRepositoryManager.getWriteLock(gitDir)) {
