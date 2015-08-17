@@ -1653,6 +1653,21 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
+  @Test
+  @TestFor(issues = "TW-41943")
+  public void collect_changes_with_broken_commit_encoding() throws Exception {
+    VcsRoot root = vcsRoot().withFetchUrl(myMainRepositoryDir).build();
+
+    RepositoryStateData state1 = createVersionState("refs/heads/master",
+                                                    map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"));
+    RepositoryStateData state2 = createVersionState("refs/heads/master", map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9",
+                                                                             "refs/heads/brokenEncoding", "b0799af24940ea316efd2985b5c5c10b47875abd"));
+    List<ModificationData> changes = getSupport().getCollectChangesPolicy().collectChanges(root, state1, state2, CheckoutRules.DEFAULT);
+    ModificationData commit = changes.get(0);
+    assertEquals("Cannot parse commit message due to unknown commit encoding 'brokenEncoding'", commit.getDescription());
+  }
+
+
   private File createBranchLockFile(File repositoryDir, String branch) throws IOException {
     String branchRefPath = "refs" + File.separator + "heads" + File.separator + branch;
     File refFile  = new File(repositoryDir, branchRefPath);
