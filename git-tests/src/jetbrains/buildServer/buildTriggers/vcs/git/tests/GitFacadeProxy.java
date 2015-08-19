@@ -36,14 +36,17 @@ public class GitFacadeProxy implements InvocationHandler {
   }
 
   public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-    Object command = method.invoke(myGitFacade, args);
-    Class<?> gitCommandClass = method.getReturnType();
-    List<String> methods = myInvokedMethods.get(gitCommandClass.getName());
+    Object result = method.invoke(myGitFacade, args);
+    Class<?> resultClass = method.getReturnType();
+    if (!resultClass.isInterface()) {//all git commands are interfaces, if result is not return it as is
+      return result;
+    }
+    List<String> methods = myInvokedMethods.get(resultClass.getName());
     if (methods == null) {
       methods = new ArrayList<String>();
-      myInvokedMethods.put(gitCommandClass.getName(), methods);
+      myInvokedMethods.put(resultClass.getName(), methods);
     }
-    return Proxy.newProxyInstance(GitFacadeProxy.class.getClassLoader(), new Class[]{gitCommandClass},
-                                  new GitCommandProxy(command, gitCommandClass, methods));
+    return Proxy.newProxyInstance(GitFacadeProxy.class.getClassLoader(), new Class[]{resultClass},
+                                  new GitCommandProxy(result, resultClass, methods));
   }
 }

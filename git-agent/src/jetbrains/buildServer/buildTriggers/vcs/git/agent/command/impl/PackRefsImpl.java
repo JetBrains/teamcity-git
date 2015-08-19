@@ -29,7 +29,7 @@ public class PackRefsImpl implements PackRefs {
   }
 
   public void call() throws VcsException {
-    myCmd.addParameter("pack-refs");
+    myCmd.addParameters("pack-refs", "--all");
     CommandUtil.runCommand(myCmd);
   }
 }

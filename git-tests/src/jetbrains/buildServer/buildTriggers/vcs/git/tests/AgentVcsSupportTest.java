@@ -159,6 +159,7 @@ public class AgentVcsSupportTest {
     AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, useMirrors.toString()));
 
     git.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
+    loggingFactory.clear();
 
     //we already have everything we need for this update, no fetch should be executed
     git.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
@@ -166,6 +167,29 @@ public class AgentVcsSupportTest {
     assertFalse("Refs removed: " + loggingFactory.getInvokedMethods(UpdateRefCommand.class),
                 loggingFactory.getInvokedMethods(UpdateRefCommand.class).contains("delete"));
     assertTrue("Redundant fetch", loggingFactory.getInvokedMethods(FetchCommand.class).isEmpty());
+  }
+
+
+  @TestFor(issues = "TW-42249")
+  public void should_not_invoke_fetch_in_working_dir_after_clean_checkout() throws Exception {
+    VcsRootSshKeyManagerProvider provider = new VcsRootSshKeyManagerProvider() {
+      @Nullable
+      public VcsRootSshKeyManager getSshKeyManager() {
+        return null;
+      }
+    };
+    LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
+    GitAgentVcsSupport git = new GitAgentVcsSupport(createSmartDirectoryCleaner(),
+                                                    new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new GitPluginDescriptor(), provider),
+                                                    myConfigFactory, myMirrorManager, loggingFactory);
+
+    AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY,
+                                                     PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES));
+
+    myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).withUseMirrors(true).build();
+    git.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
+
+    assertEquals("Redundant fetch", 1, loggingFactory.getNumberOfCalls(FetchCommand.class));
   }
 
 
