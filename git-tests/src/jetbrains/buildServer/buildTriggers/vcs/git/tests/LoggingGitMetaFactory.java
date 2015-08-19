@@ -30,8 +30,12 @@ public class LoggingGitMetaFactory implements GitMetaFactory {
 
   @NotNull
   public GitFactory createFactory(@NotNull GitAgentSSHService sshService, @NotNull AgentPluginConfig config, @NotNull GitProgressLogger logger, @NotNull File tempDir) {
-    myInvokedMethods.clear();//reset methods on every updateSources call
     return new GitFactoryProxy(sshService, config, tempDir, myInvokedMethods);
+  }
+
+
+  public void clear() {
+    myInvokedMethods.clear();
   }
 
   @NotNull
@@ -40,5 +44,17 @@ public class LoggingGitMetaFactory implements GitMetaFactory {
     if (methods != null)
       return methods;
     return Collections.emptyList();
+  }
+
+  public int getNumberOfCalls(@NotNull Class gitCommandClass) {
+    List<String> methods = myInvokedMethods.get(gitCommandClass.getName());
+    if (methods == null)
+      return 0;
+    int result = 0;
+    for (String method : methods) {
+      if ("call".equals(method))
+        result++;
+    }
+    return result;
   }
 }
