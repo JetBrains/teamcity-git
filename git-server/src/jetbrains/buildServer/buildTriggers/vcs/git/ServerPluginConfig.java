@@ -78,10 +78,7 @@ public interface ServerPluginConfig extends PluginConfig {
   long getMirrorExpirationTimeoutMillis();
 
   @NotNull
-  List<String> getProxySettingsForSeparateProcess();
-
-  @NotNull
-  List<String> getSslTrustStoreSettingsForSeparateProcess();
+  List<String> getOptionsForSeparateProcess();
 
   /**
    * @return proxy for jsch of null if no proxy required

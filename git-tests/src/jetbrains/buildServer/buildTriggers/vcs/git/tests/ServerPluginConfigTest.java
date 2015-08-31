@@ -119,7 +119,7 @@ public class ServerPluginConfigTest {
                                           : "-Dhttp.nonProxyHosts=\"" + httpNonProxyHosts + "\"",
                         "-Dhttps.proxyHost=" + httpsProxyHost,
                         "-Dhttps.proxyPort=" + httpsProxyPort),
-                 config.getProxySettingsForSeparateProcess());
+                 config.getOptionsForSeparateProcess());
     assertNull(config.getJschProxy());
   }
 
@@ -137,10 +137,10 @@ public class ServerPluginConfigTest {
     assertNotNull(sshProxy);
     assertTrue(sshProxy instanceof ProxyHTTP);
 
-    List<String> separateProcessProxySettings = config.getProxySettingsForSeparateProcess();
-    assertThat(separateProcessProxySettings, hasItem("-Dteamcity.git.sshProxyType=" + sshProxyType));
-    assertThat(separateProcessProxySettings, hasItem("-Dteamcity.git.sshProxyHost=" + sshProxyHost));
-    assertThat(separateProcessProxySettings, hasItem("-Dteamcity.git.sshProxyPort=" + sshProxyPort));
+    List<String> separateProcessOptions = config.getOptionsForSeparateProcess();
+    assertThat(separateProcessOptions, hasItem("-Dteamcity.git.sshProxyType=" + sshProxyType));
+    assertThat(separateProcessOptions, hasItem("-Dteamcity.git.sshProxyHost=" + sshProxyHost));
+    assertThat(separateProcessOptions, hasItem("-Dteamcity.git.sshProxyPort=" + sshProxyPort));
   }
 
 

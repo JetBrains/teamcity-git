@@ -232,9 +232,8 @@ public class FetchCommandImpl implements FetchCommand {
     GeneralCommandLine cl = new GeneralCommandLine();
     cl.setWorkingDirectory(repository.getDirectory());
     cl.setExePath(myConfig.getFetchProcessJavaPath());
-    cl.addParameters(myConfig.getProxySettingsForSeparateProcess());
+    cl.addParameters(myConfig.getOptionsForSeparateProcess());
     cl.setPassParentEnvs(myConfig.passEnvToChildProcess());
-    cl.addParameters(myConfig.getSslTrustStoreSettingsForSeparateProcess());
 
     cl.addParameters("-Xmx" + myConfig.getFetchProcessMaxMemory(),
                      "-cp", myConfig.getFetchClasspath(),
