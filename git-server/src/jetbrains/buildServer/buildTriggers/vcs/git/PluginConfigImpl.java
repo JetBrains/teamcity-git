@@ -276,31 +276,33 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return days * Dates.ONE_DAY;
   }
 
-  @NotNull
-  public List<String> getProxySettingsForSeparateProcess() {
-    List<String> proxySettings = new ArrayList<String>();
-    addHttpProxyHost(proxySettings);
-    addHttpProxyPort(proxySettings);
-    addHttpNonProxyHosts(proxySettings);
-    addHttpsProxyHost(proxySettings);
-    addHttpsProxyPort(proxySettings);
-    addSshProxySettings(proxySettings);
-    return proxySettings;
+  private void addProxySettingsForSeparateProcess(@NotNull List<String> options) {
+    addHttpProxyHost(options);
+    addHttpProxyPort(options);
+    addHttpNonProxyHosts(options);
+    addHttpsProxyHost(options);
+    addHttpsProxyPort(options);
+    addSshProxySettings(options);
   }
 
   @NotNull
-  public List<String> getSslTrustStoreSettingsForSeparateProcess() {
-    List<String> result = new ArrayList<String>();
+  public List<String> getOptionsForSeparateProcess() {
+    List<String> options = new ArrayList<String>();
+    addProxySettingsForSeparateProcess(options);
+    addSslTrustStoreSettingsForSeparateProcess(options);
+    addInheritedOption(options, "java.net.preferIPv6Addresses");
+    return options;
+  }
 
-    String trustStore = System.getProperty("javax.net.ssl.trustStore");
-    if (trustStore != null)
-      result.add("-Djavax.net.ssl.trustStore=" + trustStore);
+  private void addSslTrustStoreSettingsForSeparateProcess(@NotNull List<String> options) {
+    addInheritedOption(options, "javax.net.ssl.trustStore");
+    addInheritedOption(options, "javax.net.ssl.trustStorePassword");
+  }
 
-    String trustStorePassword = System.getProperty("javax.net.ssl.trustStorePassword");
-    if (trustStorePassword != null)
-      result.add("-Djavax.net.ssl.trustStorePassword=" + trustStorePassword);
-
-    return result;
+  private void addInheritedOption(@NotNull List<String> options, @NotNull String key) {
+    String value = System.getProperty(key);
+    if (!isEmpty(value))
+      options.add("-D" + key + "=" + value);
   }
 
   public int getNumberOfCommitsWhenFromVersionNotFound() {

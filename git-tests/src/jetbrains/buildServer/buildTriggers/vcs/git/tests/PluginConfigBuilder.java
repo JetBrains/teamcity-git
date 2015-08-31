@@ -167,13 +167,8 @@ public class PluginConfigBuilder {
       }
 
       @NotNull
-      public List<String> getProxySettingsForSeparateProcess() {
-        return myDelegate.getProxySettingsForSeparateProcess();
-      }
-
-      @NotNull
-      public List<String> getSslTrustStoreSettingsForSeparateProcess() {
-        return myDelegate.getSslTrustStoreSettingsForSeparateProcess();
+      public List<String> getOptionsForSeparateProcess() {
+        return myDelegate.getOptionsForSeparateProcess();
       }
 
       @Nullable
