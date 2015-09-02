@@ -180,36 +180,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals(VERSION_TEST_HEAD, version);
   }
 
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void testGetContent(boolean fetchInSeparateProcess) throws Exception {
-    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
-    GitVcsSupport support = getSupport();
-    VcsRoot root = getRoot("version-test");
-    RepositoryStateData state = support.getCurrentState(root);
-    String version = state.getBranchRevisions().get(state.getDefaultBranchName());
-    byte[] data1 = support.getContentProvider().getContent("readme.txt", root, version);
-    byte[] data2 = FileUtil.loadFileBytes(dataFile("content", "readme.txt"));
-    assertEquals(data1, data2);
-    try {
-      support.getContentProvider().getContent("non-existing file.txt", root, version);
-      fail("The file must not be loaded");
-    } catch (VcsFileNotFoundException ex) {
-      // ignore exception
-    }
-  }
-
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void testGetContentSubmodules(boolean fetchInSeparateProcess) throws Exception {
-    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
-    GitVcsSupport support = getSupport();
-    VcsRoot root = getRoot("patch-tests", true);
-    RepositoryStateData state = support.getCurrentState(root);
-    String version = state.getBranchRevisions().get(state.getDefaultBranchName());
-    byte[] data1 = support.getContentProvider().getContent("submodule/file.txt", root, version);
-    byte[] data2 = FileUtil.loadFileBytes(dataFile("content", "submodule file.txt"));
-    assertEquals(data1, data2);
-  }
-
 
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testCollectBuildChanges(boolean fetchInSeparateProcess) throws Exception {
@@ -1667,6 +1637,11 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals("Cannot parse commit message due to unknown commit encoding 'brokenEncoding'", commit.getDescription());
   }
 
+
+  @Test
+  public void x() {
+    System.out.println(ObjectId.fromString("4c8852288abedb4cf8c35bbf018212b0adfc85ec"));
+  }
 
   private File createBranchLockFile(File repositoryDir, String branch) throws IOException {
     String branchRefPath = "refs" + File.separator + "heads" + File.separator + branch;

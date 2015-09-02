@@ -56,7 +56,7 @@ public class GitVcsFileContentProvider extends GitAbstractVcsFileContentProvider
 
   @NotNull
   public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot root, @NotNull String version) throws VcsException {
-    OperationContext context = myVcs.createContext(root, "retrieving content");
+    OperationContext context = myVcs.createContext(root, "retrieving content, file: '" + filePath + "', version: '" + version +"'");
     try {
       final long start = System.currentTimeMillis();
       Repository r = context.getRepository();
