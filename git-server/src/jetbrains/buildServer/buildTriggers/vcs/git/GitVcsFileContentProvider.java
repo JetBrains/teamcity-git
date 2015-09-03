@@ -42,14 +42,13 @@ public class GitVcsFileContentProvider extends GitAbstractVcsFileContentProvider
   private static final Logger LOG = Logger.getInstance(GitVcsFileContentProvider.class.getName());
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsFileContentProvider.class.getName() + ".Performance");
 
-  private final GitVcsSupport myVcs;
   private final CommitLoader myCommitLoader;
   private final ServerPluginConfig myConfig;
 
   public GitVcsFileContentProvider(@NotNull GitVcsSupport vcs,
                                    @NotNull CommitLoader commitLoader,
                                    @NotNull ServerPluginConfig config) {
-    myVcs = vcs;
+    super(vcs);
     myCommitLoader = commitLoader;
     myConfig = config;
   }
