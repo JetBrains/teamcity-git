@@ -30,7 +30,6 @@ import java.net.URLConnection;
 
 public class GitHubRawFileContentProvider extends GitAbstractVcsFileContentProvider {
 
-  private final GitVcsSupport myVcs;
   private final GitAbstractVcsFileContentProvider myGenericProvider;
   private final String myOwner;
   private final String myRepository;
@@ -39,7 +38,7 @@ public class GitHubRawFileContentProvider extends GitAbstractVcsFileContentProvi
                                       @NotNull GitAbstractVcsFileContentProvider genericProvider,
                                       @NotNull String owner,
                                       @NotNull String repository) {
-    myVcs = vcs;
+    super(vcs);
     myGenericProvider = genericProvider;
     myOwner = owner;
     myRepository = repository;

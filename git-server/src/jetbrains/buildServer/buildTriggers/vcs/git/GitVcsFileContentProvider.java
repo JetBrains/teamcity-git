@@ -42,21 +42,20 @@ public class GitVcsFileContentProvider extends GitAbstractVcsFileContentProvider
   private static final Logger LOG = Logger.getInstance(GitVcsFileContentProvider.class.getName());
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsFileContentProvider.class.getName() + ".Performance");
 
-  private final GitVcsSupport myVcs;
   private final CommitLoader myCommitLoader;
   private final ServerPluginConfig myConfig;
 
   public GitVcsFileContentProvider(@NotNull GitVcsSupport vcs,
                                    @NotNull CommitLoader commitLoader,
                                    @NotNull ServerPluginConfig config) {
-    myVcs = vcs;
+    super(vcs);
     myCommitLoader = commitLoader;
     myConfig = config;
   }
 
   @NotNull
   public byte[] getContent(@NotNull String filePath, @NotNull VcsRoot root, @NotNull String version) throws VcsException {
-    OperationContext context = myVcs.createContext(root, "retrieving content");
+    OperationContext context = myVcs.createContext(root, "retrieving content, file: '" + filePath + "', version: '" + version +"'");
     try {
       final long start = System.currentTimeMillis();
       Repository r = context.getRepository();

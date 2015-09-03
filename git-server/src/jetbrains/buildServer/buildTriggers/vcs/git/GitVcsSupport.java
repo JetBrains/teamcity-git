@@ -480,4 +480,9 @@ public class GitVcsSupport extends ServerVcsSupport
     }
     return super.getVcsCustomExtension(extensionClass);
   }
+
+  @NotNull
+  public CommitLoader getCommitLoader() {
+    return myCommitLoader;
+  }
 }
