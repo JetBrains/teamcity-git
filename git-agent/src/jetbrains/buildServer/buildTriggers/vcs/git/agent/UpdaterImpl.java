@@ -157,11 +157,6 @@ public class UpdaterImpl implements Updater {
 
   private void updateSources() throws VcsException {
     GitFacade git = myGitFactory.create(myTargetDirectory);
-    try {
-      System.out.println("core.autocrlf=" + git.getConfig().setPropertyName("core.autocrlf").call());
-    } catch (Exception e) {
-      System.out.println("core.autocrlf=<default>");
-    }
     boolean branchChanged = false;
     removeIndexLock();
     if (isRegularBranch(myFullBranchName)) {
