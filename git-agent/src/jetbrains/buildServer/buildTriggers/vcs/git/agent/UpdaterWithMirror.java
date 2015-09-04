@@ -21,6 +21,7 @@ import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
+import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
@@ -50,8 +51,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
                            @NotNull AgentRunningBuild build,
                            @NotNull VcsRoot root,
                            @NotNull String version,
-                           @NotNull File targetDir) throws VcsException {
-    super(pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir);
+                           @NotNull File targetDir,
+                           @NotNull CheckoutRules rules,
+                           @NotNull CheckoutMode mode) throws VcsException {
+    super(pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode);
   }
 
   @Override

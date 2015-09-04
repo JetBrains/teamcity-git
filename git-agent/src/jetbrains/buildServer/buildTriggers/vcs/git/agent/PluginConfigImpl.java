@@ -43,6 +43,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String VCS_ROOT_MIRRORS_STRATEGY = "teamcity.git.mirrorStrategy";
   public static final String VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES = "alternates";
   public static final String VCS_ROOT_MIRRORS_STRATEGY_MIRRORS_ONLY = "mirrors";
+  public static final String USE_SPARSE_CHECKOUT = "teamcity.git.useSparseCheckout";
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
@@ -118,6 +119,15 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
     return false;
   }
+
+
+  public boolean isUseSparseCheckout() {
+    String buildSetting = myBuild.getSharedConfigParameters().get(USE_SPARSE_CHECKOUT);
+    if (StringUtil.isEmpty(buildSetting))
+      return false;
+    return Boolean.parseBoolean(buildSetting);
+  }
+
 
   @NotNull
   private String getMirrorStrategy() {
