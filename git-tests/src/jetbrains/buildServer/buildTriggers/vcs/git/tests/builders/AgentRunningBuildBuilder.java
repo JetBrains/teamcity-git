@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests.builders;
 
 import jetbrains.buildServer.agent.*;
+import jetbrains.buildServer.agent.impl.BuildParametersMapImpl;
 import jetbrains.buildServer.artifacts.ArtifactDependencyInfo;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.parameters.ValueResolver;
@@ -150,7 +151,7 @@ public class AgentRunningBuildBuilder {
 
       @NotNull
       public BuildParametersMap getSharedBuildParameters() {
-        throw new UnsupportedOperationException();
+        return new BuildParametersMapImpl(new HashMap<String, String>());
       }
 
       @NotNull

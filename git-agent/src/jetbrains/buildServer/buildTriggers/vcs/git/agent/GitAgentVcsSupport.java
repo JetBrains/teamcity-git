@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.agent.vcs.AgentVcsSupport;
@@ -75,18 +76,19 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull File checkoutDirectory,
                             @NotNull AgentRunningBuild build,
                             boolean cleanCheckoutRequested) throws VcsException {
-    validateCheckoutRules(root, rules);
-    File targetDir = getTargetDir(root, rules, checkoutDirectory);
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
     GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, getLogger(build), build.getBuildTempDirectory());
+    Pair<CheckoutMode, File> targetDirAndMode = getTargetDirAndMode(config, root, rules, checkoutDirectory);
+    CheckoutMode mode = targetDirAndMode.first;
+    File targetDir = targetDirAndMode.second;
     Updater updater;
     AgentGitVcsRoot gitRoot = new AgentGitVcsRoot(myMirrorManager, targetDir, root);
     if (config.isUseAlternates(gitRoot)) {
-      updater = new UpdaterWithAlternates(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir);
+      updater = new UpdaterWithAlternates(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode);
     } else if (config.isUseLocalMirrors(gitRoot)) {
-      updater = new UpdaterWithMirror(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir);
+      updater = new UpdaterWithMirror(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode);
     } else {
-      updater = new UpdaterImpl(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir);
+      updater = new UpdaterImpl(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode);
     }
     updater.update();
   }
@@ -143,5 +145,30 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
         throw new VcsException("The destination directory '" + directory + "' could not be created.");
     }
     return directory;
+  }
+
+
+  @NotNull
+  private Pair<CheckoutMode, File> getTargetDirAndMode(@NotNull AgentPluginConfig config,
+                                                       @NotNull VcsRoot root,
+                                                       @NotNull CheckoutRules rules,
+                                                       @NotNull File checkoutDir) throws VcsException {
+    GitVersion version = config.getGitVersion();
+    if (!version.isLessThan(UpdaterImpl.GIT_WITH_SPARSE_CHECKOUT) && canUseSparseCheckout(rules) && config.isUseSparseCheckout()) {
+      return Pair.create(CheckoutMode.SPARSE_CHECKOUT, checkoutDir);
+    } else {
+      validateCheckoutRules(root, rules);
+      File targetDir = getTargetDir(root, rules, checkoutDir);
+      return Pair.create(CheckoutMode.MAP_REPO_TO_DIR, targetDir);
+    }
+  }
+
+
+  private boolean canUseSparseCheckout(@NotNull CheckoutRules rules) {
+    for (IncludeRule rule : rules.getIncludeRules()) {
+      if (!rule.getFrom().equals(rule.getTo())) //rule contain mapping
+        return false;
+    }
+    return true;
   }
 }

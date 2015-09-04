@@ -29,8 +29,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.*;
 import org.apache.log4j.Logger;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.*;
@@ -49,6 +48,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.*;
 
 public class UpdaterImpl implements Updater {
@@ -58,6 +58,7 @@ public class UpdaterImpl implements Updater {
   private final static GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
   //--force option in git submodule update introduced in 1.7.6
   private final static GitVersion GIT_WITH_FORCE_SUBMODULE_UPDATE = new GitVersion(1, 7, 6);
+  public final static GitVersion GIT_WITH_SPARSE_CHECKOUT = new GitVersion(1, 7, 0);
   private static final int SILENT_TIMEOUT = 24 * 60 * 60; //24 hours
 
   private final SmartDirectoryCleaner myDirectoryCleaner;
@@ -69,6 +70,8 @@ public class UpdaterImpl implements Updater {
   protected final AgentGitVcsRoot myRoot;
   protected final String myFullBranchName;
   protected final AgentRunningBuild myBuild;
+  private final CheckoutRules myRules;
+  private final CheckoutMode myCheckoutMode;
 
   public UpdaterImpl(@NotNull AgentPluginConfig pluginConfig,
                      @NotNull MirrorManager mirrorManager,
@@ -77,7 +80,9 @@ public class UpdaterImpl implements Updater {
                      @NotNull AgentRunningBuild build,
                      @NotNull VcsRoot root,
                      @NotNull String version,
-                     @NotNull File targetDir) throws VcsException {
+                     @NotNull File targetDir,
+                     @NotNull CheckoutRules rules,
+                     @NotNull CheckoutMode checkoutMode) throws VcsException {
     myPluginConfig = pluginConfig;
     myDirectoryCleaner = directoryCleaner;
     myGitFactory = gitFactory;
@@ -87,6 +92,8 @@ public class UpdaterImpl implements Updater {
     myTargetDirectory = targetDir;
     myRoot = new AgentGitVcsRoot(mirrorManager, myTargetDirectory, root);
     myFullBranchName = getBranch();
+    myRules = rules;
+    myCheckoutMode = checkoutMode;
   }
 
 
@@ -135,6 +142,7 @@ public class UpdaterImpl implements Updater {
       } else {
         try {
           setupExistingRepository();
+          configureSparseCheckout();
         } catch (Exception e) {
           LOG.warn("Do clean checkout due to errors while configure use of local mirrors", e);
           initDirectory();
@@ -625,6 +633,42 @@ public class UpdaterImpl implements Updater {
       myGitFactory.create(myTargetDirectory).setConfig().setPropertyName("remote.origin.pushurl").setValue(pushUrl).call();
     }
     setupNewRepository();
+    configureSparseCheckout();
+  }
+
+  private void configureSparseCheckout() throws VcsException {
+    if (myCheckoutMode == CheckoutMode.SPARSE_CHECKOUT) {
+      setupSparseCheckout();
+    } else {
+      myGitFactory.create(myTargetDirectory).setConfig().setPropertyName("core.sparseCheckout").setValue("false").call();
+    }
+  }
+
+  private void setupSparseCheckout() throws VcsException {
+    myGitFactory.create(myTargetDirectory).setConfig().setPropertyName("core.sparseCheckout").setValue("true").call();
+    File sparseCheckout = new File(myTargetDirectory, ".git/info/sparse-checkout");
+    boolean hasIncludeRules = false;
+    StringBuilder sparseCheckoutContent = new StringBuilder();
+    for (IncludeRule rule : myRules.getIncludeRules()) {
+      if (isEmpty(rule.getFrom()))
+        continue;
+      sparseCheckoutContent.append("/").append(rule.getFrom()).append("\n");
+      sparseCheckoutContent.append("/").append(rule.getFrom()).append("/\n");
+      hasIncludeRules = true;
+    }
+    if (!hasIncludeRules) {
+      sparseCheckoutContent.append("/*\n");
+    }
+    for (FileRule rule : myRules.getExcludeRules()) {
+      sparseCheckoutContent.append("!/").append(rule.getFrom()).append("\n");
+      sparseCheckoutContent.append("!/").append(rule.getFrom()).append("/\n");
+    }
+    try {
+      FileUtil.writeFileAndReportErrors(sparseCheckout, sparseCheckoutContent.toString());
+    } catch (IOException e) {
+      LOG.warn("Error while writing sparse checkout config, disable sparse checkout", e);
+      myGitFactory.create(myTargetDirectory).setConfig().setPropertyName("core.sparseCheckout").setValue("false").call();
+    }
   }
 
 
