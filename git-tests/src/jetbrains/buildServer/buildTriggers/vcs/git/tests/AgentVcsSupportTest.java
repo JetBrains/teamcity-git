@@ -350,20 +350,6 @@ public class AgentVcsSupportTest {
   }
 
 
-  /**
-   * Test for TW-13009
-   */
-  public void testWindowsSubmodulePath() {
-    final String windowsPathSeparator = "\\";
-    try {
-      "/".replaceAll("/", windowsPathSeparator);
-    } catch (StringIndexOutOfBoundsException e) {
-      //this means we should escape windowsPath
-    }
-    "/".replaceAll("/", Matcher.quoteReplacement(windowsPathSeparator));
-  }
-
-
   public void should_create_bare_repository_in_caches_dir() throws Exception {
     File mirrorsDir = myAgentConfiguration.getCacheDirectory("git");
     assertTrue(mirrorsDir.listFiles(new FileFilter() {
