@@ -56,7 +56,8 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
     super.setUp();
 
     myCheckoutDir = myTempFiles.createTempDir();
-    GitPathResolver resolver = new MockGitPathResolver(getGitPath());
+    String pathToGit = getGitPath();
+    GitPathResolver resolver = new MockGitPathResolver(pathToGit);
     GitDetector detector = new GitDetectorImpl(resolver);
     BuildAgentConfiguration agentConfiguration = agentConfiguration(myTempFiles.createTempDir(), myTempFiles.createTempDir()).build();
     PluginConfigFactoryImpl pluginConfigFactory = new PluginConfigFactoryImpl(agentConfiguration, detector);
@@ -68,6 +69,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
                                           new GitAgentSSHService(agent, agentConfiguration, new MockGitPluginDescriptor(), provider),
                                           pluginConfigFactory, mirrorManager, metaFactory);
     myRoot = vcsRoot()
+      .withAgentGitPath(pathToGit)
       .withFetchUrl(getRemoteRepositoryUrl("repo.git"))
       .withBranch("master")
       .build();
