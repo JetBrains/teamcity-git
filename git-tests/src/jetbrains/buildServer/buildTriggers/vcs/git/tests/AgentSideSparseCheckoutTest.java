@@ -36,6 +36,7 @@ import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder.runningBuild;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder.agentConfiguration;
+import static org.assertj.core.api.BDDAssertions.then;
 import static org.testng.AssertJUnit.*;
 
 @Test
@@ -81,7 +82,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
     CheckoutRules rules = new CheckoutRules("-:dir");
     myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
-    assertFalse(new File(myCheckoutDir, "dir").exists());
+    then(myCheckoutDir.list()).doesNotContain("dir");
   }
 
 
@@ -100,10 +101,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
     CheckoutRules rules = new CheckoutRules("+:dir");
     myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
-    String[] files = myCheckoutDir.list();
-    assertEquals(2, files.length);
-    assertEquals(".git", files[0]);
-    assertEquals("dir", files[1]);
+    then(myCheckoutDir.list()).containsOnly(".git", "dir");
   }
 
 
@@ -123,13 +121,11 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
     CheckoutRules rules = new CheckoutRules("+:dir");
     myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
-    assertTrue(new File(myCheckoutDir, "dir").exists());
-    assertFalse(new File(myCheckoutDir, "readme.txt").exists());
+    then(myCheckoutDir.list()).contains("dir").doesNotContain("readme.txt");
 
     rules = new CheckoutRules("-:dir");
     myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
-    assertFalse(new File(myCheckoutDir, "dir").exists());
-    assertTrue(new File(myCheckoutDir, "readme.txt").exists());
+    then(myCheckoutDir.list()).doesNotContain("dir").contains("readme.txt");
   }
 
 
@@ -138,13 +134,11 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
     CheckoutRules rules = new CheckoutRules("+:dir");
     myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
-    assertTrue(new File(myCheckoutDir, "dir").exists());
-    assertFalse(new File(myCheckoutDir, "readme.txt").exists());
+    then(myCheckoutDir.list()).contains("dir").doesNotContain("readme.txt");
 
     rules = CheckoutRules.DEFAULT;
     myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
-    assertTrue(new File(myCheckoutDir, "dir").exists());
-    assertTrue(new File(myCheckoutDir, "readme.txt").exists());
+    then(myCheckoutDir.list()).contains("dir", "readme.txt");
   }
 
 
