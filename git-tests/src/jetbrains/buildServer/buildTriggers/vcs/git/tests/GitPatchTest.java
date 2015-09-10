@@ -242,6 +242,13 @@ public class GitPatchTest extends PatchTestCase {
   }
 
 
+  @Test(dataProvider = "patchInSeparateProcess")
+  public void build_patch_on_commit_not_reachable_from_branch(boolean patchInSeparateProcess) throws IOException, VcsException {
+    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
+    checkPatch("pullRequestPatch", "master", null, "b896070465af79121c9a4eb5300ecff29453c164", true);
+  }
+
+
   //this test for debugging, it doesn't check logging
   private void build_patch_with_incorrect_memory_settings() throws Exception {
     System.setProperty("teamcity.git.fetch.process.max.memory", "64G");

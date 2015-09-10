@@ -78,7 +78,7 @@ public class CommitLoaderImpl implements CommitLoader {
     } catch (IOException e) {
       LOG.debug("Cannot find commit " + commitSHA + " in the branch " + root.getRef() +
                 " of repository " + root.debugInfo() + ", fetch all branches");
-      RefSpec spec = new RefSpec().setSourceDestination("refs/heads/*", "refs/heads/*").setForceUpdate(true);
+      RefSpec spec = new RefSpec().setSourceDestination("refs/*", "refs/*").setForceUpdate(true);
       fetch(db, root.getRepositoryFetchURL(), asList(spec), new FetchSettings(root.getAuthSettings()));
       try {
         return getCommit(db, commitId);
