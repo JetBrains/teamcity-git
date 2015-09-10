@@ -1638,11 +1638,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  @Test
-  public void x() {
-    System.out.println(ObjectId.fromString("4c8852288abedb4cf8c35bbf018212b0adfc85ec"));
-  }
-
   private File createBranchLockFile(File repositoryDir, String branch) throws IOException {
     String branchRefPath = "refs" + File.separator + "heads" + File.separator + branch;
     File refFile  = new File(repositoryDir, branchRefPath);
