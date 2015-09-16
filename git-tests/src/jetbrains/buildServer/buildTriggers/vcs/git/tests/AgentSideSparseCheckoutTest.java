@@ -24,13 +24,19 @@ import jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
+import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.Predicate;
 import jetbrains.buildServer.vcs.CheckoutRules;
+import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
@@ -77,45 +83,6 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
   }
 
 
-  public void exclude_dir() throws Exception {
-    String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
-    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
-    CheckoutRules rules = new CheckoutRules("-:dir");
-    myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
-    then(myCheckoutDir.list()).doesNotContain("dir");
-  }
-
-
-  public void exclude_file() throws Exception {
-    String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
-    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
-    CheckoutRules rules = new CheckoutRules(asList("-:readme.txt", "-:dir/q.txt"));
-    myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
-    assertFalse(new File(myCheckoutDir, "readme.txt").exists());
-    assertFalse(new File(myCheckoutDir, "dir/q.txt").exists());
-  }
-
-
-  public void include_dir() throws Exception {
-    String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
-    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
-    CheckoutRules rules = new CheckoutRules("+:dir");
-    myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
-    then(myCheckoutDir.list()).containsOnly(".git", "dir");
-  }
-
-
-  public void exclude_inside_include() throws Exception {
-    String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
-    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
-    CheckoutRules rules = new CheckoutRules(asList("+:dir", "-:dir/q.txt"));
-    myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
-    assertTrue(new File(myCheckoutDir, "dir").exists());
-    assertFalse(new File(myCheckoutDir, "dir/q.txt").exists());
-    assertFalse(new File(myCheckoutDir, "readme.txt").exists());
-  }
-
-
   public void update_files_after_checkout_rules_change() throws Exception {
     String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
@@ -139,6 +106,74 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
     rules = CheckoutRules.DEFAULT;
     myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
     then(myCheckoutDir.list()).contains("dir", "readme.txt");
+  }
+
+
+  public void map_some_files_exclude_others() throws Exception {
+    //Files at revision 465ad9f630e451b9f2b782ffb09804c6a98c4bb9:
+    // dir/b.txt
+    // dir/d.txt
+    // dir/not_ignored_by_checkout_rules.txt
+    // dir/q.txt
+    // readme.txt
+
+    checkRules(rules("-:dir"),
+               "readme.txt");
+
+    checkRules(rules("+:dir"),
+               "dir/b.txt",
+               "dir/d.txt",
+               "dir/not_ignored_by_checkout_rules.txt",
+               "dir/q.txt");
+
+    checkRules(rules("+:dir", "-:dir/q.txt"),
+               "dir/b.txt",
+               "dir/d.txt",
+               "dir/not_ignored_by_checkout_rules.txt");
+
+    checkRules(rules("-:readme.txt", "-:dir/q.txt"),
+               "dir/b.txt",
+               "dir/d.txt",
+               "dir/not_ignored_by_checkout_rules.txt");
+
+    checkRules(rules("+:.=>newDir", "-:dir"),
+               "newDir/readme.txt");
+
+    checkRules(rules("+:dir=>newDir/dir",
+                     "+:readme.txt=>newDir/readme.txt",
+                     "-:dir/b.txt",
+                     "-:dir/q.txt"),
+               "newDir/dir/d.txt",
+               "newDir/dir/not_ignored_by_checkout_rules.txt",
+               "newDir/readme.txt");
+  }
+
+
+  private void checkRules(@NotNull CheckoutRules rules, String... files) throws VcsException {
+    FileUtil.delete(myCheckoutDir);
+    myCheckoutDir.mkdirs();
+    String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
+    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
+    myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, true);
+    then(listFiles(myCheckoutDir)).containsOnly(files);
+  }
+
+
+  private CheckoutRules rules(String... rules) {
+    return new CheckoutRules(asList(rules));
+  }
+
+
+  @NotNull
+  private List<String> listFiles(@NotNull File dir) {
+    List<String> result = new ArrayList<String>();
+    Predicate<File> excludeDotGit = new Predicate<File>() {
+      public boolean apply(final File item) {
+        return !item.getAbsolutePath().contains(".git");
+      }
+    };
+    FileUtil.listFilesRecursively(dir, "", false, Integer.MAX_VALUE, excludeDotGit, result);
+    return result;
   }
 
 
