@@ -29,8 +29,11 @@ import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * The agent support for VCS.
@@ -154,21 +157,46 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                                                        @NotNull CheckoutRules rules,
                                                        @NotNull File checkoutDir) throws VcsException {
     GitVersion version = config.getGitVersion();
-    if (!version.isLessThan(UpdaterImpl.GIT_WITH_SPARSE_CHECKOUT) && canUseSparseCheckout(rules) && config.isUseSparseCheckout()) {
-      return Pair.create(CheckoutMode.SPARSE_CHECKOUT, checkoutDir);
-    } else {
-      validateCheckoutRules(root, rules);
-      File targetDir = getTargetDir(root, rules, checkoutDir);
-      return Pair.create(CheckoutMode.MAP_REPO_TO_DIR, targetDir);
+    if (config.isUseSparseCheckout() && !version.isLessThan(UpdaterImpl.GIT_WITH_SPARSE_CHECKOUT)) {
+      String targetDir = getSingleTargetDir(rules);
+      if (targetDir != null) {
+        return Pair.create(CheckoutMode.SPARSE_CHECKOUT, new File(checkoutDir, targetDir));
+      }
     }
+
+    validateCheckoutRules(root, rules);
+    File targetDir = getTargetDir(root, rules, checkoutDir);
+    return Pair.create(CheckoutMode.MAP_REPO_TO_DIR, targetDir);
   }
 
 
-  private boolean canUseSparseCheckout(@NotNull CheckoutRules rules) {
-    for (IncludeRule rule : rules.getIncludeRules()) {
-      if (!rule.getFrom().equals(rule.getTo())) //rule contain mapping
-        return false;
+  @Nullable
+  private String getSingleTargetDir(@NotNull CheckoutRules rules) {
+    Set<String> targetDirs = new HashSet<String>();
+    for (IncludeRule rule : rules.getRootIncludeRules()) {
+      String from = rule.getFrom();
+      String to = rule.getTo();
+      if (from.equals("")) {
+        targetDirs.add(to);
+        continue;
+      }
+      if (from.equals(to)) {
+        targetDirs.add("");
+        continue;
+      }
+      int prefixEnd = to.lastIndexOf(from);
+      if (prefixEnd == -1) // rule of form +:a=>b, but we don't support such mapping
+        return null;
+      String prefix = to.substring(0, prefixEnd);
+      if (!prefix.endsWith("/")) //rule of form +:a=>ab, but we don't support such mapping
+        return null;
+      prefix = prefix.substring(0, prefix.length() - 1);
+      targetDirs.add(prefix);
     }
-    return true;
+    if (targetDirs.isEmpty())
+      return "";
+    if (targetDirs.size() > 1) //no single target dir
+      return null;
+    return targetDirs.iterator().next();
   }
 }
