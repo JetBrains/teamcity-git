@@ -24,6 +24,7 @@ import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleCommitException;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleConfigException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleEntryException;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
@@ -71,6 +72,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.v
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
 import static jetbrains.buildServer.vcs.RepositoryStateData.createVersionState;
+import static org.assertj.core.api.BDDAssertions.then;
 
 public class GitVcsSupportTest extends PatchTestCase {
 
@@ -429,7 +431,7 @@ public class GitVcsSupportTest extends PatchTestCase {
    * |                                                    |
    * o add empty .gitmodules                              | 233daeefb335b60c7b5700afde97f745d86cb40d
    * |                                                    |
-   * o add submodule wihtout entry in .gitmodules         | 6eae9acd29db2dba146929634a4bb1e6e72a31fd
+   * o add submodule without entry in .gitmodules         | 6eae9acd29db2dba146929634a4bb1e6e72a31fd
    * |                                                    |
    * o no submodules                                      | f3f826ce85d6dad25156b2d7550cedeb1a422f4c (merge_version)
    */
@@ -445,9 +447,64 @@ public class GitVcsSupportTest extends PatchTestCase {
       assertTrue(e.getCause() instanceof MissingSubmoduleEntryException);
       MissingSubmoduleEntryException e1 = (MissingSubmoduleEntryException) e.getCause();
       assertEquals("The repository '" + root.getProperty(Constants.FETCH_URL) + "' " +
-                   "has a submodule in the commit '78cbbed3561de3417467ee819b1795ba14c03dfb' " +
-                   "at a path 'submodule-wihtout-entry', but has no entry for this path in .gitmodules configuration",
+                   "has a submodule in the '78cbbed3561de3417467ee819b1795ba14c03dfb' commit " +
+                   "at the 'submodule-wihtout-entry' path, but has no entry for this path in .gitmodules configuration",
                    e1.getMessage());
+    }
+  }
+
+
+  @Test
+  @TestFor(issues = "TW-41884")
+  public void should_mention_branch_when_entry_in_gitmodules_is_not_found() throws Exception {
+    String valid = "f5bdd3819df0358a43d9a8f94eaf96bb306e19fe";
+    String invalid = "778cc3d0105ca1b6b2587804ebfe89c2557a7e46";
+    VcsRoot root = getRoot("wrong-submodule", true);
+    RepositoryStateData state1 = createVersionState("wrong-submodule", map("wrong-submodule", valid, "refs/pull/1", valid));
+    RepositoryStateData state2 = createVersionState("wrong-submodule", map("wrong-submodule", invalid, "refs/pull/1", invalid));
+    try {
+      getSupport().getCollectChangesPolicy().collectChanges(root, state1, state2, CheckoutRules.DEFAULT);
+    } catch (VcsException e) {
+      then(e.getCause()).isInstanceOf(MissingSubmoduleEntryException.class);
+      then(e.getMessage()).contains("affected branches: refs/pull/1, wrong-submodule");
+    }
+  }
+
+
+  @Test
+  @TestFor(issues = "TW-41884")
+  public void should_mention_branch_when_commit_in_submodule_is_not_found() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("reference-wrong-commit", true);
+    try {
+      String valid = "f3f826ce85d6dad25156b2d7550cedeb1a422f4c";
+      String invalid = "7253d358a2490321a1808a1c20561b4027d69f77";
+      RepositoryStateData state1 = createVersionState("refs/heads/reference-wrong-commit", map("refs/heads/reference-wrong-commit", valid, "refs/pull/1", valid));
+      RepositoryStateData state2 = createVersionState("refs/heads/reference-wrong-commit", map("refs/heads/reference-wrong-commit", invalid, "refs/pull/1", invalid));
+      support.getCollectChangesPolicy().collectChanges(root, state1, state2, CheckoutRules.DEFAULT);
+      fail();
+    } catch (VcsException e) {
+      then(e.getCause()).isInstanceOf(MissingSubmoduleCommitException.class);
+      then(e.getMessage()).contains("affected branches: refs/heads/reference-wrong-commit, refs/pull/1");
+    }
+  }
+
+
+  @Test
+  @TestFor(issues = "TW-41884")
+  public void should_mention_branch_when_no_gitmodules_config_found() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("reference-wrong-commit", true);
+    try {
+      String valid = "f3f826ce85d6dad25156b2d7550cedeb1a422f4c";
+      String invalid = "6eae9acd29db2dba146929634a4bb1e6e72a31fd";
+      RepositoryStateData state1 = createVersionState("refs/heads/reference-wrong-commit", map("refs/heads/reference-wrong-commit", valid, "refs/pull/1", valid));
+      RepositoryStateData state2 = createVersionState("refs/heads/reference-wrong-commit", map("refs/heads/reference-wrong-commit", invalid, "refs/pull/1", invalid));
+      support.getCollectChangesPolicy().collectChanges(root, state1, state2, CheckoutRules.DEFAULT);
+      fail();
+    } catch (VcsException e) {
+      then(e.getCause()).isInstanceOf(MissingSubmoduleConfigException.class);
+      then(e.getMessage()).contains("affected branches: refs/heads/reference-wrong-commit, refs/pull/1");
     }
   }
 
@@ -462,11 +519,11 @@ public class GitVcsSupportTest extends PatchTestCase {
     } catch (VcsException e) {
       assertTrue(e.getCause() instanceof MissingSubmoduleCommitException);
       MissingSubmoduleCommitException e1 = (MissingSubmoduleCommitException) e.getCause();
-      assertEquals("Cannot find the commit ded023a236d184753f826e62ac16b1612060e9d0 " +
-                   "in the repository '../submodule' used as a submodule " +
-                   "by the repository '" + root.getProperty(Constants.FETCH_URL) + "' " +
-                   "in the commit 7253d358a2490321a1808a1c20561b4027d69f77 " +
-                   "at a path 'submodule-with-dirs'",
+      assertEquals("Cannot find the 'ded023a236d184753f826e62ac16b1612060e9d0' commit " +
+                   "in the '../submodule' repository used as a submodule " +
+                   "by the '" + root.getProperty(Constants.FETCH_URL) + "' repository " +
+                   "in the '7253d358a2490321a1808a1c20561b4027d69f77' commit " +
+                   "at the 'submodule-with-dirs' path",
                    e1.getMessage());
     }
   }

@@ -17,14 +17,13 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevSort;
@@ -89,12 +88,47 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
         changes.add(revWalk.createModificationData());
       }
     } catch (Exception e) {
+      if (e instanceof SubmoduleException) {
+        SubmoduleException se = (SubmoduleException) e;
+        Set<String> affectedBranches = getBranchesWithCommit(context.getRepository(), toState, se.getMainRepositoryCommit());
+        throw context.wrapException(se.addBranches(affectedBranches));
+      }
       throw context.wrapException(e);
     } finally {
       context.close();
     }
     return changes;
   }
+
+
+  @NotNull
+  private Set<String> getBranchesWithCommit(@NotNull Repository r, @NotNull RepositoryStateData state, @NotNull String commit) {
+    try {
+      RevWalk revWalk = new RevWalk(r);
+      revWalk.sort(RevSort.REVERSE);
+      revWalk.sort(RevSort.TOPO, true);
+      Set<String> reverseReachable = new HashSet<String>();
+      RevCommit revCommit = revWalk.parseCommit(ObjectId.fromString(commit));
+      revWalk.markStart(revCommit);
+      RevCommit c;
+      while ((c = revWalk.next()) != null) {
+        reverseReachable.add(c.name());
+      }
+
+      Set<String> branches = new HashSet<String>();
+      for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
+        String branchName = entry.getKey();
+        String branchRevision = entry.getValue();
+        if (reverseReachable.contains(branchRevision))
+          branches.add(branchName);
+      }
+
+      return branches;
+    } catch (Exception e1) {
+      return Collections.emptySet();
+    }
+  }
+
 
   @NotNull
   public RepositoryStateData getCurrentState(@NotNull VcsRoot root) throws VcsException {
