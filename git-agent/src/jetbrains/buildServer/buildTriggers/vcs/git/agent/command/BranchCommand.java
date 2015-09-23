@@ -25,5 +25,7 @@ import org.jetbrains.annotations.NotNull;
 public interface BranchCommand {
 
   @NotNull
-  Branches call() throws VcsException;
+  BranchCommand setUpstreamBranch(String upstreamBranch);
+
+  void call() throws VcsException;
 }
