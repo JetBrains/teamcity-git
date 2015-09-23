@@ -24,11 +24,14 @@ import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
 /**
  * @author dmitry.neverov
@@ -190,6 +193,15 @@ public class NativeGitFacade implements GitFacade {
   }
 
   @NotNull
+  public Branches listBranches() throws VcsException {
+    GitCommandLine cmd = createCommandLine();
+    cmd.addParameter("branch");
+    ExecResult r = CommandUtil.runCommand(cmd);
+    CommandUtil.failIfNotEmptyStdErr(cmd, r);
+    return parseBranches(r.getStdout());
+  }
+
+  @NotNull
   public String resolvePath(@NotNull File f) throws VcsException {
     try {
       if (myGitExec.isCygwin()) {
@@ -227,5 +239,20 @@ public class NativeGitFacade implements GitFacade {
   @NotNull
   private AskPassGenerator makeAskPassGen() {
     return SystemInfo.isUnix ? new UnixAskPassGen(myTmpDir, new EscapeEchoArgumentUnix()) : new WinAskPassGen(myTmpDir, new EscapeEchoArgumentWin());
+  }
+
+
+  @NotNull
+  private Branches parseBranches(String out) {
+    Branches branches = new Branches();
+    for (String l : StringUtil.splitByLines(out)) {
+      String line = l.trim();
+      if (isEmpty(line))
+        continue;
+      boolean currentBranch = line.startsWith("* ");
+      String branchName = currentBranch ? line.substring(2).trim() : line;
+      branches.addBranch(branchName, currentBranch);
+    }
+    return branches;
   }
 }

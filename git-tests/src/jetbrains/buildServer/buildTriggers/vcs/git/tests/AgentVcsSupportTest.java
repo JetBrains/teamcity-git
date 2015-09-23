@@ -63,6 +63,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRu
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder.agentConfiguration;
 import static jetbrains.buildServer.util.FileUtil.writeFileAndReportErrors;
 import static jetbrains.buildServer.util.Util.map;
+import static org.assertj.core.api.BDDAssertions.then;
 import static org.testng.AssertJUnit.*;
 
 /**
@@ -174,6 +175,19 @@ public class AgentVcsSupportTest {
     git.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
 
     assertEquals("Redundant fetch", 1, loggingFactory.getNumberOfCalls(FetchCommand.class));
+  }
+
+
+  @TestFor(issues = "TW-42551")
+  public void should_set_remote_tracking_branch() throws Exception {
+    AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY,
+                                                     PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES));
+
+    myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).withUseMirrors(true).build();
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
+
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    then(new BranchConfig(r.getConfig(), "master").getRemoteTrackingBranch()).isEqualTo("refs/remotes/origin/master");
   }
 
 
