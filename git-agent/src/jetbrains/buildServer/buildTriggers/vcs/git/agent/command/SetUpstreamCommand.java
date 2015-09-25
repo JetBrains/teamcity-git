@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2014 JetBrains s.r.o.
+ * Copyright 2000-2015 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import jetbrains.buildServer.vcs.VcsException;
-import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public interface BranchCommand {
-
-  @NotNull
-  BranchCommand setUpstreamBranch(String upstreamBranch);
+public interface SetUpstreamCommand {
 
   void call() throws VcsException;
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2014 JetBrains s.r.o.
+ * Copyright 2000-2015 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,32 +18,35 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.BranchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SetUpstreamCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public class BranchCommandImpl implements BranchCommand {
+public class SetUpstreamCommandImpl implements SetUpstreamCommand {
 
   private final GitCommandLine myCmd;
+  private String myLocalBranch;
   private String myUpstreamBranch;
 
-  public BranchCommandImpl(@NotNull GitCommandLine cmd) {
+  public SetUpstreamCommandImpl(@NotNull GitCommandLine cmd,
+                                @NotNull String localBranch,
+                                @NotNull String upstreamBranch) {
     myCmd = cmd;
-  }
-
-  @NotNull
-  public BranchCommand setUpstreamBranch(String upstreamBranch) {
+    myLocalBranch = localBranch;
     myUpstreamBranch = upstreamBranch;
-    return this;
   }
 
   public void call() throws VcsException {
-    myCmd.addParameter("branch");
-    if (myUpstreamBranch != null)
-      myCmd.addParameter("--set-upstream-to=" + myUpstreamBranch);
+    GitVersion version = myCmd.getGitVersion();
+    if (version.isLessThan(new GitVersion(1, 7, 0))) {
+      //ability to set upstream was added in 1.7.0
+      return;
+    } else if (version.isLessThan(new GitVersion(1, 8, 0))) {
+      myCmd.addParameters("branch", "--set-upstream", myLocalBranch, myUpstreamBranch);
+    } else {
+      myCmd.addParameters("branch", "--set-upstream-to=" + myUpstreamBranch);
+    }
     ExecResult r = CommandUtil.runCommand(myCmd);
     CommandUtil.failIfNotEmptyStdErr(myCmd, r);
   }
