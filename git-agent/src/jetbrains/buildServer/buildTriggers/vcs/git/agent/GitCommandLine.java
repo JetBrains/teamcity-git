@@ -51,6 +51,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private final File myTmpDir;
   private final boolean myDeleteTempFiles;
   private final GitProgressLogger myLogger;
+  private final GitVersion myGitVersion;
   private File myWorkingDirectory;
   private boolean myRepeatOnEmptyOutput = false;
   private VcsRootSshKeyManager mySshKeyManager;
@@ -60,12 +61,14 @@ public class GitCommandLine extends GeneralCommandLine {
                         @NotNull AskPassGenerator askPassGen,
                         @NotNull File tmpDir,
                         boolean deleteTempFiles,
-                        @NotNull GitProgressLogger logger) {
+                        @NotNull GitProgressLogger logger,
+                        @NotNull GitVersion gitVersion) {
     mySsh = ssh;
     myAskPassGen = askPassGen;
     myTmpDir = tmpDir;
     myDeleteTempFiles = deleteTempFiles;
     myLogger = logger;
+    myGitVersion = gitVersion;
   }
 
   public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
@@ -106,6 +109,11 @@ public class GitCommandLine extends GeneralCommandLine {
     } else {
       return CommandUtil.runCommand(this, settings.getTimeout());
     }
+  }
+
+  @NotNull
+  public GitVersion getGitVersion() {
+    return myGitVersion;
   }
 
   public void addPostAction(@NotNull Runnable action) {

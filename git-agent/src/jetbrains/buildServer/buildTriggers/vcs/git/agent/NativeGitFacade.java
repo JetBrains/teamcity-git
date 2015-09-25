@@ -41,6 +41,7 @@ public class NativeGitFacade implements GitFacade {
   private final GitAgentSSHService mySsh;
   private final AskPassGenerator myAskPassGen;
   private final String myGitPath;
+  private final GitVersion myGitVersion;
   private final File myRepositoryDir;
   private final File myTmpDir;
   private final boolean myDeleteTempFiles;
@@ -50,6 +51,7 @@ public class NativeGitFacade implements GitFacade {
 
   public NativeGitFacade(@NotNull GitAgentSSHService ssh,
                          @NotNull String gitPath,
+                         @NotNull GitVersion gitVersion,
                          @NotNull File repositoryDir,
                          @NotNull File tmpDir,
                          boolean deleteTempFiles,
@@ -59,6 +61,7 @@ public class NativeGitFacade implements GitFacade {
     myTmpDir = tmpDir;
     myAskPassGen = makeAskPassGen();
     myGitPath = gitPath;
+    myGitVersion = gitVersion;
     myRepositoryDir = repositoryDir;
     myDeleteTempFiles = deleteTempFiles;
     myLogger = logger;
@@ -70,6 +73,7 @@ public class NativeGitFacade implements GitFacade {
     myTmpDir = new File(FileUtil.getTempDirectory());
     myAskPassGen = makeAskPassGen();
     myGitPath = gitPath;
+    myGitVersion = GitVersion.MIN;
     myRepositoryDir = new File(".");
     myDeleteTempFiles = true;
     myLogger = logger;
@@ -120,11 +124,6 @@ public class NativeGitFacade implements GitFacade {
   @NotNull
   public CheckoutCommand checkout() {
     return new CheckoutCommandImpl(createCommandLine());
-  }
-
-  @NotNull
-  public BranchCommand branch() {
-    return new BranchCommandImpl(createCommandLine());
   }
 
   @NotNull
@@ -202,6 +201,11 @@ public class NativeGitFacade implements GitFacade {
   }
 
   @NotNull
+  public SetUpstreamCommand setUpstream(@NotNull String localBranch, @NotNull String upstreamBranch) throws VcsException {
+    return new SetUpstreamCommandImpl(createCommandLine(), localBranch, upstreamBranch);
+  }
+
+  @NotNull
   public String resolvePath(@NotNull File f) throws VcsException {
     try {
       if (myGitExec.isCygwin()) {
@@ -225,7 +229,7 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   private GitCommandLine createCommandLine() {
-    GitCommandLine cmd = new GitCommandLine(mySsh, myAskPassGen, myTmpDir, myDeleteTempFiles, myLogger);
+    GitCommandLine cmd = new GitCommandLine(mySsh, myAskPassGen, myTmpDir, myDeleteTempFiles, myLogger, myGitVersion);
     cmd.setExePath(myGitPath);
     cmd.setWorkingDirectory(myRepositoryDir);
     cmd.setSshKeyManager(mySshKeyManager);

@@ -872,7 +872,8 @@ public class AgentVcsSupportTest {
                                                                       : new WinAskPassGen(tmpDir, new EscapeEchoArgumentWin()),
                                               tmpDir,
                                               true,
-                                              GitProgressLogger.NO_OP);
+                                              GitProgressLogger.NO_OP,
+                                              GitVersion.MIN);
       cmd.setExePath(gitPath);
       cmd.setWorkingDirectory(new File(workDirectory));
       cmd.addParameters("push", "origin", "master");
