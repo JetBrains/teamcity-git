@@ -55,9 +55,6 @@ public interface GitFacade {
   CheckoutCommand checkout();
 
   @NotNull
-  BranchCommand branch();
-
-  @NotNull
   GetConfigCommand getConfig();
 
   @NotNull
@@ -97,6 +94,9 @@ public interface GitFacade {
 
   @NotNull
   Branches listBranches() throws VcsException;
+
+  @NotNull
+  SetUpstreamCommand setUpstream(@NotNull String localBranch, @NotNull String upstreamBranch) throws VcsException;
 
   @NotNull
   String resolvePath(@NotNull File f) throws VcsException;

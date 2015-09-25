@@ -42,7 +42,7 @@ public class GitFactoryProxy implements GitFactory {
 
   @NotNull
   public GitFacade create(@NotNull File repositoryDir) {
-    GitFacade facade = new NativeGitFacade(mySshService, myConfig.getPathToGit(), repositoryDir, myTempDir, myConfig.isDeleteTempFiles(), GitProgressLogger.NO_OP, myConfig.getGitExec());
+    GitFacade facade = new NativeGitFacade(mySshService, myConfig.getPathToGit(), myConfig.getGitVersion(), repositoryDir, myTempDir, myConfig.isDeleteTempFiles(), GitProgressLogger.NO_OP, myConfig.getGitExec());
     return (GitFacade)Proxy.newProxyInstance(GitFacadeProxy.class.getClassLoader(), new Class[]{GitFacade.class},
                                              new GitFacadeProxy(facade, myInvokedMethods));
   }
