@@ -96,5 +96,8 @@ public interface GitFacade {
   RepackCommand repack();
 
   @NotNull
+  Branches listBranches() throws VcsException;
+
+  @NotNull
   String resolvePath(@NotNull File f) throws VcsException;
 }

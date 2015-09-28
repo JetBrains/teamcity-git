@@ -16,15 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.BranchCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-
-import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
 /**
  * @author dmitry.neverov
@@ -32,30 +28,23 @@ import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 public class BranchCommandImpl implements BranchCommand {
 
   private final GitCommandLine myCmd;
+  private String myUpstreamBranch;
 
   public BranchCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
   }
 
   @NotNull
-  public Branches call() throws VcsException {
-    myCmd.addParameter("branch");
-    ExecResult r = CommandUtil.runCommand(myCmd);
-    CommandUtil.failIfNotEmptyStdErr(myCmd, r);
-    return parseOutput(r.getStdout());
+  public BranchCommand setUpstreamBranch(String upstreamBranch) {
+    myUpstreamBranch = upstreamBranch;
+    return this;
   }
 
-  @NotNull
-  private Branches parseOutput(String out) {
-    Branches branches = new Branches();
-    for (String l : StringUtil.splitByLines(out)) {
-      String line = l.trim();
-      if (isEmpty(line))
-        continue;
-      boolean currentBranch = line.startsWith("* ");
-      String branchName = currentBranch ? line.substring(2).trim() : line;
-      branches.addBranch(branchName, currentBranch);
-    }
-    return branches;
+  public void call() throws VcsException {
+    myCmd.addParameter("branch");
+    if (myUpstreamBranch != null)
+      myCmd.addParameter("--set-upstream-to=" + myUpstreamBranch);
+    ExecResult r = CommandUtil.runCommand(myCmd);
+    CommandUtil.failIfNotEmptyStdErr(myCmd, r);
   }
 }

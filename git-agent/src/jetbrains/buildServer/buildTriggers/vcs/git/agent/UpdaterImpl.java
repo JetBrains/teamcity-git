@@ -166,16 +166,18 @@ public class UpdaterImpl implements Updater {
     removeIndexLock();
     if (isRegularBranch(myFullBranchName)) {
       String branchName = getShortBranchName(myFullBranchName);
-      Branches branches = git.branch().call();
+      Branches branches = git.listBranches();
       if (branches.isCurrentBranch(branchName)) {
         removeIndexLock();
         try {
           git.reset().setHard(true).setRevision(myRevision).call();
+          git.branch().setUpstreamBranch(GitUtils.createRemoteRef(myFullBranchName)).call();
         } catch (GitIndexCorruptedException e) {
           File gitIndex = e.getGitIndex();
           myLogger.message("Git index '" + gitIndex.getAbsolutePath() + "' is corrupted, remove it and repeat git reset");
           FileUtil.delete(gitIndex);
           git.reset().setHard(true).setRevision(myRevision).call();
+          git.branch().setUpstreamBranch(GitUtils.createRemoteRef(myFullBranchName)).call();
         }
       } else {
         branchChanged = true;
