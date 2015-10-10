@@ -299,7 +299,8 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     }
 
     public void deleteDirectory(@NotNull final String path) {
-      myDeletedDirs.add(path);
+      String dirPath = path.endsWith("/") ? path : path + "/";
+      myDeletedDirs.add(dirPath);
     }
 
     public void createDirectory(@NotNull final String path) {

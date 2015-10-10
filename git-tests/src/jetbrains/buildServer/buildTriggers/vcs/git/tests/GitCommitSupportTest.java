@@ -21,6 +21,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.*;
+import org.assertj.core.groups.Tuple;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jetbrains.annotations.NotNull;
@@ -33,6 +34,7 @@ import java.util.List;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
+import static org.assertj.core.api.BDDAssertions.then;
 import static org.testng.AssertJUnit.*;
 
 @Test
@@ -129,6 +131,30 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
 
     RepositoryStateData state2 = myGit.getCurrentState(root);
     assertNotNull(state2.getBranchRevisions().get(nonExistingBranch));
+  }
+
+
+  @TestFor(issues = "TW-42737")
+  public void test_directory_remove() throws Exception {
+    //create the dir directory with the a file
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
+    patchBuilder.createFile("dir/file", new ByteArrayInputStream("content".getBytes()));
+    patchBuilder.createFile("dir2/file", new ByteArrayInputStream("content".getBytes()));
+    patchBuilder.commit(new CommitSettingsImpl("user", "Create dir with file"));
+    patchBuilder.dispose();
+
+    RepositoryStateData state1 = myGit.getCurrentState(myRoot);
+
+    patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
+    patchBuilder.deleteDirectory("dir");
+    patchBuilder.commit(new CommitSettingsImpl("user", "Delete dir"));
+    patchBuilder.dispose();
+
+    RepositoryStateData state2 = myGit.getCurrentState(myRoot);
+
+    List<ModificationData> changes = myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);
+    then(changes).hasSize(1);
+    then(changes.get(0).getChanges()).extracting("fileName", "type").containsOnly(Tuple.tuple("dir/file", VcsChange.Type.REMOVED));
   }
 
 
