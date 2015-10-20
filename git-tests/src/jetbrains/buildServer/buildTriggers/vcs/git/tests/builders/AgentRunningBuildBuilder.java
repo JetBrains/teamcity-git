@@ -292,6 +292,11 @@ public class AgentRunningBuildBuilder {
       public File getDefaultCheckoutDirectory() {
         throw new UnsupportedOperationException();
       }
+
+      @Nullable
+      public AgentCheckoutMode getEffectiveCheckoutMode() {
+        return null;
+      }
     };
   };
 
