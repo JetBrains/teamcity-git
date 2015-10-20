@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests.builders;
 
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.impl.BuildParametersMapImpl;
+import jetbrains.buildServer.agentServer.AgentBuild;
 import jetbrains.buildServer.artifacts.ArtifactDependencyInfo;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.parameters.ValueResolver;
@@ -296,6 +297,11 @@ public class AgentRunningBuildBuilder {
       @Nullable
       public AgentCheckoutMode getEffectiveCheckoutMode() {
         return null;
+      }
+
+      @NotNull
+      public AgentBuild.CheckoutType getCheckoutType() {
+        return AgentBuild.CheckoutType.ON_AGENT;
       }
     };
   };
