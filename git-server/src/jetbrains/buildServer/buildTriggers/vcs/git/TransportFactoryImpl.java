@@ -63,6 +63,14 @@ public class TransportFactoryImpl implements TransportFactory {
   }
 
   public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings) throws NotSupportedException, VcsException {
+    return createTransport(r, url, authSettings, myConfig.getIdleTimeoutSeconds());
+  }
+
+
+  public Transport createTransport(@NotNull final Repository r,
+                                   @NotNull final URIish url,
+                                   @NotNull final AuthSettings authSettings,
+                                   final int timeout) throws NotSupportedException, VcsException {
     try {
       checkUrl(url);
       URIish preparedURI = prepareURI(url);
@@ -72,13 +80,12 @@ public class TransportFactoryImpl implements TransportFactory {
         SshTransport ssh = (SshTransport)t;
         ssh.setSshSessionFactory(getSshSessionFactory(authSettings, url));
       }
-      t.setTimeout(myConfig.getIdleTimeoutSeconds());
+      t.setTimeout(timeout);
       return t;
     } catch (TransportException e) {
       throw new VcsException("Cannot create transport", e);
     }
   }
-
 
   @NotNull
   private URIish prepareURI(@NotNull URIish uri) {

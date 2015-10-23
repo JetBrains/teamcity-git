@@ -89,6 +89,10 @@ public class PluginConfigBuilder {
         return myFetchTimeoutSeconds != null ? myFetchTimeoutSeconds : myDelegate.getFetchTimeout();
       }
 
+      public int getRepositoryStateTimeoutSeconds() {
+        return myDelegate.getRepositoryStateTimeoutSeconds();
+      }
+
       public int getPatchProcessIdleTimeoutSeconds() {
         return myDelegate.getPatchProcessIdleTimeoutSeconds();
       }

@@ -1315,7 +1315,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
     TransportFactory transportFactory = new TransportFactoryImpl(config, manager) {
       @Override
-      public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings)
+      public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings, int timeout)
         throws NotSupportedException, VcsException {
         return new Transport(r, url) {
           @Override
