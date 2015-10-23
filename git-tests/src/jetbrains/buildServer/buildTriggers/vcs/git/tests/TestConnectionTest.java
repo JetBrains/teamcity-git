@@ -190,6 +190,13 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
       public Transport createTransport(@NotNull Repository r,
                                        @NotNull URIish url,
                                        @NotNull AuthSettings authSettings) throws NotSupportedException, VcsException, TransportException {
+        return createTransport(r, url, authSettings, 60/*doesn't matter*/);
+      }
+
+      public Transport createTransport(@NotNull Repository r,
+                                       @NotNull URIish url,
+                                       @NotNull AuthSettings authSettings,
+                                       int timeout) throws NotSupportedException, VcsException, TransportException {
         throw new TransportException(url.toString() + ": " + error, new JSchException(error));
       }
     };

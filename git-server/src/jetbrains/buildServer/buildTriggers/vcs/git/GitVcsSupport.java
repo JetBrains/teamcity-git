@@ -368,12 +368,13 @@ public class GitVcsSupport extends ServerVcsSupport
   private Map<String, Ref> getRemoteRefs(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws Exception {
     long retryInterval = myConfig.getConnectionRetryIntervalMillis();
     int attemptsLeft = myConfig.getConnectionRetryAttempts();
+    int timeout = myConfig.getRepositoryStateTimeoutSeconds();
     while (true) {
       final long start = System.currentTimeMillis();
       Transport transport = null;
       FetchConnection connection = null;
       try {
-        transport = myTransportFactory.createTransport(db, gitRoot.getRepositoryFetchURL(), gitRoot.getAuthSettings());
+        transport = myTransportFactory.createTransport(db, gitRoot.getRepositoryFetchURL(), gitRoot.getAuthSettings(), timeout);
         connection = transport.openFetch();
         return connection.getRefsMap();
       } catch (NotSupportedException nse) {

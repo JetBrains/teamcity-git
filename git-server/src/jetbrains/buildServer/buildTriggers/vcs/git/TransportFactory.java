@@ -39,7 +39,9 @@ public interface TransportFactory {
    * @throws NotSupportedException if transport is not supported
    * @throws VcsException if there is a problem with configuring the transport
    */
-  public Transport createTransport(@NotNull Repository r, @NotNull final URIish url, @NotNull AuthSettings authSettings)
+  Transport createTransport(@NotNull Repository r, @NotNull final URIish url, @NotNull AuthSettings authSettings)
     throws NotSupportedException, VcsException, TransportException;
 
+  Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings, int timeout)
+    throws NotSupportedException, VcsException, TransportException;
 }
