@@ -43,7 +43,6 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.v
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder.runningBuild;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder.agentConfiguration;
 import static org.assertj.core.api.BDDAssertions.then;
-import static org.testng.AssertJUnit.*;
 
 @Test
 public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
@@ -153,7 +152,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
     FileUtil.delete(myCheckoutDir);
     myCheckoutDir.mkdirs();
     String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
-    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
+    AgentRunningBuild build = runningBuild().build();
     myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, true);
     then(listFiles(myCheckoutDir)).containsOnly(files);
   }
