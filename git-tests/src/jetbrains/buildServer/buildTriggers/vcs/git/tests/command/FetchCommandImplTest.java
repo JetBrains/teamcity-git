@@ -59,7 +59,7 @@ public class FetchCommandImplTest {
     };
 
     File tmpDir = new File(FileUtil.getTempDirectory());
-    GitCommandLine failedCmd = new GitCommandLine(null, fakeGen, tmpDir, false, GitProgressLogger.NO_OP, GitVersion.MIN) {
+    GitCommandLine failedCmd = new GitCommandLine(null, fakeGen, tmpDir, false, GitProgressLogger.NO_OP, GitVersion.MIN, new HashMap<String, String>(0)) {
       @Override
       public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
         throw new VcsException("fatal: index file smaller than expected");

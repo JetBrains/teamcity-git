@@ -28,21 +28,25 @@ public class GitFactoryProxy implements GitFactory {
   private final GitAgentSSHService mySshService;
   private final AgentPluginConfig myConfig;
   private final File myTempDir;
+  private final Map<String, String> myEnv;
   private final Map<String, List<String>> myInvokedMethods;
 
   public GitFactoryProxy(@NotNull GitAgentSSHService sshService,
                          @NotNull AgentPluginConfig config,
                          @NotNull File tempDir,
+                         @NotNull Map<String, String> env,
                          @NotNull Map<String, List<String>> invokedMethods) {
     mySshService = sshService;
     myConfig = config;
     myTempDir = tempDir;
     myInvokedMethods = invokedMethods;
+    myEnv = env;
   }
 
   @NotNull
   public GitFacade create(@NotNull File repositoryDir) {
-    GitFacade facade = new NativeGitFacade(mySshService, myConfig.getPathToGit(), myConfig.getGitVersion(), repositoryDir, myTempDir, myConfig.isDeleteTempFiles(), GitProgressLogger.NO_OP, myConfig.getGitExec());
+    GitFacade facade = new NativeGitFacade(mySshService, myConfig.getPathToGit(), myConfig.getGitVersion(), repositoryDir, myTempDir,
+                                           myConfig.isDeleteTempFiles(), GitProgressLogger.NO_OP, myConfig.getGitExec(), myEnv);
     return (GitFacade)Proxy.newProxyInstance(GitFacadeProxy.class.getClassLoader(), new Class[]{GitFacade.class},
                                              new GitFacadeProxy(facade, myInvokedMethods));
   }

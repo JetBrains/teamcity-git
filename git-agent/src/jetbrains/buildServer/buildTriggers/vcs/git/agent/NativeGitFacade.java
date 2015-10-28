@@ -30,6 +30,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -47,6 +49,7 @@ public class NativeGitFacade implements GitFacade {
   private final boolean myDeleteTempFiles;
   private final GitProgressLogger myLogger;
   private final GitExec myGitExec;
+  private final Map<String, String> myEnv;
   private VcsRootSshKeyManager mySshKeyManager;
 
   public NativeGitFacade(@NotNull GitAgentSSHService ssh,
@@ -56,7 +59,8 @@ public class NativeGitFacade implements GitFacade {
                          @NotNull File tmpDir,
                          boolean deleteTempFiles,
                          @NotNull GitProgressLogger logger,
-                         @NotNull GitExec gitExec) {
+                         @NotNull GitExec gitExec,
+                         @NotNull Map<String, String> env) {
     mySsh = ssh;
     myTmpDir = tmpDir;
     myAskPassGen = makeAskPassGen();
@@ -66,6 +70,7 @@ public class NativeGitFacade implements GitFacade {
     myDeleteTempFiles = deleteTempFiles;
     myLogger = logger;
     myGitExec = gitExec;
+    myEnv = env;
   }
 
   public NativeGitFacade(@NotNull String gitPath, @NotNull GitProgressLogger logger) {
@@ -78,6 +83,7 @@ public class NativeGitFacade implements GitFacade {
     myDeleteTempFiles = true;
     myLogger = logger;
     myGitExec = null;
+    myEnv = new HashMap<String, String>(0);
   }
 
 
@@ -229,7 +235,7 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   private GitCommandLine createCommandLine() {
-    GitCommandLine cmd = new GitCommandLine(mySsh, myAskPassGen, myTmpDir, myDeleteTempFiles, myLogger, myGitVersion);
+    GitCommandLine cmd = new GitCommandLine(mySsh, myAskPassGen, myTmpDir, myDeleteTempFiles, myLogger, myGitVersion, myEnv);
     cmd.setExePath(myGitPath);
     cmd.setWorkingDirectory(myRepositoryDir);
     cmd.setSshKeyManager(mySshKeyManager);

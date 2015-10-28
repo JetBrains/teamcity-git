@@ -29,8 +29,12 @@ public class LoggingGitMetaFactory implements GitMetaFactory {
   private final Map<String, List<String>> myInvokedMethods = new HashMap<String, List<String>>();
 
   @NotNull
-  public GitFactory createFactory(@NotNull GitAgentSSHService sshService, @NotNull AgentPluginConfig config, @NotNull GitProgressLogger logger, @NotNull File tempDir) {
-    return new GitFactoryProxy(sshService, config, tempDir, myInvokedMethods);
+  public GitFactory createFactory(@NotNull GitAgentSSHService sshService,
+                                  @NotNull AgentPluginConfig config,
+                                  @NotNull GitProgressLogger logger,
+                                  @NotNull File tempDir,
+                                  @NotNull Map<String, String> env) {
+    return new GitFactoryProxy(sshService, config, tempDir, env, myInvokedMethods);
   }
 
 

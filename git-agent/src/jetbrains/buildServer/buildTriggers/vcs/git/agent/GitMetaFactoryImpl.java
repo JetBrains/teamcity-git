@@ -16,10 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import jetbrains.buildServer.agent.BuildProgressLogger;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.Map;
 
 public class GitMetaFactoryImpl implements GitMetaFactory {
 
@@ -27,7 +27,8 @@ public class GitMetaFactoryImpl implements GitMetaFactory {
   public GitFactory createFactory(@NotNull GitAgentSSHService sshService,
                                   @NotNull AgentPluginConfig config,
                                   @NotNull GitProgressLogger logger,
-                                  @NotNull File tempDir) {
-    return new GitFactoryImpl(sshService, config, logger, tempDir);
+                                  @NotNull File tempDir,
+                                  @NotNull Map<String, String> env) {
+    return new GitFactoryImpl(sshService, config, logger, tempDir, env);
   }
 }

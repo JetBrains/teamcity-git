@@ -41,8 +41,6 @@ import static jetbrains.buildServer.util.Util.map;
 public class AgentRunningBuildBuilder {
 
   private Map<String, String> mySharedConfigParameters = new HashMap<String, String>();
-  private Boolean myUseLocalMirrors;
-
 
   public static AgentRunningBuildBuilder runningBuild() {
     return new AgentRunningBuildBuilder();
@@ -125,7 +123,22 @@ public class AgentRunningBuildBuilder {
 
       @NotNull
       public BuildParametersMap getBuildParameters() {
-        throw new UnsupportedOperationException();
+        return new BuildParametersMap() {
+          @NotNull
+          public Map<String, String> getEnvironmentVariables() {
+            return new HashMap<String, String>(0);
+          }
+
+          @NotNull
+          public Map<String, String> getSystemProperties() {
+            return new HashMap<String, String>(0);
+          }
+
+          @NotNull
+          public Map<String, String> getAllParameters() {
+            return new HashMap<String, String>(0);
+          }
+        };
       }
 
       @NotNull

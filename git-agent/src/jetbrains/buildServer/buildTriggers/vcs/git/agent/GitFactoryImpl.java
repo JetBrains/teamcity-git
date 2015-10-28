@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.Map;
 
 /**
  * @author dmitry.neverov
@@ -29,21 +30,25 @@ public class GitFactoryImpl implements GitFactory {
   private final AgentPluginConfig myPluginConfig;
   private final GitProgressLogger myLogger;
   private final File myTmpDir;
+  private final Map<String, String> myEnv;
 
   public GitFactoryImpl(@NotNull GitAgentSSHService ssh,
                         @NotNull AgentPluginConfig pluginConfig,
                         @NotNull GitProgressLogger logger,
-                        @NotNull File tmpDir) {
+                        @NotNull File tmpDir,
+                        @NotNull Map<String, String> env) {
     mySsh = ssh;
     myPluginConfig = pluginConfig;
     myLogger = logger;
     myTmpDir = tmpDir;
+    myEnv = env;
   }
 
 
   @NotNull
   public GitFacade create(@NotNull File repositoryDir) {
-    NativeGitFacade git = new NativeGitFacade(mySsh, myPluginConfig.getPathToGit(), myPluginConfig.getGitVersion(), repositoryDir, myTmpDir, myPluginConfig.isDeleteTempFiles(), myLogger, myPluginConfig.getGitExec());
+    NativeGitFacade git = new NativeGitFacade(mySsh, myPluginConfig.getPathToGit(), myPluginConfig.getGitVersion(), repositoryDir,
+                                              myTmpDir, myPluginConfig.isDeleteTempFiles(), myLogger, myPluginConfig.getGitExec(), myEnv);
     git.setSshKeyManager(mySsh.getSshKeyManager());
     return git;
   }
