@@ -48,4 +48,6 @@ public interface AgentPluginConfig extends PluginConfig {
   boolean isUpdateSubmoduleOriginUrl();
 
   boolean isUseSparseCheckout();
+
+  boolean isRunGitWithBuildEnv();
 }

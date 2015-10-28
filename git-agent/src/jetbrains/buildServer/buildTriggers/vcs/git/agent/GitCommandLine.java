@@ -62,13 +62,15 @@ public class GitCommandLine extends GeneralCommandLine {
                         @NotNull File tmpDir,
                         boolean deleteTempFiles,
                         @NotNull GitProgressLogger logger,
-                        @NotNull GitVersion gitVersion) {
+                        @NotNull GitVersion gitVersion,
+                        @NotNull Map<String, String> env) {
     mySsh = ssh;
     myAskPassGen = askPassGen;
     myTmpDir = tmpDir;
     myDeleteTempFiles = deleteTempFiles;
     myLogger = logger;
     myGitVersion = gitVersion;
+    setEnvParams(env);
   }
 
   public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {

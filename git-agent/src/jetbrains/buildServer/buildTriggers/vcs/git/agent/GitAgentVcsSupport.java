@@ -32,7 +32,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -80,7 +82,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull AgentRunningBuild build,
                             boolean cleanCheckoutRequested) throws VcsException {
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
-    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, getLogger(build), build.getBuildTempDirectory());
+    Map<String, String> env = getGitCommandEnv(config, build);
+    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, getLogger(build), build.getBuildTempDirectory(), env);
     Pair<CheckoutMode, File> targetDirAndMode = getTargetDirAndMode(config, root, rules, checkoutDirectory);
     CheckoutMode mode = targetDirAndMode.first;
     File targetDir = targetDirAndMode.second;
@@ -95,6 +98,17 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     }
     updater.update();
   }
+
+
+  @NotNull
+  private Map<String, String> getGitCommandEnv(@NotNull AgentPluginConfig config, @NotNull AgentRunningBuild build) {
+    if (config.isRunGitWithBuildEnv()) {
+      return build.getBuildParameters().getEnvironmentVariables();
+    } else {
+      return new HashMap<String, String>(0);
+    }
+  }
+
 
   @NotNull
   private GitBuildProgressLogger getLogger(@NotNull AgentRunningBuild build) {
