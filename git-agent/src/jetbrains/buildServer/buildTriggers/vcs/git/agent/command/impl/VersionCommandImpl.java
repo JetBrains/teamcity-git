@@ -37,7 +37,7 @@ public class VersionCommandImpl implements VersionCommand {
   @NotNull
   public GitVersion call() throws VcsException {
     myCmd.addParameter("version");
-    ExecResult r = CommandUtil.runCommand(myCmd.repeatOnEmptyOutput(true));
+    ExecResult r = CommandUtil.runCommand(myCmd.repeatOnEmptyOutput(true), 60);
     CommandUtil.failIfNotEmptyStdErr(myCmd, r);
     return GitVersion.parse(r.getStdout());
   }
