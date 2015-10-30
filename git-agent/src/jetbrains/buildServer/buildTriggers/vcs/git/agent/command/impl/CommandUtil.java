@@ -89,7 +89,7 @@ public class CommandUtil {
     return runCommand(cli, DEFAULT_COMMAND_TIMEOUT_SEC, errorsLogLevel);
   }
 
-  public static ExecResult runCommand(@NotNull GitCommandLine cli, final int timeout, final String... errorsLogLevel) throws VcsException {
+  public static ExecResult runCommand(@NotNull GitCommandLine cli, int timeoutSeconds, final String... errorsLogLevel) throws VcsException {
     int attemptsLeft = 2;
     while (true) {
       try {
@@ -101,7 +101,7 @@ public class CommandUtil {
         cli.logStart(msg);
         ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
         ByteArrayOutputStream stderrBuffer = cli.createStderrBuffer();
-        ExecResult res = SimpleCommandLineProcessRunner.runCommandSecure(cli, cli.getCommandLineString(), null, new ProcessTimeoutCallback(timeout), stdoutBuffer, stderrBuffer);
+        ExecResult res = SimpleCommandLineProcessRunner.runCommandSecure(cli, cli.getCommandLineString(), null, new ProcessTimeoutCallback(timeoutSeconds), stdoutBuffer, stderrBuffer);
         cli.logFinish(msg);
         CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
         String out = res.getStdout().trim();
