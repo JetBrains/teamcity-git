@@ -19,16 +19,10 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitPathResolver;
 import jetbrains.buildServer.vcs.VcsException;
-import org.jetbrains.annotations.NotNull;
 
 public class MockGitPathResolver implements GitPathResolver {
-  private final String myGitPath;
-
-  public MockGitPathResolver(@NotNull String gitPath) {
-    myGitPath = gitPath;
-  }
 
   public String resolveGitPath(final BuildAgentConfiguration agentConfiguration, final String pathToResolve) throws VcsException {
-    return myGitPath;
+    return pathToResolve;
   }
 }

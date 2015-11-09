@@ -22,6 +22,7 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgent;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
+import jetbrains.buildServer.agent.vcs.AgentCheckoutAbility;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
@@ -35,6 +36,7 @@ import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRootEntry;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.*;
@@ -104,7 +106,7 @@ public class AgentVcsSupportTest {
     myCheckoutDir = myTempFiles.createTempDir();
 
     String pathToGit = getGitPath();
-    GitPathResolver resolver = new MockGitPathResolver(pathToGit);
+    GitPathResolver resolver = new MockGitPathResolver();
     myGitDetector = new GitDetectorImpl(resolver);
 
     myAgentConfiguration = agentConfiguration(myTempFiles.createTempDir(), myTempFiles.createTempDir()).build();
@@ -798,6 +800,30 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, buildWithMirrorsEnabled, false);
   }
 
+  public void auto_checkout_when_git_client_found_by_path_from_root() {
+    myRoot = vcsRoot().withBranch("refs/heads/master").withAgentGitPath("git").withFetchUrl(GitUtils.toURL(myMainRepo)).build();
+
+    AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(new VcsRootEntry(myRoot, CheckoutRules.DEFAULT), createRunningBuild(false));
+
+    then(canCheckout.getCanNotCheckoutReason()).isNull();
+  }
+
+  public void auto_checkout_when_git_client_found_by_path_from_environment() {
+    myRoot = vcsRoot().withBranch("refs/heads/master").withAgentGitPath(null).withFetchUrl(GitUtils.toURL(myMainRepo)).build();
+
+    AgentRunningBuild build = runningBuild().sharedEnvVariable(Constants.TEAMCITY_AGENT_GIT_PATH, "git").build();
+    AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(new VcsRootEntry(myRoot, CheckoutRules.DEFAULT), build);
+
+    then(canCheckout.getCanNotCheckoutReason()).isNull();
+  }
+
+  public void auto_checkout_when_git_client_not_found_by_path_from_root() {
+    myRoot = vcsRoot().withBranch("refs/heads/master").withAgentGitPath("gitt").withFetchUrl(GitUtils.toURL(myMainRepo)).build();
+
+    AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(new VcsRootEntry(myRoot, CheckoutRules.DEFAULT), createRunningBuild(false));
+
+    then(canCheckout.getCanNotCheckoutReason()).startsWith(AgentCheckoutAbility.NO_VCS_CLIENT).contains("Unable to run git at path gitt");
+  }
 
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
     myVcsRootId++;
