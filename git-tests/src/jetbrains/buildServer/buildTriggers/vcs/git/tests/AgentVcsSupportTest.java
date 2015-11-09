@@ -80,7 +80,7 @@ public class AgentVcsSupportTest {
   private int myVcsRootId = 0;
   private GitAgentVcsSupport myVcsSupport;
   private AgentRunningBuild myBuild;
-  private PluginConfigFactory myConfigFactory;
+  private GitDetector myGitDetector;
   private MirrorManager myMirrorManager;
   private BuildAgent myBuildAgent;
 
@@ -105,16 +105,15 @@ public class AgentVcsSupportTest {
 
     String pathToGit = getGitPath();
     GitPathResolver resolver = new MockGitPathResolver(pathToGit);
-    GitDetector detector = new GitDetectorImpl(resolver);
+    myGitDetector = new GitDetectorImpl(resolver);
 
     myAgentConfiguration = agentConfiguration(myTempFiles.createTempDir(), myTempFiles.createTempDir()).build();
-    myConfigFactory = new PluginConfigFactoryImpl(myAgentConfiguration, detector);
     myMirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl());
     VcsRootSshKeyManagerProvider provider = new MockVcsRootSshKeyManagerProvider();
     myBuildAgent = new MockBuildAgent();
     myVcsSupport = new GitAgentVcsSupport(new MockDirectoryCleaner(),
                                           new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new MockGitPluginDescriptor(), provider),
-                                          myConfigFactory, myMirrorManager, new GitMetaFactoryImpl());
+                                          myGitDetector, myMirrorManager, new GitMetaFactoryImpl(), myAgentConfiguration);
     myBuild = createRunningBuild(true);
 
     myRoot = vcsRoot().withAgentGitPath(pathToGit).withFetchUrl(GitUtils.toURL(myMainRepo)).build();
@@ -139,7 +138,7 @@ public class AgentVcsSupportTest {
     LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
     GitAgentVcsSupport git = new GitAgentVcsSupport(new MockDirectoryCleaner(),
                                                     new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new MockGitPluginDescriptor(), provider),
-                                                    myConfigFactory, myMirrorManager, loggingFactory);
+                                                    myGitDetector, myMirrorManager, loggingFactory, myAgentConfiguration);
 
     AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, useMirrors.toString()));
 
@@ -166,7 +165,7 @@ public class AgentVcsSupportTest {
     LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
     GitAgentVcsSupport git = new GitAgentVcsSupport(new MockDirectoryCleaner(),
                                                     new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new MockGitPluginDescriptor(), provider),
-                                                    myConfigFactory, myMirrorManager, loggingFactory);
+                                                    myGitDetector, myMirrorManager, loggingFactory, myAgentConfiguration);
 
     AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY,
                                                      PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES));
@@ -374,7 +373,7 @@ public class AgentVcsSupportTest {
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
+    MirrorManager mirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl());
     GitVcsRoot root = new GitVcsRoot(mirrorManager, myRoot);
     File bareRepositoryDir = root.getRepositoryDir();
     assertTrue(bareRepositoryDir.exists());
@@ -402,7 +401,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildBeforeUsingMirrors, false);
     AgentRunningBuild buildWithMirrorsEnabled = createRunningBuild(true);
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(buildWithMirrorsEnabled, myRoot), new HashCalculatorImpl());
+    MirrorManager mirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl());
     GitVcsRoot root = new GitVcsRoot(mirrorManager, myRoot);
     String localMirrorUrl = new URIish(root.getRepositoryDir().toURI().toASCIIString()).toString();
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
@@ -432,7 +431,7 @@ public class AgentVcsSupportTest {
 
 
   public void stop_use_any_mirror_if_agent_property_changed_to_false() throws Exception {
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
+    MirrorManager mirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl());
     AgentRunningBuild build2 = createRunningBuild(false);
     GitVcsRoot root = new GitVcsRoot(mirrorManager, myRoot);
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
@@ -495,7 +494,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
 
     //corrupt local mirror
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
+    MirrorManager mirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl());
     GitVcsRoot root = new GitVcsRoot(mirrorManager, myRoot);
     File mirror = mirrorManager.getMirrorDir(root.getRepositoryFetchURL().toString());
     File[] children = mirror.listFiles();
@@ -519,7 +518,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build, true);
 
     //manually create a branch tmp_branch_for_build with, it seems like it wasn't removed due to errors in previous checkouts
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigFactory.createConfig(myBuild, myRoot), new HashCalculatorImpl());
+    MirrorManager mirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl());
     GitVcsRoot root = new GitVcsRoot(mirrorManager, myRoot);
     File mirror = mirrorManager.getMirrorDir(root.getRepositoryFetchURL().toString());
     File emptyBranchFile = new File(mirror, "refs" + File.separator + "heads" + File.separator + "tmp_branch_for_build");

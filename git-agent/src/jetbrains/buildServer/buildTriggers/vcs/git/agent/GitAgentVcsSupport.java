@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.agent.AgentRunningBuild;
+import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.agent.vcs.AgentVcsSupport;
 import jetbrains.buildServer.agent.vcs.UpdateByCheckoutRules2;
@@ -42,20 +43,23 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
 
   private final SmartDirectoryCleaner myDirectoryCleaner;
   private final GitAgentSSHService mySshService;
-  private final PluginConfigFactory myConfigFactory;
+  private final GitDetector myGitDetector;
   private final MirrorManager myMirrorManager;
   private final GitMetaFactory myGitMetaFactory;
+  private final BuildAgentConfiguration myAgentConfig;
 
   public GitAgentVcsSupport(@NotNull SmartDirectoryCleaner directoryCleaner,
                             @NotNull GitAgentSSHService sshService,
-                            @NotNull PluginConfigFactory configFactory,
+                            @NotNull GitDetector gitDetector,
                             @NotNull MirrorManager mirrorManager,
-                            @NotNull GitMetaFactory gitMetaFactory) {
+                            @NotNull GitMetaFactory gitMetaFactory,
+                            @NotNull BuildAgentConfiguration agentConfig) {
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
-    myConfigFactory = configFactory;
+    myGitDetector = gitDetector;
     myMirrorManager = mirrorManager;
     myGitMetaFactory = gitMetaFactory;
+    myAgentConfig = agentConfig;
   }
 
 
@@ -79,7 +83,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull File checkoutDirectory,
                             @NotNull AgentRunningBuild build,
                             boolean cleanCheckoutRequested) throws VcsException {
-    AgentPluginConfig config = myConfigFactory.createConfig(build, root);
+    GitExec gitExec = myGitDetector.getGitPathAndVersion(root, myAgentConfig, build);
+    AgentPluginConfig config = new PluginConfigImpl(myAgentConfig, build, gitExec);
     GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, getLogger(build), build.getBuildTempDirectory());
     Pair<CheckoutMode, File> targetDirAndMode = getTargetDirAndMode(config, root, rules, checkoutDirectory);
     CheckoutMode mode = targetDirAndMode.first;

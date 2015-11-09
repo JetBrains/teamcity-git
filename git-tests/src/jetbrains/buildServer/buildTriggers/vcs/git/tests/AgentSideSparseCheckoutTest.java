@@ -43,7 +43,6 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.v
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder.runningBuild;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder.agentConfiguration;
 import static org.assertj.core.api.BDDAssertions.then;
-import static org.testng.AssertJUnit.*;
 
 @Test
 public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
@@ -67,14 +66,13 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
     GitPathResolver resolver = new MockGitPathResolver(pathToGit);
     GitDetector detector = new GitDetectorImpl(resolver);
     BuildAgentConfiguration agentConfiguration = agentConfiguration(myTempFiles.createTempDir(), myTempFiles.createTempDir()).build();
-    PluginConfigFactoryImpl pluginConfigFactory = new PluginConfigFactoryImpl(agentConfiguration, detector);
     MirrorManager mirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(agentConfiguration), new HashCalculatorImpl());
     VcsRootSshKeyManagerProvider provider = new MockVcsRootSshKeyManagerProvider();
     GitMetaFactory metaFactory = new GitMetaFactoryImpl();
     final BuildAgent agent = new MockBuildAgent();
     myVcsSupport = new GitAgentVcsSupport(new MockDirectoryCleaner(),
                                           new GitAgentSSHService(agent, agentConfiguration, new MockGitPluginDescriptor(), provider),
-                                          pluginConfigFactory, mirrorManager, metaFactory);
+                                          detector, mirrorManager, metaFactory, agentConfiguration);
     myRoot = vcsRoot()
       .withAgentGitPath(pathToGit)
       .withFetchUrl(getRemoteRepositoryUrl("repo.git"))
