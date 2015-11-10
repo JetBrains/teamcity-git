@@ -17,12 +17,16 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
+import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.RefSpec;
@@ -116,7 +120,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
   }
 
   public URIish resolveSubmoduleUrl(@NotNull String url) throws URISyntaxException {
-    return new URIish(resolveSubmoduleUrl(getRepository(), url));
+    return new URIish(resolveSubmoduleUrl(myContext.getConfig(getRepository()), url));
   }
 
   private static boolean isRelative(@NotNull String url) {
@@ -125,15 +129,21 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
 
   @NotNull
   public static String resolveSubmoduleUrl(@NotNull final Repository repository, @NotNull final String relativeUrl) throws URISyntaxException {
-    if (!isRelative(relativeUrl)) return relativeUrl;
+    return resolveSubmoduleUrl(repository.getConfig(), relativeUrl);
+  }
 
-    String baseUrl = repository.getConfig().getString("teamcity", null, "remote");
+
+  @NotNull
+  private static String resolveSubmoduleUrl(@NotNull StoredConfig mainRepoConfig, @NotNull String submoduleUrl) throws URISyntaxException {
+    if (!isRelative(submoduleUrl)) return submoduleUrl;
+
+    String baseUrl = mainRepoConfig.getString("teamcity", null, "remote");
     URIish u = new URIish(baseUrl);
     String newPath = u.getPath();
     if (newPath.length() == 0) {
-      newPath = relativeUrl;
+      newPath = submoduleUrl;
     } else {
-      newPath = GitUtils.normalizePath(newPath + '/' + relativeUrl);
+      newPath = GitUtils.normalizePath(newPath + '/' + submoduleUrl);
     }
     return u.setPath(newPath).toPrivateString();
   }

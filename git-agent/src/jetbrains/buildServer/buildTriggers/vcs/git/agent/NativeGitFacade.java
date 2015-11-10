@@ -35,6 +35,8 @@ import java.util.Map;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
+import static com.intellij.openapi.util.text.StringUtil.isEmpty;
+
 /**
  * @author dmitry.neverov
  */
