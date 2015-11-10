@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.TestOnly;
 
 import java.text.MessageFormat;
 import java.text.ParseException;
@@ -138,5 +139,10 @@ public final class GitVersion implements Comparable<GitVersion> {
 
   public boolean isGreaterThan(final GitVersion other) {
     return compareTo(other) > 0;
+  }
+
+  @TestOnly
+  public GitVersion previousVersion() {
+    return new GitVersion(myMajor, myMinor, myRevision - 1);
   }
 }

@@ -81,8 +81,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull File checkoutDirectory,
                             @NotNull AgentRunningBuild build,
                             boolean cleanCheckoutRequested) throws VcsException {
-    GitExec gitExec = myGitDetector.getGitPathAndVersion(root, myAgentConfig, build);
-    AgentPluginConfig config = new PluginConfigImpl(myAgentConfig, build, gitExec);
+    AgentPluginConfig config = createAgentPluginConfig(root, build);
     GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, getLogger(build), build.getBuildTempDirectory());
     Pair<CheckoutMode, File> targetDirAndMode = getTargetDirAndMode(config, root, rules, checkoutDirectory);
     CheckoutMode mode = targetDirAndMode.first;
@@ -103,12 +102,29 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   @NotNull
   @Override
   public AgentCheckoutAbility canCheckout(@NotNull final VcsRootEntry vcsRoot, @NotNull final AgentRunningBuild build) {
+    AgentPluginConfig config;
     try {
-      myGitDetector.getGitPathAndVersion(vcsRoot.getVcsRoot(), myAgentConfig, build);
-      return AgentCheckoutAbility.canCheckout();
+      config = createAgentPluginConfig(vcsRoot.getVcsRoot(), build);
     } catch (VcsException e) {
       return AgentCheckoutAbility.noVcsClientOnAgent(e.getMessage());
     }
+
+    if (canUseSparseCheckout(config) && getSingleTargetDirForSparseCheckout(vcsRoot.getCheckoutRules()) != null) {
+      return AgentCheckoutAbility.canCheckout();
+    }
+
+    try {
+      validateCheckoutRules(vcsRoot.getVcsRoot(), vcsRoot.getCheckoutRules());
+      return AgentCheckoutAbility.canCheckout();
+    } catch (VcsException e) {
+      return AgentCheckoutAbility.canNotCheckout(e.getMessage());
+    }
+  }
+
+  @NotNull
+  private AgentPluginConfig createAgentPluginConfig(final @NotNull VcsRoot vcsRoot, final @NotNull AgentRunningBuild build) throws VcsException {
+    GitExec gitExec = myGitDetector.getGitPathAndVersion(vcsRoot, myAgentConfig, build);
+    return new PluginConfigImpl(myAgentConfig, build, gitExec);
   }
 
   @NotNull
@@ -171,9 +187,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                                                        @NotNull VcsRoot root,
                                                        @NotNull CheckoutRules rules,
                                                        @NotNull File checkoutDir) throws VcsException {
-    GitVersion version = config.getGitVersion();
-    if (config.isUseSparseCheckout() && !version.isLessThan(UpdaterImpl.GIT_WITH_SPARSE_CHECKOUT)) {
-      String targetDir = getSingleTargetDir(rules);
+    if (canUseSparseCheckout(config)) {
+      String targetDir = getSingleTargetDirForSparseCheckout(rules);
       if (targetDir != null) {
         return Pair.create(CheckoutMode.SPARSE_CHECKOUT, new File(checkoutDir, targetDir));
       }
@@ -184,9 +199,12 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     return Pair.create(CheckoutMode.MAP_REPO_TO_DIR, targetDir);
   }
 
+  private boolean canUseSparseCheckout(@NotNull AgentPluginConfig config) {
+    return config.isUseSparseCheckout() && !config.getGitVersion().isLessThan(UpdaterImpl.GIT_WITH_SPARSE_CHECKOUT);
+  }
 
   @Nullable
-  private String getSingleTargetDir(@NotNull CheckoutRules rules) {
+  private String getSingleTargetDirForSparseCheckout(@NotNull CheckoutRules rules) {
     Set<String> targetDirs = new HashSet<String>();
     for (IncludeRule rule : rules.getRootIncludeRules()) {
       String from = rule.getFrom();
