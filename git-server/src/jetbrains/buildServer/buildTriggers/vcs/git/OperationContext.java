@@ -25,6 +25,7 @@ import org.eclipse.jgit.errors.NoRemoteRepositoryException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
@@ -55,6 +56,7 @@ public class OperationContext {
   private final Map<String, Repository> myRepositories = new HashMap<String, Repository>(); //repository path -> repository
   private final Set<String> myAlreadyFetched = new HashSet<String>();
   private final GitProgress myProgress;
+  private final Map<String, StoredConfig> myConfigsCache = new HashMap<String, StoredConfig>(); //repository path -> its config
 
   public OperationContext(@NotNull final CommitLoader commitLoader,
                           @NotNull final RepositoryManager repositoryManager,
@@ -105,6 +107,17 @@ public class OperationContext {
 
   public GitVcsRoot getGitRoot(@NotNull VcsRoot root) throws VcsException {
     return new GitVcsRoot(myRepositoryManager, root);
+  }
+
+  @NotNull
+  public StoredConfig getConfig(@NotNull Repository r) {
+    String repositoryPath = r.getDirectory().getAbsolutePath();
+    StoredConfig result = myConfigsCache.get(repositoryPath);
+    if (result == null) {
+      result = r.getConfig();
+      myConfigsCache.put(repositoryPath, result);
+    }
+    return result;
   }
 
   public void fetchSubmodule(@NotNull Repository db,
