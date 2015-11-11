@@ -109,20 +109,20 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
 
   @NotNull
   @Override
-  public AgentCheckoutAbility canCheckout(@NotNull final VcsRootEntry vcsRoot, @NotNull final AgentRunningBuild build) {
+  public AgentCheckoutAbility canCheckout(@NotNull final VcsRoot vcsRoot, @NotNull CheckoutRules checkoutRules, @NotNull final AgentRunningBuild build) {
     AgentPluginConfig config;
     try {
-      config = myConfigFactory.createConfig(build, vcsRoot.getVcsRoot());
+      config = myConfigFactory.createConfig(build, vcsRoot);
     } catch (VcsException e) {
       return AgentCheckoutAbility.noVcsClientOnAgent(e.getMessage());
     }
 
-    if (canUseSparseCheckout(config) && getSingleTargetDirForSparseCheckout(vcsRoot.getCheckoutRules()) != null) {
+    if (canUseSparseCheckout(config) && getSingleTargetDirForSparseCheckout(checkoutRules) != null) {
       return AgentCheckoutAbility.canCheckout();
     }
 
     try {
-      validateCheckoutRules(vcsRoot.getVcsRoot(), vcsRoot.getCheckoutRules());
+      validateCheckoutRules(vcsRoot, checkoutRules);
       return AgentCheckoutAbility.canCheckout();
     } catch (VcsException e) {
       return AgentCheckoutAbility.canNotCheckout(e.getMessage());
