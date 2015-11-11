@@ -63,7 +63,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
 
     myCheckoutDir = myTempFiles.createTempDir();
     String pathToGit = getGitPath();
-    GitPathResolver resolver = new MockGitPathResolver(pathToGit);
+    GitPathResolver resolver = new MockGitPathResolver();
     GitDetector detector = new GitDetectorImpl(resolver);
     BuildAgentConfiguration agentConfiguration = agentConfiguration(myTempFiles.createTempDir(), myTempFiles.createTempDir()).build();
     PluginConfigFactoryImpl pluginConfigFactory = new PluginConfigFactoryImpl(agentConfiguration, detector);

@@ -41,6 +41,7 @@ import static jetbrains.buildServer.util.Util.map;
 public class AgentRunningBuildBuilder {
 
   private Map<String, String> mySharedConfigParameters = new HashMap<String, String>();
+  private Map<String, String> mySharedBuildParameters = new HashMap<String, String>();
 
   public static AgentRunningBuildBuilder runningBuild() {
     return new AgentRunningBuildBuilder();
@@ -55,6 +56,12 @@ public class AgentRunningBuildBuilder {
 
   public AgentRunningBuildBuilder sharedConfigParams(Map<String, String> params) {
     mySharedConfigParameters.putAll(params);
+    return this;
+  }
+
+
+  public AgentRunningBuildBuilder sharedEnvVariable(String key, String value) {
+    mySharedBuildParameters.put("env." + key, value);
     return this;
   }
 
@@ -165,7 +172,7 @@ public class AgentRunningBuildBuilder {
 
       @NotNull
       public BuildParametersMap getSharedBuildParameters() {
-        return new BuildParametersMapImpl(new HashMap<String, String>());
+        return new BuildParametersMapImpl(mySharedBuildParameters);
       }
 
       @NotNull

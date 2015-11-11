@@ -17,9 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.serverSide.BasePropertiesModel;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -43,7 +42,7 @@ public abstract class BaseRemoteRepositoryTest {
 
   @BeforeMethod
   public void setUp() throws Exception {
-    new TeamCityProperties() {{ setModel(new BasePropertiesModel() {});}};
+    TestInternalProperties.init();
     myTempFiles = new TempFiles();
     File tmp = myTempFiles.createTempDir();
     myRemoteRepositories = new HashMap<String, File>();
