@@ -83,7 +83,8 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     VcsRoot vcsRoot =  vcsRootWithAgentGitPath("gitt");
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, CheckoutRules.DEFAULT, runningBuild().build());
-    then(canCheckout.getCanNotCheckoutReason().describe(true)).startsWith(AgentCheckoutAbility.NO_VCS_CLIENT).contains("Unable to run git at path gitt");
+    then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCheckoutAbility.NO_VCS_CLIENT);
+    then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Unable to run git at path gitt");
   }
 
   public void exclude_rules_are_used_without_sparse_checkout() throws IOException, VcsException {
@@ -93,7 +94,8 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "false").build();
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, new CheckoutRules("-:dir/q.txt"), build);
-    then(canCheckout.getCanNotCheckoutReason().describe(true)).contains("Exclude rules are not supported for agent checkout");
+    then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCheckoutAbility.NOT_SUPPORTED_CHECKOUT_RULES);
+    then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Exclude rules are not supported for agent checkout");
   }
 
   public void include_rule_with_mapping_is_used_without_sparse_checkout() throws IOException, VcsException {
@@ -103,7 +105,8 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "false").build();
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, new CheckoutRules("+:a/b/c => d"), build);
-    then(canCheckout.getCanNotCheckoutReason().describe(true)).contains("Agent checkout for the git supports only include rule of form '. => subdir'");
+    then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCheckoutAbility.NOT_SUPPORTED_CHECKOUT_RULES);
+    then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Agent checkout for the git supports only include rule of form '. => subdir'");
   }
 
   public void git_version_does_not_support_sparse_checkout() throws IOException, VcsException {
@@ -113,7 +116,8 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, new CheckoutRules("-:dir/q.txt"), build);
-    then(canCheckout.getCanNotCheckoutReason().describe(true)).contains("Exclude rules are not supported for agent checkout");
+    then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCheckoutAbility.NOT_SUPPORTED_CHECKOUT_RULES);
+    then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Exclude rules are not supported for agent checkout");
   }
 
   private void verifyCanCheckout(final VcsRoot vcsRoot, CheckoutRules checkoutRules, final AgentRunningBuild build) throws VcsException {

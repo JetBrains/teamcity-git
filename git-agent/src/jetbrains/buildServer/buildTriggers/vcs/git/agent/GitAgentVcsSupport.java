@@ -125,7 +125,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       validateCheckoutRules(vcsRoot, checkoutRules);
       return AgentCheckoutAbility.canCheckout();
     } catch (VcsException e) {
-      return AgentCheckoutAbility.canNotCheckout(e.getMessage());
+      return AgentCheckoutAbility.notSupportedCheckoutRules(e.getMessage());
     }
   }
 
