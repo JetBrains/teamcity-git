@@ -93,7 +93,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
       throw new MissingSubmoduleEntryException(parentRepositoryUrl, myCommit.name(), path);
 
     Repository r = resolveRepository(submodule.getUrl());
-    String submoduleUrl = r.getConfig().getString("teamcity", null, "remote");
+    String submoduleUrl = myContext.getConfig(r).getString("teamcity", null, "remote");
 
     if (!isCommitExist(r, commit)) {
       try {
@@ -188,7 +188,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
   private void ensureConfigLoaded() {
     if (myConfig == null) {
       try {
-        myConfig = new SubmodulesConfig(myDb.getConfig(), new BlobBasedConfig(null, myDb, myCommit, ".gitmodules"));
+        myConfig = new SubmodulesConfig(myContext.getConfig(myDb), new BlobBasedConfig(null, myDb, myCommit, ".gitmodules"));
       } catch (FileNotFoundException e) {
         // do nothing
       } catch (Exception e) {
