@@ -142,6 +142,11 @@ public final class RepositoryManagerImpl implements RepositoryManager {
     if (result == null)
       return createRepository(dir, canonicalURI);
     String existingRemote = result.getConfig().getString("teamcity", null, "remote");
+    if (existingRemote == null) {
+      myRepositoryCache.release(result);
+      invalidate(dir);
+      return GitServerUtil.getRepository(dir, fetchUrl);
+    }
     if (!canonicalURI.toString().equals(existingRemote)) {
       myRepositoryCache.release(result);
       throw getWrongUrlError(dir, existingRemote, fetchUrl);
