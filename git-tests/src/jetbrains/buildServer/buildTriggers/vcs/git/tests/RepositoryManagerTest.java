@@ -34,6 +34,7 @@ import java.io.File;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 
+import static org.assertj.core.api.BDDAssertions.then;
 import static org.testng.AssertJUnit.*;
 
 /**
@@ -117,6 +118,17 @@ public class RepositoryManagerTest {
     } catch (VcsException e) {
       assertTrue(true);
     }
+  }
+
+
+  public void should_create_repository_if_remote_is_not_specified() throws Exception {
+    RepositoryManager repositoryManager = getRepositoryManager();
+    File customDir = myTempFiles.createTempDir();
+    URIish url = new URIish("git://some.org/repo.git");
+    Repository r = repositoryManager.openRepository(customDir, url);
+    r.getConfig().unset("teamcity", null, "remote");
+    Repository r2 = repositoryManager.openRepository(customDir, url);
+    then(r2.getConfig().getString("teamcity", null, "remote")).isEqualTo(url.toString());
   }
 
 
