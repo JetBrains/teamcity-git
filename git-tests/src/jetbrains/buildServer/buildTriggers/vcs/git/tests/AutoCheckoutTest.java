@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import jetbrains.buildServer.agent.AgentCanNotCheckoutReason;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgent;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
@@ -29,7 +30,6 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
-import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -83,7 +83,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     VcsRoot vcsRoot =  vcsRootWithAgentGitPath("gitt");
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, CheckoutRules.DEFAULT, runningBuild().build());
-    then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCheckoutAbility.NO_VCS_CLIENT);
+    then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.NO_VCS_CLIENT);
     then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Unable to run git at path gitt");
   }
 
@@ -94,7 +94,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "false").build();
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, new CheckoutRules("-:dir/q.txt"), build);
-    then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCheckoutAbility.NOT_SUPPORTED_CHECKOUT_RULES);
+    then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.NOT_SUPPORTED_CHECKOUT_RULES);
     then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Exclude rules are not supported for agent checkout");
   }
 
@@ -105,7 +105,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "false").build();
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, new CheckoutRules("+:a/b/c => d"), build);
-    then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCheckoutAbility.NOT_SUPPORTED_CHECKOUT_RULES);
+    then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.NOT_SUPPORTED_CHECKOUT_RULES);
     then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Agent checkout for the git supports only include rule of form '. => subdir'");
   }
 
@@ -116,7 +116,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, new CheckoutRules("-:dir/q.txt"), build);
-    then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCheckoutAbility.NOT_SUPPORTED_CHECKOUT_RULES);
+    then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.NOT_SUPPORTED_CHECKOUT_RULES);
     then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Exclude rules are not supported for agent checkout");
   }
 
