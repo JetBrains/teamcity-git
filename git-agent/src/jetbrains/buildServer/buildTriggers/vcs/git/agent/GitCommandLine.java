@@ -70,6 +70,7 @@ public class GitCommandLine extends GeneralCommandLine {
     myDeleteTempFiles = deleteTempFiles;
     myLogger = logger;
     myGitVersion = gitVersion;
+    setPassParentEnvs(true);
     setEnvParams(env);
   }
 
