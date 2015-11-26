@@ -58,7 +58,7 @@ public class UpdaterImpl implements Updater {
   private final static GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
   //--force option in git submodule update introduced in 1.7.6
   private final static GitVersion GIT_WITH_FORCE_SUBMODULE_UPDATE = new GitVersion(1, 7, 6);
-  public final static GitVersion GIT_WITH_SPARSE_CHECKOUT = new GitVersion(1, 7, 0);
+  public final static GitVersion GIT_WITH_SPARSE_CHECKOUT = new GitVersion(1, 7, 4);
   private static final int SILENT_TIMEOUT = 24 * 60 * 60; //24 hours
 
   private final SmartDirectoryCleaner myDirectoryCleaner;
