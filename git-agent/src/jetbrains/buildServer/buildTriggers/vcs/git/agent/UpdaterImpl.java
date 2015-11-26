@@ -655,7 +655,6 @@ public class UpdaterImpl implements Updater {
       if (isEmpty(rule.getFrom()))
         continue;
       sparseCheckoutContent.append("/").append(rule.getFrom()).append("\n");
-      sparseCheckoutContent.append("/").append(rule.getFrom()).append("/\n");
       hasIncludeRules = true;
     }
     if (!hasIncludeRules) {
@@ -663,7 +662,6 @@ public class UpdaterImpl implements Updater {
     }
     for (FileRule rule : myRules.getExcludeRules()) {
       sparseCheckoutContent.append("!/").append(rule.getFrom()).append("\n");
-      sparseCheckoutContent.append("!/").append(rule.getFrom()).append("/\n");
     }
     try {
       FileUtil.writeFileAndReportErrors(sparseCheckout, sparseCheckoutContent.toString());
