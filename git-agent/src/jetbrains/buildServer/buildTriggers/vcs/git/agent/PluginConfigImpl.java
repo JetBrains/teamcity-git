@@ -125,7 +125,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public boolean isUseSparseCheckout() {
     String buildSetting = myBuild.getSharedConfigParameters().get(USE_SPARSE_CHECKOUT);
     if (StringUtil.isEmpty(buildSetting))
-      return false;
+      return true;
     return Boolean.parseBoolean(buildSetting);
   }
 
