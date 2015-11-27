@@ -25,7 +25,6 @@
 
 <jsp:useBean id="propertiesBean" scope="request" type="jetbrains.buildServer.controllers.BasePropertiesBean"/>
 <c:set var="gitPathEnv" value="<%= Constants.TEAMCITY_AGENT_GIT_PATH %>"/>
-<c:set var="OAuthEnabled" value="<%= PluginConfigImpl.isOAuthEnabled() %>"/>
 <c:set var="teamcitySshKeysEnabled" value="<%= PluginConfigImpl.isTeamcitySshKeysEnabled() %>"/>
 <c:set var="showKnownHostsDbOption" value="<%= PluginConfigImpl.showKnownHostsDbOption() %>"/>
 <c:set var="showCustomClonePath" value="<%= TeamCityProperties.getBooleanOrTrue(Constants.CUSTOM_CLONE_PATH_ENABLED) &&
@@ -53,9 +52,7 @@
     <tr>
       <th><label for="url">Fetch URL: <l:star/></label></th>
       <td><props:textProperty name="url" className="longField"/>
-        <c:if test="${OAuthEnabled}">
-          <jsp:include page="/admin/repositoryControls.html?projectId=${parentProject.externalId}&pluginName=github"/>
-        </c:if>
+        <jsp:include page="/admin/repositoryControls.html?projectId=${parentProject.externalId}&pluginName=github"/>
         <div class="smallNote" style="margin: 0;">It is used for fetching data from the repository.</div>
         <span class="error" id="error_url"></span></td>
     </tr>
@@ -307,7 +304,6 @@
 
   $j("#usernameStyle").change(illustrateUsernameStyle);
 
-  <c:if test="${OAuthEnabled}">
   $j(document).ready(function() {
     if (BS.Repositories != null) {
       BS.Repositories.installControls($('url'), function (repoInfo, cre) {
@@ -323,5 +319,4 @@
       $j('.listRepositoriesControls').hide();
     }
   });
-  </c:if>
 </script>

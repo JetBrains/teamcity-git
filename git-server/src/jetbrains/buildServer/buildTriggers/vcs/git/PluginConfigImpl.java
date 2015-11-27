@@ -98,11 +98,6 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
 
-  public static boolean isOAuthEnabled() {
-    return TeamCityProperties.getBoolean("teamcity.oauthConnections.enabled");
-  }
-
-
   @NotNull
   public File getCachesDir() {
     if (myCachesDir == null)
