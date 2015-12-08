@@ -52,7 +52,7 @@
     <tr>
       <th><label for="url">Fetch URL: <l:star/></label></th>
       <td><props:textProperty name="url" className="longField"/>
-        <jsp:include page="/admin/repositoryControls.html?projectId=${parentProject.externalId}&pluginName=github"/>
+        <jsp:include page="/admin/repositoryControls.html?projectId=${parentProject.externalId}&vcsType=git"/>
         <div class="smallNote" style="margin: 0;">It is used for fetching data from the repository.</div>
         <span class="error" id="error_url"></span></td>
     </tr>
