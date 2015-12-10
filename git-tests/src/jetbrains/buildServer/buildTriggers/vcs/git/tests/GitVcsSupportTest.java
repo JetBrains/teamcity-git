@@ -1649,6 +1649,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     VcsRoot root = vcsRoot().withBranch("refs/heads/master").withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
 
     File brokenRef = new File(myMainRepositoryDir, "refs" + File.separator + "heads" + File.separator + "aaa,bbb");
+    brokenRef.getParentFile().mkdirs();
     FileUtil.writeFileAndReportErrors(brokenRef, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6\n");
 
     RepositoryStateData s1 = createVersionState("refs/heads/master", map("refs/heads/master", "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6"));
@@ -1666,6 +1667,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     VcsRoot root = vcsRoot().withBranch("refs/heads/master").withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
 
     File brokenRef = new File(myMainRepositoryDir, "refs" + File.separator + "heads" + File.separator + "broken_branch");
+    brokenRef.getParentFile().mkdirs();
     FileUtil.writeFileAndReportErrors(brokenRef, "1fefad14fba39ac378e4e345e295fa1f90e343ae\n");//it's a tree, not a commit
 
     RepositoryStateData state1 = createVersionState("refs/heads/master",

@@ -652,9 +652,11 @@ public class UpdaterImpl implements Updater {
     boolean hasIncludeRules = false;
     StringBuilder sparseCheckoutContent = new StringBuilder();
     for (IncludeRule rule : myRules.getIncludeRules()) {
-      if (isEmpty(rule.getFrom()))
-        continue;
-      sparseCheckoutContent.append("/").append(rule.getFrom()).append("\n");
+      if (isEmpty(rule.getFrom())) {
+        sparseCheckoutContent.append("/*\n");
+      } else {
+        sparseCheckoutContent.append("/").append(rule.getFrom()).append("\n");
+      }
       hasIncludeRules = true;
     }
     if (!hasIncludeRules) {
