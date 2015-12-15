@@ -38,12 +38,12 @@ import org.eclipse.jgit.transport.http.apache.TemporaryBufferEntity;
 import org.eclipse.jgit.transport.http.apache.internal.HttpApacheText;
 import org.eclipse.jgit.util.TemporaryBuffer;
 import org.eclipse.jgit.util.TemporaryBuffer.LocalFile;
-import sun.security.ssl.SSLSocketImpl;
 
 import javax.net.ssl.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.net.*;
 import java.net.ProtocolException;
 import java.security.KeyManagementException;
@@ -369,15 +369,16 @@ public class SNIHttpClientConnection implements HttpConnection {
                                 final InetSocketAddress remoteAddress,
                                 final InetSocketAddress localAddress,
                                 final HttpContext context) throws IOException {
-      if (socket instanceof SSLSocketImpl) {
-        enableSNI((SSLSocketImpl)socket, host);
+      if (socket instanceof SSLSocket) {
+        enableSNI((SSLSocket)socket, host);
       }
       return super.connectSocket(connectTimeout, socket, host, remoteAddress, localAddress, context);
     }
 
-    private void enableSNI(SSLSocketImpl socket, final HttpHost host) {
+    private void enableSNI(SSLSocket socket, final HttpHost host) {
       try {
-        socket.setHost(host.getHostName());
+        Method method = socket.getClass().getDeclaredMethod("setHost", String.class);
+        method.invoke(socket, host.getHostName());
       } catch (Exception e) {
         LOG.warnAndDebugDetails("Failed to enable SNI for host " + host.getHostName(), e);
       }
