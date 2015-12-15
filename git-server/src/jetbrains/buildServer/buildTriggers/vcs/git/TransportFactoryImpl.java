@@ -58,7 +58,14 @@ public class TransportFactoryImpl implements TransportFactory {
     myJSchOptions = getJSchCipherOptions();
     mySshKeyManager = sshKeyManager;
     String factoryName = myConfig.getHttpConnectionFactory();
-    HttpConnectionFactory f = factoryName.equals("httpClient") ? new HttpClientConnectionFactory() : new TeamCityJDKHttpConnectionFactory(myConfig);
+    HttpConnectionFactory f;
+    if ("httpClient".equals(factoryName)) {
+      f = new SNIHttpClientConnectionFactory();
+    } else if ("httpClientNoSNI".equals(factoryName)) {
+      f = new HttpClientConnectionFactory();
+    } else {
+      f = new TeamCityJDKHttpConnectionFactory(myConfig);
+    }
     HttpTransport.setConnectionFactory(f);
   }
 
