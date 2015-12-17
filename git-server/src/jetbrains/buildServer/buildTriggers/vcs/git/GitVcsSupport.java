@@ -286,7 +286,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public LabelingSupport getLabelingSupport() {
-    return new GitLabelingSupport(this, myCommitLoader, myRepositoryManager, myTransportFactory);
+    return new GitLabelingSupport(this, myCommitLoader, myRepositoryManager, myTransportFactory, myConfig);
   }
 
   @NotNull
