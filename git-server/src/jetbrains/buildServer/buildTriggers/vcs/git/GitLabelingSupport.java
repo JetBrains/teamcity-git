@@ -17,10 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.vcs.CheckoutRules;
-import jetbrains.buildServer.vcs.LabelingSupport;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.internal.storage.pack.PackWriter;
 import org.eclipse.jgit.lib.*;
@@ -72,6 +69,15 @@ public class GitLabelingSupport implements LabelingSupport {
                       @NotNull CheckoutRules checkoutRules) throws VcsException {
     OperationContext context = myVcs.createContext(root, "labelling");
     GitVcsRoot gitRoot = context.getGitRoot();
+    if (myConfig.useTagPackHeuristics()) {
+      LOG.debug("Update repository before labeling " + gitRoot.debugInfo());
+      RepositoryStateData currentState = myVcs.getCurrentState(gitRoot);
+      try {
+        myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, context.getRepository(), false, currentState);
+      } catch (Exception e) {
+        LOG.debug("Error while updating repository " + gitRoot.debugInfo(), e);
+      }
+    }
     ReadWriteLock rmLock = myRepositoryManager.getRmLock(gitRoot.getRepositoryDir());
     rmLock.readLock().lock();
     try {
