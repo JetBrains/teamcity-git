@@ -473,4 +473,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
     String[] hosts = amazonHosts.split(",");
     return asList(hosts);
   }
+
+  public boolean useTagPackHeuristics() {
+    return TeamCityProperties.getBoolean("teamcity.git.useTagPackHeuristics");
+  }
 }

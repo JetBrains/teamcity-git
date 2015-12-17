@@ -130,4 +130,6 @@ public interface ServerPluginConfig extends PluginConfig {
 
   @NotNull
   List<String> getAmazonHosts();
+
+  boolean useTagPackHeuristics();
 }

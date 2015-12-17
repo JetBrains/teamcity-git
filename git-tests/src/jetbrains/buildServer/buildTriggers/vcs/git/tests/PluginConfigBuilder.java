@@ -59,6 +59,7 @@ public class PluginConfigBuilder {
   private String myPatchBuilderClassName;
   private String myPatchClassPath;
   private String myFetchProcessMaxMemory;
+  private boolean myUsePackHeuristic;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -257,6 +258,10 @@ public class PluginConfigBuilder {
       public List<String> getAmazonHosts() {
         return myDelegate.getAmazonHosts();
       }
+
+      public boolean useTagPackHeuristics() {
+        return myUsePackHeuristic;
+      }
     };
   }
 
@@ -375,6 +380,17 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setFetchTimeout(final Integer fetchTimeoutSeconds) {
     myFetchTimeoutSeconds = fetchTimeoutSeconds;
+    return this;
+  }
+
+  public PluginConfigBuilder setPaths(@NotNull ServerPaths paths) {
+    myPaths = paths;
+    return this;
+  }
+
+
+  public PluginConfigBuilder setUsePackHeuristic(boolean usePackHeuristic) {
+    myUsePackHeuristic = usePackHeuristic;
     return this;
   }
 }

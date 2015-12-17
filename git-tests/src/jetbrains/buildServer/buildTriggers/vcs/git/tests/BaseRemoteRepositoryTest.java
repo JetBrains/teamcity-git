@@ -22,6 +22,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 
 import java.io.File;
 import java.util.HashMap;
@@ -67,5 +68,13 @@ public abstract class BaseRemoteRepositoryTest {
 
   protected File getRemoteRepositoryDir(@NotNull String remoteRepository) {
     return myRemoteRepositories.get(remoteRepository);
+  }
+
+  @DataProvider(name = "true,false")
+  public static Object[][] createData() {
+    return new Object[][] {
+      new Object[] { Boolean.TRUE },
+      new Object[] { Boolean.FALSE }
+    };
   }
 }

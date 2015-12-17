@@ -43,10 +43,8 @@ import junit.framework.Assert;
 import org.apache.log4j.Level;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
-import org.eclipse.jgit.lib.*;
-import org.eclipse.jgit.revwalk.RevTag;
-import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.internal.storage.file.LockFile;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
@@ -59,7 +57,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -712,49 +709,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     Map<String, String> checkoutProperties = getSupport().getCheckoutProperties(root);
     assertTrue(checkoutProperties.containsKey(Constants.SERVER_SIDE_AUTO_CRLF),
                "Autocrlf is not reported in checkout properties");
-  }
-
-
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void testLabels(boolean fetchInSeparateProcess) throws IOException, VcsException, URISyntaxException {
-    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
-    GitVcsSupport support = getSupport();
-    VcsRoot root = getRoot("master");
-    // ensure that all revisions reachable from master are fetched
-    support.getLabelingSupport().label("test_label", VERSION_TEST_HEAD, root, new CheckoutRules(""));
-    Repository r = new RepositoryBuilder().setGitDir(new File(new URIish(root.getProperty(Constants.FETCH_URL)).getPath())).build();
-    RevWalk revWalk = new RevWalk(r);
-    try {
-      Ref tagRef = r.getTags().get("test_label");
-      RevTag t = revWalk.parseTag(tagRef.getObjectId());
-      assertEquals(t.getObject().name(), GitUtils.versionRevision(VERSION_TEST_HEAD));
-    } finally {
-      r.close();
-    }
-  }
-
-
-  @Test
-  public void tag_with_specified_username() throws Exception {
-    VcsRoot root = vcsRoot()
-      .withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
-      .withUsernameForTags("John Doe <john.doe@some.org>")
-      .build();
-    GitVcsSupport git = getSupport();
-    git.getLabelingSupport().label("label_with_specified_username", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", root, CheckoutRules.DEFAULT);
-
-    Repository r = new RepositoryBuilder().setGitDir(new File(new URIish(root.getProperty(Constants.FETCH_URL)).getPath())).build();
-    RevWalk revWalk = new RevWalk(r);
-    try {
-      Ref tagRef = r.getTags().get("label_with_specified_username");
-      RevTag t = revWalk.parseTag(tagRef.getObjectId());
-      PersonIdent tagger = t.getTaggerIdent();
-      assertEquals(tagger.getName(), "John Doe");
-      assertEquals(tagger.getEmailAddress(), "john.doe@some.org");
-    } finally {
-      revWalk.release();
-      r.close();
-    }
   }
 
 
