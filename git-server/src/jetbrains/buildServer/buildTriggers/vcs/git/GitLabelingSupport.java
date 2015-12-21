@@ -30,8 +30,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
@@ -67,16 +66,20 @@ public class GitLabelingSupport implements LabelingSupport {
                       @NotNull String version,
                       @NotNull VcsRoot root,
                       @NotNull CheckoutRules checkoutRules) throws VcsException {
-    OperationContext context = myVcs.createContext(root, "labelling");
+    OperationContext context = myVcs.createContext(root, "labeling");
     GitVcsRoot gitRoot = context.getGitRoot();
+    RevisionsInfo revisionsInfo = new RevisionsInfo();
     if (myConfig.useTagPackHeuristics()) {
       LOG.debug("Update repository before labeling " + gitRoot.debugInfo());
       RepositoryStateData currentState = myVcs.getCurrentState(gitRoot);
+      if (!myConfig.analyzeTagsInPackHeuristics())
+        currentState = excludeTags(currentState);
       try {
         myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, context.getRepository(), false, currentState);
       } catch (Exception e) {
         LOG.debug("Error while updating repository " + gitRoot.debugInfo(), e);
       }
+      revisionsInfo = new RevisionsInfo(currentState);
     }
     ReadWriteLock rmLock = myRepositoryManager.getRmLock(gitRoot.getRepositoryDir());
     rmLock.readLock().lock();
@@ -96,7 +99,7 @@ public class GitLabelingSupport implements LabelingSupport {
         LOG.debug("Tag created  " + label + "=" + version + " for " + gitRoot.debugInfo() +
                   " in " + (System.currentTimeMillis() - start) + "ms");
       }
-      return push(label, version, gitRoot, r, tagRef);
+      return push(label, version, gitRoot, r, tagRef, revisionsInfo);
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
@@ -110,24 +113,28 @@ public class GitLabelingSupport implements LabelingSupport {
                       @NotNull String version,
                       @NotNull GitVcsRoot gitRoot,
                       @NotNull Repository r,
-                      @NotNull Ref tagRef) throws VcsException, IOException {
+                      @NotNull Ref tagRef,
+                      @NotNull RevisionsInfo revisionsInfo) throws VcsException, IOException {
     long pushStart = System.currentTimeMillis();
     final Transport tn = myTransportFactory.createTransport(r, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings());
     PushConnection c = null;
     try {
       c = tn.openPush();
       RemoteRefUpdate ru = new RemoteRefUpdate(r, tagRef.getName(), tagRef.getObjectId(), tagRef.getName(), false, null, null);
+      PreparePackFunction preparePack = null;
       if (c instanceof BasePackPushConnection) {
         final RevTag tagObject = getTagObject(r, tagRef);
         if (tagObject != null) {
-          ((BasePackPushConnection)c).setPreparePack(new PreparePackFunction(tagObject));
+          preparePack = new PreparePackFunction(tagObject, revisionsInfo);
+          ((BasePackPushConnection)c).setPreparePack(preparePack);
         } else {
           LOG.debug("Cannot locate the " + tagRef.getName() + " tag object, don't use pack heuristic");
         }
       }
       c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(tagRef.getName(), ru));
       LOG.info("Tag  " + label + "=" + version + " was pushed with status " + ru.getStatus() + " for " + gitRoot.debugInfo() +
-               " in " + (System.currentTimeMillis() - pushStart) + "ms");
+               " in " + (System.currentTimeMillis() - pushStart) + "ms" +
+               (preparePack != null ? " (prepare pack " + preparePack.getPreparePackDurationMillis() + "ms)" : ""));
       switch (ru.getStatus()) {
         case UP_TO_DATE:
         case OK:
@@ -173,9 +180,13 @@ public class GitLabelingSupport implements LabelingSupport {
 
   private class PreparePackFunction implements PreparePack {
     private final RevTag myTagObject;
+    private final RevisionsInfo myRevisionsInfo;
+    private long myPreparePackDurationMillis;
 
-    public PreparePackFunction(@NotNull RevTag tagObject) {
+    public PreparePackFunction(@NotNull RevTag tagObject,
+                               @NotNull RevisionsInfo revisionsInfo) {
       myTagObject = tagObject;
+      myRevisionsInfo = revisionsInfo;
     }
 
     public void preparePack(ProgressMonitor monitor,
@@ -183,6 +194,7 @@ public class GitLabelingSupport implements LabelingSupport {
                             PackWriter writer,
                             Set<ObjectId> want,
                             Set<ObjectId> have) throws IOException {
+      long start = System.currentTimeMillis();
       boolean writeOnlyTag = false;
       if (myConfig.useTagPackHeuristics()) {
         RevWalk walk = new RevWalk(repository);
@@ -209,6 +221,7 @@ public class GitLabelingSupport implements LabelingSupport {
       } else {
         writer.preparePack(monitor, want, have);
       }
+      myPreparePackDurationMillis = System.currentTimeMillis() - start;
     }
 
 
@@ -222,7 +235,7 @@ public class GitLabelingSupport implements LabelingSupport {
       }
 
       RevCommit c;
-      for (ObjectId tip : have) {
+      for (ObjectId tip : myRevisionsInfo.getBranchRevisions(have)) {
         RevCommit tipCommit;
         try {
           tipCommit = walk.parseCommit(tip);
@@ -231,16 +244,75 @@ public class GitLabelingSupport implements LabelingSupport {
         }
         try {
           walk.markStart(tipCommit);
-          while ((c = walk.next()) != null) {
-            if (c.equals(commit))
-              return true;
-          }
         } catch (Exception e) {
           //ignore
         }
       }
 
+      try {
+        while ((c = walk.next()) != null) {
+          if (c.equals(commit))
+            return true;
+        }
+      } catch (Exception e) {
+        return false;
+      }
+
       return false;
     }
+
+
+    public long getPreparePackDurationMillis() {
+      return myPreparePackDurationMillis;
+    }
+  }
+
+
+  private static class RevisionsInfo {
+    private final LinkedHashSet<ObjectId> myRevisions = new LinkedHashSet<ObjectId>();
+    private final boolean myIncludeAll;
+    RevisionsInfo(@NotNull RepositoryStateData state) {
+      String defaultBranchName = state.getDefaultBranchName();
+      String defaultBranchRevision = state.getBranchRevisions().get(defaultBranchName);
+      if (defaultBranchRevision != null)
+        myRevisions.add(ObjectId.fromString(defaultBranchRevision));
+      for (String revision : state.getBranchRevisions().values()) {
+        myRevisions.add(ObjectId.fromString(revision));
+      }
+      myIncludeAll = false;
+    }
+
+    public RevisionsInfo() {
+      myIncludeAll = true;
+    }
+
+
+    @NotNull
+    Collection<ObjectId> getBranchRevisions(@NotNull Set<ObjectId> have) {
+      if (myIncludeAll)
+        return have;
+      List<ObjectId> result = new ArrayList<ObjectId>();
+      for (ObjectId id : myRevisions) {
+        if (have.contains(id))
+          result.add(id);
+      }
+      return result;
+    }
+  }
+
+
+  @NotNull
+  private RepositoryStateData excludeTags(@NotNull RepositoryStateData state) {
+    String defaultBranch = state.getDefaultBranchName();
+    Map<String, String> revisions = new HashMap<String, String>();
+    for (Map.Entry<String, String> e : state.getBranchRevisions().entrySet()) {
+      String ref = e.getKey();
+      if (defaultBranch.equals(ref)) {
+        revisions.put(ref, e.getValue());
+      } else if (!GitUtils.isTag(ref)) {
+        revisions.put(ref, e.getValue());
+      }
+    }
+    return RepositoryStateData.createVersionState(defaultBranch, revisions);
   }
 }
