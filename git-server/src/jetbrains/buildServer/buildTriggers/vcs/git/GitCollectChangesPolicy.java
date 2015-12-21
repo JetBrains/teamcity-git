@@ -103,30 +103,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
 
   @NotNull
   private Set<String> getBranchesWithCommit(@NotNull Repository r, @NotNull RepositoryStateData state, @NotNull String commit) {
-    try {
-      RevWalk revWalk = new RevWalk(r);
-      revWalk.sort(RevSort.REVERSE);
-      revWalk.sort(RevSort.TOPO, true);
-      Set<String> reverseReachable = new HashSet<String>();
-      RevCommit revCommit = revWalk.parseCommit(ObjectId.fromString(commit));
-      revWalk.markStart(revCommit);
-      RevCommit c;
-      while ((c = revWalk.next()) != null) {
-        reverseReachable.add(c.name());
-      }
-
-      Set<String> branches = new HashSet<String>();
-      for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
-        String branchName = entry.getKey();
-        String branchRevision = entry.getValue();
-        if (reverseReachable.contains(branchRevision))
-          branches.add(branchName);
-      }
-
-      return branches;
-    } catch (Exception e1) {
-      return Collections.emptySet();
-    }
+    return Collections.emptySet();
   }
 
 
