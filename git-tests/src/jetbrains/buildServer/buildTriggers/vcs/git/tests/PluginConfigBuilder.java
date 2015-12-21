@@ -262,6 +262,10 @@ public class PluginConfigBuilder {
       public boolean useTagPackHeuristics() {
         return myUsePackHeuristic;
       }
+
+      public boolean analyzeTagsInPackHeuristics() {
+        return myDelegate.analyzeTagsInPackHeuristics();
+      }
     };
   }
 
