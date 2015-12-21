@@ -453,7 +453,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @Test
   @TestFor(issues = "TW-41884")
-  public void should_mention_branch_when_entry_in_gitmodules_is_not_found() throws Exception {
+  private void should_mention_branch_when_entry_in_gitmodules_is_not_found() throws Exception {
     String valid = "f5bdd3819df0358a43d9a8f94eaf96bb306e19fe";
     String invalid = "778cc3d0105ca1b6b2587804ebfe89c2557a7e46";
     VcsRoot root = getRoot("wrong-submodule", true);
@@ -470,7 +470,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @Test
   @TestFor(issues = "TW-41884")
-  public void should_mention_branch_when_commit_in_submodule_is_not_found() throws Exception {
+  private void should_mention_branch_when_commit_in_submodule_is_not_found() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("reference-wrong-commit", true);
     try {
@@ -489,7 +489,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @Test
   @TestFor(issues = "TW-41884")
-  public void should_mention_branch_when_no_gitmodules_config_found() throws Exception {
+  private void should_mention_branch_when_no_gitmodules_config_found() throws Exception {
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("reference-wrong-commit", true);
     try {
