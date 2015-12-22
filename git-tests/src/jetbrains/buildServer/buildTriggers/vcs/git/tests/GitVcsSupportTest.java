@@ -90,7 +90,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   private TempFiles myTempFiles;
   private ResetCacheRegister myResetCacheManager;
   private ServerPaths myServerPaths;
-  private File myRepoGitDir;
   private Mockery myContext;
 
   @BeforeMethod
@@ -102,10 +101,9 @@ public class GitVcsSupportTest extends PatchTestCase {
     myTempFiles = new TempFiles();
     myServerPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
     myConfigBuilder = new PluginConfigBuilder(myServerPaths);
-    myRepoGitDir = dataFile("repo.git");
     myTmpDir = myTempFiles.createTempDir();
     myMainRepositoryDir = new File(myTmpDir, "repo.git");
-    copyRepository(myRepoGitDir, myMainRepositoryDir);
+    copyRepository(dataFile("repo.git"), myMainRepositoryDir);
     copyRepository(dataFile("submodule.git"), new File(myTmpDir, "submodule"));
     copyRepository(dataFile("submodule.git"), new File(myTmpDir, "submodule.git"));
     copyRepository(dataFile("sub-submodule.git"), new File(myTmpDir, "sub-submodule.git"));
@@ -177,182 +175,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     RepositoryStateData state = support.getCurrentState(root);
     String version = state.getBranchRevisions().get(state.getDefaultBranchName());
     assertEquals(VERSION_TEST_HEAD, version);
-  }
-
-
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void testCollectBuildChanges(boolean fetchInSeparateProcess) throws Exception {
-    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
-    myConfigBuilder.setNumberOfCommitsWhenFromVersionNotFound(3);
-    GitVcsSupport support = getSupport();
-    VcsRoot root = getRoot("master");
-    // ensure that all revisions reachable from master are fetched
-    final List<ModificationData> ms = support.collectChanges(root, VERSION_TEST_HEAD, CUD1_VERSION, new CheckoutRules(""));
-    assertEquals(2, ms.size());
-    ModificationData m2 = ms.get(1);
-    assertEquals("The second commit\n", m2.getDescription());
-    assertEquals(3, m2.getChanges().size());
-    for (VcsChange ch : m2.getChanges()) {
-      assertEquals(VcsChange.Type.ADDED, ch.getType());
-      assertEquals("dir/", ch.getFileName().substring(0, 4));
-    }
-    ModificationData m1 = ms.get(0);
-    assertEquals("more changes\n", m1.getDescription());
-    assertEquals(CUD1_VERSION, m1.getVersion());
-    assertEquals(3, m1.getChanges().size());
-    VcsChange ch10 = m1.getChanges().get(0);
-    assertEquals("dir/a.txt", ch10.getFileName());
-    assertEquals(CUD1_VERSION, ch10.getAfterChangeRevisionNumber());
-    assertEquals(m2.getVersion(), ch10.getBeforeChangeRevisionNumber());
-    assertEquals(VcsChange.Type.CHANGED, ch10.getType());
-    VcsChange ch11 = m1.getChanges().get(1);
-    assertEquals("dir/c.txt", ch11.getFileName());
-    assertEquals(VcsChange.Type.ADDED, ch11.getType());
-    VcsChange ch12 = m1.getChanges().get(2);
-    assertEquals("dir/tr.txt", ch12.getFileName());
-    assertEquals(VcsChange.Type.REMOVED, ch12.getType());
-    // now check merge commit relatively to the branch
-    final List<ModificationData> mms0 = support.collectChanges(root, MERGE_BRANCH_VERSION, MERGE_VERSION, new CheckoutRules(""));
-    assertEquals(2, mms0.size());
-    // no check the merge commit relatively to the fork
-    final List<ModificationData> mms1 = support.collectChanges(root, CUD1_VERSION, MERGE_VERSION, new CheckoutRules(""));
-    assertEquals(3, mms1.size());
-    ModificationData md1 = mms1.get(0);
-    assertEquals("merge commit\n", md1.getDescription());
-    assertEquals(MERGE_VERSION, md1.getVersion());
-    assertEquals(3, md1.getChanges().size());
-    VcsChange ch20 = md1.getChanges().get(0);
-    assertEquals("dir/a.txt", ch20.getFileName());
-    assertEquals(VcsChange.Type.REMOVED, ch20.getType());
-    VcsChange ch21 = md1.getChanges().get(1);
-    assertEquals("dir/b.txt", ch21.getFileName());
-    assertEquals(VcsChange.Type.CHANGED, ch21.getType());
-    VcsChange ch22 = md1.getChanges().get(2);
-    assertEquals("dir/q.txt", ch22.getFileName());
-    assertEquals(VcsChange.Type.ADDED, ch22.getType());
-    ModificationData md2 = mms1.get(1);
-    assertTrue(md2.isCanBeIgnored());
-    assertEquals("b-mod, d-add\n", md2.getDescription());
-    assertEquals(MERGE_BRANCH_VERSION, md2.getVersion());
-    assertEquals(2, md2.getChanges().size());
-    ModificationData md3 = mms1.get(2);
-    assertEquals("a-mod, c-rm\n", md3.getDescription());
-    assertEquals(2, md3.getChanges().size());
-    // check the case with broken commit
-    String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), 1238072086000L);
-    final List<ModificationData> mms2 = support.collectChanges(root, missing, MERGE_VERSION, new CheckoutRules(""));
-    assertEquals(mms2.size(), 3);
-  }
-
-  //Test getting changes for the build concurrently. Copy of previous test but with several threads collecting changes
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void testConcurrentCollectBuildChanges(boolean fetchInSeparateProcess) throws Throwable {
-    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
-    myConfigBuilder.setNumberOfCommitsWhenFromVersionNotFound(3);
-    final GitVcsSupport support = getSupport();
-    final List<Throwable> errors = Collections.synchronizedList(new ArrayList<Throwable>());
-
-    Runnable r1 = new Runnable() {
-      public void run() {
-        try {
-          // ensure that all revisions reachable from master are fetched
-          final VcsRoot root = getRoot("master");
-          final List<ModificationData> ms = support.collectChanges(root, VERSION_TEST_HEAD, CUD1_VERSION, new CheckoutRules(""));
-          assertEquals(2, ms.size());
-          ModificationData m2 = ms.get(1);
-          assertEquals("The second commit\n", m2.getDescription());
-          assertEquals(3, m2.getChanges().size());
-          for (VcsChange ch : m2.getChanges()) {
-            assertEquals(VcsChange.Type.ADDED, ch.getType());
-            assertEquals("dir/", ch.getFileName().substring(0, 4));
-          }
-          ModificationData m1 = ms.get(0);
-          assertEquals("more changes\n", m1.getDescription());
-          assertEquals(CUD1_VERSION, m1.getVersion());
-          assertEquals(3, m1.getChanges().size());
-          VcsChange ch10 = m1.getChanges().get(0);
-          assertEquals("dir/a.txt", ch10.getFileName());
-          assertEquals(CUD1_VERSION, ch10.getAfterChangeRevisionNumber());
-          assertEquals(m2.getVersion(), ch10.getBeforeChangeRevisionNumber());
-          assertEquals(VcsChange.Type.CHANGED, ch10.getType());
-          VcsChange ch11 = m1.getChanges().get(1);
-          assertEquals("dir/c.txt", ch11.getFileName());
-          assertEquals(VcsChange.Type.ADDED, ch11.getType());
-          VcsChange ch12 = m1.getChanges().get(2);
-          assertEquals("dir/tr.txt", ch12.getFileName());
-          assertEquals(VcsChange.Type.REMOVED, ch12.getType());
-        } catch (Throwable e) {
-          errors.add(e);
-        }
-      }
-    };
-
-    Runnable r2 = new Runnable() {
-      public void run() {
-        try {
-          // now check merge commit relatively to the branch
-          final VcsRoot root = getRoot("master");
-          final List<ModificationData> mms0 = support.collectChanges(root, MERGE_BRANCH_VERSION, MERGE_VERSION, new CheckoutRules(""));
-          assertEquals(2, mms0.size());
-        } catch (Throwable e) {
-          errors.add(e);
-        }
-      }
-    };
-
-    Runnable r3 = new Runnable() {
-      public void run() {
-        try {
-          // no check the merge commit relatively to the fork
-          final VcsRoot root = getRoot("master");
-          final List<ModificationData> mms1 = support.collectChanges(root, CUD1_VERSION, MERGE_VERSION, new CheckoutRules(""));
-          assertEquals(3, mms1.size());
-          ModificationData md1 = mms1.get(0);
-          assertEquals("merge commit\n", md1.getDescription());
-          assertEquals(MERGE_VERSION, md1.getVersion());
-          assertEquals(3, md1.getChanges().size());
-          VcsChange ch20 = md1.getChanges().get(0);
-          assertEquals("dir/a.txt", ch20.getFileName());
-          assertEquals(VcsChange.Type.REMOVED, ch20.getType());
-          VcsChange ch21 = md1.getChanges().get(1);
-          assertEquals("dir/b.txt", ch21.getFileName());
-          assertEquals(VcsChange.Type.CHANGED, ch21.getType());
-          VcsChange ch22 = md1.getChanges().get(2);
-          assertEquals("dir/q.txt", ch22.getFileName());
-          assertEquals(VcsChange.Type.ADDED, ch22.getType());
-          ModificationData md2 = mms1.get(1);
-          assertTrue(md2.isCanBeIgnored());
-          assertEquals("b-mod, d-add\n", md2.getDescription());
-          assertEquals(MERGE_BRANCH_VERSION, md2.getVersion());
-          assertEquals(2, md2.getChanges().size());
-          ModificationData md3 = mms1.get(2);
-          assertEquals("a-mod, c-rm\n", md3.getDescription());
-          assertEquals(2, md3.getChanges().size());
-        } catch (Throwable e) {
-          errors.add(e);
-        }
-      }
-    };
-
-    Runnable r4 = new Runnable() {
-      public void run() {
-        try {
-          // check the case with broken commit
-          final VcsRoot root = getRoot("master");
-          String missing = GitUtils.makeVersion(GitUtils.versionRevision(CUD1_VERSION).replace('0', 'f'), 1238072086000L);
-          final List<ModificationData> mms2 = support.collectChanges(root, missing, MERGE_VERSION, new CheckoutRules(""));
-          assertEquals(mms2.size(), 3);
-        } catch (Throwable e) {
-          errors.add(e);
-        }
-      }
-    };
-
-    BaseTestCase.runAsyncAndFailOnException(4, r1, r2, r3, r4);
-
-    if (!errors.isEmpty()) {
-      throw errors.get(0);
-    }
   }
 
 
@@ -668,26 +490,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     } else {
       assertFalse(subSubmoduleFilesRetrieved);
     }
-  }
-
-
-  @Test
-  public void collect_changes_should_understand_revisions_with_timestamps() throws Exception {
-    VcsRoot root = getRoot("master");
-    List<ModificationData> changes = getSupport().collectChanges(root,
-                                GitUtils.makeVersion("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", 1237391915000L),
-                                GitUtils.makeVersion("ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", 1238085489000L),
-                                CheckoutRules.DEFAULT);
-    assertEquals(changes.size(), 3);
-  }
-
-  @Test
-  @TestFor(issues = "TW-30485")
-  public void collect_changes_between_states_should_understand_revisions_with_timestamps() throws Exception {
-    VcsRoot root = vcsRoot().withBranch("refs/heads/master").withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
-    RepositoryStateData fromStateInOldFormat = RepositoryStateData.createSingleVersionState(GitUtils.makeVersion("2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", 1286183770000L));
-    RepositoryStateData toState = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"));
-    getSupport().getCollectChangesPolicy().collectChanges(root, fromStateInOldFormat, toState, CheckoutRules.DEFAULT);
   }
 
 
@@ -1090,34 +892,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  @Test
-  public void all_changes_should_have_parents() throws Exception {
-    GitVcsSupport support = getSupport();
-    VcsRoot root = getRoot("master");
-
-    //Every git commit (except initial commit) has at least one parent.
-    //The only way to get initial commit in the results of collectChanges method
-    //is to give it missing commit as fromVersion (in this case we collect changes
-    //based on the date). To make handling parents easier - assign zeroId as a parent
-    //version of initial commit.
-
-    String unknownSHA = "2b9fbfbb43e7edfad018b482e15e7f93cca4e69f";
-    Long firstCommitTime = 1237391915000L;
-    String unknownCommit = GitUtils.makeVersion(unknownSHA, firstCommitTime - 1);
-
-    List<ModificationData> mds = support.collectChanges(root, unknownCommit, MERGE_BRANCH_VERSION, CheckoutRules.DEFAULT);
-    Map<String, String> child2parent = new HashMap<String, String>();
-    for (ModificationData md : mds) {
-      assertEquals(md.getParentRevisions().size(), 1);
-      child2parent.put(md.getVersion(), md.getParentRevisions().get(0));
-    }
-    assertEquals(child2parent.get("ee886e4adb70fbe3bdc6f3f6393598b3f02e8009"), "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7");
-    assertEquals(child2parent.get("ad4528ed5c84092fdbe9e0502163cf8d6e6141e7"), "97442a720324a0bd092fb9235f72246dc8b345bc");
-    assertEquals(child2parent.get("97442a720324a0bd092fb9235f72246dc8b345bc"), "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653");
-    assertEquals(child2parent.get("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653"),  "0000000000000000000000000000000000000000");
-  }
-
-
   @TestFor(issues = "TW-21747")
   @Test
   public void backslash_in_username() throws VcsException {
@@ -1138,28 +912,6 @@ public class GitVcsSupportTest extends PatchTestCase {
       assertNotNull(message);
       assertFalse(message.contains("domain/user"),
                   "backslash in username is replaced");
-    }
-  }
-
-
-  @Test
-  public void collect_changes_after_cache_reset() throws Exception {
-    GitVcsSupport git = getSupport();
-    VcsRoot root = getRoot("master");
-    git.getCollectChangesPolicy().collectChanges(root, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", CheckoutRules.DEFAULT);
-
-    ServerPluginConfig config = myConfigBuilder.build();
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
-    RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    ResetCacheHandler resetHandler = new GitResetCacheHandler(repositoryManager);
-    for (String cache : resetHandler.listCaches())
-      resetHandler.resetCache(cache);
-
-    try {
-      git.getCollectChangesPolicy().collectChanges(root, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6",
-                                                   "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", CheckoutRules.DEFAULT);
-    } catch (VcsException e) {
-      fail("Reset of caches breaks repository");
     }
   }
 
@@ -1194,42 +946,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertNotNull(state.getBranchRevisions().get(expandedRef));
     assertEquals(state.getDefaultBranchName(), expandedRef);
   }
-
-  @Test
-  public void test_collect_changes_between_states() throws IOException, VcsException {
-    RepositoryStateData fromState = RepositoryStateData.createVersionState("master", map("master", "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7"));
-    RepositoryStateData toState = RepositoryStateData.createVersionState("master", map("master", "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f",
-                                                        "personal-branch2", "3df61e6f11a5a9b919cb3f786a83fdd09f058617")
-                                                    );
-    VcsRoot root = getRoot("master", false);
-    List<ModificationData> modifications = getSupport().getCollectChangesPolicy().collectChanges(root, fromState, toState, CheckoutRules.DEFAULT);
-    assertEquals(7, modifications.size());
-  }
-
-  @Test
-  public void start_using_full_branch_name_as_default_branch_name() throws Exception {
-    RepositoryStateData fromState = RepositoryStateData.createVersionState("master", map("master", "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7"));
-    RepositoryStateData toState = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f"));
-    VcsRoot root = getRoot("master", false);
-    List<ModificationData> modifications = getSupport().getCollectChangesPolicy().collectChanges(root, fromState, toState, CheckoutRules.DEFAULT);
-    assertEquals(4, modifications.size());
-  }
-
-
-  @Test
-  @TestFor(issues = "TW-23781")
-  public void collect_changes_between_repositories_with_different_urls_and_branches() throws Exception {
-    File repoGitFork = new File(myTmpDir, "repo-fork.git");
-    copyRepository(myRepoGitDir, repoGitFork);
-
-    VcsRoot root1 = vcsRoot().withFetchUrl(myMainRepositoryDir.getAbsolutePath()).withBranch("master").build();
-    RepositoryStateData state1 = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"));
-    VcsRoot root2 = vcsRoot().withFetchUrl(repoGitFork.getAbsolutePath()).withBranch("patch-tests").build();
-    RepositoryStateData state2 = RepositoryStateData.createVersionState("refs/heads/patch-tests", map("refs/heads/patch-tests", "27de3d118ca320d3a8a08320ff05aa0567996590"));
-    List<ModificationData> changes = getSupport().getCollectChangesPolicy().collectChanges(root1, state1, root2, state2, CheckoutRules.DEFAULT);
-    assertEquals(changes.size(), 11);
-  }
-
 
   @Test
   @TestFor(issues = "TW-24084")
@@ -1344,97 +1060,6 @@ public class GitVcsSupportTest extends PatchTestCase {
 
 
   @Test
-  @TestFor(issues = "TW-29798")
-  public void do_not_do_fetch_per_branch() throws Exception {
-    VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
-      .withBranch("master")
-      .withReportTags(true)
-      .build();
-
-    //setup fetcher with counter
-    ServerPluginConfig config = myConfigBuilder.build();
-    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager);
-    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
-    GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
-
-    RepositoryStateData state = git.getCurrentState(root);
-    RepositoryStateData s1 = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", state.getBranchRevisions().get("refs/heads/master")));//has a single branch
-    RepositoryStateData s2 = RepositoryStateData.createVersionState("refs/heads/master", state.getBranchRevisions());//has many branches
-
-    git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
-    assertEquals(fetchCounter.getFetchCount(), 1);
-
-    FileUtil.delete(config.getCachesDir());
-    fetchCounter.resetFetchCounter();
-
-    git.getCollectChangesPolicy().collectChanges(root, s2, s1, CheckoutRules.DEFAULT);
-    assertEquals(fetchCounter.getFetchCount(), 1);
-  }
-
-
-  @Test
-  //this test should be removed if a single fetch works fine
-  public void should_be_able_to_do_fetch_per_branch() throws Exception {
-    VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
-      .withBranch("master")
-      .withReportTags(true)
-      .build();
-
-    //setup fetcher with counter
-    ServerPluginConfig config = myConfigBuilder.withPerBranchFetch(true).build();
-    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager);
-    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
-    GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
-
-    RepositoryStateData state = git.getCurrentState(root);
-    RepositoryStateData s1 = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", state.getBranchRevisions().get("refs/heads/master")));//has a single branch
-    RepositoryStateData s2 = RepositoryStateData.createVersionState("refs/heads/master", state.getBranchRevisions());//has many branches
-
-    git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
-    assertTrue(fetchCounter.getFetchCount() > 1);
-
-    FileUtil.delete(config.getCachesDir());
-    fetchCounter.resetFetchCounter();
-
-    git.getCollectChangesPolicy().collectChanges(root, s2, s1, CheckoutRules.DEFAULT);
-    assertTrue(fetchCounter.getFetchCount() > 1);
-  }
-
-
-  @Test
-  @TestFor(issues = "http://youtrack.jetbrains.com/issue/TW-29798#comment=27-537697")
-  public void fetch_should_not_fail_if_remote_repository_does_not_have_some_branches() throws Exception {
-    VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
-      .withBranch("master")
-      .withReportTags(true)
-      .build();
-
-    //setup fetcher with a counter
-    ServerPluginConfig config = myConfigBuilder.build();
-    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager);
-    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
-    GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
-
-    RepositoryStateData state = git.getCurrentState(root);
-    RepositoryStateData s1 = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", state.getBranchRevisions().get("refs/heads/master")));//has a single branch
-    Map<String, String> branches = new HashMap<String, String>(state.getBranchRevisions());
-    branches.put("refs/heads/unknown.branch", branches.get(state.getDefaultBranchName()));//unknown branch that points to a commit that exists in remote repo
-    RepositoryStateData s2 = RepositoryStateData.createVersionState("refs/heads/master", branches);//has many branches, some of them don't exist in remote repository
-
-    git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
-    assertEquals(fetchCounter.getFetchCount(), 1);
-
-    FileUtil.delete(config.getCachesDir());
-    fetchCounter.resetFetchCounter();
-
-    git.getCollectChangesPolicy().collectChanges(root, s2, s1, CheckoutRules.DEFAULT);
-    assertEquals(fetchCounter.getFetchCount(), 1);
-  }
-
-  @Test
   public void testModificationInfoBuilderSupported() {
     Assert.assertNotNull(getSupport().getVcsExtension(ChangesInfoBuilder.class));
   }
@@ -1534,117 +1159,6 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     Assert.assertEquals(new HashSet<String>(next.getParentRevisions()), new HashSet<String>(Arrays.asList("6fce8fe45550eb72796704a919dad68dc44be44a", "ee886e4adb70fbe3bdc6f3f6393598b3f02e8009")));
     Assert.assertEquals(next.getChanges().size(), 3);
-  }
-
-  @TestFor(issues = {"TW-36080", "TW-35700"})
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void branch_turned_into_dir(boolean fetchInSeparateProcess) throws Exception {
-    myConfigBuilder.setSeparateProcessForFetch(fetchInSeparateProcess);
-    VcsRoot root = vcsRoot().withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
-      .withBranch("master")
-      .build();
-    RepositoryStateData s1 = createVersionState("refs/heads/master",
-      map("refs/heads/master", "f3f826ce85d6dad25156b2d7550cedeb1a422f4c",
-          "refs/heads/patch-tests", "a894d7d58ffde625019a9ecf8267f5f1d1e5c341"));
-    RepositoryStateData s2 = createVersionState("refs/heads/master",
-      map("refs/heads/master", "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f",
-          "refs/heads/patch-tests", "a894d7d58ffde625019a9ecf8267f5f1d1e5c341"));
-
-    getSupport().getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
-
-    //rename refs/heads/patch-tests to refs/heads/patch-tests/a and make it point to commit not yet fetched by TC, so the fetch is required
-    Repository r = new RepositoryBuilder().setGitDir(myMainRepositoryDir).build();
-    r.getRefDatabase().newRename("refs/heads/patch-tests", "refs/heads/patch-tests/a").rename();
-    RefUpdate refUpdate = r.updateRef("refs/heads/patch-tests/a");
-    refUpdate.setForceUpdate(true);
-    refUpdate.setNewObjectId(ObjectId.fromString("39679cc440c83671fbf6ad8083d92517f9602300"));
-    refUpdate.update();
-
-    RepositoryStateData s3 = RepositoryStateData.createVersionState("refs/heads/master",
-      map("refs/heads/master", "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f",
-        "refs/heads/patch-tests/a", "39679cc440c83671fbf6ad8083d92517f9602300"));
-    getSupport().getCollectChangesPolicy().collectChanges(root, s2, s3, CheckoutRules.DEFAULT);
-  }
-
-  private static class FetchCommandCountDecorator implements FetchCommand {
-
-    private final FetchCommand myDelegate;
-    private int myFetchCount = 0;
-
-    FetchCommandCountDecorator(FetchCommand delegate) {
-      myDelegate = delegate;
-    }
-
-    public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull FetchSettings settings) throws NotSupportedException, VcsException, TransportException {
-      myDelegate.fetch(db, fetchURI, refspecs, settings);
-      inc();
-    }
-
-    private synchronized void inc() {
-      myFetchCount++;
-    }
-
-    public synchronized int getFetchCount() {
-      return myFetchCount;
-    }
-
-    public synchronized void resetFetchCounter() {
-      myFetchCount = 0;
-    }
-  }
-
-
-  @Test
-  @TestFor(issues = "TW-36653")
-  public void comma_in_branch_name() throws Exception {
-    VcsRoot root = vcsRoot().withBranch("refs/heads/master").withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
-
-    File brokenRef = new File(myMainRepositoryDir, "refs" + File.separator + "heads" + File.separator + "aaa,bbb");
-    brokenRef.getParentFile().mkdirs();
-    FileUtil.writeFileAndReportErrors(brokenRef, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6\n");
-
-    RepositoryStateData s1 = createVersionState("refs/heads/master", map("refs/heads/master", "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6"));
-    RepositoryStateData s2 = createVersionState("refs/heads/master", map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9",
-                                                                         "refs/heads/aaa,bbb", "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6"));
-
-    getSupport().getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);//no error
-  }
-
-
-  @Test
-  @TestFor(issues = "TW-29770")
-  public void collect_changes_with_branch_pointing_to_a_non_commit() throws Exception {
-    //setup remote repo with a branch pointing to a non commit
-    VcsRoot root = vcsRoot().withBranch("refs/heads/master").withFetchUrl(myMainRepositoryDir.getAbsolutePath()).build();
-
-    File brokenRef = new File(myMainRepositoryDir, "refs" + File.separator + "heads" + File.separator + "broken_branch");
-    brokenRef.getParentFile().mkdirs();
-    FileUtil.writeFileAndReportErrors(brokenRef, "1fefad14fba39ac378e4e345e295fa1f90e343ae\n");//it's a tree, not a commit
-
-    RepositoryStateData state1 = createVersionState("refs/heads/master",
-                                                    map("refs/heads/master", "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6",
-                                                        "refs/heads/broken_branch", "1fefad14fba39ac378e4e345e295fa1f90e343ae"));
-    RepositoryStateData state2 = createVersionState("refs/heads/master",
-                                                    map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9",
-                                                        "refs/heads/broken_branch", "1fefad14fba39ac378e4e345e295fa1f90e343ae"));
-
-    //collect changes in this repo, no exception should be thrown
-    getSupport().getCollectChangesPolicy().collectChanges(root, state1, state2, CheckoutRules.DEFAULT);
-  }
-
-
-  @Test
-  @TestFor(issues = "TW-41943")
-  public void collect_changes_with_broken_commit_encoding() throws Exception {
-    VcsRoot root = vcsRoot().withFetchUrl(myMainRepositoryDir).build();
-
-    RepositoryStateData state1 = createVersionState("refs/heads/master",
-                                                    map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"));
-    RepositoryStateData state2 = createVersionState("refs/heads/master", map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9",
-                                                                             "refs/heads/brokenEncoding", "b0799af24940ea316efd2985b5c5c10b47875abd"));
-    List<ModificationData> changes = getSupport().getCollectChangesPolicy().collectChanges(root, state1, state2, CheckoutRules.DEFAULT);
-    ModificationData commit = changes.get(0);
-    assertEquals("Cannot parse commit message due to unknown commit encoding 'brokenEncoding'", commit.getDescription());
   }
 
 

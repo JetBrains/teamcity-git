@@ -45,6 +45,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitPatchTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AskPassGeneratorTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ContentProviderTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CollectChangesTest"/>
     </classes>
   </test>
 </suite>

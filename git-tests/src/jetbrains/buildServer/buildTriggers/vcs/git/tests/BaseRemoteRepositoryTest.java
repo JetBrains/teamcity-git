@@ -19,8 +19,10 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.log.LogInitializer;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 
@@ -39,6 +41,11 @@ public abstract class BaseRemoteRepositoryTest {
 
   protected BaseRemoteRepositoryTest(String... repositories) {
     myRepositories = repositories;
+  }
+
+  @BeforeClass
+  public void setUpClass() {
+    LogInitializer.setUnitTest(true);
   }
 
   @BeforeMethod
