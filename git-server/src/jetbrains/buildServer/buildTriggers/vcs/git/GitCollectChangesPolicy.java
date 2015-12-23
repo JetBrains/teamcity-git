@@ -41,7 +41,7 @@ import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 /**
 * @author dmitry.neverov
 */
-public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, CollectChangesBetweenRepositories, ChangesInfoBuilder {
+public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, CollectChangesBetweenRepositories {
 
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
 
@@ -196,45 +196,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     }
   }
 
-
-  public void fetchChangesInfo(@NotNull VcsRoot root,
-                               @NotNull CheckoutRules checkoutRules,
-                               @NotNull Collection<String> revisions,
-                               @NotNull ChangesConsumer consumer) throws VcsException {
-    OperationContext context = myVcs.createContext(root, "collecting changes");
-    try {
-      final Repository r = context.getRepository();
-
-      for (String commitId : revisions) {
-        final String branch = "fake-branch-" + commitId;
-        final RepositoryStateData oneCommitData = RepositoryStateData.createVersionState(branch, commitId);
-
-        final ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
-
-        revWalk.sort(RevSort.TOPO);
-        markStart(r, revWalk, oneCommitData);
-
-        final List<RevCommit> commits = getCommits(oneCommitData, r, revWalk);
-        if (commits.isEmpty()) {
-          throw new VcsException("Commit was not found: " + commitId);
-        }
-
-        for (RevCommit commit : commits) {
-          for (RevCommit parent : commit.getParents()) {
-            revWalk.markUninteresting(parent);
-          }
-        }
-
-        while (revWalk.next() != null) {
-          consumer.consumeChange(revWalk.createModificationData());
-        }
-      }
-    } catch (Exception e) {
-      throw context.wrapException(e);
-    } finally {
-      context.close();
-    }
-  }
 
   private void ensureRepositoryStateLoaded(@NotNull OperationContext context,
                                            @NotNull Repository db,

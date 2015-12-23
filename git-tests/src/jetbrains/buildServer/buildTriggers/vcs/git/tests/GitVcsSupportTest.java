@@ -22,7 +22,6 @@ import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleCommitException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleConfigException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleEntryException;
@@ -38,14 +37,17 @@ import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchTestCase;
-import jetbrains.vcs.api.ChangeData;
-import junit.framework.Assert;
 import org.apache.log4j.Level;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.internal.storage.file.LockFile;
-import org.eclipse.jgit.lib.*;
-import org.eclipse.jgit.transport.*;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.transport.FetchConnection;
+import org.eclipse.jgit.transport.PushConnection;
+import org.eclipse.jgit.transport.Transport;
+import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -64,7 +66,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.*;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.FileUtil.writeFile;
 import static jetbrains.buildServer.util.Util.map;
@@ -1056,109 +1059,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals("2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", state.getBranchRevisions().get("refs/tags/v0.5"));
     assertEquals("5711cbfe566b6c92e331f95d4b236483f4532eed", state.getBranchRevisions().get("refs/tags/v0.7"));
     assertEquals("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", state.getBranchRevisions().get("refs/tags/v1.0"));
-  }
-
-
-  @Test
-  public void testModificationInfoBuilderSupported() {
-    Assert.assertNotNull(getSupport().getVcsExtension(ChangesInfoBuilder.class));
-  }
-
-  @Test
-  public void testBuildModificationInfo() throws VcsException {
-    final VcsRoot vcsRoot = getVcsRoot();
-
-    final GitVcsSupport support = getSupport();
-    final List<ChangeData> list = new ArrayList<ChangeData>();
-    support.getCollectChangesPolicy().fetchAllRefs(vcsRoot);
-    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, Arrays.asList("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46"), new ChangesConsumer() {
-        public void consumeChange(@NotNull ChangeData change) {
-          list.add(change);
-        }
-      }
-    );
-
-    Assert.assertEquals(list.size(), 1);
-    ChangeData next = list.iterator().next();
-
-    System.out.println("next = " + next);
-
-    Assert.assertEquals(next.getParentRevisions(), Arrays.asList("a894d7d58ffde625019a9ecf8267f5f1d1e5c341"));
-    Assert.assertEquals(next.getChanges().size(), 1);
-
-    final VcsChange change = next.getChanges().get(0);
-    Assert.assertEquals(change.getRelativeFileName(), "dir1/file3.txt");
-  }
-
-  @Test
-  public void testBuildModificationInfo_parent_child() throws VcsException {
-    final VcsRoot vcsRoot = getVcsRoot();
-
-    final GitVcsSupport support = getSupport();
-
-    final List<ChangeData> list = new ArrayList<ChangeData>();
-    support.getCollectChangesPolicy().fetchAllRefs(vcsRoot);
-    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, Arrays.asList("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", "a894d7d58ffde625019a9ecf8267f5f1d1e5c341"), new ChangesConsumer() {
-                                                         public void consumeChange(@NotNull ChangeData change) {
-                                                           list.add(change);
-                                                         }
-                                                       }
-    );
-
-    Assert.assertEquals(list.size(), 2);
-
-    for (ChangeData data : list) {
-      final String commitId = data.getVersion();
-
-      if (commitId.equals("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46")) {
-        Assert.assertEquals(data.getParentRevisions(), Arrays.asList("a894d7d58ffde625019a9ecf8267f5f1d1e5c341"));
-      } else if (commitId.equals("a894d7d58ffde625019a9ecf8267f5f1d1e5c341")) {
-        Assert.assertEquals(data.getParentRevisions(), Arrays.asList("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653"));
-      } else {
-        Assert.fail("Unexpected commit: " + commitId);
-      }
-    }
-  }
-
-  @Test
-  public void testBuildModificationInfo_parent_gap_child() throws VcsException {
-    final VcsRoot vcsRoot = getVcsRoot();
-
-    final GitVcsSupport support = getSupport();
-
-    final List<ChangeData> list = new ArrayList<ChangeData>();
-    support.getCollectChangesPolicy().fetchAllRefs(vcsRoot);
-    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, Arrays.asList("70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653"), new ChangesConsumer() {
-                                                         public void consumeChange(@NotNull ChangeData change) {
-                                                           list.add(change);
-                                                         }
-                                                       }
-    );
-
-    Assert.assertEquals(list.size(), 2);
-  }
-
-  @Test
-  public void testBuildModificationInfo_MergeCommit() throws VcsException {
-    final VcsRoot vcsRoot = getVcsRoot();
-
-    final GitVcsSupport support = getSupport();
-    final List<ChangeData> list = new ArrayList<ChangeData>();
-    support.getCollectChangesPolicy().fetchAllRefs(vcsRoot);
-    support.getCollectChangesPolicy().fetchChangesInfo(vcsRoot, CheckoutRules.DEFAULT, Arrays.asList("f3f826ce85d6dad25156b2d7550cedeb1a422f4c"), new ChangesConsumer() {
-                                                         public void consumeChange(@NotNull ChangeData change) {
-                                                           list.add(change);
-                                                         }
-                                                       }
-    );
-
-    Assert.assertEquals(list.size(), 1);
-    ChangeData next = list.iterator().next();
-
-    System.out.println("next = " + next);
-
-    Assert.assertEquals(new HashSet<String>(next.getParentRevisions()), new HashSet<String>(Arrays.asList("6fce8fe45550eb72796704a919dad68dc44be44a", "ee886e4adb70fbe3bdc6f3f6393598b3f02e8009")));
-    Assert.assertEquals(next.getChanges().size(), 3);
   }
 
 
