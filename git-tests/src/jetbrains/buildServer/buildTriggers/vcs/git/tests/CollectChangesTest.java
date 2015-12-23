@@ -51,16 +51,18 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
   private PluginConfigBuilder myConfig;
   private File myRepo;
+  private ServerPaths myServerPaths;
 
   public CollectChangesTest() {
-    super("repo.git");
+    super("repo.git", "TW-43643-1", "TW-43643-2");
   }
 
 
   @BeforeMethod
   public void setUp() throws Exception {
     super.setUp();
-    myConfig = new PluginConfigBuilder(new ServerPaths(myTempFiles.createTempDir().getAbsolutePath()));
+    myServerPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
+    myConfig = new PluginConfigBuilder(myServerPaths);
     myRepo = getRemoteRepositoryDir("repo.git");
   }
 
@@ -486,6 +488,48 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     List<ModificationData> changes = git().getCollectChangesPolicy().collectChanges(root, state1, state2, CheckoutRules.DEFAULT);
     ModificationData commit = changes.get(0);
     assertEquals("Cannot parse commit message due to unknown commit encoding 'brokenEncoding'", commit.getDescription());
+  }
+
+
+  @TestFor(issues = "TW-43643")
+  public void should_fetch_all_refs_when_commit_not_found() throws Exception {
+    File repo = getRemoteRepositoryDir("TW-43643-1");
+
+    VcsRoot rootBranch1 = vcsRoot().withFetchUrl(repo).withBranch("branch1").build();
+    //clone repository on server
+    RepositoryStateData s1 = RepositoryStateData.createVersionState("refs/heads/branch1", "b56875abce7e1488991223c29ed14cc26ec4b786");
+    RepositoryStateData s2 = RepositoryStateData.createVersionState("refs/heads/branch1", "22d8a6d243915cb9f878a0ef95a0999bb5f56715");
+    git().getCollectChangesPolicy().collectChanges(rootBranch1, s1, s2, CheckoutRules.DEFAULT);
+
+    //update remote repository: branch1 is removed, branch2 is added
+    File updatedRepo = getRemoteRepositoryDir("TW-43643-2");
+    FileUtil.delete(repo);
+    repo.mkdirs();
+    FileUtil.copyDir(updatedRepo, repo);
+
+    //delete clone on server to emulate git gc which prunes the '22d8a6d243915cb9f878a0ef95a0999bb5f56715'
+    //commit unreachable from branches (tags are not fetched by default)
+    MirrorManagerImpl mirrors = new MirrorManagerImpl(myConfig.build(), new HashCalculatorImpl());
+    File cloneOnServer = mirrors.getMirrorDir(repo.getCanonicalPath());
+    FileUtil.delete(cloneOnServer);
+
+    //collect changes in master to clone the repository
+    VcsRoot rootMaster = vcsRoot().withFetchUrl(repo).withBranch("master").build();
+    RepositoryStateData s3 = RepositoryStateData.createVersionState("refs/heads/master", "b56875abce7e1488991223c29ed14cc26ec4b786");
+    RepositoryStateData s4 = RepositoryStateData.createVersionState("refs/heads/master", "ea5bd5a6e37ac1592fb1c4864bb38cbce95fa93a");
+    git().getCollectChangesPolicy().collectChanges(rootMaster, s3, s4, CheckoutRules.DEFAULT);
+
+    //clone on the server doesn't contain the commit branch1 was pointing to:
+    Repository repository = new RepositoryBuilder().setGitDir(cloneOnServer).setBare().build();
+    then(repository.hasObject(ObjectId.fromString("22d8a6d243915cb9f878a0ef95a0999bb5f56715"))).isFalse();
+
+    //but we we collect changes between branch1 and branch2 we should fetch all
+    //available refs, get the '22d8a6d243915cb9f878a0ef95a0999bb5f56715' reachable from tag
+    //and report changes:
+    VcsRoot rootBranch2 = vcsRoot().withFetchUrl(repo).withBranch("branch2").build();
+    RepositoryStateData s5 = RepositoryStateData.createVersionState("refs/heads/branch2", "bc979d0e5bc0e6030a9db27c75004e6eb8cdb961");
+    List<ModificationData> changes = git().getCollectChangesPolicy().collectChanges(rootBranch1, s2, rootBranch2, s5, CheckoutRules.DEFAULT);
+    then(changes).extracting("version").containsExactly("bc979d0e5bc0e6030a9db27c75004e6eb8cdb961");
   }
 
 

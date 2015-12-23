@@ -22,8 +22,10 @@ import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
-import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevSort;
@@ -177,7 +179,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
                                           @NotNull final GitVcsRoot root) throws VcsException {
     try {
       final RepositoryStateData currentState = myVcs.getCurrentState(root);
-      new FetchAllRefs(context.getProgress(), context.getRepository(), context.getGitRoot(), currentState).run();
+      new FetchAllRefs(context.getProgress(), context.getRepository(), context.getGitRoot(), currentState).fetchTrackedRefs();
       return currentState;
     } catch (TransportException e) {
       throw new VcsException(e.getMessage(), e);
@@ -206,12 +208,17 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
       String ref = entry.getKey();
       String revision = GitUtils.versionRevision(entry.getValue());
-      RevCommit commit = myCommitLoader.findCommit(db, revision);
-      if (commit != null)
+      if (myCommitLoader.findCommit(db, revision) != null)
         continue;
 
       if (!fetch.isInvoked())
-        fetch.run();
+        fetch.fetchTrackedRefs();
+
+      if (myCommitLoader.findCommit(db, revision) != null)
+        continue;
+
+      if (!fetch.allRefsFetched())
+        fetch.fetchAllRefs();
 
       try {
         myCommitLoader.getCommit(db, ObjectId.fromString(revision));
@@ -250,8 +257,10 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
                                  @NotNull final RepositoryStateData fromState,
                                  @NotNull final RepositoryStateData toState) throws IOException {
     List<RevCommit> commits = getCommits(fromState, r, walk);
-    if (commits.isEmpty())//if non of fromState revisions found - limit commits by toState
+    if (commits.isEmpty()) {//if non of fromState revisions found - limit commits by toState
       commits = getCommits(toState, r, walk);
+      LOG.info("Cannot find commits referenced by fromState, will not report any changes");
+    }
     for (RevCommit commit : commits) {
       walk.markUninteresting(commit);
     }
@@ -383,6 +392,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
     private final GitVcsRoot myRoot;
     private final Set<String> myAllRefNames;
     private boolean myInvoked = false;
+    private boolean myAllRefsFetched = false;
 
     private FetchAllRefs(@NotNull GitProgress progress,
                          @NotNull Repository db,
@@ -394,14 +404,25 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRoots, Coll
       myAllRefNames = getAllRefNames(states);
     }
 
-    void run() throws NotSupportedException, VcsException, TransportException {
+    void fetchTrackedRefs() throws NotSupportedException, VcsException, TransportException {
       myInvoked = true;
       FetchSettings settings = new FetchSettings(myRoot.getAuthSettings(), myProgress);
       myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL(), calculateRefSpecsForFetch(), settings);
     }
 
+    void fetchAllRefs() throws NotSupportedException, VcsException, TransportException {
+      myInvoked = true;
+      myAllRefsFetched = true;
+      FetchSettings settings = new FetchSettings(myRoot.getAuthSettings(), myProgress);
+      myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL(), Collections.singleton(new RefSpec("refs/*:refs/*").setForceUpdate(true)), settings);
+    }
+
     boolean isInvoked() {
       return myInvoked;
+    }
+
+    boolean allRefsFetched() {
+      return myAllRefsFetched;
     }
 
     private Collection<RefSpec> calculateRefSpecsForFetch() throws VcsException {
