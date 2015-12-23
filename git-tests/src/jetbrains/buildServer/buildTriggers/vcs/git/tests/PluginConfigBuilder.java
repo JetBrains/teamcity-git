@@ -181,10 +181,6 @@ public class PluginConfigBuilder {
         return null;
       }
 
-      public int getNumberOfCommitsWhenFromVersionNotFound() {
-        return myNumberOfCommitsWhenFromVersionNotFound != -1 ? myNumberOfCommitsWhenFromVersionNotFound : myDelegate.getNumberOfCommitsWhenFromVersionNotFound();
-      }
-
       @NotNull
       public String getMonitoringDirName() {
         return myDelegate.getMonitoringDirName();

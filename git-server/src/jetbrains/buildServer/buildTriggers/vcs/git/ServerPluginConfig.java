@@ -88,8 +88,6 @@ public interface ServerPluginConfig extends PluginConfig {
   @Nullable
   Proxy getJschProxy();
 
-  int getNumberOfCommitsWhenFromVersionNotFound();
-
   @NotNull
   String getMonitoringDirName();
 

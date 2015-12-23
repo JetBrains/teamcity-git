@@ -46,12 +46,12 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.testng.AssertJUnit.fail;
 
+@SuppressWarnings({"ResultOfMethodCallIgnored", "ArraysAsListWithZeroOrOneArgument"})
 @Test
 public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
   private PluginConfigBuilder myConfig;
   private File myRepo;
-  private ServerPaths myServerPaths;
 
   public CollectChangesTest() {
     super("repo.git", "TW-43643-1", "TW-43643-2");
@@ -61,8 +61,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   @BeforeMethod
   public void setUp() throws Exception {
     super.setUp();
-    myServerPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    myConfig = new PluginConfigBuilder(myServerPaths);
+    myConfig = new PluginConfigBuilder(new ServerPaths(myTempFiles.createTempDir().getAbsolutePath()));
     myRepo = getRemoteRepositoryDir("repo.git");
   }
 
@@ -179,7 +178,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
       public void run() {
         try {
           String unknown = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-          then(support.collectChanges(root, unknown, "f3f826ce85d6dad25156b2d7550cedeb1a422f4c", CheckoutRules.DEFAULT)).hasSize(3);
+          then(support.collectChanges(root, unknown, "f3f826ce85d6dad25156b2d7550cedeb1a422f4c", CheckoutRules.DEFAULT)).isEmpty();
         } catch (Throwable e) {
           errors.add(e);
         }
@@ -223,30 +222,18 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   public void all_changes_should_have_parents() throws Exception {
     GitVcsSupport support = git();
     VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
-
-    //Every git commit (except initial commit) has at least one parent.
-    //The only way to get initial commit in the results of collectChanges method
-    //is to give it missing commit as fromVersion (in this case we collect changes
-    //based on the date). To make handling parents easier - assign zeroId as a parent
-    //version of initial commit.
-
-    String unknownSHA = "2b9fbfbb43e7edfad018b482e15e7f93cca4e69f";
-    Long firstCommitTime = 1237391915000L;
-    String unknownCommit = GitUtils.makeVersion(unknownSHA, firstCommitTime - 1);
-
-    List<ModificationData> changes = support.collectChanges(root, unknownCommit, "ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", CheckoutRules.DEFAULT);
+    List<ModificationData> changes = support.collectChanges(root, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", "ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", CheckoutRules.DEFAULT);
     then(changes).extracting("version", "parentRevisions")
       .containsOnly(tuple("ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", asList("ad4528ed5c84092fdbe9e0502163cf8d6e6141e7")),
                     tuple("ad4528ed5c84092fdbe9e0502163cf8d6e6141e7", asList("97442a720324a0bd092fb9235f72246dc8b345bc")),
-                    tuple("97442a720324a0bd092fb9235f72246dc8b345bc", asList("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653")),
-                    tuple("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", asList("0000000000000000000000000000000000000000")));
+                    tuple("97442a720324a0bd092fb9235f72246dc8b345bc", asList("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653")));
   }
 
 
   public void collect_changes_after_cache_reset() throws Exception {
     GitVcsSupport git = git();
     VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
-    git.getCollectChangesPolicy().collectChanges(root, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", CheckoutRules.DEFAULT);
+    git.collectChanges(root, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", CheckoutRules.DEFAULT);
 
     ServerPluginConfig config = myConfig.build();
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
@@ -256,7 +243,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
       resetHandler.resetCache(cache);
 
     try {
-      git.getCollectChangesPolicy().collectChanges(root, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", CheckoutRules.DEFAULT);
+      git.collectChanges(root, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", CheckoutRules.DEFAULT);
     } catch (VcsException e) {
       fail("Reset of caches breaks repository");
     }

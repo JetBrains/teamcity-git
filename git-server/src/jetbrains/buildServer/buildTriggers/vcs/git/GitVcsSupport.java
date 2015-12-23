@@ -114,14 +114,25 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @NotNull VcsRoot toRoot,
                                                @Nullable String toVersion,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
-    return getCollectChangesPolicy().collectChanges(fromRoot, fromVersion, toRoot, toVersion, checkoutRules);
+    if (toVersion == null)
+      return Collections.emptyList();
+    GitVcsRoot fromGitRoot = new GitVcsRoot(myRepositoryManager, fromRoot);
+    GitVcsRoot toGitRoot = new GitVcsRoot(myRepositoryManager, toRoot);
+    RepositoryStateData fromState = RepositoryStateData.createVersionState(fromGitRoot.getRef(), fromVersion);
+    RepositoryStateData toState = RepositoryStateData.createVersionState(toGitRoot.getRef(), toVersion);
+    return getCollectChangesPolicy().collectChanges(fromRoot, fromState, toRoot, toState, checkoutRules);
   }
 
   public List<ModificationData> collectChanges(@NotNull VcsRoot root,
                                                @NotNull String fromVersion,
                                                @Nullable String currentVersion,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
-    return getCollectChangesPolicy().collectChanges(root, fromVersion, currentVersion, checkoutRules);
+    if (currentVersion == null)
+      return Collections.emptyList();
+    GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root);
+    RepositoryStateData fromState = RepositoryStateData.createVersionState(gitRoot.getRef(), fromVersion);
+    RepositoryStateData toState = RepositoryStateData.createVersionState(gitRoot.getRef(), currentVersion);
+    return getCollectChangesPolicy().collectChanges(root, fromState, toState, checkoutRules);
   }
 
 

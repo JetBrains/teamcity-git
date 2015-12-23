@@ -70,10 +70,7 @@ public class SubmoduleErrorsTest {
     String brokenCommit = "9c328ea69b41ad2bfa162c72fd52cf87376225b7";
     VcsRoot root = vcsRoot().withFetchUrl(myMainRepoUrl).withSubmodulePolicy(SubmodulesCheckoutPolicy.CHECKOUT).build();
     try {
-      myGitSupport.getCollectChangesPolicy().collectChanges(root,
-                                                            "6dbc05799659295e480894e367f4159d57fba30d",
-                                                            brokenCommit,
-                                                            CheckoutRules.DEFAULT);
+      myGitSupport.collectChanges(root, "6dbc05799659295e480894e367f4159d57fba30d", brokenCommit, CheckoutRules.DEFAULT);
       fail("Should fail due to incorrect submodule url");
     } catch (VcsException e) {
       String msg = e.getMessage();

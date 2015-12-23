@@ -309,10 +309,6 @@ public class PluginConfigImpl implements ServerPluginConfig {
       options.add("-D" + key + "=" + value);
   }
 
-  public int getNumberOfCommitsWhenFromVersionNotFound() {
-    return TeamCityProperties.getInteger("teamcity.git.from.version.not.found.commits.number", 10);
-  }
-
   public Proxy getJschProxy() {
     String sshProxyType = TeamCityProperties.getProperty(TEAMCITY_GIT_SSH_PROXY_TYPE);
     if (isEmpty(sshProxyType))
