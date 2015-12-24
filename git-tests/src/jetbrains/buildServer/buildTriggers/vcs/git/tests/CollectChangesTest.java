@@ -97,7 +97,6 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void testConcurrentCollectBuildChanges(boolean fetchInSeparateProcess) throws Throwable {
     myConfig.setSeparateProcessForFetch(fetchInSeparateProcess);
-    myConfig.setNumberOfCommitsWhenFromVersionNotFound(3);
     final GitVcsSupport support = git();
     final List<Throwable> errors = Collections.synchronizedList(new ArrayList<Throwable>());
 

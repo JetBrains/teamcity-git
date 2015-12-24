@@ -48,7 +48,6 @@ public class PluginConfigBuilder {
   private Integer myIdleTimeoutSeconds;
   private Integer myFetchTimeoutSeconds;
   private Long myMirrorExpirationTimeoutMillis;
-  private int myNumberOfCommitsWhenFromVersionNotFound = -1;
   private ServerPaths myPaths;
   private File myDotBuildServerDir;
   private Map<String, String> myFetcherProperties = new HashMap<String, String>();
@@ -331,11 +330,6 @@ public class PluginConfigBuilder {
     return this;
   }
 
-
-  public PluginConfigBuilder setNumberOfCommitsWhenFromVersionNotFound(int numberOfCommits) {
-    myNumberOfCommitsWhenFromVersionNotFound = numberOfCommits;
-    return this;
-  }
 
   public PluginConfigBuilder withDotBuildServerDir(@NotNull File dotBuildServer) {
     myDotBuildServerDir = dotBuildServer;
