@@ -97,7 +97,8 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
 
 
   public void testConnection_should_throw_exception_for_anonymous_git_url_with_username() throws Exception {
-    ServerPluginConfig config = pluginConfig().withDotBuildServerDir(myTempFiles.createTempDir()).setFetchTimeout(3).build();
+    ServerPluginConfig config = pluginConfig().withDotBuildServerDir(myTempFiles.createTempDir())
+      .setFetchTimeout(2).setCurrentStateTimeoutSeconds(2).build();
     myGit = gitSupport().withServerPaths(myPaths).withPluginConfig(config).build();
 
     String url = "git://git@some.org/repository";

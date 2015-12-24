@@ -47,6 +47,7 @@ public class PluginConfigBuilder {
   private Integer myFixedSubmoduleCommitSearchDepth;
   private Integer myIdleTimeoutSeconds;
   private Integer myFetchTimeoutSeconds;
+  private Integer myCurrentStateTimeoutSeconds;
   private Long myMirrorExpirationTimeoutMillis;
   private ServerPaths myPaths;
   private File myDotBuildServerDir;
@@ -90,7 +91,7 @@ public class PluginConfigBuilder {
       }
 
       public int getRepositoryStateTimeoutSeconds() {
-        return myDelegate.getRepositoryStateTimeoutSeconds();
+        return myCurrentStateTimeoutSeconds != null ? myCurrentStateTimeoutSeconds : myDelegate.getRepositoryStateTimeoutSeconds();
       }
 
       public int getPatchProcessIdleTimeoutSeconds() {
@@ -374,6 +375,11 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setFetchTimeout(final Integer fetchTimeoutSeconds) {
     myFetchTimeoutSeconds = fetchTimeoutSeconds;
+    return this;
+  }
+
+  public PluginConfigBuilder setCurrentStateTimeoutSeconds(final Integer currentStateTimeoutSeconds) {
+    myCurrentStateTimeoutSeconds = currentStateTimeoutSeconds;
     return this;
   }
 
