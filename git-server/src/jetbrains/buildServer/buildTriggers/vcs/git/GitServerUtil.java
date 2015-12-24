@@ -194,7 +194,7 @@ public class GitServerUtil {
 
     if (root.isOnGithub()) {
       if (isWrongGithubUsername(te, root)) {
-        String message = "Wrong username: '" + root.getAuthSettings().getUserName() + "', GitHub expects a username 'git'";
+        String message = "Wrong username: '" + root.getAuthSettings().getUserName() + "', GitHub expects the 'git' username";
         return new VcsException(message, te);
       }
       if (root.isHttp() && !root.getRepositoryFetchURL().getPath().endsWith(".git") &&
