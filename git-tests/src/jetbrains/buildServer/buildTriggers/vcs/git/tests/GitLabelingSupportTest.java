@@ -133,7 +133,8 @@ public class GitLabelingSupportTest extends BaseRemoteRepositoryTest {
   private void makeCloneOnServer(@NotNull GitVcsSupport git, @NotNull VcsRoot root) throws VcsException {
     RepositoryStateData currentState = git.getCurrentState(root);
     String unknownRevision = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    git.collectChanges(root, unknownRevision, currentState.getDefaultBranchRevision(), CheckoutRules.DEFAULT);
+    String defaultBranchName = currentState.getDefaultBranchName();
+    git.collectChanges(root, unknownRevision, currentState.getBranchRevisions().get(defaultBranchName), CheckoutRules.DEFAULT);
   }
 
 
