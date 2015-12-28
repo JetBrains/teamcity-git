@@ -475,7 +475,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   public boolean useTagPackHeuristics() {
-    return TeamCityProperties.getBoolean("teamcity.git.useTagPackHeuristics");
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.useTagPackHeuristics");
   }
 
   public boolean analyzeTagsInPackHeuristics() {
