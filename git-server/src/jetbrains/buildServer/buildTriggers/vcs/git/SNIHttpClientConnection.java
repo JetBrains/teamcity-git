@@ -380,7 +380,7 @@ public class SNIHttpClientConnection implements HttpConnection {
         Method method = socket.getClass().getDeclaredMethod("setHost", String.class);
         method.invoke(socket, host.getHostName());
       } catch (Exception e) {
-        LOG.warnAndDebugDetails("Failed to enable SNI for host " + host.getHostName(), e);
+        LOG.info("Cannot enable SNI for host " + host.getHostName() + ", continue without SNI, error: " + e.toString());
       }
     }
   }
