@@ -314,6 +314,9 @@ public class AgentRunningBuildBuilder {
         throw new UnsupportedOperationException();
       }
 
+      @NotNull
+      public String getVcsSettingsHashForCheckoutMode(AgentCheckoutMode agentCheckoutMode) {throw new UnsupportedOperationException();}
+
       @Nullable
       public AgentCheckoutMode getEffectiveCheckoutMode() {
         return null;
