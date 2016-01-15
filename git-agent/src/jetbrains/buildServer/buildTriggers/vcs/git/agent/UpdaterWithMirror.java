@@ -21,6 +21,7 @@ import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -150,6 +151,8 @@ public class UpdaterWithMirror extends UpdaterImpl {
     } catch (VcsException e) {
       if (!repeatFetchAttempt)
         throw e;
+      if (!shouldFetchFromScratch(e))
+        throw e;
       if (cleanDir(repositoryDir)) {
         GitFacade git = myGitFactory.create(repositoryDir);
         git.init().setBare(true).call();
@@ -162,6 +165,17 @@ public class UpdaterWithMirror extends UpdaterImpl {
       }
     }
   }
+
+
+  private boolean shouldFetchFromScratch(@NotNull VcsException e) {
+    if (e instanceof GitExecTimeout)
+      return false;
+    String msg = e.getMessage();
+    if (msg.contains("Couldn't find remote ref"))
+      return false;
+    return true;
+  }
+
 
   private boolean cleanDir(final @NotNull File repositoryDir) {
     return myFS.delete(repositoryDir) && myFS.mkdirs(repositoryDir);

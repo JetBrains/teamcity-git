@@ -599,6 +599,48 @@ public class AgentVcsSupportTest {
   }
 
 
+  public void do_not_delete_mirror_if_remote_ref_not_found() throws Exception {
+    MockFS fs = new MockFS();
+    myVcsSupport = new GitAgentVcsSupport(fs, new MockDirectoryCleaner(),
+                                          new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new MockGitPluginDescriptor(), new MockVcsRootSshKeyManagerProvider()),
+                                          myConfigFactory, myMirrorManager, new GitMetaFactoryImpl());
+
+    File mirror = myMirrorManager.getMirrorDir(GitUtils.toURL(myMainRepo));
+    fs.makeDeleteFail(mirror);//if plugin will remove mirror it will fail and try to remap
+    myRoot = vcsRoot().withBranch("refs/heads/unknown").withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).build();
+    try {
+      String unknownRevision = "abababababababababababababababababababab";
+      myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, unknownRevision, myCheckoutDir, createRunningBuild(true), false);
+      fail("update on unknown branch should fail");
+    } catch (VcsException e) {
+      File mirrorAfterFailure = myMirrorManager.getMirrorDir(GitUtils.toURL(myMainRepo));
+      then(mirrorAfterFailure).isEqualTo(mirror);//failure should not cause delete or remap
+    }
+  }
+
+
+  public void do_not_delete_mirror_on_timeout() throws Exception {
+    MockFS fs = new MockFS();
+    myVcsSupport = new GitAgentVcsSupport(fs, new MockDirectoryCleaner(),
+                                          new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new MockGitPluginDescriptor(), new MockVcsRootSshKeyManagerProvider()),
+                                          myConfigFactory, myMirrorManager, new GitMetaFactoryImpl());
+
+    String unreachableRepository = "git://some.org/unreachable.git";
+    File mirror = myMirrorManager.getMirrorDir(unreachableRepository);
+    fs.makeDeleteFail(mirror);//if plugin will remove mirror it will fail and try to remap
+    myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(unreachableRepository).build();
+    try {
+      String revision = "abababababababababababababababababababab";
+      AgentRunningBuild build = runningBuild().useLocalMirrors(true).sharedConfigParams("teamcity.git.idle.timeout.seconds", "1").build();
+      myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, revision, myCheckoutDir, build, false);
+      fail("update on unreachable repository should fail");
+    } catch (VcsException e) {
+      File mirrorAfterFailure = myMirrorManager.getMirrorDir(unreachableRepository);
+      then(mirrorAfterFailure).isEqualTo(mirror);//failure should not cause delete or remap
+    }
+  }
+
+
   public void checkout_tag() throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "refs/tags/v1.0");
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
