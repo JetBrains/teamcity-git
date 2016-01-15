@@ -72,7 +72,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
     VcsRootSshKeyManagerProvider provider = new MockVcsRootSshKeyManagerProvider();
     GitMetaFactory metaFactory = new GitMetaFactoryImpl();
     final BuildAgent agent = new MockBuildAgent();
-    myVcsSupport = new GitAgentVcsSupport(new MockDirectoryCleaner(),
+    myVcsSupport = new GitAgentVcsSupport(new FSImpl(), new MockDirectoryCleaner(),
                                           new GitAgentSSHService(agent, agentConfiguration, new MockGitPluginDescriptor(), provider),
                                           pluginConfigFactory, mirrorManager, metaFactory);
     myRoot = vcsRoot()

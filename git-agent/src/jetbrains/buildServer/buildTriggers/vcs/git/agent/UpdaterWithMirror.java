@@ -44,7 +44,8 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
   private final static Logger LOG = Logger.getLogger(UpdaterWithMirror.class);
 
-  public UpdaterWithMirror(@NotNull AgentPluginConfig pluginConfig,
+  public UpdaterWithMirror(@NotNull FS fs,
+                           @NotNull AgentPluginConfig pluginConfig,
                            @NotNull MirrorManager mirrorManager,
                            @NotNull SmartDirectoryCleaner directoryCleaner,
                            @NotNull GitFactory gitFactory,
@@ -54,7 +55,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
                            @NotNull File targetDir,
                            @NotNull CheckoutRules rules,
                            @NotNull CheckoutMode mode) throws VcsException {
-    super(pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode);
+    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode);
   }
 
   @Override
@@ -64,6 +65,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
   }
 
   private void updateLocalMirror() throws VcsException {
+    updateLocalMirror(true);
+  }
+
+  private void updateLocalMirror(boolean repeatFetchAttempt) throws VcsException {
     File bareRepositoryDir = myRoot.getRepositoryDir();
     String mirrorDescription = "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
     LOG.info("Update " + mirrorDescription);
@@ -100,10 +105,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
       git.repack().call();
       removeOrphanedIdxFiles(bareRepositoryDir);
     }
-    fetchMirror(bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName), false);
+    fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName), false);
     if (hasRevision(bareRepositoryDir, myRevision))
       return;
-    fetchMirror(bareRepositoryDir, "+refs/heads/*:refs/heads/*", false);
+    fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+refs/heads/*:refs/heads/*", false);
   }
 
 
@@ -135,18 +140,31 @@ public class UpdaterWithMirror extends UpdaterImpl {
   }
 
 
-  private void fetchMirror(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone) throws VcsException {
+  private void fetchMirror(boolean repeatFetchAttempt,
+                           @NotNull File repositoryDir,
+                           @NotNull String refspec,
+                           boolean shallowClone) throws VcsException {
     removeRefLocks(repositoryDir);
     try {
       fetch(repositoryDir, refspec, shallowClone);
     } catch (VcsException e) {
-      FileUtil.delete(repositoryDir);
-      repositoryDir.mkdirs();
-      GitFacade git = myGitFactory.create(repositoryDir);
-      git.init().setBare(true).call();
-      git.addRemote().setName("origin").setUrl(myRoot.getRepositoryFetchURL().toString()).call();
-      fetch(repositoryDir, refspec, shallowClone);
+      if (!repeatFetchAttempt)
+        throw e;
+      if (cleanDir(repositoryDir)) {
+        GitFacade git = myGitFactory.create(repositoryDir);
+        git.init().setBare(true).call();
+        git.addRemote().setName("origin").setUrl(myRoot.getRepositoryFetchURL().toString()).call();
+        fetch(repositoryDir, refspec, shallowClone);
+      } else {
+        LOG.info("Failed to delete repository " + repositoryDir + " after failed checkout, clone repository in another directory");
+        myMirrorManager.invalidate(repositoryDir);
+        updateLocalMirror(false);
+      }
     }
+  }
+
+  private boolean cleanDir(final @NotNull File repositoryDir) {
+    return myFS.delete(repositoryDir) && myFS.mkdirs(repositoryDir);
   }
 
 
@@ -162,6 +180,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
   @Override
   protected void setupExistingRepository() throws VcsException {
+    removeUrlSections();
     setUseLocalMirror();
     disableAlternates();
   }

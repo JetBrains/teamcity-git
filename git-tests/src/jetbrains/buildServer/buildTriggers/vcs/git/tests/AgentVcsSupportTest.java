@@ -111,7 +111,7 @@ public class AgentVcsSupportTest {
     myMirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl());
     VcsRootSshKeyManagerProvider provider = new MockVcsRootSshKeyManagerProvider();
     myBuildAgent = new MockBuildAgent();
-    myVcsSupport = new GitAgentVcsSupport(new MockDirectoryCleaner(),
+    myVcsSupport = new GitAgentVcsSupport(new FSImpl(), new MockDirectoryCleaner(),
                                           new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new MockGitPluginDescriptor(), provider),
                                           myConfigFactory, myMirrorManager, new GitMetaFactoryImpl());
     myBuild = createRunningBuild(true);
@@ -136,7 +136,7 @@ public class AgentVcsSupportTest {
       }
     };
     LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
-    GitAgentVcsSupport git = new GitAgentVcsSupport(new MockDirectoryCleaner(),
+    GitAgentVcsSupport git = new GitAgentVcsSupport(new FSImpl(), new MockDirectoryCleaner(),
                                                     new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new MockGitPluginDescriptor(), provider),
                                                     myConfigFactory, myMirrorManager, loggingFactory);
 
@@ -163,7 +163,7 @@ public class AgentVcsSupportTest {
       }
     };
     LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
-    GitAgentVcsSupport git = new GitAgentVcsSupport(new MockDirectoryCleaner(),
+    GitAgentVcsSupport git = new GitAgentVcsSupport(new FSImpl(), new MockDirectoryCleaner(),
                                                     new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new MockGitPluginDescriptor(), provider),
                                                     myConfigFactory, myMirrorManager, loggingFactory);
 
@@ -558,6 +558,44 @@ public class AgentVcsSupportTest {
 
     //update succeeds
     myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, buildWithMirrors, false);
+  }
+
+
+  @TestFor(issues = "TW-43884")
+  public void should_remap_mirror_if_its_fetch_and_remove_failed() throws Exception {
+    MockFS fs = new MockFS();
+    myVcsSupport = new GitAgentVcsSupport(fs, new MockDirectoryCleaner(),
+                                          new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new MockGitPluginDescriptor(), new MockVcsRootSshKeyManagerProvider()),
+                                          myConfigFactory, myMirrorManager, new GitMetaFactoryImpl());
+
+    File repo = dataFile("repo_for_fetch.1");
+    File remoteRepo = myTempFiles.createTempDir();
+    copyRepository(repo, remoteRepo);
+
+    //run build to prepare mirror
+    VcsRootImpl root = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(remoteRepo)).build();
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "add81050184d3c818560bdd8839f50024c188586", myCheckoutDir, createRunningBuild(true), false);
+
+    //update remote repo: add personal branch
+    delete(remoteRepo);
+    File updatedRepo = dataFile("repo_for_fetch.2.personal");
+    copyRepository(updatedRepo, remoteRepo);
+
+
+    //create refs/heads/personal/1 so that incremental fetch will fail
+    File mirror = myMirrorManager.getMirrorDir(GitUtils.toURL(remoteRepo));
+    Repository r = new RepositoryBuilder().setBare().setGitDir(mirror).build();
+    RefUpdate update = r.updateRef("refs/heads/personal/1");
+    update.setNewObjectId(ObjectId.fromString("d47dda159b27b9a8c4cee4ce98e4435eb5b17168"));
+    update.update();
+
+    //try to fetch unknown branch, fetch fails and delete of the mirror also fails
+    //build should succeed anyway
+    fs.makeDeleteFail(mirror);
+    VcsRootImpl root2 = vcsRoot().withAgentGitPath(getGitPath()).withBranch("refs/heads/personal").withFetchUrl(GitUtils.toURL(remoteRepo)).build();
+    myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, createRunningBuild(true), false);
+    File mirrorAfterBuild = myMirrorManager.getMirrorDir(GitUtils.toURL(remoteRepo));
+    then(mirrorAfterBuild).isNotEqualTo(mirror);//repository was remapped to another dir
   }
 
 

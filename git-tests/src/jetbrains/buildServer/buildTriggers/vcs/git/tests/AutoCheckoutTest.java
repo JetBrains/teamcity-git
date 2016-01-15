@@ -159,7 +159,8 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     VcsRootSshKeyManagerProvider provider = new MockVcsRootSshKeyManagerProvider();
     GitMetaFactory metaFactory = new GitMetaFactoryImpl();
     final BuildAgent agent = new MockBuildAgent();
-    return new GitAgentVcsSupport(new MockDirectoryCleaner(),
+    return new GitAgentVcsSupport(new FSImpl(),
+                                  new MockDirectoryCleaner(),
                                   new GitAgentSSHService(agent, agentConfiguration, new MockGitPluginDescriptor(), provider),
                                   new PluginConfigFactoryImpl(agentConfiguration, detector), mirrorManager, metaFactory);
   }

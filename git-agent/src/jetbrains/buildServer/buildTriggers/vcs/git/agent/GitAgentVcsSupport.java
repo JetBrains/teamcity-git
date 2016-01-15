@@ -40,17 +40,20 @@ import java.util.Set;
  */
 public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheckoutRules2 {
 
+  private final FS myFS;
   private final SmartDirectoryCleaner myDirectoryCleaner;
   private final GitAgentSSHService mySshService;
   private final PluginConfigFactory myConfigFactory;
   private final MirrorManager myMirrorManager;
   private final GitMetaFactory myGitMetaFactory;
 
-  public GitAgentVcsSupport(@NotNull SmartDirectoryCleaner directoryCleaner,
+  public GitAgentVcsSupport(@NotNull FS fs,
+                            @NotNull SmartDirectoryCleaner directoryCleaner,
                             @NotNull GitAgentSSHService sshService,
                             @NotNull PluginConfigFactory configFactory,
                             @NotNull MirrorManager mirrorManager,
                             @NotNull GitMetaFactory gitMetaFactory) {
+    myFS = fs;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
     myConfigFactory = configFactory;
@@ -88,11 +91,11 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     Updater updater;
     AgentGitVcsRoot gitRoot = new AgentGitVcsRoot(myMirrorManager, targetDir, root);
     if (config.isUseAlternates(gitRoot)) {
-      updater = new UpdaterWithAlternates(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode);
+      updater = new UpdaterWithAlternates(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode);
     } else if (config.isUseLocalMirrors(gitRoot)) {
-      updater = new UpdaterWithMirror(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode);
+      updater = new UpdaterWithMirror(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode);
     } else {
-      updater = new UpdaterImpl(config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode);
+      updater = new UpdaterImpl(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode);
     }
     updater.update();
   }

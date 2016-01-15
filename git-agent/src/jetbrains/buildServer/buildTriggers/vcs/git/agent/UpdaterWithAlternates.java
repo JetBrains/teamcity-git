@@ -35,7 +35,8 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
 
   private final static Logger LOG = Logger.getLogger(UpdaterWithMirror.class);
 
-  public UpdaterWithAlternates(@NotNull AgentPluginConfig pluginConfig,
+  public UpdaterWithAlternates(@NotNull FS fs,
+                               @NotNull AgentPluginConfig pluginConfig,
                                @NotNull MirrorManager mirrorManager,
                                @NotNull SmartDirectoryCleaner directoryCleaner,
                                @NotNull GitFactory gitFactory,
@@ -45,7 +46,7 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
                                @NotNull File targetDir,
                                @NotNull CheckoutRules rules,
                                @NotNull CheckoutMode mode) throws VcsException {
-    super(pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode);
+    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode);
   }
 
 

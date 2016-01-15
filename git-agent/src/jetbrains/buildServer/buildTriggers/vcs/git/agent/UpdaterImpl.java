@@ -61,6 +61,7 @@ public class UpdaterImpl implements Updater {
   public final static GitVersion GIT_WITH_SPARSE_CHECKOUT = new GitVersion(1, 7, 4);
   private static final int SILENT_TIMEOUT = 24 * 60 * 60; //24 hours
 
+  protected final FS myFS;
   private final SmartDirectoryCleaner myDirectoryCleaner;
   private final BuildProgressLogger myLogger;
   protected final AgentPluginConfig myPluginConfig;
@@ -72,8 +73,10 @@ public class UpdaterImpl implements Updater {
   protected final AgentRunningBuild myBuild;
   private final CheckoutRules myRules;
   private final CheckoutMode myCheckoutMode;
+  protected final MirrorManager myMirrorManager;
 
-  public UpdaterImpl(@NotNull AgentPluginConfig pluginConfig,
+  public UpdaterImpl(@NotNull FS fs,
+                     @NotNull AgentPluginConfig pluginConfig,
                      @NotNull MirrorManager mirrorManager,
                      @NotNull SmartDirectoryCleaner directoryCleaner,
                      @NotNull GitFactory gitFactory,
@@ -83,6 +86,7 @@ public class UpdaterImpl implements Updater {
                      @NotNull File targetDir,
                      @NotNull CheckoutRules rules,
                      @NotNull CheckoutMode checkoutMode) throws VcsException {
+    myFS = fs;
     myPluginConfig = pluginConfig;
     myDirectoryCleaner = directoryCleaner;
     myGitFactory = gitFactory;
@@ -94,6 +98,7 @@ public class UpdaterImpl implements Updater {
     myFullBranchName = getBranch();
     myRules = rules;
     myCheckoutMode = checkoutMode;
+    myMirrorManager = mirrorManager;
   }
 
 
@@ -400,7 +405,7 @@ public class UpdaterImpl implements Updater {
   }
 
 
-  private void removeUrlSections() throws VcsException {
+  protected void removeUrlSections() throws VcsException {
     Repository r = null;
     try {
       r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
