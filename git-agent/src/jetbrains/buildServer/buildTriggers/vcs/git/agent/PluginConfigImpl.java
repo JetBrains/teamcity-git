@@ -17,11 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.AgentRunningBuild;
+import jetbrains.buildServer.agent.AgentRuntimeProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.util.StringUtil;
 import org.apache.log4j.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -197,6 +198,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
     String value = myBuild.getSharedConfigParameters().get("teamcity.git.updateSubmoduleOriginUrl");
     return !"false".equals(value);
   }
+
+  @Override
+  public boolean isFailOnCleanCheckout() {
+    return "true".equals(myBuild.getSharedConfigParameters().get(AgentRuntimeProperties.FAIL_ON_CLEAN_CHECKOUT));
+  }
+
 
   private int parseTimeout(String valueFromBuild) {
     return parseTimeout(valueFromBuild, DEFAULT_IDLE_TIMEOUT);

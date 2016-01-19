@@ -149,9 +149,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     try {
       fetch(repositoryDir, refspec, shallowClone);
     } catch (VcsException e) {
-      if (!repeatFetchAttempt)
-        throw e;
-      if (!shouldFetchFromScratch(e))
+      if (myPluginConfig.isFailOnCleanCheckout() || !repeatFetchAttempt || !shouldFetchFromScratch(e))
         throw e;
       if (cleanDir(repositoryDir)) {
         GitFacade git = myGitFactory.create(repositoryDir);

@@ -50,4 +50,6 @@ public interface AgentPluginConfig extends PluginConfig {
   boolean isUseSparseCheckout();
 
   boolean isRunGitWithBuildEnv();
+
+  boolean isFailOnCleanCheckout();
 }

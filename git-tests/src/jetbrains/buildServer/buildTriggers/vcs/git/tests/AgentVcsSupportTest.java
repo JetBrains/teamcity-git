@@ -20,9 +20,7 @@ import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
-import jetbrains.buildServer.agent.AgentRunningBuild;
-import jetbrains.buildServer.agent.BuildAgent;
-import jetbrains.buildServer.agent.BuildAgentConfiguration;
+import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
@@ -637,6 +635,47 @@ public class AgentVcsSupportTest {
     } catch (VcsException e) {
       File mirrorAfterFailure = myMirrorManager.getMirrorDir(unreachableRepository);
       then(mirrorAfterFailure).isEqualTo(mirror);//failure should not cause delete or remap
+    }
+  }
+
+
+  @TestFor(issues = "TW-43884")
+  public void mirror_delete_can_be_disable() throws Exception {
+    MockFS fs = new MockFS();
+    myVcsSupport = new GitAgentVcsSupport(fs, new MockDirectoryCleaner(),
+                                          new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new MockGitPluginDescriptor(), new MockVcsRootSshKeyManagerProvider()),
+                                          myConfigFactory, myMirrorManager, new GitMetaFactoryImpl());
+
+    File repo = dataFile("repo_for_fetch.1");
+    File remoteRepo = myTempFiles.createTempDir();
+    copyRepository(repo, remoteRepo);
+
+    //run build to prepare mirror
+    VcsRootImpl root = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(remoteRepo)).build();
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "add81050184d3c818560bdd8839f50024c188586", myCheckoutDir, createRunningBuild(true), false);
+
+    //update remote repo: add personal branch
+    delete(remoteRepo);
+    File updatedRepo = dataFile("repo_for_fetch.2.personal");
+    copyRepository(updatedRepo, remoteRepo);
+
+
+    //create refs/heads/personal/1 so that incremental fetch will fail
+    File mirror = myMirrorManager.getMirrorDir(GitUtils.toURL(remoteRepo));
+    Repository r = new RepositoryBuilder().setBare().setGitDir(mirror).build();
+    RefUpdate update = r.updateRef("refs/heads/personal/1");
+    update.setNewObjectId(ObjectId.fromString("d47dda159b27b9a8c4cee4ce98e4435eb5b17168"));
+    update.update();
+
+    VcsRootImpl root2 = vcsRoot().withAgentGitPath(getGitPath()).withBranch("refs/heads/personal").withFetchUrl(GitUtils.toURL(remoteRepo)).build();
+    fs.makeDeleteFail(mirror);
+    try {
+      AgentRunningBuild build = runningBuild().useLocalMirrors(true).sharedConfigParams(AgentRuntimeProperties.FAIL_ON_CLEAN_CHECKOUT, "true").build();
+      myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
+      fail("Should fail");
+    } catch (VcsException e) {
+      File mirrorAfterBuild = myMirrorManager.getMirrorDir(GitUtils.toURL(remoteRepo));
+      then(mirrorAfterBuild).isEqualTo(mirror);//should fail on first fetch attempt and not remap or delete the mirror
     }
   }
 
