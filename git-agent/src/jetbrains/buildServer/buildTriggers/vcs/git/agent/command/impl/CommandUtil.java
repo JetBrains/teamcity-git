@@ -48,10 +48,12 @@ public class CommandUtil {
     Throwable exception = res.getException();
     String stderr = res.getStderr().trim();
     String stdout = res.getStdout().trim();
+    int exitCode = res.getExitCode();
     String message = "'" + cmdName + "' command failed." +
-            (!StringUtil.isEmpty(stdout) ? "\n" + "stdout: " + stdout : "") +
-            (!StringUtil.isEmpty(stderr) ? "\n" + "stderr: " + stderr : "") +
-            (exception != null ?  "\n" + "exception: " + exception.getLocalizedMessage() : "");
+                     (exitCode != 0 ? "\nexit code: " + exitCode : "") +
+                     (!StringUtil.isEmpty(stdout) ? "\n" + "stdout: " + stdout : "") +
+                     (!StringUtil.isEmpty(stderr) ? "\n" + "stderr: " + stderr : "") +
+                     (exception != null ?  "\n" + "exception: " + exception.getLocalizedMessage() : "");
     if (exception != null && isImportant(exception)) {
       Writer stackWriter = new StringWriter();
       exception.printStackTrace(new PrintWriter(stackWriter));
