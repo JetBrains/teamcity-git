@@ -262,6 +262,11 @@ public class PluginConfigBuilder {
       public boolean analyzeTagsInPackHeuristics() {
         return myDelegate.analyzeTagsInPackHeuristics();
       }
+
+      @Override
+      public boolean checkLabeledCommitIsInRemoteRepository() {
+        return myDelegate.checkLabeledCommitIsInRemoteRepository();
+      }
     };
   }
 

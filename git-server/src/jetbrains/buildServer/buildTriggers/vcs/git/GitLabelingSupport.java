@@ -195,33 +195,42 @@ public class GitLabelingSupport implements LabelingSupport {
                             Set<ObjectId> want,
                             Set<ObjectId> have) throws IOException {
       long start = System.currentTimeMillis();
-      boolean writeOnlyTag = false;
-      if (myConfig.useTagPackHeuristics()) {
-        RevWalk walk = new RevWalk(repository);
-        try {
-          RevObject taggedObject = walk.parseAny(myTagObject.getObject());
-          if (taggedObject.getType() == org.eclipse.jgit.lib.Constants.OBJ_COMMIT) {
-            RevCommit taggedCommit = walk.parseCommit(taggedObject);
-            writeOnlyTag = remoteRepositoryContainsCommit(walk, taggedCommit, have);
-            if (!writeOnlyTag) {
-              LOG.debug("Remote repository doesn't contain the tagged object " + myTagObject.getObject() +
-                        ", use default prepare pack logic");
-            }
-          }
-        } catch (Exception e) {
-          LOG.debug("Failed to determine if the tagged object " + myTagObject.getObject() +
-                    " is present in the remote repository, use default prepare pack logic");
-        } finally {
-          walk.release();
-        }
-      }
-
+      boolean writeOnlyTag = canWriteOnlyTag(repository, have);
       if (writeOnlyTag) {
         writer.preparePack(asList((RevObject)myTagObject).iterator());
       } else {
         writer.preparePack(monitor, want, have);
       }
       myPreparePackDurationMillis = System.currentTimeMillis() - start;
+    }
+
+
+    private boolean canWriteOnlyTag(Repository repository, Set<ObjectId> have) {
+      if (!myConfig.useTagPackHeuristics())
+        return false;
+      if (!myConfig.checkLabeledCommitIsInRemoteRepository())
+        return true;
+      RevWalk walk = new RevWalk(repository);
+      try {
+        RevObject taggedObject = walk.parseAny(myTagObject.getObject());
+        if (taggedObject.getType() == org.eclipse.jgit.lib.Constants.OBJ_COMMIT) {
+          RevCommit taggedCommit = walk.parseCommit(taggedObject);
+          if (!remoteRepositoryContainsCommit(walk, taggedCommit, have)) {
+            LOG.debug("Remote repository doesn't contain the tagged object " + myTagObject.getObject() +
+                      ", use default prepare pack logic");
+            return false;
+          }
+          return true;
+        } else {
+          return false;
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to determine if the tagged object " + myTagObject.getObject() +
+                  " is present in the remote repository, use default prepare pack logic");
+        return false;
+      } finally {
+        walk.release();
+      }
     }
 
 
