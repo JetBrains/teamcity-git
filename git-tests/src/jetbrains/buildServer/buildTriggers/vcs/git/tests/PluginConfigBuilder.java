@@ -60,6 +60,7 @@ public class PluginConfigBuilder {
   private String myPatchClassPath;
   private String myFetchProcessMaxMemory;
   private boolean myUsePackHeuristic;
+  private boolean myFailLabelingWhenPackHeuristicsFail;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -267,6 +268,11 @@ public class PluginConfigBuilder {
       public boolean checkLabeledCommitIsInRemoteRepository() {
         return myDelegate.checkLabeledCommitIsInRemoteRepository();
       }
+
+      @Override
+      public boolean failLabelingWhenPackHeuristicsFails() {
+        return myFailLabelingWhenPackHeuristicsFail || myDelegate.failLabelingWhenPackHeuristicsFails();
+      }
     };
   }
 
@@ -396,6 +402,12 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setUsePackHeuristic(boolean usePackHeuristic) {
     myUsePackHeuristic = usePackHeuristic;
+    return this;
+  }
+
+
+  public PluginConfigBuilder setFailLabelingWhenPackHeuristicsFail(boolean doFail) {
+    myFailLabelingWhenPackHeuristicsFail = doFail;
     return this;
   }
 }

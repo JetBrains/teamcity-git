@@ -218,15 +218,23 @@ public class GitLabelingSupport implements LabelingSupport {
           if (!remoteRepositoryContainsCommit(walk, taggedCommit, have)) {
             LOG.debug("Remote repository doesn't contain the tagged object " + myTagObject.getObject() +
                       ", use default prepare pack logic");
+            if (myConfig.failLabelingWhenPackHeuristicsFails())
+              throw new PackHeuristicsFailed("Remote repository doesn't contain the tagged object " + myTagObject.getObject());
             return false;
           }
           return true;
         } else {
+          if (myConfig.failLabelingWhenPackHeuristicsFails())
+            throw new PackHeuristicsFailed("Pack heuristics doesn't work when tagged object is not a commit");
           return false;
         }
+      } catch (PackHeuristicsFailed e) {
+        throw e;
       } catch (Exception e) {
         LOG.debug("Failed to determine if the tagged object " + myTagObject.getObject() +
                   " is present in the remote repository, use default prepare pack logic");
+        if (myConfig.failLabelingWhenPackHeuristicsFails())
+          throw new PackHeuristicsFailed("Failed to determine if the tagged object " + myTagObject.getObject() + " is present in the remote repository", e);
         return false;
       } finally {
         walk.release();
@@ -323,5 +331,15 @@ public class GitLabelingSupport implements LabelingSupport {
       }
     }
     return RepositoryStateData.createVersionState(defaultBranch, revisions);
+  }
+
+
+  private final static class PackHeuristicsFailed extends RuntimeException {
+    public PackHeuristicsFailed(final String message) {
+      super(message);
+    }
+    public PackHeuristicsFailed(final String message, final Throwable cause) {
+      super(message, cause);
+    }
   }
 }

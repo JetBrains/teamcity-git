@@ -481,4 +481,9 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public boolean checkLabeledCommitIsInRemoteRepository() {
     return TeamCityProperties.getBooleanOrTrue("teamcity.git.tagPackHeuristicsCheckCommit");
   }
+
+  @Override
+  public boolean failLabelingWhenPackHeuristicsFails() {
+    return TeamCityProperties.getBoolean("teamcity.git.failLabelingWhenPackHeuristicsFails");
+  }
 }

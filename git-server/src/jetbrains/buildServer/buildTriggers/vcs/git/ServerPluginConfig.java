@@ -134,4 +134,6 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean analyzeTagsInPackHeuristics();
 
   boolean checkLabeledCommitIsInRemoteRepository();
+
+  boolean failLabelingWhenPackHeuristicsFails();
 }

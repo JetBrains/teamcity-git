@@ -38,6 +38,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilde
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.PluginConfigBuilder.pluginConfig;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 import static org.testng.AssertJUnit.fail;
 
 @SuppressWarnings("ResultOfMethodCallIgnored")
@@ -126,6 +127,32 @@ public class GitLabelingSupportTest extends BaseRemoteRepositoryTest {
     } finally {
       walk.release();
       r.close();
+    }
+  }
+
+
+  public void fail_labeling_when_heuristics_fails() throws Exception {
+    myConfig.setUsePackHeuristic(true);
+    myConfig.setFailLabelingWhenPackHeuristicsFail(true);
+
+    GitVcsSupport git = buildGit();
+    File remoteRepoDir = getRemoteRepositoryDir("repo_for_fetch.2");
+    VcsRoot root = vcsRoot().withFetchUrl(remoteRepoDir).build();
+
+    makeCloneOnServer(git, root);
+
+    //erase commit in the remote repository
+    FileUtil.delete(remoteRepoDir);
+    remoteRepoDir.mkdirs();
+    FileUtil.copyDir(getRemoteRepositoryDir("repo_for_fetch.1"), remoteRepoDir);
+
+    try {
+      //label erased commit
+      String erasedCommit = "d47dda159b27b9a8c4cee4ce98e4435eb5b17168";
+      git.getLabelingSupport().label("label", erasedCommit, root, CheckoutRules.DEFAULT);
+      fail("Should fail labeling since heuristics fails");
+    } catch (VcsException e) {
+      assertTrue(true);
     }
   }
 
