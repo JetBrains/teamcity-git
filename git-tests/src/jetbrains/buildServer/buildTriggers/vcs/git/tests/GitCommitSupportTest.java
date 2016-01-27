@@ -55,7 +55,8 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     ServerPaths myPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
     GitSupportBuilder builder = gitSupport().withServerPaths(myPaths);
     myGit = builder.build();
-    myCommitSupport = new GitCommitSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), builder.getTransportFactory());
+    myCommitSupport = new GitCommitSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), builder.getTransportFactory(),
+                                           builder.getPluginConfig());
     myRoot = vcsRoot().withFetchUrl(getRemoteRepositoryDir("merge")).build();
   }
 

@@ -46,15 +46,18 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
   private final CommitLoader myCommitLoader;
   private final RepositoryManager myRepositoryManager;
   private final TransportFactory myTransportFactory;
+  private final ServerPluginConfig myPluginConfig;
 
   public GitMergeSupport(@NotNull GitVcsSupport vcs,
                          @NotNull CommitLoader commitLoader,
                          @NotNull RepositoryManager repositoryManager,
-                         @NotNull TransportFactory transportFactory) {
+                         @NotNull TransportFactory transportFactory,
+                         @NotNull ServerPluginConfig pluginConfig) {
     myVcs = vcs;
     myCommitLoader = commitLoader;
     myRepositoryManager = repositoryManager;
     myTransportFactory = transportFactory;
+    myPluginConfig = pluginConfig;
     myVcs.addExtension(this);
   }
 
@@ -153,7 +156,8 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     }
 
     synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
-      final Transport tn = myTransportFactory.createTransport(db, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings());
+      final Transport tn = myTransportFactory.createTransport(db, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings(),
+                                                              myPluginConfig.getPushTimeoutSeconds());
       try {
         final PushConnection c = tn.openPush();
         try {

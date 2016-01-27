@@ -267,6 +267,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return idleTimeout;
   }
 
+  @Override
+  public int getPushTimeoutSeconds() {
+    return TeamCityProperties.getInteger("teamcity.git.pushIdleTimeoutSeconds", getIdleTimeoutSeconds());
+  }
+
   public int getRepositoryStateTimeoutSeconds() {
     return TeamCityProperties.getInteger("teamcity.git.repositoryStateTimeoutSeconds", 60);
   }

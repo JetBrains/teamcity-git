@@ -61,6 +61,7 @@ public class PluginConfigBuilder {
   private String myFetchProcessMaxMemory;
   private boolean myUsePackHeuristic;
   private boolean myFailLabelingWhenPackHeuristicsFail;
+  private Integer myPushIdleTimeoutSeconds;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -89,6 +90,11 @@ public class PluginConfigBuilder {
 
       public int getFetchTimeout() {
         return myFetchTimeoutSeconds != null ? myFetchTimeoutSeconds : myDelegate.getFetchTimeout();
+      }
+
+      @Override
+      public int getPushTimeoutSeconds() {
+        return myPushIdleTimeoutSeconds != null ? myPushIdleTimeoutSeconds : myDelegate.getPushTimeoutSeconds();
       }
 
       public int getRepositoryStateTimeoutSeconds() {
@@ -408,6 +414,12 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setFailLabelingWhenPackHeuristicsFail(boolean doFail) {
     myFailLabelingWhenPackHeuristicsFail = doFail;
+    return this;
+  }
+
+
+  public PluginConfigBuilder setPushIdleTimeoutSeconds(int timeoutSeconds) {
+    myPushIdleTimeoutSeconds = timeoutSeconds;
     return this;
   }
 }

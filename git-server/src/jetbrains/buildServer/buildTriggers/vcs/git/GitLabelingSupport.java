@@ -116,7 +116,7 @@ public class GitLabelingSupport implements LabelingSupport {
                       @NotNull Ref tagRef,
                       @NotNull RevisionsInfo revisionsInfo) throws VcsException, IOException {
     long pushStart = System.currentTimeMillis();
-    final Transport tn = myTransportFactory.createTransport(r, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings());
+    final Transport tn = myTransportFactory.createTransport(r, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings(), myConfig.getPushTimeoutSeconds());
     PushConnection c = null;
     try {
       c = tn.openPush();

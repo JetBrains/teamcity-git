@@ -51,15 +51,18 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
   private final CommitLoader myCommitLoader;
   private final RepositoryManager myRepositoryManager;
   private final TransportFactory myTransportFactory;
+  private final ServerPluginConfig myPluginConfig;
 
   public GitCommitSupport(@NotNull GitVcsSupport vcs,
                           @NotNull CommitLoader commitLoader,
                           @NotNull RepositoryManager repositoryManager,
-                          @NotNull TransportFactory transportFactory) {
+                          @NotNull TransportFactory transportFactory,
+                          @NotNull ServerPluginConfig pluginConfig) {
     myVcs = vcs;
     myCommitLoader = commitLoader;
     myRepositoryManager = repositoryManager;
     myTransportFactory = transportFactory;
+    myPluginConfig = pluginConfig;
     myVcs.addExtension(this);
   }
 
@@ -67,7 +70,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
   public CommitPatchBuilder getCommitPatchBuilder(@NotNull VcsRoot root) throws VcsException {
     OperationContext context = myVcs.createContext(root, "commit");
     Repository db = context.getRepository();
-    return new GitCommitPatchBuilder(myVcs, context, myCommitLoader, db, myRepositoryManager, myTransportFactory);
+    return new GitCommitPatchBuilder(myVcs, context, myCommitLoader, db, myRepositoryManager, myTransportFactory, myPluginConfig);
   }
 
 
@@ -81,14 +84,15 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     private final Set<String> myDeletedDirs = new HashSet<String>();
     private final RepositoryManager myRepositoryManager;
     private final TransportFactory myTransportFactory;
-
+    private final ServerPluginConfig myPluginConfig;
 
     private GitCommitPatchBuilder(@NotNull GitVcsSupport vcs,
                                   @NotNull OperationContext context,
                                   @NotNull CommitLoader commitLoader,
                                   @NotNull Repository db,
                                   @NotNull RepositoryManager repositoryManager,
-                                  @NotNull TransportFactory transportFactory) {
+                                  @NotNull TransportFactory transportFactory,
+                                  @NotNull ServerPluginConfig pluginConfig) {
       myVcs = vcs;
       myContext = context;
       myCommitLoader = commitLoader;
@@ -96,6 +100,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       myObjectWriter = db.newObjectInserter();
       myRepositoryManager = repositoryManager;
       myTransportFactory = transportFactory;
+      myPluginConfig = pluginConfig;
     }
 
     public void createFile(@NotNull String path, @NotNull InputStream content) throws VcsException {
@@ -154,7 +159,8 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         ObjectId commitId = createCommit(gitRoot, lastCommit, treeId, commitSettings.getUserName(), nonEmptyMessage(commitSettings));
 
         synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
-          final Transport tn = myTransportFactory.createTransport(myDb, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings());
+          final Transport tn = myTransportFactory.createTransport(myDb, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings(),
+                                                                  myPluginConfig.getPushTimeoutSeconds());
           try {
             final PushConnection c = tn.openPush();
             try {
