@@ -136,7 +136,9 @@ public class GitPatchBuilder {
         myLogger.logFileExcludedByCheckoutRules(path, myRules);
         continue;
       }
-      myLogger.logVisitFile(myTreeWalk.treeWalkInfo(path));
+      if (myLogger.isDebugEnabled()) {
+        myLogger.logVisitFile(myTreeWalk.treeWalkInfo(path));
+      }
       ChangeType changeType = myTreeWalk.classifyChange();
       myLogger.logChangeType(path, changeType);
       switch (changeType) {

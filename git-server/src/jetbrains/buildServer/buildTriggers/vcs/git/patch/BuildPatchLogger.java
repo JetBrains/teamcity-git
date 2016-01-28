@@ -77,4 +77,8 @@ public final class BuildPatchLogger {
   public void cannotLoadFile(@Nullable String path, @NotNull ObjectId objectId) {
     myDelegate.error("Unable to load file: " + path + "(" + objectId.name() + ") from: " + myRepoDebugInfo);
   }
+
+  public boolean isDebugEnabled() {
+    return myDelegate.isDebugEnabled();
+  }
 }
