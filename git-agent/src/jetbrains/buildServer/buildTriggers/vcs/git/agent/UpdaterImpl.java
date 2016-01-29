@@ -111,6 +111,7 @@ public class UpdaterImpl implements Updater {
 
 
   public void update() throws VcsException {
+    myLogger.message("Git version: " + myPluginConfig.getGitVersion());
     checkAuthMethodIsSupported();
     doUpdate();
   }
