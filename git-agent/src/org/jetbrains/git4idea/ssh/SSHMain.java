@@ -199,15 +199,21 @@ public class SSHMain {
    * @throws IOException in case of IO error or authentication failure
    */
   private void authenticate(final Connection c) throws IOException {
-    for (String method : myHost.getPreferredMethods()) {
+    StringBuilder log = new StringBuilder();
+    List<String> preferredMethods = myHost.getPreferredMethods();
+    log.append("Preferred methods: ").append(preferredMethods).append("\n");
+    for (String method : preferredMethods) {
       if (c.isAuthenticationComplete()) {
         return;
       }
       if (PUBLIC_KEY_METHOD.equals(method)) {
+        log.append("Auth method: ").append(PUBLIC_KEY_METHOD).append("\n");
         if (!myHost.supportsPubkeyAuthentication()) {
+          log.append("Auth method ").append(PUBLIC_KEY_METHOD).append(" is not supported\n");
           continue;
         }
         if (!c.isAuthMethodAvailable(myHost.getUser(), PUBLIC_KEY_METHOD)) {
+          log.append("Auth method ").append(PUBLIC_KEY_METHOD).append(" is not supported\n");
           continue;
         }
         File key;
@@ -217,27 +223,31 @@ public class SSHMain {
           key = myHost.getIdentityFile();
         }
         if (key == null) {
+          log.append("Public key is not specified, use default keys\n");
           for (String a : myHost.getHostKeyAlgorithms()) {
             if (SSH_RSA_ALGORITHM.equals(a)) {
-              if (tryPublicKey(c, idRSAPath)) {
+              if (tryPublicKey(c, log, idRSAPath)) {
                 return;
               }
             }
             else if (SSH_DSS_ALGORITHM.equals(a)) {
-              if (tryPublicKey(c, idDSAPath)) {
+              if (tryPublicKey(c, log, idDSAPath)) {
                 return;
               }
             }
           }
         }
         else {
-          if (tryPublicKey(c, key.getPath())) {
+          log.append("Use public key ").append(key.getAbsolutePath()).append("\n");
+          if (tryPublicKey(c, log, key.getPath())) {
             return;
           }
         }
       }
       else if (KEYBOARD_INTERACTIVE_METHOD.equals(method)) {
+        log.append("Auth method: ").append(KEYBOARD_INTERACTIVE_METHOD).append("\n");
         if (!c.isAuthMethodAvailable(myHost.getUser(), KEYBOARD_INTERACTIVE_METHOD)) {
+          log.append("Auth method ").append(KEYBOARD_INTERACTIVE_METHOD).append(" is not available\n");
           continue;
         }
         InteractiveSupport interactiveSupport = new InteractiveSupport();
@@ -251,6 +261,7 @@ public class SSHMain {
           }
           else {
             myLastError = SSHMainBundle.getString("sshmain.keyboard.interactive.failed");
+            log.append("Auth method ").append(KEYBOARD_INTERACTIVE_METHOD).append(" failed\n");
           }
           if (interactiveSupport.myPromptCount == 0 || interactiveSupport.myCancelled) {
             // the interactive callback has never been asked or it was cancelled, exit the loop
@@ -260,15 +271,19 @@ public class SSHMain {
         }
       }
       else if (PASSWORD_METHOD.equals(method)) {
+        log.append("Auth method: ").append(PASSWORD_METHOD).append("\n");
         if (!myHost.supportsPasswordAuthentication()) {
+          log.append("Auth method ").append(PASSWORD_METHOD).append(" is not supported\n");
           continue;
         }
         if (!c.isAuthMethodAvailable(myHost.getUser(), PASSWORD_METHOD)) {
+          log.append("Auth method ").append(PASSWORD_METHOD).append(" is not available\n");
           continue;
         }
         for (int i = 0; i < myHost.getNumberOfPasswordPrompts(); i++) {
           String password = myXmlRpcClient.askPassword(myHandlerNo, getUserHostString(), i != 0, myLastError);
           if (password == null) {
+            log.append("Password is not provided\n");
             break;
           }
           else {
@@ -278,11 +293,13 @@ public class SSHMain {
             }
             else {
               myLastError = SSHMainBundle.getString("sshmain.password.failed");
+              log.append("Auth method ").append(PASSWORD_METHOD).append(" failed\n");
             }
           }
         }
       }
     }
+    System.err.print(log.toString());
     throw new IOException("Authentication failed");
   }
 
@@ -301,9 +318,10 @@ public class SSHMain {
    * @param keyPath a path to key
    * @return true if authentication is successful
    */
-  private boolean tryPublicKey(final Connection c, final String keyPath) {
+  private boolean tryPublicKey(final Connection c, StringBuilder log, final String keyPath) {
     try {
       final File file = new File(keyPath);
+      log.append("Try public key ").append(keyPath).append("\n");
       if (file.exists()) {
         // if encrypted ask user for passphrase
         String passphrase = myPassphrase;
@@ -315,6 +333,7 @@ public class SSHMain {
             passphrase = myXmlRpcClient.askPassphrase(myHandlerNo, getUserHostString(), keyPath, i != 0, myLastError);
             if (passphrase == null) {
               // if no passphrase was entered, just return false and try something other
+              log.append("Authentication failed: passphrase is not specified for ").append(keyPath).append("\n");
               return false;
             }
             else {
@@ -325,6 +344,7 @@ public class SSHMain {
               catch (IOException e) {
                 // decoding failed
                 myLastError = SSHMainBundle.message("sshmain.invalidpassphrase", keyPath);
+                log.append("Invalid passphrase for the key ").append(keyPath).append("\n");
                 continue;
               }
               break;
@@ -332,6 +352,7 @@ public class SSHMain {
           }
           if (i == myHost.getNumberOfPasswordPrompts()) {
             myLastError = SSHMainBundle.message("sshmain.too.mush.passphrase.guesses", keyPath, myHost.getNumberOfPasswordPrompts());
+            log.append("Invalid passphrase for the key ").append(keyPath).append("\n");
             return false;
           }
         }
@@ -344,15 +365,19 @@ public class SSHMain {
           if (passphrase != null) {
             // mark as failed authentication only if passphrase were asked
             myLastError = SSHMainBundle.message("sshmain.pk.authenitication.failed", keyPath);
+            log.append("Authentication failed with key ").append(keyPath).append("\n");
           }
           else {
             myLastError = "";
           }
         }
+      } else {
+        log.append("Public key ").append(keyPath).append(" does not exist\n");
       }
       return false;
     }
     catch (Exception e) {
+      log.append("Error while authentication with public key ").append(keyPath).append(e.getMessage()).append("\n");
       return false;
     }
   }
