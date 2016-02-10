@@ -327,6 +327,8 @@ public class SSHMain {
         String passphrase = myPassphrase;
         char[] text = FileUtil.loadFileText(file);
         if (isEncryptedKey(text)) {
+          log.append("Passphrase will be used with the key ").append(keyPath).append("\n");
+
           // need to ask passphrase from user
           int i;
           for (i = 0; i < myHost.getNumberOfPasswordPrompts(); i++) {
