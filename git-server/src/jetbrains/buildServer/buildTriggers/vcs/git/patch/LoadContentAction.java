@@ -19,11 +19,13 @@ package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
+import jetbrains.buildServer.vcs.patches.PatchBuilderContentInputStream;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.util.io.AutoCRLFInputStream;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -98,12 +100,12 @@ public class LoadContentAction implements Callable<Void> {
   }
 
   private long getStreamSize(@NotNull GitVcsRoot root, @NotNull ObjectLoader loader) throws IOException {
-    if (!root.isAutoCrlf())
+    if (!root.isAutoCrlf() || root.isIncludeContentHashes())
       return loader.getSize();
 
     InputStream objectStream = null;
     try {
-      objectStream = loader.isLarge() ? loader.openStream() : new ByteArrayInputStream(loader.getCachedBytes());
+      objectStream = openContentStream(loader);
       objectStream = new AutoCRLFInputStream(objectStream, true);
       int count;
       int size = 0;
@@ -118,10 +120,79 @@ public class LoadContentAction implements Callable<Void> {
     }
   }
 
-  private InputStream getObjectStream(@NotNull GitVcsRoot root, @NotNull ObjectLoader loader) throws IOException {
-    InputStream stream = loader.isLarge() ? loader.openStream() : new ByteArrayInputStream(loader.getCachedBytes());
+  @NotNull
+  private InputStream getObjectStream(@NotNull final GitVcsRoot root, @NotNull final ObjectLoader loader) throws IOException {
+    if (root.isIncludeContentHashes()) {
+      return new LazyInputStream() {
+        @NotNull
+        @Override
+        protected InputStream openStream() throws IOException {
+          return LoadContentAction.this.openContentStream(loader);
+        }
+
+        @Nullable
+        @Override
+        public String getContentHash() {
+          return myObjectId.toObjectId().name();
+        }
+      };
+    }
+
+    final InputStream stream = openContentStream(loader);
     if (!root.isAutoCrlf())
       return stream;
     return new AutoCRLFInputStream(stream, true);
+  }
+
+  @NotNull
+  private InputStream openContentStream(@NotNull final ObjectLoader loader) throws IOException {
+    return loader.isLarge() ? loader.openStream() : new ByteArrayInputStream(loader.getCachedBytes());
+  }
+
+  private static abstract class LazyInputStream extends InputStream implements PatchBuilderContentInputStream {
+    private volatile InputStream myLazyStream;
+
+    @NotNull
+    private InputStream getHost() throws IOException {
+      if (myLazyStream != null) return myLazyStream;
+      synchronized (this) {
+        if (myLazyStream != null) return myLazyStream;
+        myLazyStream = openStream();
+      }
+      return myLazyStream;
+    }
+
+    @NotNull
+    protected abstract InputStream openStream() throws IOException;
+
+    @Override
+    public int read() throws IOException {
+      return getHost().read();
+    }
+
+    @Override
+    public int read(@NotNull final byte[] b) throws IOException {
+      return getHost().read(b);
+    }
+
+    @Override
+    public int read(@NotNull final byte[] b, final int off, final int len) throws IOException {
+      return getHost().read(b, off, len);
+    }
+
+    @Override
+    public long skip(final long n) throws IOException {
+      return getHost().skip(n);
+    }
+
+    @Override
+    public int available() throws IOException {
+      return getHost().available();
+    }
+
+    @Override
+    public void close() throws IOException {
+      getHost().close();
+    }
   }
 }

@@ -52,6 +52,7 @@ public class GitVcsRoot {
   private final boolean myIncludeCommitInfoSubmodules;
   private File myCustomRepositoryDir;
   private final Boolean myUseAgentMirrors;
+  private final boolean myIncludeContentHashes;
 
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root) throws VcsException {
     this(mirrorManager, root, root.getProperty(Constants.BRANCH_NAME));
@@ -73,6 +74,7 @@ public class GitVcsRoot {
     myUsernameForTags = getProperty(Constants.USERNAME_FOR_TAGS);
     myBranchSpec = getProperty(Constants.BRANCH_SPEC);
     myAutoCrlf = Boolean.valueOf(getProperty(Constants.SERVER_SIDE_AUTO_CRLF, "false"));
+    myIncludeContentHashes = Boolean.valueOf(getProperty(Constants.INCLUDE_CONTENT_HASHES, "false"));
     myReportTags = Boolean.valueOf(getProperty(Constants.REPORT_TAG_REVISIONS, "false"));
     myIgnoreMissingDefaultBranch = Boolean.valueOf(getProperty(Constants.IGNORE_MISSING_DEFAULT_BRANCH, "false"));
     myIncludeCommitInfoSubmodules = Boolean.valueOf(getProperty(Constants.INCLUDE_COMMIT_INFO_SUBMODULES, "false"));
@@ -164,6 +166,10 @@ public class GitVcsRoot {
 
   public boolean isAutoCrlf() {
     return myAutoCrlf;
+  }
+
+  public boolean isIncludeContentHashes() {
+    return myIncludeContentHashes;
   }
 
   public boolean isReportTags() {
