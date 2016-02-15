@@ -181,11 +181,6 @@ public class LoadContentAction implements Callable<Void> {
     }
 
     @Override
-    public long skip(final long n) throws IOException {
-      return getHost().skip(n);
-    }
-
-    @Override
     public int available() throws IOException {
       return getHost().available();
     }
