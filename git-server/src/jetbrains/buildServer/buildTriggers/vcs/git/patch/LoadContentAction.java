@@ -72,10 +72,28 @@ public class LoadContentAction implements Callable<Void> {
   public Void call() throws Exception {
     myFileAction.call("CREATE", myMappedPath);
     InputStream objectStream = null;
+    final long size;
     try {
       final ObjectLoader loader = getObjectLoader();
-      long size = getStreamSize(myRoot, loader);
-      objectStream = getObjectStream(myRoot, loader);
+      if (myRoot.isIncludeContentHashes()) {
+        size = loader.getSize();
+        objectStream = new LazyInputStream() {
+          @NotNull
+          @Override
+          protected InputStream openStream() throws IOException {
+            return LoadContentAction.this.openContentStream(loader);
+          }
+
+          @Nullable
+          @Override
+          public String getContentHash() {
+            return myObjectId.toObjectId().name();
+          }
+        };
+      } else {
+        size = getStreamSize(myRoot, loader);
+        objectStream = getObjectStream(myRoot, loader);
+      }
       myBuilder.changeOrCreateBinaryFile(GitUtils.toFile(myMappedPath), myMode, objectStream, size);
       myLogger.logAddFile(myMappedPath, size);
     } catch (Error e) {
@@ -122,22 +140,6 @@ public class LoadContentAction implements Callable<Void> {
 
   @NotNull
   private InputStream getObjectStream(@NotNull final GitVcsRoot root, @NotNull final ObjectLoader loader) throws IOException {
-    if (root.isIncludeContentHashes()) {
-      return new LazyInputStream() {
-        @NotNull
-        @Override
-        protected InputStream openStream() throws IOException {
-          return LoadContentAction.this.openContentStream(loader);
-        }
-
-        @Nullable
-        @Override
-        public String getContentHash() {
-          return myObjectId.toObjectId().name();
-        }
-      };
-    }
-
     final InputStream stream = openContentStream(loader);
     if (!root.isAutoCrlf())
       return stream;
