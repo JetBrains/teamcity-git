@@ -188,8 +188,10 @@ public class LoadContentAction implements Callable<Void> {
     }
 
     @Override
-    public void close() throws IOException {
-      getHost().close();
+    public synchronized void close() throws IOException {
+      if (myLazyStream != null) {
+        myLazyStream.close();
+      }
     }
   }
 }
