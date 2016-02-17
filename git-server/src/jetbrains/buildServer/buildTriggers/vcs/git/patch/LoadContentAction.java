@@ -100,7 +100,7 @@ public class LoadContentAction implements Callable<Void> {
   }
 
   private long getStreamSize(@NotNull GitVcsRoot root, @NotNull ObjectLoader loader) throws IOException {
-    if (!root.isAutoCrlf() || root.isIncludeContentHashes())
+    if (!root.isAutoCrlf())
       return loader.getSize();
 
     InputStream objectStream = null;
