@@ -73,7 +73,7 @@ public class LoadContentAction implements Callable<Void> {
     myFileAction.call("CREATE", myMappedPath);
     InputStream objectStream = null;
     try {
-      ObjectLoader loader = getObjectLoader();
+      final ObjectLoader loader = getObjectLoader();
       long size = getStreamSize(myRoot, loader);
       objectStream = getObjectStream(myRoot, loader);
       myBuilder.changeOrCreateBinaryFile(GitUtils.toFile(myMappedPath), myMode, objectStream, size);
