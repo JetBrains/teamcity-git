@@ -206,6 +206,17 @@ public class SSHMain {
       if (c.isAuthenticationComplete()) {
         return;
       }
+
+      try {
+        if (!c.isAuthMethodAvailable(myHost.getUser(), method)) {
+          log.append("Auth method ").append(method).append(" is not available on remote machine, skip itb\n");
+          continue;
+        }
+      } catch (IOException e) {
+        log.append("Error while checking if auth method ").append(method)
+          .append(" is available (").append(e.getMessage()).append("), try the method anyway\n");
+      }
+
       if (PUBLIC_KEY_METHOD.equals(method)) {
         log.append("Auth method: ").append(PUBLIC_KEY_METHOD).append("\n");
         if (!myHost.supportsPubkeyAuthentication()) {
