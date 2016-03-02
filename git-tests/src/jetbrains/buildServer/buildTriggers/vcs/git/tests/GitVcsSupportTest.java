@@ -451,7 +451,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  @Test
   @TestFor(issues = "TW-41884")
   private void should_mention_branch_when_entry_in_gitmodules_is_not_found() throws Exception {
     String valid = "f5bdd3819df0358a43d9a8f94eaf96bb306e19fe";
@@ -468,7 +467,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  @Test
   @TestFor(issues = "TW-41884")
   private void should_mention_branch_when_commit_in_submodule_is_not_found() throws Exception {
     GitVcsSupport support = getSupport();
@@ -487,7 +485,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  @Test
   @TestFor(issues = "TW-41884")
   private void should_mention_branch_when_no_gitmodules_config_found() throws Exception {
     GitVcsSupport support = getSupport();
