@@ -471,7 +471,7 @@ public class SSHMain {
     }
     String host = args[i++];
     String user;
-    int atIndex = host.indexOf('@');
+    int atIndex = host.lastIndexOf('@');
     if (atIndex == -1) {
       user = null;
     }
