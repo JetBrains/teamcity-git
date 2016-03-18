@@ -197,6 +197,11 @@ public class PluginConfigBuilder {
         return myDelegate.getMonitoringExpirationTimeoutHours();
       }
 
+      @Override
+      public long getMonitoringFileThresholdMillis() {
+        return myDelegate.getMonitoringFileThresholdMillis();
+      }
+
       public boolean alwaysCheckCiphers() {
         return false;
       }

@@ -72,6 +72,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private static final String TEAMCITY_GIT_ALWAYS_CHECK_CIPHERS = "teamcity.git.always.check.ciphers";
   private static final String HTTP_CONNECTION_FACTORY = "teamcity.git.httpConnectionFactory";
   private static final String HTTP_CONNECTION_SSL_PROTOCOL = "teamcity.git.httpConnectionSslProtocol";
+  private static final String MONITORING_FILE_THRESHOLD_SECONDS = "teamcity.git.monitoringFileThresholdSeconds";
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
   private final File myCachesDir;
@@ -82,7 +83,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
                                                            TEAMCITY_GIT_ALWAYS_CHECK_CIPHERS,
                                                            HTTP_CONNECTION_FACTORY,
                                                            HTTP_CONNECTION_SSL_PROTOCOL,
-                                                           Constants.AMAZON_HOSTS);
+                                                           Constants.AMAZON_HOSTS,
+                                                           MONITORING_FILE_THRESHOLD_SECONDS);
 
   public PluginConfigImpl() {
     myCachesDir = null;
@@ -388,6 +390,12 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   public int getMonitoringExpirationTimeoutHours() {
     return TeamCityProperties.getInteger("teamcity.git.monitoring.expiration.timeout.hours", 24);
+  }
+
+  @Override
+  public long getMonitoringFileThresholdMillis() {
+    int thresholdSeconds = TeamCityProperties.getInteger(MONITORING_FILE_THRESHOLD_SECONDS, 60 * 10 /*10 minutes*/);
+    return thresholdSeconds * 1000L;
   }
 
   public boolean alwaysCheckCiphers() {

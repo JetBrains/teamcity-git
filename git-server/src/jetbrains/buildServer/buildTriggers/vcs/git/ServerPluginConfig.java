@@ -95,6 +95,8 @@ public interface ServerPluginConfig extends PluginConfig {
 
   int getMonitoringExpirationTimeoutHours();
 
+  long getMonitoringFileThresholdMillis();
+
   boolean alwaysCheckCiphers();
 
   boolean verboseGetContentLog();

@@ -47,6 +47,7 @@ public class Fetcher {
   public static void main(String[] args) throws IOException, VcsException, URISyntaxException {
     boolean debug = false;
     ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
+    final long start = System.currentTimeMillis();
     try {
       Map<String, String> properties = VcsUtil.stringToProperties(GitServerUtil.readInput());
       String threadDumpFilePath = properties.remove(Constants.THREAD_DUMP_FILE);
@@ -62,7 +63,10 @@ public class Fetcher {
       FetchProgressMonitor progress = new FetchProgressMonitor(new PrintStream(output));
       exec.scheduleAtFixedRate(new Monitoring(threadDumpFilePath, output), 10, 10, TimeUnit.SECONDS);
       fetch(new File(repositoryPath), properties, progress);
-      FileUtil.delete(new File(threadDumpFilePath));
+
+      if (System.currentTimeMillis() - start <= new PluginConfigImpl().getMonitoringFileThresholdMillis()) {
+        FileUtil.delete(new File(threadDumpFilePath));
+      }
     } catch (Throwable t) {
       if (debug || isImportant(t)) {
         t.printStackTrace(System.err);
