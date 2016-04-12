@@ -209,7 +209,7 @@ public class SSHMain {
 
       try {
         if (!c.isAuthMethodAvailable(myHost.getUser(), method)) {
-          log.append("Auth method ").append(method).append(" is not available on remote machine, skip itb\n");
+          log.append("Auth method ").append(method).append(" is not available on remote machine, skip it\n");
           continue;
         }
       } catch (IOException e) {
