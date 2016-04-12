@@ -24,6 +24,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Refs;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.RefImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
@@ -444,7 +445,7 @@ public class UpdaterImpl implements Updater {
 
   @Nullable
   protected Ref getRef(@NotNull File repositoryDir, @NotNull String ref) {
-    Map<String, Ref> refs = myGitFactory.create(repositoryDir).showRef().setPattern(ref).call();
+    Map<String, Ref> refs = myGitFactory.create(repositoryDir).showRef().setPattern(ref).call().getValidRefs();
     return refs.isEmpty() ? null : refs.get(ref);
   }
 
@@ -693,9 +694,14 @@ public class UpdaterImpl implements Updater {
   protected boolean removeOutdatedRefs(@NotNull File workingDir) throws VcsException {
     boolean outdatedRefsRemoved = false;
     GitFacade git = myGitFactory.create(workingDir);
-    Refs localRefs = new Refs(git.showRef().call());
-    if (localRefs.isEmpty())
+    ShowRefResult showRefResult = git.showRef().call();
+    Refs localRefs = new Refs(showRefResult.getValidRefs());
+    if (localRefs.isEmpty() && showRefResult.getInvalidRefs().isEmpty())
       return false;
+    for (String invalidRef : showRefResult.getInvalidRefs()) {
+      git.updateRef().setRef(invalidRef).delete().call();
+      outdatedRefsRemoved = true;
+    }
     Refs remoteRefs = new Refs(git.lsRemote().setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
       .call());

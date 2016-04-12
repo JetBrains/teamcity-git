@@ -559,6 +559,33 @@ public class AgentVcsSupportTest {
   }
 
 
+  public void should_handle_ref_pointing_to_invalid_object() throws Exception {
+    File repo = dataFile("repo_for_fetch.1");
+    File remoteRepo = myTempFiles.createTempDir();
+    copyRepository(repo, remoteRepo);
+    VcsRootImpl root = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(remoteRepo)).withUseMirrors(true).build();
+
+    //first build
+    AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY, PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES));
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "add81050184d3c818560bdd8839f50024c188586", myCheckoutDir, build, false);
+
+    //create ref pointing to invalid object
+    File gitDir = new File(myCheckoutDir, ".git");
+    String invalidObject = "bba7fbcc200b4968e6abd2f7d475dc15306cafc1";
+    jetbrains.buildServer.util.FileUtil.writeFile(new File(gitDir, "refs/heads/brokenRef"), invalidObject);
+
+    //update remote repo
+    delete(remoteRepo);
+    File updatedRepo = dataFile("repo_for_fetch.3");
+    copyRepository(updatedRepo, remoteRepo);
+
+    //second build
+    build = createRunningBuild(map(PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY, PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES));
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "bba7fbcc200b4968e6abd2f7d475dc15306cafc6", myCheckoutDir, build, false);
+    then(new File(gitDir, "refs/heads/brokenRef")).doesNotExist();
+  }
+
+
   @TestFor(issues = "TW-43884")
   public void should_remap_mirror_if_its_fetch_and_remove_failed() throws Exception {
     MockFS fs = new MockFS();

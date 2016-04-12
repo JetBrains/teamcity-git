@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2014 JetBrains s.r.o.
+ * Copyright 2000-2016 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,30 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
+import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public interface ShowRefCommand {
+import java.util.Map;
+import java.util.Set;
+
+public class ShowRefResult {
+
+  private final Map<String, Ref> myValidRefs;
+  private final Set<String> myInvalidRefs;
+
+  public ShowRefResult(@NotNull Map<String, Ref> validRefs,
+                       @NotNull Set<String> invalidRefs) {
+    myValidRefs = validRefs;
+    myInvalidRefs = invalidRefs;
+  }
 
   @NotNull
-  ShowRefCommand setPattern(@NotNull String pattern);
+  public Map<String, Ref> getValidRefs() {
+    return myValidRefs;
+  }
 
   @NotNull
-  ShowRefCommand showTags();
-
-  @NotNull
-  ShowRefResult call();
-
+  public Set<String> getInvalidRefs() {
+    return myInvalidRefs;
+  }
 }

@@ -260,7 +260,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
   private String getUnusedBranchName(@NotNull File repositoryDir) {
     final String tmpBranchName = "tmp_branch_for_build";
     String branchName = tmpBranchName;
-    Map<String, Ref> existingRefs = myGitFactory.create(repositoryDir).showRef().call();
+    Map<String, Ref> existingRefs = myGitFactory.create(repositoryDir).showRef().call().getValidRefs();
     int i = 0;
     while (existingRefs.containsKey("refs/heads/" + branchName)) {
       branchName = tmpBranchName + i;
