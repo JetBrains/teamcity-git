@@ -20,7 +20,10 @@ import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
-import jetbrains.buildServer.agent.*;
+import jetbrains.buildServer.agent.AgentRunningBuild;
+import jetbrains.buildServer.agent.AgentRuntimeProperties;
+import jetbrains.buildServer.agent.BuildAgent;
+import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
@@ -48,8 +51,10 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
@@ -589,9 +594,10 @@ public class AgentVcsSupportTest {
   @TestFor(issues = "TW-43884")
   public void should_remap_mirror_if_its_fetch_and_remove_failed() throws Exception {
     MockFS fs = new MockFS();
+    LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
     myVcsSupport = new GitAgentVcsSupport(fs, new MockDirectoryCleaner(),
                                           new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new MockGitPluginDescriptor(), new MockVcsRootSshKeyManagerProvider()),
-                                          myConfigFactory, myMirrorManager, new GitMetaFactoryImpl());
+                                          myConfigFactory, myMirrorManager, loggingFactory);
 
     File repo = dataFile("repo_for_fetch.1");
     File remoteRepo = myTempFiles.createTempDir();
@@ -607,12 +613,16 @@ public class AgentVcsSupportTest {
     copyRepository(updatedRepo, remoteRepo);
 
 
-    //create refs/heads/personal/1 so that incremental fetch will fail
+    //make first fetch in local mirror to fail:
+    AtomicInteger invocationCount = new AtomicInteger(0);
+    loggingFactory.addCallback(FetchCommand.class.getName() + ".call", new GitCommandProxyCallback() {
+      @Override
+      public void call(final Method method, final Object[] args) throws VcsException {
+        if (invocationCount.getAndIncrement() == 0)
+          throw new VcsException("TEST ERROR");
+      }
+    });
     File mirror = myMirrorManager.getMirrorDir(GitUtils.toURL(remoteRepo));
-    Repository r = new RepositoryBuilder().setBare().setGitDir(mirror).build();
-    RefUpdate update = r.updateRef("refs/heads/personal/1");
-    update.setNewObjectId(ObjectId.fromString("d47dda159b27b9a8c4cee4ce98e4435eb5b17168"));
-    update.update();
 
     //try to fetch unknown branch, fetch fails and delete of the mirror also fails
     //build should succeed anyway
@@ -667,11 +677,12 @@ public class AgentVcsSupportTest {
 
 
   @TestFor(issues = "TW-43884")
-  public void mirror_delete_can_be_disable() throws Exception {
+  public void mirror_delete_can_be_disabled() throws Exception {
     MockFS fs = new MockFS();
+    LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
     myVcsSupport = new GitAgentVcsSupport(fs, new MockDirectoryCleaner(),
                                           new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new MockGitPluginDescriptor(), new MockVcsRootSshKeyManagerProvider()),
-                                          myConfigFactory, myMirrorManager, new GitMetaFactoryImpl());
+                                          myConfigFactory, myMirrorManager, loggingFactory);
 
     File repo = dataFile("repo_for_fetch.1");
     File remoteRepo = myTempFiles.createTempDir();
@@ -688,11 +699,15 @@ public class AgentVcsSupportTest {
 
 
     //create refs/heads/personal/1 so that incremental fetch will fail
+    AtomicInteger invocationCount = new AtomicInteger(0);
+    loggingFactory.addCallback(FetchCommand.class.getName() + ".call", new GitCommandProxyCallback() {
+      @Override
+      public void call(final Method method, final Object[] args) throws VcsException {
+        if (invocationCount.getAndIncrement() == 0)
+          throw new VcsException("TEST ERROR");
+      }
+    });
     File mirror = myMirrorManager.getMirrorDir(GitUtils.toURL(remoteRepo));
-    Repository r = new RepositoryBuilder().setBare().setGitDir(mirror).build();
-    RefUpdate update = r.updateRef("refs/heads/personal/1");
-    update.setNewObjectId(ObjectId.fromString("d47dda159b27b9a8c4cee4ce98e4435eb5b17168"));
-    update.update();
 
     VcsRootImpl root2 = vcsRoot().withAgentGitPath(getGitPath()).withBranch("refs/heads/personal").withFetchUrl(GitUtils.toURL(remoteRepo)).build();
     fs.makeDeleteFail(mirror);

@@ -27,6 +27,7 @@ import java.util.Map;
 
 public class LoggingGitMetaFactory implements GitMetaFactory {
   private final Map<String, List<String>> myInvokedMethods = new HashMap<String, List<String>>();
+  private final Map<String, GitCommandProxyCallback> myCallbacks = new HashMap<String, GitCommandProxyCallback>();
 
   @NotNull
   public GitFactory createFactory(@NotNull GitAgentSSHService sshService,
@@ -34,7 +35,7 @@ public class LoggingGitMetaFactory implements GitMetaFactory {
                                   @NotNull GitProgressLogger logger,
                                   @NotNull File tempDir,
                                   @NotNull Map<String, String> env) {
-    return new GitFactoryProxy(sshService, config, tempDir, env, myInvokedMethods);
+    return new GitFactoryProxy(sshService, config, tempDir, env, myInvokedMethods, myCallbacks);
   }
 
 
@@ -60,5 +61,9 @@ public class LoggingGitMetaFactory implements GitMetaFactory {
         result++;
     }
     return result;
+  }
+
+  public void addCallback(@NotNull String gitFacadeMethodName, @NotNull GitCommandProxyCallback callback) {
+    myCallbacks.put(gitFacadeMethodName, callback);
   }
 }
