@@ -53,7 +53,7 @@ public class CommandUtil {
                      (exitCode != 0 ? "\nexit code: " + exitCode : "") +
                      (!StringUtil.isEmpty(stdout) ? "\n" + "stdout: " + stdout : "") +
                      (!StringUtil.isEmpty(stderr) ? "\n" + "stderr: " + stderr : "") +
-                     (exception != null ?  "\n" + "exception: " + exception.getLocalizedMessage() : "");
+                     (exception != null ?  "\n" + "exception: " + exception.toString() : "");
     if (exception != null && isImportant(exception)) {
       Writer stackWriter = new StringWriter();
       exception.printStackTrace(new PrintWriter(stackWriter));

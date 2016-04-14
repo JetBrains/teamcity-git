@@ -110,7 +110,7 @@ public class FetchCommandImpl implements FetchCommand {
         File gitIndex = new File(new File(workingDir, ".git"), "index");
         throw new GitIndexCorruptedException(gitIndex, e);
       }
-      if (message != null && message.contains("exception: Timeout exception")) {
+      if (message != null && message.contains("exception: jetbrains.buildServer.ProcessTimeoutException")) {
         throw new GitExecTimeout();
       }
       throw e;
