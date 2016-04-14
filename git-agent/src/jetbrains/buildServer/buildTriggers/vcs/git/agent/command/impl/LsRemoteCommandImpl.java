@@ -20,12 +20,12 @@ import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
@@ -41,6 +41,7 @@ public class LsRemoteCommandImpl implements LsRemoteCommand {
   private boolean myShowTags = false;
   private AuthSettings myAuthSettings;
   private boolean myUseNativeSsh = false;
+  private int myAttemptsLimit = 3;
 
   public LsRemoteCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
@@ -65,19 +66,26 @@ public class LsRemoteCommandImpl implements LsRemoteCommand {
   }
 
   @NotNull
-  public List<Ref> call() {
+  public List<Ref> call() throws VcsException {
     myCmd.addParameter("ls-remote");
     if (myShowTags)
       myCmd.addParameter("--tags");
     myCmd.addParameter("origin");
 
-    try {
-      ExecResult result = myCmd.run(with()
-              .authSettings(myAuthSettings)
-              .useNativeSsh(myUseNativeSsh));
-      return parse(result.getStdout());
-    } catch (VcsException e) {
-      return Collections.emptyList();
+    int attempt = 0;
+    while (true) {
+      try {
+        ExecResult result = myCmd.run(with()
+                                        .authSettings(myAuthSettings)
+                                        .useNativeSsh(myUseNativeSsh));
+        return parse(result.getStdout());
+      } catch (VcsException e) {
+        attempt++;
+        Loggers.VCS.warn("Error while listing remote repository refs", e);
+        if (attempt >= myAttemptsLimit || CommandUtil.isTimeoutError(e))
+          throw e;
+        Loggers.VCS.warn("Will repeat command, attempts left: " + (myAttemptsLimit - attempt));
+      }
     }
   }
 

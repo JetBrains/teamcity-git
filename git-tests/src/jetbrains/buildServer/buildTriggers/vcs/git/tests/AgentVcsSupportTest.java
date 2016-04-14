@@ -29,6 +29,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -631,6 +632,41 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, createRunningBuild(true), false);
     File mirrorAfterBuild = myMirrorManager.getMirrorDir(GitUtils.toURL(remoteRepo));
     then(mirrorAfterBuild).isNotEqualTo(mirror);//repository was remapped to another dir
+  }
+
+
+  //we run ls-remote during outdated refs cleanup which is needed to
+  //successfully checkout when ref a/b is renamed to A/b on win or mac (TW-28735).
+  //If we continue silently this can cause performance problems (TW-44944)
+  @TestFor(issues = "TW-44944")
+  public void should_fail_when_ls_remote_fails() throws Exception {
+    LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
+    myVcsSupport = new GitAgentVcsSupport(new MockFS(), new MockDirectoryCleaner(),
+                                          new GitAgentSSHService(myBuildAgent, myAgentConfiguration, new MockGitPluginDescriptor(), new MockVcsRootSshKeyManagerProvider()),
+                                          myConfigFactory, myMirrorManager, loggingFactory);
+
+    File repo = dataFile("repo_for_fetch.1");
+    File remoteRepo = myTempFiles.createTempDir();
+    copyRepository(repo, remoteRepo);
+
+    //run build to prepare working dir
+    VcsRootImpl root = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(remoteRepo)).build();
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "add81050184d3c818560bdd8839f50024c188586", myCheckoutDir, createRunningBuild(false), false);
+
+    loggingFactory.addCallback(LsRemoteCommand.class.getName() + ".call", new GitCommandProxyCallback() {
+      @Override
+      public void call(final Method method, final Object[] args) throws VcsException {
+        throw new VcsException("TEST ERROR");
+      }
+    });
+
+    //ls-remote will fail during this build
+    try {
+      myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, createRunningBuild(false), false);
+      fail("should fail");
+    } catch (VcsException e) {
+      assertTrue(true);
+    }
   }
 
 

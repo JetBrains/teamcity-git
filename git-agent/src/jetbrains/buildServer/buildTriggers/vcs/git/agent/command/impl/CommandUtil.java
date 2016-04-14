@@ -124,4 +124,10 @@ public class CommandUtil {
     if (!isEmpty(res.getStderr()))
       CommandUtil.commandFailed(cli.getCommandLineString(), res, errorsLogLevel);
   }
+
+
+  public static boolean isTimeoutError(@NotNull VcsException e) {
+    String msg = e.getMessage();
+    return msg != null && msg.contains("exception: jetbrains.buildServer.ProcessTimeoutException");
+  }
 }
