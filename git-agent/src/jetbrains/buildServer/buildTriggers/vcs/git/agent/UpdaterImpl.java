@@ -702,9 +702,17 @@ public class UpdaterImpl implements Updater {
       git.updateRef().setRef(invalidRef).delete().call();
       outdatedRefsRemoved = true;
     }
-    Refs remoteRefs = new Refs(git.lsRemote().setAuthSettings(myRoot.getAuthSettings())
-      .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
-      .call());
+    final Refs remoteRefs;
+    try {
+      remoteRefs = new Refs(git.lsRemote().setAuthSettings(myRoot.getAuthSettings())
+                              .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
+                              .call());
+    } catch (VcsException e) {
+      String msg = "Failed to list remote repository refs, outdated local refs will not be cleaned";
+      LOG.warn(msg);
+      myLogger.warning(msg);
+      return false;
+    }
     //We remove both outdated local refs (e.g. refs/heads/topic) and outdated remote
     //tracking branches (refs/remote/origin/topic), while git remote origin prune
     //removes only the latter. We need that because in some cases git cannot handle
