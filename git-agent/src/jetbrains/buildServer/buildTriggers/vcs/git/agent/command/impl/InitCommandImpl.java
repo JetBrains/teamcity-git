@@ -16,23 +16,18 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.InitCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public class InitCommandImpl implements InitCommand {
+public class InitCommandImpl extends BaseCommandImpl implements InitCommand {
 
-  private final GitCommandLine myCmd;
   private boolean myBare = false;
 
   public InitCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
 
@@ -44,10 +39,11 @@ public class InitCommandImpl implements InitCommand {
 
 
   public void call() throws VcsException {
-    myCmd.addParameter("init");
+    GitCommandLine cmd = getCmd();
+    cmd.addParameter("init");
     if (myBare)
-      myCmd.addParameter("--bare");
-    ExecResult r = CommandUtil.runCommand(myCmd);
-    CommandUtil.failIfNotEmptyStdErr(myCmd, r);
+      cmd.addParameter("--bare");
+    ExecResult r = CommandUtil.runCommand(cmd);
+    CommandUtil.failIfNotEmptyStdErr(cmd, r);
   }
 }

@@ -27,19 +27,15 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-/**
- * @author dmitry.neverov
- */
-public class ShowRefCommandImpl implements ShowRefCommand {
+public class ShowRefCommandImpl extends BaseCommandImpl implements ShowRefCommand {
 
   private final static String INVALID_REF_PREFIX = "error: ";
   private final static String INVALID_REF_SUFFIX = " does not point to a valid object!";
-  private final GitCommandLine myCmd;
   private String myPattern;
   private boolean myShowTags;
 
   public ShowRefCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   @NotNull
@@ -57,13 +53,14 @@ public class ShowRefCommandImpl implements ShowRefCommand {
 
   @NotNull
   public ShowRefResult call() {
-    myCmd.addParameter("show-ref");
+    GitCommandLine cmd = getCmd();
+    cmd.addParameter("show-ref");
     if (myPattern != null)
-      myCmd.addParameters(myPattern);
+      cmd.addParameters(myPattern);
     if (myShowTags)
-      myCmd.addParameter("--tags");
+      cmd.addParameter("--tags");
     try {
-      ExecResult result = CommandUtil.runCommand(myCmd);
+      ExecResult result = CommandUtil.runCommand(cmd);
       return new ShowRefResult(parseValidRefs(result.getStdout()), parseInvalidRefs(result.getStderr()));
     } catch (VcsException e) {
       return new ShowRefResult(Collections.<String, Ref>emptyMap(), Collections.<String>emptySet());

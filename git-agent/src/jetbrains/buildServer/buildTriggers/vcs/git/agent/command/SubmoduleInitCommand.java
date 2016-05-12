@@ -18,10 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import jetbrains.buildServer.vcs.VcsException;
 
-/**
- * @author dmitry.neverov
- */
-public interface SubmoduleInitCommand {
+public interface SubmoduleInitCommand extends BaseCommand {
 
   void call() throws VcsException;
 

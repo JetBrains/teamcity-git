@@ -21,15 +21,15 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.RepackCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-public class RepackCommandImpl implements RepackCommand {
-  private final GitCommandLine myCmd;
+public class RepackCommandImpl extends BaseCommandImpl implements RepackCommand {
 
   public RepackCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   public void call() throws VcsException {
-    myCmd.addParameters("repack", "-a", "-d");
-    CommandUtil.runCommand(myCmd);
+    GitCommandLine cmd = getCmd();
+    cmd.addParameters("repack", "-a", "-d");
+    CommandUtil.runCommand(cmd);
   }
 }

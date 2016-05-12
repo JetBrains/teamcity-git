@@ -19,10 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public interface DeleteTagCommand {
+public interface DeleteTagCommand extends BaseCommand {
 
   @NotNull
   DeleteTagCommand setName(@NotNull String tagFullName);

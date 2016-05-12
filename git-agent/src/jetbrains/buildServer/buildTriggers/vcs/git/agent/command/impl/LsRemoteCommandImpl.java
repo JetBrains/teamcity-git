@@ -32,19 +32,15 @@ import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static com.intellij.openapi.util.text.StringUtil.splitByLines;
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
 
-/**
- * @author dmitry.neverov
- */
-public class LsRemoteCommandImpl implements LsRemoteCommand {
+public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteCommand {
 
-  private GitCommandLine myCmd;
   private boolean myShowTags = false;
   private AuthSettings myAuthSettings;
   private boolean myUseNativeSsh = false;
   private int myAttemptsLimit = 3;
 
   public LsRemoteCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   @NotNull
@@ -67,17 +63,18 @@ public class LsRemoteCommandImpl implements LsRemoteCommand {
 
   @NotNull
   public List<Ref> call() throws VcsException {
-    myCmd.addParameter("ls-remote");
+    GitCommandLine cmd = getCmd();
+    cmd.addParameter("ls-remote");
     if (myShowTags)
-      myCmd.addParameter("--tags");
-    myCmd.addParameter("origin");
+      cmd.addParameter("--tags");
+    cmd.addParameter("origin");
 
     int attempt = 0;
     while (true) {
       try {
-        ExecResult result = myCmd.run(with()
-                                        .authSettings(myAuthSettings)
-                                        .useNativeSsh(myUseNativeSsh));
+        ExecResult result = cmd.run(with()
+                                      .authSettings(myAuthSettings)
+                                      .useNativeSsh(myUseNativeSsh));
         return parse(result.getStdout());
       } catch (VcsException e) {
         attempt++;

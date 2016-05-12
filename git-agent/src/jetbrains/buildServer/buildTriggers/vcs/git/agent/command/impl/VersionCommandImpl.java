@@ -23,22 +23,18 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.VersionCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public class VersionCommandImpl implements VersionCommand {
-
-  private final GitCommandLine myCmd;
+public class VersionCommandImpl extends BaseCommandImpl implements VersionCommand {
 
   public VersionCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   @NotNull
   public GitVersion call() throws VcsException {
-    myCmd.addParameter("version");
-    ExecResult r = CommandUtil.runCommand(myCmd.repeatOnEmptyOutput(true), 60);
-    CommandUtil.failIfNotEmptyStdErr(myCmd, r);
+    GitCommandLine cmd = getCmd();
+    cmd.addParameter("version");
+    ExecResult r = CommandUtil.runCommand(cmd.repeatOnEmptyOutput(true), 60);
+    CommandUtil.failIfNotEmptyStdErr(cmd, r);
     return GitVersion.parse(r.getStdout());
   }
 }

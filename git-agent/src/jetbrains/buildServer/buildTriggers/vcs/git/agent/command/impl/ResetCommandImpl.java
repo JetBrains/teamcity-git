@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ResetCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
@@ -25,17 +24,12 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 
-/**
- * @author dmitry.neverov
- */
-public class ResetCommandImpl implements ResetCommand {
-
-  private final GitCommandLine myCmd;
+public class ResetCommandImpl extends BaseCommandImpl implements ResetCommand {
   private boolean myHard = false;
   private String myRevision;
 
   public ResetCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   @NotNull
@@ -51,16 +45,17 @@ public class ResetCommandImpl implements ResetCommand {
   }
 
   public void call() throws VcsException {
-    myCmd.addParameters("reset");
+    GitCommandLine cmd = getCmd();
+    cmd.addParameters("reset");
     if (myHard)
-      myCmd.addParameter("--hard");
-    myCmd.addParameter(myRevision);
+      cmd.addParameter("--hard");
+    cmd.addParameter(myRevision);
     try {
-      CommandUtil.runCommand(myCmd);
+      CommandUtil.runCommand(cmd);
     } catch (VcsException e) {
       String message = e.getMessage();
       if (message != null && message.contains("fatal: index file smaller than expected")) {
-        File workingDir = myCmd.getWorkingDirectory();
+        File workingDir = cmd.getWorkingDirectory();
         File gitIndex = new File(new File(workingDir, ".git"), "index");
         throw new GitIndexCorruptedException(gitIndex, e);
       }

@@ -21,18 +21,14 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CheckoutCommand
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public class CheckoutCommandImpl implements CheckoutCommand {
+public class CheckoutCommandImpl extends BaseCommandImpl implements CheckoutCommand {
 
-  private final GitCommandLine myCmd;
   private boolean myForce;
   private String myBranch;
   private Integer myTimeout;
 
   public CheckoutCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   @NotNull
@@ -54,11 +50,12 @@ public class CheckoutCommandImpl implements CheckoutCommand {
   }
 
   public void call() throws VcsException {
-    myCmd.addParameters("checkout", "-q");
+    GitCommandLine cmd = getCmd();
+    cmd.addParameters("checkout", "-q");
     if (myForce)
-      myCmd.addParameter("-f");
-    myCmd.addParameter(myBranch);
+      cmd.addParameter("-f");
+    cmd.addParameter(myBranch);
     int timeout = myTimeout != null ? myTimeout : CommandUtil.DEFAULT_COMMAND_TIMEOUT_SEC;
-    CommandUtil.runCommand(myCmd, timeout);
+    CommandUtil.runCommand(cmd, timeout);
   }
 }

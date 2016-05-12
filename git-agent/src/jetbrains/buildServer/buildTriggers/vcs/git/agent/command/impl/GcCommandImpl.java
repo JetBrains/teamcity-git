@@ -21,15 +21,14 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.GcCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-public class GcCommandImpl implements GcCommand {
-  private final GitCommandLine myCmd;
-
+public class GcCommandImpl extends BaseCommandImpl implements GcCommand {
   public GcCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   public void call() throws VcsException {
-    myCmd.addParameter("gc");
-    CommandUtil.runCommand(myCmd);
+    GitCommandLine cmd = getCmd();
+    cmd.addParameter("gc");
+    CommandUtil.runCommand(cmd);
   }
 }

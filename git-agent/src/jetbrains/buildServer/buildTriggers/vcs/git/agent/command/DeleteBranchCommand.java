@@ -19,10 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public interface DeleteBranchCommand {
+public interface DeleteBranchCommand extends BaseCommand {
 
   @NotNull
   DeleteBranchCommand setName(@NotNull String name);

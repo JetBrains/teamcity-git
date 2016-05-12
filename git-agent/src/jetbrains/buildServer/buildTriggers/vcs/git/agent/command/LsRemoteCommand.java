@@ -23,10 +23,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-/**
- * @author dmitry.neverov
- */
-public interface LsRemoteCommand {
+public interface LsRemoteCommand extends BaseCommand {
 
   @NotNull
   LsRemoteCommand showTags();

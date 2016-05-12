@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2014 JetBrains s.r.o.
+ * Copyright 2000-2016 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,23 +16,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
-import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-public interface SubmoduleUpdateCommand extends BaseCommand {
+public interface BaseCommand {
 
-  @NotNull
-  SubmoduleUpdateCommand setUseNativeSsh(boolean useNativeSsh);
+  void setConfig(@NotNull String name, @NotNull String value);
 
-  @NotNull
-  SubmoduleUpdateCommand setAuthSettings(@NotNull AuthSettings settings);
+  void setEnv(@NotNull String name, @NotNull String value);
 
-  @NotNull
-  SubmoduleUpdateCommand setTimeout(int timeout);
-
-  @NotNull
-  SubmoduleUpdateCommand setForce(boolean force);
-
-  void call() throws VcsException;
+  void addPostAction(@NotNull Runnable action);
 }

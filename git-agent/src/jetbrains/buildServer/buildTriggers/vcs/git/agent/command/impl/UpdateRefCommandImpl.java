@@ -16,25 +16,20 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public class UpdateRefCommandImpl implements UpdateRefCommand {
+public class UpdateRefCommandImpl extends BaseCommandImpl implements UpdateRefCommand {
 
-  private final GitCommandLine myCmd;
   private String myRef;
   private String myRevision;
   private boolean myDelete;
 
   public UpdateRefCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   @NotNull
@@ -56,13 +51,14 @@ public class UpdateRefCommandImpl implements UpdateRefCommand {
   }
 
   public void call() throws VcsException {
-    myCmd.addParameter("update-ref");
+    GitCommandLine cmd = getCmd();
+    cmd.addParameter("update-ref");
     if (myDelete)
-      myCmd.addParameter("-d");
-    myCmd.addParameter(myRef);
+      cmd.addParameter("-d");
+    cmd.addParameter(myRef);
     if (myRevision != null)
-      myCmd.addParameter(myRevision);
-    ExecResult r = CommandUtil.runCommand(myCmd);
-    CommandUtil.failIfNotEmptyStdErr(myCmd, r);
+      cmd.addParameter(myRevision);
+    ExecResult r = CommandUtil.runCommand(cmd);
+    CommandUtil.failIfNotEmptyStdErr(cmd, r);
   }
 }

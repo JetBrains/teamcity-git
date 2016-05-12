@@ -16,25 +16,20 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CreateBranchCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public class CreateBranchCommandImpl implements CreateBranchCommand {
+public class CreateBranchCommandImpl extends BaseCommandImpl implements CreateBranchCommand {
 
-  private final GitCommandLine myCmd;
   private String myName;
   private String myStartPoint;
   private boolean myTrack = false;
 
   public CreateBranchCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   @NotNull
@@ -56,16 +51,17 @@ public class CreateBranchCommandImpl implements CreateBranchCommand {
   }
 
   public void call() throws VcsException {
-    myCmd.addParameter("branch");
-    myCmd.addParameter("-l");
+    GitCommandLine cmd = getCmd();
+    cmd.addParameter("branch");
+    cmd.addParameter("-l");
     if (myTrack) {
-      myCmd.addParameter("--track");
+      cmd.addParameter("--track");
     } else {
-      myCmd.addParameter("--no-track");
+      cmd.addParameter("--no-track");
     }
-    myCmd.addParameter(myName);
-    myCmd.addParameter(myStartPoint);
-    ExecResult result = CommandUtil.runCommand(myCmd);
-    CommandUtil.failIfNotEmptyStdErr(myCmd, result);
+    cmd.addParameter(myName);
+    cmd.addParameter(myStartPoint);
+    ExecResult result = CommandUtil.runCommand(cmd);
+    CommandUtil.failIfNotEmptyStdErr(cmd, result);
   }
 }

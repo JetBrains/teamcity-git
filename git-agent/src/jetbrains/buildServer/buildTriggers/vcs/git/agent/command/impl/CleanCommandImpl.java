@@ -40,16 +40,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-/**
- * @author dmitry.neverov
- */
-public class CleanCommandImpl implements CleanCommand {
+public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
 
-  private final GitCommandLine myCmd;
   private AgentCleanFilesPolicy myCleanPolicy = AgentCleanFilesPolicy.ALL_UNTRACKED;
 
   public CleanCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   @NotNull
@@ -59,25 +55,26 @@ public class CleanCommandImpl implements CleanCommand {
   }
 
   public void call() throws VcsException {
-    myCmd.addParameters("clean", "-f", "-d");
+    GitCommandLine cmd = getCmd();
+    cmd.addParameters("clean", "-f", "-d");
     switch (myCleanPolicy) {
       case ALL_UNTRACKED:
-        myCmd.addParameter("-x");
+        cmd.addParameter("-x");
         break;
       case IGNORED_ONLY:
-        myCmd.addParameter("-X");
+        cmd.addParameter("-X");
         break;
       case NON_IGNORED_ONLY:
         break;
     }
     try {
-      ExecResult r = CommandUtil.runCommand(myCmd);
-      CommandUtil.failIfNotEmptyStdErr(myCmd, r);
+      ExecResult r = CommandUtil.runCommand(cmd);
+      CommandUtil.failIfNotEmptyStdErr(cmd, r);
     } catch (VcsException e) {
       Loggers.VCS.warn("Failed to clean files");
       if (!SystemInfo.isWindows)
         throw e;
-      File workingDir = myCmd.getWorkingDirectory();
+      File workingDir = cmd.getWorkingDirectory();
       if (workingDir == null)
         throw e;
       handleLongFileNames(workingDir, e);

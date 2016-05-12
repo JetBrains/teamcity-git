@@ -16,23 +16,18 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.DeleteTagCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public class DeleteTagCommandImpl implements DeleteTagCommand {
+public class DeleteTagCommandImpl extends BaseCommandImpl implements DeleteTagCommand {
 
   private static final int TAG_PREFIX_LENGTH = "refs/tags/".length();
-  private final GitCommandLine myCmd;
   private String myName;
 
   public DeleteTagCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   @NotNull
@@ -44,9 +39,10 @@ public class DeleteTagCommandImpl implements DeleteTagCommand {
   }
 
   public void call() throws VcsException {
-    myCmd.addParameter("tag");
-    myCmd.addParameter("-d");
-    myCmd.addParameter(myName);
-    CommandUtil.runCommand(myCmd);
+    GitCommandLine cmd = getCmd();
+    cmd.addParameter("tag");
+    cmd.addParameter("-d");
+    cmd.addParameter(myName);
+    CommandUtil.runCommand(cmd);
   }
 }

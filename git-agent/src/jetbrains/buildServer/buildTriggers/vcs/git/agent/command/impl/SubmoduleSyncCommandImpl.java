@@ -19,18 +19,18 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleSyncCommand;
 import jetbrains.buildServer.vcs.VcsException;
+import org.jetbrains.annotations.NotNull;
 
-public class SubmoduleSyncCommandImpl implements SubmoduleSyncCommand {
+public class SubmoduleSyncCommandImpl extends BaseCommandImpl implements SubmoduleSyncCommand {
 
-  private final GitCommandLine myCmd;
-
-  public SubmoduleSyncCommandImpl(GitCommandLine myCmd) {
-    this.myCmd = myCmd;
+  public SubmoduleSyncCommandImpl(@NotNull GitCommandLine myCmd) {
+    super(myCmd);
   }
 
   public void call() throws VcsException {
-    myCmd.addParameter("submodule");
-    myCmd.addParameter("sync");
-    CommandUtil.runCommand(myCmd);
+    GitCommandLine cmd = getCmd();
+    cmd.addParameter("submodule");
+    cmd.addParameter("sync");
+    CommandUtil.runCommand(cmd);
   }
 }

@@ -28,12 +28,8 @@ import java.io.File;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
 
-/**
- * @author dmitry.neverov
- */
-public class FetchCommandImpl implements FetchCommand {
+public class FetchCommandImpl extends BaseCommandImpl implements FetchCommand {
 
-  private final GitCommandLine myCmd;
   private boolean myUseNativeSsh;
   private int myTimeout;
   private String myRefspec;
@@ -43,7 +39,7 @@ public class FetchCommandImpl implements FetchCommand {
   private Integer myDepth;
 
   public FetchCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   @NotNull
@@ -89,24 +85,25 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
   public void call() throws VcsException {
-    myCmd.addParameter("fetch");
+    GitCommandLine cmd = getCmd();
+    cmd.addParameter("fetch");
     if (myQuite)
-      myCmd.addParameter("-q");
+      cmd.addParameter("-q");
     if (myShowProgress)
-      myCmd.addParameter("--progress");
+      cmd.addParameter("--progress");
     if (myDepth != null)
-      myCmd.addParameter("--depth=" + myDepth);
-    myCmd.addParameter("origin");
-    myCmd.addParameter(myRefspec);
-    myCmd.setHasProgress(true);
+      cmd.addParameter("--depth=" + myDepth);
+    cmd.addParameter("origin");
+    cmd.addParameter(myRefspec);
+    cmd.setHasProgress(true);
     try {
-      myCmd.run(with().timeout(myTimeout)
+      cmd.run(with().timeout(myTimeout)
                   .authSettings(myAuthSettings)
                   .useNativeSsh(myUseNativeSsh));
     } catch (VcsException e) {
       String message = e.getMessage();
       if (message != null && message.contains("fatal: index file smaller than expected")) {
-        File workingDir = myCmd.getWorkingDirectory();
+        File workingDir = cmd.getWorkingDirectory();
         File gitIndex = new File(new File(workingDir, ".git"), "index");
         throw new GitIndexCorruptedException(gitIndex, e);
       }

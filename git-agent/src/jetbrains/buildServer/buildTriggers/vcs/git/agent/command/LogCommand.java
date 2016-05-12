@@ -19,10 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * @author dmitry.neverov
- */
-public interface LogCommand {
+public interface LogCommand extends BaseCommand {
 
   @NotNull
   LogCommand setStartPoint(@NotNull String startPoint);

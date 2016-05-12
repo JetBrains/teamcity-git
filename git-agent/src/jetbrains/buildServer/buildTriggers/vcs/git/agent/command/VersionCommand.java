@@ -20,10 +20,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public interface VersionCommand {
+public interface VersionCommand extends BaseCommand {
 
   @NotNull
   GitVersion call() throws VcsException;

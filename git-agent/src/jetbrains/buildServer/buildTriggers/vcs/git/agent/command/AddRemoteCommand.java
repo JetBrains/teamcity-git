@@ -19,10 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public interface AddRemoteCommand {
+public interface AddRemoteCommand extends BaseCommand {
 
   @NotNull
   AddRemoteCommand setName(@NotNull String name);

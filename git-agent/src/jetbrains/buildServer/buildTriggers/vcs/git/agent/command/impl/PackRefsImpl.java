@@ -21,15 +21,14 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.PackRefs;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-public class PackRefsImpl implements PackRefs {
-  private final GitCommandLine myCmd;
-
+public class PackRefsImpl extends BaseCommandImpl implements PackRefs {
   public PackRefsImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   public void call() throws VcsException {
-    myCmd.addParameters("pack-refs", "--all");
-    CommandUtil.runCommand(myCmd);
+    GitCommandLine cmd = getCmd();
+    cmd.addParameters("pack-refs", "--all");
+    CommandUtil.runCommand(cmd);
   }
 }

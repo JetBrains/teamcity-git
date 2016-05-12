@@ -24,19 +24,15 @@ import org.jetbrains.annotations.NotNull;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
 
-/**
- * @author dmitry.neverov
- */
-public class SubmoduleUpdateCommandImpl implements SubmoduleUpdateCommand {
+public class SubmoduleUpdateCommandImpl extends BaseCommandImpl implements SubmoduleUpdateCommand {
 
-  private final GitCommandLine myCmd;
   private boolean myUseNativeSsh;
   private AuthSettings myAuthSettings;
   private int myTimeout;
   private boolean myForce;
 
   public SubmoduleUpdateCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   @NotNull
@@ -64,12 +60,13 @@ public class SubmoduleUpdateCommandImpl implements SubmoduleUpdateCommand {
   }
 
   public void call() throws VcsException {
-    myCmd.addParameter("submodule");
-    myCmd.addParameter("update");
+    GitCommandLine cmd = getCmd();
+    cmd.addParameter("submodule");
+    cmd.addParameter("update");
     if (myForce)
-      myCmd.addParameter("--force");
-    myCmd.run(with().timeout(myTimeout)
-            .authSettings(myAuthSettings)
-            .useNativeSsh(myUseNativeSsh));
+      cmd.addParameter("--force");
+    cmd.run(with().timeout(myTimeout)
+              .authSettings(myAuthSettings)
+              .useNativeSsh(myUseNativeSsh));
   }
 }

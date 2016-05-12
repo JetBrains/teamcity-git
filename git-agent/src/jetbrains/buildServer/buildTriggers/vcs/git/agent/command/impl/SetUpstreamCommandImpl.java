@@ -23,31 +23,30 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SetUpstreamComm
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-public class SetUpstreamCommandImpl implements SetUpstreamCommand {
-
-  private final GitCommandLine myCmd;
+public class SetUpstreamCommandImpl extends BaseCommandImpl implements SetUpstreamCommand {
   private String myLocalBranch;
   private String myUpstreamBranch;
 
   public SetUpstreamCommandImpl(@NotNull GitCommandLine cmd,
                                 @NotNull String localBranch,
                                 @NotNull String upstreamBranch) {
-    myCmd = cmd;
+    super(cmd);
     myLocalBranch = localBranch;
     myUpstreamBranch = upstreamBranch;
   }
 
   public void call() throws VcsException {
-    GitVersion version = myCmd.getGitVersion();
+    GitCommandLine cmd = getCmd();
+    GitVersion version = cmd.getGitVersion();
     if (version.isLessThan(new GitVersion(1, 7, 0))) {
       //ability to set upstream was added in 1.7.0
       return;
     } else if (version.isLessThan(new GitVersion(1, 8, 0))) {
-      myCmd.addParameters("branch", "--set-upstream", myLocalBranch, myUpstreamBranch);
+      cmd.addParameters("branch", "--set-upstream", myLocalBranch, myUpstreamBranch);
     } else {
-      myCmd.addParameters("branch", "--set-upstream-to=" + myUpstreamBranch);
+      cmd.addParameters("branch", "--set-upstream-to=" + myUpstreamBranch);
     }
-    ExecResult r = CommandUtil.runCommand(myCmd);
-    CommandUtil.failIfNotEmptyStdErr(myCmd, r);
+    ExecResult r = CommandUtil.runCommand(cmd);
+    CommandUtil.failIfNotEmptyStdErr(cmd, r);
   }
 }

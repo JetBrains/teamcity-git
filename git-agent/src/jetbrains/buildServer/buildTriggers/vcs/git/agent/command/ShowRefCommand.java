@@ -18,10 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public interface ShowRefCommand {
+public interface ShowRefCommand extends BaseCommand {
 
   @NotNull
   ShowRefCommand setPattern(@NotNull String pattern);

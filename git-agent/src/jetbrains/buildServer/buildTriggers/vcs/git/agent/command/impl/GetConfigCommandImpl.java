@@ -16,23 +16,18 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.GetConfigCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * @author dmitry.neverov
- */
-public class GetConfigCommandImpl implements GetConfigCommand {
+public class GetConfigCommandImpl extends BaseCommandImpl implements GetConfigCommand {
 
-  private final GitCommandLine myCmd;
   private String myName;
 
   public GetConfigCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   @NotNull
@@ -43,9 +38,10 @@ public class GetConfigCommandImpl implements GetConfigCommand {
 
   @NotNull
   public String call() throws VcsException {
-    myCmd.addParameters("config", myName);
-    ExecResult r = CommandUtil.runCommand(myCmd);
-    CommandUtil.failIfNotEmptyStdErr(myCmd, r);
+    GitCommandLine cmd = getCmd();
+    cmd.addParameters("config", myName);
+    ExecResult r = CommandUtil.runCommand(cmd);
+    CommandUtil.failIfNotEmptyStdErr(cmd, r);
     return r.getStdout().trim();
   }
 }

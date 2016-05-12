@@ -520,27 +520,13 @@ public class UpdaterImpl implements Updater {
     boolean silent = isSilentFetch();
     int timeout = getTimeout(silent);
 
-    FetchCommand fetch = myGitFactory.create(repositoryDir).fetch()
-      .setAuthSettings(myRoot.getAuthSettings())
-      .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
-      .setTimeout(timeout)
-      .setRefspec(refspec);
-
-    if (silent)
-      fetch.setQuite(true);
-    else
-      fetch.setShowProgress(true);
-
-    if (shallowClone)
-      fetch.setDepth(1);
-
     try {
-      fetch.call();
+      getFetch(repositoryDir, refspec, shallowClone, silent, timeout).call();
     } catch (GitIndexCorruptedException e) {
       File gitIndex = e.getGitIndex();
       myLogger.message("Git index '" + gitIndex.getAbsolutePath() + "' is corrupted, remove it and repeat git fetch");
       FileUtil.delete(gitIndex);
-      fetch.call();
+      getFetch(repositoryDir, refspec, shallowClone, silent, timeout).call();
     } catch (GitExecTimeout e) {
       if (!silent) {
         myLogger.error("No output from git during " + timeout + " seconds. Try increasing idle timeout by setting parameter '"
@@ -549,6 +535,25 @@ public class UpdaterImpl implements Updater {
       }
       throw e;
     }
+  }
+
+  @NotNull
+  private FetchCommand getFetch(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout) {
+    FetchCommand result = myGitFactory.create(repositoryDir).fetch()
+      .setAuthSettings(myRoot.getAuthSettings())
+      .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
+      .setTimeout(timeout)
+      .setRefspec(refspec);
+
+    if (silent)
+      result.setQuite(true);
+    else
+      result.setShowProgress(true);
+
+    if (shallowClone)
+      result.setDepth(1);
+
+    return result;
   }
 
   protected void removeRefLocks(@NotNull File dotGit) {

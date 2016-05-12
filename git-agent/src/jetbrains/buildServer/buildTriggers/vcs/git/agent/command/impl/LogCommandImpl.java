@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LogCommand;
@@ -24,18 +23,14 @@ import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * @author dmitry.neverov
- */
-public class LogCommandImpl implements LogCommand {
+public class LogCommandImpl extends BaseCommandImpl implements LogCommand {
 
-  private final GitCommandLine myCmd;
   private String myStartPoint;
   private int myCommitsNumber;
   private String myFormat;
 
   public LogCommandImpl(@NotNull GitCommandLine cmd) {
-    myCmd = cmd;
+    super(cmd);
   }
 
   @NotNull
@@ -59,15 +54,16 @@ public class LogCommandImpl implements LogCommand {
   @Nullable
   public String call() {
     try {
-      myCmd.addParameters("log");
+      GitCommandLine cmd = getCmd();
+      cmd.addParameters("log");
       if (myCommitsNumber != 0)
-        myCmd.addParameter("-n" + myCommitsNumber);
+        cmd.addParameter("-n" + myCommitsNumber);
       if (myFormat != null)
-        myCmd.addParameter("--pretty=format:" + myFormat);
-      myCmd.addParameter(myStartPoint);
-      myCmd.addParameter("--");
-      ExecResult r = CommandUtil.runCommand(myCmd);
-      CommandUtil.failIfNotEmptyStdErr(myCmd, r);
+        cmd.addParameter("--pretty=format:" + myFormat);
+      cmd.addParameter(myStartPoint);
+      cmd.addParameter("--");
+      ExecResult r = CommandUtil.runCommand(cmd);
+      CommandUtil.failIfNotEmptyStdErr(cmd, r);
       return r.getStdout().trim();
     } catch (VcsException e) {
       return null;
