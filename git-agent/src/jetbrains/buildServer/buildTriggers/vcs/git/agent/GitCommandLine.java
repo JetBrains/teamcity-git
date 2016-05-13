@@ -24,7 +24,7 @@ import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.AskPassGenerator;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitProgressListener;
@@ -46,7 +46,7 @@ import java.util.Map;
 public class GitCommandLine extends GeneralCommandLine {
 
   private final GitAgentSSHService mySsh;
-  private final AskPassGenerator myAskPassGen;
+  private final ScriptGen myScriptGen;
   private final List<Runnable> myPostActions = new ArrayList<Runnable>();
   private final File myTmpDir;
   private final boolean myDeleteTempFiles;
@@ -58,14 +58,14 @@ public class GitCommandLine extends GeneralCommandLine {
   private boolean myHasProgress = false;
 
   public GitCommandLine(@Nullable GitAgentSSHService ssh,
-                        @NotNull AskPassGenerator askPassGen,
+                        @NotNull ScriptGen scriptGen,
                         @NotNull File tmpDir,
                         boolean deleteTempFiles,
                         @NotNull GitProgressLogger logger,
                         @NotNull GitVersion gitVersion,
                         @NotNull Map<String, String> env) {
     mySsh = ssh;
-    myAskPassGen = askPassGen;
+    myScriptGen = scriptGen;
     myTmpDir = tmpDir;
     myDeleteTempFiles = deleteTempFiles;
     myLogger = logger;
@@ -81,7 +81,7 @@ public class GitCommandLine extends GeneralCommandLine {
         throw new IllegalStateException("Ssh is not initialized");
       if (authSettings.getAuthMethod() == AuthenticationMethod.PASSWORD) {
         try {
-          final File askPass = myAskPassGen.generate(authSettings);
+          final File askPass = myScriptGen.generateAskPass(authSettings);
           String askPassPath = askPass.getAbsolutePath();
           if (askPassPath.contains(" ") && SystemInfo.isWindows) {
             askPassPath = GitUtils.getShortFileName(askPass);

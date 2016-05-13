@@ -35,15 +35,13 @@ import java.util.Map;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
-import static com.intellij.openapi.util.text.StringUtil.isEmpty;
-
 /**
  * @author dmitry.neverov
  */
 public class NativeGitFacade implements GitFacade {
 
   private final GitAgentSSHService mySsh;
-  private final AskPassGenerator myAskPassGen;
+  private final ScriptGen myScriptGen;
   private final String myGitPath;
   private final GitVersion myGitVersion;
   private final File myRepositoryDir;
@@ -65,7 +63,7 @@ public class NativeGitFacade implements GitFacade {
                          @NotNull Map<String, String> env) {
     mySsh = ssh;
     myTmpDir = tmpDir;
-    myAskPassGen = makeAskPassGen();
+    myScriptGen = makeScriptGen();
     myGitPath = gitPath;
     myGitVersion = gitVersion;
     myRepositoryDir = repositoryDir;
@@ -78,7 +76,7 @@ public class NativeGitFacade implements GitFacade {
   public NativeGitFacade(@NotNull String gitPath, @NotNull GitProgressLogger logger) {
     mySsh = null;
     myTmpDir = new File(FileUtil.getTempDirectory());
-    myAskPassGen = makeAskPassGen();
+    myScriptGen = makeScriptGen();
     myGitPath = gitPath;
     myGitVersion = GitVersion.MIN;
     myRepositoryDir = new File(".");
@@ -237,7 +235,7 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   private GitCommandLine createCommandLine() {
-    GitCommandLine cmd = new GitCommandLine(mySsh, myAskPassGen, myTmpDir, myDeleteTempFiles, myLogger, myGitVersion, myEnv);
+    GitCommandLine cmd = new GitCommandLine(mySsh, myScriptGen, myTmpDir, myDeleteTempFiles, myLogger, myGitVersion, myEnv);
     cmd.setExePath(myGitPath);
     cmd.setWorkingDirectory(myRepositoryDir);
     cmd.setSshKeyManager(mySshKeyManager);
@@ -249,8 +247,8 @@ public class NativeGitFacade implements GitFacade {
   }
 
   @NotNull
-  private AskPassGenerator makeAskPassGen() {
-    return SystemInfo.isUnix ? new UnixAskPassGen(myTmpDir, new EscapeEchoArgumentUnix()) : new WinAskPassGen(myTmpDir, new EscapeEchoArgumentWin());
+  private ScriptGen makeScriptGen() {
+    return SystemInfo.isUnix ? new UnixScriptGen(myTmpDir, new EscapeEchoArgumentUnix()) : new WinScriptGen(myTmpDir, new EscapeEchoArgumentWin());
   }
 
 

@@ -18,7 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.AskPassGenerator;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ScriptGen;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -26,25 +26,24 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-public class UnixAskPassGen implements AskPassGenerator {
+public class WinScriptGen implements ScriptGen {
 
   private final File myTempDir;
   private final EscapeEchoArgument myEscaper;
 
-  public UnixAskPassGen(@NotNull File tempDir,
-                        @NotNull EscapeEchoArgument escaper) {
+  public WinScriptGen(@NotNull File tempDir,
+                      @NotNull EscapeEchoArgument escaper) {
     myTempDir = tempDir;
     myEscaper = escaper;
   }
 
   @NotNull
-  public File generate(@NotNull AuthSettings authSettings) throws IOException {
-    File script = FileUtil.createTempFile(myTempDir, "pass", "", true);
+  public File generateAskPass(@NotNull AuthSettings authSettings) throws IOException {
+    File script = FileUtil.createTempFile(myTempDir, "pass", ".bat", true);
     PrintWriter out = null;
     try {
       out = new PrintWriter(new FileWriter(script));
-      out.println("#!/bin/sh");
-      out.println("printf " + myEscaper.escape(authSettings.getPassword()));
+      out.println("@echo " + myEscaper.escape(authSettings.getPassword()));
       if (!script.setExecutable(true))
         throw new IOException("Cannot make askpass script executable");
     } finally {
@@ -53,4 +52,5 @@ public class UnixAskPassGen implements AskPassGenerator {
     }
     return script;
   }
+
 }

@@ -23,11 +23,11 @@ import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.AskPassGenerator;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.EscapeEchoArgumentUnix;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.EscapeEchoArgumentWin;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.UnixAskPassGen;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.WinAskPassGen;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.UnixScriptGen;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.WinScriptGen;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.TestFor;
@@ -44,7 +44,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.v
 import static org.testng.AssertJUnit.assertEquals;
 
 @Test
-public class AskPassGeneratorTest {
+public class ScriptGenTest {
 
   private TempFiles myTempFiles;
 
@@ -84,7 +84,7 @@ public class AskPassGeneratorTest {
   public void check_escaping(@NotNull String password) throws Exception {
     VcsRoot root = createRootWithPassword(password);
     GeneralCommandLine cmd = new GeneralCommandLine();
-    cmd.setExePath(createGenerator().generate(new AuthSettings(root)).getCanonicalPath());
+    cmd.setExePath(createGenerator().generateAskPass(new AuthSettings(root)).getCanonicalPath());
     ExecResult result = SimpleCommandLineProcessRunner.runCommand(cmd, null);
     assertEquals(password, trimNewLines(result.getStdout()));
   }
@@ -110,9 +110,9 @@ public class AskPassGeneratorTest {
 
 
   @NotNull
-  private AskPassGenerator createGenerator() throws IOException {
-    return SystemInfo.isUnix ? new UnixAskPassGen(myTempFiles.createTempDir(), new EscapeEchoArgumentUnix())
-                             : new WinAskPassGen(myTempFiles.createTempDir(), new EscapeEchoArgumentWin());
+  private ScriptGen createGenerator() throws IOException {
+    return SystemInfo.isUnix ? new UnixScriptGen(myTempFiles.createTempDir(), new EscapeEchoArgumentUnix())
+                             : new WinScriptGen(myTempFiles.createTempDir(), new EscapeEchoArgumentWin());
 
   }
 }

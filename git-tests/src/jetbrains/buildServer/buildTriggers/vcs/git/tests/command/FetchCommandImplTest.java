@@ -22,7 +22,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.AskPassGenerator;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.FetchCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings;
@@ -51,9 +51,9 @@ public class FetchCommandImplTest {
 
   @TestFor(issues = "TW-18853")
   public void should_throw_special_exception_when_stderr_mentions_broken_index() throws VcsException {
-    AskPassGenerator fakeGen = new AskPassGenerator() {
+    ScriptGen fakeGen = new ScriptGen() {
       @NotNull
-      public File generate(@NotNull AuthSettings authSettings) throws IOException {
+      public File generateAskPass(@NotNull AuthSettings authSettings) throws IOException {
         return new File(".");
       }
     };

@@ -22,9 +22,9 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 
-public interface AskPassGenerator {
+public interface ScriptGen {
 
   @NotNull
-  File generate(@NotNull AuthSettings authSettings) throws IOException;
+  File generateAskPass(@NotNull AuthSettings authSettings) throws IOException;
 
 }

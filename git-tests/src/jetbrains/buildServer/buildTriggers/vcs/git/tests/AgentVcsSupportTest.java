@@ -1064,8 +1064,8 @@ public class AgentVcsSupportTest {
   private class PushCommand {
     void run(String gitPath, String workDirectory) throws Exception {
       File tmpDir = new File(FileUtil.getTempDirectory());
-      GitCommandLine cmd = new GitCommandLine(null, SystemInfo.isUnix ? new UnixAskPassGen(tmpDir, new EscapeEchoArgumentUnix())
-                                                                      : new WinAskPassGen(tmpDir, new EscapeEchoArgumentWin()),
+      GitCommandLine cmd = new GitCommandLine(null, SystemInfo.isUnix ? new UnixScriptGen(tmpDir, new EscapeEchoArgumentUnix())
+                                                                      : new WinScriptGen(tmpDir, new EscapeEchoArgumentWin()),
                                               tmpDir,
                                               true,
                                               GitProgressLogger.NO_OP,
