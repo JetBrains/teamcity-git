@@ -51,10 +51,14 @@ public class FetchCommandImplTest {
 
   @TestFor(issues = "TW-18853")
   public void should_throw_special_exception_when_stderr_mentions_broken_index() throws VcsException {
-    ScriptGen fakeGen = new ScriptGen() {
+    ScriptGen fakeGen = new ScriptGen(new File(".")) {
       @NotNull
       public File generateAskPass(@NotNull AuthSettings authSettings) throws IOException {
         return new File(".");
+      }
+      @NotNull
+      protected String getCredHelperTemplate() {
+        return "";
       }
     };
 

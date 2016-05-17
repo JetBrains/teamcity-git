@@ -26,14 +26,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-public class UnixScriptGen implements ScriptGen {
+public class UnixScriptGen extends ScriptGen {
 
-  private final File myTempDir;
   private final EscapeEchoArgument myEscaper;
 
   public UnixScriptGen(@NotNull File tempDir,
                        @NotNull EscapeEchoArgument escaper) {
-    myTempDir = tempDir;
+    super(tempDir);
     myEscaper = escaper;
   }
 
@@ -52,5 +51,12 @@ public class UnixScriptGen implements ScriptGen {
         out.close();
     }
     return script;
+  }
+
+
+  @NotNull
+  @Override
+  protected String getCredHelperTemplate() {
+    return "/META-INF/credentials-helper.sh";
   }
 }

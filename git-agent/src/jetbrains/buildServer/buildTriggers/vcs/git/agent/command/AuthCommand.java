@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2014 JetBrains s.r.o.
+ * Copyright 2000-2016 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import org.jetbrains.annotations.NotNull;
 
-public interface ResetCommand extends BaseCommand, AuthCommand<ResetCommand> {
+public interface AuthCommand<T extends BaseCommand> {
 
   @NotNull
-  ResetCommand setHard(boolean doHard);
+  T setAuthSettings(@NotNull AuthSettings authSettings);
 
   @NotNull
-  ResetCommand setRevision(@NotNull String revision);
-
-  void call() throws VcsException;
+  T setUseNativeSsh(boolean useNativeSsh);
 
 }

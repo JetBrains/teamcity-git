@@ -19,6 +19,8 @@
       <entry name="?*.ftl" />
       <entry name="?*.jsp" />
       <entry name="do-not-load-in-vcs-mode" />
+      <entry name="*.bat" />
+      <entry name="*.sh" />
     </wildcardResourcePatterns>
     <annotationProcessing>
       <profile default="true" name="Default" enabled="false">

@@ -265,4 +265,10 @@ public class NativeGitFacade implements GitFacade {
     }
     return branches;
   }
+
+
+  @NotNull
+  public ScriptGen getScriptGen() {
+    return myScriptGen;
+  }
 }

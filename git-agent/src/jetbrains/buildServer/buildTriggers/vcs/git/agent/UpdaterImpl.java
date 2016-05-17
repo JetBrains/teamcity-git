@@ -16,15 +16,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import com.intellij.openapi.util.Trinity;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Branches;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Refs;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.RefImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
@@ -180,13 +178,13 @@ public class UpdaterImpl implements Updater {
       if (branches.isCurrentBranch(branchName)) {
         removeIndexLock();
         try {
-          git.reset().setHard(true).setRevision(myRevision).call();
+          reset(git).setHard(true).setRevision(myRevision).call();
           git.setUpstream(branchName, GitUtils.createRemoteRef(myFullBranchName)).call();
         } catch (GitIndexCorruptedException e) {
           File gitIndex = e.getGitIndex();
           myLogger.message("Git index '" + gitIndex.getAbsolutePath() + "' is corrupted, remove it and repeat git reset");
           FileUtil.delete(gitIndex);
-          git.reset().setHard(true).setRevision(myRevision).call();
+          reset(git).setHard(true).setRevision(myRevision).call();
           git.setUpstream(branchName, GitUtils.createRemoteRef(myFullBranchName)).call();
         }
       } else {
@@ -199,18 +197,18 @@ public class UpdaterImpl implements Updater {
             .call();
         }
         git.updateRef().setRef(myFullBranchName).setRevision(myRevision).call();
-        git.checkout().setForce(true).setBranch(branchName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+        checkout(git).setForce(true).setBranch(branchName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
       }
     } else if (isTag(myFullBranchName)) {
       String shortName = myFullBranchName.substring("refs/tags/".length());
-      git.checkout().setForce(true).setBranch(shortName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+      checkout(git).setForce(true).setBranch(shortName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
       Ref tag = getRef(myTargetDirectory, myFullBranchName);
       if (tag != null && !tag.getObjectId().name().equals(myRevision)) {
-        git.checkout().setBranch(myRevision).setForce(true).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+        checkout(git).setBranch(myRevision).setForce(true).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
       }
       branchChanged = true;
     } else {
-      git.checkout().setForce(true).setBranch(myRevision).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+      checkout(git).setForce(true).setBranch(myRevision).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
       branchChanged = true;
     }
 
@@ -220,6 +218,23 @@ public class UpdaterImpl implements Updater {
     }
   }
 
+  @NotNull
+  private ResetCommand reset(final GitFacade git) {
+    ResetCommand result = git.reset()
+      .setAuthSettings(myRoot.getAuthSettings())
+      .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
+    configureLFS(result);
+    return result;
+  }
+
+  @NotNull
+  private CheckoutCommand checkout(final GitFacade git) {
+    CheckoutCommand result = git.checkout()
+      .setAuthSettings(myRoot.getAuthSettings())
+      .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
+    configureLFS(result);
+    return result;
+  }
 
   private void checkoutSubmodules(@NotNull final File repositoryDir) throws VcsException {
     File dotGitModules = new File(repositoryDir, ".gitmodules");
@@ -742,5 +757,57 @@ public class UpdaterImpl implements Updater {
       return localRef;
     return new RefImpl("refs/heads" + localRef.getName().substring("refs/remotes/origin".length()),
                        localRef.getObjectId().name());
+  }
+
+
+  private void configureLFS(@NotNull BaseCommand command) {
+    Trinity<String, String, String> lfsAuth = getLfsAuth();
+    if (lfsAuth == null)
+      return;
+    File credentialsHelper = null;
+    try {
+      ScriptGen scriptGen = myGitFactory.create(new File(".")).getScriptGen();
+      final File credHelper = scriptGen.generateCredentialsHelper();
+      credentialsHelper = credHelper;
+      command.setConfig("credential.helper", credHelper.getCanonicalPath());
+      CredentialsHelperConfig config = new CredentialsHelperConfig();
+      config.addCredentials(lfsAuth.first, lfsAuth.second, lfsAuth.third);
+      for (Map.Entry<String, String> e : config.getEnv().entrySet()) {
+        command.setEnv(e.getKey(), e.getValue());
+      }
+      command.addPostAction(new Runnable() {
+        @Override
+        public void run() {
+          FileUtil.delete(credHelper);
+        }
+      });
+    } catch (Exception e) {
+      if (credentialsHelper != null)
+        FileUtil.delete(credentialsHelper);
+    }
+  }
+
+
+  //returns (url, name, pass) for lfs or null if no authentication is required or
+  //root doesn't use http(s)
+  @Nullable
+  private Trinity<String, String, String> getLfsAuth() {
+    try {
+      URIish uri = new URIish(myRoot.getRepositoryFetchURL().toString());
+      String scheme = uri.getScheme();
+      if (myRoot.getAuthSettings().getAuthMethod() == AuthenticationMethod.PASSWORD &&
+          ("http".equals(scheme) || "https".equals(scheme))) {
+        String lfsUrl = uri.setPass("").setUser("").setPath("").toASCIIString();
+        if (lfsUrl.endsWith(".git")) {
+          lfsUrl += "/info/lfs";
+        } else {
+          lfsUrl += lfsUrl.endsWith("/") ? ".git/info/lfs" : "/.git/info/lfs";
+        }
+        return Trinity.create(lfsUrl, myRoot.getAuthSettings().getUserName(), myRoot.getAuthSettings().getPassword());
+      }
+    } catch (Exception e) {
+      LOG.debug("Cannot get lfs auth config", e);
+    }
+    return null;
   }
 }

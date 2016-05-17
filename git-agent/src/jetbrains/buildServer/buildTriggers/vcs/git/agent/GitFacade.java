@@ -100,4 +100,7 @@ public interface GitFacade {
 
   @NotNull
   String resolvePath(@NotNull File f) throws VcsException;
+
+  @NotNull
+  ScriptGen getScriptGen();
 }

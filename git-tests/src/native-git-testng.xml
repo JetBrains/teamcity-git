@@ -21,6 +21,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentVcsSupportTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.command.FetchCommandImplTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentSideSparseCheckoutTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CredentialsHelperTest"/>
     </classes>
   </test>
 </suite>

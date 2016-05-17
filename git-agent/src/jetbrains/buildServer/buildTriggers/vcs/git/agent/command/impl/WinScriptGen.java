@@ -26,14 +26,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-public class WinScriptGen implements ScriptGen {
+public class WinScriptGen extends ScriptGen {
 
-  private final File myTempDir;
   private final EscapeEchoArgument myEscaper;
 
   public WinScriptGen(@NotNull File tempDir,
                       @NotNull EscapeEchoArgument escaper) {
-    myTempDir = tempDir;
+    super(tempDir);
     myEscaper = escaper;
   }
 
@@ -53,4 +52,9 @@ public class WinScriptGen implements ScriptGen {
     return script;
   }
 
+  @NotNull
+  @Override
+  protected String getCredHelperTemplate() {
+    return "/META-INF/credentials-helper.bat";
+  }
 }

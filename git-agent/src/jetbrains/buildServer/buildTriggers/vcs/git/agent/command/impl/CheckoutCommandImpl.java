@@ -16,16 +16,21 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CheckoutCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
 
 public class CheckoutCommandImpl extends BaseCommandImpl implements CheckoutCommand {
 
   private boolean myForce;
   private String myBranch;
   private Integer myTimeout;
+  private boolean myUseNativeSsh;
+  private AuthSettings myAuthSettings;
 
   public CheckoutCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -49,6 +54,20 @@ public class CheckoutCommandImpl extends BaseCommandImpl implements CheckoutComm
     return this;
   }
 
+  @NotNull
+  @Override
+  public CheckoutCommand setAuthSettings(@NotNull AuthSettings authSettings) {
+    myAuthSettings = authSettings;
+    return this;
+  }
+
+  @NotNull
+  @Override
+  public CheckoutCommand setUseNativeSsh(boolean useNativeSsh) {
+    myUseNativeSsh = useNativeSsh;
+    return this;
+  }
+
   public void call() throws VcsException {
     GitCommandLine cmd = getCmd();
     cmd.addParameters("checkout", "-q");
@@ -56,6 +75,8 @@ public class CheckoutCommandImpl extends BaseCommandImpl implements CheckoutComm
       cmd.addParameter("-f");
     cmd.addParameter(myBranch);
     int timeout = myTimeout != null ? myTimeout : CommandUtil.DEFAULT_COMMAND_TIMEOUT_SEC;
-    CommandUtil.runCommand(cmd, timeout);
+    cmd.run(with().timeout(timeout)
+              .authSettings(myAuthSettings)
+              .useNativeSsh(myUseNativeSsh));
   }
 }
