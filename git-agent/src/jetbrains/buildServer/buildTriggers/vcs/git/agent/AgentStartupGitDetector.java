@@ -16,7 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.SystemInfo;
+import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.agent.AgentLifeCycleAdapter;
 import jetbrains.buildServer.agent.AgentLifeCycleListener;
 import jetbrains.buildServer.agent.BuildAgent;
@@ -42,6 +45,7 @@ public class AgentStartupGitDetector extends AgentLifeCycleAdapter {
   static final String UNIX_EXECUTABLE_NAME = "git";
   private static final String[] WIN_PATHS = {"C:\\Program Files\\Git\\bin\\", "C:\\Program Files (x86)\\Git\\bin\\", "C:\\cygwin\\bin\\"};
   private static final String[] UNIX_PATHS = {"/usr/local/bin/", "/usr/bin/", "/opt/local/bin/", "/opt/bin/"};
+  private static final String GIT_LFS_VERSION_PREFIX = "git-lfs/";
 
   public AgentStartupGitDetector(@NotNull final EventDispatcher<AgentLifeCycleListener> dispatcher) {
     dispatcher.addListener(this);
@@ -66,6 +70,7 @@ public class AgentStartupGitDetector extends AgentLifeCycleAdapter {
         LOG.debug("Cannot run git at " + path, e);
       }
     }
+    detectGitLfs(agent);
   }
 
   private boolean pathToGitConfigured(@NotNull BuildAgent agent) {
@@ -100,5 +105,29 @@ public class AgentStartupGitDetector extends AgentLifeCycleAdapter {
   @NotNull
   private String[] getSearchPaths() {
     return SystemInfo.isWindows ? WIN_PATHS : UNIX_PATHS;
+  }
+
+  private void detectGitLfs(@NotNull BuildAgent agent) {
+    try {
+      GeneralCommandLine cmd = new GeneralCommandLine();
+      cmd.setPassParentEnvs(true);
+      cmd.setExePath("git-lfs");
+      cmd.addParameter("env");
+      ExecResult result = SimpleCommandLineProcessRunner.runCommand(cmd, new byte[0]);
+      if (result.getExitCode() != 0)
+        return;
+      for (String line : result.getOutLines()) {
+        if (line.startsWith(GIT_LFS_VERSION_PREFIX)) {
+          int idx = line.indexOf(" ");
+          if (idx > 0) {
+            String version = line.substring(GIT_LFS_VERSION_PREFIX.length(), idx);
+            agent.getConfiguration().addConfigurationParameter("teamcity.gitLfs.version", version);
+            break;
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("Cannot detect git-lfs", e);
+    }
   }
 }
