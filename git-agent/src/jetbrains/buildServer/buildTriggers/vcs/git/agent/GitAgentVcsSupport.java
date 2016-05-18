@@ -205,7 +205,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   }
 
   private boolean canUseSparseCheckout(@NotNull AgentPluginConfig config) {
-    return config.isUseSparseCheckout() && !config.getGitVersion().isLessThan(UpdaterImpl.GIT_WITH_SPARSE_CHECKOUT);
+    return config.isUseSparseCheckout() && !config.getGitVersion().isLessThan(UpdaterImpl.GIT_WITH_SPARSE_CHECKOUT) &&
+           !config.getGitVersion().equals(UpdaterImpl.BROKEN_SPARSE_CHECKOUT);
   }
 
   @Nullable
