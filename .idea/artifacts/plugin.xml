@@ -41,9 +41,6 @@
           <element id="artifact" artifact-name="vcs-worker" />
         </element>
       </element>
-      <element id="directory" name="kotlin-dsl">
-        <element id="file-copy" path="$PROJECT_DIR$/git-dsl/target/configs-dsl-kotlin-git-0.2-SNAPSHOT.jar" />
-      </element>
     </root>
   </artifact>
 </component>
