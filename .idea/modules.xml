@@ -4,7 +4,6 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/git-agent/git-agent.iml" filepath="$PROJECT_DIR$/git-agent/git-agent.iml" />
       <module fileurl="file://$PROJECT_DIR$/git-common/git-common.iml" filepath="$PROJECT_DIR$/git-common/git-common.iml" />
-      <module fileurl="file://$PROJECT_DIR$/git-dsl/git-dsl.iml" filepath="$PROJECT_DIR$/git-dsl/git-dsl.iml" />
       <module fileurl="file://$PROJECT_DIR$/git-server/git-server.iml" filepath="$PROJECT_DIR$/git-server/git-server.iml" />
       <module fileurl="file://$PROJECT_DIR$/git-server-tc/git-server-tc.iml" filepath="$PROJECT_DIR$/git-server-tc/git-server-tc.iml" />
       <module fileurl="file://$PROJECT_DIR$/git-tests/git-tests.iml" filepath="$PROJECT_DIR$/git-tests/git-tests.iml" />
@@ -12,3 +11,4 @@
     </modules>
   </component>
 </project>
+
