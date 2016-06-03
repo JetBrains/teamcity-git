@@ -41,6 +41,14 @@
           <element id="artifact" artifact-name="vcs-worker" />
         </element>
       </element>
+      <element id="directory" name="kotlin-dsl">
+        <element id="archive" name="configs-dsl-kotlin-git.jar">
+          <element id="module-output" name="git-dsl" />
+          <element id="directory" name="META-INF">
+            <element id="file-copy" path="$PROJECT_DIR$/git-dsl/maven" />
+          </element>
+        </element>
+      </element>
     </root>
   </artifact>
 </component>
