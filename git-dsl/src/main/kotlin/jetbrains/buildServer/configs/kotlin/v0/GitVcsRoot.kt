@@ -32,7 +32,7 @@ open class GitVcsRoot : KVcsRoot {
 
     var useTagsAsBranches by booleanParameter("reportTagRevisions")
 
-    var usernameStyle by enumParameter<UserNameStyle>("usernameStyle")
+    var userNameStyle by enumParameter<UserNameStyle>("usernameStyle")
 
     var checkoutSubmodules by enumParameter<CheckoutSubmodules>("submoduleCheckout")
 
@@ -50,7 +50,7 @@ open class GitVcsRoot : KVcsRoot {
 
     var authMethod by enumParameter<AuthMethod>()
 
-    var username by stringParameter("username")
+    var userName by stringParameter("username")
 
     var password by stringParameter("secure:password")
 
