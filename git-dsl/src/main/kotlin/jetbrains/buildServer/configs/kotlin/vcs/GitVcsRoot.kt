@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package jetbrains.buildServer.configs.kotlin.v0
+
+package jetbrains.buildServer.configs.kotlin.vcs
+
+import jetbrains.buildServer.configs.kotlin.v0.KVcsRoot
 
 open class GitVcsRoot : KVcsRoot {
 
