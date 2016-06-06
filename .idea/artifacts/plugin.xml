@@ -48,6 +48,7 @@
             <element id="file-copy" path="$PROJECT_DIR$/git-dsl/maven" />
           </element>
         </element>
+        <element id="file-copy" path="$PROJECT_DIR$/git-dsl/src/GitVcsRoot.xml" />
       </element>
     </root>
   </artifact>

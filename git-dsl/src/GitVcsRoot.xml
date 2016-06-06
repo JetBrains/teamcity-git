@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dsl-extension type="vcs" name="jetbrains.git">
+  <vcs-root-class name="GitVcsRoot"/>
+  <params>
+    <param name="url"/>
+    <param name="push-url" dslName="pushUrl"/>
+    <param name="branch"/>
+    <param name="teamcity:branchSpec" dslName="branchSpec"/>
+    <param name="reportTagRevisions" dslName="useTagsAsBranches" type="boolean"/>
+    <param name="usernameStyle" dslName="userNameStyle" type="UserNameStyle"/>
+    <param name="checkoutSubmodules" type="CheckoutSubmodules"/>
+    <param name="userForTags"/>
+    <param name="serverSideAutoCrlf" dslName="serverSideAutoCRLF" type="boolean"/>
+    <param name="agentGitPath"/>
+    <param name="agentCleanPolicy" type="AgentCleanPolicy"/>
+    <param name="agentCleanFilesPolicy" type="AgentCleanFilesPolicy"/>
+    <param name="useAlternates" dslName="useMirrors" type="boolean"/>
+    <param name="authMethod" type="AuthMethod"/>
+    <param name="username" dslName="userName"/>
+    <param name="secure:password" dslName="password"/>
+    <param name="teamcitySshKey" dslName="uploadedKey"/>
+    <param name="privateKeyPath" dslName="customKeyPath"/>
+    <param name="secure:passphrase" dslName="passphrase"/>
+  </params>
+  <types>
+    <enum name="UserNameStyle">
+      <option name="NAME"/>
+      <option name="USERID"/>
+      <option name="EMAIL"/>
+      <option name="FULL"/>
+    </enum>
+    <enum name="CheckoutSubmodules">
+      <option name="SUBMODULES_CHECKOUT"/>
+      <option name="IGNORE"/>
+    </enum>
+    <enum name="AgentCleanPolicy">
+      <option name="NEVER"/>
+      <option name="ALWAYS"/>
+      <option name="ON_BRANCH_CHANGE"/>
+    </enum>
+    <enum name="AgentCleanFilesPolicy">
+      <option name="IGNORED_ONLY"/>
+      <option name="NON_IGNORED_ONLY"/>
+      <option name="ALL_UNTRACKED"/>
+    </enum>
+    <enum name="AuthMethod">
+      <option name="ANONYMOUS"/>
+      <option name="PASSWORD"/>
+      <option name="TEAMCITY_SSH_KEY"/>
+      <option name="PRIVATE_KEY_DEFAULT"/>
+      <option name="PRIVATE_KEY_FILE"/>
+    </enum>
+  </types>
+</dsl-extension>
