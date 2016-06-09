@@ -16,6 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests.builders;
 
+import java.io.File;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.impl.BuildParametersMapImpl;
 import jetbrains.buildServer.agentServer.AgentBuild;
@@ -29,12 +34,6 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import static jetbrains.buildServer.util.Util.map;
 
@@ -326,6 +325,10 @@ public class AgentRunningBuildBuilder {
       public AgentBuild.CheckoutType getCheckoutType() {
         return AgentBuild.CheckoutType.ON_AGENT;
       }
+
+      @NotNull
+      @Override
+      public String describe(final boolean verbose) { return "no details";}
     };
   };
 
