@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dsl-extension type="vcs" name="jetbrains.git">
-  <vcs-root-class name="GitVcsRoot"/>
+  <class name="GitVcsRoot"/>
   <params>
     <param name="url"/>
     <param name="push-url" dslName="pushUrl"/>
