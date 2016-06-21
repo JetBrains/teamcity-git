@@ -18,8 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.errors.NotSupportedException;
-import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -60,7 +58,7 @@ public class CommitLoaderImpl implements CommitLoader {
   @NotNull
   public RevCommit loadCommit(@NotNull OperationContext context,
                               @NotNull GitVcsRoot root,
-                              @NotNull String revision) throws VcsException, NotSupportedException, TransportException {
+                              @NotNull String revision) throws VcsException, IOException {
     String commitSHA = GitUtils.versionRevision(revision);
     Repository db = context.getRepository(root);
     ObjectId commitId = ObjectId.fromString(commitSHA);
@@ -91,7 +89,7 @@ public class CommitLoaderImpl implements CommitLoader {
   public void fetch(@NotNull Repository db,
                     @NotNull URIish fetchURI,
                     @NotNull Collection<RefSpec> refspecs,
-                    @NotNull FetchSettings settings) throws NotSupportedException, VcsException, TransportException {
+                    @NotNull FetchSettings settings) throws IOException, VcsException {
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
     Lock rmLock = myRepositoryManager.getRmLock(repositoryDir).readLock();
@@ -136,7 +134,7 @@ public class CommitLoaderImpl implements CommitLoader {
   }
 
   private void fetchBranchData(@NotNull GitVcsRoot root, @NotNull Repository repository)
-    throws VcsException, TransportException, NotSupportedException {
+    throws VcsException, IOException {
     final String refName = GitUtils.expandRef(root.getRef());
     RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
     fetch(repository, root.getRepositoryFetchURL(), asList(spec), new FetchSettings(root.getAuthSettings()));

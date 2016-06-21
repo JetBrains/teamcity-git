@@ -283,20 +283,16 @@ public class GitServerUtil {
   /**
    * Removes branches of a bare repository which are not present in a remote repository
    */
-  public static void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn) throws TransportException, NotSupportedException {
+  public static void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn) throws IOException {
     FetchConnection conn = null;
     try {
       conn = tn.openFetch();
       Map<String, Ref> remoteRefMap = conn.getRefsMap();
       for (Map.Entry<String, Ref> e : db.getAllRefs().entrySet()) {
         if (!remoteRefMap.containsKey(e.getKey())) {
-          try {
-            RefUpdate refUpdate = db.getRefDatabase().newUpdate(e.getKey(), false);
-            refUpdate.setForceUpdate(true);
-            refUpdate.delete();
-          } catch (IOException e1) {
-            e1.printStackTrace();
-          }
+          RefUpdate refUpdate = db.getRefDatabase().newUpdate(e.getKey(), false);
+          refUpdate.setForceUpdate(true);
+          refUpdate.delete();
         }
       }
     } finally {

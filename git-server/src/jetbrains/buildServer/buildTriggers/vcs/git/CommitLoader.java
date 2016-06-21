@@ -38,12 +38,12 @@ public interface CommitLoader {
   @NotNull
   RevCommit loadCommit(@NotNull OperationContext context,
                        @NotNull GitVcsRoot root,
-                       @NotNull String revision) throws VcsException, NotSupportedException, TransportException;
+                       @NotNull String revision) throws VcsException, IOException;
 
   public void fetch(@NotNull Repository db,
                     @NotNull URIish fetchURI,
                     @NotNull Collection<RefSpec> refspecs,
-                    @NotNull FetchSettings settings) throws NotSupportedException, VcsException, TransportException;
+                    @NotNull FetchSettings settings) throws IOException, VcsException;
 
   @NotNull
   RevCommit getCommit(@NotNull Repository repository, @NotNull ObjectId commitId) throws IOException;
