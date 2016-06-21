@@ -24,6 +24,7 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
 import java.util.Collection;
 
 /**
@@ -37,6 +38,6 @@ public interface FetchCommand {
   public void fetch(@NotNull Repository db,
                     @NotNull URIish fetchURI,
                     @NotNull Collection<RefSpec> refspecs,
-                    @NotNull FetchSettings settings) throws NotSupportedException, TransportException, VcsException;
+                    @NotNull FetchSettings settings) throws IOException, VcsException;
 
 }

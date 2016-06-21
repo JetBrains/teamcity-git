@@ -20,8 +20,6 @@ import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
-import org.eclipse.jgit.errors.NotSupportedException;
-import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
@@ -135,9 +133,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       final RepositoryStateData currentState = myVcs.getCurrentState(root);
       new FetchAllRefs(context.getProgress(), context.getRepository(), context.getGitRoot(), currentState).fetchTrackedRefs();
       return currentState;
-    } catch (TransportException e) {
-      throw new VcsException(e.getMessage(), e);
-    } catch (NotSupportedException e) {
+    } catch (Exception e) {
       throw new VcsException(e.getMessage(), e);
     }
   }
@@ -256,13 +252,13 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       myAllRefNames = getAllRefNames(states);
     }
 
-    void fetchTrackedRefs() throws NotSupportedException, VcsException, TransportException {
+    void fetchTrackedRefs() throws IOException, VcsException {
       myInvoked = true;
       FetchSettings settings = new FetchSettings(myRoot.getAuthSettings(), myProgress);
       myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL(), calculateRefSpecsForFetch(), settings);
     }
 
-    void fetchAllRefs() throws NotSupportedException, VcsException, TransportException {
+    void fetchAllRefs() throws IOException, VcsException {
       myInvoked = true;
       myAllRefsFetched = true;
       FetchSettings settings = new FetchSettings(myRoot.getAuthSettings(), myProgress);

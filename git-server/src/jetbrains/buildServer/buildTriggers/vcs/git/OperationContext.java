@@ -22,7 +22,6 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.errors.NoRemoteRepositoryException;
-import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
@@ -123,7 +122,7 @@ public class OperationContext {
   public void fetchSubmodule(@NotNull Repository db,
                              @NotNull URIish fetchURI,
                              @NotNull Collection<RefSpec> refSpecs,
-                             @NotNull AuthSettings auth) throws NotSupportedException, VcsException, TransportException {
+                             @NotNull AuthSettings auth) throws IOException, VcsException {
     if (alreadyFetched(fetchURI, refSpecs))
       return;
     try {

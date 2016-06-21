@@ -19,13 +19,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.buildTriggers.vcs.git.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.FetchSettings;
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.errors.NotSupportedException;
-import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
 import java.util.Collection;
 
 class FetchCommandCountDecorator implements FetchCommand {
@@ -40,9 +39,8 @@ class FetchCommandCountDecorator implements FetchCommand {
   public void fetch(@NotNull Repository db,
                     @NotNull URIish fetchURI,
                     @NotNull Collection<RefSpec> refspecs,
-                    @NotNull FetchSettings settings) throws NotSupportedException,
-                                                            VcsException,
-                                                            TransportException {
+                    @NotNull FetchSettings settings) throws IOException,
+                                                            VcsException {
     myDelegate.fetch(db, fetchURI, refspecs, settings);
     inc();
   }

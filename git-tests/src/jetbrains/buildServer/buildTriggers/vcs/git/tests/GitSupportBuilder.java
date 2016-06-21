@@ -23,8 +23,6 @@ import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.MockVcsOperationProgressProvider;
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.errors.NotSupportedException;
-import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
@@ -34,6 +32,7 @@ import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.jmock.lib.legacy.ClassImposteriser;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -78,7 +77,7 @@ public class GitSupportBuilder {
                             @NotNull URIish fetchURI,
                             @NotNull Collection<RefSpec> refspecs,
                             @NotNull FetchSettings settings)
-            throws NotSupportedException, TransportException, VcsException {
+            throws IOException, VcsException {
             myBeforeFetchHook.run();
             originalCommand.fetch(db, fetchURI, refspecs, settings);
           }

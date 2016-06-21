@@ -20,7 +20,6 @@ import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsUtil;
-import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
@@ -124,7 +123,7 @@ public class Fetcher {
                                            @NotNull TransportFactory transportFactory,
                                            @NotNull Transport tn,
                                            @NotNull URIish uri,
-                                           @NotNull AuthSettings authSettings) throws NotSupportedException, VcsException, org.eclipse.jgit.errors.TransportException {
+                                           @NotNull AuthSettings authSettings) throws IOException, VcsException {
     if ("ssh".equals(uri.getScheme()) && GitServerUtil.isAmazonCodeCommit(uri.getHost(), config)) {
       Transport transport = null;
       try {

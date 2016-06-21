@@ -17,8 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.errors.NotSupportedException;
-import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -38,12 +36,12 @@ public interface CommitLoader {
   @NotNull
   RevCommit loadCommit(@NotNull OperationContext context,
                        @NotNull GitVcsRoot root,
-                       @NotNull String revision) throws VcsException, NotSupportedException, TransportException;
+                       @NotNull String revision) throws VcsException, IOException;
 
   public void fetch(@NotNull Repository db,
                     @NotNull URIish fetchURI,
                     @NotNull Collection<RefSpec> refspecs,
-                    @NotNull FetchSettings settings) throws NotSupportedException, VcsException, TransportException;
+                    @NotNull FetchSettings settings) throws IOException, VcsException;
 
   @NotNull
   RevCommit getCommit(@NotNull Repository repository, @NotNull ObjectId commitId) throws IOException;

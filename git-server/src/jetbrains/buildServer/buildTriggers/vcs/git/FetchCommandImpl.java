@@ -28,8 +28,6 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
-import org.eclipse.jgit.errors.NotSupportedException;
-import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.internal.storage.file.LockFile;
 import org.eclipse.jgit.lib.Ref;
@@ -77,7 +75,7 @@ public class FetchCommandImpl implements FetchCommand {
   public void fetch(@NotNull Repository db,
                     @NotNull URIish fetchURI,
                     @NotNull Collection<RefSpec> refspecs,
-                    @NotNull FetchSettings settings) throws NotSupportedException, VcsException, TransportException {
+                    @NotNull FetchSettings settings) throws IOException, VcsException {
     unlockRefs(db);
     if (myConfig.isSeparateProcessForFetch()) {
       fetchInSeparateProcess(db, fetchURI, refspecs, settings);
@@ -246,7 +244,7 @@ public class FetchCommandImpl implements FetchCommand {
   private void fetchInSameProcess(@NotNull Repository db,
                                   @NotNull URIish uri,
                                   @NotNull Collection<RefSpec> refSpecs,
-                                  @NotNull FetchSettings settings) throws NotSupportedException, VcsException, TransportException {
+                                  @NotNull FetchSettings settings) throws IOException, VcsException {
     final String debugInfo = getDebugInfo(db, uri, refSpecs);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Fetch in server process: " + debugInfo);
@@ -269,7 +267,7 @@ public class FetchCommandImpl implements FetchCommand {
     }
   }
 
-  private void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn, @NotNull URIish uri, @NotNull AuthSettings authSettings) throws NotSupportedException, VcsException, TransportException {
+  private void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn, @NotNull URIish uri, @NotNull AuthSettings authSettings) throws IOException, VcsException {
     if ("ssh".equals(uri.getScheme()) && GitServerUtil.isAmazonCodeCommit(uri.getHost(), myConfig)) {
       Transport transport = null;
       try {
