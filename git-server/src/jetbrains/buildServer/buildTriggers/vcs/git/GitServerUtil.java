@@ -290,9 +290,14 @@ public class GitServerUtil {
       Map<String, Ref> remoteRefMap = conn.getRefsMap();
       for (Map.Entry<String, Ref> e : db.getAllRefs().entrySet()) {
         if (!remoteRefMap.containsKey(e.getKey())) {
-          RefUpdate refUpdate = db.getRefDatabase().newUpdate(e.getKey(), false);
-          refUpdate.setForceUpdate(true);
-          refUpdate.delete();
+          try {
+            RefUpdate refUpdate = db.getRefDatabase().newUpdate(e.getKey(), false);
+            refUpdate.setForceUpdate(true);
+            refUpdate.delete();
+          } catch (Exception ex) {
+            LOG.info("Failed to prune removed ref " + e.getKey(), ex);
+            break;
+          }
         }
       }
     } finally {
