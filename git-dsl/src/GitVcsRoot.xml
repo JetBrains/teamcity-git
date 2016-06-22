@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<dsl-extension type="vcs" name="jetbrains.git">
+<dsl-extension kind="vcs" type="jetbrains.git">
   <class name="GitVcsRoot"/>
   <params>
     <param name="url"/>
