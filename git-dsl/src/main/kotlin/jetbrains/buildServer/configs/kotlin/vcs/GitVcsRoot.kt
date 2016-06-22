@@ -16,11 +16,11 @@
 
 package jetbrains.buildServer.configs.kotlin.vcs
 
-import jetbrains.buildServer.configs.kotlin.v0.KVcsRoot
+import jetbrains.buildServer.configs.kotlin.v0.VcsRoot
 
-open class GitVcsRoot : KVcsRoot {
+open class GitVcsRoot : VcsRoot {
 
-    constructor(init: GitVcsRoot.() -> Unit = {}, base: GitVcsRoot? = null): super(base = base as KVcsRoot?) {
+    constructor(init: GitVcsRoot.() -> Unit = {}, base: GitVcsRoot? = null): super(base = base as VcsRoot?) {
         type = "jetbrains.git"
         init()
     }
