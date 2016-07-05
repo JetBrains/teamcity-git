@@ -88,6 +88,11 @@ public class GitCommandLine extends GeneralCommandLine {
           }
           getParametersList().addAt(0, "-c");
           getParametersList().addAt(1, "core.askpass=" + askPassPath);
+          if (!getParametersList().getParametersString().contains("credential.helper")) {
+            //disable credential.helper if it wasn't specified by us
+            getParametersList().addAt(2, "-c");
+            getParametersList().addAt(3, "credential.helper=");
+          }
           addPostAction(new Runnable() {
             public void run() {
               if (myDeleteTempFiles)
