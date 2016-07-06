@@ -59,6 +59,7 @@ public class UpdaterImpl implements Updater {
   private final static GitVersion GIT_WITH_FORCE_SUBMODULE_UPDATE = new GitVersion(1, 7, 6);
   public final static GitVersion GIT_WITH_SPARSE_CHECKOUT = new GitVersion(1, 7, 4);
   public final static GitVersion BROKEN_SPARSE_CHECKOUT = new GitVersion(2, 7, 0);
+  public final static GitVersion EMPTY_CONFIG_VALUE = new GitVersion(2, 1, 1); // version supporting -c foo.bar= with no value
   private static final int SILENT_TIMEOUT = 24 * 60 * 60; //24 hours
 
   protected final FS myFS;
