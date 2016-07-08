@@ -3,12 +3,12 @@
   <class name="GitVcsRoot"/>
   <params>
     <param name="url"/>
-    <param name="push-url" dslName="pushUrl"/>
+    <param name="push_url" dslName="pushUrl"/>
     <param name="branch"/>
     <param name="teamcity:branchSpec" dslName="branchSpec"/>
     <param name="reportTagRevisions" dslName="useTagsAsBranches" type="boolean"/>
     <param name="usernameStyle" dslName="userNameStyle" type="UserNameStyle"/>
-    <param name="checkoutSubmodules" type="CheckoutSubmodules"/>
+    <param name="checkoutSubmodules" type="CheckoutSubmodules" dslName="submoduleCheckout"/>
     <param name="userForTags"/>
     <param name="serverSideAutoCrlf" dslName="serverSideAutoCRLF" type="boolean"/>
     <param name="agentGitPath"/>
