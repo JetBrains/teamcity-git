@@ -8,7 +8,7 @@
     <param name="teamcity:branchSpec" dslName="branchSpec"/>
     <param name="reportTagRevisions" dslName="useTagsAsBranches" type="boolean"/>
     <param name="usernameStyle" dslName="userNameStyle" type="UserNameStyle"/>
-    <param name="checkoutSubmodules" type="CheckoutSubmodules" dslName="checkoutSubmodules"/>
+    <param name="submoduleCheckout" type="CheckoutSubmodules" dslName="checkoutSubmodules"/>
     <param name="userForTags"/>
     <param name="serverSideAutoCrlf" dslName="serverSideAutoCRLF" type="boolean"/>
     <param name="agentGitPath"/>
