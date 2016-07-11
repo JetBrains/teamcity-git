@@ -43,6 +43,7 @@ import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.text.MessageFormat;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -431,5 +432,33 @@ public class GitServerUtil {
       return true;
     List<String> amazonHosts = config.getAmazonHosts();
     return amazonHosts.contains(host);
+  }
+
+
+  @NotNull
+  public static FetchResult fetch(@NotNull Repository r,
+                                  @NotNull URIish url,
+                                  @NotNull AuthSettings authSettings,
+                                  @NotNull TransportFactory transportFactory,
+                                  @NotNull Transport transport,
+                                  @NotNull ProgressMonitor progress,
+                                  @NotNull Collection<RefSpec> refSpecs) throws NotSupportedException, TransportException, VcsException {
+    try {
+      return transport.fetch(progress, refSpecs);
+    } catch (TransportException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof JSchException && "channel is not opened.".equals(cause.getMessage())) {
+        Transport tn = null;
+        try {
+          tn = transportFactory.createTransport(r, url, authSettings);
+          return tn.fetch(progress, refSpecs);
+        } finally {
+          if (tn != null)
+            tn.close();
+        }
+      } else {
+        throw e;
+      }
+    }
   }
 }
