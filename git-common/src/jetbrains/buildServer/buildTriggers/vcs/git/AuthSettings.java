@@ -126,16 +126,16 @@ public class AuthSettings {
     return myTeamCitySshKeyId;
   }
 
-  public URIish createAuthURI(String uri) throws VcsException {
+  public URIish createAuthURI(@Nullable String uri) throws VcsException {
     return createAuthURI(uri, true);
   }
 
-  public URIish createAuthURI(String uri, boolean fixErrors) throws VcsException {
+  public URIish createAuthURI(@Nullable String uri, boolean fixErrors) throws VcsException {
     URIish result;
     try {
       result = new URIish(uri);
     } catch (Exception e) {
-      if (ReferencesResolverUtil.containsReference(uri))
+      if (uri != null && ReferencesResolverUtil.containsReference(uri))
         throw new VcsException("Unresolved parameter in url: " + uri, e);
       throw new VcsException("Invalid URI: " + uri, e);
     }

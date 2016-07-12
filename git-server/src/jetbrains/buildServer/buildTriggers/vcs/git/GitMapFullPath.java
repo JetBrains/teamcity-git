@@ -145,6 +145,7 @@ public class GitMapFullPath {
     return true;
   }
 
+  @NotNull
   private String removeBranch(@NotNull final String url) {
     int branchSeparatorIndex = url.indexOf("#");
     return (branchSeparatorIndex > 0) ? url.substring(0, branchSeparatorIndex) : url;
