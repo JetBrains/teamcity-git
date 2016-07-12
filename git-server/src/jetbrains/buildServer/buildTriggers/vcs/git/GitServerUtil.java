@@ -39,6 +39,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.text.MessageFormat;
+import java.util.Collection;
 import java.util.Map;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
@@ -361,5 +362,33 @@ public class GitServerUtil {
         sb.append(e.getKey()).append("=").append(e.getValue()).append("\n");
     }
     FileUtil.writeFileAndReportErrors(f, sb.toString());
+  }
+
+
+  @NotNull
+  public static FetchResult fetch(@NotNull Repository r,
+                                  @NotNull URIish url,
+                                  @NotNull AuthSettings authSettings,
+                                  @NotNull TransportFactory transportFactory,
+                                  @NotNull Transport transport,
+                                  @NotNull ProgressMonitor progress,
+                                  @NotNull Collection<RefSpec> refSpecs) throws NotSupportedException, TransportException, VcsException {
+    try {
+      return transport.fetch(progress, refSpecs);
+    } catch (TransportException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof JSchException && "channel is not opened.".equals(cause.getMessage())) {
+        Transport tn = null;
+        try {
+          tn = transportFactory.createTransport(r, url, authSettings);
+          return tn.fetch(progress, refSpecs);
+        } finally {
+          if (tn != null)
+            tn.close();
+        }
+      } else {
+        throw e;
+      }
+    }
   }
 }

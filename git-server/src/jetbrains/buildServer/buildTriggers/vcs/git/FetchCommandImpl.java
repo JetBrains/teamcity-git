@@ -261,7 +261,7 @@ public class FetchCommandImpl implements FetchCommand {
       } catch (Exception e) {
         LOG.error("Error while pruning removed branches", e);
       }
-      FetchResult result = tn.fetch(NullProgressMonitor.INSTANCE, refSpecs);
+      FetchResult result = GitServerUtil.fetch(db, uri, settings.getAuthSettings(), myTransportFactory, tn, NullProgressMonitor.INSTANCE, refSpecs);
       GitServerUtil.checkFetchSuccessful(result);
     } catch (OutOfMemoryError oom) {
       LOG.warn("There is not enough memory for git fetch, try to run fetch in a separate process.");
