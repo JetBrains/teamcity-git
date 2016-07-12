@@ -114,7 +114,7 @@ public class Fetcher {
         System.err.println("Error while pruning removed branches: " + e.getMessage());
         e.printStackTrace(System.err);
       }
-      FetchResult result = tn.fetch(progressMonitor, parseRefspecs(refspecs));
+      FetchResult result = GitServerUtil.fetch(repository, new URIish(fetchUrl), auth, transportFactory, tn, progressMonitor, parseRefspecs(refspecs));
       GitServerUtil.checkFetchSuccessful(result);
       logFetchResults(result);
     } finally {
