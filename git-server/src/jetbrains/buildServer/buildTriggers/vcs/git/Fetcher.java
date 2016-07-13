@@ -82,6 +82,7 @@ public class Fetcher {
     } finally {
       exec.shutdown();
     }
+    System.exit(0);
   }
 
   /**
