@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.configs.kotlin.vcs
+package jetbrains.buildServer.configs.kotlin.v10.vcs
 
-import jetbrains.buildServer.configs.kotlin.v0.VcsRoot
+import jetbrains.buildServer.configs.kotlin.v10.VcsRoot
 
 open class GitVcsRoot : VcsRoot {
 
