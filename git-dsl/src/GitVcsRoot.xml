@@ -1,26 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<dsl-extension kind="vcs" type="jetbrains.git">
+<dsl-extension kind="vcs" type="jetbrains.git" generateDslJar="true">
   <class name="GitVcsRoot"/>
   <params>
     <param name="url"/>
     <param name="push_url" dslName="pushUrl"/>
     <param name="branch"/>
     <param name="teamcity:branchSpec" dslName="branchSpec"/>
-    <param name="reportTagRevisions" dslName="useTagsAsBranches" type="boolean"/>
+    <param name="reportTagRevisions" dslName="useTagsAsBranches" type="boolean" trueValue="true" falseValue=""/>
     <param name="usernameStyle" dslName="userNameStyle" type="UserNameStyle"/>
     <param name="submoduleCheckout" type="CheckoutSubmodules" dslName="checkoutSubmodules"/>
     <param name="userForTags"/>
-    <param name="serverSideAutoCrlf" dslName="serverSideAutoCRLF" type="boolean"/>
+    <param name="serverSideAutoCrlf" dslName="serverSideAutoCRLF" type="boolean" trueValue="true" falseValue=""/>
     <param name="agentGitPath"/>
     <param name="agentCleanPolicy" type="AgentCleanPolicy"/>
     <param name="agentCleanFilesPolicy" type="AgentCleanFilesPolicy"/>
-    <param name="useAlternates" dslName="useMirrors" type="boolean"/>
-    <param name="authMethod" type="AuthMethod"/>
-    <param name="username" dslName="userName"/>
-    <param name="secure:password" dslName="password"/>
-    <param name="teamcitySshKey" dslName="uploadedKey"/>
-    <param name="privateKeyPath" dslName="customKeyPath"/>
-    <param name="secure:passphrase" dslName="passphrase"/>
+    <param name="useAlternates" dslName="useMirrors" type="boolean" trueValue="true" falseValue=""/>
+    <param name="authMethod" type="compound">
+      <option name="anonymous" value="ANONYMOUS"/>
+      <option name="password" value="PASSWORD">
+        <param name="username" dslName="userName"/>
+        <param name="secure:password" dslName="password"/>
+      </option>
+      <option name="uploadedKey" value="TEAMCITY_SSH_KEY">
+        <param name="username" dslName="userName"/>
+        <param name="teamcitySshKey" dslName="uploadedKey"/>
+      </option>
+      <option name="defaultPrivateKey" value="PRIVATE_KEY_DEFAULT">
+        <param name="username" dslName="userName"/>
+      </option>
+      <option name="customPrivateKey" value="PRIVATE_KEY_FILE">
+        <param name="username" dslName="userName"/>
+        <param name="privateKeyPath" dslName="customKeyPath"/>
+        <param name="secure:passphrase" dslName="passphrase"/>
+      </option>
+    </param>
   </params>
   <types>
     <enum name="UserNameStyle">
@@ -42,13 +55,6 @@
       <option name="IGNORED_ONLY"/>
       <option name="NON_IGNORED_ONLY"/>
       <option name="ALL_UNTRACKED"/>
-    </enum>
-    <enum name="AuthMethod">
-      <option name="ANONYMOUS"/>
-      <option name="PASSWORD"/>
-      <option name="TEAMCITY_SSH_KEY"/>
-      <option name="PRIVATE_KEY_DEFAULT"/>
-      <option name="PRIVATE_KEY_FILE"/>
     </enum>
   </types>
 </dsl-extension>
