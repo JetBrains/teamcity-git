@@ -35,6 +35,8 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getAuthorIdent;
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getFullMessage;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getFullUserName;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 
@@ -147,10 +149,10 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     CommitDataBean commit;
 
     try {
-      final PersonIdent authorIdent = c.getAuthorIdent();
+      final PersonIdent authorIdent = getAuthorIdent(c);
       commit = new CommitDataBean(id, id, authorIdent.getWhen());
       commit.setCommitAuthor(getFullUserName(authorIdent));
-      commit.setCommitMessage(c.getFullMessage());
+      commit.setCommitMessage(GitServerUtil.getFullMessage(c));
     } catch (Throwable t) {
       LOG.debug("Failed to read commit author or message for " + id + ". " + t.getMessage(), t);
       commit = new CommitDataBean(id, id, new Date(/*11 aug 1984*/461062365000L));
