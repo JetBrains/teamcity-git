@@ -475,7 +475,6 @@ public class GitServerUtil {
   }
 
 
-  @NotNull
   public static PersonIdent getAuthorIdent(@NotNull RevCommit commit) {
     try {
       return commit.getAuthorIdent();
