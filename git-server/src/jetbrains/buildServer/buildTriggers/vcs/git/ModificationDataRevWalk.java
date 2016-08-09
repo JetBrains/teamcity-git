@@ -34,7 +34,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -89,9 +88,10 @@ class ModificationDataRevWalk extends RevWalk {
       throw new IllegalStateException("Current commit is null");
 
     final String commitId = myCurrentCommit.getId().name();
+    String message = GitServerUtil.getFullMessage(myCurrentCommit);
+    final PersonIdent authorIdent = GitServerUtil.getAuthorIdent(myCurrentCommit);
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Collecting changes in commit " + commitId + ":" + myCurrentCommit.getShortMessage() +
-                " (" + myCurrentCommit.getCommitterIdent().getWhen() + ") for " + myGitRoot.debugInfo());
+      LOG.debug("Collecting changes in commit " + commitId + ":" + message + " (" + authorIdent.getWhen() + ") for " + myGitRoot.debugInfo());
     }
 
     final String parentVersion = getFirstParentVersion(myCurrentCommit);
@@ -99,11 +99,10 @@ class ModificationDataRevWalk extends RevWalk {
     builder.collectCommitChanges();
     final List<VcsChange> changes = builder.getChanges();
 
-    final PersonIdent authorIdent = getPersonIdent();
     final ModificationData result = new ModificationData(
       authorIdent.getWhen(),
       changes,
-      getFullMessage(),
+      message,
       GitServerUtil.getUser(myGitRoot, authorIdent),
       myGitRoot.getOriginalRoot(),
       commitId,
@@ -118,24 +117,6 @@ class ModificationDataRevWalk extends RevWalk {
       result.addParentRevision(ObjectId.zeroId().name());
     }
     return result;
-  }
-
-  private String getFullMessage() {
-    try {
-      return myCurrentCommit.getFullMessage();
-    } catch (UnsupportedCharsetException e) {
-      LOG.warn("Cannot parse the " + myCurrentCommit.name() + " commit message due to unknown commit encoding '" + e.getCharsetName() + "'");
-      return "Cannot parse commit message due to unknown commit encoding '" + e.getCharsetName() + "'";
-    }
-  }
-
-  private PersonIdent getPersonIdent() {
-    try {
-      return myCurrentCommit.getAuthorIdent();
-    } catch (UnsupportedCharsetException e) {
-      LOG.warn("Cannot parse the " + myCurrentCommit.name() + " commit author due to unknown commit encoding '" + e.getCharsetName() + "'");
-      return new PersonIdent("Can not parse", "Can not parse");
-    }
   }
 
 

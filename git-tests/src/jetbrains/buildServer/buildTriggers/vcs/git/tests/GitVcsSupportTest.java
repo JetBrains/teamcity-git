@@ -95,6 +95,8 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @BeforeMethod
   public void setUp() throws IOException {
+    myTestLogger.setLogLevel(Level.INFO);
+
     new TeamCityProperties() {{
       setModel(new BasePropertiesModel() {});
     }};
@@ -1632,8 +1634,9 @@ public class GitVcsSupportTest extends PatchTestCase {
 
 
   @Test
-  @TestFor(issues = "TW-41943")
+  @TestFor(issues = {"TW-41943", "TW-46600"})
   public void collect_changes_with_broken_commit_encoding() throws Exception {
+    myTestLogger.setLogLevel(Level.DEBUG);//TW-46600 happens only when debug is enabled
     VcsRoot root = vcsRoot().withFetchUrl(myMainRepositoryDir).build();
 
     RepositoryStateData state1 = createVersionState("refs/heads/master",

@@ -37,6 +37,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getAuthorIdent;
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getFullMessage;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getFullUserName;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 
@@ -142,11 +144,11 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
   @NotNull
   private CommitDataBean createCommit(@NotNull final RevCommit c) {
-    final PersonIdent authorIdent = c.getAuthorIdent();
+    final PersonIdent authorIdent = getAuthorIdent(c);
     final CommitDataBean commit = new CommitDataBean(c.getId().getName(), c.getId().getName(), authorIdent.getWhen());
 
     commit.setCommitAuthor(getFullUserName(authorIdent));
-    commit.setCommitMessage(c.getFullMessage());
+    commit.setCommitMessage(getFullMessage(c));
     for (RevCommit p : c.getParents()) {
       commit.addParentRevision(p.getId().getName());
     }

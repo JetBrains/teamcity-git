@@ -335,9 +335,9 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     final CommitBuilder cb = new CommitBuilder();
     cb.setTreeId(merger.getResultTreeId());
     cb.setParentId(base);
-    cb.setAuthor(original.getAuthorIdent());
+    cb.setAuthor(GitServerUtil.getAuthorIdent(original));
     cb.setCommitter(gitRoot.getTagger(db));
-    cb.setMessage(original.getFullMessage());
+    cb.setMessage(GitServerUtil.getFullMessage(original));
     final ObjectId objectId = inserter.insert(cb);
     inserter.flush();
     return objectId;

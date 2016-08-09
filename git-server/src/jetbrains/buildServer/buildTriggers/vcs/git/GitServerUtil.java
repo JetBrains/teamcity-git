@@ -42,6 +42,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
+import java.nio.charset.UnsupportedCharsetException;
 import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.List;
@@ -459,6 +460,28 @@ public class GitServerUtil {
       } else {
         throw e;
       }
+    }
+  }
+
+
+  @NotNull
+  public static String getFullMessage(@NotNull RevCommit commit) {
+    try {
+      return commit.getFullMessage();
+    } catch (UnsupportedCharsetException e) {
+      LOG.warn("Cannot parse the " + commit.name() + " commit message due to unknown commit encoding '" + e.getCharsetName() + "'");
+      return "Cannot parse commit message due to unknown commit encoding '" + e.getCharsetName() + "'";
+    }
+  }
+
+
+  @NotNull
+  public static PersonIdent getAuthorIdent(@NotNull RevCommit commit) {
+    try {
+      return commit.getAuthorIdent();
+    } catch (UnsupportedCharsetException e) {
+      LOG.warn("Cannot parse the " + commit.name() + " commit author due to unknown commit encoding '" + e.getCharsetName() + "'");
+      return new PersonIdent("Cannot parse author", "Cannot parse author");
     }
   }
 }
