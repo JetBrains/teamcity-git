@@ -97,6 +97,8 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @BeforeMethod
   public void setUp() throws IOException {
+    myTestLogger.setLogLevel(Level.INFO);
+
     new TeamCityProperties() {{
       setModel(new BasePropertiesModel() {});
     }};

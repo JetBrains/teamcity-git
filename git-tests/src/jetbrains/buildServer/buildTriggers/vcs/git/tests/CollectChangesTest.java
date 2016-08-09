@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.BaseTestCase;
+import jetbrains.buildServer.TestLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -24,6 +25,7 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.vcs.*;
+import org.apache.log4j.Level;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
@@ -52,6 +54,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
   private PluginConfigBuilder myConfig;
   private File myRepo;
+  private TestLogger myLogger;
 
   public CollectChangesTest() {
     super("repo.git", "TW-43643-1", "TW-43643-2");
@@ -61,6 +64,8 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   @BeforeMethod
   public void setUp() throws Exception {
     super.setUp();
+    myLogger = new TestLogger();
+    myLogger.setLogLevel(Level.INFO);
     myConfig = new PluginConfigBuilder(new ServerPaths(myTempFiles.createTempDir().getAbsolutePath()));
     myRepo = getRemoteRepositoryDir("repo.git");
   }
@@ -463,8 +468,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   }
 
 
-  @TestFor(issues = "TW-41943")
+  @TestFor(issues = {"TW-41943", "TW-46600"})
   public void collect_changes_with_broken_commit_encoding() throws Exception {
+    myLogger.enableDebug();//TW-46600 happens only when debug is enabled
     VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
 
     RepositoryStateData state1 = createVersionState("refs/heads/master",
