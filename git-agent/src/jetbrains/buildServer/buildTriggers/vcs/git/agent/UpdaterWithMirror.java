@@ -169,8 +169,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
     if (e instanceof GitExecTimeout)
       return false;
     String msg = e.getMessage();
-    if (msg.contains("Couldn't find remote ref"))
+    if (msg.contains("Couldn't find remote ref") ||
+        msg.contains("Could not read from remote repository")) {
       return false;
+    }
     return true;
   }
 
