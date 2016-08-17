@@ -61,6 +61,7 @@ import java.util.regex.Matcher;
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVersionProvider.getGitPath;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder.runningBuild;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder.agentConfiguration;
@@ -1037,21 +1038,6 @@ public class AgentVcsSupportTest {
 
   private AgentRunningBuild createRunningBuild(final Map<String, String> sharedConfigParameters) {
     return runningBuild().sharedConfigParams(sharedConfigParameters).build();
-  }
-
-
-  /**
-   * Get path to git executable.
-   * @return return value of environment variable TEAMCITY_GIT_PATH, or "git" if variable is not set.
-   * @throws IOException
-   */
-  private String getGitPath() throws IOException {
-    String providedGit = System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH);
-    if (providedGit != null) {
-      return providedGit;
-    } else {
-      return "git";
-    }
   }
 
 
