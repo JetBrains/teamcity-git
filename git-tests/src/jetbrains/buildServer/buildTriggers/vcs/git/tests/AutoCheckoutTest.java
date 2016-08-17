@@ -18,13 +18,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.agent.AgentCanNotCheckoutReason;
 import jetbrains.buildServer.agent.AgentRunningBuild;
-import jetbrains.buildServer.agent.BuildAgent;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.vcs.AgentCheckoutAbility;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
-import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -40,7 +36,6 @@ import java.io.IOException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.UpdaterImpl.GIT_WITH_SPARSE_CHECKOUT;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder.runningBuild;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder.agentConfiguration;
 import static org.assertj.core.api.BDDAssertions.then;
 
 @Test
@@ -154,14 +149,6 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
 
   @NotNull
   private GitAgentVcsSupport createVcsSupport(final GitDetector detector) throws IOException {
-    BuildAgentConfiguration agentConfiguration = agentConfiguration(myTempFiles.createTempDir(), myTempFiles.createTempDir()).build();
-    MirrorManager mirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(agentConfiguration), new HashCalculatorImpl());
-    VcsRootSshKeyManagerProvider provider = new MockVcsRootSshKeyManagerProvider();
-    GitMetaFactory metaFactory = new GitMetaFactoryImpl();
-    final BuildAgent agent = new MockBuildAgent();
-    return new GitAgentVcsSupport(new FSImpl(),
-                                  new MockDirectoryCleaner(),
-                                  new GitAgentSSHService(agent, agentConfiguration, new MockGitPluginDescriptor(), provider),
-                                  new PluginConfigFactoryImpl(agentConfiguration, detector), mirrorManager, metaFactory);
+    return new AgentSupportBuilder(myTempFiles).setGitDetector(detector).build();
   }
 }

@@ -18,12 +18,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.SystemInfo;
 import jetbrains.buildServer.agent.AgentRunningBuild;
-import jetbrains.buildServer.agent.BuildAgent;
-import jetbrains.buildServer.agent.BuildAgentConfiguration;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -52,26 +51,17 @@ import static org.testng.AssertJUnit.assertTrue;
 @Test(dataProviderClass = GitVersionProvider.class, dataProvider = "version")
 public class HttpAuthTest extends BaseRemoteRepositoryTest {
 
+  private AgentSupportBuilder myBuilder;
   private GitAgentVcsSupport myVcsSupport;
   private GitHttpServer myServer;
-  private MirrorManager myMirrorManager;
 
   @Override
   @BeforeMethod
   public void setUp() throws Exception {
     super.setUp();
 
-    GitPathResolver resolver = new MockGitPathResolver();
-    GitDetector detector = new GitDetectorImpl(resolver);
-    BuildAgentConfiguration agentConfiguration = BuildAgentConfigurationBuilder.agentConfiguration(myTempFiles.createTempDir(), myTempFiles.createTempDir()).build();
-    PluginConfigFactoryImpl pluginConfigFactory = new PluginConfigFactoryImpl(agentConfiguration, detector);
-    myMirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(agentConfiguration), new HashCalculatorImpl());
-    VcsRootSshKeyManagerProvider provider = new MockVcsRootSshKeyManagerProvider();
-    GitMetaFactory metaFactory = new GitMetaFactoryImpl();
-    BuildAgent agent = new MockBuildAgent();
-    myVcsSupport = new GitAgentVcsSupport(new FSImpl(), new MockDirectoryCleaner(),
-                                          new GitAgentSSHService(agent, agentConfiguration, new MockGitPluginDescriptor(), provider),
-                                          pluginConfigFactory, myMirrorManager, metaFactory);
+    myBuilder = new AgentSupportBuilder(myTempFiles);
+    myVcsSupport = myBuilder.build();
   }
 
 
@@ -122,7 +112,7 @@ public class HttpAuthTest extends BaseRemoteRepositoryTest {
     copyRepository(dataFile("repo_for_fetch.2"), repo);
 
     //configure hanging credential helper for mirror:
-    File mirrorDir = myMirrorManager.getMirrorDir(myServer.getRepoUrl().replaceAll("http://", "http://" + user + "@"));
+    File mirrorDir = myBuilder.getMirrorManager().getMirrorDir(myServer.getRepoUrl().replaceAll("http://", "http://" + user + "@"));
     Repository mirror = new RepositoryBuilder().setGitDir(mirrorDir).build();
     StoredConfig config = mirror.getConfig();
     config.setString("credential", null, "helper", createHangingCredProvider(100).getCanonicalPath());
