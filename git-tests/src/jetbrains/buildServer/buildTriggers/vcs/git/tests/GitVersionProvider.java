@@ -41,7 +41,7 @@ public class GitVersionProvider {
     } else {
       GitVersion minRequired = GitVersion.parse("git version " + requirement.min());
       if (version.isLessThan(minRequired)) {
-        return new Object[][]{new Object[0]};
+        return new Object[0][];
       } else {
         return new Object[][]{new Object[]{new GitExec(gitPath, version)}};
       }
