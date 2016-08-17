@@ -59,6 +59,10 @@ public class UpdaterImpl implements Updater {
   private final static GitVersion GIT_WITH_FORCE_SUBMODULE_UPDATE = new GitVersion(1, 7, 6);
   public final static GitVersion GIT_WITH_SPARSE_CHECKOUT = new GitVersion(1, 7, 4);
   public final static GitVersion BROKEN_SPARSE_CHECKOUT = new GitVersion(2, 7, 0);
+  /**
+   * Git version supporting an empty credential helper - the only way to disable system/global/local cred helper
+   */
+  public final static GitVersion EMPTY_CRED_HELPER = new GitVersion(2, 9, 0);
   private static final int SILENT_TIMEOUT = 24 * 60 * 60; //24 hours
 
   protected final FS myFS;

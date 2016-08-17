@@ -88,9 +88,10 @@ public class GitCommandLine extends GeneralCommandLine {
           }
           getParametersList().addAt(0, "-c");
           getParametersList().addAt(1, "core.askpass=" + askPassPath);
-          if (!getParametersList().getParametersString().contains("credential.helper")) {
+          if (!getParametersList().getParametersString().contains("credential.helper") && !myGitVersion.isLessThan(UpdaterImpl.EMPTY_CRED_HELPER)) {
             //disable credential.helper if it wasn't specified by us
-            disableCredentialsHelper();
+            getParametersList().addAt(2, "-c");
+            getParametersList().addAt(3, "credential.helper=");
           }
           addPostAction(new Runnable() {
             public void run() {
@@ -115,34 +116,6 @@ public class GitCommandLine extends GeneralCommandLine {
       }
     } else {
       return CommandUtil.runCommand(this, settings.getTimeout());
-    }
-  }
-
-
-  /**
-   * Disables credentials helper by specifying helper with no credentials
-   */
-  private void disableCredentialsHelper() throws VcsException {
-    File credentialsHelper = null;
-    try {
-      final File credentialsHelperScript = myScriptGen.generateCredentialsHelper();
-      credentialsHelper = credentialsHelperScript;
-      String path = credentialsHelperScript.getCanonicalPath();
-      if (path.contains(" ") && SystemInfo.isWindows) {
-        path = GitUtils.getShortFileName(credentialsHelper);
-      }
-      getParametersList().addAt(0, "-c");
-      getParametersList().addAt(1, "credential.helper=" + path);
-      addPostAction(new Runnable() {
-        @Override
-        public void run() {
-          FileUtil.delete(credentialsHelperScript);
-        }
-      });
-    } catch (Exception e) {
-      if (credentialsHelper != null)
-        FileUtil.delete(credentialsHelper);
-      throw new VcsException("Failed to disable credentials helper", e);
     }
   }
 
