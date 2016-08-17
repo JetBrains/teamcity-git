@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -71,6 +72,15 @@ public class GitTestUtil {
       refs.mkdirs();
     }
   }
+
+  @NotNull
+  static File copyRepository(@NotNull TempFiles tempFiles, @NotNull File srcDir, @NotNull String dstName) throws IOException {
+    File parentDir = tempFiles.createTempDir();
+    File result = new File(parentDir, dstName);
+    copyRepository(srcDir, result);
+    return result;
+  }
+
 
   public static Properties copyCurrentProperties() {
     Properties result = new Properties();

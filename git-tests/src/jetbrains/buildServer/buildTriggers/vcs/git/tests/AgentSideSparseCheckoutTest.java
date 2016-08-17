@@ -19,7 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgent;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
@@ -35,11 +34,11 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVersionProvider.getGitPath;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder.runningBuild;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder.agentConfiguration;
@@ -206,15 +205,5 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
     };
     FileUtil.listFilesRecursively(dir, "", false, Integer.MAX_VALUE, excludeDotGit, result);
     return result;
-  }
-
-
-  private String getGitPath() throws IOException {
-    String providedGit = System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH);
-    if (providedGit != null) {
-      return providedGit;
-    } else {
-      return "git";
-    }
   }
 }
