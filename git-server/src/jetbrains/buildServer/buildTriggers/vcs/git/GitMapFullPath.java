@@ -67,7 +67,8 @@ public class GitMapFullPath {
 
   public Collection<String> mapFullPath(@NotNull OperationContext context, @NotNull VcsRootEntry rootEntry, @NotNull String path) throws VcsException {
     GitVcsRoot root = context.getGitRoot();
-    LOG.debug("MapFullPath root: " + LogUtil.describe(root) + ", path " + path);
+    if (LOG.isDebugEnabled())
+      LOG.debug("MapFullPath root: " + LogUtil.describe(root) + ", path " + path);
     FullPath fullPath = new FullPath(path);
     if (!fullPath.isValid()) {
       LOG.warn("Invalid path: " + path);
@@ -101,12 +102,15 @@ public class GitMapFullPath {
     RepositoryRevisionCache repositoryCache = myCache.getRepositoryCache(root);
     Boolean hasRevision = repositoryCache.hasRevision(revision);
     if (hasRevision != null) {
-      LOG.debug("RevisionCache hit: root " + LogUtil.describe(rootEntry.getVcsRoot()) + (hasRevision ? "contains " : "doesn't contain ") + "revision " + revision);
+      if (LOG.isDebugEnabled())
+        LOG.debug("RevisionCache hit: root " + LogUtil.describe(rootEntry.getVcsRoot()) + (hasRevision ? "contains " : "doesn't contain ") + "revision " + revision);
       return hasRevision;
     } else {
-      LOG.debug("RevisionCache miss: root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + ", lookup commit in repository");
+      if (LOG.isDebugEnabled())
+        LOG.debug("RevisionCache miss: root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + ", lookup commit in repository");
       hasRevision = myCommitLoader.findCommit(context.getRepository(), revision) != null;
-      LOG.debug("Root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + (hasRevision ? " was found" : " wasn't found") + ", cache the result");
+      if (LOG.isDebugEnabled())
+        LOG.debug("Root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + (hasRevision ? " was found" : " wasn't found") + ", cache the result");
       repositoryCache.saveRevision(revision, hasRevision);
       return hasRevision;
     }
