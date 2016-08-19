@@ -62,6 +62,8 @@ public class PluginConfigBuilder {
   private boolean myUsePackHeuristic;
   private boolean myFailLabelingWhenPackHeuristicsFail;
   private Integer myPushIdleTimeoutSeconds;
+  private Boolean myPersistentCacheEnabled;
+  private Integer myMapFullPathRevisionCacheSize;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -215,7 +217,7 @@ public class PluginConfigBuilder {
       }
 
       public int getMapFullPathRevisionCacheSize() {
-        return 100;
+        return myMapFullPathRevisionCacheSize != null ? myMapFullPathRevisionCacheSize : myDelegate.getMapFullPathRevisionCacheSize();
       }
 
       public long getConnectionRetryIntervalMillis() {
@@ -283,6 +285,13 @@ public class PluginConfigBuilder {
       @Override
       public boolean failLabelingWhenPackHeuristicsFails() {
         return myFailLabelingWhenPackHeuristicsFail || myDelegate.failLabelingWhenPackHeuristicsFails();
+      }
+
+      @Override
+      public boolean persistentCacheEnabled() {
+        if (myPersistentCacheEnabled != null)
+          return myPersistentCacheEnabled;
+        return myDelegate.persistentCacheEnabled();
       }
     };
   }
@@ -425,6 +434,18 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setPushIdleTimeoutSeconds(int timeoutSeconds) {
     myPushIdleTimeoutSeconds = timeoutSeconds;
+    return this;
+  }
+
+
+  public PluginConfigBuilder setPersistentCacheEnabled(boolean persistentCacheEnabled) {
+    myPersistentCacheEnabled = persistentCacheEnabled;
+    return this;
+  }
+
+
+  public PluginConfigBuilder setMapFullPathRevisionCacheSize(int mapFullPathRevisionCacheSize) {
+    myMapFullPathRevisionCacheSize = mapFullPathRevisionCacheSize;
     return this;
   }
 }

@@ -51,7 +51,7 @@ public class GitMapFullPath {
 
   public GitMapFullPath(@NotNull ServerPluginConfig config) {
     myConfig = config;
-    myCache = new RevisionsCache(config.getMapFullPathRevisionCacheSize());
+    myCache = new RevisionsCache(config);
   }
 
 
@@ -60,7 +60,8 @@ public class GitMapFullPath {
   }
 
 
-  public Collection<String> mapFullPath(@NotNull OperationContext context, @NotNull VcsRootEntry rootEntry, @NotNull String path) throws VcsException {
+  @NotNull
+  public Collection<String> mapFullPath(@NotNull OperationContext context, @NotNull VcsRootEntry rootEntry, @NotNull String path) throws VcsException, IOException {
     GitVcsRoot root = context.getGitRoot();
     if (LOG.isDebugEnabled())
       LOG.debug("MapFullPath root: " + LogUtil.describe(root) + ", path " + path);
@@ -75,11 +76,11 @@ public class GitMapFullPath {
       if (fullPath.containsHintRevision()) {
         //if full path has a hint revision, first check if repository contains it;
         //a hint revision should rarely change and most likely will be cached
-        if (repositoryContainsRevision(context, rootEntry, fullPath.getHintRevision())
-            && repositoryContainsRevision(context, rootEntry, fullPath.getRevision()))
+        if (repositoryContainsRevision(context, rootEntry, fullPath.getHintRevision(), RevisionCacheType.HINT_CACHE)
+            && repositoryContainsRevision(context, rootEntry, fullPath.getRevision(), RevisionCacheType.COMMIT_CACHE))
             return fullPath.getMappedPaths();
       } else {
-        if (repositoryContainsRevision(context, rootEntry, fullPath.getRevision()))
+        if (repositoryContainsRevision(context, rootEntry, fullPath.getRevision(), RevisionCacheType.COMMIT_CACHE))
           return fullPath.getMappedPaths();
       }
     }
@@ -92,9 +93,13 @@ public class GitMapFullPath {
   }
 
 
-  private boolean repositoryContainsRevision(@NotNull OperationContext context, @NotNull VcsRootEntry rootEntry, @NotNull String revision) throws VcsException {
+  private boolean repositoryContainsRevision(@NotNull OperationContext context,
+                                             @NotNull VcsRootEntry rootEntry,
+                                             @NotNull String revision,
+                                             @NotNull RevisionCacheType type) throws VcsException, IOException {
     GitVcsRoot root = context.getGitRoot();
-    RepositoryRevisionCache repositoryCache = myCache.getRepositoryCache(root);
+    RepositoryRevisionCache repositoryCache = myCache.getRepositoryCache(root.getRepositoryDir(), type);
+    long resetCounter = repositoryCache.getResetCounter();
     Boolean hasRevision = repositoryCache.hasRevision(revision);
     if (hasRevision != null) {
       if (LOG.isDebugEnabled())
@@ -106,7 +111,7 @@ public class GitMapFullPath {
       hasRevision = myCommitLoader.findCommit(context.getRepository(), revision) != null;
       if (LOG.isDebugEnabled())
         LOG.debug("Root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + (hasRevision ? " was found" : " wasn't found") + ", cache the result");
-      repositoryCache.saveRevision(revision, hasRevision);
+      repositoryCache.saveRevision(revision, hasRevision, resetCounter);
       return hasRevision;
     }
   }
@@ -150,17 +155,16 @@ public class GitMapFullPath {
     return (branchSeparatorIndex > 0) ? url.substring(0, branchSeparatorIndex) : url;
   }
 
-  public void invalidateRevisionsCache(@NotNull Repository db, @NotNull Map<String, Ref> oldRefs, @NotNull Map<String, Ref> newRefs) {
-    if (myConfig.ignoreFetchedCommits()) {
-      myCache.invalidateCache(db);
-    } else {
-      try {
+  public void invalidateRevisionsCache(@NotNull Repository db, @NotNull Map<String, Ref> oldRefs, @NotNull Map<String, Ref> newRefs) throws IOException {
+    try {
+      if (myConfig.ignoreFetchedCommits()) {
+        myCache.resetNegativeEntries(db.getDirectory());
+      } else {
         Set<String> newCommits = getNewCommits(db, oldRefs, newRefs);
-        myCache.invalidateCache(db, newCommits);
-      } catch (IOException e) {
-        LOG.warn("Error while calculating new commits for repository " + db.getDirectory(), e);
-        myCache.invalidateCache(db);
+        myCache.resetNegativeEntries(db.getDirectory(), newCommits);
       }
+    } catch (IOException e) {
+      LOG.warn("Error while resetting commits cache for repository " + db.getDirectory(), e);
     }
   }
 

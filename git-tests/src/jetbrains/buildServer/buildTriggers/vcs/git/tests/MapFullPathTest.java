@@ -21,7 +21,9 @@ import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitMapFullPath;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
+import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -66,6 +68,9 @@ public class MapFullPathTest {
 
   @BeforeMethod
   public void setUp() throws IOException {
+    new TeamCityProperties() {{
+      setModel(new BasePropertiesModel() {});
+    }};
     myTempFiles = new TempFiles();
     myContext = new Mockery() {{
       setImposteriser(ClassImposteriser.INSTANCE);

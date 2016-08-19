@@ -17,8 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.lib.Repository;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -31,63 +29,89 @@ import java.util.concurrent.ConcurrentMap;
  * Revisions cache for whole server.
  * ThreadSafe.
  */
-final class RevisionsCache {
+public final class RevisionsCache {
   private static final Logger LOG = Logger.getInstance(RevisionsCache.class.getName());
 
+  private ServerPluginConfig myConfig;
   //repositoryId -> per repository cache
-  private final ConcurrentMap<String, RepositoryRevisionCache> myCache = new ConcurrentHashMap<String, RepositoryRevisionCache>();
-  private final int myRepositoryCacheSize;
+  private final ConcurrentMap<String, RepositoryRevisionCache> myCache = new ConcurrentHashMap<>();
+  private volatile int myRepositoriesCount;
 
-  RevisionsCache(int repositoryCacheSize) {
-    myRepositoryCacheSize = repositoryCacheSize;
+  public RevisionsCache(@NotNull ServerPluginConfig config) {
+    myConfig = config;
+    if (config.persistentCacheEnabled())
+      init(config.getCachesDir());
   }
 
-  void invalidateCache(@NotNull final Repository db) {
-    String repositoryId = getRepositoryId(db);
-    RepositoryRevisionCache repositoryCache = myCache.get(repositoryId);
-    if (repositoryCache != null)
-      repositoryCache.removeNegativeEntries();
-  }
 
-  void invalidateCache(@NotNull final Repository db, @NotNull Set<String> newCommits) {
-    String repositoryId = getRepositoryId(db);
-    RepositoryRevisionCache repositoryCache = myCache.get(repositoryId);
-    if (repositoryCache != null) {
-      if (LOG.isDebugEnabled())
-        LOG.debug("Invalidate cache for repository " + db.getDirectory() + ", new commits " + newCommits);
-      repositoryCache.removeNegativeEntries(newCommits);
+  private void init(@NotNull File cachesDir) {
+    File[] repoDirs = cachesDir.listFiles();
+    if (repoDirs == null)
+      return;
+    myRepositoriesCount = repoDirs.length;
+    for (File repoDir : repoDirs) {
+      if (repoDir.isDirectory()) {
+        for (RevisionCacheType type : RevisionCacheType.values()) {
+          int cacheSize = getCacheSize(type);
+          try {
+            myCache.put(getRepositoryId(repoDir, type), RepositoryRevisionCache.read(myConfig, repoDir, type, cacheSize));
+          } catch (Exception e) {
+            LOG.warnAndDebugDetails("Error while initializing revisions cache for repository " + repoDir, e);
+          }
+        }
+      }
     }
   }
 
-  RepositoryRevisionCache getRepositoryCache(@NotNull final GitVcsRoot root) throws VcsException {
-    String repositoryId = getRepositoryId(root);
+  private int getCacheSize(@NotNull RevisionCacheType type) {
+    if (type == RevisionCacheType.HINT_CACHE) {
+      //if remote-run is used in all repositories, then hint cache should be able to store
+      //at least one hint from every other repository, otherwise we will do redundant lookups.
+      return Math.max(myRepositoriesCount * 2, myConfig.getMapFullPathRevisionCacheSize());
+    } else {
+      return myConfig.getMapFullPathRevisionCacheSize();
+    }
+  }
+
+
+  public void resetNegativeEntries(@NotNull File repositoryDir) throws IOException {
+    for (RevisionCacheType type : RevisionCacheType.values()) {
+      String repositoryId = getRepositoryId(repositoryDir, type);
+      RepositoryRevisionCache repositoryCache = myCache.get(repositoryId);
+      if (repositoryCache != null)
+        repositoryCache.resetNegativeEntries();
+    }
+  }
+
+
+  public void resetNegativeEntries(@NotNull File repositoryDir, @NotNull Set<String> newCommits) throws IOException {
+    for (RevisionCacheType type : RevisionCacheType.values()) {
+      String repositoryId = getRepositoryId(repositoryDir, type);
+      RepositoryRevisionCache repositoryCache = myCache.get(repositoryId);
+      if (repositoryCache != null) {
+        if (LOG.isDebugEnabled())
+          LOG.debug("Invalidate cache for repository " + repositoryDir + ", new commits " + newCommits);
+        repositoryCache.resetNegativeEntries(newCommits);
+      }
+    }
+  }
+
+
+  @NotNull
+  public RepositoryRevisionCache getRepositoryCache(@NotNull File repositoryDir, @NotNull RevisionCacheType type) throws IOException {
+    String repositoryId = getRepositoryId(repositoryDir, type);
     RepositoryRevisionCache result = myCache.get(repositoryId);
     if (result == null) {
-      result = new RepositoryRevisionCache(myRepositoryCacheSize);
+      result = new RepositoryRevisionCache(myConfig, repositoryDir, type, getCacheSize(type));
       RepositoryRevisionCache old = myCache.putIfAbsent(repositoryId, result);
       result = (old == null) ? result : old;
     }
     return result;
   }
 
-  private String getRepositoryId(@NotNull final GitVcsRoot root) {
-    return getRepositoryId(root.getRepositoryDir());
-  }
 
-  private String getRepositoryId(@NotNull final Repository db) {
-    return getRepositoryId(db.getDirectory());
-  }
-
-  private String getRepositoryId(@NotNull final File repositoryDir) {
-    try {
-      return repositoryDir.getCanonicalPath();
-    } catch (IOException e) {
-      return repositoryDir.getAbsolutePath();
-    }
-  }
-
-  @Override
-  public String toString() {
-    return myCache.toString();
+  @NotNull
+  private String getRepositoryId(@NotNull File repositoryDir, @NotNull RevisionCacheType type) throws IOException {
+    return repositoryDir.getCanonicalPath() + "_" + type.name();
   }
 }

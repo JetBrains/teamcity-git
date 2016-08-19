@@ -66,6 +66,7 @@ import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 public class PluginConfigImpl implements ServerPluginConfig {
 
   public static final String TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS = "teamcity.git.idle.timeout.seconds";
+  public static final String MAP_FULL_PATH_PERSISTENT_CACHES = "teamcity.git.persistentCacheEnabled";
   private static final String TEAMCITY_GIT_SSH_PROXY_TYPE = "teamcity.git.sshProxyType";
   private static final String TEAMCITY_GIT_SSH_PROXY_HOST = "teamcity.git.sshProxyHost";
   private static final String TEAMCITY_GIT_SSH_PROXY_PORT = "teamcity.git.sshProxyPort";
@@ -498,5 +499,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
   @Override
   public boolean failLabelingWhenPackHeuristicsFails() {
     return TeamCityProperties.getBoolean("teamcity.git.failLabelingWhenPackHeuristicsFails");
+  }
+
+  @Override
+  public boolean persistentCacheEnabled() {
+    return TeamCityProperties.getBooleanOrTrue(MAP_FULL_PATH_PERSISTENT_CACHES);
   }
 }
