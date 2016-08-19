@@ -19,8 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.parameters.ReferencesResolverUtil;
-import jetbrains.buildServer.util.RecentEntriesCache;
-import jetbrains.buildServer.util.filters.Filter;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.eclipse.jgit.lib.Constants;
@@ -35,12 +33,9 @@ import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -208,121 +203,6 @@ public class GitMapFullPath {
     }
   }
 
-  /**
-   * Revisions cache for whole server.
-   * ThreadSafe.
-   */
-  private final static class RevisionsCache {
-    //repositoryId -> per repository cache
-    private final ConcurrentMap<String, RepositoryRevisionCache> myCache = new ConcurrentHashMap<String, RepositoryRevisionCache>();
-    private final int myRepositoryCacheSize;
-
-    private RevisionsCache(int repositoryCacheSize) {
-      myRepositoryCacheSize = repositoryCacheSize;
-    }
-
-    void invalidateCache(@NotNull final Repository db) {
-      String repositoryId = getRepositoryId(db);
-      RepositoryRevisionCache repositoryCache = myCache.get(repositoryId);
-      if (repositoryCache != null)
-        repositoryCache.removeNegativeEntries();
-    }
-
-    void invalidateCache(@NotNull final Repository db, @NotNull Set<String> newCommits) {
-      String repositoryId = getRepositoryId(db);
-      RepositoryRevisionCache repositoryCache = myCache.get(repositoryId);
-      if (repositoryCache != null) {
-        if (LOG.isDebugEnabled())
-          LOG.debug("Invalidate cache for repository " + db.getDirectory() + ", new commits " + newCommits);
-        repositoryCache.removeNegativeEntries(newCommits);
-      }
-    }
-
-    RepositoryRevisionCache getRepositoryCache(@NotNull final GitVcsRoot root) throws VcsException {
-      String repositoryId = getRepositoryId(root);
-      RepositoryRevisionCache result = myCache.get(repositoryId);
-      if (result == null) {
-        result = new RepositoryRevisionCache(myRepositoryCacheSize);
-        RepositoryRevisionCache old = myCache.putIfAbsent(repositoryId, result);
-        result = (old == null) ? result : old;
-      }
-      return result;
-    }
-
-    private String getRepositoryId(@NotNull final GitVcsRoot root) {
-      return getRepositoryId(root.getRepositoryDir());
-    }
-
-    private String getRepositoryId(@NotNull final Repository db) {
-      return getRepositoryId(db.getDirectory());
-    }
-
-    private String getRepositoryId(@NotNull final File repositoryDir) {
-      try {
-        return repositoryDir.getCanonicalPath();
-      } catch (IOException e) {
-        return repositoryDir.getAbsolutePath();
-      }
-    }
-
-    @Override
-    public String toString() {
-      return myCache.toString();
-    }
-  }
-
-
-  /**
-   * Revisions cache for single repository.
-   * ThreadSafe.
-   */
-  private final static class RepositoryRevisionCache {
-    //revision (SHA) -> does this repository have such revision
-    private final RecentEntriesCache<String, Boolean> myCache;
-
-    private RepositoryRevisionCache(int cacheSize) {
-      myCache = new RecentEntriesCache<String, Boolean>(cacheSize);
-    }
-
-    /**
-     * @return true if repository has revision, false if doesn't, null if there is no data on this revision
-     */
-    @Nullable
-    Boolean hasRevision(@NotNull String revision) {
-      return myCache.get(revision);
-    }
-
-    void saveRevision(@NotNull String revision, boolean has) {
-      myCache.put(revision, has);
-    }
-
-    @Override
-    public String toString() {
-      return myCache.toString();
-    }
-
-    void removeNegativeEntries() {
-      myCache.removeValues(new Filter<Boolean>() {
-        public boolean accept(@NotNull Boolean hasRevision) {
-          return !hasRevision;//remove entries for commits we don't have
-        }
-      });
-    }
-
-    void removeNegativeEntries(@NotNull Set<String> newCommits) {
-      synchronized (myCache) {
-        Set<String> forRemove = new HashSet<String>();
-        for (String commit : myCache.keySet()) {
-          if (newCommits.contains(commit) && Boolean.FALSE.equals(myCache.get(commit)))
-            forRemove.add(commit);
-        }
-
-        for (String commit : forRemove) {
-          myCache.remove(commit);
-        }
-      }
-    }
-  }
 
   //Format: <hint revision>-<git revision hash>|<repository url>|<file relative path>
   private static class FullPath {
