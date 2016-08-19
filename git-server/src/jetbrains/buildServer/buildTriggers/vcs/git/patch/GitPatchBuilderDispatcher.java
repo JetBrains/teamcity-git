@@ -142,6 +142,7 @@ public final class GitPatchBuilderDispatcher {
     Map<String, String> result = new HashMap<String, String>();
     result.putAll(myConfig.getFetcherProperties());
     result.put("teamcity.git.fetch.separate.process", "false");
+    result.put(PluginConfigImpl.MAP_FULL_PATH_PERSISTENT_CACHES, "false");
     return result;
   }
 

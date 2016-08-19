@@ -140,4 +140,6 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean checkLabeledCommitIsInRemoteRepository();
 
   boolean failLabelingWhenPackHeuristicsFails();
+
+  boolean persistentCacheEnabled();
 }
