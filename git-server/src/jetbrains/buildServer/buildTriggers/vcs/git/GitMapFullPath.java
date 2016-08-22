@@ -49,9 +49,9 @@ public class GitMapFullPath {
   private final RevisionsCache myCache;
   private CommitLoader myCommitLoader;
 
-  public GitMapFullPath(@NotNull ServerPluginConfig config) {
+  public GitMapFullPath(@NotNull ServerPluginConfig config, @NotNull RevisionsCache cache) {
     myConfig = config;
-    myCache = new RevisionsCache(config);
+    myCache = cache;
   }
 
 

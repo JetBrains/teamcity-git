@@ -36,4 +36,7 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitFetchService"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitCommitSupport"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.patch.BulkPatchBuilderImpl"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.RevisionsCache"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.ResetRevisionsCacheHandler"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitResetCacheHandler"/>
 </beans>

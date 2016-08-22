@@ -30,6 +30,7 @@ import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.RepositoryStateData;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootEntry;
+import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.hamcrest.Description;
@@ -40,8 +41,10 @@ import org.jmock.Mockery;
 import org.jmock.lib.legacy.ClassImposteriser;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
@@ -50,6 +53,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilde
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
+import static org.assertj.core.api.BDDAssertions.then;
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
 
@@ -184,6 +188,63 @@ public class MapFullPathTest {
     assertTrue(myMapFullPath.mapFullPath(ctx2, myRootEntry2, hintCommit + "-" + "any_other_commit").isEmpty());
 
     myContext.assertIsSatisfied();
+  }
+
+
+  @DataProvider
+  public Object[][] fetchAction() {
+    return new Object[][]{
+      new Object[] {new FetchAction("collect changes") {
+        @Override
+        public void run() throws Exception {
+          RepositoryStateData state0 = RepositoryStateData.createSingleVersionState("9ef3a588831557040e81e4063ecf27d5442837f4");
+          RepositoryStateData state1 = myGit.getCurrentState(myRoot);
+          myGit.getCollectChangesPolicy().collectChanges(myRoot, state0, state1, CheckoutRules.DEFAULT);
+        }
+      }},
+
+      new Object[] {new FetchAction("build patch") {
+        @Override
+        public void run() throws Exception {
+          ByteArrayOutputStream output = new ByteArrayOutputStream();
+          PatchBuilderImpl builder = new PatchBuilderImpl(output);
+          myGit.buildPatch(myRoot, null, "add81050184d3c818560bdd8839f50024c188586", builder, CheckoutRules.DEFAULT);
+        }
+      }},
+
+      new Object[] {new FetchAction("get content") {
+        @Override
+        public void run() throws Exception {
+          myGit.getContentProvider().getContent("readme", myRoot, "add81050184d3c818560bdd8839f50024c188586");
+        }
+      }}
+    };
+  }
+
+  private abstract class FetchAction {
+    private final String myName;
+    public FetchAction(@NotNull String name) {
+      myName = name;
+    }
+
+    public abstract void run() throws Exception;
+
+    @Override
+    public String toString() {
+      return myName;
+    }
+  }
+
+  @Test(dataProvider = "fetchAction")
+  public void should_reset_cached_revision_after_fetch(@NotNull FetchAction fetchAction) throws Exception {
+    //run map full path before fetch
+    final String existingCommit = "a7274ca8e024d98c7d59874f19f21d26ee31d41d";
+    OperationContext context = myGit.createContext(myRoot, "map full path");
+    then(myMapFullPath.mapFullPath(context, myRootEntry, existingCommit + "||.")).isEmpty();//will not find revision in empty repo
+
+    fetchAction.run();
+
+    then(myMapFullPath.mapFullPath(context, myRootEntry, existingCommit + "||.")).isNotEmpty();
   }
 
 

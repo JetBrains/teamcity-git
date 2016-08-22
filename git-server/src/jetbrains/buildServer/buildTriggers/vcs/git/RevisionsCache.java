@@ -97,6 +97,13 @@ public final class RevisionsCache {
   }
 
 
+  public void reset() {
+    for (RepositoryRevisionCache repoCache : myCache.values()) {
+      repoCache.reset();
+    }
+  }
+
+
   @NotNull
   public RepositoryRevisionCache getRepositoryCache(@NotNull File repositoryDir, @NotNull RevisionCacheType type) throws IOException {
     String repositoryId = getRepositoryId(repositoryDir, type);

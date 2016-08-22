@@ -96,10 +96,14 @@ public class GitSupportBuilder {
     } else {
       resetCacheManager = myResetCacheManager;
     }
-    myMapFullPath = new GitMapFullPath(myPluginConfig);
+    RevisionsCache revisionsCache = new RevisionsCache(myPluginConfig);
+    myMapFullPath = new GitMapFullPath(myPluginConfig, revisionsCache);
     myCommitLoader = new CommitLoaderImpl(myRepositoryManager, myFetchCommand, myMapFullPath);
+    GitResetCacheHandler resetCacheHandler = new GitResetCacheHandler(myRepositoryManager);
+    ResetRevisionsCacheHandler resetRevisionsCacheHandler = new ResetRevisionsCacheHandler(revisionsCache);
     GitVcsSupport git = new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
-                                          new EmptyVcsRootSshKeyManager(), new MockVcsOperationProgressProvider());
+                                          new EmptyVcsRootSshKeyManager(), new MockVcsOperationProgressProvider(),
+                                          resetCacheHandler, resetRevisionsCacheHandler);
     git.addExtensions(myExtensions);
     git.setExtensionHolder(myExtensionHolder);
     return git;

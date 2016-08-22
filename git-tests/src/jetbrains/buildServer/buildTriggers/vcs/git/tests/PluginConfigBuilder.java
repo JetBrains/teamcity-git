@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.jcraft.jsch.Proxy;
+import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -25,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 import org.quartz.CronExpression;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +66,7 @@ public class PluginConfigBuilder {
   private Integer myPushIdleTimeoutSeconds;
   private Boolean myPersistentCacheEnabled;
   private Integer myMapFullPathRevisionCacheSize;
+  private TempFiles myTempFiles;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -77,9 +80,19 @@ public class PluginConfigBuilder {
   }
 
   public ServerPluginConfig build() {
-    if (myPaths == null && myDotBuildServerDir == null)
+    if (myPaths == null && myDotBuildServerDir == null && myTempFiles == null)
       throw new IllegalArgumentException("Either ServerPaths or .BuildServer dir must be set");
-    myDelegate = myPaths != null ? new PluginConfigImpl(myPaths) : new PluginConfigImpl(new ServerPaths(myDotBuildServerDir.getAbsolutePath()));
+    if (myPaths != null) {
+      myDelegate = new PluginConfigImpl(myPaths);
+    } else if (myDotBuildServerDir != null) {
+      myDelegate = new PluginConfigImpl(new ServerPaths(myDotBuildServerDir.getAbsolutePath()));
+    } else {
+      try {
+        myDelegate = new PluginConfigImpl(new ServerPaths(myTempFiles.createTempDir().getAbsolutePath()));
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
     return new ServerPluginConfig() {
       @NotNull
       public File getCachesDir() {
@@ -446,6 +459,12 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setMapFullPathRevisionCacheSize(int mapFullPathRevisionCacheSize) {
     myMapFullPathRevisionCacheSize = mapFullPathRevisionCacheSize;
+    return this;
+  }
+
+
+  public PluginConfigBuilder setTempFiles(final TempFiles tempFiles) {
+    myTempFiles = tempFiles;
     return this;
   }
 }
