@@ -22,7 +22,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.RevisionCacheType;
 import jetbrains.buildServer.buildTriggers.vcs.git.RevisionsCache;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
-import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
@@ -39,6 +38,7 @@ import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.function.BiConsumer;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.PluginConfigBuilder.pluginConfig;
 import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 import static org.assertj.core.api.Assertions.fail;
 import static org.assertj.core.api.BDDAssertions.then;
@@ -58,8 +58,7 @@ public class RevisionsCacheTest {
     }};
 
     myTempFiles = new TempFiles();
-    ServerPaths paths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    myConfigBuilder = new PluginConfigBuilder(paths);
+    myConfigBuilder = pluginConfig().setTempFiles(myTempFiles);
     myConfig = myConfigBuilder.build();
     myCache = new RevisionsCache(myConfig);
   }
@@ -367,6 +366,47 @@ public class RevisionsCacheTest {
     then(cache5.hasRevision("v1")).isFalse();
     then(cache5.hasRevision("v2")).isFalse();
     then(cache5.hasRevision("v3")).isFalse();
+  }
+
+
+  public void reset_cache() throws Exception {
+    File repo = repository("1");
+    RepositoryRevisionCache repoCache = myCache.getRepositoryCache(repo, RevisionCacheType.COMMIT_CACHE);
+    long resetCounter = repoCache.getResetCounter();
+    repoCache.saveRevision("v1", true, resetCounter);
+
+    repoCache.reset();
+
+    then(repoCache.hasRevision("v1")).isNull();
+    then(RepositoryRevisionCache.getCacheFile(repo, RevisionCacheType.COMMIT_CACHE)).doesNotExist();
+
+    repoCache.saveRevision("v2", false, resetCounter);
+    then(repoCache.hasRevision("v2")).isNull();
+  }
+
+
+  public void reset_all_caches() throws Exception {
+    List<File> repos = new ArrayList<>();
+    for (int i = 0; i < 4; i++) {
+      File repo = repository(String.valueOf(i));
+      repos.add(repo);
+      for (RevisionCacheType type : RevisionCacheType.values()) {
+        RepositoryRevisionCache repoCache = myCache.getRepositoryCache(repo, type);
+        repoCache.saveRevision("v1", true, repoCache.getResetCounter());
+      }
+    }
+
+    myCache.reset();
+
+    for (File repo : repos) {
+      for (RevisionCacheType type : RevisionCacheType.values()) {
+        RepositoryRevisionCache repoCache = myCache.getRepositoryCache(repo, type);
+        then(repoCache.hasRevision("v1")).isNull();
+        then(RepositoryRevisionCache.getCacheFile(repo, type)).doesNotExist();
+        repoCache.saveRevision("v2", false, 0);
+        then(repoCache.hasRevision("v2")).isNull();
+      }
+    }
   }
 
 

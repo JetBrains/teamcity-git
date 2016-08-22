@@ -73,7 +73,9 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull GitMapFullPath mapFullPath,
                        @NotNull CommitLoader commitLoader,
                        @NotNull VcsRootSshKeyManager sshKeyManager,
-                       @NotNull VcsOperationProgressProvider progressProvider) {
+                       @NotNull VcsOperationProgressProvider progressProvider,
+                       @NotNull GitResetCacheHandler resetCacheHandler,
+                       @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler) {
     myConfig = config;
     myTransportFactory = transportFactory;
     myRepositoryManager = repositoryManager;
@@ -82,7 +84,8 @@ public class GitVcsSupport extends ServerVcsSupport
     mySshKeyManager = sshKeyManager;
     myProgressProvider = progressProvider;
     setStreamFileThreshold();
-    resetCacheManager.registerHandler(new GitResetCacheHandler(repositoryManager));
+    resetCacheManager.registerHandler(resetCacheHandler);
+    resetCacheManager.registerHandler(resetRevisionsCacheHandler);
   }
 
   public void setExtensionHolder(@Nullable ExtensionHolder extensionHolder) {

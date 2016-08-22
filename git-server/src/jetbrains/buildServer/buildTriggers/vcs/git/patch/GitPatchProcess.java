@@ -43,7 +43,7 @@ public class GitPatchProcess {
 
     PluginConfigImpl config = new PluginConfigImpl(new ConstantCachePaths(settings.getGitCachesDir()));
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, new MirrorManagerImpl(config, new HashCalculatorImpl()));
-    GitMapFullPath mapFullPath = new GitMapFullPath(config);
+    GitMapFullPath mapFullPath = new GitMapFullPath(config, new RevisionsCache(config));
     VcsRootSshKeyManager sshKeyManager = new ConstantSshKeyManager(settings.getKeyBytes());
     TransportFactory transportFactory = new TransportFactoryImpl(config, sshKeyManager);
     FetcherProperties fetcherProperties = new FetcherProperties(config);

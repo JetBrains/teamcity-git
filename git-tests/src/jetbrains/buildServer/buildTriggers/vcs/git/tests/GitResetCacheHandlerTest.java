@@ -19,6 +19,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitResetCacheHandler;
 import jetbrains.buildServer.buildTriggers.vcs.git.RepositoryManager;
+import jetbrains.buildServer.serverSide.BasePropertiesModel;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
@@ -50,6 +52,9 @@ public class GitResetCacheHandlerTest {
 
   @BeforeMethod
   public void setUp() throws IOException {
+    new TeamCityProperties() {{
+      setModel(new BasePropertiesModel() {});
+    }};
     myContext = new Mockery() {{
       setImposteriser(ClassImposteriser.INSTANCE);
     }};

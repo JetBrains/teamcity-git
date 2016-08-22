@@ -111,6 +111,15 @@ public final class RepositoryRevisionCache {
   }
 
 
+  public void reset() {
+    synchronized (myCache) {
+      myResetCounter.incrementAndGet();
+      myCache.clear();
+      FileUtil.delete(getCacheFile(myRepositoryDir, myType));
+    }
+  }
+
+
   public long getResetCounter() {
     return myResetCounter.get();
   }
