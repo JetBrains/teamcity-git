@@ -316,7 +316,10 @@ public class FetchCommandImpl implements FetchCommand {
     //In this case incoming_xxx.pack files will waste disk space.
     //See TW-13450 for details
     File objectsDir = ((FileRepository) db).getObjectsDirectory();
-    for (File f : objectsDir.listFiles()) {
+    File[] files = objectsDir.listFiles();
+    if (files == null)
+      return;
+    for (File f : files) {
       if (f.isFile() && f.getName().startsWith("incoming_") && f.getName().endsWith(".pack")) {
         FileUtil.delete(f);
       }
