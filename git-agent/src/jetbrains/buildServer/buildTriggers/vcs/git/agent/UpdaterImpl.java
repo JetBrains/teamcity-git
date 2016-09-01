@@ -203,6 +203,9 @@ public class UpdaterImpl implements Updater {
         }
         git.updateRef().setRef(myFullBranchName).setRevision(myRevision).call();
         checkout(git).setForce(true).setBranch(branchName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+        if (branches.contains(branchName)) {
+          git.setUpstream(branchName, GitUtils.createRemoteRef(myFullBranchName)).call();
+        }
       }
     } else if (isTag(myFullBranchName)) {
       String shortName = myFullBranchName.substring("refs/tags/".length());
