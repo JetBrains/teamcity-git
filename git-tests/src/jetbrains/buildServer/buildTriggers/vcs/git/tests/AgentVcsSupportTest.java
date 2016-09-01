@@ -161,7 +161,7 @@ public class AgentVcsSupportTest {
   }
 
 
-  @TestFor(issues = "TW-42551")
+  @TestFor(issues = {"TW-42551", "TW-46857"})
   public void should_set_remote_tracking_branch() throws Exception {
     AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY,
                                                      PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES));
@@ -171,6 +171,11 @@ public class AgentVcsSupportTest {
 
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
     then(new BranchConfig(r.getConfig(), "master").getRemoteTrackingBranch()).isEqualTo("refs/remotes/origin/master");
+
+    //TW-46857
+    myRoot = vcsRoot().withAgentGitPath(getGitPath()).withBranch("personal-branch2").withFetchUrl(GitUtils.toURL(myMainRepo)).withUseMirrors(true).build();
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "3df61e6f11a5a9b919cb3f786a83fdd09f058617", myCheckoutDir, build, false);
+    then(new BranchConfig(r.getConfig(), "personal-branch2").getRemoteTrackingBranch()).isEqualTo("refs/remotes/origin/personal-branch2");
   }
 
 
