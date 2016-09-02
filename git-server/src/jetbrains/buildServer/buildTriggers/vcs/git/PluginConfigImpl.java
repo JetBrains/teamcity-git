@@ -505,4 +505,9 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public boolean persistentCacheEnabled() {
     return TeamCityProperties.getBooleanOrTrue(MAP_FULL_PATH_PERSISTENT_CACHES);
   }
+
+  @Override
+  public boolean logRemoteRefs() {
+    return TeamCityProperties.getBoolean("teamcity.git.logRemoteRefs");
+  }
 }

@@ -306,6 +306,11 @@ public class PluginConfigBuilder {
           return myPersistentCacheEnabled;
         return myDelegate.persistentCacheEnabled();
       }
+
+      @Override
+      public boolean logRemoteRefs() {
+        return false;
+      }
     };
   }
 
