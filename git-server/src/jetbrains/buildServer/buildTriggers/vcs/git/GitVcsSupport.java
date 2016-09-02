@@ -367,7 +367,7 @@ public class GitVcsSupport extends ServerVcsSupport
     try {
       Repository db = context.getRepository();
       Map<String, Ref> remoteRefs = getRemoteRefs(db, gitRoot);
-      if (LOG.isDebugEnabled())
+      if (LOG.isDebugEnabled() && myConfig.logRemoteRefs())
         LOG.debug("Remote refs for VCS root " + LogUtil.describe(root) + ": " + remoteRefs);
       return remoteRefs;
     } catch (Exception e) {

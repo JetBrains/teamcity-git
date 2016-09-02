@@ -142,4 +142,6 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean failLabelingWhenPackHeuristicsFails();
 
   boolean persistentCacheEnabled();
+
+  boolean logRemoteRefs();
 }
