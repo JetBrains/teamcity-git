@@ -11,7 +11,7 @@
       <element id="file-copy" path="$PROJECT_DIR$/teamcity-plugin.dist.xml" output-file-name="teamcity-plugin.xml" />
       <element id="directory" name="lib">
         <element id="library" level="project" name="jgit" />
-        <element id="library" level="project" name="jsch-0.1.51" />
+        <element id="library" level="project" name="jsch" />
         <element id="library" level="project" name="quartz-1.6.0" />
         <element id="artifact" artifact-name="git-common.jar" />
         <element id="artifact" artifact-name="git-server.jar" />
