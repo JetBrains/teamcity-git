@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="configs-dsl-kotlin">
-    <CLASSES>
-      <root url="jar://$ConfigsDslKotlinJar$!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

@@ -42,7 +42,7 @@
         </element>
       </element>
       <element id="directory" name="kotlin-dsl">
-        <element id="file-copy" path="$PROJECT_DIR$/git-dsl/src/GitVcsRoot.xml" />
+        <element id="file-copy" path="$PROJECT_DIR$/git-dsl/Git.xml" />
       </element>
     </root>
   </artifact>
