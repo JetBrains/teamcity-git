@@ -499,7 +499,7 @@ public class UpdaterImpl implements Updater {
 
   protected void fetchFromOriginalRepository(boolean fetchRequired) throws VcsException {
     Ref remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
-    if (!fetchRequired && hasRevision(myTargetDirectory, myRevision) && remoteRef != null)
+    if (!fetchRequired && remoteRef != null && myRevision.equals(remoteRef.getObjectId().name()) && hasRevision(myTargetDirectory, myRevision))
       return;
     myLogger.message("Commit '" + myRevision + "' is not found in local clone. Running 'git fetch'...");
     fetchDefaultBranch();

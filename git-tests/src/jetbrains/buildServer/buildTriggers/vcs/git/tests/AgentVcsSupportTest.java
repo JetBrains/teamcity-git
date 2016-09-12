@@ -179,6 +179,45 @@ public class AgentVcsSupportTest {
   }
 
 
+  @TestFor(issues = "TW-46854")
+  @Test(dataProvider = "mirrors")
+  public void should_update_remote_tracking_branch_in_case_of_fast_forward_update(boolean useMirrors) throws Exception {
+    File remoteRepo = myTempFiles.createTempDir();
+
+    copyRepository(dataFile("repo_for_fetch.2"), remoteRepo);
+    VcsRootImpl root = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(remoteRepo).withUseMirrors(useMirrors).build();
+    String buildBranchParam = GitUtils.getGitRootBranchParamName(root);
+
+    //run build in master branch
+    AgentRunningBuild build = createRunningBuild(map(buildBranchParam, "refs/heads/master"));
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
+
+    //fast-forward update master to point to the same commit as master
+    Repository remote = new RepositoryBuilder().setGitDir(remoteRepo).build();
+    RefUpdate refUpdate = remote.updateRef("refs/heads/personal");
+    refUpdate.setNewObjectId(ObjectId.fromString("add81050184d3c818560bdd8839f50024c188586"));
+    refUpdate.update();
+
+    //run build in personal branch
+    build = createRunningBuild(map(buildBranchParam, "refs/heads/personal"));
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "add81050184d3c818560bdd8839f50024c188586", myCheckoutDir, build, false);
+
+    //fast-forward update personal branch to point to the same commit as master
+    refUpdate = remote.updateRef("refs/heads/personal");
+    refUpdate.setNewObjectId(ObjectId.fromString("d47dda159b27b9a8c4cee4ce98e4435eb5b17168"));
+    refUpdate.update();
+
+    //run build on updated personal branch
+    build = createRunningBuild(map(buildBranchParam, "refs/heads/personal"));
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
+
+    //both branch and its remote-tracking branch should be updated
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    then(r.getAllRefs().get("refs/heads/personal").getObjectId().name()).isEqualTo("d47dda159b27b9a8c4cee4ce98e4435eb5b17168");
+    then(r.getAllRefs().get("refs/remotes/origin/personal").getObjectId().name()).isEqualTo("d47dda159b27b9a8c4cee4ce98e4435eb5b17168");
+  }
+
+
   /**
    * Test work normally if .git/index.lock file exists
    */
