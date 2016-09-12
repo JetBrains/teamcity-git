@@ -88,7 +88,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       boolean outdatedTagsFound = removeOutdatedRefs(bareRepositoryDir);
       if (!outdatedTagsFound) {
         LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
-        Ref ref = getRef(bareRepositoryDir, GitUtils.expandRef(myRoot.getRef()));
+        Ref ref = getRef(bareRepositoryDir, GitUtils.createRemoteRef(myFullBranchName));
         if (ref != null && myRevision.equals(ref.getObjectId().name())) {
           LOG.info("No fetch required for revision '" + myRevision + "' in " + mirrorDescription);
           fetchRequired = false;
