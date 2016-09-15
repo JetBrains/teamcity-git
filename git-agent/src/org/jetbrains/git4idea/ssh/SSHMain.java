@@ -390,7 +390,7 @@ public class SSHMain {
       return false;
     }
     catch (Exception e) {
-      log.append("Error while authentication with public key ").append(keyPath).append(e.getMessage()).append("\n");
+      log.append("Error while authentication with public key ").append(keyPath).append(" ").append(e.getMessage()).append("\n");
       return false;
     }
   }
