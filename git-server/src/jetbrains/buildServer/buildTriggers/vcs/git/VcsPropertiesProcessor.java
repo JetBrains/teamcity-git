@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.buildTriggers.vcs.AbstractVcsPropertiesProcessor;
 import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -82,7 +83,11 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
   public Collection<InvalidProperty> validateBranchName(@NotNull Map<String, String> properties) {
     String branchName = properties.get(Constants.BRANCH_NAME);
     Collection<InvalidProperty> errors = new ArrayList<InvalidProperty>();
-    if (branchName != null && branchName.startsWith("/")) {
+    if (StringUtil.isEmptyOrSpaces(branchName)) {
+      errors.add(new InvalidProperty(Constants.BRANCH_NAME, "Branch name must be specified"));
+      return errors;
+    }
+    if (branchName.startsWith("/")) {
       errors.add(new InvalidProperty(Constants.BRANCH_NAME, "Branch name should not start with /"));
     }
     return errors;
