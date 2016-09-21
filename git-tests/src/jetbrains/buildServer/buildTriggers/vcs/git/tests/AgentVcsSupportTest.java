@@ -1005,6 +1005,21 @@ public class AgentVcsSupportTest {
   }
 
 
+  @TestFor(issues = "TW-46266")
+  public void should_not_use_custom_clone_on_server() throws Exception {
+    File serverCustomCloneDir = myTempFiles.createTempDir();
+    VcsRootImpl root = vcsRoot()
+      .withAgentGitPath(getGitPath())
+      .withFetchUrl(GitUtils.toURL(myMainRepo))
+      .withRepositoryPathOnServer(serverCustomCloneDir.getCanonicalPath())
+      .build();
+
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, createRunningBuild(true), false);
+
+    then(serverCustomCloneDir.listFiles()).isEmpty();
+  }
+
+
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
     myVcsRootId++;
     return new VcsRootImpl(myVcsRootId, new HashMap<String, String>() {{
