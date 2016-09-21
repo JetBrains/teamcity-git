@@ -34,7 +34,7 @@ import java.util.Map;
  */
 public class GitVcsRoot {
 
-  private final MirrorManager myMirrorManager;
+  protected final MirrorManager myMirrorManager;
   private final VcsRoot myDelegate;
   private final URIish myRepositoryFetchURL;
   private final URIish myRepositoryFetchURLNoFixErrors;
