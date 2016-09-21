@@ -27,6 +27,8 @@ import java.util.Collection;
 import java.util.HashMap;
 
 import static jetbrains.buildServer.util.Util.map;
+import static org.assertj.core.api.BDDAssertions.then;
+import static org.assertj.core.groups.Tuple.tuple;
 
 /**
  * @author dmitry.neverov
@@ -39,6 +41,7 @@ public class VcsPropertiesProcessorTest extends TestCase {
 
   public void empty_push_url_is_allowed() {
     Collection<InvalidProperty> invalids = myProcessor.process(new HashMap<String, String>() {{
+      put(Constants.BRANCH_NAME, "refs/heads/master");
       put(Constants.FETCH_URL, "git://some.org/repository");
     }});
     assertTrue(invalids.isEmpty());
@@ -47,6 +50,7 @@ public class VcsPropertiesProcessorTest extends TestCase {
 
   public void non_default_key_auth_requires_private_key_path() {
     Collection<InvalidProperty> invalids = myProcessor.process(new HashMap<String, String>() {{
+      put(Constants.BRANCH_NAME, "refs/heads/master");
       put(Constants.FETCH_URL, "git://some.org/repository");
       put(Constants.AUTH_METHOD, "PRIVATE_KEY_FILE");
     }});
@@ -101,8 +105,17 @@ public class VcsPropertiesProcessorTest extends TestCase {
   @TestFor(issues = {"TW-23424", "TW-23220"})
   public void should_not_try_to_parse_urls_with_parameters() {
     Collection<InvalidProperty> errors = myProcessor.process(map(Constants.FETCH_URL, "file://c:%5CWork\\Test\\git\\%url.param%",
-                                                                 Constants.PUSH_URL, "file://c:%5CWork\\Test\\git\\%url.param%"));
+                                                                 Constants.PUSH_URL, "file://c:%5CWork\\Test\\git\\%url.param%",
+                                                                 Constants.BRANCH_NAME, "refs/heads/master"));
     assertTrue(errors.isEmpty());
+  }
+
+
+  @TestFor(issues = "TW-46315")
+  public void prohibit_empty_default_branch() {
+    Collection<InvalidProperty> errors = myProcessor.process(map(Constants.FETCH_URL, "git://some.org/repository"));
+    then(errors).extracting("propertyName", "invalidReason")
+      .contains(tuple(Constants.BRANCH_NAME, "Branch name must be specified"));
   }
 
 }
