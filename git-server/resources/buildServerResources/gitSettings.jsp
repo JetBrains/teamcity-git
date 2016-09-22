@@ -54,6 +54,7 @@
       <td><props:textProperty name="url" className="longField"/>
         <jsp:include page="/admin/repositoryControls.html?projectId=${parentProject.externalId}&vcsType=git"/>
         <div class="smallNote" style="margin: 0;">It is used for fetching data from the repository.</div>
+        <div id="fetchUrlCompatNote" class="smallNote error" style="margin: 0; display: none;"></div>
         <span class="error" id="error_url"></span></td>
     </tr>
     <tr>
@@ -62,6 +63,7 @@
         <div class="smallNote" style="margin: 0;">It is used for pushing tags to the remote repository.
           If blank, the fetch url is used.
         </div>
+        <div id="pushUrlCompatNote" class="smallNote error" style="margin: 0; display: none;"></div>
         <span class="error" id="error_push_url"></span>
       </td>
     </tr>
@@ -140,6 +142,7 @@
         <div id="defaultPrivateKeyNote" class="smallNote auth defaultKey" style="margin: 0">Uses mapping specified in the file
           ${userHome} if that file exists.
         </div>
+        <div id="authMethodCompatNote" class="smallNote" style="margin: 0; display: none;"></div>
       </td>
     </tr>
     <tr id="gitUsername" class="auth defaultKey customKey password uploadedKey">
@@ -265,6 +268,156 @@
   </l:settingsGroup>
 </table>
 <script type="text/javascript">
+  var Git = {
+    compatibleAuthMethods: {//protocol -> compatible auth methods
+      'git' : ['ANONYMOUS'],
+      'http' : ['ANONYMOUS', 'PASSWORD'],
+      'https' : ['ANONYMOUS', 'PASSWORD']
+    },
+
+
+    getProtocol: function($element) {
+      var url = $element.val();
+      if (url) {
+        if (url.startsWith('git://')) {
+          return 'git';
+        } else if (url.startsWith('http://')) {
+          return 'http';
+        } else if (url.startsWith('https://')) {
+          return 'https';
+        } else {
+          return 'other';
+        }
+      } else {
+        return null;
+      }
+    },
+
+
+    getAuthMethodName: function(authMethod) {
+      return $j("#authMethod option[value=" + authMethod + "]").text();
+    },
+
+
+    getCompatibleMethods: function(proto) {
+      if (!proto) {
+        return this.getAllAuthMethods();
+      } else {
+        var compat = this.compatibleAuthMethods[proto];
+        if (compat) {
+          return compat;
+        } else {
+          //no constraints for given protocol
+          return this.getAllAuthMethods();
+        }
+      }
+    },
+
+
+    getAllAuthMethods: function() {
+      var result = [];
+      $j('#authMethod option').each(function() {
+        result.push($j(this).val());
+      });
+      return result;
+    },
+
+
+    contains: function (arr, elem) {
+      return arr.indexOf(elem) != -1;
+    },
+
+
+    disableIncompatible: function (fetchCompatible, pushCompatible, selected) {
+      var that = this;
+      $j('#authMethod option').each(function() {
+        var method = $j(this).val();
+        if (method == selected || that.contains(fetchCompatible, method) && that.contains(pushCompatible, method)) {
+          $j(this).attr("disabled", false);
+        } else {
+          $j(this).attr("disabled", "disabled");
+        }
+      });
+    },
+
+
+    getLimitingProtocols: function (fetchProto, fetchCompatMethods, pushProto, pushCompatMethods) {
+      var allMethods = this.getAllAuthMethods();
+      var limitingProtocols = [];
+      if (fetchCompatMethods.length < allMethods.length) {
+        limitingProtocols.push("'" + fetchProto + "'");
+      }
+      if (pushCompatMethods.length < allMethods.length && pushProto != fetchProto) {
+        limitingProtocols.push("'" + pushProto + "'");
+      }
+      var size = limitingProtocols.length;
+      if (size == 0) {
+        return null;
+      } else {
+        return (size == 1 ? "the " : "") + limitingProtocols.join(" and ") + " protocol" + (size > 1 ? "s" : "");
+      }
+    },
+
+
+    applyAuthConstraints: function () {
+      var selectedAuthMethod = $j('#authMethod').val();
+      var authMethodName = this.getAuthMethodName(selectedAuthMethod);
+      var fetchProto = this.getProtocol($j('#url'));
+      var pushProto = this.getProtocol($j('#push_url'));
+
+      var fetchCompatMethods = this.getCompatibleMethods(fetchProto);
+      var pushCompatMethods = this.getCompatibleMethods(pushProto);
+      var fetchCompatible = true;
+      var pushCompatible = true;
+      if (this.contains(fetchCompatMethods, selectedAuthMethod)) {
+        $j('#fetchUrlCompatNote').hide();
+      } else {
+        fetchCompatible = false;
+        $j('#fetchUrlCompatNote')
+            .text("The '" + authMethodName + "' authentication method is incompatible with the '" + fetchProto + "' protocol")
+            .show();
+      }
+
+      if (this.contains(pushCompatMethods, selectedAuthMethod)) {
+        $j('#pushUrlCompatNote').hide();
+      } else {
+        pushCompatible = false;
+        $j('#pushUrlCompatNote')
+            .text("The '" + authMethodName + "' authentication method is incompatible with the '" + pushProto + "' protocol")
+            .show();
+      }
+
+      this.disableIncompatible(fetchCompatMethods, pushCompatMethods, selectedAuthMethod);
+
+      if (!fetchCompatible || !pushCompatible) {
+        //incompatible method selected, show error
+        var protocol = !fetchCompatible ? fetchProto : pushProto;
+        var usage = !fetchCompatible ? "Fetch URL" : "Push URL";
+        $j('#authMethodCompatNote')
+            .text("Selected authentication method is incompatible with the '" + protocol + "' protocol (" + usage + ")")
+            .addClass('error')
+            .show();
+      } else {
+        var limitingProtocols = this.getLimitingProtocols(fetchProto, fetchCompatMethods, pushProto, pushCompatMethods);
+        if (limitingProtocols) {
+          //there are incompatible methods, show note
+          $j('#authMethodCompatNote').text("Authentication methods incompatible with " + limitingProtocols + " are disabled")
+              .removeClass('error')
+              .show();
+        } else {
+          //all methods are compatible, hide note
+          $j('#authMethodCompatNote').hide();
+        }
+      }
+
+      //refresh ufd
+      $j("#authMethod").ufd("changeOptions");
+    }
+  };
+
+  $j('#url').keyup(function() {Git.applyAuthConstraints();});
+  $j('#push_url').keyup(function() {Git.applyAuthConstraints();});
+
   gitSelectAuthentication = function(resetHiddenFields) {
     BS.Util.toggleDependentElements($('authMethod').value, 'auth', resetHiddenFields, {
       PRIVATE_KEY_DEFAULT : 'defaultKey',
@@ -273,6 +426,7 @@
       ANONYMOUS : 'anonymous',
       TEAMCITY_SSH_KEY : 'uploadedKey'
     });
+    Git.applyAuthConstraints();
     BS.VisibilityHandlers.updateVisibility($('vcsRootProperties'));
   };
   gitSelectAuthentication(false);
