@@ -124,18 +124,7 @@ public class Fetcher {
                                            @NotNull Transport tn,
                                            @NotNull URIish uri,
                                            @NotNull AuthSettings authSettings) throws IOException, VcsException {
-    if ("ssh".equals(uri.getScheme()) && GitServerUtil.isAmazonCodeCommit(uri.getHost(), config)) {
-      Transport transport = null;
-      try {
-        transport = transportFactory.createTransport(db, uri, authSettings);
-        GitServerUtil.pruneRemovedBranches(db, transport);
-      } finally {
-        if (transport != null)
-          transport.close();
-      }
-    } else {
-      GitServerUtil.pruneRemovedBranches(db, tn);
-    }
+    GitServerUtil.pruneRemovedBranches(config, transportFactory, tn, db, uri, authSettings);
   }
 
   private static void logFetchResults(@NotNull FetchResult result) {

@@ -282,10 +282,30 @@ public class GitServerUtil {
   }
 
 
+  static void pruneRemovedBranches(@NotNull ServerPluginConfig config,
+                                   @NotNull TransportFactory transportFactory,
+                                   @NotNull Transport tn,
+                                   @NotNull Repository db,
+                                   @NotNull URIish uri,
+                                   @NotNull AuthSettings authSettings) throws IOException, VcsException {
+    if (config.createNewConnectionForPrune()) {
+      Transport transport = null;
+      try {
+        transport = transportFactory.createTransport(db, uri, authSettings);
+        pruneRemovedBranches(db, transport);
+      } finally {
+        if (transport != null)
+          transport.close();
+      }
+    } else {
+      pruneRemovedBranches(db, tn);
+    }
+  }
+
   /**
    * Removes branches of a bare repository which are not present in a remote repository
    */
-  public static void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn) throws IOException {
+  private static void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn) throws IOException {
     FetchConnection conn = null;
     try {
       conn = tn.openFetch();

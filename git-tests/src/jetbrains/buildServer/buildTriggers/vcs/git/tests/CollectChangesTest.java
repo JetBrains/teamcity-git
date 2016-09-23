@@ -31,6 +31,7 @@ import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -400,10 +401,20 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   }
 
 
+  @DataProvider(name = "separateProcess,newConnectionForPrune")
+  public static Object[][] createData() {
+    return new Object[][] {
+      new Object[] { Boolean.TRUE, Boolean.TRUE },
+      new Object[] { Boolean.TRUE, Boolean.FALSE },
+      new Object[] { Boolean.FALSE, Boolean.TRUE },
+      new Object[] { Boolean.FALSE, Boolean.FALSE }
+    };
+  }
+
   @TestFor(issues = {"TW-36080", "TW-35700"})
-  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
-  public void branch_turned_into_dir(boolean fetchInSeparateProcess) throws Exception {
-    myConfig.setSeparateProcessForFetch(fetchInSeparateProcess);
+  @Test(dataProvider = "separateProcess,newConnectionForPrune")
+  public void branch_turned_into_dir(boolean fetchInSeparateProcess, boolean newConnectionForPrune) throws Exception {
+    myConfig.setSeparateProcessForFetch(fetchInSeparateProcess).setNewConnectionForPrune(newConnectionForPrune);
     VcsRoot root = vcsRoot().withFetchUrl(myRepo)
       .withBranch("master")
       .build();

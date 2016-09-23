@@ -67,6 +67,7 @@ public class PluginConfigBuilder {
   private Boolean myPersistentCacheEnabled;
   private Integer myMapFullPathRevisionCacheSize;
   private TempFiles myTempFiles;
+  private Boolean myNewConnectionForPrune;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -311,6 +312,13 @@ public class PluginConfigBuilder {
       public boolean logRemoteRefs() {
         return false;
       }
+
+      @Override
+      public boolean createNewConnectionForPrune() {
+        if (myNewConnectionForPrune != null)
+          return myNewConnectionForPrune;
+        return myDelegate.createNewConnectionForPrune();
+      }
     };
   }
 
@@ -470,6 +478,12 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder setTempFiles(final TempFiles tempFiles) {
     myTempFiles = tempFiles;
+    return this;
+  }
+
+
+  PluginConfigBuilder setNewConnectionForPrune(boolean newConnectionForPrune) {
+    myNewConnectionForPrune = newConnectionForPrune;
     return this;
   }
 }
