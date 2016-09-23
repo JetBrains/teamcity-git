@@ -268,21 +268,10 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
   private void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn, @NotNull URIish uri, @NotNull AuthSettings authSettings) throws IOException, VcsException {
-    if ("ssh".equals(uri.getScheme()) && GitServerUtil.isAmazonCodeCommit(uri.getHost(), myConfig)) {
-      Transport transport = null;
-      try {
-        transport = myTransportFactory.createTransport(db, uri, authSettings);
-        GitServerUtil.pruneRemovedBranches(db, transport);
-      } finally {
-        if (transport != null)
-          transport.close();
-      }
-    } else {
-      try {
-        GitServerUtil.pruneRemovedBranches(db, tn);
-      } catch (Exception e) {
-        LOG.error("Error while pruning removed branches", e);
-      }
+    try {
+      GitServerUtil.pruneRemovedBranches(myConfig, myTransportFactory, tn, db, uri, authSettings);
+    } catch (Exception e) {
+      LOG.error("Error while pruning removed branches", e);
     }
   }
 

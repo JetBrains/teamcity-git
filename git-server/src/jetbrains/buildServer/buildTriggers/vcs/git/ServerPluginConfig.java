@@ -144,4 +144,6 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean persistentCacheEnabled();
 
   boolean logRemoteRefs();
+
+  boolean createNewConnectionForPrune();
 }
