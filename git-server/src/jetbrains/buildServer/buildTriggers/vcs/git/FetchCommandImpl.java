@@ -43,10 +43,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 /**
 * @author dmitry.neverov
@@ -85,15 +82,32 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
 
-  private void unlockRefs(Repository db) throws VcsException{
+  private void unlockRefs(@NotNull Repository db) throws VcsException{
     try {
-      Map<String, Ref> refMap = db.getRefDatabase().getRefs(org.eclipse.jgit.lib.Constants.R_HEADS);
-      for (Ref ref : refMap.values()) {
+      for (Ref ref : findLockedRefs(db)) {
         unlockRef(db, ref);
       }
     } catch (Exception e) {
       throw new VcsException(e);
     }
+  }
+
+
+  @NotNull
+  private List<Ref> findLockedRefs(@NotNull Repository db) {
+    File refsDir = new File(db.getDirectory(), org.eclipse.jgit.lib.Constants.R_REFS);
+    List<String> lockFiles = new ArrayList<>();
+    //listFilesRecursively always uses / as a separator, we get valid ref names on all OSes
+    FileUtil.listFilesRecursively(refsDir, "refs/", false, Integer.MAX_VALUE, f -> f.isDirectory() || f.isFile() && f.getName().endsWith(".lock"), lockFiles);
+    Map<String, Ref> allRefs = db.getAllRefs();
+    List<Ref> result = new ArrayList<>();
+    for (String lock : lockFiles) {
+      String refName = lock.substring(0, lock.length() - ".lock".length());
+      Ref ref = allRefs.get(refName);
+      if (ref != null)
+        result.add(ref);
+    }
+    return result;
   }
 
 
