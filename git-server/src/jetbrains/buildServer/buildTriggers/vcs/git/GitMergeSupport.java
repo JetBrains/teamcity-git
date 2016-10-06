@@ -294,7 +294,11 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
         if (existing != null) {
           orig2rebased.put(c, existing);
         } else {
-          toRebase.add(c);
+          if (c.getParentCount() > 1) {
+            throw new MergeFailedException(asList("Rebase of merge commits is not supported"));
+          } else {
+            toRebase.add(c);
+          }
         }
       }
 
