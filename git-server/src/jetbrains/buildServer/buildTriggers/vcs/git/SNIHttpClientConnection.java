@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.text.StringUtil;
 import org.apache.http.*;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
@@ -376,11 +377,14 @@ public class SNIHttpClientConnection implements HttpConnection {
     }
 
     private void enableSNI(SSLSocket socket, final HttpHost host) {
-      try {
-        Method method = socket.getClass().getDeclaredMethod("setHost", String.class);
-        method.invoke(socket, host.getHostName());
-      } catch (Exception e) {
-        LOG.info("Cannot enable SNI for host " + host.getHostName() + ", continue without SNI, error: " + e.toString());
+      String sniEnabled = System.getProperty("jsse.enableSNIExtension");
+      if (StringUtil.isEmpty(sniEnabled) || Boolean.parseBoolean(sniEnabled)) {
+        try {
+          Method method = socket.getClass().getDeclaredMethod("setHost", String.class);
+          method.invoke(socket, host.getHostName());
+        } catch (Exception e) {
+          LOG.info("Cannot enable SNI for host " + host.getHostName() + ", continue without SNI, error: " + e.toString());
+        }
       }
     }
   }

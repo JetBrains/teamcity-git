@@ -305,6 +305,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
     addProxySettingsForSeparateProcess(options);
     addSslTrustStoreSettingsForSeparateProcess(options);
     addInheritedOption(options, "java.net.preferIPv6Addresses");
+    addInheritedOption(options, "jsse.enableSNIExtension");
     return options;
   }
 
