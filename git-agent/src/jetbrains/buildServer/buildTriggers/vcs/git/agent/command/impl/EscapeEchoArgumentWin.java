@@ -17,11 +17,14 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class EscapeEchoArgumentWin implements EscapeEchoArgument {
 
   @NotNull
-  public String escape(@NotNull String s) {
+  public String escape(@Nullable String s) {
+    if (s == null)
+      s = "";
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < s.length(); i++) {
       char c = s.charAt(i);
