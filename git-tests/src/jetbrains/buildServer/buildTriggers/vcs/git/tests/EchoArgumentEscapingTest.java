@@ -33,12 +33,14 @@ public class EchoArgumentEscapingTest {
     assertEquals("a^>b", escaper.escape("a>b"));
     assertEquals("a^|b", escaper.escape("a|b"));
     assertEquals("a%%b", escaper.escape("a%b"));
+    assertEquals("", escaper.escape(null));
   }
 
   public void unix_escaping() {
     EscapeEchoArgumentUnix escaper = new EscapeEchoArgumentUnix();
     assertEquals("'ab'", escaper.escape("ab"));
     assertEquals("'a\\\\\"b'", escaper.escape("a\\\"b"));
+    assertEquals("''", escaper.escape(null));
   }
 
 }

@@ -17,10 +17,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public interface EscapeEchoArgument {
 
   @NotNull
-  String escape(@NotNull String s);
+  String escape(@Nullable String s);
 
 }
