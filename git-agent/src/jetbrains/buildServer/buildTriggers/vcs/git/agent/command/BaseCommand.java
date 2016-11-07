@@ -20,7 +20,7 @@ import org.jetbrains.annotations.NotNull;
 
 public interface BaseCommand {
 
-  void setConfig(@NotNull String name, @NotNull String value);
+  void addConfig(@NotNull String name, @NotNull String value);
 
   void setEnv(@NotNull String name, @NotNull String value);
 
