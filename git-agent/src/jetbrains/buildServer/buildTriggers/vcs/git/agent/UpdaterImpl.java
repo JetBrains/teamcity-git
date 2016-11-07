@@ -777,7 +777,13 @@ public class UpdaterImpl implements Updater {
       ScriptGen scriptGen = myGitFactory.create(new File(".")).getScriptGen();
       final File credHelper = scriptGen.generateCredentialsHelper();
       credentialsHelper = credHelper;
-      command.setConfig("credential.helper", credHelper.getCanonicalPath());
+      if (!myPluginConfig.getGitVersion().isLessThan(UpdaterImpl.EMPTY_CRED_HELPER)) {
+        //Specify an empty helper if it is supported in order to disable
+        //helpers in system-global-local chain. If empty helper is not supported,
+        //then the only workaround is to disable helpers manually in config files.
+        command.addConfig("credential.helper", "");
+      }
+      command.addConfig("credential.helper", credHelper.getCanonicalPath());
       CredentialsHelperConfig config = new CredentialsHelperConfig();
       config.addCredentials(lfsAuth.first, lfsAuth.second, lfsAuth.third);
       for (Map.Entry<String, String> e : config.getEnv().entrySet()) {

@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
+import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.BaseCommand;
 import org.jetbrains.annotations.NotNull;
@@ -28,7 +29,7 @@ import java.util.Map;
 class BaseCommandImpl implements BaseCommand {
 
   private final GitCommandLine myCmd;
-  private final Map<String, String> myConfigs = new HashMap<String, String>();
+  private final List<Pair<String, String>> myConfigs = new ArrayList<Pair<String, String>>();
   private final Map<String, String> myEnv = new HashMap<String, String>();
   private final List<Runnable> myPostActions = new ArrayList<Runnable>();
 
@@ -42,8 +43,8 @@ class BaseCommandImpl implements BaseCommand {
     for (Map.Entry<String, String> e : myEnv.entrySet()) {
       myCmd.addEnvParam(e.getKey(), e.getValue());
     }
-    for (Map.Entry<String, String> e : myConfigs.entrySet()) {
-      myCmd.addParameters("-c", e.getKey() + "=" + e.getValue());
+    for (Pair<String, String> config : myConfigs) {
+      myCmd.addParameters("-c", config.first + "=" + config.second);
     }
     for (Runnable action : myPostActions) {
       myCmd.addPostAction(action);
@@ -52,8 +53,8 @@ class BaseCommandImpl implements BaseCommand {
   }
 
 
-  public void setConfig(@NotNull String name, @NotNull String value) {
-    myConfigs.put(name, value);
+  public void addConfig(@NotNull String name, @NotNull String value) {
+    myConfigs.add(Pair.create(name, value));
   }
 
 
