@@ -30,6 +30,7 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -533,6 +534,47 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     RepositoryStateData s5 = RepositoryStateData.createVersionState("refs/heads/branch2", "bc979d0e5bc0e6030a9db27c75004e6eb8cdb961");
     List<ModificationData> changes = git().getCollectChangesPolicy().collectChanges(rootBranch1, s2, rootBranch2, s5, CheckoutRules.DEFAULT);
     then(changes).extracting("version").containsExactly("bc979d0e5bc0e6030a9db27c75004e6eb8cdb961");
+  }
+
+
+  @DataProvider
+  private Object[][] ref_error() {
+    return new Object[][] {
+      {
+        "refs/heads/Master",
+        "Failed to fetch ref refs/heads/Master: on case-insensitive file system it clashes with refs/heads/master. Please remove conflicting refs from repository."
+      },
+      {
+        "refs/heads/master/release",
+        "Failed to fetch ref refs/heads/master/release: it clashes with refs/heads/master. Please remove conflicting refs from repository."
+      }
+    };
+  }
+
+
+  @TestFor(issues = "TW-43859")
+  @Test(dataProvider = "ref_error")
+  public void should_report_conflicting_refs(@NotNull String conflictingRef, @NotNull String expectedError) throws Exception {
+    GitVcsSupport git = git();
+    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    //fetch repo
+    git.collectChanges(root, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7", CheckoutRules.DEFAULT);
+
+    RepositoryStateData state1 = git.getCurrentState(root);
+
+    //create conflicting ref in packed-refs
+    File remotePackedRefs = new File(myRepo, "packed-refs");
+    FileUtil.writeToFile(remotePackedRefs, ("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653 " + conflictingRef + "\n").getBytes(), true);
+
+    //try to fetch
+    RepositoryStateData state2 = git.getCurrentState(root);
+    try {
+      git.getCollectChangesPolicy().collectChanges(root, state1, state2, CheckoutRules.DEFAULT);
+    } catch (VcsException e) {
+      //might succeed, but if it fails, then error should explain why
+      String msg = e.getMessage();
+      then(msg).contains(expectedError);
+    }
   }
 
 

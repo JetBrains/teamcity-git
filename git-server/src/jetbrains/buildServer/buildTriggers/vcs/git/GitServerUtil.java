@@ -22,6 +22,7 @@ import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.serverSide.FileWatchingPropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
@@ -38,15 +39,14 @@ import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import sun.awt.OSInfo;
 
 import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.nio.charset.UnsupportedCharsetException;
 import java.text.MessageFormat;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -272,11 +272,42 @@ public class GitServerUtil {
    * @param result fetch result
    * @throws VcsException if any ref was not successfully updated
    */
-  public static void checkFetchSuccessful(FetchResult result) throws VcsException {
+  public static void checkFetchSuccessful(Repository db, FetchResult result) throws VcsException {
     for (TrackingRefUpdate update : result.getTrackingRefUpdates()) {
+      String localRefName = update.getLocalName();
       RefUpdate.Result status = update.getResult();
       if (status == RefUpdate.Result.REJECTED || status == RefUpdate.Result.LOCK_FAILURE || status == RefUpdate.Result.IO_FAILURE) {
-        throw new VcsException("Fail to update '" + update.getLocalName() + "' (" + status.name() + ").");
+        if (status == RefUpdate.Result.LOCK_FAILURE) {
+          TreeSet<String> caseSensitiveConflicts = new TreeSet<>();
+          TreeSet<String> conflicts = new TreeSet<>();
+          try {
+            OSInfo.OSType os = OSInfo.getOSType();
+            if (os == OSInfo.OSType.WINDOWS || os == OSInfo.OSType.MACOSX) {
+              Set<String> refNames = db.getRefDatabase().getRefs(RefDatabase.ALL).keySet();
+              for (String ref : refNames) {
+                if (!localRefName.equals(ref) && localRefName.equalsIgnoreCase(ref))
+                  caseSensitiveConflicts.add(ref);
+              }
+            }
+            conflicts.addAll(db.getRefDatabase().getConflictingNames(localRefName));
+          } catch (Exception e) {
+            //ignore
+          }
+          String msg;
+          if (!conflicts.isEmpty()) {
+            msg = "Failed to fetch ref " + localRefName + ": it clashes with " + StringUtil.join(", ", conflicts) +
+                  ". Please remove conflicting refs from repository.";
+          } else if (!caseSensitiveConflicts.isEmpty()) {
+            msg = "Failed to fetch ref " + localRefName + ": on case-insensitive file system it clashes with " +
+                  StringUtil.join(", ", caseSensitiveConflicts) +
+                  ". Please remove conflicting refs from repository.";
+          } else {
+            msg = "Fail to update '" + localRefName + "' (" + status.name() + ")";
+          }
+          throw new VcsException(msg);
+        } else {
+          throw new VcsException("Fail to update '" + localRefName + "' (" + status.name() + ")");
+        }
       }
     }
   }
