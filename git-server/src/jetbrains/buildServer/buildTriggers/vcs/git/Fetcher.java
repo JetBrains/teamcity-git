@@ -110,7 +110,7 @@ public class Fetcher {
         e.printStackTrace(System.err);
       }
       FetchResult result = GitServerUtil.fetch(repository, new URIish(fetchUrl), auth, transportFactory, tn, progressMonitor, parseRefspecs(refspecs));
-      GitServerUtil.checkFetchSuccessful(result);
+      GitServerUtil.checkFetchSuccessful(repository, result);
       logFetchResults(result);
     } finally {
       if (tn != null)
