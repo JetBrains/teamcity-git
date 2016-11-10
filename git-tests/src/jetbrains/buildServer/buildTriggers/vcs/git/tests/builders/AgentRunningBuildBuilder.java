@@ -195,7 +195,7 @@ public class AgentRunningBuildBuilder {
 
       @Nullable
       public BuildInterruptReason getInterruptReason() {
-        throw new UnsupportedOperationException();
+        return null;
       }
 
       public boolean isBuildFailingOnServer() throws InterruptedException {
