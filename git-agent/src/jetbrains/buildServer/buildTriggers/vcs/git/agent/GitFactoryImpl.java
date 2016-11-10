@@ -31,24 +31,27 @@ public class GitFactoryImpl implements GitFactory {
   private final GitProgressLogger myLogger;
   private final File myTmpDir;
   private final Map<String, String> myEnv;
+  private final Context myCtx;
 
   public GitFactoryImpl(@NotNull GitAgentSSHService ssh,
                         @NotNull AgentPluginConfig pluginConfig,
                         @NotNull GitProgressLogger logger,
                         @NotNull File tmpDir,
-                        @NotNull Map<String, String> env) {
+                        @NotNull Map<String, String> env,
+                        @NotNull Context ctx) {
     mySsh = ssh;
     myPluginConfig = pluginConfig;
     myLogger = logger;
     myTmpDir = tmpDir;
     myEnv = env;
+    myCtx = ctx;
   }
 
 
   @NotNull
   public GitFacade create(@NotNull File repositoryDir) {
     NativeGitFacade git = new NativeGitFacade(mySsh, myPluginConfig.getPathToGit(), myPluginConfig.getGitVersion(), repositoryDir,
-                                              myTmpDir, myPluginConfig.isDeleteTempFiles(), myLogger, myPluginConfig.getGitExec(), myEnv);
+                                              myTmpDir, myPluginConfig.isDeleteTempFiles(), myLogger, myPluginConfig.getGitExec(), myEnv, myCtx);
     git.setSshKeyManager(mySsh.getSshKeyManager());
     return git;
   }

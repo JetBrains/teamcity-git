@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2014 JetBrains s.r.o.
+ * Copyright 2000-2016 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import org.jetbrains.annotations.NotNull;
+import jetbrains.buildServer.agent.BuildInterruptReason;
+import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
-import java.util.Map;
+public class NoBuildContext implements Context {
 
-public interface GitMetaFactory {
-
-  @NotNull
-  GitFactory createFactory(@NotNull GitAgentSSHService sshService,
-                           @NotNull AgentPluginConfig config,
-                           @NotNull GitProgressLogger logger,
-                           @NotNull File tempDir,
-                           @NotNull Map<String, String> env,
-                           @NotNull Context ctx);
+  @Nullable
+  @Override
+  public BuildInterruptReason getInterruptionReason() {
+    return null;
+  }
 
 }

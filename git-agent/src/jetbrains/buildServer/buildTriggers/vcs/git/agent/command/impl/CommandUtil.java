@@ -52,14 +52,22 @@ public class CommandUtil {
     String message = "'" + cmdName + "' command failed." +
                      (exitCode != 0 ? "\nexit code: " + exitCode : "") +
                      (!StringUtil.isEmpty(stdout) ? "\n" + "stdout: " + stdout : "") +
-                     (!StringUtil.isEmpty(stderr) ? "\n" + "stderr: " + stderr : "") +
-                     (exception != null ?  "\n" + "exception: " + exception.toString() : "");
+                     (!StringUtil.isEmpty(stderr) ? "\n" + "stderr: " + stderr : "");
+    if (exception != null) {
+      message += "\nexception: ";
+      message += exception.getClass().getName();
+      String exceptionMessage = exception.getMessage();
+      if (!StringUtil.isEmpty(exceptionMessage))
+        message += ": " + exceptionMessage;
+    }
     if (exception != null && isImportant(exception)) {
       Writer stackWriter = new StringWriter();
       exception.printStackTrace(new PrintWriter(stackWriter));
       message += "\n" + stackWriter.toString();
     }
     logMessage(message, errorsLogLevel);
+    if (exception != null)
+      throw new VcsException(message, exception);
     throw new VcsException(message);
   }
 
@@ -95,6 +103,7 @@ public class CommandUtil {
     int attemptsLeft = 2;
     while (true) {
       try {
+        cli.checkCanceled();
         String cmdStr = cli.getCommandLineString();
         File workingDir = cli.getWorkingDirectory();
         String inDir = workingDir != null ? "[" + workingDir.getAbsolutePath() + "]" : "";
@@ -129,5 +138,9 @@ public class CommandUtil {
   public static boolean isTimeoutError(@NotNull VcsException e) {
     String msg = e.getMessage();
     return msg != null && msg.contains("exception: jetbrains.buildServer.ProcessTimeoutException");
+  }
+
+  public static boolean isCanceledError(@NotNull VcsException e) {
+    return e instanceof CheckoutCanceledException || e.getCause() instanceof InterruptedException;
   }
 }

@@ -78,8 +78,8 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
         return parse(result.getStdout());
       } catch (VcsException e) {
         attempt++;
-        Loggers.VCS.warn("Error while listing remote repository refs", e);
-        if (attempt >= myAttemptsLimit || CommandUtil.isTimeoutError(e))
+        Loggers.VCS.warnAndDebugDetails("Error while listing remote repository refs", e);
+        if (attempt >= myAttemptsLimit || CommandUtil.isTimeoutError(e) || CommandUtil.isCanceledError(e))
           throw e;
         Loggers.VCS.warn("Will repeat command, attempts left: " + (myAttemptsLimit - attempt));
       }
