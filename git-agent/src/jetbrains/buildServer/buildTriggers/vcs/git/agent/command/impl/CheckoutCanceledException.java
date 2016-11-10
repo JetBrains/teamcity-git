@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2014 JetBrains s.r.o.
+ * Copyright 2000-2016 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,15 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent;
+package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
+import jetbrains.buildServer.agent.BuildInterruptReason;
+import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
-import java.util.Map;
+public class CheckoutCanceledException extends VcsException {
 
-public interface GitMetaFactory {
-
-  @NotNull
-  GitFactory createFactory(@NotNull GitAgentSSHService sshService,
-                           @NotNull AgentPluginConfig config,
-                           @NotNull GitProgressLogger logger,
-                           @NotNull File tempDir,
-                           @NotNull Map<String, String> env,
-                           @NotNull Context ctx);
-
+  public CheckoutCanceledException(@NotNull BuildInterruptReason reason) {
+    super("Checkout canceled: " + reason);
+  }
 }

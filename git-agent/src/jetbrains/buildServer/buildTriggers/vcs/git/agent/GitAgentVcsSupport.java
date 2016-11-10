@@ -84,7 +84,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             boolean cleanCheckoutRequested) throws VcsException {
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
     Map<String, String> env = getGitCommandEnv(config, build);
-    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, getLogger(build), build.getBuildTempDirectory(), env);
+    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, getLogger(build), build.getBuildTempDirectory(), env, new BuildContext(build));
     Pair<CheckoutMode, File> targetDirAndMode = getTargetDirAndMode(config, root, rules, checkoutDirectory);
     CheckoutMode mode = targetDirAndMode.first;
     File targetDir = targetDirAndMode.second;

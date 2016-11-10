@@ -50,6 +50,7 @@ public class NativeGitFacade implements GitFacade {
   private final GitProgressLogger myLogger;
   private final GitExec myGitExec;
   private final Map<String, String> myEnv;
+  private final Context myCtx;
   private VcsRootSshKeyManager mySshKeyManager;
 
   public NativeGitFacade(@NotNull GitAgentSSHService ssh,
@@ -60,7 +61,8 @@ public class NativeGitFacade implements GitFacade {
                          boolean deleteTempFiles,
                          @NotNull GitProgressLogger logger,
                          @NotNull GitExec gitExec,
-                         @NotNull Map<String, String> env) {
+                         @NotNull Map<String, String> env,
+                         @NotNull Context ctx) {
     mySsh = ssh;
     myTmpDir = tmpDir;
     myScriptGen = makeScriptGen();
@@ -71,6 +73,7 @@ public class NativeGitFacade implements GitFacade {
     myLogger = logger;
     myGitExec = gitExec;
     myEnv = env;
+    myCtx = ctx;
   }
 
   public NativeGitFacade(@NotNull String gitPath, @NotNull GitProgressLogger logger) {
@@ -84,6 +87,7 @@ public class NativeGitFacade implements GitFacade {
     myLogger = logger;
     myGitExec = null;
     myEnv = new HashMap<String, String>(0);
+    myCtx = new NoBuildContext();
   }
 
 
@@ -235,7 +239,7 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   private GitCommandLine createCommandLine() {
-    GitCommandLine cmd = new GitCommandLine(mySsh, myScriptGen, myTmpDir, myDeleteTempFiles, myLogger, myGitVersion, myEnv);
+    GitCommandLine cmd = new GitCommandLine(mySsh, myScriptGen, myTmpDir, myDeleteTempFiles, myLogger, myGitVersion, myEnv, myCtx);
     cmd.setExePath(myGitPath);
     cmd.setWorkingDirectory(myRepositoryDir);
     cmd.setSshKeyManager(mySshKeyManager);

@@ -23,6 +23,7 @@ import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.RefImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
@@ -736,6 +737,8 @@ public class UpdaterImpl implements Updater {
                               .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
                               .call());
     } catch (VcsException e) {
+      if (CommandUtil.isCanceledError(e))
+        throw e;
       String msg = "Failed to list remote repository refs, outdated local refs will not be cleaned";
       LOG.warn(msg);
       myLogger.warning(msg);

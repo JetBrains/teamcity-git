@@ -103,6 +103,7 @@ public class CommandUtil {
     int attemptsLeft = 2;
     while (true) {
       try {
+        cli.checkCanceled();
         String cmdStr = cli.getCommandLineString();
         File workingDir = cli.getWorkingDirectory();
         String inDir = workingDir != null ? "[" + workingDir.getAbsolutePath() + "]" : "";
@@ -137,5 +138,9 @@ public class CommandUtil {
   public static boolean isTimeoutError(@NotNull VcsException e) {
     String msg = e.getMessage();
     return msg != null && msg.contains("exception: jetbrains.buildServer.ProcessTimeoutException");
+  }
+
+  public static boolean isCanceledError(@NotNull VcsException e) {
+    return e instanceof CheckoutCanceledException || e.getCause() instanceof InterruptedException;
   }
 }

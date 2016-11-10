@@ -22,6 +22,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.NoBuildContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.FetchCommandImpl;
@@ -63,7 +64,7 @@ public class FetchCommandImplTest {
     };
 
     File tmpDir = new File(FileUtil.getTempDirectory());
-    GitCommandLine failedCmd = new GitCommandLine(null, fakeGen, tmpDir, false, GitProgressLogger.NO_OP, GitVersion.MIN, new HashMap<String, String>(0)) {
+    GitCommandLine failedCmd = new GitCommandLine(null, fakeGen, tmpDir, false, GitProgressLogger.NO_OP, GitVersion.MIN, new HashMap<String, String>(0), new NoBuildContext()) {
       @Override
       public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
         throw new VcsException("fatal: index file smaller than expected");

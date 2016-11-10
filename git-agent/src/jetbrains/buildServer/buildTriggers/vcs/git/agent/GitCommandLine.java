@@ -21,14 +21,12 @@ import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
+import jetbrains.buildServer.agent.BuildInterruptReason;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ScriptGen;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitProgressListener;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.SshHandler;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -52,6 +50,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private final boolean myDeleteTempFiles;
   private final GitProgressLogger myLogger;
   private final GitVersion myGitVersion;
+  private final Context myCtx;
   private File myWorkingDirectory;
   private boolean myRepeatOnEmptyOutput = false;
   private VcsRootSshKeyManager mySshKeyManager;
@@ -63,13 +62,15 @@ public class GitCommandLine extends GeneralCommandLine {
                         boolean deleteTempFiles,
                         @NotNull GitProgressLogger logger,
                         @NotNull GitVersion gitVersion,
-                        @NotNull Map<String, String> env) {
+                        @NotNull Map<String, String> env,
+                        @NotNull Context ctx) {
     mySsh = ssh;
     myScriptGen = scriptGen;
     myTmpDir = tmpDir;
     myDeleteTempFiles = deleteTempFiles;
     myLogger = logger;
     myGitVersion = gitVersion;
+    myCtx = ctx;
     setPassParentEnvs(true);
     setEnvParams(env);
   }
@@ -193,5 +194,12 @@ public class GitCommandLine extends GeneralCommandLine {
 
   public void setHasProgress(final boolean hasProgress) {
     myHasProgress = hasProgress;
+  }
+
+
+  public void checkCanceled() throws VcsException {
+    BuildInterruptReason reason = myCtx.getInterruptionReason();
+    if (reason != null)
+      throw new CheckoutCanceledException(reason);
   }
 }
