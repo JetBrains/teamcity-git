@@ -27,4 +27,9 @@ public class NoBuildContext implements Context {
     return null;
   }
 
+  @Nullable
+  @Override
+  public String getSshMacType() {
+    return null;
+  }
 }

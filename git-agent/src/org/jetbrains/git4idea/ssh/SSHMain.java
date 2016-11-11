@@ -20,6 +20,7 @@ import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.util.ArrayUtil;
 import com.trilead.ssh2.*;
 import com.trilead.ssh2.crypto.PEMDecoder;
+import com.trilead.ssh2.crypto.digest.MACs;
 import com.trilead.ssh2.log.Logger;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.Nullable;
@@ -160,6 +161,10 @@ public class SSHMain {
   private void start() throws IOException, InterruptedException {
     myPrivateKeyPath = System.getenv(GitSSHHandler.TEAMCITY_PRIVATE_KEY_PATH);
     myPassphrase = System.getenv(GitSSHHandler.TEAMCITY_PASSPHRASE);
+    String macType = System.getenv(GitSSHHandler.TEAMCITY_SSH_MAC_TYPE);
+    if (macType != null && macType.trim().length() > 0) {
+      MACs.setMacType(macType.trim());
+    }
     if (myDebug) {
       final SimpleDateFormat format = new SimpleDateFormat("[HH:mm:ss]");
       Logger.enabled = true;
