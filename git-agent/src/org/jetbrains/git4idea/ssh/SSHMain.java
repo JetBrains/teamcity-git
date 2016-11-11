@@ -20,14 +20,13 @@ import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.util.ArrayUtil;
 import com.trilead.ssh2.*;
 import com.trilead.ssh2.crypto.PEMDecoder;
+import com.trilead.ssh2.log.Logger;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Vector;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.concurrent.Semaphore;
 
 /**
@@ -111,6 +110,7 @@ public class SSHMain {
 
   private String myPrivateKeyPath;
   private String myPassphrase;
+  private boolean myDebug;
 
   /**
    * A constructor
@@ -139,6 +139,7 @@ public class SSHMain {
     boolean debug = Boolean.parseBoolean(System.getenv(GitSSHHandler.TEAMCITY_DEBUG_SSH));
     try {
       SSHMain app = parseArguments(args);
+      app.setDebug(debug);
       app.start();
       System.exit(app.myExitCode);
     }
@@ -159,6 +160,20 @@ public class SSHMain {
   private void start() throws IOException, InterruptedException {
     myPrivateKeyPath = System.getenv(GitSSHHandler.TEAMCITY_PRIVATE_KEY_PATH);
     myPassphrase = System.getenv(GitSSHHandler.TEAMCITY_PASSPHRASE);
+    if (myDebug) {
+      final SimpleDateFormat format = new SimpleDateFormat("[HH:mm:ss]");
+      Logger.enabled = true;
+      Logger.logger = new DebugLogger() {
+        public void log(final int i, final String className, final String msg) {
+          long now = System.currentTimeMillis();
+          String date;
+          synchronized (format) {
+            date = format.format(new Date(now));
+          }
+          System.err.println(date + " " + className + ": " + msg);
+        }
+      };
+    }
     Connection c = new Connection(myHost.getHostName(), myHost.getPort());
     try {
       configureKnownHosts(c);
@@ -627,5 +642,10 @@ public class SSHMain {
         return false;
       }
     }
+  }
+
+
+  public void setDebug(final boolean debug) {
+    myDebug = debug;
   }
 }
