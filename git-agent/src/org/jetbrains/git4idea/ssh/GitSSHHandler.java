@@ -52,6 +52,7 @@ public interface GitSSHHandler {
 
   String TEAMCITY_PRIVATE_KEY_PATH = "TEAMCITY_PRIVATE_KEY";
   String TEAMCITY_PASSPHRASE = "TEAMCITY_PASSPHRASE";
+  String TEAMCITY_DEBUG_SSH = "TEAMCITY_DEBUG_SSH";
 
   /**
    * Verify server host key

@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
@@ -89,6 +90,7 @@ public class SshHandler implements GitSSHService.Handler {
         }
       }
     }
+    cmd.addEnvParam(GitSSHHandler.TEAMCITY_DEBUG_SSH, String.valueOf(Loggers.VCS.isDebugEnabled()));
     try {
       cmd.addEnvParam(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath());
     } catch (IOException e) {
