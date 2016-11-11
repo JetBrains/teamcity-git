@@ -136,15 +136,16 @@ public class SSHMain {
    * @param args program arguments
    */
   public static void main(String[] args) {
+    boolean debug = Boolean.parseBoolean(System.getenv(GitSSHHandler.TEAMCITY_DEBUG_SSH));
     try {
       SSHMain app = parseArguments(args);
       app.start();
       System.exit(app.myExitCode);
     }
     catch (Throwable t) {
-      if (t instanceof NullPointerException)
-        t.printStackTrace();
       System.err.println(t.getMessage());
+      if (t instanceof NullPointerException || debug)
+        t.printStackTrace();
       System.exit(1);
     }
   }
