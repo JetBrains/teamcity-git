@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildInterruptReason;
+import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -34,4 +35,12 @@ public class BuildContext implements Context {
     return myBuild.getInterruptReason();
   }
 
+  @Nullable
+  @Override
+  public String getSshMacType() {
+    String value = myBuild.getSharedConfigParameters().get("teamcity.git.sshMacType");
+    if (!StringUtil.isEmpty(value))
+      return value;
+    return null;
+  }
 }

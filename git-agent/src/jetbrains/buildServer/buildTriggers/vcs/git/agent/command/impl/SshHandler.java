@@ -63,7 +63,8 @@ public class SshHandler implements GitSSHService.Handler {
                     @Nullable VcsRootSshKeyManager sshKeyManager,
                     @NotNull AuthSettings authSettings,
                     @NotNull GitCommandLine cmd,
-                    @NotNull File tmpDir) throws VcsException {
+                    @NotNull File tmpDir,
+                    @Nullable String customSshMacType) throws VcsException {
     mySsh = ssh;
     myAuthSettings = authSettings;
     cmd.addEnvParam(GitSSHHandler.SSH_PORT_ENV, Integer.toString(mySsh.getXmlRcpPort()));
@@ -90,6 +91,8 @@ public class SshHandler implements GitSSHService.Handler {
         }
       }
     }
+    if (customSshMacType != null)
+      cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_MAC_TYPE, customSshMacType);
     cmd.addEnvParam(GitSSHHandler.TEAMCITY_DEBUG_SSH, String.valueOf(Loggers.VCS.isDebugEnabled()));
     try {
       cmd.addEnvParam(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath());

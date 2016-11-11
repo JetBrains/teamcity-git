@@ -24,4 +24,7 @@ public interface Context {
   @Nullable
   BuildInterruptReason getInterruptionReason();
 
+  @Nullable
+  String getSshMacType();
+
 }
