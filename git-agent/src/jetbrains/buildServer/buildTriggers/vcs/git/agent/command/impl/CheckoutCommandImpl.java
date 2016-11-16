@@ -19,8 +19,13 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CheckoutCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.Errors;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitOutdatedIndexException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
 
@@ -75,8 +80,20 @@ public class CheckoutCommandImpl extends BaseCommandImpl implements CheckoutComm
       cmd.addParameter("-f");
     cmd.addParameter(myBranch);
     int timeout = myTimeout != null ? myTimeout : CommandUtil.DEFAULT_COMMAND_TIMEOUT_SEC;
-    cmd.run(with().timeout(timeout)
-              .authSettings(myAuthSettings)
-              .useNativeSsh(myUseNativeSsh));
+    try {
+      cmd.run(with().timeout(timeout)
+                .authSettings(myAuthSettings)
+                .useNativeSsh(myUseNativeSsh));
+    } catch (VcsException e) {
+      if (Errors.isCorruptedIndexError(e)) {
+        File workingDir = cmd.getWorkingDirectory();
+        File gitIndex = new File(new File(workingDir, ".git"), "index");
+        throw new GitIndexCorruptedException(gitIndex, e);
+      }
+      if (Errors.isOutdatedIndexError(e)) {
+        throw new GitOutdatedIndexException(e);
+      }
+      throw e;
+    }
   }
 }

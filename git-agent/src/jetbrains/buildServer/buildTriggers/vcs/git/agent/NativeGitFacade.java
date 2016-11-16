@@ -202,6 +202,12 @@ public class NativeGitFacade implements GitFacade {
   }
 
   @NotNull
+  @Override
+  public UpdateIndexCommand updateIndex() {
+    return new UpdateIndexCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   public Branches listBranches() throws VcsException {
     GitCommandLine cmd = createCommandLine();
     cmd.addParameter("branch");

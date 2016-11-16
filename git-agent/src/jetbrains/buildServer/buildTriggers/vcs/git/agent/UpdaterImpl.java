@@ -27,6 +27,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUti
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.RefImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitOutdatedIndexException;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.*;
@@ -175,7 +176,7 @@ public class UpdaterImpl implements Updater {
 
 
   private void updateSources() throws VcsException {
-    GitFacade git = myGitFactory.create(myTargetDirectory);
+    final GitFacade git = myGitFactory.create(myTargetDirectory);
     boolean branchChanged = false;
     removeIndexLock();
     if (isRegularBranch(myFullBranchName)) {
@@ -183,16 +184,13 @@ public class UpdaterImpl implements Updater {
       Branches branches = git.listBranches();
       if (branches.isCurrentBranch(branchName)) {
         removeIndexLock();
-        try {
-          reset(git).setHard(true).setRevision(myRevision).call();
-          git.setUpstream(branchName, GitUtils.createRemoteRef(myFullBranchName)).call();
-        } catch (GitIndexCorruptedException e) {
-          File gitIndex = e.getGitIndex();
-          myLogger.message("Git index '" + gitIndex.getAbsolutePath() + "' is corrupted, remove it and repeat git reset");
-          FileUtil.delete(gitIndex);
-          reset(git).setHard(true).setRevision(myRevision).call();
-          git.setUpstream(branchName, GitUtils.createRemoteRef(myFullBranchName)).call();
-        }
+        runAndFixIndexErrors(git, new VcsCommand() {
+          @Override
+          public void call() throws VcsException {
+            reset(git).setHard(true).setRevision(myRevision).call();
+          }
+        });
+        git.setUpstream(branchName, GitUtils.createRemoteRef(myFullBranchName)).call();
       } else {
         branchChanged = true;
         if (!branches.contains(branchName)) {
@@ -203,21 +201,42 @@ public class UpdaterImpl implements Updater {
             .call();
         }
         git.updateRef().setRef(myFullBranchName).setRevision(myRevision).call();
-        checkout(git).setForce(true).setBranch(branchName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+        final String finalBranchName = branchName;
+        runAndFixIndexErrors(git, new VcsCommand() {
+          @Override
+          public void call() throws VcsException {
+            checkout(git).setForce(true).setBranch(finalBranchName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+          }
+        });
         if (branches.contains(branchName)) {
           git.setUpstream(branchName, GitUtils.createRemoteRef(myFullBranchName)).call();
         }
       }
     } else if (isTag(myFullBranchName)) {
-      String shortName = myFullBranchName.substring("refs/tags/".length());
-      checkout(git).setForce(true).setBranch(shortName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+      final String shortName = myFullBranchName.substring("refs/tags/".length());
+      runAndFixIndexErrors(git, new VcsCommand() {
+        @Override
+        public void call() throws VcsException {
+          checkout(git).setForce(true).setBranch(shortName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+        }
+      });
       Ref tag = getRef(myTargetDirectory, myFullBranchName);
       if (tag != null && !tag.getObjectId().name().equals(myRevision)) {
-        checkout(git).setBranch(myRevision).setForce(true).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+        runAndFixIndexErrors(git, new VcsCommand() {
+          @Override
+          public void call() throws VcsException {
+            checkout(git).setBranch(myRevision).setForce(true).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+          }
+        });
       }
       branchChanged = true;
     } else {
-      checkout(git).setForce(true).setBranch(myRevision).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+      runAndFixIndexErrors(git, new VcsCommand() {
+        @Override
+        public void call() throws VcsException {
+          checkout(git).setForce(true).setBranch(myRevision).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+        }
+      });
       branchChanged = true;
     }
 
@@ -226,6 +245,37 @@ public class UpdaterImpl implements Updater {
       checkoutSubmodules(myTargetDirectory);
     }
   }
+
+
+  private void runAndFixIndexErrors(@NotNull GitFacade git, @NotNull VcsCommand cmd) throws VcsException {
+    try {
+      cmd.call();
+    } catch (GitIndexCorruptedException e) {
+      File gitIndex = e.getGitIndex();
+      myLogger.message("Git index '" + gitIndex.getAbsolutePath() + "' is corrupted, remove it and repeat the command");
+      FileUtil.delete(gitIndex);
+      cmd.call();
+    } catch (GitOutdatedIndexException e) {
+      myLogger.message("Refresh outdated git index and repeat the command");
+      updateIndex(git).reallyRefresh(true).quiet(true).call();
+      cmd.call();
+    } catch (Exception e) {
+      if (e instanceof VcsException)
+        throw (VcsException) e;
+      throw new VcsException(e);
+    }
+  }
+
+
+  @NotNull
+  private UpdateIndexCommand updateIndex(final GitFacade git) {
+    UpdateIndexCommand result = git.updateIndex()
+      .setAuthSettings(myRoot.getAuthSettings())
+      .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
+    configureLFS(result);
+    return result;
+  }
+
 
   @NotNull
   private ResetCommand reset(final GitFacade git) {
@@ -826,5 +876,10 @@ public class UpdaterImpl implements Updater {
       LOG.debug("Cannot get lfs auth config", e);
     }
     return null;
+  }
+
+
+  private interface VcsCommand {
+    void call() throws VcsException;
   }
 }
