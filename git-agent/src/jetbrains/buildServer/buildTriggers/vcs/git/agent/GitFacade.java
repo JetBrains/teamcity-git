@@ -103,4 +103,7 @@ public interface GitFacade {
 
   @NotNull
   ScriptGen getScriptGen();
+
+  @NotNull
+  UpdateIndexCommand updateIndex();
 }

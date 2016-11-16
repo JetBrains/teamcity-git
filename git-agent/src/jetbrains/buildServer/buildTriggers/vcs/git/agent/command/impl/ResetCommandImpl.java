@@ -19,7 +19,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ResetCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.Errors;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitOutdatedIndexException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -74,11 +76,13 @@ public class ResetCommandImpl extends BaseCommandImpl implements ResetCommand {
                 .authSettings(myAuthSettings)
                 .useNativeSsh(myUseNativeSsh));
     } catch (VcsException e) {
-      String message = e.getMessage();
-      if (message != null && message.contains("fatal: index file smaller than expected")) {
+      if (Errors.isCorruptedIndexError(e)) {
         File workingDir = cmd.getWorkingDirectory();
         File gitIndex = new File(new File(workingDir, ".git"), "index");
         throw new GitIndexCorruptedException(gitIndex, e);
+      }
+      if (Errors.isOutdatedIndexError(e)) {
+        throw new GitOutdatedIndexException(e);
       }
       throw e;
     }

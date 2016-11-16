@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
+import com.intellij.openapi.util.io.StreamUtil;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.agent.AgentRunningBuild;
@@ -1017,6 +1018,33 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, createRunningBuild(true), false);
 
     then(serverCustomCloneDir.listFiles()).isEmpty();
+  }
+
+
+  @TestFor(issues = "TW-44844")
+  @Test(dataProviderClass = BaseRemoteRepositoryTest.class, dataProvider = "true,false")
+  public void handle_files_marked_as_unchanged(boolean switchBranch) throws Exception {
+    //checkout
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "97442a720324a0bd092fb9235f72246dc8b345bc", myCheckoutDir, myBuild, false);
+
+    //modify file
+    File f = new File(myCheckoutDir, "dir/a.txt");
+    writeFileAndReportErrors(f, "update by build script");
+
+    //git update-index --no-assume-unchanged <file>
+    Process updateIndex = new ProcessBuilder().directory(myCheckoutDir).command(getGitPath(), "update-index", "--assume-unchanged", "dir/a.txt").start();
+    updateIndex.waitFor();
+    if (updateIndex.exitValue() != 0) {
+      fail("git update-index failed, exit code " + updateIndex.exitValue() +
+           "\nstdout: " + StreamUtil.readText(updateIndex.getInputStream()) +
+           "\nstderr: " + StreamUtil.readText(updateIndex.getErrorStream()));
+    }
+
+    //update to commit which changes the file
+    if (switchBranch)
+      myBuild = createRunningBuild(map(GitUtils.getGitRootBranchParamName(myRoot), "refs/heads/personal-branch1"));
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7", myCheckoutDir, myBuild, false);
+    then(jetbrains.buildServer.util.FileUtil.readFile(f)).doesNotContain("update by build script");
   }
 
 
