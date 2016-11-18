@@ -212,15 +212,21 @@ public class GitServerUtil {
 
 
   private static boolean isWrongGithubUsername(@NotNull TransportException te, @NotNull GitVcsRoot root) {
-    return root.isSsh() && isAuthError(te) && !"git".equals(root.getAuthSettings().getUserName());
+    return root.isSsh() && isGithubSshAuthError(te) && !"git".equals(root.getAuthSettings().getUserName());
   }
 
 
-  private static boolean isAuthError(@NotNull TransportException e) {
+  private static boolean isGithubSshAuthError(@NotNull TransportException e) {
     Throwable cause = e.getCause();
     return cause instanceof JSchException &&
            ("Auth fail".equals(cause.getMessage()) ||
             "session is down".equals(cause.getMessage()));
+  }
+
+
+  static boolean isAuthError(@NotNull VcsException e) {
+    String msg = e.getMessage();
+    return msg != null && msg.contains("not authorized");
   }
 
 
