@@ -24,8 +24,12 @@ import jetbrains.buildServer.agent.vcs.AgentVcsSupport;
 import jetbrains.buildServer.agent.vcs.UpdateByCheckoutRules2;
 import jetbrains.buildServer.agent.vcs.UpdatePolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
-import jetbrains.buildServer.vcs.*;
+import jetbrains.buildServer.vcs.CheckoutRules;
+import jetbrains.buildServer.vcs.IncludeRule;
+import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -120,16 +124,22 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       return AgentCheckoutAbility.noVcsClientOnAgent(e.getMessage());
     }
 
-    if (canUseSparseCheckout(config) && getSingleTargetDirForSparseCheckout(checkoutRules) != null) {
-      return AgentCheckoutAbility.canCheckout();
-    }
-
     try {
-      validateCheckoutRules(vcsRoot, checkoutRules);
-      return AgentCheckoutAbility.canCheckout();
+      boolean validSparseCheckout = canUseSparseCheckout(config) && getSingleTargetDirForSparseCheckout(checkoutRules) != null;
+      if (!validSparseCheckout)
+        validateCheckoutRules(vcsRoot, checkoutRules);
     } catch (VcsException e) {
       return AgentCheckoutAbility.notSupportedCheckoutRules(e.getMessage());
     }
+
+    try {
+      GitVcsRoot gitRoot = new GitVcsRoot(myMirrorManager, vcsRoot);
+      UpdaterImpl.checkAuthMethodIsSupported(gitRoot, config);
+    } catch (VcsException e) {
+      return AgentCheckoutAbility.canNotCheckout(e.getMessage());
+    }
+
+    return AgentCheckoutAbility.canCheckout();
   }
 
   @NotNull
