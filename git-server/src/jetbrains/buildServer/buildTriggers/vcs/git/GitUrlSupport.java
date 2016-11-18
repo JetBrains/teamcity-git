@@ -75,6 +75,8 @@ public class GitUrlSupport implements UrlSupport, PositionAware {
       myGitSupport.testConnection(new VcsRootImpl(-1, Constants.VCS_NAME, props));
       return props;
     } catch (VcsException e) {
+      if (GitServerUtil.isAuthError(e))
+        throw e;
       return null; // probably not git
     }
   }

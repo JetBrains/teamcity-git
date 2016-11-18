@@ -21,6 +21,7 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.Credentials;
 import jetbrains.buildServer.vcs.MavenVcsUrl;
 import jetbrains.buildServer.vcs.VcsException;
@@ -182,6 +183,20 @@ public class GitUrlSupportTest extends BaseTestCase {
   public void vault_url() throws Exception {
     VcsUrl url = new VcsUrl("http://some.host.com/VaultService/VaultWeb/Default.aspx?repid=1709&path=$/");
     assertNull(myUrlSupport.convertToVcsRootProperties(url));
+  }
+
+
+  @Test
+  @TestFor(issues = "TW-43247")
+  public void should_throw_exception_on_authentication_failures() {
+    Credentials credentials = new Credentials("username", "password");
+    VcsUrl url = new VcsUrl("https://jb-vso-tests.visualstudio.com/DefaultCollection/_git/TeamCityGitTests", credentials);
+    try {
+      toGitRoot(url);
+      fail();
+    } catch (VcsException e) {
+      assertContains(e.getMessage(), "not authorized");
+    }
   }
 
 
