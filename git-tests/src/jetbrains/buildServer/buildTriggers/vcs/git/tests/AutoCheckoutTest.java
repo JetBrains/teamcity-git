@@ -20,6 +20,7 @@ import jetbrains.buildServer.agent.AgentCanNotCheckoutReason;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.vcs.AgentCheckoutAbility;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.util.FileUtil;
@@ -38,6 +39,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.v
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder.runningBuild;
 import static org.assertj.core.api.BDDAssertions.then;
 
+@SuppressWarnings("ALL")
 @Test
 public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
 
@@ -113,6 +115,20 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, new CheckoutRules("-:dir/q.txt"), build);
     then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.NOT_SUPPORTED_CHECKOUT_RULES);
     then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Exclude rules are not supported for agent checkout");
+  }
+
+  public void should_check_auth_method() throws Exception {
+    myVcsSupport = vcsSupportWithRealGit();
+
+    VcsRoot vcsRoot = vcsRoot()
+      .withFetchUrl(getRemoteRepositoryUrl("repo.git"))
+      .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE)
+      .build();
+
+    AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, CheckoutRules.DEFAULT, runningBuild().build());
+    then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.UNKNOWN_REASON_TYPE);
+    then(canCheckout.getCanNotCheckoutReason().getDetails()).contains(
+      "TeamCity doesn't support authentication method 'Private Key' with agent checkout. Please use different authentication method.");
   }
 
   private void verifyCanCheckout(final VcsRoot vcsRoot, CheckoutRules checkoutRules, final AgentRunningBuild build) throws VcsException {

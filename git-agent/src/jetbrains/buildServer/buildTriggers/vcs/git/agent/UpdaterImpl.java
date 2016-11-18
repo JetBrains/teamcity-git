@@ -659,35 +659,40 @@ public class UpdaterImpl implements Updater {
 
 
   private void checkAuthMethodIsSupported() throws VcsException {
-    if ("git".equals(myRoot.getRepositoryFetchURL().getScheme()))
+    checkAuthMethodIsSupported(myRoot, myPluginConfig);
+  }
+
+
+  static void checkAuthMethodIsSupported(@NotNull GitVcsRoot root, @NotNull AgentPluginConfig config) throws VcsException {
+    if ("git".equals(root.getRepositoryFetchURL().getScheme()))
       return;//anonymous protocol, don't check anything
-    AuthSettings authSettings = myRoot.getAuthSettings();
+    AuthSettings authSettings = root.getAuthSettings();
     switch (authSettings.getAuthMethod()) {
       case PASSWORD:
-        if ("http".equals(myRoot.getRepositoryFetchURL().getScheme()) ||
-            "https".equals(myRoot.getRepositoryFetchURL().getScheme())) {
-          GitVersion actualVersion = myPluginConfig.getGitVersion();
+        if ("http".equals(root.getRepositoryFetchURL().getScheme()) ||
+            "https".equals(root.getRepositoryFetchURL().getScheme())) {
+          GitVersion actualVersion = config.getGitVersion();
           GitVersion requiredVersion = getMinVersionForHttpAuth();
           if (actualVersion.isLessThan(requiredVersion)) {
             throw new VcsException("Password authentication requires git " + requiredVersion +
-                    ", found git version is " + actualVersion +
-                    ". Upgrade git or use different authentication method.");
+                                   ", found git version is " + actualVersion +
+                                   ". Upgrade git or use different authentication method.");
           }
         } else {
           throw new VcsException("TeamCity doesn't support authentication method '" +
-                  myRoot.getAuthSettings().getAuthMethod().uiName() +
-                  "' with agent checkout and non-http protocols. Please use different authentication method.");
+                                 root.getAuthSettings().getAuthMethod().uiName() +
+                                 "' with agent checkout and non-http protocols. Please use different authentication method.");
         }
         break;
       case PRIVATE_KEY_FILE:
         throw new VcsException("TeamCity doesn't support authentication method '" +
-                myRoot.getAuthSettings().getAuthMethod().uiName() +
-                "' with agent checkout. Please use different authentication method.");
+                               root.getAuthSettings().getAuthMethod().uiName() +
+                               "' with agent checkout. Please use different authentication method.");
     }
   }
 
   @NotNull
-  private GitVersion getMinVersionForHttpAuth() {
+  private static GitVersion getMinVersionForHttpAuth() {
     //core.askpass parameter was added in 1.7.1, but
     //experiments show that it works only in 1.7.3 on linux
     //and msysgit 1.7.3.1-preview20101002.
