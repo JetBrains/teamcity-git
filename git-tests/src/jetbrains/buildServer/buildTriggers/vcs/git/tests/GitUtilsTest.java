@@ -42,7 +42,7 @@ public class GitUtilsTest extends BaseTestCase {
   public void test_remotesBranchRef() {
     assertEquals("refs/remotes/origin/master", GitUtils.createRemoteRef("master"));
     assertEquals("refs/remotes/origin/master", GitUtils.createRemoteRef("refs/heads/master"));
-    assertEquals("refs/remotes/origin/remote-run/tw/12345", GitUtils.createRemoteRef("refs/remote-run/tw/12345"));
+    assertEquals("refs/remote-run/tw/12345", GitUtils.createRemoteRef("refs/remote-run/tw/12345"));
     assertEquals("refs/tags/v1.0", GitUtils.createRemoteRef("refs/tags/v1.0"));
   }
 
