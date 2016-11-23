@@ -75,6 +75,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private static final String HTTP_CONNECTION_SSL_PROTOCOL = "teamcity.git.httpConnectionSslProtocol";
   private static final String MONITORING_FILE_THRESHOLD_SECONDS = "teamcity.git.monitoringFileThresholdSeconds";
   public static final String CREATE_NEW_CONNECTION_FOR_PRUNE = "teamcity.git.newConnectionForPrune";
+  private static final String GET_REPOSITORY_STATE_TIMEOUT_SECONDS = "teamcity.git.repositoryStateTimeoutSeconds";
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
   private final File myCachesDir;
@@ -87,7 +88,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
                                                            HTTP_CONNECTION_SSL_PROTOCOL,
                                                            Constants.AMAZON_HOSTS,
                                                            MONITORING_FILE_THRESHOLD_SECONDS,
-                                                           CREATE_NEW_CONNECTION_FOR_PRUNE);
+                                                           CREATE_NEW_CONNECTION_FOR_PRUNE,
+                                                           GET_REPOSITORY_STATE_TIMEOUT_SECONDS);
 
   public PluginConfigImpl() {
     myCachesDir = null;
@@ -278,7 +280,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   public int getRepositoryStateTimeoutSeconds() {
-    return TeamCityProperties.getInteger("teamcity.git.repositoryStateTimeoutSeconds", 60);
+    return TeamCityProperties.getInteger(GET_REPOSITORY_STATE_TIMEOUT_SECONDS, 60);
   }
 
   public int getPatchProcessIdleTimeoutSeconds() {
