@@ -197,7 +197,7 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
       public Transport createTransport(@NotNull Repository r,
                                        @NotNull URIish url,
                                        @NotNull AuthSettings authSettings,
-                                       int timeout) throws NotSupportedException, VcsException, TransportException {
+                                       int timeoutSeconds) throws NotSupportedException, VcsException, TransportException {
         throw new TransportException(url.toString() + ": " + error, new JSchException(error));
       }
     };

@@ -328,7 +328,7 @@ public class GitServerUtil {
     if (config.createNewConnectionForPrune()) {
       Transport transport = null;
       try {
-        transport = transportFactory.createTransport(db, uri, authSettings);
+        transport = transportFactory.createTransport(db, uri, authSettings, config.getRepositoryStateTimeoutSeconds());
         pruneRemovedBranches(db, transport);
       } finally {
         if (transport != null)
