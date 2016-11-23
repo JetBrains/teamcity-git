@@ -42,6 +42,6 @@ public interface TransportFactory {
   Transport createTransport(@NotNull Repository r, @NotNull final URIish url, @NotNull AuthSettings authSettings)
     throws NotSupportedException, VcsException, TransportException;
 
-  Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings, int timeout)
+  Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings, int timeoutSeconds)
     throws NotSupportedException, VcsException, TransportException;
 }

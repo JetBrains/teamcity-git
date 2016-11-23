@@ -77,7 +77,7 @@ public class TransportFactoryImpl implements TransportFactory {
   public Transport createTransport(@NotNull final Repository r,
                                    @NotNull final URIish url,
                                    @NotNull final AuthSettings authSettings,
-                                   final int timeout) throws NotSupportedException, VcsException {
+                                   final int timeoutSeconds) throws NotSupportedException, VcsException {
     try {
       checkUrl(url);
       URIish preparedURI = prepareURI(url);
@@ -87,7 +87,7 @@ public class TransportFactoryImpl implements TransportFactory {
         SshTransport ssh = (SshTransport)t;
         ssh.setSshSessionFactory(getSshSessionFactory(authSettings, url));
       }
-      t.setTimeout(timeout);
+      t.setTimeout(timeoutSeconds);
       return t;
     } catch (TransportException e) {
       throw new VcsException("Cannot create transport", e);
