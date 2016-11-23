@@ -569,9 +569,7 @@ public class UpdaterImpl implements Updater {
   }
 
   private String getRefspecForFetch() {
-    if (isRegularBranch(myFullBranchName) || isTag(myFullBranchName))
-      return "+" + myFullBranchName + ":" + GitUtils.createRemoteRef(myFullBranchName);
-    return myFullBranchName;
+    return "+" + myFullBranchName + ":" + GitUtils.createRemoteRef(myFullBranchName);
   }
 
   private void fetchAllBranches() throws VcsException {

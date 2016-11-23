@@ -853,7 +853,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
 
     final String newCommit = "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6";
-    updateTag(myMainRepo, "refs/tags/v1.0", newCommit);
+    updateRef(myMainRepo, "refs/tags/v1.0", newCommit);
 
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
     assertTagExists("refs/tags/v1.0");
@@ -862,12 +862,35 @@ public class AgentVcsSupportTest {
     assertEquals("Local tag is not updated", newCommit, tag.getObjectId().name());
   }
 
+
+  @TestFor(issues = "TW-47805")
+  public void no_redundant_fetches_for_pull_requests() throws Exception {
+    LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
+    myVcsSupport = myBuilder.setGitMetaFactory(loggingFactory).setFS(new MockFS()).build();
+
+    //create pull-request in remote repo
+    myRoot.addProperty(Constants.BRANCH_NAME, "refs/changes/1/1");
+    updateRef(myMainRepo, "refs/pull/1/head", "5711cbfe566b6c92e331f95d4b236483f4532eed");
+
+    //run build on pull-request
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "5711cbfe566b6c92e331f95d4b236483f4532eed", myCheckoutDir, myBuild, false);
+
+    //run build again
+    int fetchesBefore = loggingFactory.getNumberOfCalls(FetchCommand.class);
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "5711cbfe566b6c92e331f95d4b236483f4532eed", myCheckoutDir, myBuild, false);
+
+    //there should be no fetches in the second build
+    int redundantFetches = loggingFactory.getNumberOfCalls(FetchCommand.class) - fetchesBefore;
+    then(redundantFetches).isEqualTo(0);
+  }
+
+
   private void removeTag(@NotNull File dotGitDir, @NotNull String tagName) {
     delete(tagFile(dotGitDir, tagName));
   }
 
-  private void updateTag(@NotNull File dotGitDir, @NotNull String tagName, @NotNull String commit) throws IOException {
-    File tagFile = tagFile(dotGitDir, tagName);
+  private void updateRef(@NotNull File dotGitDir, @NotNull String refName, @NotNull String commit) throws IOException {
+    File tagFile = tagFile(dotGitDir, refName);
     FileUtil.writeToFile(tagFile, commit.getBytes());
   }
 

@@ -126,10 +126,8 @@ public class GitUtils {
     if (ref.startsWith("refs/")) {
       if (ref.startsWith("refs/heads/")) {
         return "refs/remotes/origin/" + ref.substring("refs/heads/".length());
-      } else if (ref.startsWith("refs/tags/")) {
-        return ref; //tags are mapped to the same place
       } else {
-        return "refs/remotes/origin/" + ref.substring("refs/".length());
+        return ref;
       }
     } else {
       return "refs/remotes/origin/" + ref;
