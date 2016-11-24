@@ -46,6 +46,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String VCS_ROOT_MIRRORS_STRATEGY_MIRRORS_ONLY = "mirrors";
   public static final String USE_SPARSE_CHECKOUT = "teamcity.git.useSparseCheckout";
   public static final String USE_BUILD_ENV = "teamcity.git.useBuildEnv";
+  public static final String FETCH_ALL_HEADS = "teamcity.git.fetchAllHeads";
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
@@ -160,6 +161,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public boolean isDeleteTempFiles() {
     boolean doNotDelete = Boolean.parseBoolean(myBuild.getSharedConfigParameters().get(TEAMCITY_DONT_DELETE_TEMP_FILES));
     return !doNotDelete;
+  }
+
+
+  public boolean isFetchAllHeads() {
+    String value = myBuild.getSharedConfigParameters().get(FETCH_ALL_HEADS);
+    return Boolean.parseBoolean(value);
   }
 
 
