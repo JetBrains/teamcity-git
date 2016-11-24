@@ -69,7 +69,7 @@ public class UpdaterImpl implements Updater {
 
   protected final FS myFS;
   private final SmartDirectoryCleaner myDirectoryCleaner;
-  private final BuildProgressLogger myLogger;
+  protected final BuildProgressLogger myLogger;
   protected final AgentPluginConfig myPluginConfig;
   protected final GitFactory myGitFactory;
   protected final File myTargetDirectory;
@@ -549,18 +549,36 @@ public class UpdaterImpl implements Updater {
 
 
   protected void fetchFromOriginalRepository(boolean fetchRequired) throws VcsException {
-    Ref remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
-    if (!fetchRequired && remoteRef != null && myRevision.equals(remoteRef.getObjectId().name()) && hasRevision(myTargetDirectory, myRevision))
-      return;
-    myLogger.message("Commit '" + myRevision + "' is not found in local clone. Running 'git fetch'...");
-    fetchDefaultBranch();
-    if (hasRevision(myTargetDirectory, myRevision))
-      return;
-    myLogger.message("Commit still not found after fetching main branch. Fetching more branches.");
-    fetchAllBranches();
+    if (myPluginConfig.isFetchAllHeads()) {
+      String msg = getForcedHeadsFetchMessage();
+      LOG.info(msg);
+      myLogger.message(msg);
+
+      fetchAllBranches();
+      if (!myFullBranchName.startsWith("refs/heads/")) {
+        Ref remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
+        if (!fetchRequired && remoteRef != null && myRevision.equals(remoteRef.getObjectId().name()) && hasRevision(myTargetDirectory, myRevision))
+          return;
+      }
+    } else {
+      Ref remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
+      if (!fetchRequired && remoteRef != null && myRevision.equals(remoteRef.getObjectId().name()) && hasRevision(myTargetDirectory, myRevision))
+        return;
+      myLogger.message("Commit '" + myRevision + "' is not found in local clone. Running 'git fetch'...");
+      fetchDefaultBranch();
+      if (hasRevision(myTargetDirectory, myRevision))
+        return;
+      myLogger.message("Commit still not found after fetching main branch. Fetching more branches.");
+      fetchAllBranches();
+    }
     if (hasRevision(myTargetDirectory, myRevision))
       return;
     throw new VcsException("Cannot find commit " + myRevision);
+  }
+
+
+  protected String getForcedHeadsFetchMessage() {
+    return "Forced fetch of all heads (" + PluginConfigImpl.FETCH_ALL_HEADS + "=" + myBuild.getSharedConfigParameters().get(PluginConfigImpl.FETCH_ALL_HEADS) + ")";
   }
 
 

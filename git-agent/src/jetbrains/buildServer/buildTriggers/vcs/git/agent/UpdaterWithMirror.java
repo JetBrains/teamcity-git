@@ -98,7 +98,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     Ref ref = getRef(bareRepositoryDir, myFullBranchName);
     if (ref == null)
       fetchRequired = true;
-    if (!fetchRequired)
+    if (!fetchRequired && !myPluginConfig.isFetchAllHeads())
       return;
     if (!newMirror && optimizeMirrorBeforeFetch()) {
       GitFacade git = myGitFactory.create(bareRepositoryDir);
@@ -106,10 +106,18 @@ public class UpdaterWithMirror extends UpdaterImpl {
       git.repack().call();
       removeOrphanedIdxFiles(bareRepositoryDir);
     }
-    fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName), false);
-    if (hasRevision(bareRepositoryDir, myRevision))
-      return;
-    fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+refs/heads/*:refs/heads/*", false);
+    if (myPluginConfig.isFetchAllHeads()) {
+      String msg = getForcedHeadsFetchMessage();
+      LOG.info(msg);
+      myLogger.message(msg);
+
+      fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+refs/heads/*:refs/heads/*", false);
+    } else {
+      fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName), false);
+      if (hasRevision(bareRepositoryDir, myRevision))
+        return;
+      fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+refs/heads/*:refs/heads/*", false);
+    }
   }
 
 

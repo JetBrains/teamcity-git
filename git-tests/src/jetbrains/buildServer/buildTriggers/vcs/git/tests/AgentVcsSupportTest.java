@@ -54,6 +54,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 
@@ -882,6 +883,21 @@ public class AgentVcsSupportTest {
     //there should be no fetches in the second build
     int redundantFetches = loggingFactory.getNumberOfCalls(FetchCommand.class) - fetchesBefore;
     then(redundantFetches).isEqualTo(0);
+  }
+
+
+  @Test(dataProvider = "mirrors")
+  public void fetch_all_heads(boolean useMirrors) throws Exception {
+    AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, String.valueOf(useMirrors),
+                                                     PluginConfigImpl.FETCH_ALL_HEADS, "true"));
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
+
+    Repository remoteRepo = new RepositoryBuilder().setBare().setGitDir(myMainRepo).build();
+    Set<String> remoteHeads = remoteRepo.getRefDatabase().getRefs("refs/heads/").keySet();
+
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    then(r.getRefDatabase().getRefs("refs/remotes/origin/").keySet()).containsAll(remoteHeads);
   }
 
 
