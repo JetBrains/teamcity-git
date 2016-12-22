@@ -116,7 +116,6 @@ public class GitServerUtil {
     File objectsDir = new File(dir, "objects");
     if (objectsDir.exists()) {
       File configFile = new File(dir, "config");
-      LOG.debug("Ensure repository at '" + dir.getAbsolutePath() + "' has a valid config file");
       boolean valid = ensureConfigIsValid(configFile);
       if (!valid) {
         LOG.warn("Repository at '" + dir.getAbsolutePath() + "' has invalid config file, try to remove repository");
