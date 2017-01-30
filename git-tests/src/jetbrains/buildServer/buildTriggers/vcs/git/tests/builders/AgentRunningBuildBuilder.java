@@ -28,6 +28,7 @@ import jetbrains.buildServer.artifacts.ArtifactDependencyInfo;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.parameters.ValueResolver;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.PasswordReplacer;
 import jetbrains.buildServer.util.Option;
 import jetbrains.buildServer.vcs.VcsChangeInfo;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -324,6 +325,10 @@ public class AgentRunningBuildBuilder {
       @NotNull
       public AgentBuild.CheckoutType getCheckoutType() {
         return AgentBuild.CheckoutType.ON_AGENT;
+      }
+
+      public PasswordReplacer getPasswordReplacer() {
+        throw new UnsupportedOperationException();
       }
 
       @NotNull
