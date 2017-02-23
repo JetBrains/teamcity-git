@@ -10,7 +10,7 @@
     <orderEntry type="library" name="TeamCity Open API common" level="project" />
     <orderEntry type="library" name="TeamCity Third-Party" level="project" />
     <orderEntry type="library" name="jgit" level="project" />
-    <orderEntry type="library" name="httpclient-4.3.4" level="project" />
+    <orderEntry type="library" name="httpclient" level="project" />
     <orderEntry type="library" name="slf4j-api-1.7.5" level="project" />
   </component>
 </module>

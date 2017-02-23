@@ -1,5 +1,5 @@
 <component name="libraryTable">
-  <library name="httpclient-4.3.4">
+  <library name="httpclient">
     <CLASSES>
       <root url="jar://$PROJECT_DIR$/lib/common/httpcore-4.3.2.jar!/" />
       <root url="jar://$PROJECT_DIR$/lib/common/commons-codec-1.6.jar!/" />

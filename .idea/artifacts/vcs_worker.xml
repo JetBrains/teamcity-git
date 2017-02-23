@@ -16,7 +16,7 @@
         <element id="artifact" artifact-name="git-common.jar" />
         <element id="artifact" artifact-name="git-server.jar" />
         <element id="library" level="project" name="org.eclipse.egit.github.core-2.4.0-SNAPSHOT" />
-        <element id="library" level="project" name="httpclient-4.3.4" />
+        <element id="library" level="project" name="httpclient" />
         <element id="library" level="project" name="JavaEWAH-0.7.9" />
       </element>
     </root>
