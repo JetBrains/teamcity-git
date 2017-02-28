@@ -77,6 +77,22 @@ public class GitCommandLine extends GeneralCommandLine {
 
   public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
     AuthSettings authSettings = settings.getAuthSettings();
+    if (!getParametersList().getParametersString().contains("credential.helper") && !myGitVersion.isLessThan(UpdaterImpl.EMPTY_CRED_HELPER)) {
+      //Disable credential helper if it wasn't specified by us, as default
+      //helper can require a user input. Do that even if our repository doesn't
+      //require any auth, auth can be required by submodules or git lfs.
+      //
+      //It would be cleaner to add the following
+      //
+      //[credential]
+      //  helper =
+      //
+      //to the local repository config and not disable helpers in every command.
+      //But some commands ignore this setting, e.g. 'git submodules update':
+      //https://public-inbox.org/git/CAC+L6n0YeX_n_AysCLtBWkA+jPHwg7HmOWq2PLj75byxOZE=qQ@mail.gmail.com/
+      getParametersList().addAt(0, "-c");
+      getParametersList().addAt(1, "credential.helper=");
+    }
     if (authSettings != null) {
       if (mySsh == null)
         throw new IllegalStateException("Ssh is not initialized");
@@ -89,11 +105,6 @@ public class GitCommandLine extends GeneralCommandLine {
           }
           getParametersList().addAt(0, "-c");
           getParametersList().addAt(1, "core.askpass=" + askPassPath);
-          if (!getParametersList().getParametersString().contains("credential.helper") && !myGitVersion.isLessThan(UpdaterImpl.EMPTY_CRED_HELPER)) {
-            //disable credential.helper if it wasn't specified by us
-            getParametersList().addAt(2, "-c");
-            getParametersList().addAt(3, "credential.helper=");
-          }
           addPostAction(new Runnable() {
             public void run() {
               if (myDeleteTempFiles)
