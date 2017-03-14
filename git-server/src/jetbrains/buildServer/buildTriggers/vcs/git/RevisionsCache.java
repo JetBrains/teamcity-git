@@ -119,6 +119,6 @@ public final class RevisionsCache {
 
   @NotNull
   private String getRepositoryId(@NotNull File repositoryDir, @NotNull RevisionCacheType type) throws IOException {
-    return repositoryDir.getCanonicalPath() + "_" + type.name();
+    return repositoryDir.getAbsolutePath() + "_" + type.name();
   }
 }
