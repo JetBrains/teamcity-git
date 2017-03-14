@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -67,6 +68,9 @@ public final class RepositoryManagerImpl implements RepositoryManager {
   private final ConcurrentMap<File, ReadWriteLock> myRmLocks = new ConcurrentHashMap<File, ReadWriteLock>();
 
   private final ConcurrentMap<File, Object> myUpdateLastUsedTimeLocks = new ConcurrentHashMap<File, Object>();
+
+  //repo dir -> last access time (nano seconds)
+  private final ConcurrentMap<File, Long> myLastAccessTime = new ConcurrentHashMap<>();
 
   private final AutoCloseRepositoryCache myRepositoryCache = new AutoCloseRepositoryCache();
 
@@ -174,6 +178,11 @@ public final class RepositoryManagerImpl implements RepositoryManager {
 
 
   private void updateLastUsedTime(@NotNull final File dir) {
+    Long timeNano = myLastAccessTime.get(dir);
+    //don't update last used time too often to decrease file-system activity
+    if (timeNano != null && TimeUnit.NANOSECONDS.toMinutes(System.nanoTime() - timeNano) < myConfig.getAccessTimeUpdateRateMinutes()) {
+      return;
+    }
     Lock rmLock = getRmLock(dir).readLock();
     try {
       rmLock.lock();
@@ -184,6 +193,7 @@ public final class RepositoryManagerImpl implements RepositoryManager {
         if (!timestamp.exists())
           timestamp.createNewFile();
         FileUtil.writeFileAndReportErrors(timestamp, String.valueOf(System.currentTimeMillis()));
+        myLastAccessTime.put(dir, System.nanoTime());
       }
     } catch (IOException e) {
       LOG.error("Error while updating timestamp in " + dir.getAbsolutePath(), e);

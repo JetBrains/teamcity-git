@@ -319,6 +319,11 @@ public class PluginConfigBuilder {
           return myNewConnectionForPrune;
         return myDelegate.createNewConnectionForPrune();
       }
+
+      @Override
+      public long getAccessTimeUpdateRateMinutes() {
+        return myDelegate.getAccessTimeUpdateRateMinutes();
+      }
     };
   }
 

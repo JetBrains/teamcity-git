@@ -75,6 +75,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private static final String HTTP_CONNECTION_SSL_PROTOCOL = "teamcity.git.httpConnectionSslProtocol";
   private static final String MONITORING_FILE_THRESHOLD_SECONDS = "teamcity.git.monitoringFileThresholdSeconds";
   public static final String CREATE_NEW_CONNECTION_FOR_PRUNE = "teamcity.git.newConnectionForPrune";
+  private static final String ACCESS_TIME_UPDATE_RATE_MINUTES = "teamcity.git.accessTimeUpdateRateMinutes";
   private static final String GET_REPOSITORY_STATE_TIMEOUT_SECONDS = "teamcity.git.repositoryStateTimeoutSeconds";
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
@@ -519,5 +520,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
   @Override
   public boolean createNewConnectionForPrune() {
     return TeamCityProperties.getBooleanOrTrue(CREATE_NEW_CONNECTION_FOR_PRUNE);
+  }
+
+  @Override
+  public long getAccessTimeUpdateRateMinutes() {
+    return TeamCityProperties.getLong(ACCESS_TIME_UPDATE_RATE_MINUTES, 5);
   }
 }
