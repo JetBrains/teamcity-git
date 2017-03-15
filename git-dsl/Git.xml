@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dsl-extension kind="vcs" type="jetbrains.git" generateDslJar="true">
-  <class name="GitVcsRoot"/>
+  <class name="GitVcsRoot">
+    <description>Base class for Git VCS roots</description>
+  </class>
   <params>
     <param name="url">
       <description>Repository url</description>
@@ -73,19 +75,36 @@
       <description>
         VCS Root authentication method
       </description>
-      <option name="anonymous" value="ANONYMOUS"/>
+      <option name="anonymous" value="ANONYMOUS">
+        <description>Anonymous repository access</description>
+      </option>
       <option name="password" value="PASSWORD">
+        <description>Password authentication</description>
         <param name="username" dslName="userName"/>
         <param name="secure:password" dslName="password"/>
       </option>
       <option name="uploadedKey" value="TEAMCITY_SSH_KEY">
+        <description>
+          Uploaded [SSH key](https://confluence.jetbrains.com/display/TCDL/SSH+Keys+Management) with the specified name.
+        </description>
         <param name="username" dslName="userName"/>
         <param name="teamcitySshKey" dslName="uploadedKey"/>
       </option>
       <option name="defaultPrivateKey" value="PRIVATE_KEY_DEFAULT">
+        <description>
+          Default SSH key found on the machine.
+          If you use an agent-side checkout, then this key should also be available on the build agent machines.
+          Often it is easier to use the uploaded SSH key.
+          @see uploadedKey
+        </description>
         <param name="username" dslName="userName"/>
       </option>
       <option name="customPrivateKey" value="PRIVATE_KEY_FILE">
+        <description>
+          SSH key on the specified path. Supported only for server-side checkout.
+          Switch to uploaded SSH key if you want to use an agent-side checkout.
+          @see uploadedKey
+        </description>
         <param name="username" dslName="userName"/>
         <param name="privateKeyPath" dslName="customKeyPath"/>
         <param name="secure:passphrase" dslName="passphrase"/>
