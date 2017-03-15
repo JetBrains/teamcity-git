@@ -17,6 +17,7 @@
     <param name="teamcity:branchSpec" dslName="branchSpec">
       <description>
         [Branch specification](https://confluence.jetbrains.com/display/TCDL/Working+with+Feature+Branches#WorkingwithFeatureBranches-branchSpec)
+        to use in VCS root
       </description>
     </param>
     <param name="reportTagRevisions" dslName="useTagsAsBranches" type="boolean" trueValue="true" falseValue="">
