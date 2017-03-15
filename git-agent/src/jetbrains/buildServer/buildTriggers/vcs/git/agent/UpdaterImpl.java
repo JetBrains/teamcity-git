@@ -885,7 +885,7 @@ public class UpdaterImpl implements Updater {
       String scheme = uri.getScheme();
       if (myRoot.getAuthSettings().getAuthMethod() == AuthenticationMethod.PASSWORD &&
           ("http".equals(scheme) || "https".equals(scheme))) {
-        String lfsUrl = uri.setPass("").setUser("").setPath("").toASCIIString();
+        String lfsUrl = uri.setPass("").setUser("").toASCIIString();
         if (lfsUrl.endsWith(".git")) {
           lfsUrl += "/info/lfs";
         } else {
