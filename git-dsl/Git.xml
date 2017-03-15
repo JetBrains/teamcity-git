@@ -30,13 +30,16 @@
     </param>
     <param name="usernameStyle" dslName="userNameStyle" type="UserNameStyle">
       <description>
-        Defines a way how TeamCity binds VCS changes to the users.
+        Defines how TeamCity retrieves [VCS username](https://confluence.jetbrains.com/display/TCDL/Managing+Users+and+User+Groups#ManagingUsersandUserGroups-vcsUsername)
+        from git commit.
+        @see UserNameStyle
       </description>
     </param>
     <param name="submoduleCheckout" type="CheckoutSubmodules" dslName="checkoutSubmodules">
       <description>
         Whether VCS root should include changes in submodules and check their sources for build.
-        By default true.
+        By default submodules are checked out.
+        @see CheckoutSubmodules
       </description>
     </param>
     <param name="userForTags">
@@ -57,11 +60,15 @@
       </description>
     </param>
     <param name="agentCleanPolicy" type="AgentCleanPolicy">
-      <description>Specifies when the "git clean" command should be executed in case of agent-side checkout</description>
+      <description>
+        Specifies when the "git clean" command should be executed in case of agent-side checkout
+        @see AgentCleanPolicy
+      </description>
     </param>
     <param name="agentCleanFilesPolicy" type="AgentCleanFilesPolicy">
       <description>
         Specifies which files should be removed when "git clean" command is executed during agent-side checkout.
+        @see AgentCleanFilesPolicy
       </description>
     </param>
     <param name="useAlternates" dslName="useMirrors" type="boolean" trueValue="true" falseValue="">
@@ -80,16 +87,29 @@
       </option>
       <option name="password" value="PASSWORD">
         <description>Password authentication</description>
-        <param name="username" dslName="userName"/>
-        <param name="secure:password" dslName="password"/>
+        <param name="username" dslName="userName">
+          <description>Username to use, overwrites the username in the url</description>
+        </param>
+        <param name="secure:password" dslName="password">
+          <description>Password to use</description>
+        </param>
       </option>
       <option name="uploadedKey" value="TEAMCITY_SSH_KEY">
         <description>
           Uploaded [SSH key](https://confluence.jetbrains.com/display/TCDL/SSH+Keys+Management) with the specified name.
         </description>
-        <param name="username" dslName="userName"/>
-        <param name="teamcitySshKey" dslName="uploadedKey"/>
-        <param name="secure:passphrase" dslName="passphrase"/>
+        <param name="username" dslName="userName">
+          <description>Username to use, overwrites the username in the url</description>
+        </param>
+        <param name="teamcitySshKey" dslName="uploadedKey">
+          <description>Name of the uploaded [SSH key](https://confluence.jetbrains.com/display/TCDL/SSH+Keys+Management) to use</description>
+        </param>
+        <param name="secure:passphrase" dslName="passphrase">
+          <description>
+            Passphrase for the uploaded [SSH key](https://confluence.jetbrains.com/display/TCDL/SSH+Keys+Management).
+            Leave it empty if the key is not encrypted.
+          </description>
+        </param>
       </option>
       <option name="defaultPrivateKey" value="PRIVATE_KEY_DEFAULT">
         <description>
@@ -98,7 +118,9 @@
           Often it is easier to use the uploaded SSH key.
           @see uploadedKey
         </description>
-        <param name="username" dslName="userName"/>
+        <param name="username" dslName="userName">
+          <description>Username to use, overwrites the username in the url</description>
+        </param>
       </option>
       <option name="customPrivateKey" value="PRIVATE_KEY_FILE">
         <description>
@@ -106,32 +128,85 @@
           Switch to uploaded SSH key if you want to use an agent-side checkout.
           @see uploadedKey
         </description>
-        <param name="username" dslName="userName"/>
-        <param name="privateKeyPath" dslName="customKeyPath"/>
-        <param name="secure:passphrase" dslName="passphrase"/>
+        <param name="username" dslName="userName">
+          <description>Username to use, overwrites the username in the url</description>
+        </param>
+        <param name="privateKeyPath" dslName="customKeyPath">
+          <description>Path to the SSH key on TeamCity server machine</description>
+        </param>
+        <param name="secure:passphrase" dslName="passphrase">
+          <description>
+            Passphrase for the key. Leave it empty if the key is not encrypted.
+          </description>
+        </param>
       </option>
     </param>
   </params>
   <types>
     <enum name="UserNameStyle">
-      <option name="NAME"/>
-      <option name="USERID"/>
-      <option name="EMAIL"/>
-      <option name="FULL"/>
+      <description>
+        Defines how TeamCity retrieves [VCS username](https://confluence.jetbrains.com/display/TCDL/Managing+Users+and+User+Groups#ManagingUsersandUserGroups-vcsUsername)
+        from git commit.
+
+        When the git config contains the following
+
+        ```
+        [user]
+          name = Joe Coder
+          email = joe.coder@acme.com
+        ```
+
+        then the git username in commit is `Joe Coder &lt;joe.coder@acme.com>`.
+
+        Different options specify which part of the git commit username is used in TeamCity.
+      </description>
+      <option name="NAME">
+        <description>Use the name part, for full name `Joe Coder &lt;joe.coder@acme.com>` it will be `Joe Coder`</description>
+      </option>
+      <option name="USERID">
+        <description>Use part of the email before the @ sign, for full name `Joe Coder &lt;joe.coder@acme.com>` it will be `joe.coder`</description>
+      </option>
+      <option name="EMAIL">
+        <description>Use the email part, for full name `Joe Coder &lt;joe.coder@acme.com>` it will be `joe.coder@acme.com`</description>
+      </option>
+      <option name="FULL">
+        <description>Use full commit username, i.e. `Joe Coder &lt;joe.coder@acme.com>`</description>
+      </option>
     </enum>
     <enum name="CheckoutSubmodules">
-      <option name="SUBMODULES_CHECKOUT"/>
-      <option name="IGNORE"/>
+      <description>Submodules checkout mode</description>
+      <option name="SUBMODULES_CHECKOUT">
+        <description>Checkout submodules and show submodule changes in UI</description>
+      </option>
+      <option name="IGNORE">
+        <description>Don't checkout submodules and don't show changes from submodules in UI</description>
+      </option>
     </enum>
     <enum name="AgentCleanPolicy">
-      <option name="NEVER"/>
-      <option name="ALWAYS"/>
-      <option name="ON_BRANCH_CHANGE"/>
+      <description>Specifies when the "git clean" command should be executed in case of agent-side checkout</description>
+      <option name="NEVER">
+        <description>Don't run the "git clean" command</description>
+      </option>
+      <option name="ALWAYS">
+        <description>Run the "git clean" command before each build</description>
+      </option>
+      <option name="ON_BRANCH_CHANGE">
+        <description>
+          Run the "git clean" command if the branch in build is different comparing to the branch in the previous build on same agent
+        </description>
+      </option>
     </enum>
     <enum name="AgentCleanFilesPolicy">
-      <option name="IGNORED_ONLY"/>
-      <option name="NON_IGNORED_ONLY"/>
-      <option name="ALL_UNTRACKED"/>
+      <description>Specifies flags for the "git clean" command during agent-side checkout and defines which files will be removed.</description>
+      <option name="IGNORED_ONLY">
+        <description>Will run "git clean -dfX"</description>
+      </option>
+      <option name="NON_IGNORED_ONLY">
+        <description>Will run "git clean -df"</description>
+      </option>
+      <option name="ALL_UNTRACKED">
+        <description>Will run "git clean -dfx"</description>
+      </option>
     </enum>
   </types>
 </dsl-extension>
