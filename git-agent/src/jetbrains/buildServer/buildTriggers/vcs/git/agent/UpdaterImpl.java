@@ -857,7 +857,9 @@ public class UpdaterImpl implements Updater {
         //then the only workaround is to disable helpers manually in config files.
         command.addConfig("credential.helper", "");
       }
-      command.addConfig("credential.helper", credHelper.getCanonicalPath());
+      String path = credHelper.getCanonicalPath();
+      path = path.replaceAll("\\\\", "/");
+      command.addConfig("credential.helper", path);
       CredentialsHelperConfig config = new CredentialsHelperConfig();
       config.addCredentials(lfsAuth.first, lfsAuth.second, lfsAuth.third);
       for (Map.Entry<String, String> e : config.getEnv().entrySet()) {
