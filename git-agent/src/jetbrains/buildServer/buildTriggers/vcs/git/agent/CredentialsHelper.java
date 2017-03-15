@@ -117,16 +117,16 @@ public class CredentialsHelper {
     private void printResult(@NotNull OutputStream out) throws IOException {
       PrintWriter writer = new PrintWriter(out);
       if (myProtocol != null)
-        writer.println("protocol=" + myProtocol);
+        writer.print("protocol=" + myProtocol + "\n");
       if (myHost != null)
-        writer.println("host=" + myHost);
+        writer.print("host=" + myHost + "\n");
       if (myPath != null)
-        writer.println("path=" + myPath);
+        writer.print("path=" + myPath + "\n");
       if (myUsername != null)
-        writer.println("username=" + myUsername);
+        writer.print("username=" + myUsername + "\n");
       if (myPassword != null)
-        writer.println("password=" + myPassword);
-      writer.println();
+        writer.print("password=" + myPassword + "\n");
+      writer.print("\n");
       writer.flush();
     }
   }
