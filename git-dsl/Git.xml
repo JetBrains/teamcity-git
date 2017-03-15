@@ -7,7 +7,7 @@
     </param>
     <param name="push_url" dslName="pushUrl">
       <description>
-        Custom repository push url, if not specified the url is used for push operations
+        Custom repository push url. If not specified then the url specified in the url property is used for push operations.
         @see url
       </description>
     </param>
