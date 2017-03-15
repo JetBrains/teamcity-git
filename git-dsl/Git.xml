@@ -2,20 +2,76 @@
 <dsl-extension kind="vcs" type="jetbrains.git" generateDslJar="true">
   <class name="GitVcsRoot"/>
   <params>
-    <param name="url"/>
-    <param name="push_url" dslName="pushUrl"/>
-    <param name="branch"/>
-    <param name="teamcity:branchSpec" dslName="branchSpec"/>
-    <param name="reportTagRevisions" dslName="useTagsAsBranches" type="boolean" trueValue="true" falseValue=""/>
-    <param name="usernameStyle" dslName="userNameStyle" type="UserNameStyle"/>
-    <param name="submoduleCheckout" type="CheckoutSubmodules" dslName="checkoutSubmodules"/>
-    <param name="userForTags"/>
-    <param name="serverSideAutoCrlf" dslName="serverSideAutoCRLF" type="boolean" trueValue="true" falseValue=""/>
-    <param name="agentGitPath"/>
-    <param name="agentCleanPolicy" type="AgentCleanPolicy"/>
-    <param name="agentCleanFilesPolicy" type="AgentCleanFilesPolicy"/>
-    <param name="useAlternates" dslName="useMirrors" type="boolean" trueValue="true" falseValue=""/>
+    <param name="url">
+      <description>Repository url</description>
+    </param>
+    <param name="push_url" dslName="pushUrl">
+      <description>
+        Custom repository push url, if not specified the url is used for push operations
+        @see url
+      </description>
+    </param>
+    <param name="branch">
+      <description>The default branch name</description>
+    </param>
+    <param name="teamcity:branchSpec" dslName="branchSpec">
+      <description>
+        [Branch specification](https://confluence.jetbrains.com/display/TCDL/Working+with+Feature+Branches#WorkingwithFeatureBranches-branchSpec)
+      </description>
+    </param>
+    <param name="reportTagRevisions" dslName="useTagsAsBranches" type="boolean" trueValue="true" falseValue="">
+      <description>
+        When enabled tags matched by branch specification will be shown in UI as regular branches.
+        By default false.
+      </description>
+    </param>
+    <param name="usernameStyle" dslName="userNameStyle" type="UserNameStyle">
+      <description>
+        Defines a way how TeamCity binds VCS changes to the users.
+      </description>
+    </param>
+    <param name="submoduleCheckout" type="CheckoutSubmodules" dslName="checkoutSubmodules">
+      <description>
+        Whether VCS root should include changes in submodules and check their sources for build.
+        By default true.
+      </description>
+    </param>
+    <param name="userForTags">
+      <description>
+        A username for tag/merge operations in this VCS root.
+        Format: Username &lt;email>
+      </description>
+    </param>
+    <param name="serverSideAutoCrlf" dslName="serverSideAutoCRLF" type="boolean" trueValue="true" falseValue="">
+      <description>
+        Whether TeamCity should convert line-endings of all text files to CRLF during server-side checkout.
+        By default false.
+      </description>
+    </param>
+    <param name="agentGitPath">
+      <description>
+        Custom path to git executable on the build agent machine
+      </description>
+    </param>
+    <param name="agentCleanPolicy" type="AgentCleanPolicy">
+      <description>Specifies when the "git clean" command should be executed in case of agent-side checkout</description>
+    </param>
+    <param name="agentCleanFilesPolicy" type="AgentCleanFilesPolicy">
+      <description>
+        Specifies which files should be removed when "git clean" command is executed during agent-side checkout.
+      </description>
+    </param>
+    <param name="useAlternates" dslName="useMirrors" type="boolean" trueValue="true" falseValue="">
+      <description>
+        When this option is enabled, TeamCity creates a separate clone of the repository on each agent
+        and uses it in the checkout directory via git alternates. This make agent-side checkout faster.
+        By default true.
+      </description>
+    </param>
     <param name="authMethod" type="compound">
+      <description>
+        VCS Root authentication method
+      </description>
       <option name="anonymous" value="ANONYMOUS"/>
       <option name="password" value="PASSWORD">
         <param name="username" dslName="userName"/>
