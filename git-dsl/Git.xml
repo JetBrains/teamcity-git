@@ -89,6 +89,7 @@
         </description>
         <param name="username" dslName="userName"/>
         <param name="teamcitySshKey" dslName="uploadedKey"/>
+        <param name="secure:passphrase" dslName="passphrase"/>
       </option>
       <option name="defaultPrivateKey" value="PRIVATE_KEY_DEFAULT">
         <description>
