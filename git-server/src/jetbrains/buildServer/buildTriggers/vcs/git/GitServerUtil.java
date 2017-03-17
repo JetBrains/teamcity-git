@@ -47,6 +47,7 @@ import java.lang.management.OperatingSystemMXBean;
 import java.nio.charset.UnsupportedCharsetException;
 import java.text.MessageFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -499,24 +500,60 @@ public class GitServerUtil {
                                   @NotNull TransportFactory transportFactory,
                                   @NotNull Transport transport,
                                   @NotNull ProgressMonitor progress,
-                                  @NotNull Collection<RefSpec> refSpecs) throws NotSupportedException, TransportException, VcsException {
+                                  @NotNull Collection<RefSpec> refSpecs,
+                                  boolean ignoreMissingRemoteRef) throws NotSupportedException, TransportException, VcsException {
     try {
       return transport.fetch(progress, refSpecs);
     } catch (TransportException e) {
       Throwable cause = e.getCause();
       if (cause instanceof JSchException && "channel is not opened.".equals(cause.getMessage())) {
-        Transport tn = null;
-        try {
-          tn = transportFactory.createTransport(r, url, authSettings);
-          return tn.fetch(progress, refSpecs);
-        } finally {
-          if (tn != null)
-            tn.close();
-        }
+        return runWithNewTransport(r, url, authSettings, transportFactory, tn -> tn.fetch(progress, refSpecs));
       } else {
+        if (ignoreMissingRemoteRef) {
+          String missingRef = getMissingRemoteRef(e);
+          if (missingRef != null) {
+            //exclude spec causing the error
+            List<RefSpec> updatedSpecs = refSpecs.stream().filter(spec -> !spec.getSource().equals(missingRef)).collect(Collectors.toList());
+            if (updatedSpecs.size() == refSpecs.size())
+              throw e;
+            return runWithNewTransport(r, url, authSettings, transportFactory, tn ->
+              fetch(r, url, authSettings, transportFactory, tn, progress, updatedSpecs, ignoreMissingRemoteRef));
+          }
+        }
         throw e;
       }
     }
+  }
+
+
+  private interface FetchAction {
+    @NotNull
+    FetchResult run(@NotNull Transport t) throws NotSupportedException, VcsException, TransportException;
+  }
+
+  private static FetchResult runWithNewTransport(@NotNull Repository r,
+                                                 @NotNull URIish url,
+                                                 @NotNull AuthSettings authSettings,
+                                                 @NotNull TransportFactory transportFactory,
+                                                 @NotNull FetchAction action) throws NotSupportedException, VcsException, TransportException {
+    Transport tn = null;
+    try {
+      tn = transportFactory.createTransport(r, url, authSettings);
+      return action.run(tn);
+    } finally {
+      if (tn != null)
+        tn.close();
+    }
+  }
+
+
+  @Nullable
+  private static String getMissingRemoteRef(@NotNull TransportException error) {
+    String msg = error.getMessage();
+    if (msg.startsWith("Remote does not have") && msg.endsWith("available for fetch.")) {
+      return msg.substring("Remote does not have".length(), msg.indexOf("available for fetch.")).trim();
+    }
+    return null;
   }
 
 
