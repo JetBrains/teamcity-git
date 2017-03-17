@@ -68,6 +68,7 @@ public class PluginConfigBuilder {
   private Integer myMapFullPathRevisionCacheSize;
   private TempFiles myTempFiles;
   private Boolean myNewConnectionForPrune;
+  private Boolean myIgnoreMissingRemoteRef;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -324,6 +325,12 @@ public class PluginConfigBuilder {
       public long getAccessTimeUpdateRateMinutes() {
         return myDelegate.getAccessTimeUpdateRateMinutes();
       }
+
+      public boolean ignoreMissingRemoteRef() {
+        if (myIgnoreMissingRemoteRef != null)
+          return myIgnoreMissingRemoteRef;
+        return myDelegate.ignoreMissingRemoteRef();
+      }
     };
   }
 
@@ -489,6 +496,11 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setNewConnectionForPrune(boolean newConnectionForPrune) {
     myNewConnectionForPrune = newConnectionForPrune;
+    return this;
+  }
+
+  PluginConfigBuilder setIgnoreMissingRemoteRef(boolean ignoreMissingRemoteRef) {
+    myIgnoreMissingRemoteRef = ignoreMissingRemoteRef;
     return this;
   }
 }

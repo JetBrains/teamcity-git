@@ -30,6 +30,8 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -38,10 +40,12 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.Util.map;
 import static jetbrains.buildServer.vcs.RepositoryStateData.createVersionState;
@@ -575,6 +579,52 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
       String msg = e.getMessage();
       then(msg).contains(expectedError);
     }
+  }
+
+
+  @TestFor(issues = "TW-38899")
+  @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
+  public void ignore_missing_branch(boolean fetchInSeparateProcess) throws Exception {
+    myConfig.setSeparateProcessForFetch(fetchInSeparateProcess);
+    myConfig.setIgnoreMissingRemoteRef(true);
+    myConfig.withFetcherProperties(PluginConfigImpl.IGNORE_MISSING_REMOTE_REF, "true");
+
+    File repo = copyRepository(myTempFiles, dataFile("repo_for_fetch.2.personal"), "repo.git");
+
+    ServerPluginConfig config = myConfig.build();
+    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
+    AtomicBoolean updateRepo = new AtomicBoolean(false);
+    //wrapper for fetch command which will remove ref in remote repository just before fetch
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager) {
+      @Override
+      public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull FetchSettings settings) throws IOException, VcsException {
+        if (updateRepo.get()) {
+          FileUtil.delete(repo);
+          copyRepository(dataFile("repo_for_fetch.3"), repo);
+        }
+        super.fetch(db, fetchURI, refspecs, settings);
+      }
+    };
+    GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withFetchCommand(fetchCommand).build();
+
+    VcsRoot root = vcsRoot().withFetchUrl(repo).build();
+    RepositoryStateData s0 = createVersionState("refs/heads/master",
+                                                map("refs/heads/master", "add81050184d3c818560bdd8839f50024c188586",
+                                                    "refs/heads/personal", "add81050184d3c818560bdd8839f50024c188586"));
+    RepositoryStateData s1 = createVersionState("refs/heads/master",
+                                                map("refs/heads/master", "add81050184d3c818560bdd8839f50024c188586",
+                                                    "refs/heads/personal", "d47dda159b27b9a8c4cee4ce98e4435eb5b17168"));
+    //init repo on server:
+    git.getCollectChangesPolicy().collectChanges(root, s0, s1, CheckoutRules.DEFAULT);
+
+    RepositoryStateData s2 = createVersionState("refs/heads/master",
+                                                map("refs/heads/master", "bba7fbcc200b4968e6abd2f7d475dc15306cafc6",
+                                                    "refs/heads/personal", "d47dda159b27b9a8c4cee4ce98e4435eb5b17168"));
+    //refs/heads/personal ref disappears from remote repo:
+    updateRepo.set(true);
+
+    //changes collecting doesn't fail
+    git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
   }
 
 
