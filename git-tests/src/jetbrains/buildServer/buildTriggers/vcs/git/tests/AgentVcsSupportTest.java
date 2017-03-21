@@ -720,7 +720,9 @@ public class AgentVcsSupportTest {
       fail("update on unreachable repository should fail");
     } catch (VcsException e) {
       File mirrorAfterFailure = myBuilder.getMirrorManager().getMirrorDir(unreachableRepository);
-      then(mirrorAfterFailure).isEqualTo(mirror);//failure should not cause delete or remap
+      then(mirrorAfterFailure)
+        .overridingErrorMessage("Mirror changed after error " + e.toString())
+        .isEqualTo(mirror);//failure should not cause delete or remap
     }
   }
 
