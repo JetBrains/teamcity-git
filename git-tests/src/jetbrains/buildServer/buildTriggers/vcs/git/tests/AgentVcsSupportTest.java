@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.SystemInfo;
-import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.util.io.StreamUtil;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
@@ -32,6 +31,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
@@ -599,7 +599,7 @@ public class AgentVcsSupportTest {
     //create ref pointing to invalid object
     File gitDir = new File(myCheckoutDir, ".git");
     String invalidObject = "bba7fbcc200b4968e6abd2f7d475dc15306cafc1";
-    jetbrains.buildServer.util.FileUtil.writeFile(new File(gitDir, "refs/heads/brokenRef"), invalidObject);
+    FileUtil.writeFile(new File(gitDir, "refs/heads/brokenRef"), invalidObject);
 
     //update remote repo
     delete(remoteRepo);
@@ -1085,7 +1085,33 @@ public class AgentVcsSupportTest {
     if (switchBranch)
       myBuild = createRunningBuild(map(GitUtils.getGitRootBranchParamName(myRoot), "refs/heads/personal-branch1"));
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7", myCheckoutDir, myBuild, false);
-    then(jetbrains.buildServer.util.FileUtil.readFile(f)).doesNotContain("update by build script");
+    then(FileUtil.readFile(f)).doesNotContain("update by build script");
+  }
+
+
+  @TestFor(issues = "TW-40313")
+  public void should_remove_orphaned_indexes() throws Exception {
+    //checkout
+    VcsRootImpl root = vcsRoot()
+      .withAgentGitPath(getGitPath())
+      .withFetchUrl(GitUtils.toURL(myMainRepo))
+      .build();
+
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, createRunningBuild(true), false);
+
+    //create orphaned idx files
+    File mirror = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(myMainRepo));
+    File idxInMirror = new File(new File(new File(mirror, "objects"), "pack"), "whatever.idx");
+    FileUtil.writeFileAndReportErrors(idxInMirror, "whatever");
+    File idxInCheckoutDir = new File(new File(new File(mirror, "objects"), "pack"), "whatever.idx");
+    FileUtil.writeFileAndReportErrors(idxInCheckoutDir, "whatever");
+
+    //checkout again
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, createRunningBuild(true), false);
+
+    //orphaned idx files are removed
+    then(idxInCheckoutDir).doesNotExist();
+    then(idxInMirror).doesNotExist();
   }
 
 

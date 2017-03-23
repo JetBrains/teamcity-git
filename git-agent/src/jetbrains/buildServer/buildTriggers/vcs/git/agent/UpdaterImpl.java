@@ -162,6 +162,7 @@ public class UpdaterImpl implements Updater {
         }
       }
     }
+    removeOrphanedIdxFiles(new File(myTargetDirectory, ".git"));
     return firstFetch;
   }
 
@@ -904,5 +905,37 @@ public class UpdaterImpl implements Updater {
 
   private interface VcsCommand {
     void call() throws VcsException;
+  }
+
+
+  /**
+   * Removes .idx files which don't have a corresponding .pack file
+   * @param ditGitDir git dir
+   */
+  void removeOrphanedIdxFiles(@NotNull File ditGitDir) {
+    if ("false".equals(myBuild.getSharedConfigParameters().get("teamcity.git.removeOrphanedIdxFiles"))) {
+      //looks like this logic is always needed, if no problems will be reported we can drop the option
+      return;
+    }
+    File packDir = new File(new File(ditGitDir, "objects"), "pack");
+    File[] files = packDir.listFiles();
+    if (files == null || files.length == 0)
+      return;
+
+    Set<String> packs = new HashSet<String>();
+    for (File f : files) {
+      String name = f.getName();
+      if (name.endsWith(".pack")) {
+        packs.add(name.substring(0, name.length() - 5));
+      }
+    }
+
+    for (File f : files) {
+      String name = f.getName();
+      if (name.endsWith(".idx")) {
+        if (!packs.contains(name.substring(0, name.length() - 4)))
+          FileUtil.delete(f);
+      }
+    }
   }
 }
