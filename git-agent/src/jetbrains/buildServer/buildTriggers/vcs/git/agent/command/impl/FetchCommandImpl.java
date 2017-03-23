@@ -38,6 +38,7 @@ public class FetchCommandImpl extends BaseCommandImpl implements FetchCommand {
   private boolean myShowProgress;
   private AuthSettings myAuthSettings;
   private Integer myDepth;
+  private boolean myFetchTags = true;
 
   public FetchCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -85,6 +86,13 @@ public class FetchCommandImpl extends BaseCommandImpl implements FetchCommand {
     return this;
   }
 
+  @NotNull
+  public FetchCommand setFetchTags(boolean fetchTags) {
+    myFetchTags = fetchTags;
+    return this;
+  }
+
+
   public void call() throws VcsException {
     GitCommandLine cmd = getCmd();
     cmd.addParameter("fetch");
@@ -94,6 +102,8 @@ public class FetchCommandImpl extends BaseCommandImpl implements FetchCommand {
       cmd.addParameter("--progress");
     if (myDepth != null)
       cmd.addParameter("--depth=" + myDepth);
+    if (!myFetchTags)
+      cmd.addParameter("--no-tags");
     cmd.addParameter("origin");
     cmd.addParameter(myRefspec);
     cmd.setHasProgress(true);

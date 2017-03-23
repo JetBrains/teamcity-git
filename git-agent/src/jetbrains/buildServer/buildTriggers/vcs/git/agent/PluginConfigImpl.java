@@ -47,6 +47,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String USE_SPARSE_CHECKOUT = "teamcity.git.useSparseCheckout";
   public static final String USE_BUILD_ENV = "teamcity.git.useBuildEnv";
   public static final String FETCH_ALL_HEADS = "teamcity.git.fetchAllHeads";
+  public static final String FETCH_TAGS = "teamcity.git.fetchTags";
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
@@ -211,6 +212,13 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return "true".equals(myBuild.getSharedConfigParameters().get(AgentRuntimeProperties.FAIL_ON_CLEAN_CHECKOUT));
   }
 
+
+  @Override
+  public boolean isFetchTags() {
+    String value = myBuild.getSharedConfigParameters().get(FETCH_TAGS);
+    //by default tags are fetched
+    return !"false".equals(value);
+  }
 
   private int parseTimeout(String valueFromBuild) {
     return parseTimeout(valueFromBuild, DEFAULT_IDLE_TIMEOUT);

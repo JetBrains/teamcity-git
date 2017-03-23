@@ -43,6 +43,9 @@ public interface FetchCommand extends BaseCommand {
   @NotNull
   FetchCommand setDepth(int depth);
 
+  @NotNull
+  FetchCommand setFetchTags(boolean fetchTags);
+
   void call() throws VcsException;
 
 }

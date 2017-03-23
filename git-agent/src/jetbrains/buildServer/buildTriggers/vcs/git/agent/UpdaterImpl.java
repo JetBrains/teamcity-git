@@ -634,7 +634,8 @@ public class UpdaterImpl implements Updater {
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
       .setTimeout(timeout)
-      .setRefspec(refspec);
+      .setRefspec(refspec)
+      .setFetchTags(myPluginConfig.isFetchTags());
 
     if (silent)
       result.setQuite(true);
