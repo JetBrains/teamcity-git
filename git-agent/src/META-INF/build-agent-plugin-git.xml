@@ -16,4 +16,5 @@
   <bean id="mirrorManager" class="jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.agent.SshKeyManagerProviderImpl"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.agent.GitMetaFactoryImpl"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.agent.GCIdleTask"/>
 </beans>

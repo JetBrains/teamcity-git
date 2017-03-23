@@ -77,12 +77,19 @@ public class NativeGitFacade implements GitFacade {
   }
 
   public NativeGitFacade(@NotNull String gitPath, @NotNull GitProgressLogger logger) {
+    this(gitPath, logger, new File("."));
+  }
+
+
+  public NativeGitFacade(@NotNull String gitPath,
+                         @NotNull GitProgressLogger logger,
+                         @NotNull File repositoryDir) {
     mySsh = null;
     myTmpDir = new File(FileUtil.getTempDirectory());
     myScriptGen = makeScriptGen();
     myGitPath = gitPath;
     myGitVersion = GitVersion.MIN;
-    myRepositoryDir = new File(".");
+    myRepositoryDir = repositoryDir;
     myDeleteTempFiles = true;
     myLogger = logger;
     myGitExec = null;
