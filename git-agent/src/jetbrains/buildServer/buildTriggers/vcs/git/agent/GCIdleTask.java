@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Runs 'git gc' when agent is idle
@@ -46,6 +47,8 @@ public class GCIdleTask implements AgentIdleTasks.Task {
   private final AtomicLong myBuildFinishTime = new AtomicLong(-1);
   //name of the mirror dir -> nano timestamp of the previous git gc
   private final ConcurrentMap<String, Long> myGcTimestamp = new ConcurrentHashMap<String, Long>();
+  //ref containing the thread executing 'git gc' or null if 'git gc' is not running
+  private final AtomicReference<Thread> myGcThread = new AtomicReference<Thread>();
 
   public GCIdleTask(@NotNull EventDispatcher<AgentLifeCycleListener> events,
                     @NotNull AgentIdleTasks idleTasks,
@@ -61,6 +64,13 @@ public class GCIdleTask implements AgentIdleTasks.Task {
       @Override
       public void agentStarted(@NotNull BuildAgent agent) {
         myBuildFinishTime.set(System.nanoTime());
+      }
+
+      @Override
+      public void buildStarted(@NotNull AgentRunningBuild runningBuild) {
+        Thread thread = myGcThread.get();
+        if (thread != null)
+          thread.interrupt();
       }
     });
     idleTasks.addRecurringTask(this);
@@ -82,10 +92,13 @@ public class GCIdleTask implements AgentIdleTasks.Task {
       return;
     long t0 = System.currentTimeMillis();
     try {
+      myGcThread.set(Thread.currentThread());
       Loggers.VCS.debug("Start git gc");
       runGc(interruptState);
     } catch (Exception e) {
       Loggers.VCS.debug("Finished git gc in " + (System.currentTimeMillis() - t0) + "ms");
+    } finally {
+      myGcThread.set(null);
     }
   }
 
