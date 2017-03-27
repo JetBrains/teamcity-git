@@ -25,6 +25,8 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
+import static org.assertj.core.api.BDDAssertions.then;
+
 /**
  * @author dmitry.neverov
  */
@@ -59,7 +61,7 @@ public class GitUtilsTest extends BaseTestCase {
     writeTextToFile(fileWithSpaces, content);
 
     String shortFileName = GitUtils.getShortFileName(fileWithSpaces);
-    assertFalse(shortFileName.contains(" "));
+    then(shortFileName).doesNotContain(" ");
     assertTrue("File references by a short name doesn't exist", new File(shortFileName).exists());
     assertEquals("Short name file content doesn't match", content, FileUtil.readText(new File(shortFileName)));
   }
