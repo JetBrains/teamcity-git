@@ -30,6 +30,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
@@ -42,6 +43,7 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -719,10 +721,15 @@ public class AgentVcsSupportTest {
       myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, revision, myCheckoutDir, build, false);
       fail("update on unreachable repository should fail");
     } catch (VcsException e) {
-      File mirrorAfterFailure = myBuilder.getMirrorManager().getMirrorDir(unreachableRepository);
-      then(mirrorAfterFailure)
-        .overridingErrorMessage("Mirror changed after error " + e.toString())
-        .isEqualTo(mirror);//failure should not cause delete or remap
+      if (e instanceof GitExecTimeout) {
+        File mirrorAfterFailure = myBuilder.getMirrorManager().getMirrorDir(unreachableRepository);
+        then(mirrorAfterFailure)
+          .overridingErrorMessage("Mirror changed after error " + e.toString())
+          .isEqualTo(mirror);//failure should not cause delete or remap
+      } else {
+        //on some platforms fetch from unknown host doesn't result in timeout error
+        throw new SkipException("Not a timeout error: " + e.toString());
+      }
     }
   }
 
