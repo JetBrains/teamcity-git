@@ -310,12 +310,13 @@ public class UpdaterImpl implements Updater {
       addSubmoduleUsernames(repositoryDir, gitModules);
 
       long start = System.currentTimeMillis();
-      git.submoduleUpdate()
+      SubmoduleUpdateCommand submoduleUpdate = git.submoduleUpdate()
         .setAuthSettings(myRoot.getAuthSettings())
         .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
         .setTimeout(SILENT_TIMEOUT)
-        .setForce(isForceUpdateSupported())
-        .call();
+        .setForce(isForceUpdateSupported());
+      configureLFS(submoduleUpdate);
+      submoduleUpdate.call();
 
       if (recursiveSubmoduleCheckout()) {
         for (String submodulePath : getSubmodulePaths(gitModules)) {
