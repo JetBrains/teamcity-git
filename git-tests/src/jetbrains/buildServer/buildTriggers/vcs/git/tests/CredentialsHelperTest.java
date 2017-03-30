@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.CredentialsHelper;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.CredentialsHelperConfig;
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.util.TestFor;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.Test;
 
@@ -77,6 +78,25 @@ public class CredentialsHelperTest {
                        entry("path", "/user/repo.git"),
                        entry("username", "user2"),
                        entry("password", "secret2"));
+  }
+
+
+  @TestFor(issues = "TW-49376")
+  public void match_all_urls() throws Exception {
+    CredentialsHelperConfig config = new CredentialsHelperConfig();
+    config.addCredentials("https://acme.org/user/repo.git", "git", "secret");
+    config.setMatchAllUrls(true);
+    Map<String, String> out = run(
+      map("protocol", "https",
+          "host", "unknown.org",
+          "path", "/some/path"),
+      config.getEnv());
+
+    then(out).contains(entry("protocol", "https"),
+                       entry("host", "unknown.org"),
+                       entry("path", "/some/path"),
+                       entry("username", "git"),
+                       entry("password", "secret"));
   }
 
 

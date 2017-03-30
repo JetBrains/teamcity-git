@@ -28,9 +28,14 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.agent.CredentialsHelpe
 
 public class CredentialsHelperConfig {
   private final List<Trinity<String, String, String>> myCredentials = new ArrayList<Trinity<String, String, String>>();
+  private boolean myMatchAllUrls = false;
 
   public void addCredentials(@NotNull String url, @NotNull String user, @NotNull String password) {
     myCredentials.add(Trinity.create(url, user, password));
+  }
+
+  public void setMatchAllUrls(boolean matchAllUrls) {
+    myMatchAllUrls = matchAllUrls;
   }
 
   @NotNull
@@ -42,6 +47,8 @@ public class CredentialsHelperConfig {
       result.put(credEnv(i, CRED_USER), credential.second);
       result.put(credEnv(i, CRED_PWD), credential.third);
     }
+    if (myMatchAllUrls)
+      result.put(credEnv(CRED_MATCH_ALL_URLS), "true");
     return result;
   }
 }
