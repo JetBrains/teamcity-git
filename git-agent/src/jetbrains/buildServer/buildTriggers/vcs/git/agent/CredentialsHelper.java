@@ -41,6 +41,7 @@ public class CredentialsHelper {
   static final String CRED_URL = "URL";
   static final String CRED_USER = "USER";
   static final String CRED_PWD = "PWD";
+  static final String CRED_MATCH_ALL_URLS = "MATCH_ALL_URLS";
 
   private final InputStream myIn;
   private final OutputStream myOut;
@@ -133,6 +134,7 @@ public class CredentialsHelper {
 
 
   private static class Credentials {
+    private boolean myMatchAllUrls = false;//when set to true credentials are provided for every URL
     //url -> credentials
     private final Map<String, Cred> myCredentials = new HashMap<String, Cred>();
 
@@ -164,6 +166,8 @@ public class CredentialsHelper {
     }
 
     private boolean matches(@NotNull Context context, @NotNull URL url) {
+      if (myMatchAllUrls)
+        return true;
       if (!url.getProtocol().equals(context.myProtocol))
         return false;
       String hostPort = url.getHost();
@@ -190,11 +194,19 @@ public class CredentialsHelper {
         result.addCredentials(url, username, password);
         i++;
       }
+      String matchAllUrls = env.get(credEnv(CRED_MATCH_ALL_URLS));
+      if (matchAllUrls != null)
+        result.setMatchAllUrls(Boolean.valueOf(matchAllUrls));
       return result;
     }
 
     private void addCredentials(@NotNull String url, @NotNull String username, @NotNull String password) {
       myCredentials.put(url, new Cred(username, password));
+    }
+
+
+    private void setMatchAllUrls(boolean matchAllUrls) {
+      myMatchAllUrls = matchAllUrls;
     }
 
 
@@ -208,6 +220,10 @@ public class CredentialsHelper {
     }
   }
 
+
+  static String credEnv(@NotNull String name) {
+    return CredentialsHelper.CRED_PREFIX + name;
+  }
 
   static String credEnv(int i, @NotNull String name) {
     return CredentialsHelper.CRED_PREFIX + i + "_" + name;
