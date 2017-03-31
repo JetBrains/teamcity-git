@@ -863,9 +863,7 @@ public class UpdaterImpl implements Updater {
       command.addConfig("credential.helper", path);
       CredentialsHelperConfig config = new CredentialsHelperConfig();
       config.addCredentials(lfsAuth.first, lfsAuth.second, lfsAuth.third);
-      String matchAllUrls = myBuild.getSharedConfigParameters().get("teamcity.git.credentialHelperMatchesAllUrls");
-      if (matchAllUrls != null)
-        config.setMatchAllUrls(Boolean.valueOf(matchAllUrls));
+      config.setMatchAllUrls(myPluginConfig.isCredHelperMatchesAllUrls());
       for (Map.Entry<String, String> e : config.getEnv().entrySet()) {
         command.setEnv(e.getKey(), e.getValue());
       }

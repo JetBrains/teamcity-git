@@ -54,4 +54,6 @@ public interface AgentPluginConfig extends PluginConfig {
   boolean isRunGitWithBuildEnv();
 
   boolean isFailOnCleanCheckout();
+
+  boolean isCredHelperMatchesAllUrls();
 }
