@@ -220,6 +220,13 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return !"false".equals(value);
   }
 
+  public boolean isCredHelperMatchesAllUrls() {
+    //it looks to be safe to enable all urls matching by default because we did
+    //a similar thing with ask-pass script: it provides password for any server
+    String value = myBuild.getSharedConfigParameters().get("teamcity.git.credentialHelperMatchesAllUrls");
+    return !"false".equals(value);
+  }
+
   private int parseTimeout(String valueFromBuild) {
     return parseTimeout(valueFromBuild, DEFAULT_IDLE_TIMEOUT);
   }

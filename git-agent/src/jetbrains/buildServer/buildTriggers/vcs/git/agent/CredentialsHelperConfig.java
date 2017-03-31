@@ -28,7 +28,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.agent.CredentialsHelpe
 
 public class CredentialsHelperConfig {
   private final List<Trinity<String, String, String>> myCredentials = new ArrayList<Trinity<String, String, String>>();
-  private boolean myMatchAllUrls = false;
+  private boolean myMatchAllUrls;
 
   public void addCredentials(@NotNull String url, @NotNull String user, @NotNull String password) {
     myCredentials.add(Trinity.create(url, user, password));

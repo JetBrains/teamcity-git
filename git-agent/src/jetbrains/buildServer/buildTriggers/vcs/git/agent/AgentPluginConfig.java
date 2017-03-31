@@ -56,4 +56,6 @@ public interface AgentPluginConfig extends PluginConfig {
   boolean isFailOnCleanCheckout();
 
   boolean isFetchTags();
+
+  boolean isCredHelperMatchesAllUrls();
 }
