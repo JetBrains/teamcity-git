@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dsl-extension kind="vcs" type="jetbrains.git" generateDslJar="true">
   <class name="GitVcsRoot">
-    <description>Base class for Git VCS roots</description>
+    <description>Git [VCS root](https://confluence.jetbrains.com/display/TCDL/Git)</description>
   </class>
   <params>
     <param name="url">
