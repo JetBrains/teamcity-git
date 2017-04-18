@@ -427,6 +427,7 @@ public class GitVcsSupport extends ServerVcsSupport
     if (cause instanceof JSchException) {
       return message.contains("Session.connect: java.net.SocketException: Connection reset") ||
              message.contains("Session.connect: java.net.SocketException: Software caused connection abort") ||
+             message.contains("Session.connect: java.net.SocketTimeoutException: Read timed out") ||
              message.contains("connection is closed by foreign host") ||
              message.contains("timeout: socket is not established") ||
              message.contains("java.net.UnknownHostException:") || //TW-31027
