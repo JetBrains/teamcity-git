@@ -64,7 +64,15 @@ public class UpdaterWithMirror extends UpdaterImpl {
   }
 
   private void updateLocalMirror() throws VcsException {
-    updateLocalMirror(true);
+    String message = "Update git mirror (" + myRoot.getRepositoryDir() + ")";
+    myLogger.activityStarted(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
+    try {
+      updateLocalMirror(true);
+      //prepare refs for copying into working dir repository
+      myGitFactory.create(myRoot.getRepositoryDir()).packRefs().call();
+    } finally {
+      myLogger.activityFinished(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
+    }
   }
 
   private void updateLocalMirror(boolean repeatFetchAttempt) throws VcsException {

@@ -117,7 +117,7 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
   }
 
   private void copyPackedRefs(@NotNull File targetDotGit) throws VcsException, IOException {
-    myGitFactory.create(myRoot.getRepositoryDir()).packRefs().call();
+    //packed-refs were prepared during mirror update
     FileUtil.copy(new File(myRoot.getRepositoryDir(), "packed-refs"), new File(targetDotGit, "packed-refs"));
   }
 }

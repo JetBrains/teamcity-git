@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class GitBuildProgressLogger implements GitProgressLogger {
 
+  public static final String GIT_PROGRESS_ACTIVITY = "CUSTOM_GIT_PROGRESS";
   private final BuildProgressLogger myLogger;
   private final AtomicInteger myBlockMessageCount = new AtomicInteger(0);
   private final AgentPluginConfig.GitProgressMode myProgressMode;
@@ -43,7 +44,7 @@ public class GitBuildProgressLogger implements GitProgressLogger {
       //with no messages inside
       myLogger.message(name);
     } else {
-      myLogger.activityStarted(name, "CUSTOM_GIT_PROGRESS");
+      myLogger.activityStarted(name, GIT_PROGRESS_ACTIVITY);
     }
   }
 
@@ -71,7 +72,7 @@ public class GitBuildProgressLogger implements GitProgressLogger {
     if (myProgressMode != AgentPluginConfig.GitProgressMode.NONE) {
       if (myBlockMessageCount.get() == 0)
         myLogger.message("");
-      myLogger.activityFinished(name, "CUSTOM_GIT_PROGRESS");
+      myLogger.activityFinished(name, GIT_PROGRESS_ACTIVITY);
     }
   }
 

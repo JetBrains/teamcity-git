@@ -123,11 +123,17 @@ public class UpdaterImpl implements Updater {
   }
 
   protected void doUpdate() throws VcsException {
-    logStartUpdating();
-    initGitRepository();
-    removeRefLocks(new File(myTargetDirectory, ".git"));
-    doFetch();
-    updateSources();
+    String message = "Update checkout directory (" + myTargetDirectory.getAbsolutePath() + ")";
+    myLogger.activityStarted(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
+    try {
+      logStartUpdating();
+      initGitRepository();
+      removeRefLocks(new File(myTargetDirectory, ".git"));
+      doFetch();
+      updateSources();
+    } finally {
+      myLogger.activityFinished(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
+    }
   }
 
   private void logStartUpdating() {

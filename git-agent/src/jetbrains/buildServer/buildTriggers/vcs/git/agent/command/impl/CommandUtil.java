@@ -109,11 +109,11 @@ public class CommandUtil {
         String inDir = workingDir != null ? "[" + workingDir.getAbsolutePath() + "]" : "";
         String msg = inDir + ": " + cmdStr;
         Loggers.VCS.info(msg);
-        cli.logStart(msg);
+        cli.logStart(cmdStr);
         ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
         ByteArrayOutputStream stderrBuffer = cli.createStderrBuffer();
         ExecResult res = SimpleCommandLineProcessRunner.runCommandSecure(cli, cli.getCommandLineString(), null, new ProcessTimeoutCallback(timeoutSeconds), stdoutBuffer, stderrBuffer);
-        cli.logFinish(msg);
+        cli.logFinish(cmdStr);
         CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
         String out = res.getStdout().trim();
         Loggers.VCS.debug(out);
