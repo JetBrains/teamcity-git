@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.BuildProgressLogger;
+import jetbrains.buildServer.messages.BuildMessage1;
 import jetbrains.buildServer.messages.DefaultMessagesInfo;
 import org.jetbrains.annotations.NotNull;
 
@@ -58,10 +59,10 @@ public class GitBuildProgressLogger implements GitProgressLogger {
       case NONE:
         return;
       case DEBUG:
-        myLogger.logMessage(DefaultMessagesInfo.internalize(DefaultMessagesInfo.createTextMessage(message)));
+        myLogger.logMessage(DefaultMessagesInfo.internalize(createBuildLogMessage(message)));
         return;
       case NORMAL:
-        myLogger.message(message);
+        myLogger.logMessage(createBuildLogMessage(message));
     }
   }
 
@@ -72,5 +73,13 @@ public class GitBuildProgressLogger implements GitProgressLogger {
         myLogger.message("");
       myLogger.activityFinished(name, "CUSTOM_GIT_PROGRESS");
     }
+  }
+
+
+  @NotNull
+  private BuildMessage1 createBuildLogMessage(@NotNull String message) {
+    //write git output containing '%' as progress messages to show them in UI;
+    //lines without '%' include e.g. fetched refs names, it doesn't make sense to show them in UI
+    return message.contains("%") ? DefaultMessagesInfo.createProgressMessage(message) : DefaultMessagesInfo.createTextMessage(message);
   }
 }
