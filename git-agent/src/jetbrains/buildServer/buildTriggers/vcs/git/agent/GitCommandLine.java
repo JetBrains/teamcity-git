@@ -179,11 +179,6 @@ public class GitCommandLine extends GeneralCommandLine {
   }
 
   @NotNull
-  public GitProgressLogger getLogger() {
-    return myLogger;
-  }
-
-  @NotNull
   public ByteArrayOutputStream createStderrBuffer() {
     LineAwareByteArrayOutputStream buffer = new LineAwareByteArrayOutputStream(Charset.forName("UTF-8"), new GitProgressListener(myLogger));
     buffer.setCREndsLine(true);

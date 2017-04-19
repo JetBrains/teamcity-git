@@ -58,4 +58,25 @@ public interface AgentPluginConfig extends PluginConfig {
   boolean isFetchTags();
 
   boolean isCredHelperMatchesAllUrls();
+
+  @NotNull
+  GitProgressMode getGitProgressMode();
+
+  /**
+   * Defines how progress output from git commands is written into build log
+   */
+  enum GitProgressMode {
+    /**
+     * Don't write progress into build log
+     */
+    NONE,
+    /**
+     * Write progress as verbose messages
+     */
+    DEBUG,
+    /**
+     * Write progress as normal messages
+     */
+    NORMAL
+  }
 }

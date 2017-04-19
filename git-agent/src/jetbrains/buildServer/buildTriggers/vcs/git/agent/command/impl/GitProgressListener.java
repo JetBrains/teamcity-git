@@ -28,6 +28,6 @@ public class GitProgressListener implements LineAwareByteArrayOutputStream.LineL
   }
 
   public void newLineDetected(@NotNull String line) {
-    myLogger.message(line);
+    myLogger.progressMessage(line);
   }
 }

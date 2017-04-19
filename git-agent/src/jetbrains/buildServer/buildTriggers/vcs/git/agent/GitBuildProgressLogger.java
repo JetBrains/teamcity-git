@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.BuildProgressLogger;
+import jetbrains.buildServer.messages.DefaultMessagesInfo;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -25,14 +26,24 @@ public class GitBuildProgressLogger implements GitProgressLogger {
 
   private final BuildProgressLogger myLogger;
   private final AtomicInteger myBlockMessageCount = new AtomicInteger(0);
+  private final AgentPluginConfig.GitProgressMode myProgressMode;
 
-  public GitBuildProgressLogger(@NotNull BuildProgressLogger logger) {
+  public GitBuildProgressLogger(@NotNull BuildProgressLogger logger,
+                                @NotNull AgentPluginConfig.GitProgressMode progressMode) {
     myLogger = logger;
+    myProgressMode = progressMode;
   }
 
   public void openBlock(@NotNull String name) {
     myBlockMessageCount.set(0);
-    myLogger.activityStarted(name, "CUSTOM_GIT_PROGRESS");
+    if (myProgressMode == AgentPluginConfig.GitProgressMode.NONE) {
+      //if progress should not be written to build log do not open block; write it
+      //as a regular message instead, because teamcity doesn't show empty blocks
+      //with no messages inside
+      myLogger.message(name);
+    } else {
+      myLogger.activityStarted(name, "CUSTOM_GIT_PROGRESS");
+    }
   }
 
   public void message(@NotNull String message) {
@@ -40,9 +51,26 @@ public class GitBuildProgressLogger implements GitProgressLogger {
     myLogger.message(message);
   }
 
+  @Override
+  public void progressMessage(@NotNull String message) {
+    myBlockMessageCount.incrementAndGet();
+    switch (myProgressMode) {
+      case NONE:
+        return;
+      case DEBUG:
+        myLogger.logMessage(DefaultMessagesInfo.internalize(DefaultMessagesInfo.createTextMessage(message)));
+        return;
+      case NORMAL:
+        myLogger.message(message);
+    }
+  }
+
   public void closeBlock(@NotNull String name) {
-    if (myBlockMessageCount.get() == 0)
-      myLogger.message("");
-    myLogger.activityFinished(name, "CUSTOM_GIT_PROGRESS");
+    //we need to close block only if progress was written to build log
+    if (myProgressMode != AgentPluginConfig.GitProgressMode.NONE) {
+      if (myBlockMessageCount.get() == 0)
+        myLogger.message("");
+      myLogger.activityFinished(name, "CUSTOM_GIT_PROGRESS");
+    }
   }
 }

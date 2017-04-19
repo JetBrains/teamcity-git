@@ -24,12 +24,16 @@ public interface GitProgressLogger {
 
   void message(@NotNull String message);
 
+  void progressMessage(@NotNull String message);
+
   void closeBlock(@NotNull String name);
 
-  static GitProgressLogger NO_OP = new GitProgressLogger() {
+  GitProgressLogger NO_OP = new GitProgressLogger() {
     public void openBlock(@NotNull final String name) {
     }
     public void message(@NotNull final String message) {
+    }
+    public void progressMessage(@NotNull final String message) {
     }
     public void closeBlock(@NotNull final String name) {
     }

@@ -227,6 +227,19 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return !"false".equals(value);
   }
 
+  @NotNull
+  @Override
+  public GitProgressMode getGitProgressMode() {
+    String value = myBuild.getSharedConfigParameters().get("teamcity.git.progressMode");
+    if (value == null)
+      return GitProgressMode.DEBUG;
+    try {
+      return GitProgressMode.valueOf(value.toUpperCase());
+    } catch (IllegalArgumentException e) {
+      return GitProgressMode.DEBUG;
+    }
+  }
+
   private int parseTimeout(String valueFromBuild) {
     return parseTimeout(valueFromBuild, DEFAULT_IDLE_TIMEOUT);
   }
