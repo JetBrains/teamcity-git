@@ -80,6 +80,8 @@ public class UpdaterImpl implements Updater {
   private final CheckoutRules myRules;
   private final CheckoutMode myCheckoutMode;
   protected final MirrorManager myMirrorManager;
+  //remote repository refs, stored in field in order to not run 'git ls-remote' command twice
+  private Refs myRemoteRefs;
 
   public UpdaterImpl(@NotNull FS fs,
                      @NotNull AgentPluginConfig pluginConfig,
@@ -813,9 +815,7 @@ public class UpdaterImpl implements Updater {
     }
     final Refs remoteRefs;
     try {
-      remoteRefs = new Refs(git.lsRemote().setAuthSettings(myRoot.getAuthSettings())
-                              .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
-                              .call());
+      remoteRefs = getRemoteRefs(workingDir);
     } catch (VcsException e) {
       if (CommandUtil.isCanceledError(e))
         throw e;
@@ -837,6 +837,19 @@ public class UpdaterImpl implements Updater {
     }
     return outdatedRefsRemoved;
   }
+
+
+  @NotNull
+  private Refs getRemoteRefs(@NotNull File workingDir) throws VcsException {
+    if (myRemoteRefs != null)
+      return myRemoteRefs;
+    GitFacade git = myGitFactory.create(workingDir);
+    myRemoteRefs = new Refs(git.lsRemote().setAuthSettings(myRoot.getAuthSettings())
+      .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
+      .call());
+    return myRemoteRefs;
+  }
+
 
   private boolean isRemoteTrackingBranch(@NotNull Ref localRef) {
     return localRef.getName().startsWith("refs/remotes/origin");
