@@ -23,6 +23,8 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentSideSparseCheckoutTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CredentialsHelperTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.HttpAuthTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.HttpUrlWithUsernameTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RemoteRepositoryConfiguratorTest"/>
     </classes>
   </test>
 </suite>

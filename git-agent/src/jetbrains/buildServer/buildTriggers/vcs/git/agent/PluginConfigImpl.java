@@ -48,6 +48,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String USE_BUILD_ENV = "teamcity.git.useBuildEnv";
   public static final String FETCH_ALL_HEADS = "teamcity.git.fetchAllHeads";
   public static final String FETCH_TAGS = "teamcity.git.fetchTags";
+  public static final String EXCLUDE_USERNAME_FROM_HTTP_URL = "teamcity.git.excludeUsernameFromHttpUrl";
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
@@ -238,6 +239,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
     } catch (IllegalArgumentException e) {
       return GitProgressMode.DEBUG;
     }
+  }
+
+  @Override
+  public boolean isExcludeUsernameFromHttpUrl() {
+    String value = myBuild.getSharedConfigParameters().get(EXCLUDE_USERNAME_FROM_HTTP_URL);
+    return !"false".equals(value);
   }
 
   private int parseTimeout(String valueFromBuild) {

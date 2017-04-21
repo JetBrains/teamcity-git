@@ -62,6 +62,8 @@ public interface AgentPluginConfig extends PluginConfig {
   @NotNull
   GitProgressMode getGitProgressMode();
 
+  boolean isExcludeUsernameFromHttpUrl();
+
   /**
    * Defines how progress output from git commands is written into build log
    */

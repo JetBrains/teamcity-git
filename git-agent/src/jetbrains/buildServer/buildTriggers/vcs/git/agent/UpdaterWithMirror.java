@@ -27,6 +27,7 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
@@ -91,9 +92,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
       bareRepositoryDir.mkdirs();
       GitFacade git = myGitFactory.create(bareRepositoryDir);
       git.init().setBare(true).call();
-      git.addRemote().setName("origin").setUrl(myRoot.getRepositoryFetchURL().toString()).call();
+      configureRemoteUrl(bareRepositoryDir);
       newMirror = true;
     } else {
+      configureRemoteUrl(bareRepositoryDir);
       boolean outdatedTagsFound = removeOutdatedRefs(bareRepositoryDir);
       if (!outdatedTagsFound) {
         LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
@@ -147,7 +149,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       if (cleanDir(repositoryDir)) {
         GitFacade git = myGitFactory.create(repositoryDir);
         git.init().setBare(true).call();
-        git.addRemote().setName("origin").setUrl(myRoot.getRepositoryFetchURL().toString()).call();
+        configureRemoteUrl(repositoryDir);
         fetch(repositoryDir, refspec, shallowClone);
       } else {
         LOG.info("Failed to delete repository " + repositoryDir + " after failed checkout, clone repository in another directory");
@@ -220,8 +222,26 @@ public class UpdaterWithMirror extends UpdaterImpl {
     }
   }
 
+
+  @NotNull
+  private String readRemoteUrl() throws VcsException {
+    Repository repository = null;
+    try {
+      repository = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
+      return repository.getConfig().getString("remote", "origin", "url");
+    } catch (IOException e) {
+      throw new VcsException("Error while reading remote repository url", e);
+    } finally {
+      if (repository != null)
+        repository.close();
+    }
+  }
+
+
   private void setUseLocalMirror() throws VcsException {
-    String remoteUrl = myRoot.getRepositoryFetchURL().toString();
+    //read remote url from config instead of VCS root, they can be different
+    //e.g. due to username exclusion from http(s) urls
+    String remoteUrl = readRemoteUrl();
     String localMirrorUrl = getLocalMirrorUrl();
     GitFacade git = myGitFactory.create(myTargetDirectory);
     git.setConfig()

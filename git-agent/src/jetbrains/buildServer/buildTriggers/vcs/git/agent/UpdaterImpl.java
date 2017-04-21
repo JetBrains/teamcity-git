@@ -65,6 +65,9 @@ public class UpdaterImpl implements Updater {
    * Git version supporting an empty credential helper - the only way to disable system/global/local cred helper
    */
   public final static GitVersion EMPTY_CRED_HELPER = new GitVersion(2, 9, 0);
+  /** Git version supporting [credential] section in config (the first version including a6fc9fd3f4b42cd97b5262026e18bd451c28ee3c) */
+  public final static GitVersion CREDENTIALS_SECTION_VERSION = new GitVersion(1, 7, 10);
+
   private static final int SILENT_TIMEOUT = 24 * 60 * 60; //24 hours
 
   protected final FS myFS;
@@ -144,34 +147,20 @@ public class UpdaterImpl implements Updater {
   }
 
 
-  /**
-   * Init .git in the target dir
-   * @return true if there was no fetch in the target dir before
-   * @throws VcsException in teh case of any problems
-   */
-  private boolean initGitRepository() throws VcsException {
-    boolean firstFetch = false;
+  private void initGitRepository() throws VcsException {
     if (!new File(myTargetDirectory, ".git").exists()) {
       initDirectory();
-      firstFetch = true;
     } else {
-      String remoteUrl = getRemoteUrl();
-      if (!remoteUrl.equals(myRoot.getRepositoryFetchURL().toString())) {
+      try {
+        configureRemoteUrl(new File(myTargetDirectory, ".git"));
+        setupExistingRepository();
+        configureSparseCheckout();
+      } catch (Exception e) {
+        LOG.warn("Do clean checkout due to errors while configure use of local mirrors", e);
         initDirectory();
-        firstFetch = true;
-      } else {
-        try {
-          setupExistingRepository();
-          configureSparseCheckout();
-        } catch (Exception e) {
-          LOG.warn("Do clean checkout due to errors while configure use of local mirrors", e);
-          initDirectory();
-          firstFetch = true;
-        }
       }
     }
     removeOrphanedIdxFiles(new File(myTargetDirectory, ".git"));
-    return firstFetch;
   }
 
   protected void setupNewRepository() throws VcsException {
@@ -731,7 +720,7 @@ public class UpdaterImpl implements Updater {
    *
    * @throws VcsException if there are problems with initializing the directory
    */
-  void initDirectory() throws VcsException {
+  private void initDirectory() throws VcsException {
     BuildDirectoryCleanerCallback c = new BuildDirectoryCleanerCallback(myLogger, LOG);
     myDirectoryCleaner.cleanFolder(myTargetDirectory, c);
     //noinspection ResultOfMethodCallIgnored
@@ -742,19 +731,26 @@ public class UpdaterImpl implements Updater {
     myLogger.message("The .git directory is missing in '" + myTargetDirectory + "'. Running 'git init'...");
     myGitFactory.create(myTargetDirectory).init().call();
     validateUrls();
-    myGitFactory.create(myRoot.getLocalRepositoryDir())
-      .addRemote()
-      .setName("origin")
-      .setUrl(myRoot.getRepositoryFetchURL().toString())
-      .call();
+    configureRemoteUrl(new File(myTargetDirectory, ".git"));
+
+    URIish fetchUrl = myRoot.getRepositoryFetchURL();
     URIish url = myRoot.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();
-    if (pushUrl != null && !pushUrl.equals(myRoot.getRepositoryFetchURL().toString())) {
+    if (pushUrl != null && !pushUrl.equals(fetchUrl.toString())) {
       myGitFactory.create(myTargetDirectory).setConfig().setPropertyName("remote.origin.pushurl").setValue(pushUrl).call();
     }
     setupNewRepository();
     configureSparseCheckout();
   }
+
+
+  void configureRemoteUrl(@NotNull File gitDir) throws VcsException {
+    RemoteRepositoryConfigurator cfg = new RemoteRepositoryConfigurator();
+    cfg.setGitDir(gitDir);
+    cfg.setExcludeUsernameFromHttpUrls(myPluginConfig.isExcludeUsernameFromHttpUrl() && !myPluginConfig.getGitVersion().isLessThan(UpdaterImpl.CREDENTIALS_SECTION_VERSION));
+    cfg.configure(myRoot);
+  }
+
 
   private void configureSparseCheckout() throws VcsException {
     if (myCheckoutMode == CheckoutMode.SPARSE_CHECKOUT) {
