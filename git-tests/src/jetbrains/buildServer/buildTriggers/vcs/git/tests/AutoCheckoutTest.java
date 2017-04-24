@@ -95,7 +95,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, new CheckoutRules("-:dir/q.txt"), build);
     then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.NOT_SUPPORTED_CHECKOUT_RULES);
-    then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Exclude rules are not supported for agent checkout");
+    then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Cannot perform sparse checkout using git " + GIT_WITH_SPARSE_CHECKOUT);
   }
 
   public void include_rule_with_mapping_is_used_without_sparse_checkout() throws IOException, VcsException {
@@ -107,11 +107,12 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, new CheckoutRules("+:a/b/c => d"), build);
     then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.NOT_SUPPORTED_CHECKOUT_RULES);
-    then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Agent checkout for the git supports only include rule of form '. => subdir'");
+    then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Unsupported rules for agent-side checkout: +:a/b/c => d");
   }
 
   public void git_version_does_not_support_sparse_checkout() throws IOException, VcsException {
-    myVcsSupport =  vcsSupportWithFakeGitOfVersion(GIT_WITH_SPARSE_CHECKOUT.previousVersion());
+    GitVersion gitVersion = GIT_WITH_SPARSE_CHECKOUT.previousVersion();
+    myVcsSupport =  vcsSupportWithFakeGitOfVersion(gitVersion);
 
     VcsRoot vcsRoot = vcsRootWithAgentGitPath("git");
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true")
@@ -119,7 +120,18 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, new CheckoutRules("-:dir/q.txt"), build);
     then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.NOT_SUPPORTED_CHECKOUT_RULES);
-    then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Exclude rules are not supported for agent checkout");
+    then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Cannot perform sparse checkout using git " + gitVersion);
+  }
+
+  public void git_version_does_not_support_sparse_checkout_default_rules() throws IOException, VcsException {
+    GitVersion gitVersion = GIT_WITH_SPARSE_CHECKOUT.previousVersion();
+    myVcsSupport =  vcsSupportWithFakeGitOfVersion(gitVersion);
+
+    VcsRoot vcsRoot = vcsRootWithAgentGitPath("git");
+    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").addRoot(vcsRoot).build();
+
+    AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, CheckoutRules.DEFAULT, build);
+    then(canCheckout.getCanNotCheckoutReason()).isNull();
   }
 
   public void should_check_auth_method() throws Exception {

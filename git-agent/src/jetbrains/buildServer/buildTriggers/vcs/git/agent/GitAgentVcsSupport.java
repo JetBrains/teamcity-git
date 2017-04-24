@@ -83,7 +83,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
     Map<String, String> env = getGitCommandEnv(config, build);
     GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, getLogger(build, config), build.getBuildTempDirectory(), env, new BuildContext(build));
-    Pair<CheckoutMode, File> targetDirAndMode = getTargetDirAndMode(config, root, rules, checkoutDirectory);
+    Pair<CheckoutMode, File> targetDirAndMode = getTargetDirAndMode(config, rules, checkoutDirectory);
     CheckoutMode mode = targetDirAndMode.first;
     File targetDir = targetDirAndMode.second;
     Updater updater;
@@ -118,12 +118,14 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       return AgentCheckoutAbility.noVcsClientOnAgent(e.getMessage());
     }
 
-    try {
-      boolean validSparseCheckout = canUseSparseCheckout(config) && getSingleTargetDirForSparseCheckout(checkoutRules) != null;
-      if (!validSparseCheckout)
-        validateCheckoutRules(vcsRoot, checkoutRules);
-    } catch (VcsException e) {
-      return AgentCheckoutAbility.notSupportedCheckoutRules(e.getMessage());
+    Pair<CheckoutMode, String> pathAndMode = getTargetPathAndMode(checkoutRules);
+    String targetDir = pathAndMode.second;
+    if (targetDir == null) {
+      return AgentCheckoutAbility.notSupportedCheckoutRules("Unsupported rules for agent-side checkout: " + checkoutRules.getAsString());
+    }
+
+    if (pathAndMode.first == CheckoutMode.SPARSE_CHECKOUT && !canUseSparseCheckout(config)) {
+      return AgentCheckoutAbility.notSupportedCheckoutRules("Cannot perform sparse checkout using git " + config.getGitExec().getVersion());
     }
 
     try {
@@ -135,27 +137,17 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
 
     List<VcsRootEntry> gitEntries = getGitRootEntries(build);
     if (gitEntries.size() > 1) {
-      String targetDir = getTargetDir(config, checkoutRules);
       for (VcsRootEntry entry : gitEntries) {
         VcsRoot otherRoot = entry.getVcsRoot();
         if (vcsRoot.equals(otherRoot))
           continue;
-        if (targetDir != null && targetDir.equals(getTargetDir(config, entry.getCheckoutRules())))
+        String entryPath = getTargetPathAndMode(entry.getCheckoutRules()).second;
+        if (targetDir.equals(entryPath))
           return AgentCheckoutAbility.canNotCheckout("Cannot checkout VCS root '" + vcsRoot.getName() + "' into the same directory as VCS root '" + otherRoot.getName() + "'");
       }
     }
 
     return AgentCheckoutAbility.canCheckout();
-  }
-
-
-  @Nullable
-  private String getTargetDir(@NotNull AgentPluginConfig config, @NotNull CheckoutRules rules) {
-    if (isRequireSparseCheckout(rules)) {
-      return canUseSparseCheckout(config) ? getSingleTargetDirForSparseCheckout(rules) : null;
-    } else {
-      return rules.map("");
-    }
   }
 
 
@@ -187,70 +179,45 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   }
 
 
-  /**
-   * Check if specified checkout rules are supported
-   * @param root root for which rules are checked
-   * @param rules rules to check
-   * @throws VcsException rules are not supported
-   */
-  private void validateCheckoutRules(@NotNull final VcsRoot root, @NotNull final CheckoutRules rules) throws VcsException {
-    if (rules.getExcludeRules().size() != 0) {
-      throw new VcsException("Exclude rules are not supported for agent checkout for the git (" + rules.getExcludeRules().size() +
-                             " rule(s) detected) for VCS Root '" + root.getName() + "'");
+  @NotNull
+  private Pair<CheckoutMode, File> getTargetDirAndMode(@NotNull AgentPluginConfig config,
+                                                       @NotNull CheckoutRules rules,
+                                                       @NotNull File checkoutDir) throws VcsException {
+    Pair<CheckoutMode, String> pathAndMode = getTargetPathAndMode(rules);
+    String path = pathAndMode.second;
+    if (path == null) {
+      throw new VcsException("Unsupported checkout rules for agent-side checkout: " + rules.getAsString());
     }
-    if (rules.getIncludeRules().size() > 1) {
-      throw new VcsException("At most one include rule is supported for agent checkout for the git (" + rules.getIncludeRules().size() +
-                             " rule(s) detected) for VCS Root '" + root.getName() + "'");
+
+    boolean canUseSparseCheckout = canUseSparseCheckout(config);
+    if (pathAndMode.first == CheckoutMode.SPARSE_CHECKOUT && !canUseSparseCheckout) {
+      throw new VcsException("Cannot perform sparse checkout using git " + config.getGitExec().getVersion());
     }
-    if (rules.getIncludeRules().size() == 1) {
-      IncludeRule ir = rules.getIncludeRules().get(0);
-      if (!".".equals(ir.getFrom()) && ir.getFrom().length() != 0) {
-        throw new VcsException("Agent checkout for the git supports only include rule of form '. => subdir', rule '" + ir.toDescriptiveString() +
-                               "' for VCS Root '" + root.getName() + "' is not supported");
-      }
-    }
-  }
 
-
-  /**
-   * Get the destination directory creating it if it is missing
-   * @param root VCS root
-   * @param rules checkout rules
-   * @param checkoutDirectory checkout directory for the build
-   * @return the directory where vcs root should be checked out according to checkout rules
-   * @throws VcsException if the directory could not be located or created
-   */
-  private File getTargetDir(@NotNull final VcsRoot root, @NotNull final CheckoutRules rules, @NotNull final File checkoutDirectory) throws VcsException {
-    String path = rules.map("");
-    if (path == null)
-      throw new VcsException("The root path could not be mapped for VCS root '" + root.getName() + "'");
-
-    File directory = path.length() == 0 ? checkoutDirectory : new File(checkoutDirectory, path.replace('/', File.separatorChar));
-    if (!directory.exists()) {
+    File targetDir = path.length() == 0 ? checkoutDir : new File(checkoutDir, path.replace('/', File.separatorChar));
+    if (!targetDir.exists()) {
       //noinspection ResultOfMethodCallIgnored
-      directory.mkdirs();
-      if (!directory.exists())
-        throw new VcsException("The destination directory '" + directory + "' could not be created.");
+      targetDir.mkdirs();
+      if (!targetDir.exists())
+        throw new VcsException("Cannot create destination directory '" + targetDir + "'");
     }
-    return directory;
+
+    //Use sparse checkout mode if we can, without that switch from rules requiring sparse checkout
+    //to simple rules (e.g. to CheckoutRules.DEFAULT) doesn't work (run AgentSideSparseCheckoutTest.
+    //update_files_after_switching_to_default_rules). Probably it is a rare case when we checked out
+    //a repository using sparse checkout and then cannot use sparse checkout in the next build.
+    CheckoutMode mode = canUseSparseCheckout ? CheckoutMode.SPARSE_CHECKOUT : pathAndMode.first;
+    return Pair.create(mode, targetDir);
   }
 
 
   @NotNull
-  private Pair<CheckoutMode, File> getTargetDirAndMode(@NotNull AgentPluginConfig config,
-                                                       @NotNull VcsRoot root,
-                                                       @NotNull CheckoutRules rules,
-                                                       @NotNull File checkoutDir) throws VcsException {
-    if (canUseSparseCheckout(config)) {
-      String targetDir = getSingleTargetDirForSparseCheckout(rules);
-      if (targetDir != null) {
-        return Pair.create(CheckoutMode.SPARSE_CHECKOUT, new File(checkoutDir, targetDir));
-      }
+  private Pair<CheckoutMode, String> getTargetPathAndMode(@NotNull CheckoutRules rules) {
+    if (isRequireSparseCheckout(rules)) {
+      return Pair.create(CheckoutMode.SPARSE_CHECKOUT, getSingleTargetDirForSparseCheckout(rules));
+    } else {
+      return Pair.create(CheckoutMode.MAP_REPO_TO_DIR, rules.map(""));
     }
-
-    validateCheckoutRules(root, rules);
-    File targetDir = getTargetDir(root, rules, checkoutDir);
-    return Pair.create(CheckoutMode.MAP_REPO_TO_DIR, targetDir);
   }
 
   private boolean canUseSparseCheckout(@NotNull AgentPluginConfig config) {
