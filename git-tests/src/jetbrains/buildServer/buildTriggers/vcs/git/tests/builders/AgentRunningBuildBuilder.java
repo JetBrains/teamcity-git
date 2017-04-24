@@ -25,6 +25,7 @@ import jetbrains.buildServer.parameters.ValueResolver;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.Option;
 import jetbrains.buildServer.util.PasswordReplacer;
+import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsChangeInfo;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootEntry;
@@ -32,10 +33,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static jetbrains.buildServer.util.Util.map;
 
@@ -43,6 +41,7 @@ public class AgentRunningBuildBuilder {
 
   private Map<String, String> mySharedConfigParameters = new HashMap<String, String>();
   private Map<String, String> mySharedBuildParameters = new HashMap<String, String>();
+  private List<VcsRootEntry> myRootEntries = null;
 
   public static AgentRunningBuildBuilder runningBuild() {
     return new AgentRunningBuildBuilder();
@@ -69,6 +68,23 @@ public class AgentRunningBuildBuilder {
 
   public AgentRunningBuildBuilder useLocalMirrors(boolean doUse) {
     mySharedConfigParameters.put(PluginConfigImpl.USE_MIRRORS, String.valueOf(doUse));
+    return this;
+  }
+
+
+  public AgentRunningBuildBuilder addRootEntry(@NotNull VcsRoot root, @NotNull String rules) {
+    if (myRootEntries == null) {
+      myRootEntries = new ArrayList<>();
+    }
+    myRootEntries.add(new VcsRootEntry(root, new CheckoutRules(rules)));
+    return this;
+  }
+
+  public AgentRunningBuildBuilder addRoot(@NotNull VcsRoot root) {
+    if (myRootEntries == null) {
+      myRootEntries = new ArrayList<>();
+    }
+    myRootEntries.add(new VcsRootEntry(root, CheckoutRules.DEFAULT));
     return this;
   }
 
@@ -271,7 +287,9 @@ public class AgentRunningBuildBuilder {
 
       @NotNull
       public List<VcsRootEntry> getVcsRootEntries() {
-        throw new UnsupportedOperationException();
+        if (myRootEntries == null)
+          throw new UnsupportedOperationException();
+        return myRootEntries;
       }
 
       public String getBuildCurrentVersion(final VcsRoot vcsRoot) {

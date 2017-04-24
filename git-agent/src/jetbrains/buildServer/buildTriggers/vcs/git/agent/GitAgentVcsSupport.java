@@ -26,18 +26,12 @@ import jetbrains.buildServer.agent.vcs.UpdatePolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
-import jetbrains.buildServer.vcs.CheckoutRules;
-import jetbrains.buildServer.vcs.IncludeRule;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * The agent support for VCS.
@@ -139,8 +133,53 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       return AgentCheckoutAbility.canNotCheckout(e.getMessage());
     }
 
+    List<VcsRootEntry> gitEntries = getGitRootEntries(build);
+    if (gitEntries.size() > 1) {
+      String targetDir = getTargetDir(config, checkoutRules);
+      for (VcsRootEntry entry : gitEntries) {
+        VcsRoot otherRoot = entry.getVcsRoot();
+        if (vcsRoot.equals(otherRoot))
+          continue;
+        if (targetDir != null && targetDir.equals(getTargetDir(config, entry.getCheckoutRules())))
+          return AgentCheckoutAbility.canNotCheckout("Cannot checkout VCS root '" + vcsRoot.getName() + "' into the same directory as VCS root '" + otherRoot.getName() + "'");
+      }
+    }
+
     return AgentCheckoutAbility.canCheckout();
   }
+
+
+  @Nullable
+  private String getTargetDir(@NotNull AgentPluginConfig config, @NotNull CheckoutRules rules) {
+    if (isRequireSparseCheckout(rules)) {
+      return canUseSparseCheckout(config) ? getSingleTargetDirForSparseCheckout(rules) : null;
+    } else {
+      return rules.map("");
+    }
+  }
+
+
+  private boolean isRequireSparseCheckout(@NotNull CheckoutRules rules) {
+    if (!rules.getExcludeRules().isEmpty())
+      return true;
+    List<IncludeRule> includeRules = rules.getRootIncludeRules();
+    if (includeRules.isEmpty() || includeRules.size() > 1)
+      return true;
+    IncludeRule rule = includeRules.get(0);
+    return !"".equals(rule.getFrom()); //rule of form +:.=>dir doesn't require sparse checkout ('.' is transformed into empty string)
+  }
+
+
+  @NotNull
+  private List<VcsRootEntry> getGitRootEntries(@NotNull AgentRunningBuild build) {
+    List<VcsRootEntry> result = new ArrayList<VcsRootEntry>();
+    for (VcsRootEntry entry : build.getVcsRootEntries()) {
+      if (Constants.VCS_NAME.equals(entry.getVcsRoot().getVcsName()))
+        result.add(entry);
+    }
+    return result;
+  }
+
 
   @NotNull
   private GitBuildProgressLogger getLogger(@NotNull AgentRunningBuild build, @NotNull AgentPluginConfig config) {
