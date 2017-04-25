@@ -150,8 +150,8 @@ public class SubmoduleTest {
         TreeWalk tw = new TreeWalk(rm);
         tw.setRecursive(true);
         tw.reset();
-        tw.addTree(create(rm, beforeSubmoduleAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT, true));
-        tw.addTree(create(rm, submoduleAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT, true));
+        tw.addTree(create(rm, beforeSubmoduleAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT, true, null));
+        tw.addTree(create(rm, submoduleAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT, true, null));
         tw.setFilter(TreeFilter.ANY_DIFF);
         checkElement(tw, ".gitmodules");
         assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rm);
@@ -159,8 +159,8 @@ public class SubmoduleTest {
         assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rs);
         assertFalse(tw.next());
         tw.reset();
-        tw.addTree(create(rm, submoduleModified, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT, true));
-        tw.addTree(create(rm, submoduleTxtAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT, true));
+        tw.addTree(create(rm, submoduleModified, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT, true, null));
+        tw.addTree(create(rm, submoduleTxtAdded, r, "", "", SubmodulesCheckoutPolicy.CHECKOUT, true, null));
         tw.setFilter(TreeFilter.ANY_DIFF);
         checkElement(tw, "submodule.txt");
         assertSame(tw.getTree(1, SubmoduleAwareTreeIterator.class).getRepository(), rm);

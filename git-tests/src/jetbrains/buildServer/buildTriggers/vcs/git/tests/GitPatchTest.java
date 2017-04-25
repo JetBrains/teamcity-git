@@ -223,6 +223,16 @@ public class GitPatchTest extends PatchTestCase {
   }
 
 
+  @TestFor(issues = "TW-49782")
+  @Test(dataProvider = "patchInSeparateProcess")
+  public void excluded_broken_submodule(boolean patchInSeparateProcess) throws Exception {
+    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
+    VcsRoot root = getRoot("reference-wrong-commit", true);
+    //7253d358a2490321a1808a1c20561b4027d69f77 references wrong submodule commit, but it is excluded by checkout rules, patch should succeed
+    checkPatch(root, "excluded_broken_submodule", null, "7253d358a2490321a1808a1c20561b4027d69f77", new CheckoutRules("+:dir"));
+  }
+
+
   @Test(dataProvider = "patchInSeparateProcess")
   public void should_build_patch_on_revision_in_branch_when_cache_is_empty(boolean patchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);

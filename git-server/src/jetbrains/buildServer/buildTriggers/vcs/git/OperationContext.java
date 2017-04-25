@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.errors.NoRemoteRepositoryException;
@@ -203,7 +204,7 @@ public class OperationContext {
                       @NotNull Repository db,
                       @NotNull RevCommit commit,
                       boolean ignoreSubmodulesErrors) throws IOException, VcsException {
-    addTree(root, tw, db, commit, ignoreSubmodulesErrors, true);
+    addTree(root, tw, db, commit, ignoreSubmodulesErrors, true, null);
   }
 
   public void addTree(@NotNull GitVcsRoot root,
@@ -211,11 +212,12 @@ public class OperationContext {
                       @NotNull Repository db,
                       @NotNull RevCommit commit,
                       boolean ignoreSubmodulesErrors,
-                      boolean logSubmoduleErrors) throws IOException, VcsException {
+                      boolean logSubmoduleErrors,
+                      @Nullable CheckoutRules rules) throws IOException, VcsException {
     if (root.isCheckoutSubmodules()) {
       SubmoduleResolverImpl submoduleResolver = new SubmoduleResolverImpl(this, myCommitLoader, db, commit, "");
       SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(root.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
-      tw.addTree(create(db, commit, submoduleResolver, root.getRepositoryFetchURL().toString(), "", checkoutPolicy, logSubmoduleErrors));
+      tw.addTree(create(db, commit, submoduleResolver, root.getRepositoryFetchURL().toString(), "", checkoutPolicy, logSubmoduleErrors, rules));
     } else {
       tw.addTree(commit.getTree().getId());
     }

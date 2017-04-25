@@ -281,7 +281,7 @@ class ModificationDataRevWalk extends RevWalk {
           try {
             prevTreeWalk.setFilter(TreeFilter.ALL);
             prevTreeWalk.setRecursive(true);
-            myContext.addTree(myGitRoot, prevTreeWalk, myRepository, prevRev, true, false);
+            myContext.addTree(myGitRoot, prevTreeWalk, myRepository, prevRev, true, false, null);
             while(prevTreeWalk.next()) {
               String path = prevTreeWalk.getPathString();
               if (path.startsWith(submodulePath + "/")) {

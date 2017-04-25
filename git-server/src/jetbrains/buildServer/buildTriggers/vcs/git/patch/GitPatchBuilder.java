@@ -107,7 +107,7 @@ public class GitPatchBuilder {
     RevCommit toCommit = myContext.findCommit(myRepository, myToRevision);
     if (toCommit == null)
       throw new VcsException("Cannot find commit " + myToRevision + " in repository " + myRepository.getDirectory().getAbsolutePath());
-    myContext.addTree(myGitRoot, myTreeWalk, myRepository, toCommit, false);
+    myContext.addTree(myGitRoot, myTreeWalk, myRepository, toCommit, false, true, myRules);
   }
 
   private void addFromCommitTree() throws IOException, VcsException {
@@ -123,7 +123,7 @@ public class GitPatchBuilder {
         myTreeWalk.addTree(new EmptyTreeIterator());
         myFullCheckout = true;
       } else {
-        myContext.addTree(myGitRoot, myTreeWalk, myRepository, fromCommit, true);
+        myContext.addTree(myGitRoot, myTreeWalk, myRepository, fromCommit, true, true, myRules);
       }
     }
   }

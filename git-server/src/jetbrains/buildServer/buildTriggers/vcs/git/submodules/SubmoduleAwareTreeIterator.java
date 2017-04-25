@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
+import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.errors.TransportException;
@@ -92,6 +93,9 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
 
   private final boolean myLogSubmoduleErrors;
 
+  //submodules excluded by the these rules will not be resolved; null means resolve all submodules
+  private CheckoutRules myRules;
+
   /**
    * The constructor
    *
@@ -148,6 +152,11 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     movedToEntry();
   }
 
+
+  void setCheckoutRules(CheckoutRules rules) {
+    myRules = rules;
+  }
+
   /**
    * @return the current repository for the submodule
    */
@@ -167,10 +176,10 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
       return;
     }
     int wrappedMode = myWrappedIterator.getEntryRawMode();
-    myIsOnSubmodule = checkoutSubmodules() && GITLINK_MODE_BITS == wrappedMode;
+    String entryPath = myWrappedIterator.getEntryPathString();
+    myIsOnSubmodule = checkoutSubmodules() && GITLINK_MODE_BITS == wrappedMode && (myRules == null || myRules.map(entryPath) != null);
     mode = myIsOnSubmodule ? TREE_MODE_BITS : wrappedMode;
     if (myIsOnSubmodule) {
-      String entryPath = myWrappedIterator.getEntryPathString();
       try {
         mySubmoduleCommit = getSubmoduleCommit(entryPath, myWrappedIterator.getEntryObjectId());
       } catch (Exception e) {
@@ -307,7 +316,8 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                               mySubmoduleResolver.getSubmoduleUrl(path),
                                               getPathFromRoot(path),
                                               SubmodulesCheckoutPolicy.getSubSubModulePolicyFor(mySubmodulesPolicy),
-                                              myLogSubmoduleErrors);
+                                              myLogSubmoduleErrors,
+                                              myRules);
     } else {
       Repository r = mySubmoduleResolver.getRepository();
       ObjectReader or = r.newObjectReader();
@@ -324,7 +334,8 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                               myUrl,
                                               myPathFromRoot,
                                               mySubmodulesPolicy,
-                                              myLogSubmoduleErrors);
+                                              myLogSubmoduleErrors,
+                                              myRules);
     }
   }
 

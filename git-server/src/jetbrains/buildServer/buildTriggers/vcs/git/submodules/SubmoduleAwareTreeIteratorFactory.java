@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.util.containers.IntArrayList;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
+import jetbrains.buildServer.vcs.CheckoutRules;
 import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
@@ -49,9 +50,10 @@ public class SubmoduleAwareTreeIteratorFactory {
                                                   String repositoryUrl,
                                                   String pathFromRoot,
                                                   SubmodulesCheckoutPolicy submodulePolicy,
-                                                  boolean logSubmoduleErrors)
+                                                  boolean logSubmoduleErrors,
+                                                  CheckoutRules rules)
     throws IOException {
-    return createSubmoduleAwareTreeIterator(null, createTreeParser(db, commit), subResolver, "", repositoryUrl, pathFromRoot, submodulePolicy, logSubmoduleErrors);
+    return createSubmoduleAwareTreeIterator(null, createTreeParser(db, commit), subResolver, "", repositoryUrl, pathFromRoot, submodulePolicy, logSubmoduleErrors, rules);
   }
 
 
@@ -75,25 +77,30 @@ public class SubmoduleAwareTreeIteratorFactory {
                                                                              String repositoryUrl,
                                                                              String pathFromRoot,
                                                                              SubmodulesCheckoutPolicy submodulesPolicy,
-                                                                             boolean logSubmoduleErrors) throws IOException {
+                                                                             boolean logSubmoduleErrors,
+                                                                             CheckoutRules rules) throws IOException {
+    SubmoduleAwareTreeIterator result;
     if (subResolver.containsSubmodule(path)) {
       int[] mapping = buildMapping(wrapped);
       String submoduleUrl = subResolver.getSubmoduleUrl(path);
       if (submoduleUrl == null)
         submoduleUrl = repositoryUrl;
       if (mapping == null) {
-        return parent == null
+        result = parent == null
                ? new DirectSubmoduleAwareTreeIterator(wrapped, subResolver, submoduleUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors)
                : new DirectSubmoduleAwareTreeIterator(parent, wrapped, subResolver, submoduleUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors);
       } else {
-        return parent == null
+        result = parent == null
                ? new IndirectSubmoduleAwareTreeIterator(wrapped, subResolver, mapping, submoduleUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors)
                : new IndirectSubmoduleAwareTreeIterator(parent, wrapped, subResolver, mapping, submoduleUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors);
       }
-    }
-    return parent == null
+    } else {
+      result = parent == null
            ? new DirectSubmoduleAwareTreeIterator(wrapped, subResolver, repositoryUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors)
            : new DirectSubmoduleAwareTreeIterator(parent, wrapped, subResolver, repositoryUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors);
+    }
+    result.setCheckoutRules(rules);
+    return result;
   }
 
 
