@@ -179,7 +179,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
 
   @TestFor(issues = "TW-49786")
   @Test(dataProvider = "severalRootsSetups")
-  private void several_roots(@NotNull Setup setup) throws Exception {
+  public void several_roots(@NotNull Setup setup) throws Exception {
     myVcsSupport = vcsSupportWithRealGit();
 
     VcsRoot root1 = vcsRoot().withId(1).withFetchUrl("http://some.org/repo1.git").build();
@@ -199,6 +199,61 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
       then(canCheckout1.getCanNotCheckoutReason()).isNull();
       then(canCheckout2.getCanNotCheckoutReason()).isNull();
     }
+  }
+
+
+  @TestFor(issues = "TW-49786")
+  public void should_respect_root_settings_when_checking_multi_root_constraints() throws Exception {
+    myVcsSupport = vcsSupportWithRealGit();
+
+    //second root has broken git path, we should not take it into account
+    //during canCheckout() for the first VCS root
+    VcsRoot root1 = vcsRoot().withId(1).withFetchUrl("http://some.org/repo1.git").build();
+    VcsRoot root2 = vcsRoot().withId(2).withAgentGitPath("wrongGitPath").withFetchUrl("http://some.org/repo2.git").build();
+    AgentRunningBuild build = runningBuild()
+      .addRootEntry(root1, "+:dir1")
+      .addRootEntry(root2, "+:dir2")
+      .build();
+
+    AgentCheckoutAbility canCheckout1 = myVcsSupport.canCheckout(root1, new CheckoutRules("+:dir1"), build);
+    AgentCheckoutAbility canCheckout2 = myVcsSupport.canCheckout(root2, new CheckoutRules("+:dir2"), build);
+    then(canCheckout1.getCanNotCheckoutReason()).isNull();
+    then(canCheckout2.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.NO_VCS_CLIENT);
+    then(canCheckout2.getCanNotCheckoutReason().getDetails()).contains("Unable to run git at path wrongGitPath");
+  }
+
+
+  @TestFor(issues = "TW-49786")
+  public void should_respect_root_settings_when_checking_multi_root_constraints2() throws Exception {
+    VcsRoot root1 = vcsRoot().withId(1).withFetchUrl("http://some.org/repo1.git").build();
+    VcsRoot root2 = vcsRoot().withId(2).withFetchUrl("http://some.org/repo2.git").build();
+    AgentRunningBuild build = runningBuild()
+      .addRootEntry(root1, "+:dir1")
+      .addRootEntry(root2, "+:dir2")
+      .build();
+
+    //both roots require sparse checkout and mapped into the same directory, but the second
+    //root uses git version which doesn't support sparse checkout; we shouldn't take it into
+    //account during canCheckout() check for the first root
+    GitDetector detector = new GitDetector() {
+      @NotNull
+      public GitExec getGitPathAndVersion(@NotNull VcsRoot root, @NotNull BuildAgentConfiguration config, @NotNull AgentRunningBuild build) throws VcsException {
+        if (root.equals(root1)) {
+          return new GitExec("git1", GIT_WITH_SPARSE_CHECKOUT);
+        }
+        if (root.equals(root2)) {
+          return new GitExec("git2", GIT_WITH_SPARSE_CHECKOUT.previousVersion());
+        }
+        throw new VcsException("Unexpected VCS root");
+      }
+    };
+    myVcsSupport = createVcsSupport(detector);
+
+    AgentCheckoutAbility canCheckout1 = myVcsSupport.canCheckout(root1, new CheckoutRules("+:dir1"), build);
+    AgentCheckoutAbility canCheckout2 = myVcsSupport.canCheckout(root2, new CheckoutRules("+:dir2"), build);
+    then(canCheckout1.getCanNotCheckoutReason()).isNull();
+    then(canCheckout2.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.NOT_SUPPORTED_CHECKOUT_RULES);
+    then(canCheckout2.getCanNotCheckoutReason().getDetails()).contains("Cannot perform sparse checkout using git " + GIT_WITH_SPARSE_CHECKOUT.previousVersion());
   }
 
 

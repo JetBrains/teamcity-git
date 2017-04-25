@@ -243,7 +243,7 @@ public class AgentRunningBuildBuilder {
       }
 
       public long getBuildId() {
-        throw new UnsupportedOperationException();
+        return 1;
       }
 
       public boolean isCleanBuild() {

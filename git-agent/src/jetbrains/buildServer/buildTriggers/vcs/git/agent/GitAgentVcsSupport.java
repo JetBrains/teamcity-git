@@ -32,6 +32,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * The agent support for VCS.
@@ -44,6 +47,15 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private final PluginConfigFactory myConfigFactory;
   private final MirrorManager myMirrorManager;
   private final GitMetaFactory myGitMetaFactory;
+
+  //The canCheckout() method should check that roots are not checked out in the same dir (TW-49786).
+  //To do that we need to create AgentPluginConfig for each VCS root which involves 'git version'
+  //command execution. Since we don't have a dedicated API for checking several roots, every root
+  //is checked with all other roots. In order to avoid running n^2 'git version' commands configs
+  //are cached for the build. Cache is reset when we get a new build.
+  private final AtomicLong myConfigsCacheBuildId = new AtomicLong(-1); //buildId for which configs are cached
+  private final ConcurrentMap<VcsRoot, AgentPluginConfig> myConfigsCache = new ConcurrentHashMap<VcsRoot, AgentPluginConfig>();//cached config per root
+  private final ConcurrentMap<VcsRoot, VcsException> myConfigErrorsCache = new ConcurrentHashMap<VcsRoot, VcsException>();//cached error thrown during config creation per root
 
   public GitAgentVcsSupport(@NotNull FS fs,
                             @NotNull SmartDirectoryCleaner directoryCleaner,
@@ -113,7 +125,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   public AgentCheckoutAbility canCheckout(@NotNull final VcsRoot vcsRoot, @NotNull CheckoutRules checkoutRules, @NotNull final AgentRunningBuild build) {
     AgentPluginConfig config;
     try {
-      config = myConfigFactory.createConfig(build, vcsRoot);
+      config = getAndCacheConfig(build, vcsRoot);
     } catch (VcsException e) {
       return AgentCheckoutAbility.noVcsClientOnAgent(e.getMessage());
     }
@@ -141,7 +153,18 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
         VcsRoot otherRoot = entry.getVcsRoot();
         if (vcsRoot.equals(otherRoot))
           continue;
-        String entryPath = getTargetPathAndMode(entry.getCheckoutRules()).second;
+
+        AgentPluginConfig otherConfig;
+        try {
+          otherConfig = getAndCacheConfig(build, otherRoot);
+        } catch (VcsException e) {
+          continue;//appropriate reason will be returned during otherRoot check
+        }
+        Pair<CheckoutMode, String> otherPathAndMode = getTargetPathAndMode(entry.getCheckoutRules());
+        if (otherPathAndMode.first == CheckoutMode.SPARSE_CHECKOUT && !canUseSparseCheckout(otherConfig)) {
+          continue;//appropriate reason will be returned during otherRoot check
+        }
+        String entryPath = otherPathAndMode.second;
         if (targetDir.equals(entryPath))
           return AgentCheckoutAbility.canNotCheckout("Cannot checkout VCS root '" + vcsRoot.getName() + "' into the same directory as VCS root '" + otherRoot.getName() + "'");
       }
@@ -208,6 +231,32 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     //a repository using sparse checkout and then cannot use sparse checkout in the next build.
     CheckoutMode mode = canUseSparseCheckout ? CheckoutMode.SPARSE_CHECKOUT : pathAndMode.first;
     return Pair.create(mode, targetDir);
+  }
+
+
+  @NotNull
+  private AgentPluginConfig getAndCacheConfig(@NotNull AgentRunningBuild build, @NotNull VcsRoot root) throws VcsException {
+    //reset cache if we get a new build
+    if (build.getBuildId() != myConfigsCacheBuildId.get()) {
+      myConfigsCacheBuildId.set(build.getBuildId());
+      myConfigsCache.clear();
+      myConfigErrorsCache.clear();
+    }
+
+    AgentPluginConfig result = myConfigsCache.get(root);
+    if (result == null) {
+      VcsException error = myConfigErrorsCache.get(root);
+      if (error != null)
+        throw error;
+      try {
+        result = myConfigFactory.createConfig(build, root);
+      } catch (VcsException e) {
+        myConfigErrorsCache.put(root, e);
+        throw e;
+      }
+      myConfigsCache.put(root, result);
+    }
+    return result;
   }
 
 
