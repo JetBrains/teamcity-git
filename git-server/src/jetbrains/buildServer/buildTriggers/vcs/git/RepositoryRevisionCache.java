@@ -102,11 +102,11 @@ public final class RepositoryRevisionCache {
 
       //instead of removing negative entries - turn them into positive, this saves 1 commit lookup
       Set<String> forUpdate = new HashSet<>();
-      for (String commit : myCache.keySet()) {
-        if (newCommits.contains(commit) && Boolean.FALSE.equals(myCache.get(commit)))
+      myCache.forEachEntry((commit, contains) -> {
+        if (newCommits.contains(commit) && Boolean.FALSE.equals(contains))
           forUpdate.add(commit);
-      }
-
+        return true;
+      });
       for (String commit : forUpdate) {
         myCache.put(commit, true);
       }
@@ -139,15 +139,14 @@ public final class RepositoryRevisionCache {
     File cache = getCacheFile(myRepositoryDir, myType);
     cache.getParentFile().mkdirs();
     try (PrintStream printer = new PrintStream(new BufferedOutputStream(new FileOutputStream(cache)))) {
-      for (String revision : myCache.keySet()) {
-        Boolean contains = myCache.get(revision);
+      myCache.forEachEntry((revision, contains) -> {
         if (contains != null) {
           printer.print(contains ? '+' : '-');
           printer.print(revision);
           printer.println();
         }
-      }
-      printer.close();
+        return true;
+      });
     }
   }
 
