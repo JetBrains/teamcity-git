@@ -16,17 +16,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.RepositoryRevisionCache;
 import jetbrains.buildServer.buildTriggers.vcs.git.RevisionCacheType;
 import jetbrains.buildServer.buildTriggers.vcs.git.RevisionsCache;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
-import jetbrains.buildServer.serverSide.BasePropertiesModel;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import org.jetbrains.annotations.NotNull;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -44,29 +40,18 @@ import static org.assertj.core.api.Assertions.fail;
 import static org.assertj.core.api.BDDAssertions.then;
 
 @Test
-public class RevisionsCacheTest {
+public class RevisionsCacheTest extends BaseRemoteRepositoryTest {
 
-  private TempFiles myTempFiles;
   private PluginConfigBuilder myConfigBuilder;
   private ServerPluginConfig myConfig;
   private RevisionsCache myCache;
 
   @BeforeMethod
   public void setUp() throws Exception {
-    new TeamCityProperties() {{
-      setModel(new BasePropertiesModel() {});
-    }};
-
-    myTempFiles = new TempFiles();
+    super.setUp();
     myConfigBuilder = pluginConfig().setTempFiles(myTempFiles);
     myConfig = myConfigBuilder.build();
     myCache = new RevisionsCache(myConfig);
-  }
-
-
-  @AfterMethod
-  public void tearDown() throws Exception {
-    myTempFiles.cleanup();
   }
 
 
@@ -264,6 +249,32 @@ public class RevisionsCacheTest {
 
     myCache.resetNegativeEntries(repo, setOf("v2"));
     then(cacheFile).doesNotExist();
+  }
+
+
+  @Test(dataProvider = "true,false")
+  public void should_contain_last_n_revisions(boolean afterRestart) throws Exception {
+    int cacheSize = 10;
+    myConfigBuilder.setMapFullPathRevisionCacheSize(cacheSize);
+    ServerPluginConfig config = myConfigBuilder.build();
+    myCache = new RevisionsCache(config);
+
+    File repo = repository("1");
+    RepositoryRevisionCache repoCache = myCache.getRepositoryCache(repo, RevisionCacheType.COMMIT_CACHE);
+    for (int i = 0; i < 100; i++) {
+      repoCache.saveRevision("v" + i, true, repoCache.getResetCounter());
+    }
+
+    if (afterRestart) {
+      myCache = new RevisionsCache(config);
+      repoCache = myCache.getRepositoryCache(repo, RevisionCacheType.COMMIT_CACHE);
+    }
+
+    for (int i = 100 - cacheSize; i < 100; i++) {
+      then(repoCache.hasRevision("v" + i))
+        .overridingErrorMessage("Doesn't contain entry for revision v" + i)
+        .isTrue();
+    }
   }
 
 
