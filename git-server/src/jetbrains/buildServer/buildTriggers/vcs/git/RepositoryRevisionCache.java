@@ -64,10 +64,15 @@ public final class RepositoryRevisionCache {
         return;
       Boolean existing = hasRevision(revision);
       if (existing == null || has != existing) {
-        myCache.put(revision, has);
+        saveRevision(revision, has);
         write();
       }
     }
+  }
+
+
+  private void saveRevision(@NotNull String revision, boolean has) throws IOException {
+    myCache.put(revision, has);
   }
 
 
@@ -193,10 +198,10 @@ public final class RepositoryRevisionCache {
           char c = line.charAt(0);
           switch (c) {
             case '+':
-              result.saveRevision(line.substring(1), true, 0);
+              result.saveRevision(line.substring(1), true);
               break;
             case '-':
-              result.saveRevision(line.substring(1), false, 0);
+              result.saveRevision(line.substring(1), false);
               break;
             default:
               throw new IOException("Bad cache line '" + line + "'");
