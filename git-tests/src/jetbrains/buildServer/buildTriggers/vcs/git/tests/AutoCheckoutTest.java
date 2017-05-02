@@ -37,6 +37,7 @@ import java.io.File;
 import java.io.IOException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.UpdaterImpl.GIT_WITH_SPARSE_CHECKOUT;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVersionProvider.getGitPath;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder.runningBuild;
 import static org.assertj.core.api.BDDAssertions.then;
@@ -62,7 +63,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
   public void git_client_found_by_path_from_root() throws IOException, VcsException {
     myVcsSupport = vcsSupportWithRealGit();
 
-    VcsRoot vcsRoot = vcsRootWithAgentGitPath("git");
+    VcsRoot vcsRoot = vcsRootWithAgentGitPath();
 
     verifyCanCheckout(vcsRoot, CheckoutRules.DEFAULT, runningBuild().addRoot(vcsRoot).build());
   }
@@ -71,7 +72,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     myVcsSupport = vcsSupportWithRealGit();
 
     VcsRoot vcsRoot = vcsRootWithAgentGitPath(null);
-    AgentRunningBuild build = runningBuild().sharedEnvVariable(Constants.TEAMCITY_AGENT_GIT_PATH, "git").addRoot(vcsRoot).build();
+    AgentRunningBuild build = runningBuild().sharedEnvVariable(Constants.TEAMCITY_AGENT_GIT_PATH, getGitPath()).addRoot(vcsRoot).build();
 
     verifyCanCheckout(vcsRoot, CheckoutRules.DEFAULT, build);
   }
@@ -89,7 +90,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
   public void exclude_rules_are_used_without_sparse_checkout() throws IOException, VcsException {
     myVcsSupport = vcsSupportWithFakeGitOfVersion(GIT_WITH_SPARSE_CHECKOUT);
 
-    VcsRoot vcsRoot = vcsRootWithAgentGitPath("git");
+    VcsRoot vcsRoot = vcsRootWithAgentGitPath();
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "false")
       .addRootEntry(vcsRoot, "-:dir/q.txt").build();
 
@@ -101,7 +102,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
   public void include_rule_with_mapping_is_used_without_sparse_checkout() throws IOException, VcsException {
     myVcsSupport =  vcsSupportWithFakeGitOfVersion(GIT_WITH_SPARSE_CHECKOUT);
 
-    VcsRoot vcsRoot = vcsRootWithAgentGitPath("git");
+    VcsRoot vcsRoot = vcsRootWithAgentGitPath();
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "false")
       .addRootEntry(vcsRoot, "+:a/b/c => d").build();
 
@@ -114,7 +115,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     GitVersion gitVersion = GIT_WITH_SPARSE_CHECKOUT.previousVersion();
     myVcsSupport =  vcsSupportWithFakeGitOfVersion(gitVersion);
 
-    VcsRoot vcsRoot = vcsRootWithAgentGitPath("git");
+    VcsRoot vcsRoot = vcsRootWithAgentGitPath(getGitPath());
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true")
       .addRootEntry(vcsRoot, "-:dir/q.txt").build();
 
@@ -127,7 +128,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     GitVersion gitVersion = GIT_WITH_SPARSE_CHECKOUT.previousVersion();
     myVcsSupport =  vcsSupportWithFakeGitOfVersion(gitVersion);
 
-    VcsRoot vcsRoot = vcsRootWithAgentGitPath("git");
+    VcsRoot vcsRoot = vcsRootWithAgentGitPath(gitVersion.toString());
     AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").addRoot(vcsRoot).build();
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, CheckoutRules.DEFAULT, build);
@@ -140,6 +141,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     VcsRoot vcsRoot = vcsRoot()
       .withFetchUrl(getRemoteRepositoryUrl("repo.git"))
       .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE)
+      .withAgentGitPath(getGitPath())
       .build();
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, CheckoutRules.DEFAULT, runningBuild().addRoot(vcsRoot).build());
@@ -182,8 +184,8 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
   public void several_roots(@NotNull Setup setup) throws Exception {
     myVcsSupport = vcsSupportWithRealGit();
 
-    VcsRoot root1 = vcsRoot().withId(1).withFetchUrl("http://some.org/repo1.git").build();
-    VcsRoot root2 = vcsRoot().withId(2).withFetchUrl("http://some.org/repo2.git").build();
+    VcsRoot root1 = vcsRoot().withId(1).withFetchUrl("http://some.org/repo1.git").withAgentGitPath(getGitPath()).build();
+    VcsRoot root2 = vcsRoot().withId(2).withFetchUrl("http://some.org/repo2.git").withAgentGitPath(getGitPath()).build();
     AgentRunningBuild build = runningBuild()
       .addRootEntry(root1, setup.getCheckoutRules1())
       .addRootEntry(root2, setup.getCheckoutRules2())
@@ -208,7 +210,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
 
     //second root has broken git path, we should not take it into account
     //during canCheckout() for the first VCS root
-    VcsRoot root1 = vcsRoot().withId(1).withFetchUrl("http://some.org/repo1.git").build();
+    VcsRoot root1 = vcsRoot().withId(1).withAgentGitPath(getGitPath()).withFetchUrl("http://some.org/repo1.git").build();
     VcsRoot root2 = vcsRoot().withId(2).withAgentGitPath("wrongGitPath").withFetchUrl("http://some.org/repo2.git").build();
     AgentRunningBuild build = runningBuild()
       .addRootEntry(root1, "+:dir1")
@@ -266,6 +268,10 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     myCheckoutDir.mkdirs();
     myVcsSupport.updateSources(vcsRoot, checkoutRules, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, true);
     then(myCheckoutDir.listFiles()).isNotEmpty();
+  }
+
+  private VcsRoot vcsRootWithAgentGitPath() {
+    return vcsRootWithAgentGitPath(getGitPath());
   }
 
   private VcsRoot vcsRootWithAgentGitPath(String path) {
