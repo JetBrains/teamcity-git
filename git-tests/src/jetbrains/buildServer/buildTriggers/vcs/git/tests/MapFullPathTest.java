@@ -21,6 +21,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitMapFullPath;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
+import jetbrains.buildServer.log.LogInitializer;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -39,16 +40,15 @@ import org.jetbrains.annotations.NotNull;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.jmock.lib.legacy.ClassImposteriser;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 
+import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
@@ -70,6 +70,11 @@ public class MapFullPathTest {
   private VcsRoot myRoot2;
   private VcsRootEntry myRootEntry2;
 
+  @BeforeClass
+  public void setUpClass() {
+    LogInitializer.setUnitTest(true);
+  }
+
   @BeforeMethod
   public void setUp() throws IOException {
     new TeamCityProperties() {{
@@ -88,9 +93,9 @@ public class MapFullPathTest {
     GitSupportBuilder gitBuilder = gitSupport().withServerPaths(paths);
     myGit = gitBuilder.build();
     myMapFullPath = gitBuilder.getMapFullPath();
-    myRoot = vcsRoot().withFetchUrl(myRemoteRepositoryDir.getAbsolutePath()).build();
+    myRoot = vcsRoot().withId(1).withFetchUrl(myRemoteRepositoryDir.getAbsolutePath()).build();
     myRootEntry = new VcsRootEntry(myRoot, CheckoutRules.DEFAULT);
-    myRoot2 = vcsRoot().withFetchUrl(myRemoteRepositoryDir2.getAbsolutePath()).build();
+    myRoot2 = vcsRoot().withId(2).withFetchUrl(myRemoteRepositoryDir2.getAbsolutePath()).build();
     myRootEntry2 = new VcsRootEntry(myRoot2, CheckoutRules.DEFAULT);
   }
 
@@ -188,6 +193,31 @@ public class MapFullPathTest {
     assertTrue(myMapFullPath.mapFullPath(ctx2, myRootEntry2, hintCommit + "-" + "any_other_commit").isEmpty());
 
     myContext.assertIsSatisfied();
+  }
+
+
+  public void bulk() throws Exception {
+    //clone repository for myRoot and root3
+    RepositoryStateData state0 = RepositoryStateData.createSingleVersionState("a7274ca8e024d98c7d59874f19f21d26ee31d41d");
+    RepositoryStateData state1 = myGit.getCurrentState(myRoot);
+    myGit.getCollectChangesPolicy().collectChanges(myRoot, state0, state1, CheckoutRules.DEFAULT);
+
+    VcsRoot root3 = vcsRoot().withId(3).withFetchUrl(myRemoteRepositoryDir.getAbsolutePath()).build();//tracks same repo as myRoot1
+    VcsRoot root4 = vcsRoot().withId(4).withFetchUrl(myRemoteRepositoryDir2.getAbsolutePath()).build();//tracks same repo as myRoot2
+
+    List<Boolean> result = myGit.checkSuitable(asList(
+      new VcsRootEntry(myRoot, new CheckoutRules("+:dir1")),
+      new VcsRootEntry(myRoot2, new CheckoutRules("+:dir2")),
+      new VcsRootEntry(root3, new CheckoutRules("+:dir3")),
+      new VcsRootEntry(root4, new CheckoutRules("+:dir4")),
+      new VcsRootEntry(root3, new CheckoutRules("+:dir5")),
+      new VcsRootEntry(root4, new CheckoutRules("+:dir6"))
+      ), asList(
+      "a7274ca8e024d98c7d59874f19f21d26ee31d41d-add81050184d3c818560bdd8839f50024c188586||.",//affects root and root3
+      "abababababababababababababababababababab||.")//affects no repo
+    );
+
+    then(result).containsExactly(true, false, true, false, true, false);
   }
 
 
