@@ -38,6 +38,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
@@ -50,7 +51,7 @@ import static jetbrains.buildServer.util.CollectionsUtil.setOf;
  * Git VCS support
  */
 public class GitVcsSupport extends ServerVcsSupport
-  implements VcsPersonalSupport, BuildPatchByCheckoutRules,
+  implements VcsBulkSuitabilityChecker, BuildPatchByCheckoutRules,
              TestConnectionSupport, IncludeRuleBasedMappingProvider {
 
   private static final Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
@@ -346,6 +347,34 @@ public class GitVcsSupport extends ServerVcsSupport
     } finally {
       context.close();
     }
+  }
+
+
+  @NotNull
+  @Override
+  public List<Boolean> checkSuitable(@NotNull List<VcsRootEntry> entries, @NotNull Collection<String> paths) throws VcsException {
+    List<Boolean> result = new ArrayList<>();
+    //since checkout rules have no effect on mapFullPath we can check suitability for default rules only
+    Set<VcsRoot> roots = entries.stream().map(VcsRootEntry::getVcsRoot).collect(Collectors.toSet());
+    Map<VcsRoot, Boolean> rootResult = new HashMap<>();
+    for (VcsRoot root : roots) {
+      boolean suitable = false;
+      for (String path : paths) {
+        if (!mapFullPath(new VcsRootEntry(root, CheckoutRules.DEFAULT), path).isEmpty()) {
+          suitable = true;
+          break;
+        }
+      }
+      rootResult.put(root, suitable);
+    }
+
+    for (VcsRootEntry entry : entries) {
+      Boolean suitable = rootResult.get(entry.getVcsRoot());
+      if (suitable == null) //should not happen
+        suitable = false;
+      result.add(suitable);
+    }
+    return result;
   }
 
   @Override
