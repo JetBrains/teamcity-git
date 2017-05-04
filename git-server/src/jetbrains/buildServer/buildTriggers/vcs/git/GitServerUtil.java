@@ -342,7 +342,7 @@ public class GitServerUtil {
   /**
    * Removes branches of a bare repository which are not present in a remote repository
    */
-  private static void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn) throws IOException {
+  private static void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn) {
     FetchConnection conn = null;
     try {
       conn = tn.openFetch();
@@ -359,6 +359,8 @@ public class GitServerUtil {
           }
         }
       }
+    } catch (IOException e) {
+      LOG.info("Failed to list remote refs, continue without pruning removed refs", e);
     } finally {
       if (conn != null)
         conn.close();
