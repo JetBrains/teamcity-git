@@ -148,4 +148,6 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean createNewConnectionForPrune();
 
   boolean ignoreMissingRemoteRef();
+
+  int getMergeRetryAttempts();
 }
