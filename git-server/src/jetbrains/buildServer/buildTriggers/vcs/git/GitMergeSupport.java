@@ -27,7 +27,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
-import org.eclipse.jgit.transport.PushConnection;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.Transport;
@@ -72,9 +71,9 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     try {
       GitVcsRoot gitRoot = context.getGitRoot();
       Repository db = context.getRepository();
-      int attemptsLeft = 3;
-      MergeResult result = MergeResult.createMergeSuccessResult();
-      while (attemptsLeft > 0) {
+      int attemptsLeft = myPluginConfig.getMergeRetryAttempts();
+      MergeResult result;
+      do {
         try {
           result = doMerge(context, gitRoot, db, srcRevision, dstBranch, message, options);
           if (result.isMergePerformed() && result.isSuccess()) {
@@ -90,7 +89,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
           LOG.info("Merge failed, root " + root + ", revision " + srcRevision + ", destination " + dstBranch, e);
           return MergeResult.createMergeError(e.getMessage());
         }
-      }
+      } while (attemptsLeft > 0);
       return result;
     } catch (Exception e) {
       throw context.wrapException(e);
@@ -159,19 +158,14 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
       final Transport tn = myTransportFactory.createTransport(db, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings(),
                                                               myPluginConfig.getPushTimeoutSeconds());
       try {
-        final PushConnection c = tn.openPush();
-        try {
-          RemoteRefUpdate ru = new RemoteRefUpdate(db, null, commitId, GitUtils.expandRef(dstBranch), false, null, dstBranchLastCommit);
-          c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(GitUtils.expandRef(dstBranch), ru));
-          switch (ru.getStatus()) {
-            case UP_TO_DATE:
-            case OK:
-              return MergeResult.createMergeSuccessResult();
-            default:
-              return MergeResult.createMergeError("Push failed, " + ru.getMessage());
-          }
-        } finally {
-          c.close();
+        RemoteRefUpdate ru = new RemoteRefUpdate(db, null, commitId, GitUtils.expandRef(dstBranch), false, null, dstBranchLastCommit);
+        tn.push(NullProgressMonitor.INSTANCE, Collections.singletonList(ru));
+        switch (ru.getStatus()) {
+          case UP_TO_DATE:
+          case OK:
+            return MergeResult.createMergeSuccessResult();
+          default:
+            return MergeResult.createMergeError("Push failed, " + ru.getMessage());
         }
       } catch (IOException e) {
         LOG.debug("Error while pushing a merge commit, root " + gitRoot + ", revision " + srcRevision + ", destination " + dstBranch, e);

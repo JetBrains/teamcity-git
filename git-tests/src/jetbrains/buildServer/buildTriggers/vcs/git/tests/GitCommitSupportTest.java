@@ -31,9 +31,12 @@ import org.testng.annotations.Test;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
+import static jetbrains.buildServer.util.Util.map;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.testng.AssertJUnit.*;
 
@@ -156,6 +159,70 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     List<ModificationData> changes = myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);
     then(changes).hasSize(1);
     then(changes.get(0).getChanges()).extracting("fileName", "type").containsOnly(Tuple.tuple("dir/file", VcsChange.Type.REMOVED));
+  }
+
+
+  @TestFor(issues = "TW-48463")
+  public void concurrent_commit() throws Exception {
+    //make clone on the server, so that none of the merges perform the clone
+    RepositoryStateData s1 = RepositoryStateData.createVersionState("refs/heads/master", map(
+      "refs/heads/master", "f727882267df4f8fe0bc58c18559591918aefc54"));
+    RepositoryStateData s2 = RepositoryStateData.createVersionState("refs/heads/master", map(
+      "refs/heads/master", "f727882267df4f8fe0bc58c18559591918aefc54",
+      "refs/heads/topic2", "cc69c22bd5d25779e58ad91008e685cbbe7f700a"));
+    myGit.getCollectChangesPolicy().collectChanges(myRoot, s1, s2, CheckoutRules.DEFAULT);
+
+
+    CountDownLatch latch = new CountDownLatch(1);
+    CountDownLatch t1Ready = new CountDownLatch(1);
+    CountDownLatch t2Ready = new CountDownLatch(1);
+    AtomicReference<VcsException> error1 = new AtomicReference<>();
+    AtomicReference<VcsException> error2 = new AtomicReference<>();
+    Thread t1 = new Thread(() -> {
+      CommitPatchBuilder patchBuilder = null;
+      try {
+        patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
+        patchBuilder.createFile("file-to-commit", new ByteArrayInputStream("content1".getBytes()));
+        t1Ready.countDown();
+        latch.await();
+        patchBuilder.commit(new CommitSettingsImpl("user", "Commit1"));
+      } catch (VcsException e) {
+        error1.set(e);
+      } catch (Exception e) {
+        e.printStackTrace();
+      } finally {
+        if (patchBuilder != null)
+          patchBuilder.dispose();
+      }
+    });
+    t1.start();
+    Thread t2 = new Thread(() -> {
+      CommitPatchBuilder patchBuilder = null;
+      try {
+        patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
+        patchBuilder.createFile("file-to-commit", new ByteArrayInputStream("content2".getBytes()));
+        t2Ready.countDown();
+        latch.await();
+        patchBuilder.commit(new CommitSettingsImpl("user", "Commit2"));
+      } catch (VcsException e) {
+        error2.set(e);
+      } catch (Exception e) {
+        e.printStackTrace();
+      } finally {
+        if (patchBuilder != null)
+          patchBuilder.dispose();
+      }
+    });
+    t2.start();
+    t1Ready.await();
+    t2Ready.await();
+    latch.countDown();
+    t1.join();
+    t2.join();
+
+    then(error1.get() != null || error2.get() != null)
+      .overridingErrorMessage("Non-fast-forward push succeeds")
+      .isTrue();
   }
 
 

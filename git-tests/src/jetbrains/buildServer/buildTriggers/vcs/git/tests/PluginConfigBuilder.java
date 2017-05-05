@@ -69,6 +69,7 @@ public class PluginConfigBuilder {
   private TempFiles myTempFiles;
   private Boolean myNewConnectionForPrune;
   private Boolean myIgnoreMissingRemoteRef;
+  private Integer myMergeRetryAttempts;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -331,6 +332,13 @@ public class PluginConfigBuilder {
           return myIgnoreMissingRemoteRef;
         return myDelegate.ignoreMissingRemoteRef();
       }
+
+      @Override
+      public int getMergeRetryAttempts() {
+        if (myMergeRetryAttempts != null)
+          return myMergeRetryAttempts;
+        return myDelegate.getMergeRetryAttempts();
+      }
     };
   }
 
@@ -501,6 +509,11 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setIgnoreMissingRemoteRef(boolean ignoreMissingRemoteRef) {
     myIgnoreMissingRemoteRef = ignoreMissingRemoteRef;
+    return this;
+  }
+
+  PluginConfigBuilder setMergeRetryAttempts(@Nullable Integer retryAttempts) {
+    myMergeRetryAttempts = retryAttempts;
     return this;
   }
 }
