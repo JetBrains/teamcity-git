@@ -26,11 +26,15 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
+import static jetbrains.buildServer.buildTriggers.vcs.git.tests.PluginConfigBuilder.pluginConfig;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.Util.map;
+import static org.assertj.core.api.BDDAssertions.then;
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertTrue;
 
@@ -40,6 +44,7 @@ public class GitMergeSupportTest extends BaseRemoteRepositoryTest {
   private GitVcsSupport myGit;
   private MergeSupport myMergeSupport;
   private VcsRoot myRoot;
+  private ServerPaths myPaths;
 
   public GitMergeSupportTest() {
     super("merge");
@@ -48,7 +53,7 @@ public class GitMergeSupportTest extends BaseRemoteRepositoryTest {
   @BeforeMethod
   public void setUp() throws Exception {
     super.setUp();
-    ServerPaths myPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
+    myPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
     GitSupportBuilder builder = gitSupport().withServerPaths(myPaths);
     myGit = builder.build();
     myMergeSupport = new GitMergeSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), builder.getTransportFactory(),
@@ -106,5 +111,58 @@ public class GitMergeSupportTest extends BaseRemoteRepositoryTest {
     ModificationData m = changes.get(0);
     assertTrue(m.getParentRevisions().containsAll(asList(stateBeforeMerge.getBranchRevisions().get("refs/heads/topic"),
                                                          stateBeforeMerge.getBranchRevisions().get("refs/heads/topic3"))));
+  }
+
+
+  @TestFor(issues = "TW-48463")
+  public void concurrent_merge() throws Exception {
+    GitSupportBuilder builder = gitSupport().withPluginConfig(pluginConfig().setPaths(myPaths).setMergeRetryAttempts(0));//disable merge retries
+    myGit = builder.build();
+    myMergeSupport = new GitMergeSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), builder.getTransportFactory(), builder.getPluginConfig());
+
+    //make clone on the server, so that none of the merges perform the clone
+    RepositoryStateData s1 = RepositoryStateData.createVersionState("refs/heads/master", map(
+      "refs/heads/master", "f727882267df4f8fe0bc58c18559591918aefc54"));
+    RepositoryStateData s2 = RepositoryStateData.createVersionState("refs/heads/master", map(
+      "refs/heads/master", "f727882267df4f8fe0bc58c18559591918aefc54",
+      "refs/heads/topic2", "cc69c22bd5d25779e58ad91008e685cbbe7f700a",
+      "refs/heads/topic3", "68b73163526a29a1f5a341f3b6fcd0d928748579"));
+    myGit.getCollectChangesPolicy().collectChanges(myRoot, s1, s2, CheckoutRules.DEFAULT);
+
+    //run concurrent merge of topic2 and topic3 into master, one of the merges should fail since branches diverged
+    CountDownLatch latch = new CountDownLatch(1);
+    CountDownLatch t1Ready = new CountDownLatch(1);
+    CountDownLatch t2Ready = new CountDownLatch(1);
+    AtomicReference<MergeResult> result1 = new AtomicReference<>();
+    AtomicReference<MergeResult> result2 = new AtomicReference<>();
+    Thread t1 = new Thread(() -> {
+      try {
+        t1Ready.countDown();
+        latch.await();
+        result1.set(myMergeSupport.merge(myRoot, "cc69c22bd5d25779e58ad91008e685cbbe7f700a", "refs/heads/master", "merge", new MergeOptions()));
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    });
+    t1.start();
+    Thread t2 = new Thread(() -> {
+      try {
+        t2Ready.countDown();
+        latch.await();
+        result2.set(myMergeSupport.merge(myRoot, "68b73163526a29a1f5a341f3b6fcd0d928748579", "refs/heads/master", "merge", new MergeOptions()));
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    });
+    t2.start();
+    t1Ready.await();
+    t2Ready.await();
+    latch.countDown();
+    t1.join();
+    t2.join();
+
+    then(result1.get().isSuccess())
+      .overridingErrorMessage("Non-fast-forward push succeeds")
+      .isNotEqualTo(result2.get().isSuccess());
   }
 }

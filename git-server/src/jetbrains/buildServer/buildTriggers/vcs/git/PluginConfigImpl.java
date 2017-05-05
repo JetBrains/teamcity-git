@@ -77,6 +77,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public static final String CREATE_NEW_CONNECTION_FOR_PRUNE = "teamcity.git.newConnectionForPrune";
   public static final String IGNORE_MISSING_REMOTE_REF = "teamcity.git.ignoreMissingRemoteRef";
   private static final String ACCESS_TIME_UPDATE_RATE_MINUTES = "teamcity.git.accessTimeUpdateRateMinutes";
+  private static final String MERGE_RETRY_ATTEMPTS = "teamcity.git.mergeRetryAttemps";
   private static final String GET_REPOSITORY_STATE_TIMEOUT_SECONDS = "teamcity.git.repositoryStateTimeoutSeconds";
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
@@ -531,5 +532,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   public boolean ignoreMissingRemoteRef() {
     return TeamCityProperties.getBoolean(IGNORE_MISSING_REMOTE_REF);
+  }
+
+  @Override
+  public int getMergeRetryAttempts() {
+    return TeamCityProperties.getInteger(MERGE_RETRY_ATTEMPTS, 2);
   }
 }

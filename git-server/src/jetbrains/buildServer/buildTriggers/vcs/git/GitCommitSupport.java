@@ -27,7 +27,6 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.transport.PushConnection;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.Transport;
@@ -162,25 +161,20 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
           final Transport tn = myTransportFactory.createTransport(myDb, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings(),
                                                                   myPluginConfig.getPushTimeoutSeconds());
           try {
-            final PushConnection c = tn.openPush();
-            try {
-              RemoteRefUpdate ru = new RemoteRefUpdate(myDb, null, commitId, GitUtils.expandRef(gitRoot.getRef()), false, null, lastCommit);
-              c.push(NullProgressMonitor.INSTANCE, Collections.singletonMap(GitUtils.expandRef(gitRoot.getRef()), ru));
-              switch (ru.getStatus()) {
-                case UP_TO_DATE:
-                case OK:
-                  LOG.info("Change '" + commitSettings.getDescription() + "' was successfully committed");
-                  return CommitResult.createSuccessResult(commitId.name());
-                default: {
-                  StringBuilder error = new StringBuilder();
-                  error.append("Push failed, status: ").append(ru.getStatus());
-                  if (ru.getMessage() != null)
-                    error.append(", message: ").append(ru.getMessage());
-                  throw new VcsException(error.toString());
-                }
+            RemoteRefUpdate ru = new RemoteRefUpdate(myDb, null, commitId, GitUtils.expandRef(gitRoot.getRef()), false, null, lastCommit);
+            tn.push(NullProgressMonitor.INSTANCE, Collections.singletonList(ru));
+            switch (ru.getStatus()) {
+              case UP_TO_DATE:
+              case OK:
+                LOG.info("Change '" + commitSettings.getDescription() + "' was successfully committed");
+                return CommitResult.createSuccessResult(commitId.name());
+              default: {
+                StringBuilder error = new StringBuilder();
+                error.append("Push failed, status: ").append(ru.getStatus());
+                if (ru.getMessage() != null)
+                  error.append(", message: ").append(ru.getMessage());
+                throw new VcsException(error.toString());
               }
-            } finally {
-              c.close();
             }
           } catch (IOException e) {
             LOG.warn("Error while pushing a commit, root " + gitRoot + ", revision " + commitId + ", destination " + GitUtils.expandRef(gitRoot.getRef()), e);

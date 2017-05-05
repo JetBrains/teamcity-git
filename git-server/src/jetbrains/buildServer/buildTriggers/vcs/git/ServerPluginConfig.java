@@ -150,4 +150,6 @@ public interface ServerPluginConfig extends PluginConfig {
   long getAccessTimeUpdateRateMinutes();
 
   boolean ignoreMissingRemoteRef();
+
+  int getMergeRetryAttempts();
 }
