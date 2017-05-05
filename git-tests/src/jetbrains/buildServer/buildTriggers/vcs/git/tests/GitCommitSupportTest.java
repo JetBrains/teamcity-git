@@ -172,6 +172,7 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
       "refs/heads/topic2", "cc69c22bd5d25779e58ad91008e685cbbe7f700a"));
     myGit.getCollectChangesPolicy().collectChanges(myRoot, s1, s2, CheckoutRules.DEFAULT);
 
+    RepositoryStateData state1 = myGit.getCurrentState(myRoot);
 
     CountDownLatch latch = new CountDownLatch(1);
     CountDownLatch t1Ready = new CountDownLatch(1);
@@ -220,7 +221,11 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     t1.join();
     t2.join();
 
-    then(error1.get() != null || error2.get() != null)
+    RepositoryStateData state2 = myGit.getCurrentState(myRoot);
+
+    List<ModificationData> changes = myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);
+
+    then(changes.size() == 2 || (error1.get() != null || error2.get() != null)) //either both commits succeeds, or one finishes with an error
       .overridingErrorMessage("Non-fast-forward push succeeds")
       .isTrue();
   }
