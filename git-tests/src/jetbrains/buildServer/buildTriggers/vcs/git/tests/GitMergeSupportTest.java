@@ -129,6 +129,7 @@ public class GitMergeSupportTest extends BaseRemoteRepositoryTest {
       "refs/heads/topic3", "68b73163526a29a1f5a341f3b6fcd0d928748579"));
     myGit.getCollectChangesPolicy().collectChanges(myRoot, s1, s2, CheckoutRules.DEFAULT);
 
+    RepositoryStateData state1 = myGit.getCurrentState(myRoot);
     //run concurrent merge of topic2 and topic3 into master, one of the merges should fail since branches diverged
     CountDownLatch latch = new CountDownLatch(1);
     CountDownLatch t1Ready = new CountDownLatch(1);
@@ -161,8 +162,13 @@ public class GitMergeSupportTest extends BaseRemoteRepositoryTest {
     t1.join();
     t2.join();
 
-    then(result1.get().isSuccess())
+    RepositoryStateData state2 = myGit.getCurrentState(myRoot);
+    List<ModificationData> changes = myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);
+    long successfulMergeCommitCommitCount = changes.stream().filter(m -> m.getParentRevisions().size() == 2).count();
+
+    //either both merges succeeds and made it into repository, or one of them fails
+    then(successfulMergeCommitCommitCount == 2 || result1.get().isSuccess() != result2.get().isSuccess())
       .overridingErrorMessage("Non-fast-forward push succeeds")
-      .isNotEqualTo(result2.get().isSuccess());
+      .isTrue();
   }
 }
