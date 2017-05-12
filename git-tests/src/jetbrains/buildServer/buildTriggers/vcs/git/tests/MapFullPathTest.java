@@ -207,6 +207,7 @@ public class MapFullPathTest {
 
     List<Boolean> result = myGit.checkSuitable(asList(
       new VcsRootEntry(myRoot, new CheckoutRules("+:dir1")),
+      new VcsRootEntry(myRoot, new CheckoutRules("+:dir2")),
       new VcsRootEntry(myRoot2, new CheckoutRules("+:dir2")),
       new VcsRootEntry(root3, new CheckoutRules("+:dir3")),
       new VcsRootEntry(root4, new CheckoutRules("+:dir4")),
@@ -217,7 +218,7 @@ public class MapFullPathTest {
       "abababababababababababababababababababab||.")//affects no repo
     );
 
-    then(result).containsExactly(true, false, true, false, true, false);
+    then(result).containsExactly(true, true, false, true, false, true, false);
   }
 
 
