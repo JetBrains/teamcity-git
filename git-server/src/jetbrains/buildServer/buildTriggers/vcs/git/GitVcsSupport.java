@@ -36,6 +36,7 @@ import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -291,11 +292,15 @@ public class GitVcsSupport extends ServerVcsSupport
     return this;
   }
 
+  public OperationContext createContext(@NotNull String operation) {
+    return createContext(null, operation);
+  }
+
   public OperationContext createContext(VcsRoot root, String operation) {
     return createContext(root, operation, GitProgress.NO_OP);
   }
 
-  public OperationContext createContext(@NotNull VcsRoot root, @NotNull String operation, @NotNull GitProgress progress) {
+  public OperationContext createContext(@Nullable VcsRoot root, @NotNull String operation, @NotNull GitProgress progress) {
     return new OperationContext(myCommitLoader, myRepositoryManager, root, operation, progress);
   }
 
@@ -353,29 +358,60 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   @Override
   public List<Boolean> checkSuitable(@NotNull List<VcsRootEntry> entries, @NotNull Collection<String> paths) throws VcsException {
-    List<Boolean> result = new ArrayList<>();
-    //since checkout rules have no effect on mapFullPath we can check suitability for default rules only
-    Set<VcsRoot> roots = entries.stream().map(VcsRootEntry::getVcsRoot).collect(Collectors.toSet());
-    Map<VcsRoot, Boolean> rootResult = new HashMap<>();
-    for (VcsRoot root : roots) {
-      boolean suitable = false;
-      for (String path : paths) {
-        if (!mapFullPath(new VcsRootEntry(root, CheckoutRules.DEFAULT), path).isEmpty()) {
-          suitable = true;
-          break;
+    OperationContext context = createContext("checkSuitable");
+    try {
+      Set<GitMapFullPath.FullPath> fullPaths = paths.stream().map(GitMapFullPath.FullPath::new).collect(Collectors.toSet());
+
+      //checkout rules do not affect suitability, we can check it for unique root only ignoring different checkout rules
+      Set<VcsRoot> uniqueRoots = entries.stream().map(VcsRootEntry::getVcsRoot).collect(Collectors.toSet());
+      Set<GitVcsRoot> gitRoots = new HashSet<>();
+      for (VcsRoot root : uniqueRoots) {
+        try {
+          gitRoots.add(context.getGitRoot(root));
+        } catch (VcsException e) {
+          //will return false for broken VCS root
+          LOG.warnAndDebugDetails("Error while checking suitability for root " + LogUtil.describe(root) + ", assume root is not suitable", e);
         }
       }
-      rootResult.put(root, suitable);
-    }
 
-    for (VcsRootEntry entry : entries) {
-      Boolean suitable = rootResult.get(entry.getVcsRoot());
-      if (suitable == null) //should not happen
-        suitable = false;
-      result.add(suitable);
+      //several roots with different settings can be cloned into the same dir,
+      //do not compute suitability for given clone dir more than once
+      Map<File, Boolean> cloneDirResults = new HashMap<>();//clone dir -> result for this dir
+      Map<VcsRoot, Boolean> rootResult = new HashMap<>();
+      for (GitVcsRoot gitRoot : gitRoots) {
+        Boolean cloneDirResult = cloneDirResults.get(gitRoot.getRepositoryDir());
+        if (cloneDirResult != null) {
+          rootResult.put(gitRoot.getOriginalRoot(), cloneDirResult);
+          continue;
+        }
+
+        boolean suitable = false;
+        for (GitMapFullPath.FullPath path : fullPaths) {
+          if (myMapFullPath.repositoryContainsPath(context, gitRoot, path)) {
+            suitable = true;
+            break;
+          }
+        }
+        rootResult.put(gitRoot.getOriginalRoot(), suitable);
+        cloneDirResults.put(gitRoot.getRepositoryDir(), suitable);
+      }
+
+      List<Boolean> result = new ArrayList<>();
+      for (VcsRootEntry entry : entries) {
+        Boolean suitable = rootResult.get(entry.getVcsRoot());
+        if (suitable != null) {
+          result.add(suitable);
+        } else {
+          //can be null if the root was broken
+          result.add(false);
+        }
+      }
+      return result;
+    } finally {
+      context.close();
     }
-    return result;
   }
+
 
   @Override
   public boolean isAgentSideCheckoutAvailable() {

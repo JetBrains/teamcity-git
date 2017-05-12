@@ -38,6 +38,7 @@ import java.net.URISyntaxException;
 import java.util.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
+import static java.util.Collections.singleton;
 
 /**
 * @author kir
@@ -61,56 +62,64 @@ public class GitMapFullPath {
 
 
   @NotNull
-  public Collection<String> mapFullPath(@NotNull OperationContext context, @NotNull VcsRootEntry rootEntry, @NotNull String path) throws VcsException, IOException {
-    GitVcsRoot root = context.getGitRoot();
+  public Collection<String> mapFullPath(@NotNull OperationContext context, @NotNull VcsRootEntry rootEntry, @NotNull String path) throws VcsException {
+    GitVcsRoot root = context.getGitRoot(rootEntry.getVcsRoot());
     if (LOG.isDebugEnabled())
       LOG.debug("MapFullPath root: " + LogUtil.describe(root) + ", path " + path);
     FullPath fullPath = new FullPath(path);
-    if (!fullPath.isValid()) {
-      LOG.warn("Invalid path: " + path);
+    if (repositoryContainsPath(context, root, fullPath)) {
+      return fullPath.getMappedPaths();
+    } else {
       return Collections.emptySet();
     }
+  }
 
-    //match by revision
-    if (fullPath.containsRevision()) {
-      if (fullPath.containsHintRevision()) {
-        //if full path has a hint revision, first check if repository contains it;
-        //a hint revision should rarely change and most likely will be cached
-        if (repositoryContainsRevision(context, rootEntry, fullPath.getHintRevision(), RevisionCacheType.HINT_CACHE)
-            && repositoryContainsRevision(context, rootEntry, fullPath.getRevision(), RevisionCacheType.COMMIT_CACHE))
-            return fullPath.getMappedPaths();
-      } else {
-        if (repositoryContainsRevision(context, rootEntry, fullPath.getRevision(), RevisionCacheType.COMMIT_CACHE))
-          return fullPath.getMappedPaths();
-      }
+
+  boolean repositoryContainsPath(@NotNull OperationContext context,
+                                 @NotNull GitVcsRoot root,
+                                 @NotNull FullPath path) throws VcsException {
+    if (!path.isValid()) {
+      LOG.warn("Invalid path: " + path);
+      return false;
     }
 
-    //match by url only if path doesn't have revision
-    if (!fullPath.containsRevision() && urlsMatch(root, fullPath))
-      return fullPath.getMappedPaths();
-
-    return Collections.emptySet();
+    try {
+      if (path.containsRevision()) {
+        if (path.containsHintRevision()) {
+          //if full path has a hint revision, first check if repository contains it;
+          //a hint revision should rarely change and most likely will be cached
+          return repositoryContainsRevision(context, root, path.getHintRevision(), RevisionCacheType.HINT_CACHE) &&
+                 repositoryContainsRevision(context, root, path.getRevision(), RevisionCacheType.COMMIT_CACHE);
+        } else {
+          return repositoryContainsRevision(context, root, path.getRevision(), RevisionCacheType.COMMIT_CACHE);
+        }
+      } else {
+        return urlsMatch(root, path);
+      }
+    } catch (IOException e) {
+      LOG.error("Error while checking path suitability for root " + LogUtil.describe(root) + ", path: " + path.getPath(), e);
+      return false;
+    }
   }
 
 
   private boolean repositoryContainsRevision(@NotNull OperationContext context,
-                                             @NotNull VcsRootEntry rootEntry,
+                                             @NotNull GitVcsRoot root,
                                              @NotNull String revision,
                                              @NotNull RevisionCacheType type) throws VcsException, IOException {
-    GitVcsRoot root = context.getGitRoot();
     RepositoryRevisionCache repositoryCache = myCache.getRepositoryCache(root.getRepositoryDir(), type);
     long resetCounter = repositoryCache.getResetCounter();
     Boolean hasRevision = repositoryCache.hasRevision(revision);
     if (hasRevision != null) {
       if (LOG.isDebugEnabled())
-        LOG.debug("RevisionCache hit: root " + LogUtil.describe(rootEntry.getVcsRoot()) + (hasRevision ? "contains " : "doesn't contain ") + "revision " + revision);
+        LOG.debug("RevisionCache hit: root " + LogUtil.describe(root) + (hasRevision ? "contains " : "doesn't contain ") + "revision " + revision);
       return hasRevision;
     } else {
       if (LOG.isDebugEnabled())
-        LOG.debug("RevisionCache miss: root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + ", lookup commit in repository");
-      hasRevision = myCommitLoader.findCommit(context.getRepository(), revision) != null;
+        LOG.debug("RevisionCache miss: root " + LogUtil.describe(root) + ", revision " + revision + ", lookup commit in repository");
+      hasRevision = myCommitLoader.findCommit(context.getRepository(root), revision) != null;
       if (LOG.isDebugEnabled())
-        LOG.debug("Root " + LogUtil.describe(rootEntry.getVcsRoot()) + ", revision " + revision + (hasRevision ? " was found" : " wasn't found") + ", cache the result");
+        LOG.debug("Root " + LogUtil.describe(root) + ", revision " + revision + (hasRevision ? " was found" : " wasn't found") + ", cache the result");
       repositoryCache.saveRevision(revision, hasRevision, resetCounter);
       return hasRevision;
     }
@@ -209,7 +218,7 @@ public class GitMapFullPath {
 
 
   //Format: <hint revision>-<git revision hash>|<repository url>|<file relative path>
-  private static class FullPath {
+  public static class FullPath {
     private final String myPath;
     private final int myFirstSeparatorIdx;
     private final int myLastSeparatorIdx;
@@ -217,7 +226,7 @@ public class GitMapFullPath {
     private final String myRevision;
     private final String myHintRevision;
 
-    private FullPath(@NotNull String path) {
+    public FullPath(@NotNull String path) {
       myPath = path;
       myFirstSeparatorIdx = path.indexOf("|");
       myLastSeparatorIdx = path.lastIndexOf("|");
@@ -272,7 +281,25 @@ public class GitMapFullPath {
 
     @NotNull
     Collection<String> getMappedPaths() {
-      return Collections.singleton(myPath.substring(myLastSeparatorIdx + 1).trim());
+      return singleton(myPath.substring(myLastSeparatorIdx + 1).trim());
+    }
+
+    @NotNull
+    public String getPath() {
+      return myPath;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) return true;
+      if (!(o instanceof FullPath)) return false;
+      final FullPath fullPath = (FullPath)o;
+      return myPath.equals(fullPath.myPath);
+    }
+
+    @Override
+    public int hashCode() {
+      return myPath.hashCode();
     }
   }
 }

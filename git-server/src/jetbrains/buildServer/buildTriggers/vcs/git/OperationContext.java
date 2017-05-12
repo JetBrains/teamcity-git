@@ -60,7 +60,7 @@ public class OperationContext {
 
   public OperationContext(@NotNull final CommitLoader commitLoader,
                           @NotNull final RepositoryManager repositoryManager,
-                          @NotNull final VcsRoot root,
+                          @Nullable final VcsRoot root,
                           @NotNull final String operation,
                           @NotNull final GitProgress progress) {
     myCommitLoader = commitLoader;
