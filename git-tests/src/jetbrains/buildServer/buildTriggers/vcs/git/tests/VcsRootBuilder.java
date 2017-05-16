@@ -32,6 +32,7 @@ public class VcsRootBuilder {
 
   private Integer myId;
   private String myFetchUrl;
+  private String myPushUrl;
   private String myBranchName;
   private String myBranchSpec;
   private SubmodulesCheckoutPolicy mySubmodulePolicy;
@@ -57,6 +58,8 @@ public class VcsRootBuilder {
     result.setName(myFetchUrl);
     result.addProperty(VcsRootImpl.VCS_NAME_PROP, Constants.VCS_NAME);
     result.addProperty(Constants.FETCH_URL, myFetchUrl);
+    if (myPushUrl != null)
+      result.addProperty(Constants.PUSH_URL, myPushUrl);
     result.addProperty(Constants.BRANCH_NAME, myBranchName);
     result.addProperty(Constants.USERNAME_FOR_TAGS, myUsernameForTags);
     result.addProperty(Constants.BRANCH_SPEC, myBranchSpec);
@@ -87,6 +90,11 @@ public class VcsRootBuilder {
 
   public VcsRootBuilder withFetchUrl(String fetchUrl) {
     myFetchUrl = fetchUrl;
+    return this;
+  }
+
+  public VcsRootBuilder withPushUrl(String pushUrl) {
+    myPushUrl = pushUrl;
     return this;
   }
 

@@ -118,4 +118,27 @@ public class VcsPropertiesProcessorTest extends TestCase {
       .contains(tuple(Constants.BRANCH_NAME, "Branch name must be specified"));
   }
 
+
+  @TestFor(issues = "TW-50043")
+  public void prohibit_newline_in_urls() {
+    Collection<InvalidProperty> errors = myProcessor.process(map(
+      Constants.FETCH_URL, "git://some.org/repository\n",
+      Constants.BRANCH_NAME, "refs/heads/master"));
+    then(errors).extracting("propertyName").contains(Constants.FETCH_URL);
+    errors = myProcessor.process(map(
+      Constants.FETCH_URL, "git://some.org/repository\r",
+      Constants.BRANCH_NAME, "refs/heads/master"));
+    then(errors).extracting("propertyName").contains(Constants.FETCH_URL);
+
+    errors = myProcessor.process(map(
+      Constants.FETCH_URL, "git://some.org/repository",
+      Constants.PUSH_URL, "git://some.org/repository\n",
+      Constants.BRANCH_NAME, "refs/heads/master"));
+    then(errors).extracting("propertyName").contains(Constants.PUSH_URL);
+    errors = myProcessor.process(map(
+      Constants.FETCH_URL, "git://some.org/repository",
+      Constants.PUSH_URL, "git://some.org/repository\r",
+      Constants.BRANCH_NAME, "refs/heads/master"));
+    then(errors).extracting("propertyName").contains(Constants.PUSH_URL);
+  }
 }

@@ -23,18 +23,19 @@ import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
+import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertNull;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.AssertJUnit.*;
 
 /**
  * @author dmitry.neverov
@@ -84,6 +85,39 @@ public class GitVcsRootTest {
       assertTrue(FileUtil.isAncestor(myDefaultCachesDir, gitRoot2.getRepositoryDir(), true));
     } finally {
       System.getProperties().remove(Constants.CUSTOM_CLONE_PATH_ENABLED);
+    }
+  }
+
+  @DataProvider(name = "urlsWithNewLines")
+  public static Object[][] urlsWithNewLines() {
+    return new Object[][] {
+      new Object[] { "http://some.org/repo\n" },
+      new Object[] { "http://some.org/repo\r" },
+      new Object[] { "http://some.org/repo\n[section]" },
+      new Object[] { "http://some.org/repo\r[section]" },
+      new Object[] { "http://some.org/repo\r\n[section]" },
+    };
+  }
+
+  @TestFor(issues = "TW-50043")
+  @Test(dataProvider = "urlsWithNewLines")
+  public void new_line_in_fetch_url(@NotNull String url) throws VcsException {
+    try {
+      new GitVcsRoot(myMirrorManager, vcsRoot().withFetchUrl(url).build());
+      fail("No error for url '" + url + "'");
+    } catch (VcsException e) {
+      //expected
+    }
+  }
+
+  @TestFor(issues = "TW-50043")
+  @Test(dataProvider = "urlsWithNewLines")
+  public void new_line_in_push_url(@NotNull String url) throws VcsException {
+    try {
+      new GitVcsRoot(myMirrorManager, vcsRoot().withFetchUrl("http://some.org/repo.git").withPushUrl(url).build());
+      fail("No error for url '" + url + "'");
+    } catch (VcsException e) {
+      //expected
     }
   }
 }
