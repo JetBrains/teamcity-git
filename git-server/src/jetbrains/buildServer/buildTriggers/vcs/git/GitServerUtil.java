@@ -83,18 +83,21 @@ public class GitServerUtil {
     try {
       ensureRepositoryIsValid(dir);
       Repository r = new RepositoryBuilder().setBare().setGitDir(dir).build();
+      String remoteUrl = remote.toString();
+      if (remoteUrl.contains("\n") || remoteUrl.contains("\r"))
+        throw new VcsException("Newline in url '" + remoteUrl + "'");
       if (!new File(dir, "config").exists()) {
         r.create(true);
         final StoredConfig config = r.getConfig();
-        config.setString("teamcity", null, "remote", remote.toString());
+        config.setString("teamcity", null, "remote", remoteUrl);
         config.save();
       } else {
         final StoredConfig config = r.getConfig();
         final String existingRemote = config.getString("teamcity", null, "remote");
-        if (existingRemote != null && !remote.toString().equals(existingRemote)) {
+        if (existingRemote != null && !remoteUrl.equals(existingRemote)) {
           throw getWrongUrlError(dir, existingRemote, remote);
         } else if (existingRemote == null) {
-          config.setString("teamcity", null, "remote", remote.toString());
+          config.setString("teamcity", null, "remote", remoteUrl);
           config.save();
         }
       }

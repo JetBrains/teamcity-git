@@ -66,9 +66,14 @@ public class GitVcsRoot {
     myUsernameStyle = readUserNameStyle();
     mySubmodulePolicy = readSubmodulesPolicy();
     myAuthSettings = new AuthSettings(this);
-    myRepositoryFetchURL = myAuthSettings.createAuthURI(getProperty(Constants.FETCH_URL));
-    myRepositoryFetchURLNoFixErrors = myAuthSettings.createAuthURI(getProperty(Constants.FETCH_URL), false);
+    String rawFetchUrl = getProperty(Constants.FETCH_URL);
+    if (rawFetchUrl.contains("\n") || rawFetchUrl.contains("\r"))
+      throw new VcsException("Newline in fetch url '" + rawFetchUrl + "'");
+    myRepositoryFetchURL = myAuthSettings.createAuthURI(rawFetchUrl);
+    myRepositoryFetchURLNoFixErrors = myAuthSettings.createAuthURI(rawFetchUrl, false);
     String pushUrl = getProperty(Constants.PUSH_URL);
+    if (pushUrl != null && (pushUrl.contains("\n") || pushUrl.contains("\r")))
+      throw new VcsException("Newline in push url '" + pushUrl + "'");
     myRepositoryPushURL = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURL : myAuthSettings.createAuthURI(pushUrl);
     myRepositoryPushURLNoFixErrors = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURLNoFixErrors : myAuthSettings.createAuthURI(pushUrl, false);
     myUsernameForTags = getProperty(Constants.USERNAME_FOR_TAGS);

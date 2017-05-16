@@ -19,9 +19,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.TestFor;
+import jetbrains.buildServer.vcs.VcsException;
 import junit.framework.TestCase;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
@@ -68,5 +71,18 @@ public class GitServerUtilTest extends TestCase {
     assertEquals(GitServerUtil.GB, (long)GitServerUtil.convertMemorySizeToBytes("1g"));
     assertEquals(GitServerUtil.GB, (long)GitServerUtil.convertMemorySizeToBytes("1G"));
     assertEquals(2 * GitServerUtil.GB, (long)GitServerUtil.convertMemorySizeToBytes("2G"));
+  }
+
+
+  @TestFor(issues = "TW-50043")
+  @Test(dataProviderClass = GitVcsRootTest.class, dataProvider = "urlsWithNewLines")
+  public void url_with_newline(@NotNull String url) throws Exception {
+    File dir = myTempFiles.createTempDir();
+    try {
+      GitServerUtil.getRepository(dir, new URIish(url));
+      fail("No error for url '" + url + "'");
+    } catch (VcsException e) {
+      //expected
+    }
   }
 }

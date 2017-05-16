@@ -43,7 +43,9 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
     if (isEmpty(url)) {
       rc.add(new InvalidProperty(Constants.FETCH_URL, "The URL must be specified"));
     } else {
-      if (!mayContainReference(url)) {
+      if (url.contains("\n") || url.contains("\r")) {
+        rc.add(new InvalidProperty(Constants.FETCH_URL, "URL should not contain newline symbols"));
+      } else if (!mayContainReference(url)) {
         try {
           new URIish(url);
         } catch (URISyntaxException e) {
@@ -52,11 +54,15 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
       }
     }
     String pushUrl = properties.get(Constants.PUSH_URL);
-    if (!isEmpty(pushUrl) && !mayContainReference(pushUrl)) {
-      try {
-        new URIish(pushUrl);
-      } catch (URISyntaxException e) {
-        rc.add(new InvalidProperty(Constants.PUSH_URL, "Invalid URL syntax: " + pushUrl));
+    if (!isEmpty(pushUrl)) {
+      if (pushUrl.contains("\n") || pushUrl.contains("\r")) {
+        rc.add(new InvalidProperty(Constants.PUSH_URL, "URL should not contain newline symbols"));
+      } else if (!mayContainReference(pushUrl)) {
+        try {
+          new URIish(pushUrl);
+        } catch (URISyntaxException e) {
+          rc.add(new InvalidProperty(Constants.PUSH_URL, "Invalid URL syntax: " + pushUrl));
+        }
       }
     }
 
