@@ -164,16 +164,12 @@ public final class RepositoryManagerImpl implements RepositoryManager {
 
   @NotNull
   private Repository createRepository(@NotNull final File dir, @NotNull final URIish fetchUrl) throws VcsException {
-    Lock rmLock = getRmLock(dir).readLock();
-    rmLock.lock();
-    try {
+    return runWithDisabledRemove(dir, () -> {
       synchronized (getCreateLock(dir)) {
         Repository result = GitServerUtil.getRepository(dir, fetchUrl);
         return myRepositoryCache.add(RepositoryCache.FileKey.exact(dir, FS.DETECTED), result);
       }
-    } finally {
-      rmLock.unlock();
-    }
+    });
   }
 
 
@@ -184,8 +180,8 @@ public final class RepositoryManagerImpl implements RepositoryManager {
       return;
     }
     Lock rmLock = getRmLock(dir).readLock();
+    rmLock.lock();
     try {
-      rmLock.lock();
       synchronized (getUpdateLastUsedTimeLock(dir)) {
         File timestamp = new File(dir, "timestamp");
         if (!dir.exists() && !dir.mkdirs())
@@ -241,6 +237,29 @@ public final class RepositoryManagerImpl implements RepositoryManager {
     }
   }
 
+
+  @Override
+  public <T> T runWithDisabledRemove(@NotNull File dir, @NotNull VcsOperation<T> operation) throws VcsException {
+    Lock readLock = getRmLock(dir).readLock();
+    readLock.lock();
+    try {
+      return operation.run();
+    } finally {
+      readLock.unlock();
+    }
+  }
+
+
+  @Override
+  public void runWithDisabledRemove(@NotNull File dir, @NotNull VcsAction action) throws VcsException {
+    Lock readLock = getRmLock(dir).readLock();
+    readLock.lock();
+    try {
+      action.run();
+    } finally {
+      readLock.unlock();
+    }
+  }
 
   @NotNull
   public Object getCreateLock(File dir) {

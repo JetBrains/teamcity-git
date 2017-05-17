@@ -44,15 +44,18 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   private final VcsOperationProgressProvider myProgressProvider;
   private final CommitLoader myCommitLoader;
   private final ServerPluginConfig myConfig;
+  private final RepositoryManager myRepositoryManager;
 
   public GitCollectChangesPolicy(@NotNull GitVcsSupport vcs,
                                  @NotNull VcsOperationProgressProvider progressProvider,
                                  @NotNull CommitLoader commitLoader,
-                                 @NotNull ServerPluginConfig config) {
+                                 @NotNull ServerPluginConfig config,
+                                 @NotNull RepositoryManager repositoryManager) {
     myVcs = vcs;
     myProgressProvider = progressProvider;
     myCommitLoader = commitLoader;
     myConfig = config;
+    myRepositoryManager = repositoryManager;
   }
 
 
@@ -70,29 +73,32 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                @NotNull RepositoryStateData fromState,
                                                @NotNull RepositoryStateData toState,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
-    List<ModificationData> changes = new ArrayList<ModificationData>();
     OperationContext context = myVcs.createContext(root, "collecting changes", createProgress());
-    try {
-      Repository r = context.getRepository();
-      ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
-      revWalk.sort(RevSort.TOPO);
-      ensureRepositoryStateLoadedFor(context, r, true, toState, fromState);
-      markStart(r, revWalk, toState);
-      markUninteresting(r, revWalk, fromState, toState);
-      while (revWalk.next() != null) {
-        changes.add(revWalk.createModificationData());
+    GitVcsRoot gitRoot = context.getGitRoot();
+    return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+      List<ModificationData> changes = new ArrayList<ModificationData>();
+      try {
+        Repository r = context.getRepository();
+        ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
+        revWalk.sort(RevSort.TOPO);
+        ensureRepositoryStateLoadedFor(context, r, true, toState, fromState);
+        markStart(r, revWalk, toState);
+        markUninteresting(r, revWalk, fromState, toState);
+        while (revWalk.next() != null) {
+          changes.add(revWalk.createModificationData());
+        }
+      } catch (Exception e) {
+        if (e instanceof SubmoduleException) {
+          SubmoduleException se = (SubmoduleException) e;
+          Set<String> affectedBranches = getBranchesWithCommit(context.getRepository(), toState, se.getMainRepositoryCommit());
+          throw context.wrapException(se.addBranches(affectedBranches));
+        }
+        throw context.wrapException(e);
+      } finally {
+        context.close();
       }
-    } catch (Exception e) {
-      if (e instanceof SubmoduleException) {
-        SubmoduleException se = (SubmoduleException) e;
-        Set<String> affectedBranches = getBranchesWithCommit(context.getRepository(), toState, se.getMainRepositoryCommit());
-        throw context.wrapException(se.addBranches(affectedBranches));
-      }
-      throw context.wrapException(e);
-    } finally {
-      context.close();
-    }
-    return changes;
+      return changes;
+    });
   }
 
 

@@ -68,34 +68,36 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
                            @NotNull MergeOptions options) throws VcsException {
     LOG.info("Merge in root " + root + ", revision " + srcRevision + ", destination " + dstBranch);
     OperationContext context = myVcs.createContext(root, "merge");
-    try {
-      GitVcsRoot gitRoot = context.getGitRoot();
-      Repository db = context.getRepository();
-      int attemptsLeft = myPluginConfig.getMergeRetryAttempts();
-      MergeResult result;
-      do {
-        try {
-          result = doMerge(context, gitRoot, db, srcRevision, dstBranch, message, options);
-          if (result.isMergePerformed() && result.isSuccess()) {
-            LOG.info("Merge successfully finished in root " + root + ", revision " + srcRevision + ", destination " + dstBranch);
-            return result;
+    GitVcsRoot gitRoot = context.getGitRoot();
+    return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+      try {
+        Repository db = context.getRepository();
+        int attemptsLeft = myPluginConfig.getMergeRetryAttempts();
+        MergeResult result;
+        do {
+          try {
+            result = doMerge(context, gitRoot, db, srcRevision, dstBranch, message, options);
+            if (result.isMergePerformed() && result.isSuccess()) {
+              LOG.info("Merge successfully finished in root " + root + ", revision " + srcRevision + ", destination " + dstBranch);
+              return result;
+            }
+            attemptsLeft--;
+            LOG.info("Merge was not successful, root " + root + ", revision " + srcRevision + ", destination " + dstBranch + ", attempts left " + attemptsLeft);
+          } catch (IOException e) {
+            LOG.info("Merge failed, root " + root + ", revision " + srcRevision + ", destination " + dstBranch, e);
+            return MergeResult.createMergeError(e.getMessage());
+          } catch (VcsException e) {
+            LOG.info("Merge failed, root " + root + ", revision " + srcRevision + ", destination " + dstBranch, e);
+            return MergeResult.createMergeError(e.getMessage());
           }
-          attemptsLeft--;
-          LOG.info("Merge was not successful, root " + root + ", revision " + srcRevision + ", destination " + dstBranch + ", attempts left " + attemptsLeft);
-        } catch (IOException e) {
-          LOG.info("Merge failed, root " + root + ", revision " + srcRevision + ", destination " + dstBranch, e);
-          return MergeResult.createMergeError(e.getMessage());
-        } catch (VcsException e) {
-          LOG.info("Merge failed, root " + root + ", revision " + srcRevision + ", destination " + dstBranch, e);
-          return MergeResult.createMergeError(e.getMessage());
-        }
-      } while (attemptsLeft > 0);
-      return result;
-    } catch (Exception e) {
-      throw context.wrapException(e);
-    } finally {
-      context.close();
-    }
+        } while (attemptsLeft > 0);
+        return result;
+      } catch (Exception e) {
+        throw context.wrapException(e);
+      } finally {
+        context.close();
+      }
+    });
   }
 
 
@@ -105,29 +107,32 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
                                               @NotNull MergeOptions options) throws VcsException {
     Map<MergeTask, MergeResult> mergeResults = new HashMap<MergeTask, MergeResult>();
     OperationContext context = myVcs.createContext(root, "merge");
-    try {
-      Repository db = context.getRepository();
-      for (MergeTask t : tasks) {
-        ObjectId src = ObjectId.fromString(t.getSourceRevision());
-        ObjectId dst = ObjectId.fromString(t.getDestinationRevision());
-        ResolveMerger merger = (ResolveMerger) MergeStrategy.RECURSIVE.newMerger(db, true);
-        try {
-          boolean success = merger.merge(dst, src);
-          if (success) {
-            mergeResults.put(t, MergeResult.createMergeSuccessResult());
-          } else {
-            mergeResults.put(t, MergeResult.createMergeError(merger.getUnmergedPaths()));
+    GitVcsRoot gitRoot = context.getGitRoot();
+    return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+      try {
+        Repository db = context.getRepository();
+        for (MergeTask t : tasks) {
+          ObjectId src = ObjectId.fromString(t.getSourceRevision());
+          ObjectId dst = ObjectId.fromString(t.getDestinationRevision());
+          ResolveMerger merger = (ResolveMerger) MergeStrategy.RECURSIVE.newMerger(db, true);
+          try {
+            boolean success = merger.merge(dst, src);
+            if (success) {
+              mergeResults.put(t, MergeResult.createMergeSuccessResult());
+            } else {
+              mergeResults.put(t, MergeResult.createMergeError(merger.getUnmergedPaths()));
+            }
+          } catch (IOException mergeException) {
+            mergeResults.put(t, MergeResult.createMergeError(mergeException.getMessage()));
           }
-        } catch (IOException mergeException) {
-          mergeResults.put(t, MergeResult.createMergeError(mergeException.getMessage()));
         }
+      } catch (Exception e) {
+        throw context.wrapException(e);
+      } finally {
+        context.close();
       }
-    } catch (Exception e) {
-      throw context.wrapException(e);
-    } finally {
-      context.close();
-    }
-    return mergeResults;
+      return mergeResults;
+    });
   }
 
   @NotNull

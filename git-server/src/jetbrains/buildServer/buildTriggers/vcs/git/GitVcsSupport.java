@@ -149,20 +149,22 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public RepositoryStateData getCurrentState(@NotNull GitVcsRoot gitRoot) throws VcsException {
-    String refInRoot = gitRoot.getRef();
-    String fullRef = GitUtils.expandRef(refInRoot);
-    Map<String, String> branchRevisions = new HashMap<String, String>();
-    for (Ref ref : getRemoteRefs(gitRoot.getOriginalRoot()).values()) {
-      if (!ref.getName().startsWith("ref"))
-        continue;
-      if (!gitRoot.isReportTags() && isTag(ref) && !fullRef.equals(ref.getName()))
-        continue;
-      branchRevisions.put(ref.getName(), getRevision(ref));
-    }
-    if (branchRevisions.get(fullRef) == null && !gitRoot.isIgnoreMissingDefaultBranch()) {
-      throw new VcsException("Cannot find revision of the default branch '" + refInRoot + "' of vcs root " + LogUtil.describe(gitRoot));
-    }
-    return RepositoryStateData.createVersionState(fullRef, branchRevisions);
+    return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+      String refInRoot = gitRoot.getRef();
+      String fullRef = GitUtils.expandRef(refInRoot);
+      Map<String, String> branchRevisions = new HashMap<String, String>();
+      for (Ref ref : getRemoteRefs(gitRoot.getOriginalRoot()).values()) {
+        if (!ref.getName().startsWith("ref"))
+          continue;
+        if (!gitRoot.isReportTags() && isTag(ref) && !fullRef.equals(ref.getName()))
+          continue;
+        branchRevisions.put(ref.getName(), getRevision(ref));
+      }
+      if (branchRevisions.get(fullRef) == null && !gitRoot.isIgnoreMissingDefaultBranch()) {
+        throw new VcsException("Cannot find revision of the default branch '" + refInRoot + "' of vcs root " + LogUtil.describe(gitRoot));
+      }
+      return RepositoryStateData.createVersionState(fullRef, branchRevisions);
+    });
   }
 
   public void buildPatch(@NotNull VcsRoot root,
@@ -174,16 +176,18 @@ public class GitVcsSupport extends ServerVcsSupport
     String fromRevision = fromVersion != null ? GitUtils.versionRevision(fromVersion) : null;
     String toRevision = GitUtils.versionRevision(toVersion);
     logBuildPatch(root, fromRevision, toRevision);
-    GitPatchBuilderDispatcher
-      gitPatchBuilder = new GitPatchBuilderDispatcher(myConfig, mySshKeyManager, context, builder, fromRevision, toRevision, checkoutRules);
-    try {
-      myCommitLoader.loadCommit(context, context.getGitRoot(), toRevision);
-      gitPatchBuilder.buildPatch();
-    } catch (Exception e) {
-      throw context.wrapException(e);
-    } finally {
-      context.close();
-    }
+    GitVcsRoot gitRoot = context.getGitRoot();
+    myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+      GitPatchBuilderDispatcher gitPatchBuilder = new GitPatchBuilderDispatcher(myConfig, mySshKeyManager, context, builder, fromRevision, toRevision, checkoutRules);
+      try {
+        myCommitLoader.loadCommit(context, gitRoot, toRevision);
+        gitPatchBuilder.buildPatch();
+      } catch (Exception e) {
+        throw context.wrapException(e);
+      } finally {
+        context.close();
+      }
+    });
   }
 
   private void logBuildPatch(@NotNull VcsRoot root, @Nullable String fromRevision, @NotNull String toRevision) {
@@ -276,14 +280,17 @@ public class GitVcsSupport extends ServerVcsSupport
 
   public String testConnection(@NotNull VcsRoot vcsRoot) throws VcsException {
     OperationContext context = createContext(vcsRoot, "connection test");
-    TestConnectionCommand command = new TestConnectionCommand(this, myTransportFactory, myRepositoryManager);
-    try {
-      return command.testConnection(context);
-    } catch (Exception e) {
-      throw context.wrapException(e);
-    } finally {
-      context.close();
-    }
+    GitVcsRoot gitRoot = context.getGitRoot();
+    return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+      TestConnectionCommand command = new TestConnectionCommand(this, myTransportFactory, myRepositoryManager);
+      try {
+        return command.testConnection(context);
+      } catch (Exception e) {
+        throw context.wrapException(e);
+      } finally {
+        context.close();
+      }
+    });
   }
 
 
@@ -316,7 +323,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public GitCollectChangesPolicy getCollectChangesPolicy() {
-    return new GitCollectChangesPolicy(this, myProgressProvider, myCommitLoader, myConfig);
+    return new GitCollectChangesPolicy(this, myProgressProvider, myCommitLoader, myConfig, myRepositoryManager);
   }
 
   @NotNull
@@ -342,7 +349,8 @@ public class GitVcsSupport extends ServerVcsSupport
   public Collection<String> mapFullPath(@NotNull final VcsRootEntry rootEntry, @NotNull final String fullPath) {
     OperationContext context = createContext(rootEntry.getVcsRoot(), "map full path");
     try {
-      return myMapFullPath.mapFullPath(context, rootEntry, fullPath);
+      return myRepositoryManager.runWithDisabledRemove(context.getGitRoot().getRepositoryDir(), () ->
+        myMapFullPath.mapFullPath(context, rootEntry, fullPath));
     } catch (VcsException e) {
       LOG.warnAndDebugDetails("Error while mapping path for root " + LogUtil.describe(rootEntry.getVcsRoot()), e);
       return Collections.emptySet();
@@ -379,19 +387,21 @@ public class GitVcsSupport extends ServerVcsSupport
       Map<File, Boolean> cloneDirResults = new HashMap<>();//clone dir -> result for this dir
       Map<VcsRoot, Boolean> rootResult = new HashMap<>();
       for (GitVcsRoot gitRoot : gitRoots) {
-        Boolean cloneDirResult = cloneDirResults.get(gitRoot.getRepositoryDir());
+        File cloneDir = gitRoot.getRepositoryDir();
+        Boolean cloneDirResult = cloneDirResults.get(cloneDir);
         if (cloneDirResult != null) {
           rootResult.put(gitRoot.getOriginalRoot(), cloneDirResult);
           continue;
         }
 
-        boolean suitable = false;
-        for (GitMapFullPath.FullPath path : fullPaths) {
-          if (myMapFullPath.repositoryContainsPath(context, gitRoot, path)) {
-            suitable = true;
-            break;
+        boolean suitable = myRepositoryManager.runWithDisabledRemove(cloneDir, () -> {
+          for (GitMapFullPath.FullPath path : fullPaths) {
+            if (myMapFullPath.repositoryContainsPath(context, gitRoot, path))
+              return true;
           }
-        }
+          return false;
+        });
+
         rootResult.put(gitRoot.getOriginalRoot(), suitable);
         cloneDirResults.put(gitRoot.getRepositoryDir(), suitable);
       }
@@ -566,5 +576,10 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public CommitLoader getCommitLoader() {
     return myCommitLoader;
+  }
+
+  @NotNull
+  public RepositoryManager getRepositoryManager() {
+    return myRepositoryManager;
   }
 }

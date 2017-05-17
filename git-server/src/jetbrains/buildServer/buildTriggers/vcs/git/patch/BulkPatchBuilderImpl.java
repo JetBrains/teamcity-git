@@ -16,10 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.GitServerExtension;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
-import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.vcs.BulkPatchService;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
@@ -54,48 +51,51 @@ public class BulkPatchBuilderImpl implements BulkPatchService, GitServerExtensio
                            @NotNull final List<BulkPatchBuilderRequest> requests,
                            @NotNull final BulkPatchBuilder patch) throws VcsException, IOException {
     final OperationContext ctx = myVcs.createContext(root, "bulk patch " + requests.size() + " commits");
-    try {
-      final Repository myRepo = ctx.getRepository();
-      final ObjectReader contentsReader = myRepo.getObjectDatabase().newReader();
-      final ObjectReader treesReader = myRepo.getObjectDatabase().newReader();
+    GitVcsRoot gitRoot = ctx.getGitRoot();
+    myVcs.getRepositoryManager().runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+      try {
+        final Repository myRepo = ctx.getRepository();
+        final ObjectReader contentsReader = myRepo.getObjectDatabase().newReader();
+        final ObjectReader treesReader = myRepo.getObjectDatabase().newReader();
 
-      for (BulkPatchBuilderRequest request : requests) {
-        final PatchBuilder patchBuilder = patch.startPatch(request);
+        for (BulkPatchBuilderRequest request : requests) {
+          final PatchBuilder patchBuilder = patch.startPatch(request);
 
-        final String prevBase = request.getFromVersion();
-        final String toBase = request.getToVersion();
+          final String prevBase = request.getFromVersion();
+          final String toBase = request.getToVersion();
 
-        try {
-          new GitPatchBuilder(ctx, patchBuilder, prevBase, toBase, rules, myConfig.verboseTreeWalkLog()) {
-            @NotNull
-            @Override
-            protected ObjectReader newObjectReaderForTree() {
-              return treesReader;
-            }
+          try {
+            new GitPatchBuilder(ctx, patchBuilder, prevBase, toBase, rules, myConfig.verboseTreeWalkLog()) {
+              @NotNull
+              @Override
+              protected ObjectReader newObjectReaderForTree() {
+                return treesReader;
+              }
 
-            @NotNull
-            @Override
-            protected ContentLoaderFactory contentLoaderFactory() {
-              return new ContentLoaderFactory() {
-                @Nullable
-                public ObjectLoader open(@NotNull final Repository repo, @NotNull final ObjectId id) throws IOException {
-                  assert repo == myRepo;
-                  return contentsReader.open(id);
-                }
-              };
-            }
-          }.buildPatch();
+              @NotNull
+              @Override
+              protected ContentLoaderFactory contentLoaderFactory() {
+                return new ContentLoaderFactory() {
+                  @Nullable
+                  public ObjectLoader open(@NotNull final Repository repo, @NotNull final ObjectId id) throws IOException {
+                    assert repo == myRepo;
+                    return contentsReader.open(id);
+                  }
+                };
+              }
+            }.buildPatch();
 
-        } catch (Throwable e) {
-          throw new VcsException("Failed to build patch " + prevBase + " -> " + toBase + ". " + e.getMessage(), e);
-        } finally {
-          patch.endPatch(request, patchBuilder);
+          } catch (Throwable e) {
+            throw new VcsException("Failed to build patch " + prevBase + " -> " + toBase + ". " + e.getMessage(), e);
+          } finally {
+            patch.endPatch(request, patchBuilder);
+          }
         }
+      } catch (Throwable e) {
+        throw new VcsException("Failed to complete bulk patch." + e.getMessage(), e);
+      } finally {
+        ctx.close();
       }
-    } catch (Throwable e) {
-      throw new VcsException("Failed to complete bulk patch." + e.getMessage(), e);
-    } finally {
-      ctx.close();
-    }
+    });
   }
 }

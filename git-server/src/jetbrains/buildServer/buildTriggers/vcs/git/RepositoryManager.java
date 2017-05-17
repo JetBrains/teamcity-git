@@ -47,5 +47,9 @@ public interface RepositoryManager extends MirrorManager {
   @NotNull
   public ReadWriteLock getRmLock(@NotNull File dir);
 
+  <T> T runWithDisabledRemove(@NotNull File dir, @NotNull VcsOperation<T> operation) throws VcsException;
+
+  void runWithDisabledRemove(@NotNull File dir, @NotNull VcsAction action) throws VcsException;
+
   void cleanLocksFor(@NotNull File dir);
 }
