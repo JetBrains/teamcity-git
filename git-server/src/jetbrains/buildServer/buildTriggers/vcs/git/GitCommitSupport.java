@@ -39,6 +39,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
 
 import static java.util.Arrays.asList;
 
@@ -68,8 +69,10 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
   @NotNull
   public CommitPatchBuilder getCommitPatchBuilder(@NotNull VcsRoot root) throws VcsException {
     OperationContext context = myVcs.createContext(root, "commit");
+    Lock rmLock = myRepositoryManager.getRmLock(context.getGitRoot().getRepositoryDir()).readLock();
+    rmLock.lock();
     Repository db = context.getRepository();
-    return new GitCommitPatchBuilder(myVcs, context, myCommitLoader, db, myRepositoryManager, myTransportFactory, myPluginConfig);
+    return new GitCommitPatchBuilder(myVcs, context, myCommitLoader, db, myRepositoryManager, myTransportFactory, myPluginConfig, rmLock);
   }
 
 
@@ -84,6 +87,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     private final RepositoryManager myRepositoryManager;
     private final TransportFactory myTransportFactory;
     private final ServerPluginConfig myPluginConfig;
+    private final Lock myRmLock;
 
     private GitCommitPatchBuilder(@NotNull GitVcsSupport vcs,
                                   @NotNull OperationContext context,
@@ -91,7 +95,8 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
                                   @NotNull Repository db,
                                   @NotNull RepositoryManager repositoryManager,
                                   @NotNull TransportFactory transportFactory,
-                                  @NotNull ServerPluginConfig pluginConfig) {
+                                  @NotNull ServerPluginConfig pluginConfig,
+                                  @NotNull Lock rmLock) {
       myVcs = vcs;
       myContext = context;
       myCommitLoader = commitLoader;
@@ -100,6 +105,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       myRepositoryManager = repositoryManager;
       myTransportFactory = transportFactory;
       myPluginConfig = pluginConfig;
+      myRmLock = rmLock;
     }
 
     public void createFile(@NotNull String path, @NotNull InputStream content) throws VcsException {
@@ -312,6 +318,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     }
 
     public void dispose() {
+      myRmLock.unlock();
       myContext.close();
     }
   }

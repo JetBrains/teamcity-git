@@ -93,6 +93,11 @@ public class OperationContext {
   }
 
   @NotNull
+  public File getRepositoryDir(@NotNull URIish uri) {
+    return myRepositoryManager.getMirrorDir(uri.toString());
+  }
+
+  @NotNull
   public Repository getRepositoryFor(@NotNull final URIish uri) throws VcsException {
     File dir = myRepositoryManager.getMirrorDir(uri.toString());
     Repository result = myRepositories.get(dir.getPath());
@@ -238,5 +243,10 @@ public class OperationContext {
   @NotNull
   public GitProgress getProgress() {
     return myProgress;
+  }
+
+  @NotNull
+  public RepositoryManager getRepositoryManager() {
+    return myRepositoryManager;
   }
 }

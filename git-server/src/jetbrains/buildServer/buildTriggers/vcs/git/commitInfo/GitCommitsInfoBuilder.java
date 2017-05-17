@@ -36,7 +36,6 @@ import java.net.URISyntaxException;
 import java.util.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getAuthorIdent;
-import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getFullMessage;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getFullUserName;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 
@@ -56,16 +55,19 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
                              @NotNull final CheckoutRules rules,
                              @NotNull final CommitsConsumer consumer) throws VcsException {
     final OperationContext ctx = myVcs.createContext(root, "collecting commits");
-    try {
-      //fetch service is called before, so we may re-use results of it to avoid extra CPU waste
-      final RepositoryStateData currentStateWithTags = myFetchService.getOrCreateRepositoryState(ctx);
+    GitVcsRoot gitRoot = ctx.getGitRoot();
+    myVcs.getRepositoryManager().runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+      try {
+        //fetch service is called before, so we may re-use results of it to avoid extra CPU waste
+        final RepositoryStateData currentStateWithTags = myFetchService.getOrCreateRepositoryState(ctx);
 
-      collect(ctx.getRepository(), consumer, currentStateWithTags.getBranchRevisions(), ctx.getGitRoot().isIncludeCommitInfoSubmodules());
-    } catch (Exception e) {
-      throw new VcsException(e);
-    } finally {
-      ctx.close();
-    }
+        collect(ctx.getRepository(), consumer, currentStateWithTags.getBranchRevisions(), gitRoot.isIncludeCommitInfoSubmodules());
+      } catch (Exception e) {
+        throw new VcsException(e);
+      } finally {
+        ctx.close();
+      }
+    });
   }
 
   private void collect(@NotNull final Repository db,

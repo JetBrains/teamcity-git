@@ -24,6 +24,7 @@ import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
 
 import static com.intellij.openapi.util.io.FileUtil.delete;
 import static java.util.Collections.singletonList;
@@ -75,30 +76,19 @@ public class GitResetCacheHandler implements ResetCacheHandler {
     for (Map.Entry<String, File> entry : myRepositoryManager.getMappings().entrySet()) {
       String url = entry.getKey();
       File mirror = entry.getValue();
+      Lock writeLock = myRepositoryManager.getRmLock(mirror).writeLock();
+      writeLock.lock();
       try {
-        lockMirror(url, mirror);
-        resetMirror(mirror);
+        resetMirror(mirror, url);
       } finally {
-        unlockMirror(url, mirror);
+        writeLock.unlock();
       }
     }
     LOG.info("Git caches reset");
   }
 
-  private void lockMirror(@NotNull String url, @NotNull File mirror) {
-    LOG.debug("Lock mirror of " + url);
-    myRepositoryManager.getRmLock(mirror).writeLock().lock();
-    LOG.debug("Mirror of " + url + " is locked");
-  }
-
-  private void resetMirror(@NotNull File mirror) {
-    LOG.debug("Reset git mirror "  + mirror.getAbsolutePath());
+  private void resetMirror(@NotNull File mirror, @NotNull String url) {
+    LOG.debug("Delete of the repository " + url + " (" + mirror.getAbsolutePath() + ")");
     delete(mirror);
-    LOG.debug("Git mirror "  + mirror.getAbsolutePath() + " reset");
-  }
-
-  private void unlockMirror(@NotNull String url, @NotNull File mirror) {
-    myRepositoryManager.getRmLock(mirror).writeLock().unlock();
-    LOG.debug("Mirror of " + url + " is unlocked");
   }
 }

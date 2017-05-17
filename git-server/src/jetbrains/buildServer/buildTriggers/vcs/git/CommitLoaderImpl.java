@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.locks.Lock;
 
 import static java.util.Arrays.asList;
 
@@ -92,20 +91,14 @@ public class CommitLoaderImpl implements CommitLoader {
                     @NotNull FetchSettings settings) throws IOException, VcsException {
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
-    Lock rmLock = myRepositoryManager.getRmLock(repositoryDir).readLock();
-    rmLock.lock();
-    try {
-      final long start = System.currentTimeMillis();
-      synchronized (myRepositoryManager.getWriteLock(repositoryDir)) {
-        final long finish = System.currentTimeMillis();
-        Map<String, Ref> oldRefs = new HashMap<String, Ref>(db.getAllRefs());
-        PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + (finish - start) + "ms");
-        myFetchCommand.fetch(db, fetchURI, refspecs, settings);
-        Map<String, Ref> newRefs = new HashMap<String, Ref>(db.getAllRefs());
-        myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
-      }
-    } finally {
-      rmLock.unlock();
+    final long start = System.currentTimeMillis();
+    synchronized (myRepositoryManager.getWriteLock(repositoryDir)) {
+      final long finish = System.currentTimeMillis();
+      Map<String, Ref> oldRefs = new HashMap<String, Ref>(db.getAllRefs());
+      PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + (finish - start) + "ms");
+      myFetchCommand.fetch(db, fetchURI, refspecs, settings);
+      Map<String, Ref> newRefs = new HashMap<String, Ref>(db.getAllRefs());
+      myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
     }
   }
 

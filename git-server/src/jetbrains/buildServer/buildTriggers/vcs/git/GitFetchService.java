@@ -40,13 +40,17 @@ public class GitFetchService implements FetchService, GitServerExtension {
                               @NotNull final CheckoutRules rules,
                               @NotNull final FetchRepositoryCallback callback) throws VcsException {
     final OperationContext ctx = myVcs.createContext(root, "Fetch", new FetchCallbackProgress(callback));
-    try {
-      fetchRepositoryImpl(ctx);
-    } catch (Exception e) {
-      throw ctx.wrapException(e);
-    } finally {
-      ctx.close();
-    }
+    GitVcsRoot gitRoot = ctx.getGitRoot();
+    myVcs.getRepositoryManager().runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+      try {
+        fetchRepositoryImpl(ctx);
+      } catch (Exception e) {
+        throw ctx.wrapException(e);
+      } finally {
+        ctx.close();
+      }
+    });
+
   }
 
   @NotNull

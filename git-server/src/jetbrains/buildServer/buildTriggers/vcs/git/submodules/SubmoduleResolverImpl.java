@@ -33,6 +33,7 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -92,20 +93,42 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
     if (submodule == null)
       throw new MissingSubmoduleEntryException(parentRepositoryUrl, myCommit.name(), path);
 
-    Repository r = resolveRepository(submodule.getUrl());
-    String submoduleUrl = myContext.getConfig(r).getString("teamcity", null, "remote");
-
-    if (!isCommitExist(r, commit)) {
-      try {
-        fetch(r, path, submodule.getUrl());
-      } catch (Exception e) {
-        throw new SubmoduleFetchException(parentRepositoryUrl, path, submoduleUrl, myCommit, e);
-      }
-    }
+    URIish submoduleUri = resolveSubmoduleUrl(submodule.getUrl());
+    File repositoryDir = myContext.getRepositoryDir(submoduleUri);
     try {
-      return myCommitLoader.getCommit(r, commit);
-    } catch (Exception e) {
-      throw new MissingSubmoduleCommitException(parentRepositoryUrl, myCommit.name(), path, submodule.getUrl(), commit.name());
+      return myContext.getRepositoryManager().runWithDisabledRemove(repositoryDir, () -> {
+        try {
+          Repository r = resolveRepository(submodule.getUrl());
+          String submoduleUrl = myContext.getConfig(r).getString("teamcity", null, "remote");
+
+          if (!isCommitExist(r, commit)) {
+            try {
+              fetch(r, path, submodule.getUrl());
+            } catch (Exception e) {
+              throw new SubmoduleFetchException(parentRepositoryUrl, path, submoduleUrl, myCommit, e);
+            }
+          }
+          try {
+            return myCommitLoader.getCommit(r, commit);
+          } catch (Exception e) {
+            throw new MissingSubmoduleCommitException(parentRepositoryUrl, myCommit.name(), path, submodule.getUrl(), commit.name());
+          }
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+      });
+    } catch (RuntimeException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof CorruptObjectException) {
+        throw (CorruptObjectException) cause;
+      }
+      if (cause instanceof VcsException) {
+        throw (VcsException) cause;
+      }
+      if (cause instanceof URISyntaxException) {
+        throw (URISyntaxException) cause;
+      }
+      throw new VcsException(e);
     }
   }
 

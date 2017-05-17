@@ -31,7 +31,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.locks.ReadWriteLock;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static java.util.Arrays.asList;
@@ -68,44 +67,43 @@ public class GitLabelingSupport implements LabelingSupport {
                       @NotNull CheckoutRules checkoutRules) throws VcsException {
     OperationContext context = myVcs.createContext(root, "labeling");
     GitVcsRoot gitRoot = context.getGitRoot();
-    RevisionsInfo revisionsInfo = new RevisionsInfo();
-    if (myConfig.useTagPackHeuristics()) {
-      LOG.debug("Update repository before labeling " + gitRoot.debugInfo());
-      RepositoryStateData currentState = myVcs.getCurrentState(gitRoot);
-      if (!myConfig.analyzeTagsInPackHeuristics())
-        currentState = excludeTags(currentState);
+    return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+      RevisionsInfo revisionsInfo = new RevisionsInfo();
+      if (myConfig.useTagPackHeuristics()) {
+        LOG.debug("Update repository before labeling " + gitRoot.debugInfo());
+        RepositoryStateData currentState = myVcs.getCurrentState(gitRoot);
+        if (!myConfig.analyzeTagsInPackHeuristics())
+          currentState = excludeTags(currentState);
+        try {
+          myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, context.getRepository(), false, currentState);
+        } catch (Exception e) {
+          LOG.debug("Error while updating repository " + gitRoot.debugInfo(), e);
+        }
+        revisionsInfo = new RevisionsInfo(currentState);
+      }
       try {
-        myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, context.getRepository(), false, currentState);
+        long start = System.currentTimeMillis();
+        Repository r = context.getRepository();
+        String commitSHA = GitUtils.versionRevision(version);
+        RevCommit commit = myCommitLoader.loadCommit(context, gitRoot, commitSHA);
+        Git git = new Git(r);
+        Ref tagRef = git.tag().setTagger(gitRoot.getTagger(r))
+          .setName(label)
+          .setObjectId(commit)
+          .call();
+        if (tagRef.getObjectId() == null || resolve(r, tagRef) == null) {
+          LOG.warn("Tag's " + tagRef.getName() + " objectId " + (tagRef.getObjectId() != null ? tagRef.getObjectId().name() + " " : "") + "cannot be resolved");
+        } else if (LOG.isDebugEnabled()) {
+          LOG.debug("Tag created  " + label + "=" + version + " for " + gitRoot.debugInfo() +
+                    " in " + (System.currentTimeMillis() - start) + "ms");
+        }
+        return push(label, version, gitRoot, r, tagRef, revisionsInfo);
       } catch (Exception e) {
-        LOG.debug("Error while updating repository " + gitRoot.debugInfo(), e);
+        throw context.wrapException(e);
+      } finally {
+        context.close();
       }
-      revisionsInfo = new RevisionsInfo(currentState);
-    }
-    ReadWriteLock rmLock = myRepositoryManager.getRmLock(gitRoot.getRepositoryDir());
-    rmLock.readLock().lock();
-    try {
-      long start = System.currentTimeMillis();
-      Repository r = context.getRepository();
-      String commitSHA = GitUtils.versionRevision(version);
-      RevCommit commit = myCommitLoader.loadCommit(context, gitRoot, commitSHA);
-      Git git = new Git(r);
-      Ref tagRef = git.tag().setTagger(gitRoot.getTagger(r))
-        .setName(label)
-        .setObjectId(commit)
-        .call();
-      if (tagRef.getObjectId() == null || resolve(r, tagRef) == null) {
-        LOG.warn("Tag's " + tagRef.getName() + " objectId " + (tagRef.getObjectId() != null ? tagRef.getObjectId().name() + " " : "") + "cannot be resolved");
-      } else if (LOG.isDebugEnabled()) {
-        LOG.debug("Tag created  " + label + "=" + version + " for " + gitRoot.debugInfo() +
-                  " in " + (System.currentTimeMillis() - start) + "ms");
-      }
-      return push(label, version, gitRoot, r, tagRef, revisionsInfo);
-    } catch (Exception e) {
-      throw context.wrapException(e);
-    } finally {
-      rmLock.readLock().unlock();
-      context.close();
-    }
+    });
   }
 
   @NotNull

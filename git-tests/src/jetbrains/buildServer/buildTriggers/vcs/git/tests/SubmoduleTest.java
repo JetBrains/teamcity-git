@@ -28,6 +28,7 @@ import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileBasedConfig;
+import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.eclipse.jgit.util.FS;
@@ -38,6 +39,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIteratorFactory.create;
@@ -223,6 +225,15 @@ public class SubmoduleTest {
 
     public Repository resolveRepository(@NotNull String url) {
       return myReferencedRepository;
+    }
+
+    @Override
+    public URIish resolveSubmoduleUrl(@NotNull final String url) throws URISyntaxException {
+      try {
+        return new URIish(myReferencedRepository.getDirectory().toURI().toURL());
+      } catch (MalformedURLException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     public void fetch(Repository r, String submodulePath, String submoduleUrl) throws VcsException, URISyntaxException, IOException {
