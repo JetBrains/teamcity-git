@@ -28,7 +28,8 @@
   <bean id="hashCalculator" class="jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl"/>
   <bean id="repositoryManager" class="jetbrains.buildServer.buildTriggers.vcs.git.RepositoryManagerImpl"/>
   <bean id="mapFullPath" class="jetbrains.buildServer.buildTriggers.vcs.git.GitMapFullPath"/>
-  <bean id="cleaner" class="jetbrains.buildServer.buildTriggers.vcs.git.CleanupRunner"/>
+  <bean id="cleaner" class="jetbrains.buildServer.buildTriggers.vcs.git.Cleanup"/>
+  <bean id="cleanerRunner" class="jetbrains.buildServer.buildTriggers.vcs.git.CleanupRunner"/>
   <bean id="fetcherProperties" class="jetbrains.buildServer.buildTriggers.vcs.git.FetcherProperties"/>
   <bean id="mergeSupport" class="jetbrains.buildServer.buildTriggers.vcs.git.GitMergeSupport"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.commitInfo.GitCommitsInfoBuilder"/>
