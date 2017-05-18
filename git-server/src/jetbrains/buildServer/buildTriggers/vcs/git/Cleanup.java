@@ -430,6 +430,8 @@ public class Cleanup {
       myNativeGitError.set(new RunGitError(pathToGit, commandError));
       LOG.info("Cannot run native git", commandError);
       return false;
+    } else {
+      myNativeGitError.set(null);
     }
     return true;
   }
