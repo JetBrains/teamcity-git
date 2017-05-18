@@ -26,17 +26,17 @@ import java.util.concurrent.TimeUnit;
 
 public class CleanupRunner implements Runnable {
 
-  private final RepositoryManager myRepositoryManager;
   private final ServerPluginConfig myConfig;
   private final ScheduledExecutorService myExecutor;
+  private final Cleanup myCleanup;
   private volatile boolean myFirstRun = true;
 
   public CleanupRunner(@NotNull final ExecutorServices executor,
                        @NotNull final ServerPluginConfig config,
-                       @NotNull final RepositoryManager repositoryManager) {
+                       @NotNull final Cleanup cleanup) {
     myExecutor = executor.getNormalExecutorService();
     myConfig = config;
-    myRepositoryManager = repositoryManager;
+    myCleanup = cleanup;
     myExecutor.submit(this);
   }
 
@@ -44,7 +44,7 @@ public class CleanupRunner implements Runnable {
     if (myFirstRun) {
       myFirstRun = false;
     } else {
-      new Cleanup(myConfig, myRepositoryManager).run();
+      myCleanup.run();
     }
     schedule();
   }

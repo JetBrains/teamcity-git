@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
@@ -38,6 +39,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.regex.Pattern;
 
@@ -49,6 +51,7 @@ public class Cleanup {
 
   private final RepositoryManager myRepositoryManager;
   private final ServerPluginConfig myConfig;
+  private final AtomicReference<RunGitError> myNativeGitError = new AtomicReference<>();
 
   public Cleanup(@NotNull final ServerPluginConfig config,
                  @NotNull final RepositoryManager repositoryManager) {
@@ -424,6 +427,7 @@ public class Cleanup {
     ExecResult result = SimpleCommandLineProcessRunner.runCommand(cmd, null);
     VcsException commandError = CommandLineUtil.getCommandLineError("git version", result);
     if (commandError != null) {
+      myNativeGitError.set(new RunGitError(pathToGit, commandError));
       LOG.info("Cannot run native git", commandError);
       return false;
     }
@@ -488,6 +492,28 @@ public class Cleanup {
       }
     } catch (Exception e) {
       LOG.error("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", e);
+    }
+  }
+
+
+  @Nullable
+  public RunGitError getNativeGitError() {
+    return myNativeGitError.get();
+  }
+
+  public static class RunGitError extends Pair<String, VcsException> {
+    public RunGitError(@NotNull String gitPath, @NotNull VcsException error) {
+      super(gitPath, error);
+    }
+
+    @NotNull
+    public String getGitPath() {
+      return first;
+    }
+
+    @NotNull
+    public VcsException getError() {
+      return second;
     }
   }
 }
