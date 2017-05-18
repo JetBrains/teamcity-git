@@ -38,10 +38,13 @@ public class GitResetCacheHandler implements ResetCacheHandler {
   private final static String GIT_CACHE_NAME = "git";
 
   private final RepositoryManager myRepositoryManager;
+  private final GcErrors myGcErrors;
   private AtomicBoolean myResetRunning = new AtomicBoolean(false);
 
-  public GitResetCacheHandler(@NotNull RepositoryManager repositoryManager) {
+  public GitResetCacheHandler(@NotNull RepositoryManager repositoryManager,
+                              @NotNull GcErrors gcErrors) {
     myRepositoryManager = repositoryManager;
+    myGcErrors = gcErrors;
   }
 
   @NotNull
@@ -90,5 +93,6 @@ public class GitResetCacheHandler implements ResetCacheHandler {
   private void resetMirror(@NotNull File mirror, @NotNull String url) {
     LOG.debug("Delete of the repository " + url + " (" + mirror.getAbsolutePath() + ")");
     delete(mirror);
+    myGcErrors.clearError(mirror);
   }
 }

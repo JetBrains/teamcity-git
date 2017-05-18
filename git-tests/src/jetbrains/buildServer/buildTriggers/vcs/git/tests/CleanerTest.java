@@ -133,7 +133,7 @@ public class CleanerTest extends BaseTestCase {
     GitSupportBuilder gitBuilder = gitSupport().withPluginConfig(myConfig);
     mySupport = gitBuilder.build();
     myRepositoryManager = gitBuilder.getRepositoryManager();
-    myCleanup = new Cleanup(myConfig, myRepositoryManager);
+    myCleanup = new Cleanup(myConfig, myRepositoryManager, new GcErrors());
   }
 
 
