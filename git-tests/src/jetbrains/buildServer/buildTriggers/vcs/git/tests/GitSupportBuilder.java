@@ -99,7 +99,7 @@ public class GitSupportBuilder {
     RevisionsCache revisionsCache = new RevisionsCache(myPluginConfig);
     myMapFullPath = new GitMapFullPath(myPluginConfig, revisionsCache);
     myCommitLoader = new CommitLoaderImpl(myRepositoryManager, myFetchCommand, myMapFullPath);
-    GitResetCacheHandler resetCacheHandler = new GitResetCacheHandler(myRepositoryManager);
+    GitResetCacheHandler resetCacheHandler = new GitResetCacheHandler(myRepositoryManager, new GcErrors());
     ResetRevisionsCacheHandler resetRevisionsCacheHandler = new ResetRevisionsCacheHandler(revisionsCache);
     GitVcsSupport git = new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
                                           new EmptyVcsRootSshKeyManager(), new MockVcsOperationProgressProvider(),
