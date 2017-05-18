@@ -177,7 +177,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     }
     int wrappedMode = myWrappedIterator.getEntryRawMode();
     String entryPath = myWrappedIterator.getEntryPathString();
-    myIsOnSubmodule = checkoutSubmodules() && GITLINK_MODE_BITS == wrappedMode && (myRules == null || myRules.map(entryPath) != null);
+    myIsOnSubmodule = checkoutSubmodules() && GITLINK_MODE_BITS == wrappedMode && (myRules == null || myRules.map(getPathFromRoot(entryPath)) != null);
     mode = myIsOnSubmodule ? TREE_MODE_BITS : wrappedMode;
     if (myIsOnSubmodule) {
       try {

@@ -233,6 +233,15 @@ public class GitPatchTest extends PatchTestCase {
   }
 
 
+  @TestFor(issues = "TW-50097")
+  @Test(dataProvider = "patchInSeparateProcess")
+  public void submodules_and_checkout_rules(boolean patchInSeparateProcess) throws Exception {
+    myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
+    VcsRoot root = getRoot("sub-submodule", true);
+    checkPatch(root, "submodules_and_checkout_rules", null, "ce6044093939bb47283439d97a1c80f759669ff5", new CheckoutRules("+:first-level-submodule"));
+  }
+
+
   @Test(dataProvider = "patchInSeparateProcess")
   public void should_build_patch_on_revision_in_branch_when_cache_is_empty(boolean patchInSeparateProcess) throws Exception {
     myConfigBuilder.setSeparateProcessForPatch(patchInSeparateProcess);
