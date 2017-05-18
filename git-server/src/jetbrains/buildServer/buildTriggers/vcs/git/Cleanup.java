@@ -140,17 +140,21 @@ public class Cleanup {
   }
 
   private void runNativeGC() {
+    final long startNanos = System.nanoTime();
+    final long gcTimeQuotaNanos = TimeUnit.MINUTES.toNanos(myConfig.getNativeGCQuotaMinutes());
+    List<File> allDirs = getAllRepositoryDirs();
+    myGcErrors.retainErrors(allDirs);
+    if (allDirs.isEmpty()) {
+      LOG.debug("No repositories found");
+      return;
+    }
     if (!isNativeGitInstalled()) {
       LOG.info("Cannot find native git, skip running git gc");
       return;
     }
-    final long startNanos = System.nanoTime();
-    final long gcTimeQuotaNanos = TimeUnit.MINUTES.toNanos(myConfig.getNativeGCQuotaMinutes());
-    LOG.info("Git garbage collection started");
-    List<File> allDirs = getAllRepositoryDirs();
-    myGcErrors.retainErrors(allDirs);
     Collections.shuffle(allDirs);
     int runGCCounter = 0;
+    LOG.info("Git garbage collection started");
     boolean runInPlace = myConfig.runInPlaceGc();
     for (File gitDir : allDirs) {
       if (runInPlace) {
