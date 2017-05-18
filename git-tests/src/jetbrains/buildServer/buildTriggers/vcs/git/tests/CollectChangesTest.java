@@ -248,7 +248,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     ServerPluginConfig config = myConfig.build();
     MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
-    ResetCacheHandler resetHandler = new GitResetCacheHandler(repositoryManager);
+    ResetCacheHandler resetHandler = new GitResetCacheHandler(repositoryManager, new GcErrors());
     for (String cache : resetHandler.listCaches())
       resetHandler.resetCache(cache);
 

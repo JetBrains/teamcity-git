@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.buildTriggers.vcs.git.GcErrors;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitResetCacheHandler;
 import jetbrains.buildServer.buildTriggers.vcs.git.RepositoryManager;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
@@ -61,7 +62,7 @@ public class GitResetCacheHandlerTest {
     myTempFiles = new TempFiles();
     myCachesDir = myTempFiles.createTempDir();
     myRepositoryManager = myContext.mock(RepositoryManager.class);
-    myCacheHandler = new GitResetCacheHandler(myRepositoryManager);
+    myCacheHandler = new GitResetCacheHandler(myRepositoryManager, new GcErrors());
   }
 
   @AfterMethod
