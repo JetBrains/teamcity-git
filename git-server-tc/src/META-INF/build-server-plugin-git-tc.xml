@@ -10,4 +10,6 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitSubmodulesUsageStatistics"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitNotFoundHealthReport"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitNotFoundHealthPage"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitGcErrorsHealthReport"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitGcErrorsHealthPage"/>
 </beans>

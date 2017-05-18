@@ -51,12 +51,15 @@ public class Cleanup {
 
   private final RepositoryManager myRepositoryManager;
   private final ServerPluginConfig myConfig;
+  private final GcErrors myGcErrors;
   private final AtomicReference<RunGitError> myNativeGitError = new AtomicReference<>();
 
   public Cleanup(@NotNull final ServerPluginConfig config,
-                 @NotNull final RepositoryManager repositoryManager) {
+                 @NotNull final RepositoryManager repositoryManager,
+                 @NotNull final GcErrors gcErrors) {
     myConfig = config;
     myRepositoryManager = repositoryManager;
+    myGcErrors = gcErrors;
   }
 
   public void run() {
@@ -94,6 +97,7 @@ public class Cleanup {
         rmLock.unlock();
       }
       if (deleted) {
+        myGcErrors.clearError(dir);
         LOG.debug("Remove unused git repository dir " + dir.getAbsolutePath() + " finished");
       } else {
         LOG.error("Cannot delete unused git repository dir " + dir.getAbsolutePath());
@@ -144,6 +148,7 @@ public class Cleanup {
     final long gcTimeQuotaNanos = TimeUnit.MINUTES.toNanos(myConfig.getNativeGCQuotaMinutes());
     LOG.info("Git garbage collection started");
     List<File> allDirs = getAllRepositoryDirs();
+    myGcErrors.retainErrors(allDirs);
     Collections.shuffle(allDirs);
     int runGCCounter = 0;
     boolean runInPlace = myConfig.runInPlaceGc();
@@ -181,6 +186,7 @@ public class Cleanup {
       try {
         gcRepo = setupGcRepo(originalRepo);
       } catch (Exception e) {
+        myGcErrors.registerError(originalRepo, "Failed to create temporary repository for garbage collection", e);
         LOG.warnAndDebugDetails("Failed to create temporary repository for garbage collection, original repository: " + originalRepo.getAbsolutePath(), e);
         return;
       }
@@ -189,6 +195,7 @@ public class Cleanup {
         repack(gcRepo);
         packRefs(gcRepo);
       } catch (Exception e) {
+        myGcErrors.registerError(originalRepo, "Error while running garbage collection", e);
         LOG.warnAndDebugDetails("Error while running garbage collection in " + originalRepo.getAbsolutePath(), e);
         FileUtil.delete(gcRepo);
         return;
@@ -205,6 +212,7 @@ public class Cleanup {
       oldDir = createTempDir(originalRepo.getParentFile(), originalRepo.getName() + ".old");
       FileUtil.delete(oldDir);
     } catch (Exception e) {
+      myGcErrors.registerError(originalRepo, "Error while creating temporary directory", e);
       LOG.warnAndDebugDetails("Error while creating temporary directory for " + originalRepo.getAbsolutePath(), e);
       FileUtil.delete(gcRepo);
       return;
@@ -215,10 +223,12 @@ public class Cleanup {
     rmWriteLock.lock();
     try {
       if (!originalRepo.renameTo(oldDir)) {
+        myGcErrors.registerError(originalRepo, "Failed to rename " + originalRepo.getName() + " to " + oldDir.getName());
         LOG.warn("Failed to rename " + originalRepo.getName() + " to " + oldDir.getName());
         return;
       }
       if (!gcRepo.renameTo(originalRepo)) {
+        myGcErrors.registerError(originalRepo, "Failed to rename " + gcRepo.getName() + " to " + originalRepo.getName());
         LOG.warn("Failed to rename " + gcRepo.getName() + " to " + originalRepo.getName() + ", will try restoring old repository");
         if (!oldDir.renameTo(originalRepo)) {
           LOG.warn("Failed to rename " + oldDir.getName() + " to " + originalRepo.getName());
@@ -229,6 +239,7 @@ public class Cleanup {
       FileUtil.delete(oldDir);
       FileUtil.delete(gcRepo);
     }
+    myGcErrors.clearError(originalRepo);
   }
 
   private void repack(final File gcRepo) throws VcsException {
@@ -493,6 +504,7 @@ public class Cleanup {
         LOG.debug(result.getStderr());
       }
     } catch (Exception e) {
+      myGcErrors.registerError(bareGitDir, e);
       LOG.error("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", e);
     }
   }
