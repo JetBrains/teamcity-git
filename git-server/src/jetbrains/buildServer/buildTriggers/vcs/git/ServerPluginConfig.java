@@ -152,4 +152,10 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean ignoreMissingRemoteRef();
 
   int getMergeRetryAttempts();
+
+  boolean runInPlaceGc();
+
+  int getRepackIdleTimeoutSeconds();
+
+  int getPackRefsIdleTimeoutSeconds();
 }

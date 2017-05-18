@@ -54,6 +54,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.text.ParseException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static com.intellij.openapi.util.text.StringUtil.isEmptyOrSpaces;
@@ -537,5 +538,20 @@ public class PluginConfigImpl implements ServerPluginConfig {
   @Override
   public int getMergeRetryAttempts() {
     return TeamCityProperties.getInteger(MERGE_RETRY_ATTEMPTS, 2);
+  }
+
+  @Override
+  public boolean runInPlaceGc() {
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.runInPlaceGc");
+  }
+
+  @Override
+  public int getRepackIdleTimeoutSeconds() {
+    return TeamCityProperties.getInteger("teamcity.git.repackIdleTimeoutSeconds", (int) TimeUnit.MINUTES.toSeconds(30));
+  }
+
+  @Override
+  public int getPackRefsIdleTimeoutSeconds() {
+    return TeamCityProperties.getInteger("teamcity.git.packRefsIdleTimeoutSeconds", (int) TimeUnit.MINUTES.toSeconds(5));
   }
 }
