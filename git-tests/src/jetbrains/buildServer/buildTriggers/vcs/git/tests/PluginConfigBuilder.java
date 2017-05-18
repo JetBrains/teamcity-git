@@ -70,6 +70,7 @@ public class PluginConfigBuilder {
   private Boolean myNewConnectionForPrune;
   private Boolean myIgnoreMissingRemoteRef;
   private Integer myMergeRetryAttempts;
+  private Boolean myRunInPlaceGc;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -339,6 +340,23 @@ public class PluginConfigBuilder {
           return myMergeRetryAttempts;
         return myDelegate.getMergeRetryAttempts();
       }
+
+      @Override
+      public boolean runInPlaceGc() {
+        if (myRunInPlaceGc != null)
+          return myRunInPlaceGc;
+        return myDelegate.runInPlaceGc();
+      }
+
+      @Override
+      public int getRepackIdleTimeoutSeconds() {
+        return myDelegate.getRepackIdleTimeoutSeconds();
+      }
+
+      @Override
+      public int getPackRefsIdleTimeoutSeconds() {
+        return myDelegate.getPackRefsIdleTimeoutSeconds();
+      }
     };
   }
 
@@ -514,6 +532,11 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setMergeRetryAttempts(@Nullable Integer retryAttempts) {
     myMergeRetryAttempts = retryAttempts;
+    return this;
+  }
+
+  PluginConfigBuilder setRunInPlaceGc(boolean runInPlaceGc) {
+    myRunInPlaceGc = runInPlaceGc;
     return this;
   }
 }
