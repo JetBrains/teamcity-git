@@ -1,0 +1,3 @@
+[submodule "sub-submodule"]
+	path = sub-sub
+	url = ../submodule.git

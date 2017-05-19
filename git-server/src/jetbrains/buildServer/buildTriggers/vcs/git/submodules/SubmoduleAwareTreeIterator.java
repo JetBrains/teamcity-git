@@ -20,6 +20,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.CheckoutRules;
+import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.errors.TransportException;
@@ -50,7 +51,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    */
   private final String myUrl;
   /**
-   * Path from root of the main repository to the entry of repository of this iterator, used in error messages.
+   * Path from root of the main repository to the entry of repository of this iterator.
    * For main repository it is equals "", for repository of submodule it is equals to submodule path,
    * for sub-submodule path of parent submodule + path of current submodule and so on.
    */
@@ -177,7 +178,26 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     }
     int wrappedMode = myWrappedIterator.getEntryRawMode();
     String entryPath = myWrappedIterator.getEntryPathString();
-    myIsOnSubmodule = checkoutSubmodules() && GITLINK_MODE_BITS == wrappedMode && (myRules == null || myRules.map(getPathFromRoot(entryPath)) != null);
+    myIsOnSubmodule = checkoutSubmodules() && GITLINK_MODE_BITS == wrappedMode;
+    if (myIsOnSubmodule && myRules != null) {
+      //if submodule dir is excluded by checkout rules we can treat it as an empty dir
+      String pathFromRoot = getPathFromRoot(entryPath);
+      if (myRules.map(pathFromRoot) == null) {
+        //submodule dir itself is excluded, but some of its dirs can be included
+        //happens with checkout rules like +:submodule/dir1
+        boolean rulesInsideSubmodule = false;
+        CheckoutRules submoduleAsRule = new CheckoutRules("+:" + pathFromRoot);
+        for (IncludeRule rule : myRules.getRootIncludeRules()) {
+          if (submoduleAsRule.map(rule.getFrom()) != null) {
+            rulesInsideSubmodule = true;
+            break;
+          }
+        }
+        if (!rulesInsideSubmodule) {
+          myIsOnSubmodule = false;
+        }
+      }
+    }
     mode = myIsOnSubmodule ? TREE_MODE_BITS : wrappedMode;
     if (myIsOnSubmodule) {
       try {
