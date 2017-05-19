@@ -501,7 +501,7 @@ public class Cleanup {
 
       VcsException commandError = CommandLineUtil.getCommandLineError("'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", result);
       if (commandError != null) {
-        LOG.error("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", commandError);
+        LOG.warnAndDebugDetails("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", commandError);
       }
       if (result.getStderr().length() > 0) {
         LOG.debug("Output produced by 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
@@ -509,7 +509,7 @@ public class Cleanup {
       }
     } catch (Exception e) {
       myGcErrors.registerError(bareGitDir, e);
-      LOG.error("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", e);
+      LOG.warnAndDebugDetails("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", e);
     }
   }
 
