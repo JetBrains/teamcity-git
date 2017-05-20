@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2014 JetBrains s.r.o.
+ * Copyright 2000-2017 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,31 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.github;
+package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import com.intellij.openapi.util.Pair;
 import org.jetbrains.annotations.NotNull;
 
-public class GitHubRepo extends Pair<String, String> {
-  public GitHubRepo(@NotNull String owner, @NotNull String repo) {
-    super(owner, repo);
+public class VcsHostingRepo {
+  private final String myOwner;
+  private final String myRepoName;
+  private final String myRepositoryUrl;
+
+  public VcsHostingRepo(@NotNull String repositoryUrl, @NotNull String owner, @NotNull String repoName) {
+    myOwner = owner;
+    myRepoName = repoName;
+    myRepositoryUrl = repositoryUrl;
+  }
+
+  public String repositoryUrl() {
+    return myRepositoryUrl;
   }
 
   @NotNull
   public String owner() {
-    return first;
+    return myOwner;
   }
   @NotNull
-  public String repo() {
-    return second;
+  public String repoName() {
+    return myRepoName;
   }
 }

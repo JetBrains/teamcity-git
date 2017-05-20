@@ -16,8 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.github.GitHubRepo;
-import jetbrains.buildServer.buildTriggers.vcs.git.github.GitHubUtil;
 import jetbrains.buildServer.util.positioning.PositionAware;
 import jetbrains.buildServer.util.positioning.PositionConstraint;
 import jetbrains.buildServer.vcs.*;
@@ -60,11 +58,11 @@ public class GitUrlSupport implements UrlSupport, PositionAware {
       throw new VcsException(e.getMessage(), e);
     }
 
-    Map<String, String> props = new HashMap<String, String>(myGitSupport.getDefaultVcsProperties());
+    Map<String, String> props = new HashMap<>(myGitSupport.getDefaultVcsProperties());
     props.put(Constants.FETCH_URL, fetchUrl);
     props.putAll(getAuthSettings(url, uri));
 
-    GitHubRepo ghRepo = GitHubUtil.getGitHubRepo(uri);
+    VcsHostingRepo ghRepo = WellKnownHostingsUtil.getGitHubRepo(uri);
     if (ghRepo != null)
       refineGithubSettings(ghRepo, props);
 
@@ -81,14 +79,14 @@ public class GitUrlSupport implements UrlSupport, PositionAware {
     }
   }
 
-  private void refineGithubSettings(@NotNull GitHubRepo ghRepo, @NotNull Map<String, String> props) {
+  private void refineGithubSettings(@NotNull VcsHostingRepo ghRepo, @NotNull Map<String, String> props) {
     GitHubClient client = new GitHubClient();
     AuthSettings auth = new AuthSettings(props);
     if (auth.getAuthMethod() == AuthenticationMethod.PASSWORD && auth.getUserName() != null && auth.getPassword() != null) {
       client.setCredentials(auth.getUserName(), auth.getPassword());
     }
     try {
-      Repository r = new RepositoryService(client).getRepository(ghRepo.owner(), ghRepo.repo());
+      Repository r = new RepositoryService(client).getRepository(ghRepo.owner(), ghRepo.repoName());
       props.put(Constants.BRANCH_NAME, GitUtils.expandRef(r.getMasterBranch()));
     } catch (IOException e) {
       //ignore, cannot refine settings

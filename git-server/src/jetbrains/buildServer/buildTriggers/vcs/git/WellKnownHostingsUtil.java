@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2014 JetBrains s.r.o.
+ * Copyright 2000-2017 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,40 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.github;
+package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public final class GitHubUtil {
-  private GitHubUtil() {}
+public final class WellKnownHostingsUtil {
+  private WellKnownHostingsUtil() {}
 
   @Nullable
-  public static GitHubRepo getGitHubRepo(@NotNull URIish uri) {
+  public static VcsHostingRepo getGitHubRepo(@NotNull URIish uri) {
     if (!"github.com".equals(uri.getHost()))
       return null;
+
+    return ownerProjectStyleRepo("https://github.com/", uri);
+  }
+
+  @Nullable
+  public static VcsHostingRepo getBitbucketRepo(@NotNull URIish uri) {
+    if (!"bitbucket.org".equals(uri.getHost()))
+      return null;
+
+    return ownerProjectStyleRepo("https://bitbucket.org/", uri);
+  }
+
+  @Nullable
+  public static VcsHostingRepo getVSTSRepo(@NotNull URIish uri) {
+    if (!uri.getHost().contains("visualstudio.com"))
+      return null;
+
+    return ownerProjectStyleRepo("https://" + uri.getHost() + "/", uri);
+  }
+
+  private static VcsHostingRepo ownerProjectStyleRepo(@NotNull String hostingUrl, @NotNull URIish uri) {
     String path = uri.getPath();
     if (path == null)
       return null;
@@ -40,7 +60,7 @@ public final class GitHubUtil {
     String repo = path.substring(idx + 1, path.length());
     if (repo.endsWith(".git"))
       repo = repo.substring(0, repo.length() - 4);
-    return new GitHubRepo(owner, repo);
+    return new VcsHostingRepo(hostingUrl + owner + "/" + repo, owner, repo);
   }
 
 }

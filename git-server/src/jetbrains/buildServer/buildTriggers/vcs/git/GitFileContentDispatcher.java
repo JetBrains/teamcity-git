@@ -17,8 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.github.GitHubRawFileContentProvider;
-import jetbrains.buildServer.buildTriggers.vcs.git.github.GitHubRepo;
-import jetbrains.buildServer.buildTriggers.vcs.git.github.GitHubUtil;
 import jetbrains.buildServer.vcs.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -63,10 +61,10 @@ public class GitFileContentDispatcher implements VcsFileContentProvider {
     try {
       if (GitServerUtil.isCloned(ctx.getRepository()))
         return genericProvider;
-      GitHubRepo ghRepo = GitHubUtil.getGitHubRepo(ctx.getGitRoot().getRepositoryFetchURL());
+      VcsHostingRepo ghRepo = WellKnownHostingsUtil.getGitHubRepo(ctx.getGitRoot().getRepositoryFetchURL());
       if (ghRepo == null)
         return genericProvider;
-      return new GitHubRawFileContentProvider(myVcs, genericProvider, ghRepo.owner(), ghRepo.repo());
+      return new GitHubRawFileContentProvider(myVcs, genericProvider, ghRepo.owner(), ghRepo.repoName());
     } catch (Exception e) {
       //LOG
       return genericProvider;

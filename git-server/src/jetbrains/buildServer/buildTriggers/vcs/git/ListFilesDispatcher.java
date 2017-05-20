@@ -17,8 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.github.GitHubListFilesSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.github.GitHubRepo;
-import jetbrains.buildServer.buildTriggers.vcs.git.github.GitHubUtil;
 import jetbrains.buildServer.vcs.ListDirectChildrenPolicy;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsFileData;
@@ -57,10 +55,10 @@ public class ListFilesDispatcher implements ListDirectChildrenPolicy {
     try {
       if (GitServerUtil.isCloned(ctx.getRepository()))
         return genericListFiles;
-      GitHubRepo ghRepo = GitHubUtil.getGitHubRepo(ctx.getGitRoot().getRepositoryFetchURL());
+      VcsHostingRepo ghRepo = WellKnownHostingsUtil.getGitHubRepo(ctx.getGitRoot().getRepositoryFetchURL());
       if (ghRepo == null)
         return genericListFiles;
-      return new GitHubListFilesSupport(myVcs, genericListFiles, ghRepo.owner(), ghRepo.repo());
+      return new GitHubListFilesSupport(myVcs, genericListFiles, ghRepo.owner(), ghRepo.repoName());
     } catch (Exception e) {
       //LOG
       return genericListFiles;
