@@ -41,10 +41,22 @@ public final class WellKnownHostingsUtil {
 
   @Nullable
   public static VcsHostingRepo getVSTSRepo(@NotNull URIish uri) {
-    if (!uri.getHost().contains("visualstudio.com"))
+    final int idx = uri.getHost().indexOf(".visualstudio.com");
+    if (idx <= 0)
       return null;
 
-    return ownerProjectStyleRepo("https://" + uri.getHost() + "/", uri);
+    String owner = uri.getHost().substring(0, idx);
+
+    String path = uri.getPath();
+    if (path == null)
+      return null;
+
+    int gitPrefixIdx = path.indexOf("_git/");
+    if (gitPrefixIdx == -1) return null;
+
+    String repoName = path.substring(gitPrefixIdx + "_git/".length());
+
+    return new VcsHostingRepo("https://" + uri.getHost() + "/_git/" + repoName, owner, repoName);
   }
 
   private static VcsHostingRepo ownerProjectStyleRepo(@NotNull String hostingUrl, @NotNull URIish uri) {

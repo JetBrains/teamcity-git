@@ -67,6 +67,8 @@ public class WellKnownHostingsTest extends BaseTestCase {
     VcsHostingRepo repo = WellKnownHostingsUtil.getVSTSRepo(new URIish(url));
     assertNotNull(repo);
     assertEquals("https://spav5.visualstudio.com/_git/MyFirstProject", repo.repositoryUrl());
+    assertEquals("spav5", repo.owner());
+    assertEquals("MyFirstProject", repo.repoName());
   }
 
   public void test_vsts_ssh() throws URISyntaxException {
@@ -74,5 +76,7 @@ public class WellKnownHostingsTest extends BaseTestCase {
     VcsHostingRepo repo = WellKnownHostingsUtil.getVSTSRepo(new URIish(url));
     assertNotNull(repo);
     assertEquals("https://spav5.visualstudio.com/_git/MyFirstProject", repo.repositoryUrl());
+    assertEquals("spav5", repo.owner());
+    assertEquals("MyFirstProject", repo.repoName());
   }
 }
