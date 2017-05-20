@@ -199,6 +199,12 @@ public class GitUrlSupportTest extends BaseTestCase {
     }
   }
 
+  @Test
+  public void should_adjust_gitlab_fetch_url() throws VcsException {
+    VcsUrl url = new VcsUrl("https://gitlab.com/fdroid/repomaker");
+    GitVcsRoot root = toGitRoot(url);
+    assertEquals("https://gitlab.com/fdroid/repomaker.git", root.getProperty(Constants.FETCH_URL));
+  }
 
   private void checkAuthMethod(MavenVcsUrl url, GitVcsRoot root) {
     if (url.getProviderSpecificPart().startsWith("ssh")) {
