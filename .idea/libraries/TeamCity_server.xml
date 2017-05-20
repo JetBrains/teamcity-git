@@ -2,6 +2,7 @@
   <library name="TeamCity server">
     <CLASSES>
       <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/server.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/external-change-viewers.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

@@ -12,4 +12,5 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitNotFoundHealthPage"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitGcErrorsHealthReport"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitGcErrorsHealthPage"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitExternalChangeViewerExtension"/>
 </beans>
