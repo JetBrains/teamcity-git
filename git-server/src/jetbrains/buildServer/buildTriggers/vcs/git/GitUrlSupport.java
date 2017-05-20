@@ -60,7 +60,12 @@ public class GitUrlSupport implements UrlSupport, PositionAware {
       throw new VcsException(e.getMessage(), e);
     }
 
-    Map<String, String> props = new HashMap<String, String>(myGitSupport.getDefaultVcsProperties());
+    if (fetchUrl.startsWith("https://") && !fetchUrl.endsWith(".git") && uri.getHost().contains("gitlab.com")) {
+      // for GitLab we need to add .git suffix to the fetch URL, otherwise, for some reason JGit can't work with this repository (although regular git command works)
+      fetchUrl = fetchUrl + ".git";
+    }
+
+    Map<String, String> props = new HashMap<>(myGitSupport.getDefaultVcsProperties());
     props.put(Constants.FETCH_URL, fetchUrl);
     props.putAll(getAuthSettings(url, uri));
 
