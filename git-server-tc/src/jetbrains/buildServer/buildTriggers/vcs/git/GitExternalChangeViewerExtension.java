@@ -67,6 +67,15 @@ public class GitExternalChangeViewerExtension implements ExternalChangeViewerExt
       }};
     }
 
+    vcsHostingRepo = WellKnownHostingsUtil.getGitlabRepo(urIish);
+    if (vcsHostingRepo != null) {
+      final VcsHostingRepo finalVcsHostingRepo = vcsHostingRepo;
+      return new HashMap<String, String>() {{
+        put(PropertyType.CHANGE_SET_TYPE, finalVcsHostingRepo.repositoryUrl() + "/commit/${changeSetId}");
+        put(PropertyType.LINK_TEXT, "Open in Gitlab.com");
+      }};
+    }
+
     vcsHostingRepo = WellKnownHostingsUtil.getVSTSRepo(urIish);
     if (vcsHostingRepo != null) {
       final VcsHostingRepo finalVcsHostingRepo = vcsHostingRepo;

@@ -44,6 +44,24 @@ public class WellKnownHostingsTest extends BaseTestCase {
     assertEquals("teamcity-commit-hooks", repo.repoName());
   }
 
+  public void test_gitlab_https() throws URISyntaxException {
+    String url = "https://pavelsher@gitlab.com/pavelsher/testgitrepo.git";
+    VcsHostingRepo repo = WellKnownHostingsUtil.getGitlabRepo(new URIish(url));
+    assertNotNull(repo);
+    assertEquals("https://gitlab.com/pavelsher/testgitrepo", repo.repositoryUrl());
+    assertEquals("pavelsher", repo.owner());
+    assertEquals("testgitrepo", repo.repoName());
+  }
+
+  public void test_gitlab_ssh() throws URISyntaxException {
+    String url = "git@gitlab.com:pavelsher/testgitrepo.git";
+    VcsHostingRepo repo = WellKnownHostingsUtil.getGitlabRepo(new URIish(url));
+    assertNotNull(repo);
+    assertEquals("https://gitlab.com/pavelsher/testgitrepo", repo.repositoryUrl());
+    assertEquals("pavelsher", repo.owner());
+    assertEquals("testgitrepo", repo.repoName());
+  }
+
   public void test_bitbucket_https() throws URISyntaxException {
     String url = "https://owner@bitbucket.org/owner/testgitrepo.git";
     VcsHostingRepo repo = WellKnownHostingsUtil.getBitbucketRepo(new URIish(url));

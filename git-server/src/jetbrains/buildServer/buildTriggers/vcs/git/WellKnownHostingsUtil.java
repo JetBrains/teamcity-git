@@ -32,6 +32,14 @@ public final class WellKnownHostingsUtil {
   }
 
   @Nullable
+  public static VcsHostingRepo getGitlabRepo(@NotNull URIish uri) {
+    if (!"gitlab.com".equals(uri.getHost()))
+      return null;
+
+    return ownerProjectStyleRepo("https://gitlab.com/", uri);
+  }
+
+  @Nullable
   public static VcsHostingRepo getBitbucketRepo(@NotNull URIish uri) {
     if (!"bitbucket.org".equals(uri.getHost()))
       return null;
