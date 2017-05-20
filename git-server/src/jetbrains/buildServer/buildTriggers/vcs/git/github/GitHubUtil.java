@@ -25,7 +25,7 @@ public final class GitHubUtil {
   private GitHubUtil() {}
 
   @Nullable
-  public static GitHubRepo getGitHubRepo(@NotNull URIish uri) throws VcsException {
+  public static GitHubRepo getGitHubRepo(@NotNull URIish uri) {
     if (!"github.com".equals(uri.getHost()))
       return null;
     String path = uri.getPath();
