@@ -20,6 +20,8 @@ import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
+
 public final class WellKnownHostingsUtil {
   private WellKnownHostingsUtil() {}
 
@@ -45,6 +47,38 @@ public final class WellKnownHostingsUtil {
       return null;
 
     return ownerProjectStyleRepo("https://bitbucket.org/", uri);
+  }
+
+  @Nullable
+  public static VcsHostingRepo getBitbucketServerRepo(@NotNull URIish uri) {
+    String path = uri.getPath();
+    if (uri.getScheme().startsWith("http") && path.endsWith(".git") && (path.startsWith("/scm/") || path.startsWith("/git/"))) {
+      // probably Bitbucket server
+      String ownerAndRepo = path.substring(5); // length of /scm/ or /git/
+      int slashIdx = ownerAndRepo.indexOf('/');
+      if (slashIdx == -1) return null;
+      String owner = ownerAndRepo.substring(0, slashIdx);
+      String repo = ownerAndRepo.substring(slashIdx+1, ownerAndRepo.length() - ".git".length());
+      if (repo.contains("/")) return null;
+
+      boolean personalRepo = '~' == owner.charAt(0);
+      if (personalRepo) {
+        owner = owner.substring(1);
+      }
+
+      String hostAndPort = uri.getHost();
+      if (uri.getPort() > 0 && uri.getPort() != 80 && uri.getPort() != 443) {
+        hostAndPort += ":" + uri.getPort();
+      }
+
+      if (personalRepo) {
+        return new VcsHostingRepo(uri.getScheme() + "://" + hostAndPort + "/users/" + owner + "/repos/" + repo, owner, repo);
+      } else {
+        return new VcsHostingRepo(uri.getScheme() + "://" + hostAndPort + "/projects/" + owner + "/repos/" + repo, owner, repo);
+      }
+    }
+
+    return null;
   }
 
   @Nullable

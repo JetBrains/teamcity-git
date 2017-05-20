@@ -80,6 +80,24 @@ public class WellKnownHostingsTest extends BaseTestCase {
     assertEquals("testgitrepo", repo.repoName());
   }
 
+  public void test_bitbucket_server_http_personal_repo() throws URISyntaxException {
+    String url = "http://admin@localhost:7990/scm/~admin/personalrepo.git";
+    VcsHostingRepo repo = WellKnownHostingsUtil.getBitbucketServerRepo(new URIish(url));
+    assertNotNull(repo);
+    assertEquals("http://localhost:7990/users/admin/repos/personalrepo", repo.repositoryUrl());
+    assertEquals("admin", repo.owner());
+    assertEquals("personalrepo", repo.repoName());
+  }
+
+  public void test_bitbucket_server_http_project_repo() throws URISyntaxException {
+    String url = "https://admin@localhost/scm/TP/projectrepo.git";
+    VcsHostingRepo repo = WellKnownHostingsUtil.getBitbucketServerRepo(new URIish(url));
+    assertNotNull(repo);
+    assertEquals("https://localhost/projects/TP/repos/projectrepo", repo.repositoryUrl());
+    assertEquals("TP", repo.owner());
+    assertEquals("projectrepo", repo.repoName());
+  }
+
   public void test_vsts_https() throws URISyntaxException {
     String url = "https://spav5.visualstudio.com/_git/MyFirstProject";
     VcsHostingRepo repo = WellKnownHostingsUtil.getVSTSRepo(new URIish(url));

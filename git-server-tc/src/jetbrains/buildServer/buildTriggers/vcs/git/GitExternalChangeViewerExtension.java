@@ -85,6 +85,16 @@ public class GitExternalChangeViewerExtension implements ExternalChangeViewerExt
       }};
     }
 
+    vcsHostingRepo = WellKnownHostingsUtil.getBitbucketServerRepo(urIish);
+    if (vcsHostingRepo != null) {
+      final VcsHostingRepo finalVcsHostingRepo = vcsHostingRepo;
+      return new HashMap<String, String>() {{
+        put(PropertyType.CHANGE_SET_TYPE, finalVcsHostingRepo.repositoryUrl() + "/commits/${changeSetId}");
+        put(PropertyType.LINK_TEXT, "Open in Bitbucket Server");
+        put(PropertyType.LINK_ICON_CLASS, "icon-bitbucket");
+      }};
+    }
+
     return null;
   }
 }
