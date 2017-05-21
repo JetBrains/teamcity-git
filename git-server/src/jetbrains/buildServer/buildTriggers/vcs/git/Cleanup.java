@@ -152,6 +152,7 @@ public class Cleanup {
       LOG.info("Cannot find native git, skip running git gc");
       return;
     }
+    LOG.info("Use git at path '" + myConfig.getPathToGit() + "'");
     Collections.shuffle(allDirs);
     int runGCCounter = 0;
     LOG.info("Git garbage collection started");
@@ -180,12 +181,15 @@ public class Cleanup {
 
 
   private void runGcInCopy(@NotNull File originalRepo) {
+    LOG.info("Run git gc for " + originalRepo.getName());
     Lock rmLock = myRepositoryManager.getRmLock(originalRepo).readLock();
     rmLock.lock();
     File gcRepo;
     try {
-      if (!isGcNeeded(originalRepo))
+      if (!isGcNeeded(originalRepo)) {
+        LOG.info("No git gc needed for " + originalRepo.getName());
         return;
+      }
 
       try {
         gcRepo = setupGcRepo(originalRepo);
