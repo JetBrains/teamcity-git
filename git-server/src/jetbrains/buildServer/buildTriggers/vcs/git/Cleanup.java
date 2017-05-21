@@ -241,6 +241,7 @@ public class Cleanup {
         if (!oldDir.renameTo(originalRepo)) {
           LOG.warn("Failed to rename " + oldDir.getName() + " to " + originalRepo.getName());
         }
+        return;
       }
     } finally {
       rmWriteLock.unlock();
