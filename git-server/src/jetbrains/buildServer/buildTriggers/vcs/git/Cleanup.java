@@ -181,13 +181,14 @@ public class Cleanup {
 
 
   private void runGcInCopy(@NotNull File originalRepo) {
-    LOG.info("Run git gc for " + originalRepo.getName());
+    LOG.debug("[" + originalRepo.getName() + "] run git gc in repository copy");
+
     Lock rmLock = myRepositoryManager.getRmLock(originalRepo).readLock();
     rmLock.lock();
     File gcRepo;
     try {
       if (!isGcNeeded(originalRepo)) {
-        LOG.info("No git gc needed for " + originalRepo.getName());
+        LOG.info("[" + originalRepo.getName() + "] no git gc is needed");
         return;
       }
 
@@ -215,6 +216,7 @@ public class Cleanup {
     //remove alternates pointing to the original repo before swapping repositories
     FileUtil.delete(new File(gcRepo, "objects/info/alternates"));
 
+    long swapStart = System.currentTimeMillis();
     File oldDir;
     try {
       oldDir = createTempDir(originalRepo.getParentFile(), originalRepo.getName() + ".old");
@@ -228,7 +230,9 @@ public class Cleanup {
 
     //swap repositories with write rm lock which guarantees no one uses the original repository
     Lock rmWriteLock = myRepositoryManager.getRmLock(originalRepo).writeLock();
+    long lockStart = System.currentTimeMillis();
     rmWriteLock.lock();
+    long lockDuration = System.currentTimeMillis() - lockStart;
     try {
       if (!originalRepo.renameTo(oldDir)) {
         myGcErrors.registerError(originalRepo, "Failed to rename " + originalRepo.getName() + " to " + oldDir.getName());
@@ -248,10 +252,19 @@ public class Cleanup {
       FileUtil.delete(oldDir);
       FileUtil.delete(gcRepo);
     }
+    long swapDuration = System.currentTimeMillis() - swapStart;
+    if (swapDuration > TimeUnit.SECONDS.toMillis(5)) {
+      String msg = "[" + originalRepo.getName() + "] swap with compacted repository finished in " + swapDuration + "ms";
+      if (lockDuration > TimeUnit.SECONDS.toMillis(1)) {
+        msg += " (lock acquired in " + lockDuration + "ms)";
+      }
+      LOG.info(msg);
+    }
     myGcErrors.clearError(originalRepo);
   }
 
   private void repack(final File gcRepo) throws VcsException {
+    long start = System.currentTimeMillis();
     GeneralCommandLine cmd = new GeneralCommandLine();
     cmd.setWorkingDirectory(gcRepo);
     cmd.setExePath(myConfig.getPathToGit());
@@ -262,6 +275,10 @@ public class Cleanup {
       public Integer getOutputIdleSecondsTimeout() {
         return myConfig.getRepackIdleTimeoutSeconds();
       }
+      @Override
+      public void onProcessFinished(@NotNull final Process ps) {
+        LOG.info("[" + gcRepo.getName() + "] 'git repack -a -d' finished in " + (System.currentTimeMillis() - start) + "ms");
+      }
     });
     VcsException commandError = CommandLineUtil.getCommandLineError("git repack", result);
     if (commandError != null) {
@@ -271,6 +288,7 @@ public class Cleanup {
   }
 
   private void packRefs(@NotNull File gcRepo) throws VcsException {
+    long start = System.currentTimeMillis();
     GeneralCommandLine cmd = new GeneralCommandLine();
     cmd.setWorkingDirectory(gcRepo);
     cmd.setExePath(myConfig.getPathToGit());
@@ -280,6 +298,10 @@ public class Cleanup {
       @Override
       public Integer getOutputIdleSecondsTimeout() {
         return myConfig.getPackRefsIdleTimeoutSeconds();
+      }
+      @Override
+      public void onProcessFinished(@NotNull final Process ps) {
+        LOG.info("[" + gcRepo.getName() + "] 'git pack-refs --all' finished in " + (System.currentTimeMillis() - start) + "ms");
       }
     });
     VcsException commandError = CommandLineUtil.getCommandLineError("git pack-refs", result);
