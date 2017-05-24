@@ -181,8 +181,6 @@ public class Cleanup {
 
 
   private void runGcInCopy(@NotNull File originalRepo) {
-    LOG.debug("[" + originalRepo.getName() + "] run git gc in repository copy");
-
     Lock rmLock = myRepositoryManager.getRmLock(originalRepo).readLock();
     rmLock.lock();
     File gcRepo;
@@ -199,6 +197,8 @@ public class Cleanup {
         LOG.warnAndDebugDetails("Failed to create temporary repository for garbage collection, original repository: " + originalRepo.getAbsolutePath(), e);
         return;
       }
+
+      LOG.info("[" + originalRepo.getName() + "] run git gc in dedicated dir [" + gcRepo.getName() + "]");
 
       try {
         repack(gcRepo);
