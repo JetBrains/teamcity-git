@@ -57,7 +57,10 @@ public abstract class ScriptGen {
       script = script.replace("{CREDENTIALS_SCRIPT}", result.getCanonicalPath());
       script = script.replace("{CREDENTIALS_CLASSPATH}", ClasspathUtil.composeClasspath(new Class[]{CredentialsHelper.class}, null, null));
       script = script.replace("{CREDENTIALS_CLASS}", CredentialsHelper.class.getName());
-      out.print(script);
+      String[] lines = script.split("(\r\n|\r|\n)");
+      for (String line : lines) {
+        out.println(line);
+      }
       if (!result.setExecutable(true))
         throw new IOException("Cannot make credentialsHelper script executable");
     } catch (IOException e) {

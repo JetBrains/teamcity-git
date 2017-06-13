@@ -49,6 +49,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String FETCH_ALL_HEADS = "teamcity.git.fetchAllHeads";
   public static final String FETCH_TAGS = "teamcity.git.fetchTags";
   public static final String EXCLUDE_USERNAME_FROM_HTTP_URL = "teamcity.git.excludeUsernameFromHttpUrl";
+  public static final String CLEAN_CRED_HELPER_SCRIPT = "teamcity.git.cleanCredHelperScript";
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
@@ -244,6 +245,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
   @Override
   public boolean isExcludeUsernameFromHttpUrl() {
     String value = myBuild.getSharedConfigParameters().get(EXCLUDE_USERNAME_FROM_HTTP_URL);
+    return !"false".equals(value);
+  }
+
+  @Override
+  public boolean isCleanCredHelperScript() {
+    String value = myBuild.getSharedConfigParameters().get(CLEAN_CRED_HELPER_SCRIPT);
     return !"false".equals(value);
   }
 

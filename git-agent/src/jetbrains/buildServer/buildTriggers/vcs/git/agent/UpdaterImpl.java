@@ -886,12 +886,14 @@ public class UpdaterImpl implements Updater {
       for (Map.Entry<String, String> e : config.getEnv().entrySet()) {
         command.setEnv(e.getKey(), e.getValue());
       }
-      command.addPostAction(new Runnable() {
-        @Override
-        public void run() {
-          FileUtil.delete(credHelper);
-        }
-      });
+      if (myPluginConfig.isCleanCredHelperScript()) {
+        command.addPostAction(new Runnable() {
+          @Override
+          public void run() {
+            FileUtil.delete(credHelper);
+          }
+        });
+      }
     } catch (Exception e) {
       if (credentialsHelper != null)
         FileUtil.delete(credentialsHelper);
