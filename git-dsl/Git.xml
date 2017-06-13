@@ -4,7 +4,7 @@
     <description>Git [VCS root](https://confluence.jetbrains.com/display/TCDL/Git)</description>
   </class>
   <params>
-    <param name="url">
+    <param name="url" mandatory="true">
       <description>Repository url</description>
     </param>
     <param name="push_url" dslName="pushUrl">
@@ -87,10 +87,10 @@
       </option>
       <option name="password" value="PASSWORD">
         <description>Password authentication</description>
-        <param name="username" dslName="userName">
+        <param name="username" dslName="userName" mandatory="true">
           <description>Username to use, overwrites the username in the url</description>
         </param>
-        <param name="secure:password" dslName="password">
+        <param name="secure:password" dslName="password" mandatory="true">
           <description>Password to use</description>
         </param>
       </option>
@@ -101,7 +101,7 @@
         <param name="username" dslName="userName">
           <description>Username to use, overwrites the username in the url</description>
         </param>
-        <param name="teamcitySshKey" dslName="uploadedKey">
+        <param name="teamcitySshKey" dslName="uploadedKey" mandatory="true">
           <description>Name of the uploaded [SSH key](https://confluence.jetbrains.com/display/TCDL/SSH+Keys+Management) to use</description>
         </param>
         <param name="secure:passphrase" dslName="passphrase">
@@ -131,7 +131,7 @@
         <param name="username" dslName="userName">
           <description>Username to use, overwrites the username in the url</description>
         </param>
-        <param name="privateKeyPath" dslName="customKeyPath">
+        <param name="privateKeyPath" dslName="customKeyPath" mandatory="true">
           <description>Path to the SSH key on TeamCity server machine</description>
         </param>
         <param name="secure:passphrase" dslName="passphrase">
