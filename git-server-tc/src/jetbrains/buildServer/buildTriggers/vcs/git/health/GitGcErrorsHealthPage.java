@@ -17,6 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.health;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.Pair;
+import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.auth.Permission;
 import jetbrains.buildServer.serverSide.healthStatus.HealthStatusItem;
@@ -38,12 +40,15 @@ public class GitGcErrorsHealthPage extends HealthStatusItemPageExtension {
 
   private static final Logger LOG = Logger.getInstance(GitGcErrorsHealthPage.class.getName());
   private final ServerPaths myServerPaths;
+  private final MirrorManager myMirrorManager;
 
   public GitGcErrorsHealthPage(@NotNull PluginDescriptor pluginDescriptor,
                                @NotNull PagePlaces pagePlaces,
-                               @NotNull ServerPaths serverPaths) {
+                               @NotNull ServerPaths serverPaths,
+                               @NotNull MirrorManager mirrorManager) {
     super(GitGcErrorsHealthReport.REPORT_TYPE, pagePlaces);
     myServerPaths = serverPaths;
+    myMirrorManager = mirrorManager;
     setIncludeUrl(pluginDescriptor.getPluginResourcesPath("health/gitGcErrorsReport.jsp"));
     setVisibleOutsideAdminArea(false);
     register();
@@ -63,7 +68,7 @@ public class GitGcErrorsHealthPage extends HealthStatusItemPageExtension {
   public void fillModel(@NotNull final Map<String, Object> model, @NotNull final HttpServletRequest request) {
     HealthStatusItem item = getStatusItem(request);
     Object errors = item.getAdditionalData().get(GitGcErrorsHealthReport.ERRORS_KEY);
-    Map<String, String> sortedErrors = new TreeMap<>();
+    Map<String, Pair<String, String>> sortedErrors = new TreeMap<>();
     if (errors instanceof Map) {
       String baseDir;
       try {
@@ -80,7 +85,10 @@ public class GitGcErrorsHealthPage extends HealthStatusItemPageExtension {
         if (key instanceof File && value instanceof String) {
           try {
             String relativePath = FileUtil.getRelativePath(baseDir, ((File)key).getCanonicalPath(), File.separatorChar);
-            sortedErrors.put(relativePath, (String) value);
+            String url = myMirrorManager.getUrl(relativePath);
+            if (url != null) {
+              sortedErrors.put(url, Pair.create(relativePath, (String) value));
+            }
           } catch (IOException e) {
             LOG.warnAndDebugDetails("Error while preparing health report data", e);
           }
