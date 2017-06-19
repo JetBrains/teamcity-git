@@ -6,7 +6,7 @@
 <jsp:useBean id="errors" type="java.util.Map<java.lang.String, java.lang.String>" scope="request"/>
 
 <div>
-  Errors while running git garbage collection (paths are relative to the &lt;TeamCity data dir&gt;/system/caches/git directory)
+  Errors while running git garbage collection (paths are relative to the '&lt;TeamCity data dir&gt;/system/caches/git' directory)
   <c:if test="${showMode == inplaceMode}"><a href="javascript:;" onclick="$j('#${errorsBlockId}').toggle();">Show details &raquo;</a></c:if>
 </div>
 <div id="${errorsBlockId}" style="margin-left: 1em; display: ${showMode == inplaceMode ? 'none' : ''}">
