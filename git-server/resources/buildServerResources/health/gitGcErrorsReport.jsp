@@ -12,7 +12,7 @@
 <div id="${errorsBlockId}" style="margin-left: 1em; display: ${showMode == inplaceMode ? 'none' : ''}">
   <c:forEach var="error" items="${errors}">
     <div>
-      <b><c:out value="${error.key}"/></b>: <c:out value="${error.value}"/>
+      <b><c:out value="${error.key}"/></b> (clone dir <c:out value="${error.value.first}"/>): <c:out value="${error.value.second}"/>
     </div>
   </c:forEach>
 </div>

@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.Map;
@@ -31,7 +32,7 @@ public interface MirrorManager {
    * @return parent dir of local repositories
    */
   @NotNull
-  public File getBaseMirrorsDir();
+  File getBaseMirrorsDir();
 
   /**
    * Get default directory for remote repository with specified url
@@ -39,17 +40,27 @@ public interface MirrorManager {
    * @return see above
    */
   @NotNull
-  public File getMirrorDir(@NotNull String repositoryUrl);
+  File getMirrorDir(@NotNull String repositoryUrl);
 
   /**
    * Mark dir as invalid, urls mapped to this dir will get another mapping
    * on subsequent call to getMirrorDir()
    * @param dir dir of interest
    */
-  public void invalidate(@NotNull File dir);
+  void invalidate(@NotNull File dir);
 
 
-  public Map<String, File> getMappings();
+  @NotNull
+  Map<String, File> getMappings();
 
-  public long getLastUsedTime(@NotNull final File dir);
+  long getLastUsedTime(@NotNull final File dir);
+
+  /**
+   * Returns url for the given clone directory name inside the baseMirrorsDir
+   * or null if mapping from the url is not found
+   * @param cloneDirName clone directory name of interest
+   * @return see above
+   */
+  @Nullable
+  String getUrl(@NotNull String cloneDirName);
 }

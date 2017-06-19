@@ -81,6 +81,7 @@ public class MirrorManagerImpl implements MirrorManager {
   }
 
 
+  @NotNull
   public Map<String, File> getMappings() {
     Map<String, String> mirrorMapSnapshot;
     synchronized (myLock) {
@@ -95,6 +96,19 @@ public class MirrorManagerImpl implements MirrorManager {
     return result;
   }
 
+  @Nullable
+  @Override
+  public String getUrl(@NotNull String cloneDirName) {
+    Map<String, String> mirrorMapSnapshot;
+    synchronized (myLock) {
+      mirrorMapSnapshot = new HashMap<String, String>(myMirrorMap);
+    }
+    for (Map.Entry<String, String> e : mirrorMapSnapshot.entrySet()) {
+      if (cloneDirName.equals(e.getValue()))
+        return e.getKey();
+    }
+    return null;
+  }
 
   public long getLastUsedTime(@NotNull final File dir) {
     File timestamp = new File(dir, "timestamp");

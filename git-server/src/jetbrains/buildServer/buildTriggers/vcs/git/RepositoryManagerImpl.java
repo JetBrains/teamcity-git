@@ -24,6 +24,7 @@ import org.eclipse.jgit.lib.RepositoryCache;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -100,8 +101,15 @@ public final class RepositoryManagerImpl implements RepositoryManager {
   }
 
 
+  @NotNull
   public Map<String, File> getMappings() {
     return myMirrorManager.getMappings();
+  }
+
+  @Nullable
+  @Override
+  public String getUrl(@NotNull String cloneDirName) {
+    return myMirrorManager.getUrl(cloneDirName);
   }
 
   @NotNull
