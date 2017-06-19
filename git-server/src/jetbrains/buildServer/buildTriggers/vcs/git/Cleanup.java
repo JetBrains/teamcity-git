@@ -24,6 +24,7 @@ import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.internal.storage.file.PackFile;
@@ -169,7 +170,7 @@ public class Cleanup {
         }
       } else {
         myGcErrors.registerError(gitDir, "Not enough disk space to run git gc");
-        LOG.warn("[" + gitDir.getName() + "] not enough disk space to run git gc (" + String.valueOf(freeDiskSpace) + "byte(s))");
+        LOG.warn("[" + gitDir.getName() + "] not enough disk space to run git gc (" + String.valueOf(freeDiskSpace) + pluralize("byte", freeDiskSpace) + ")");
       }
       runGCCounter++;
       final long repositoryFinishNanos = System.nanoTime();
@@ -579,5 +580,12 @@ public class Cleanup {
     public VcsException getError() {
       return second;
     }
+  }
+
+  @NotNull
+  private String pluralize(@NotNull String base, long n) {
+    //StringUtil doesn't work with longs
+    if (n == 1) return base;
+    return StringUtil.pluralize(base);
   }
 }
