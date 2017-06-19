@@ -490,7 +490,7 @@ public class Cleanup {
     VcsException commandError = CommandLineUtil.getCommandLineError("git version", result);
     if (commandError != null) {
       myNativeGitError.set(new RunGitError(pathToGit, commandError));
-      LOG.info("Cannot run native git", commandError);
+      LOG.warnAndDebugDetails("Failed to run git", commandError);
       return false;
     } else {
       myNativeGitError.set(null);
