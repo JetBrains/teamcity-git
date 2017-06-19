@@ -73,10 +73,10 @@ public class Cleanup {
       LOG.info("Git cleanup started");
       removeUnusedRepositories();
       cleanupMonitoringData();
-      if (myConfig.isRunJGitGC()) {
-        runJGitGC();
-      } else if (myConfig.isRunNativeGC()) {
+      if (myConfig.isRunNativeGC()) {
         runNativeGC();
+      } else if (myConfig.isRunJGitGC()) {
+        runJGitGC();
       }
       LOG.info("Git cleanup finished");
     } finally {
