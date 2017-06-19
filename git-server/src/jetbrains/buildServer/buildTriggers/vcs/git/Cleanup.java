@@ -73,10 +73,10 @@ public class Cleanup {
       LOG.info("Git cleanup started");
       removeUnusedRepositories();
       cleanupMonitoringData();
-      if (myConfig.isRunJGitGC()) {
-        runJGitGC();
-      } else if (myConfig.isRunNativeGC()) {
+      if (myConfig.isRunNativeGC()) {
         runNativeGC();
+      } else if (myConfig.isRunJGitGC()) {
+        runJGitGC();
       }
       LOG.info("Git cleanup finished");
     } finally {
@@ -490,7 +490,7 @@ public class Cleanup {
     VcsException commandError = CommandLineUtil.getCommandLineError("git version", result);
     if (commandError != null) {
       myNativeGitError.set(new RunGitError(pathToGit, commandError));
-      LOG.info("Cannot run native git", commandError);
+      LOG.warnAndDebugDetails("Failed to run git", commandError);
       return false;
     } else {
       myNativeGitError.set(null);
