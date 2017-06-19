@@ -152,18 +152,24 @@ public class Cleanup {
       LOG.info("Cannot find native git, skip running git gc");
       return;
     }
+    Long freeDiskSpace = FileUtil.getFreeSpace(myRepositoryManager.getBaseMirrorsDir());
     LOG.info("Use git at path '" + myConfig.getPathToGit() + "'");
     Collections.shuffle(allDirs);
     int runGCCounter = 0;
     LOG.info("Git garbage collection started");
     boolean runInPlace = myConfig.runInPlaceGc();
     for (File gitDir : allDirs) {
-      if (runInPlace) {
-        synchronized (myRepositoryManager.getWriteLock(gitDir)) {
-          runNativeGC(gitDir);
+      if (enoughDiskSpaceForGC(gitDir, freeDiskSpace)) {
+        if (runInPlace) {
+          synchronized (myRepositoryManager.getWriteLock(gitDir)) {
+            runNativeGC(gitDir);
+          }
+        } else {
+          runGcInCopy(gitDir);
         }
       } else {
-        runGcInCopy(gitDir);
+        myGcErrors.registerError(gitDir, "Not enough disk space to run git gc");
+        LOG.warn("[" + gitDir.getName() + "] not enough disk space to run git gc (" + String.valueOf(freeDiskSpace) + "byte(s))");
       }
       runGCCounter++;
       final long repositoryFinishNanos = System.nanoTime();
@@ -187,6 +193,7 @@ public class Cleanup {
     try {
       if (!isGcNeeded(originalRepo)) {
         LOG.info("[" + originalRepo.getName() + "] no git gc is needed");
+        myGcErrors.clearError(originalRepo);
         return;
       }
 
@@ -325,6 +332,14 @@ public class Cleanup {
       if (db != null)
         db.close();
     }
+  }
+
+  private boolean enoughDiskSpaceForGC(@NotNull File gitDir, @Nullable Long freeDiskSpace) {
+    if (freeDiskSpace == null)
+      return true;
+    File objects = new File(gitDir, "objects");
+    File pack = new File(objects, "pack");
+    return FileUtil.getTotalDirectorySize(pack) < freeDiskSpace;
   }
 
   private boolean tooManyPacks(@NotNull FileRepository repo) {
