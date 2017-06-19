@@ -312,14 +312,18 @@ public class Cleanup {
   }
 
   private boolean isGcNeeded(@NotNull File gitDir) {
+    FileRepository db = null;
     try {
       //implement logic from git gc --auto, jgit version we use doesn't have it yet
       //and native git doesn't provide a dedicated command for that
-      FileRepository db = (FileRepository) new RepositoryBuilder().setBare().setGitDir(gitDir).build();
+      db = (FileRepository) new RepositoryBuilder().setBare().setGitDir(gitDir).build();
       return tooManyPacks(db) || tooManyLooseObjects(db);
     } catch (IOException e) {
       LOG.warnAndDebugDetails("Error while checking if garbage collection is needed in " + gitDir.getAbsolutePath(), e);
       return false;
+    } finally {
+      if (db != null)
+        db.close();
     }
   }
 
