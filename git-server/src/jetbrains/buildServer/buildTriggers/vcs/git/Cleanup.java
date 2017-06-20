@@ -160,6 +160,10 @@ public class Cleanup {
     LOG.info("Git garbage collection started");
     boolean runInPlace = myConfig.runInPlaceGc();
     for (File gitDir : allDirs) {
+      String url = myRepositoryManager.getUrl(gitDir.getName());
+      if (url != null) {
+        LOG.info("[" + gitDir.getName() + "] repository url: '" + url + "'");
+      }
       if (enoughDiskSpaceForGC(gitDir, freeDiskSpace)) {
         if (runInPlace) {
           synchronized (myRepositoryManager.getWriteLock(gitDir)) {
@@ -170,7 +174,7 @@ public class Cleanup {
         }
       } else {
         myGcErrors.registerError(gitDir, "Not enough disk space to run git gc");
-        LOG.warn("[" + gitDir.getName() + "] not enough disk space to run git gc (" + String.valueOf(freeDiskSpace) + pluralize("byte", freeDiskSpace) + ")");
+        LOG.warn("[" + gitDir.getName() + "] not enough disk space to run git gc (" + String.valueOf(freeDiskSpace) + " " + pluralize("byte", freeDiskSpace) + ")");
       }
       runGCCounter++;
       final long repositoryFinishNanos = System.nanoTime();
