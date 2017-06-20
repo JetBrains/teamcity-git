@@ -542,7 +542,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   @Override
   public boolean runInPlaceGc() {
-    return TeamCityProperties.getBooleanOrTrue("teamcity.git.runInPlaceGc");
+    return TeamCityProperties.getBoolean("teamcity.git.runInPlaceGc");
   }
 
   @Override
