@@ -87,7 +87,7 @@
       </option>
       <option name="password" value="PASSWORD">
         <description>Password authentication</description>
-        <param name="username" dslName="userName" mandatory="true">
+        <param name="username" dslName="userName">
           <description>Username to use, overwrites the username in the url</description>
         </param>
         <param name="secure:password" dslName="password" mandatory="true">
