@@ -52,7 +52,7 @@ public final class WellKnownHostingsUtil {
   @Nullable
   public static VcsHostingRepo getBitbucketServerRepo(@NotNull URIish uri) {
     String path = uri.getPath();
-    if (uri.getScheme().startsWith("http") && path.endsWith(".git") && (path.startsWith("/scm/") || path.startsWith("/git/"))) {
+    if (uri.getScheme() != null && uri.getScheme().startsWith("http") && path.endsWith(".git") && (path.startsWith("/scm/") || path.startsWith("/git/"))) {
       // probably Bitbucket server
       String ownerAndRepo = path.substring(5); // length of /scm/ or /git/
       int slashIdx = ownerAndRepo.indexOf('/');
