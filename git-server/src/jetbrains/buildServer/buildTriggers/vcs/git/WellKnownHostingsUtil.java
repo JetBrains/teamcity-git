@@ -20,8 +20,6 @@ import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
-
 public final class WellKnownHostingsUtil {
   private WellKnownHostingsUtil() {}
 
@@ -51,6 +49,10 @@ public final class WellKnownHostingsUtil {
 
   @Nullable
   public static VcsHostingRepo getBitbucketServerRepo(@NotNull URIish uri) {
+    String host = uri.getHost();
+    if (host == null)
+      return null;
+
     String path = uri.getPath();
     if (uri.getScheme() != null && uri.getScheme().startsWith("http") && path.endsWith(".git") && (path.startsWith("/scm/") || path.startsWith("/git/"))) {
       // probably Bitbucket server
@@ -66,7 +68,7 @@ public final class WellKnownHostingsUtil {
         owner = owner.substring(1);
       }
 
-      String hostAndPort = uri.getHost();
+      String hostAndPort = host;
       if (uri.getPort() > 0 && uri.getPort() != 80 && uri.getPort() != 443) {
         hostAndPort += ":" + uri.getPort();
       }
@@ -83,11 +85,15 @@ public final class WellKnownHostingsUtil {
 
   @Nullable
   public static VcsHostingRepo getVSTSRepo(@NotNull URIish uri) {
-    final int idx = uri.getHost().indexOf(".visualstudio.com");
+    String host = uri.getHost();
+    if (host == null)
+      return null;
+
+    final int idx = host.indexOf(".visualstudio.com");
     if (idx <= 0)
       return null;
 
-    String owner = uri.getHost().substring(0, idx);
+    String owner = host.substring(0, idx);
 
     String path = uri.getPath();
     if (path == null)
@@ -98,7 +104,7 @@ public final class WellKnownHostingsUtil {
 
     String repoName = path.substring(gitPrefixIdx + "_git/".length());
 
-    return new VcsHostingRepo("https://" + uri.getHost() + "/_git/" + repoName, owner, repoName);
+    return new VcsHostingRepo("https://" + host + "/_git/" + repoName, owner, repoName);
   }
 
   private static VcsHostingRepo ownerProjectStyleRepo(@NotNull String hostingUrl, @NotNull URIish uri) {
