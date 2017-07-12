@@ -5,4 +5,4 @@ if [ "$1" = "erase" ]; then
   exit;
 fi
 
-java -cp '{CREDENTIALS_CLASSPATH}' {CREDENTIALS_CLASS} $*
+{JAVA} -cp '{CREDENTIALS_CLASSPATH}' {CREDENTIALS_CLASS} $*
