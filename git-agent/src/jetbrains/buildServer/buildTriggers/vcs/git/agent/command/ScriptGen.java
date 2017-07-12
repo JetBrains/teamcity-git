@@ -21,6 +21,7 @@ import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.CredentialsHelper;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
@@ -54,6 +55,12 @@ public abstract class ScriptGen {
       if (templateStream == null)
         throw new IOException("Cannot read script template " + template);
       String script = StreamUtil.readText(templateStream);
+      String javaPath = "java";
+      String javaHome = System.getProperty("java.home");
+      if (StringUtil.isNotEmpty(javaHome)) {
+        javaPath = "\"" + javaHome + File.separatorChar + "bin" + File.separatorChar + "java\"";
+      }
+      script = script.replace("{JAVA}", javaPath);
       script = script.replace("{CREDENTIALS_SCRIPT}", result.getCanonicalPath());
       script = script.replace("{CREDENTIALS_CLASSPATH}", ClasspathUtil.composeClasspath(new Class[]{CredentialsHelper.class}, null, null));
       script = script.replace("{CREDENTIALS_CLASS}", CredentialsHelper.class.getName());
