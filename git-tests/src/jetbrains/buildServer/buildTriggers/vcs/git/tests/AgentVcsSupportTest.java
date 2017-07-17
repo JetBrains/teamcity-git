@@ -910,6 +910,17 @@ public class AgentVcsSupportTest {
   }
 
 
+  @TestFor(issues = "TW-50714")
+  @Test(dataProvider = "mirrors")
+  public void fetch_all_heads__non_head_ref(boolean useMirrors) throws Exception {
+    AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.FETCH_ALL_HEADS, "true"));
+
+    myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).withUseMirrors(useMirrors).withBranch("refs/pull/1").build();
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "b896070465af79121c9a4eb5300ecff29453c164", myCheckoutDir, build, false);
+  }
+
+
   private void removeTag(@NotNull File dotGitDir, @NotNull String tagName) {
     delete(tagFile(dotGitDir, tagName));
   }
