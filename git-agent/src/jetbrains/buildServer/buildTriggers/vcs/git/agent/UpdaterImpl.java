@@ -558,8 +558,8 @@ public class UpdaterImpl implements Updater {
       fetchAllBranches();
       if (!myFullBranchName.startsWith("refs/heads/")) {
         Ref remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
-        if (!fetchRequired && remoteRef != null && myRevision.equals(remoteRef.getObjectId().name()) && hasRevision(myTargetDirectory, myRevision))
-          return;
+        if (fetchRequired || remoteRef == null || !myRevision.equals(remoteRef.getObjectId().name()) || !hasRevision(myTargetDirectory, myRevision))
+          fetchDefaultBranch();
       }
     } else {
       Ref remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
