@@ -53,7 +53,7 @@ public class GitExternalChangeViewerExtension implements ExternalChangeViewerExt
       return new HashMap<String, String>() {{
         put(PropertyType.CHANGE_SET_TYPE, finalVcsHostingRepo.repositoryUrl() + "/commit/${changeSetId}");
         put(PropertyType.LINK_TEXT, "Open in GitHub");
-        put(PropertyType.LINK_ICON_CLASS, "icon-github");
+        put(PropertyType.LINK_ICON_CLASS, "tc-icon_github");
       }};
     }
 
@@ -63,7 +63,7 @@ public class GitExternalChangeViewerExtension implements ExternalChangeViewerExt
       return new HashMap<String, String>() {{
         put(PropertyType.CHANGE_SET_TYPE, finalVcsHostingRepo.repositoryUrl() + "/commits/${changeSetId}");
         put(PropertyType.LINK_TEXT, "Open in Bitbucket Cloud");
-        put(PropertyType.LINK_ICON_CLASS, "icon-bitbucket");
+        put(PropertyType.LINK_ICON_CLASS, "tc-icon_bitbucket");
       }};
     }
 
@@ -82,6 +82,7 @@ public class GitExternalChangeViewerExtension implements ExternalChangeViewerExt
       return new HashMap<String, String>() {{
         put(PropertyType.CHANGE_SET_TYPE, finalVcsHostingRepo.repositoryUrl() + "/commit/${changeSetId}");
         put(PropertyType.LINK_TEXT, "Open in Visual Studio Team Services");
+        put(PropertyType.LINK_ICON_CLASS, "tc-icon_tfs");
       }};
     }
 
@@ -91,7 +92,7 @@ public class GitExternalChangeViewerExtension implements ExternalChangeViewerExt
       return new HashMap<String, String>() {{
         put(PropertyType.CHANGE_SET_TYPE, finalVcsHostingRepo.repositoryUrl() + "/commits/${changeSetId}");
         put(PropertyType.LINK_TEXT, "Open in Bitbucket Server");
-        put(PropertyType.LINK_ICON_CLASS, "icon-bitbucket");
+        put(PropertyType.LINK_ICON_CLASS, "tc-icon_bitbucket");
       }};
     }
 
