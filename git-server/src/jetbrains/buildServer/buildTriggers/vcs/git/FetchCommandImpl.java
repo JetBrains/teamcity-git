@@ -170,7 +170,9 @@ public class FetchCommandImpl implements FetchCommand {
       if (PERFORMANCE_LOG.isDebugEnabled())
         PERFORMANCE_LOG.debug("[fetch in separate process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
 
-      VcsException commandError = CommandLineUtil.getCommandLineError("git fetch", result);
+      VcsException commandError = CommandLineUtil.getCommandLineError("git fetch",
+                                                                      " (repository dir: <TeamCity data dir>/system/caches/git/" + repository.getDirectory().getName() + ")",
+                                                                      result, true, true);
       if (commandError != null) {
         if (isOutOfMemoryError(result))
           LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + myConfig.getFetchProcessMaxMemory() + ", try to increase it.");
