@@ -77,7 +77,7 @@ public class GitCommandLine extends GeneralCommandLine {
 
   public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
     AuthSettings authSettings = settings.getAuthSettings();
-    if (!getParametersList().getParametersString().contains("credential.helper") && !myGitVersion.isLessThan(UpdaterImpl.EMPTY_CRED_HELPER)) {
+    if (myCtx.isProvideCredHelper() && !getParametersList().getParametersString().contains("credential.helper") && !myGitVersion.isLessThan(UpdaterImpl.EMPTY_CRED_HELPER)) {
       //Disable credential helper if it wasn't specified by us, as default
       //helper can require a user input. Do that even if our repository doesn't
       //require any auth, auth can be required by submodules or git lfs.

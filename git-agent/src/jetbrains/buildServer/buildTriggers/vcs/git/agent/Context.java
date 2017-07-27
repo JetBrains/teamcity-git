@@ -27,4 +27,6 @@ public interface Context {
   @Nullable
   String getSshMacType();
 
+  boolean isProvideCredHelper();
+
 }

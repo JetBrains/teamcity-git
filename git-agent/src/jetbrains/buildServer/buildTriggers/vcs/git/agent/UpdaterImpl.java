@@ -863,6 +863,8 @@ public class UpdaterImpl implements Updater {
 
 
   private void configureLFS(@NotNull BaseCommand command) {
+    if (!myPluginConfig.isProvideCredHelper())
+      return;
     Trinity<String, String, String> lfsAuth = getLfsAuth();
     if (lfsAuth == null)
       return;
