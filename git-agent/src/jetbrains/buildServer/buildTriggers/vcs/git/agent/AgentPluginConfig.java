@@ -66,6 +66,8 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isCleanCredHelperScript();
 
+  boolean isProvideCredHelper();
+
   /**
    * Defines how progress output from git commands is written into build log
    */

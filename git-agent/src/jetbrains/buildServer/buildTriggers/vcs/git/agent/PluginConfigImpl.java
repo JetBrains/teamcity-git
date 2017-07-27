@@ -50,6 +50,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String FETCH_TAGS = "teamcity.git.fetchTags";
   public static final String EXCLUDE_USERNAME_FROM_HTTP_URL = "teamcity.git.excludeUsernameFromHttpUrl";
   public static final String CLEAN_CRED_HELPER_SCRIPT = "teamcity.git.cleanCredHelperScript";
+  public static final String PROVIDE_CRED_HELPER = "teamcity.git.provideCredentialHelper";
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
@@ -251,6 +252,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
   @Override
   public boolean isCleanCredHelperScript() {
     String value = myBuild.getSharedConfigParameters().get(CLEAN_CRED_HELPER_SCRIPT);
+    return !"false".equals(value);
+  }
+
+  @Override
+  public boolean isProvideCredHelper() {
+    String value = myBuild.getSharedConfigParameters().get(PROVIDE_CRED_HELPER);
     return !"false".equals(value);
   }
 

@@ -25,9 +25,12 @@ import org.jetbrains.annotations.Nullable;
 public class BuildContext implements Context {
 
   private final AgentRunningBuild myBuild;
+  private final AgentPluginConfig myConfig;
 
-  public BuildContext(@NotNull AgentRunningBuild build) {
+  public BuildContext(@NotNull AgentRunningBuild build,
+                      @NotNull AgentPluginConfig config) {
     myBuild = build;
+    myConfig = config;
   }
 
   @Nullable
@@ -42,5 +45,10 @@ public class BuildContext implements Context {
     if (!StringUtil.isEmpty(value))
       return value;
     return null;
+  }
+
+  @Override
+  public boolean isProvideCredHelper() {
+    return myConfig.isProvideCredHelper();
   }
 }

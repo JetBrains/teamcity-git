@@ -32,4 +32,9 @@ public class NoBuildContext implements Context {
   public String getSshMacType() {
     return null;
   }
+
+  @Override
+  public boolean isProvideCredHelper() {
+    return false;
+  }
 }
