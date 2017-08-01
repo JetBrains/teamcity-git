@@ -7,5 +7,6 @@
   Cannot run git garbage collection using git at path '<c:out value="${path}"/>': <c:out value="${error.message}"/>.
   <br/>
   Please install a git client on the TeamCity server machine and specify a path to it in the <b>teamcity.server.git.executable.path</b>
-  <bs:helpLink file="Configuring+TeamCity+Server+Startup+Properties" anchor="TeamCityinternalproperties">internal property</bs:helpLink>.
+  <bs:helpLink file="Configuring+TeamCity+Server+Startup+Properties" anchor="TeamCityinternalproperties">internal property</bs:helpLink>
+  <bs:helpLink file="Git" anchor="Git_gc"><bs:helpIcon/></bs:helpLink>.
 </div>
