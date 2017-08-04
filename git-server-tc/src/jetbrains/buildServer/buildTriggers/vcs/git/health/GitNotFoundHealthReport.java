@@ -29,7 +29,7 @@ public class GitNotFoundHealthReport extends HealthStatusReport {
 
   private static final String PREFIX = "gitNotFound";
   static final String REPORT_TYPE = PREFIX + "HealthReport";
-  private static final ItemCategory CATEGORY = new ItemCategory(PREFIX + "HealthCategory", "Git executable not found", ItemSeverity.WARN);
+  private static final ItemCategory CATEGORY = new ItemCategory(PREFIX + "HealthCategory", "Git executable not found", ItemSeverity.INFO);
   static final String PATH_KEY = "path";
   static final String ERROR_KEY = "error";
 
@@ -70,7 +70,7 @@ public class GitNotFoundHealthReport extends HealthStatusReport {
       Map<String, Object> data = new HashMap<>();
       data.put(PATH_KEY, error.getGitPath());
       data.put(ERROR_KEY, error.getError());
-      resultConsumer.consumeGlobal(new HealthStatusItem(PREFIX + "HealthItemId", CATEGORY, ItemSeverity.WARN, data));
+      resultConsumer.consumeGlobal(new HealthStatusItem(PREFIX + "HealthItemId", CATEGORY, ItemSeverity.INFO, data));
     }
   }
 }
