@@ -147,6 +147,8 @@ public class Cleanup {
     myGcErrors.retainErrors(allDirs);
     if (allDirs.isEmpty()) {
       LOG.debug("No repositories found");
+      //reset error, no reason to show it if there is no repositories
+      myNativeGitError.set(null);
       return;
     }
     if (!isNativeGitInstalled()) {
