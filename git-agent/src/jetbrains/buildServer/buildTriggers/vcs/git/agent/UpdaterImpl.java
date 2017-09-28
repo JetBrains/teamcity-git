@@ -171,6 +171,7 @@ public class UpdaterImpl implements Updater {
 
   protected void setupExistingRepository() throws VcsException {
     removeUrlSections();
+    removeLfsStorage();
     disableAlternates();
   }
 
@@ -494,6 +495,24 @@ public class UpdaterImpl implements Updater {
       config.save();
     } catch (IOException e) {
       String msg = "Error while remove url.* sections";
+      LOG.error(msg, e);
+      throw new VcsException(msg, e);
+    } finally {
+      if (r != null)
+        r.close();
+    }
+  }
+
+
+  private void removeLfsStorage() throws VcsException {
+    Repository r = null;
+    try {
+      r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
+      StoredConfig config = r.getConfig();
+      config.unsetSection("lfs", null);
+      config.save();
+    } catch (IOException e) {
+      String msg = "Error while removing lfs.storage section";
       LOG.error(msg, e);
       throw new VcsException(msg, e);
     } finally {

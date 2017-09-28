@@ -53,18 +53,42 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
   @Override
   protected void setupExistingRepository() throws VcsException {
     setupAlternates();
+    setupLfsStorage();
   }
 
 
   @Override
   protected void setupNewRepository() throws VcsException {
     setupAlternates();
+    setupLfsStorage();
   }
 
 
   @Override
   protected void ensureCommitLoaded(boolean fetchRequired) throws VcsException {
     super.fetchFromOriginalRepository(fetchRequired);
+  }
+
+
+  private void setupLfsStorage() throws VcsException {
+    //add lfs.storage = <mirror/lfs>
+    GitFacade git = myGitFactory.create(myTargetDirectory);
+    File mirrorLfs = new File(myRoot.getRepositoryDir(), "lfs");
+    String lfsStorage = git.resolvePath(mirrorLfs);
+    git.setConfig()
+      .setPropertyName("lfs.storage")
+      .setValue(lfsStorage)
+      .call();
+    File checkoutDirLfs = new File(new File(myTargetDirectory, ".git"), "lfs");
+    if (!mirrorLfs.exists() && checkoutDirLfs.isDirectory()) {
+      //If mirror doesn't have lfs storage and checkout dir has one, copy it to
+      //the mirror in order to not fetch lfs files from scratch. This situation occurs
+      //after upgrade to the TC version supporting lfs.storage and after enabling
+      //mirrors in Git VCS root settings.
+      if (!checkoutDirLfs.renameTo(mirrorLfs)) {
+        LOG.info("Failed to move lfs storage to the mirror repository " + mirrorLfs.getAbsoluteFile() + ", large files will be fetched from scratch");
+      }
+    }
   }
 
 
