@@ -161,7 +161,11 @@ public class GitVcsSupport extends ServerVcsSupport
         branchRevisions.put(ref.getName(), getRevision(ref));
       }
       if (branchRevisions.get(fullRef) == null && !gitRoot.isIgnoreMissingDefaultBranch()) {
-        throw new VcsException("Cannot find revision of the default branch '" + refInRoot + "' of vcs root " + LogUtil.describe(gitRoot));
+        if (branchRevisions.isEmpty()) {
+          throw new VcsException("Git repository has no branches");
+        } else {
+          throw new VcsException("Cannot find revision of the default branch '" + refInRoot + "' of vcs root '" + gitRoot.getName() + "'");
+        }
       }
       return RepositoryStateData.createVersionState(fullRef, branchRevisions);
     });
