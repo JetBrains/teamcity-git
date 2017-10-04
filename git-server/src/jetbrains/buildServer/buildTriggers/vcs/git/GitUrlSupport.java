@@ -83,6 +83,8 @@ public class GitUrlSupport implements UrlSupport, PositionAware {
     } catch (VcsException e) {
       if (GitServerUtil.isAuthError(e))
         throw e;
+      if (GitVcsSupport.GIT_REPOSITORY_HAS_NO_BRANCHES.equals(e.getMessage()))
+        throw e;
       return null; // probably not git
     }
   }
