@@ -57,6 +57,8 @@ public class GitVcsSupport extends ServerVcsSupport
 
   private static final Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
+  static final String GIT_REPOSITORY_HAS_NO_BRANCHES = "Git repository has no branches";
+
   private ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
   private final ServerPluginConfig myConfig;
@@ -162,7 +164,7 @@ public class GitVcsSupport extends ServerVcsSupport
       }
       if (branchRevisions.get(fullRef) == null && !gitRoot.isIgnoreMissingDefaultBranch()) {
         if (branchRevisions.isEmpty()) {
-          throw new VcsException("Git repository has no branches");
+          throw new VcsException(GIT_REPOSITORY_HAS_NO_BRANCHES);
         } else {
           throw new VcsException("Cannot find revision of the default branch '" + refInRoot + "' of vcs root '" + gitRoot.getName() + "'");
         }
