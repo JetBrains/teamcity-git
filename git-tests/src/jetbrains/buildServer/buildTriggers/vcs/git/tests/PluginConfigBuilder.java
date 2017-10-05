@@ -362,6 +362,12 @@ public class PluginConfigBuilder {
       public boolean treatMissingBranchTipAsRecoverableError() {
         return myDelegate.treatMissingBranchTipAsRecoverableError();
       }
+
+      @NotNull
+      @Override
+      public List<String> getRecoverableFetchErrorMessages() {
+        return myDelegate.getRecoverableFetchErrorMessages();
+      }
     };
   }
 

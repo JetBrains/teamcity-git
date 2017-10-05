@@ -559,4 +559,14 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public boolean treatMissingBranchTipAsRecoverableError() {
     return TeamCityProperties.getBooleanOrTrue("teamcity.git.treatMissingCommitAsRecoverableError");
   }
+
+  @NotNull
+  @Override
+  public List<String> getRecoverableFetchErrorMessages() {
+    String errorsStr = TeamCityProperties.getProperty("teamcity.git.recoverableFetchErrors");
+    if (isEmptyOrSpaces(errorsStr))
+      return Collections.emptyList();
+    String[] errors = errorsStr.split(",");
+    return asList(errors);
+  }
 }

@@ -160,4 +160,7 @@ public interface ServerPluginConfig extends PluginConfig {
   int getPackRefsIdleTimeoutSeconds();
 
   boolean treatMissingBranchTipAsRecoverableError();
+
+  @NotNull
+  List<String> getRecoverableFetchErrorMessages();
 }

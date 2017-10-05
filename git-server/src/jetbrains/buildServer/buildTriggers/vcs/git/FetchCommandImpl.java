@@ -174,6 +174,7 @@ public class FetchCommandImpl implements FetchCommand {
                                                                       " (repository dir: <TeamCity data dir>/system/caches/git/" + repository.getDirectory().getName() + ")",
                                                                       result, true, true);
       if (commandError != null) {
+        commandError.setRecoverable(isRecoverable(commandError));
         if (isOutOfMemoryError(result))
           LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + myConfig.getFetchProcessMaxMemory() + ", try to increase it.");
         if (isTimeout(result))
@@ -193,6 +194,15 @@ public class FetchCommandImpl implements FetchCommand {
       if (gitPropertiesFile != null)
         FileUtil.delete(gitPropertiesFile);
     }
+  }
+
+  private boolean isRecoverable(@NotNull VcsException exception) {
+    String message = exception.getMessage();
+    for (String recoverableErrorMsg : myConfig.getRecoverableFetchErrorMessages()) {
+      if (message.contains(recoverableErrorMsg))
+        return true;
+    }
+    return false;
   }
 
   private File getTeamCityPrivateKey(@NotNull AuthSettings authSettings) throws VcsException {
