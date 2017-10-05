@@ -554,4 +554,9 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public int getPackRefsIdleTimeoutSeconds() {
     return TeamCityProperties.getInteger("teamcity.git.packRefsIdleTimeoutSeconds", (int) TimeUnit.MINUTES.toSeconds(5));
   }
+
+  @Override
+  public boolean treatMissingBranchTipAsRecoverableError() {
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.treatMissingCommitAsRecoverableError");
+  }
 }

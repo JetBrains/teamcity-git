@@ -357,6 +357,11 @@ public class PluginConfigBuilder {
       public int getPackRefsIdleTimeoutSeconds() {
         return myDelegate.getPackRefsIdleTimeoutSeconds();
       }
+
+      @Override
+      public boolean treatMissingBranchTipAsRecoverableError() {
+        return myDelegate.treatMissingBranchTipAsRecoverableError();
+      }
     };
   }
 
