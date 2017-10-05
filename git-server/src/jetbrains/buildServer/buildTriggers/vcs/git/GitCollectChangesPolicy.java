@@ -191,7 +191,9 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         myCommitLoader.loadCommit(context, branchRoot, GitUtils.versionRevision(revision));
       } catch (Exception e) {
         if (throwErrors) {
-          throw e;
+          VcsException error = new VcsException("Cannot find revision " + revision + " in branch " + branch + " in VCS root " + LogUtil.describe(root), e);
+          error.setRecoverable(myConfig.treatMissingBranchTipAsRecoverableError());
+          throw error;
         } else {
           LOG.warn("Cannot find revision " + revision + " in branch " + branch + " of root " + LogUtil.describe(context.getGitRoot()));
         }
