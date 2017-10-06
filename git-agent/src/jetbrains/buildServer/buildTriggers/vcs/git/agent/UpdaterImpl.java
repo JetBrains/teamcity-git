@@ -593,7 +593,10 @@ public class UpdaterImpl implements Updater {
     }
     if (hasRevision(myTargetDirectory, myRevision))
       return;
-    throw new VcsException("Cannot find commit " + myRevision);
+
+    String msg = "Cannot find commit " + myRevision + " in the " + myRoot.getRepositoryFetchURL().toASCIIString() + " repository, " +
+                 "possible reason: " + myFullBranchName + " branch was updated and the commit selected for the build is not reachable anymore";
+    throw new RevisionNotFoundException(msg);
   }
 
 
