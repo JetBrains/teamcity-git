@@ -356,47 +356,51 @@ public class UpdaterImpl implements Updater {
     }
 
     Repository r = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
-    StoredConfig gitConfig = r.getConfig();
+    try {
+      StoredConfig gitConfig = r.getConfig();
 
-    Set<String> submodules = gitModules.getSubsections("submodule");
-    if (submodules.isEmpty()) {
-      Loggers.VCS.info("No submodule sections found in " + new File(repositoryDir, ".gitmodules").getCanonicalPath()
-                       + ", skip updating credentials");
-      return;
-    }
-    File modulesDir = new File(r.getDirectory(), Constants.MODULES);
-    for (String submoduleName : submodules) {
-      //The 'git submodule sync' command executed before resolves relative submodule urls
-      //from .gitmodules and writes them into .git/config. We should use resolved urls in
-      //order to add parent repository username to submodules with relative urls.
-      String url = gitConfig.getString("submodule", submoduleName, "url");
-      if (url == null) {
-        Loggers.VCS.info(".git/config doesn't contain an url for submodule '" + submoduleName + "', use url from .gitmodules");
-        url = gitModules.getString("submodule", submoduleName, "url");
+      Set<String> submodules = gitModules.getSubsections("submodule");
+      if (submodules.isEmpty()) {
+        Loggers.VCS.info("No submodule sections found in " + new File(repositoryDir, ".gitmodules").getCanonicalPath()
+                         + ", skip updating credentials");
+        return;
       }
-      Loggers.VCS.info("Update credentials for submodule with url " + url);
-      if (url == null || !isRequireAuth(url)) {
-        Loggers.VCS.info("Url " + url + " does not require authentication, skip updating credentials");
-        continue;
-      }
-      try {
-        URIish uri = new URIish(url);
-        String updatedUrl = uri.setUser(userName).toASCIIString();
-        gitConfig.setString("submodule", submoduleName, "url", updatedUrl);
-        String submodulePath = gitModules.getString("submodule", submoduleName, "path");
-        if (submodulePath != null && myPluginConfig.isUpdateSubmoduleOriginUrl()) {
-          File submoduleDir = new File(modulesDir, submodulePath);
-          if (submoduleDir.isDirectory() && new File(submoduleDir, Constants.CONFIG).isFile())
-            updateOriginUrl(submoduleDir, updatedUrl);
+      File modulesDir = new File(r.getDirectory(), Constants.MODULES);
+      for (String submoduleName : submodules) {
+        //The 'git submodule sync' command executed before resolves relative submodule urls
+        //from .gitmodules and writes them into .git/config. We should use resolved urls in
+        //order to add parent repository username to submodules with relative urls.
+        String url = gitConfig.getString("submodule", submoduleName, "url");
+        if (url == null) {
+          Loggers.VCS.info(".git/config doesn't contain an url for submodule '" + submoduleName + "', use url from .gitmodules");
+          url = gitModules.getString("submodule", submoduleName, "url");
         }
-        Loggers.VCS.debug("Submodule url " + url + " changed to " + updatedUrl);
-      } catch (URISyntaxException e) {
-        Loggers.VCS.warn("Error while parsing an url " + url + ", skip updating submodule credentials", e);
-      } catch (Exception e) {
-        Loggers.VCS.warn("Error while updating the '" + submoduleName + "' submodule url", e);
+        Loggers.VCS.info("Update credentials for submodule with url " + url);
+        if (url == null || !isRequireAuth(url)) {
+          Loggers.VCS.info("Url " + url + " does not require authentication, skip updating credentials");
+          continue;
+        }
+        try {
+          URIish uri = new URIish(url);
+          String updatedUrl = uri.setUser(userName).toASCIIString();
+          gitConfig.setString("submodule", submoduleName, "url", updatedUrl);
+          String submodulePath = gitModules.getString("submodule", submoduleName, "path");
+          if (submodulePath != null && myPluginConfig.isUpdateSubmoduleOriginUrl()) {
+            File submoduleDir = new File(modulesDir, submodulePath);
+            if (submoduleDir.isDirectory() && new File(submoduleDir, Constants.CONFIG).isFile())
+              updateOriginUrl(submoduleDir, updatedUrl);
+          }
+          Loggers.VCS.debug("Submodule url " + url + " changed to " + updatedUrl);
+        } catch (URISyntaxException e) {
+          Loggers.VCS.warn("Error while parsing an url " + url + ", skip updating submodule credentials", e);
+        } catch (Exception e) {
+          Loggers.VCS.warn("Error while updating the '" + submoduleName + "' submodule url", e);
+        }
       }
+      gitConfig.save();
+    } finally {
+      r.close();
     }
-    gitConfig.save();
   }
 
   private void updateOriginUrl(@NotNull File repoDir, @NotNull String url) throws IOException {
