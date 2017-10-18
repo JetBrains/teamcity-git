@@ -366,7 +366,14 @@ public class UpdaterImpl implements Updater {
     }
     File modulesDir = new File(r.getDirectory(), Constants.MODULES);
     for (String submoduleName : submodules) {
-      String url = gitModules.getString("submodule", submoduleName, "url");
+      //The 'git submodule sync' command executed before resolves relative submodule urls
+      //from .gitmodules and writes them into .git/config. We should use resolved urls in
+      //order to add parent repository username to submodules with relative urls.
+      String url = gitConfig.getString("submodule", submoduleName, "url");
+      if (url == null) {
+        Loggers.VCS.info(".git/config doesn't contain an url for submodule '" + submoduleName + "', use url from .gitmodules");
+        url = gitModules.getString("submodule", submoduleName, "url");
+      }
       Loggers.VCS.info("Update credentials for submodule with url " + url);
       if (url == null || !isRequireAuth(url)) {
         Loggers.VCS.info("Url " + url + " does not require authentication, skip updating credentials");
