@@ -580,28 +580,48 @@ public class UpdaterImpl implements Updater {
 
 
   protected void fetchFromOriginalRepository(boolean fetchRequired) throws VcsException {
-    if (myPluginConfig.isFetchAllHeads()) {
-      String msg = getForcedHeadsFetchMessage();
-      LOG.info(msg);
-      myLogger.message(msg);
+    Ref remoteRef;
+    FetchHeadsMode fetchHeadsMode = myPluginConfig.getFetchHeadsMode();
+    switch (fetchHeadsMode) {
+      case ALWAYS:
+        String msg = getForcedHeadsFetchMessage();
+        LOG.info(msg);
+        myLogger.message(msg);
 
-      fetchAllBranches();
-      if (!myFullBranchName.startsWith("refs/heads/")) {
-        Ref remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
-        if (fetchRequired || remoteRef == null || !myRevision.equals(remoteRef.getObjectId().name()) || !hasRevision(myTargetDirectory, myRevision))
-          fetchDefaultBranch();
-      }
-    } else {
-      Ref remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
-      if (!fetchRequired && remoteRef != null && myRevision.equals(remoteRef.getObjectId().name()) && hasRevision(myTargetDirectory, myRevision))
-        return;
-      myLogger.message("Commit '" + myRevision + "' is not found in local clone. Running 'git fetch'...");
-      fetchDefaultBranch();
-      if (hasRevision(myTargetDirectory, myRevision))
-        return;
-      myLogger.message("Commit still not found after fetching main branch. Fetching more branches.");
-      fetchAllBranches();
+        fetchAllBranches();
+        if (!myFullBranchName.startsWith("refs/heads/")) {
+          remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
+          if (fetchRequired || remoteRef == null || !myRevision.equals(remoteRef.getObjectId().name()) || !hasRevision(myTargetDirectory, myRevision))
+            fetchDefaultBranch();
+        }
+        break;
+      case BEFORE_BUILD_BRANCH:
+        remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
+        if (!fetchRequired && remoteRef != null && myRevision.equals(remoteRef.getObjectId().name()) && hasRevision(myTargetDirectory, myRevision))
+          return;
+        myLogger.message("Commit '" + myRevision + "' is not found in local clone. Running 'git fetch'...");
+        fetchAllBranches();
+        if (!myFullBranchName.startsWith("refs/heads/")) {
+          remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
+          if (fetchRequired || remoteRef == null || !myRevision.equals(remoteRef.getObjectId().name()) || !hasRevision(myTargetDirectory, myRevision))
+            fetchDefaultBranch();
+        }
+        break;
+      case AFTER_BUILD_BRANCH:
+        remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
+        if (!fetchRequired && remoteRef != null && myRevision.equals(remoteRef.getObjectId().name()) && hasRevision(myTargetDirectory, myRevision))
+          return;
+        myLogger.message("Commit '" + myRevision + "' is not found in local clone. Running 'git fetch'...");
+        fetchDefaultBranch();
+        if (hasRevision(myTargetDirectory, myRevision))
+          return;
+        myLogger.message("Commit still not found after fetching main branch. Fetching more branches.");
+        fetchAllBranches();
+        break;
+      default:
+        throw new VcsException("Unknown FetchHeadsMode: " + fetchHeadsMode);
     }
+
     if (hasRevision(myTargetDirectory, myRevision))
       return;
 

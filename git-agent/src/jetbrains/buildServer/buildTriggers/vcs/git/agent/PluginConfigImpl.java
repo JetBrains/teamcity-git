@@ -26,6 +26,7 @@ import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.util.Map;
 
 /**
  * @author dmitry.neverov
@@ -168,11 +169,23 @@ public class PluginConfigImpl implements AgentPluginConfig {
   }
 
 
-  public boolean isFetchAllHeads() {
-    String value = myBuild.getSharedConfigParameters().get(FETCH_ALL_HEADS);
-    return Boolean.parseBoolean(value);
-  }
+  @NotNull
+  @Override
+  public FetchHeadsMode getFetchHeadsMode() {
+    Map<String, String> params = myBuild.getSharedConfigParameters();
+    String fetchAllHeads = params.get(FETCH_ALL_HEADS);
+    if (StringUtil.isEmpty(fetchAllHeads) || "false".equals(fetchAllHeads) || "afterBuildBranch".equals(fetchAllHeads))
+      return FetchHeadsMode.AFTER_BUILD_BRANCH;
 
+    if ("true".equals(fetchAllHeads) || "always".equals(fetchAllHeads))
+      return FetchHeadsMode.ALWAYS;
+
+    if ("beforeBuildBranch".equals(fetchAllHeads))
+      return FetchHeadsMode.BEFORE_BUILD_BRANCH;
+
+    LOG.warn("Unsupported value of the " + FETCH_ALL_HEADS + " parameter: '" + fetchAllHeads + "', treat it as false");
+    return FetchHeadsMode.AFTER_BUILD_BRANCH;
+  }
 
   public boolean isUseMainRepoUserForSubmodules() {
     String fromBuildConfiguration = myBuild.getSharedConfigParameters().get(USE_MAIN_REPO_USER_FOR_SUBMODULES);

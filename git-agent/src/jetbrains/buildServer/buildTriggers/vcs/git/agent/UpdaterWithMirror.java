@@ -106,27 +106,39 @@ public class UpdaterWithMirror extends UpdaterImpl {
         }
       }
     }
+    FetchHeadsMode fetchHeadsMode = myPluginConfig.getFetchHeadsMode();
     Ref ref = getRef(bareRepositoryDir, myFullBranchName);
     if (ref == null)
       fetchRequired = true;
-    if (!fetchRequired && !myPluginConfig.isFetchAllHeads())
+    if (!fetchRequired && fetchHeadsMode != FetchHeadsMode.ALWAYS)
       return;
     if (!newMirror && optimizeMirrorBeforeFetch()) {
       GitFacade git = myGitFactory.create(bareRepositoryDir);
       git.gc().call();
       git.repack().call();
     }
-    if (myPluginConfig.isFetchAllHeads()) {
-      String msg = getForcedHeadsFetchMessage();
-      LOG.info(msg);
-      myLogger.message(msg);
 
-      fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+refs/heads/*:refs/heads/*", false);
-    } else {
-      fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName), false);
-      if (hasRevision(bareRepositoryDir, myRevision))
-        return;
-      fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+refs/heads/*:refs/heads/*", false);
+    switch (fetchHeadsMode) {
+      case ALWAYS:
+        String msg = getForcedHeadsFetchMessage();
+        LOG.info(msg);
+        myLogger.message(msg);
+        fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+refs/heads/*:refs/heads/*");
+        if (!myFullBranchName.startsWith("refs/heads/") && !hasRevision(bareRepositoryDir, myRevision))
+          fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName));
+        break;
+      case BEFORE_BUILD_BRANCH:
+        fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+refs/heads/*:refs/heads/*");
+        if (!myFullBranchName.startsWith("refs/heads/") && !hasRevision(bareRepositoryDir, myRevision))
+          fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName));
+        break;
+      case AFTER_BUILD_BRANCH:
+        fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName));
+        if (!hasRevision(bareRepositoryDir, myRevision))
+          fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+refs/heads/*:refs/heads/*");
+        break;
+      default:
+        throw new VcsException("Unknown FetchHeadsMode: " + fetchHeadsMode);
     }
   }
 
@@ -138,11 +150,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
   private void fetchMirror(boolean repeatFetchAttempt,
                            @NotNull File repositoryDir,
-                           @NotNull String refspec,
-                           boolean shallowClone) throws VcsException {
+                           @NotNull String refspec) throws VcsException {
     removeRefLocks(repositoryDir);
     try {
-      fetch(repositoryDir, refspec, shallowClone);
+      fetch(repositoryDir, refspec, false);
     } catch (VcsException e) {
       if (myPluginConfig.isFailOnCleanCheckout() || !repeatFetchAttempt || !shouldFetchFromScratch(e))
         throw e;
@@ -150,7 +161,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
         GitFacade git = myGitFactory.create(repositoryDir);
         git.init().setBare(true).call();
         configureRemoteUrl(repositoryDir);
-        fetch(repositoryDir, refspec, shallowClone);
+        fetch(repositoryDir, refspec, false);
       } else {
         LOG.info("Failed to delete repository " + repositoryDir + " after failed checkout, clone repository in another directory");
         myMirrorManager.invalidate(repositoryDir);

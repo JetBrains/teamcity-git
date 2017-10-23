@@ -35,7 +35,8 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isDeleteTempFiles();
 
-  boolean isFetchAllHeads();
+  @NotNull
+  FetchHeadsMode getFetchHeadsMode();
 
   boolean isUseMainRepoUserForSubmodules();
 

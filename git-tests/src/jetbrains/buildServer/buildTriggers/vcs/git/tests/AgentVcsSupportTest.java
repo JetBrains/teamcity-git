@@ -921,6 +921,39 @@ public class AgentVcsSupportTest {
   }
 
 
+  @Test(dataProvider = "mirrors")
+  public void fetch_all_heads_before_build_branch(boolean useMirrors) throws Exception {
+    AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, String.valueOf(useMirrors),
+                                                     PluginConfigImpl.FETCH_ALL_HEADS, "beforeBuildBranch"));
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
+
+    Repository remoteRepo = new RepositoryBuilder().setBare().setGitDir(myMainRepo).build();
+    Set<String> remoteHeads = remoteRepo.getRefDatabase().getRefs("refs/heads/").keySet();
+
+    //local repo should contain all heads since build's commit wasn't on the agent
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    then(r.getRefDatabase().getRefs("refs/remotes/origin/").keySet()).containsAll(remoteHeads);
+  }
+
+
+  @Test(dataProvider = "mirrors")
+  public void fetch_all_heads_before_build_branch_commit_found(boolean useMirrors) throws Exception {
+    //run build to make sure commit is on the agent
+    AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, String.valueOf(useMirrors)));
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
+
+    //run build with fetch_all_head before build's branch
+    build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, String.valueOf(useMirrors),
+                                   PluginConfigImpl.FETCH_ALL_HEADS, "beforeBuildBranch"));
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
+
+    //local repo shouldn't contain all heads since build commit was already on the agent and no fetch is required
+    Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    then(r.getRefDatabase().getRefs("refs/remotes/origin/").keySet()).containsOnly("master");
+  }
+
+
   private void removeTag(@NotNull File dotGitDir, @NotNull String tagName) {
     delete(tagFile(dotGitDir, tagName));
   }
