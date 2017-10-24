@@ -144,12 +144,12 @@ public class UpdaterImpl implements Updater {
   private boolean initGitRepository() throws VcsException {
     boolean firstFetch = false;
     if (!new File(myTargetDirectory, ".git").exists()) {
-      initDirectory();
+      initDirectory(false);
       firstFetch = true;
     } else {
       String remoteUrl = getRemoteUrl();
       if (!remoteUrl.equals(myRoot.getRepositoryFetchURL().toString())) {
-        initDirectory();
+        initDirectory(true);
         firstFetch = true;
       } else {
         try {
@@ -157,7 +157,7 @@ public class UpdaterImpl implements Updater {
           configureSparseCheckout();
         } catch (Exception e) {
           LOG.warn("Do clean checkout due to errors while configure use of local mirrors", e);
-          initDirectory();
+          initDirectory(true);
           firstFetch = true;
         }
       }
@@ -721,14 +721,17 @@ public class UpdaterImpl implements Updater {
    *
    * @throws VcsException if there are problems with initializing the directory
    */
-  void initDirectory() throws VcsException {
-    BuildDirectoryCleanerCallback c = new BuildDirectoryCleanerCallback(myLogger, LOG);
-    myDirectoryCleaner.cleanFolder(myTargetDirectory, c);
-    //noinspection ResultOfMethodCallIgnored
-    myTargetDirectory.mkdirs();
-    if (c.isHasErrors()) {
-      throw new VcsException("Unable to clean directory " + myTargetDirectory + " for VCS root " + myRoot.getName());
+  private void initDirectory(boolean removeTargetDir) throws VcsException {
+    if (removeTargetDir) {
+      BuildDirectoryCleanerCallback c = new BuildDirectoryCleanerCallback(myLogger, LOG);
+      myDirectoryCleaner.cleanFolder(myTargetDirectory, c);
+      //noinspection ResultOfMethodCallIgnored
+      if (c.isHasErrors()) {
+        throw new VcsException("Unable to clean directory " + myTargetDirectory + " for VCS root " + myRoot.getName());
+      }
     }
+
+    myTargetDirectory.mkdirs();
     myLogger.message("The .git directory is missing in '" + myTargetDirectory + "'. Running 'git init'...");
     myGitFactory.create(myTargetDirectory).init().call();
     validateUrls();
