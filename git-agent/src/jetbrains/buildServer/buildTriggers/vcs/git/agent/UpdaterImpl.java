@@ -151,7 +151,7 @@ public class UpdaterImpl implements Updater {
 
   private void initGitRepository() throws VcsException {
     if (!new File(myTargetDirectory, ".git").exists()) {
-      initDirectory();
+      initDirectory(false);
     } else {
       try {
         configureRemoteUrl(new File(myTargetDirectory, ".git"));
@@ -159,7 +159,7 @@ public class UpdaterImpl implements Updater {
         configureSparseCheckout();
       } catch (Exception e) {
         LOG.warn("Do clean checkout due to errors while configure use of local mirrors", e);
-        initDirectory();
+        initDirectory(true);
       }
     }
     removeOrphanedIdxFiles(new File(myTargetDirectory, ".git"));
@@ -775,14 +775,17 @@ public class UpdaterImpl implements Updater {
    *
    * @throws VcsException if there are problems with initializing the directory
    */
-  private void initDirectory() throws VcsException {
-    BuildDirectoryCleanerCallback c = new BuildDirectoryCleanerCallback(myLogger, LOG);
-    myDirectoryCleaner.cleanFolder(myTargetDirectory, c);
-    //noinspection ResultOfMethodCallIgnored
-    myTargetDirectory.mkdirs();
-    if (c.isHasErrors()) {
-      throw new VcsException("Unable to clean directory " + myTargetDirectory + " for VCS root " + myRoot.getName());
+  private void initDirectory(boolean removeTargetDir) throws VcsException {
+    if (removeTargetDir) {
+      BuildDirectoryCleanerCallback c = new BuildDirectoryCleanerCallback(myLogger, LOG);
+      myDirectoryCleaner.cleanFolder(myTargetDirectory, c);
+      //noinspection ResultOfMethodCallIgnored
+      if (c.isHasErrors()) {
+        throw new VcsException("Unable to clean directory " + myTargetDirectory + " for VCS root " + myRoot.getName());
+      }
     }
+
+    myTargetDirectory.mkdirs();
     myLogger.message("The .git directory is missing in '" + myTargetDirectory + "'. Running 'git init'...");
     myGitFactory.create(myTargetDirectory).init().call();
     validateUrls();
