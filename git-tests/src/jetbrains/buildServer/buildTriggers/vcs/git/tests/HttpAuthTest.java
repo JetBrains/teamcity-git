@@ -125,7 +125,36 @@ public class HttpAuthTest extends BaseRemoteRepositoryTest {
   }
 
 
-  private class Checkout extends Thread {
+  @TestFor(issues = "TW-51968")
+  public void quote_in_password(@NotNull GitExec git) throws Exception {
+    File repo = copyRepository(myTempFiles, dataFile("repo_for_fetch.1"), "repo.git");
+
+    final String user = "user";
+    final String password = "pass'word";
+    myServer = new GitHttpServer(git.getPath(), repo);
+    myServer.setCredentials(user, password);
+    myServer.start();
+
+    VcsRootImpl root = vcsRoot()
+      .withFetchUrl(myServer.getRepoUrl())
+      .withAuthMethod(AuthenticationMethod.PASSWORD)
+      .withUsername(user)
+      .withPassword(password)
+      .withBranch("master")
+      .build();
+
+    File buildDir = myTempFiles.createTempDir();
+    AgentRunningBuild build = runningBuild()
+      .sharedEnvVariable(Constants.TEAMCITY_AGENT_GIT_PATH, git.getPath())
+      .build();
+
+    Checkout checkout = new Checkout(root, "add81050184d3c818560bdd8839f50024c188586", buildDir, build);
+    checkout.run(TimeUnit.SECONDS.toMillis(10));
+    assertTrue(checkout.success());
+  }
+
+
+    private class Checkout extends Thread {
     private final VcsRootImpl myRoot;
     private final String myRevision;
     private final File myBuildDir;
