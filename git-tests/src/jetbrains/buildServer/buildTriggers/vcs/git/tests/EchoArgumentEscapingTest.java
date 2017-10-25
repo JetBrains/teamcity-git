@@ -41,6 +41,7 @@ public class EchoArgumentEscapingTest {
     assertEquals("'ab'", escaper.escape("ab"));
     assertEquals("'a\\\\\"b'", escaper.escape("a\\\"b"));
     assertEquals("''", escaper.escape(null));
+    assertEquals("'a'\\''b'", escaper.escape("a'b"));//TW-51968
   }
 
 }

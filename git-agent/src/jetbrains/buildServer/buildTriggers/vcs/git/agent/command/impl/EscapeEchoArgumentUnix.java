@@ -31,7 +31,9 @@ public class EscapeEchoArgumentUnix implements EscapeEchoArgument {
       char c = s.charAt(i);
       switch (c) {
         case '\'':
-          sb.append("\\'");
+          //we cannot escape ' inside 'string', we have to close 'string',
+          //add escaped ' and open next 'string'
+          sb.append("'\\''");
           break;
         case '\\':
           sb.append("\\\\");
