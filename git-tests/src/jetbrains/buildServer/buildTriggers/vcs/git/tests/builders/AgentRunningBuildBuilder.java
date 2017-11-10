@@ -359,6 +359,12 @@ public class AgentRunningBuildBuilder {
       public Map<String, String> getArtifactStorageSettings() {
         throw new UnsupportedOperationException();
       }
+
+      @NotNull
+      @Override
+      public List<BuildRunnerSettings> getBuildRunners() {
+        throw new UnsupportedOperationException();
+      }
     };
   };
 
