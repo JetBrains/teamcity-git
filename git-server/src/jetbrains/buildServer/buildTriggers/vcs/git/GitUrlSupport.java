@@ -53,16 +53,12 @@ public class GitUrlSupport implements UrlSupport, PositionAware {
 
     String fetchUrl = getFetchUrl(url);
 
-    URIish uri;
-    try {
-      uri = new URIish(fetchUrl);
-    } catch (URISyntaxException e) {
-      throw new VcsException(e.getMessage(), e);
-    }
+    URIish uri = parseURIish(fetchUrl);
 
     if (fetchUrl.startsWith("https://") && !fetchUrl.endsWith(".git") && uri.getHost().contains("gitlab.com")) {
       // for GitLab we need to add .git suffix to the fetch URL, otherwise, for some reason JGit can't work with this repository (although regular git command works)
       fetchUrl = fetchUrl + ".git";
+      uri = parseURIish(fetchUrl);
     }
 
     Map<String, String> props = new HashMap<>(myGitSupport.getDefaultVcsProperties());
@@ -86,6 +82,17 @@ public class GitUrlSupport implements UrlSupport, PositionAware {
         throw e;
       return null; // probably not git
     }
+  }
+
+  @NotNull
+  private URIish parseURIish(@NotNull String fetchUrl) throws VcsException {
+    URIish uri;
+    try {
+      uri = new URIish(fetchUrl);
+    } catch (URISyntaxException e) {
+      throw new VcsException(e.getMessage(), e);
+    }
+    return uri;
   }
 
   private void refineGithubSettings(@NotNull GitHubRepo ghRepo, @NotNull Map<String, String> props) {
