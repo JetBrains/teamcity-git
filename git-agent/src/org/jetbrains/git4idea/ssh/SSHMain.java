@@ -181,6 +181,11 @@ public class SSHMain {
     }
     Connection c = new Connection(myHost.getHostName(), myHost.getPort());
     try {
+      String teamCityVersion = System.getenv(GitSSHHandler.TEAMCITY_VERSION);
+      if (teamCityVersion != null && teamCityVersion.length() > 0) {
+        //trilead prepends SSH-2.0- itself
+        Connection.identification = teamCityVersion.replace(' ', '-') + "-" + Connection.identification;
+      }
       configureKnownHosts(c);
       c.connect(new HostKeyVerifier());
       authenticate(c);

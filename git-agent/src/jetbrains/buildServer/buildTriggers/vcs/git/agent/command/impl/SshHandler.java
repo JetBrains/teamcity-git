@@ -25,6 +25,8 @@ import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.version.ServerVersionHolder;
+import jetbrains.buildServer.version.ServerVersionInfo;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.git4idea.ssh.GitSSHHandler;
@@ -94,6 +96,10 @@ public class SshHandler implements GitSSHService.Handler {
     if (customSshMacType != null)
       cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_MAC_TYPE, customSshMacType);
     cmd.addEnvParam(GitSSHHandler.TEAMCITY_DEBUG_SSH, String.valueOf(Loggers.VCS.isDebugEnabled()));
+    String teamCityVersion = getTeamCityVersion();
+    if (teamCityVersion != null) {
+      cmd.addEnvParam(GitSSHHandler.TEAMCITY_VERSION, teamCityVersion);
+    }
     try {
       cmd.addEnvParam(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath());
     } catch (IOException e) {
@@ -141,5 +147,15 @@ public class SshHandler implements GitSSHService.Handler {
   public String askPassword(String username, boolean resetPassword, String lastError) {
     // The password is injected into URL
     return null;
+  }
+
+  @Nullable
+  private static String getTeamCityVersion() {
+    try {
+      ServerVersionInfo version = ServerVersionHolder.getVersion();
+      return "TeamCity Agent " + version.getDisplayVersion();
+    } catch (Exception e) {
+      return null;
+    }
   }
 }
