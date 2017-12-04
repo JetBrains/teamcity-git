@@ -66,4 +66,16 @@ public class GitUtilsTest extends BaseTestCase {
     assertEquals("Short name file content doesn't match", content, FileUtil.readText(new File(shortFileName)));
   }
 
+
+  @Test
+  public void ssh_client_version() {
+    then(GitUtils.getSshClientVersion("SSH-1.0", "whatever"))
+      .isEqualTo("SSH-1.0");
+    then(GitUtils.getSshClientVersion("SSH-2.0", "TeamCity Server 2017.2.1"))
+      .isEqualTo("SSH-2.0-TeamCity-Server-2017.2.1");
+    then(GitUtils.getSshClientVersion("SSH-2.0-LIB-VERSION", "TeamCity-Server-2017.2.1"))
+      .isEqualTo("SSH-2.0-TeamCity-Server-2017.2.1-LIB-VERSION");
+    then(GitUtils.getSshClientVersion("SSH-2.0-LIB-VERSION", "TeamCity Server 2017.2.1 EAP"))
+      .isEqualTo("SSH-2.0-TeamCity-Server-2017.2.1-EAP-LIB-VERSION");
+  }
 }

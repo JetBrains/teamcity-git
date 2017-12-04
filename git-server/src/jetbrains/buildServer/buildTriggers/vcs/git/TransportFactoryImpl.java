@@ -26,6 +26,8 @@ import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.version.ServerVersionHolder;
+import jetbrains.buildServer.version.ServerVersionInfo;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
@@ -34,6 +36,7 @@ import org.eclipse.jgit.transport.http.HttpConnectionFactory;
 import org.eclipse.jgit.transport.http.apache.HttpClientConnectionFactory;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.*;
@@ -50,7 +53,7 @@ public class TransportFactoryImpl implements TransportFactory {
 
   private final ServerPluginConfig myConfig;
   private final Map<String,String> myJSchOptions;
-  private VcsRootSshKeyManager mySshKeyManager;
+  private final VcsRootSshKeyManager mySshKeyManager;
 
   public TransportFactoryImpl(@NotNull ServerPluginConfig config,
                               @NotNull VcsRootSshKeyManager sshKeyManager) {
@@ -289,6 +292,10 @@ public class TransportFactoryImpl implements TransportFactory {
     protected void configure(OpenSshConfig.Host hc, Session session) {
       super.configure(hc, session);
       session.setConfig("StrictHostKeyChecking", "no");
+      String teamCityVersion = getTeamCityVersion();
+      if (teamCityVersion != null) {
+        session.setClientVersion(GitUtils.getSshClientVersion(session.getClientVersion(), teamCityVersion));
+      }
     }
   }
 
@@ -378,4 +385,13 @@ public class TransportFactoryImpl implements TransportFactory {
     return builder.toString();
   }
 
+  @Nullable
+  private static String getTeamCityVersion() {
+    try {
+      ServerVersionInfo version = ServerVersionHolder.getVersion();
+      return "TeamCity Server " + version.getDisplayVersion();
+    } catch (Exception e) {
+      return null;
+    }
+  }
 }

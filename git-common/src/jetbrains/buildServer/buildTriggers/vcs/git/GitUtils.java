@@ -39,6 +39,8 @@ import java.util.List;
  * Commands that allows working with git repositories
  */
 public class GitUtils {
+  private static final String SSH_V2 = "SSH-2.0";
+
   /**
    * Convert remote URL to JGIT form
    *
@@ -256,5 +258,14 @@ public class GitUtils {
       throw new IOException(error);
 
     return res.getStdout().trim();
+  }
+
+
+  @NotNull
+  public static String getSshClientVersion(@NotNull String originalSshClientVersion, @NotNull String teamcityVersion) {
+    if (!originalSshClientVersion.startsWith(SSH_V2))
+      return originalSshClientVersion;
+    //rfc4253-4.2
+    return SSH_V2 + "-" + teamcityVersion.replace(' ', '-') + originalSshClientVersion.substring(SSH_V2.length());
   }
 }
