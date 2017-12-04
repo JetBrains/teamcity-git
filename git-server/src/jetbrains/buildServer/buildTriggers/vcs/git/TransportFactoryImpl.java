@@ -180,6 +180,7 @@ public class TransportFactoryImpl implements TransportFactory {
 
     @Override
     protected void configure(OpenSshConfig.Host hc, Session session) {
+      configureClientVersion(session);
       session.setProxy(myConfig.getJschProxy());//null proxy is allowed
       if (myAuthSettings.isIgnoreKnownHosts())
         session.setConfig("StrictHostKeyChecking", "no");
@@ -292,10 +293,6 @@ public class TransportFactoryImpl implements TransportFactory {
     protected void configure(OpenSshConfig.Host hc, Session session) {
       super.configure(hc, session);
       session.setConfig("StrictHostKeyChecking", "no");
-      String teamCityVersion = getTeamCityVersion();
-      if (teamCityVersion != null) {
-        session.setClientVersion(GitUtils.getSshClientVersion(session.getClientVersion(), teamCityVersion));
-      }
     }
   }
 
@@ -383,6 +380,13 @@ public class TransportFactoryImpl implements TransportFactory {
         builder.append(",");
     }
     return builder.toString();
+  }
+
+  private static void configureClientVersion(@NotNull Session session) {
+    String teamCityVersion = getTeamCityVersion();
+    if (teamCityVersion != null) {
+      session.setClientVersion(GitUtils.getSshClientVersion(session.getClientVersion(), teamCityVersion));
+    }
   }
 
   @Nullable
