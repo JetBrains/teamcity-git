@@ -23,6 +23,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.CredentialsHelper;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 
@@ -36,6 +37,9 @@ public abstract class ScriptGen {
 
   @NotNull
   public abstract File generateAskPass(@NotNull AuthSettings authSettings) throws IOException;
+
+  @NotNull
+  public abstract File generateAskPass(@Nullable String password) throws IOException;
 
 
   @NotNull

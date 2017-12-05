@@ -58,6 +58,11 @@ public class FetchCommandImplTest {
         return new File(".");
       }
       @NotNull
+      @Override
+      public File generateAskPass(@NotNull final String password) throws IOException {
+        return new File(".");
+      }
+      @NotNull
       protected String getCredHelperTemplate() {
         return "";
       }

@@ -20,6 +20,7 @@ import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ScriptGen;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -38,12 +39,19 @@ public class UnixScriptGen extends ScriptGen {
 
   @NotNull
   public File generateAskPass(@NotNull AuthSettings authSettings) throws IOException {
+    return generateAskPass(authSettings.getPassword());
+  }
+
+
+  @NotNull
+  @Override
+  public File generateAskPass(@Nullable String password) throws IOException {
     File script = FileUtil.createTempFile(myTempDir, "pass", "", true);
     PrintWriter out = null;
     try {
       out = new PrintWriter(new FileWriter(script));
       out.println("#!/bin/sh");
-      out.println("printf " + myEscaper.escape(authSettings.getPassword()));
+      out.println("printf " + myEscaper.escape(password));
       if (!script.setExecutable(true))
         throw new IOException("Cannot make askpass script executable");
     } finally {

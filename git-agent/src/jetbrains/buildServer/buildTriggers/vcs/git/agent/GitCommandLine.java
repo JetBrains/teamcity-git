@@ -18,7 +18,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.SystemInfo;
-import com.intellij.openapi.util.io.FileUtil;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.KeyPair;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import jetbrains.buildServer.agent.BuildInterruptReason;
@@ -27,14 +28,15 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
+import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -117,6 +119,9 @@ public class GitCommandLine extends GeneralCommandLine {
         }
       }
       if (settings.isUseNativeSsh()) {
+        if (!myGitVersion.isLessThan(UpdaterImpl.MIN_GIT_SSH_COMMAND) && authSettings.getAuthMethod() == AuthenticationMethod.TEAMCITY_SSH_KEY) {
+          configureGitSshCommand(authSettings);
+        }
         return CommandUtil.runCommand(this, settings.getTimeout());
       } else {
         SshHandler h = new SshHandler(mySsh, mySshKeyManager, authSettings, this, myTmpDir, myCtx.getSshMacType());
@@ -128,6 +133,74 @@ public class GitCommandLine extends GeneralCommandLine {
       }
     } else {
       return CommandUtil.runCommand(this, settings.getTimeout());
+    }
+  }
+
+
+  private void configureGitSshCommand(final AuthSettings authSettings) throws VcsException {
+    //Git has 2 environment variables related to GIT_SSH and GIT_SSH_COMMAND.
+    //We use GIT_SSH_COMMAND because git resolves the executable specified in it,
+    //i.e. it finds the 'ssh' executable which is not in the PATH on windows be default.
+
+    //We specify the following command:
+    //
+    //  GIT_SSH_COMMAND=ssh -i "<path to decrypted key>" (-o "StrictHostKeyChecking=no")
+    //
+    //The key is decrypted by us because on MacOS ssh seems to ignore the SSH_ASKPASS and
+    //runs the MacOS graphical keychain helper. Disabling it via the -o "KeychainIntegration=no"
+    //option results in the 'Bad configuration option: keychainintegration' error.
+    String keyId = authSettings.getTeamCitySshKeyId();
+    if (keyId != null && mySshKeyManager != null) {
+      VcsRoot root = authSettings.getRoot();
+      if (root != null) {
+        TeamCitySshKey key = mySshKeyManager.getKey(root);
+        if (key != null) {
+          try {
+            final File privateKey = FileUtil.createTempFile(myTmpDir, "key", "", true);
+            addPostAction(new Runnable() {
+              @Override
+              public void run() {
+                FileUtil.delete(privateKey);
+              }
+            });
+            FileUtil.writeFileAndReportErrors(privateKey, new String(key.getPrivateKey()));
+            if (key.isEncrypted()) {
+              KeyPair keyPair = KeyPair.load(new JSch(), privateKey.getAbsolutePath());
+              OutputStream out = null;
+              try {
+                out = new BufferedOutputStream(new FileOutputStream(privateKey));
+                if (!keyPair.decrypt(authSettings.getPassphrase())) {
+                  throw new VcsException("Wrong SSH key passphrase");
+                }
+                keyPair.writePrivateKey(out, null);
+              } catch (Exception e) {
+                FileUtil.delete(privateKey);
+                throw e;
+              } finally {
+                FileUtil.close(out);
+              }
+            }
+            //set permissions to 600, without that ssh client rejects the key on *nix
+            privateKey.setReadable(false, false);
+            privateKey.setReadable(true, true);
+            privateKey.setWritable(false, false);
+            privateKey.setWritable(true, true);
+
+            String privateKeyPath = privateKey.getAbsolutePath().replace('\\', '/');
+
+            StringBuilder gitSshCommand = new StringBuilder();
+            gitSshCommand.append("ssh -i \"").append(privateKeyPath).append("\"");
+            if (authSettings.isIgnoreKnownHosts()) {
+              gitSshCommand.append(" -o \"StrictHostKeyChecking=no\"");
+            }
+            addEnvParam("GIT_SSH_COMMAND", gitSshCommand.toString());
+          } catch (Exception e) {
+            if (e instanceof VcsException)
+              throw (VcsException) e;
+            throw new VcsException(e);
+          }
+        }
+      }
     }
   }
 
