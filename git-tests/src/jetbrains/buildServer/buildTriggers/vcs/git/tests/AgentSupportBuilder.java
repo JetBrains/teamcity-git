@@ -17,8 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.agent.BuildAgent;
-import jetbrains.buildServer.agent.BuildAgentConfiguration;
+import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
@@ -63,8 +62,20 @@ class AgentSupportBuilder {
       myAgent = new MockBuildAgent();
     if (myFS == null)
       myFS = new FSImpl();
+    CurrentBuildTracker buildTracker = new CurrentBuildTracker() {
+      @NotNull
+      @Override
+      public AgentRunningBuild getCurrentBuild() throws NoRunningBuildException {
+        throw new NoRunningBuildException();
+      }
+
+      @Override
+      public boolean isRunningBuild() {
+        return false;
+      }
+    };
     return new GitAgentVcsSupport(myFS, new MockDirectoryCleaner(),
-                                  new GitAgentSSHService(myAgent, myAgentConfiguration, new MockGitPluginDescriptor(), mySshKeyProvider),
+                                  new GitAgentSSHService(myAgent, myAgentConfiguration, new MockGitPluginDescriptor(), mySshKeyProvider, buildTracker),
                                   myPluginConfigFactory, myMirrorManager, myGitMetaFactory);
   }
 
