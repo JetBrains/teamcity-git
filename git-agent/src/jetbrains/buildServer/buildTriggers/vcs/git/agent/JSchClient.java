@@ -18,15 +18,19 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Logger;
 import com.jcraft.jsch.Session;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.git4idea.ssh.GitSSHHandler;
 
-import java.io.File;
-import java.io.InputStream;
+import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
 
 public class JSchClient {
 
@@ -36,22 +40,29 @@ public class JSchClient {
   private final String myUsername;
   private final Integer myPort;
   private final String myCommand;
+  private final Logger myLogger;
 
-
-  private JSchClient(@NotNull String host, @Nullable String username, @Nullable Integer port, @NotNull String command) {
+  private JSchClient(@NotNull String host,
+                     @Nullable String username,
+                     @Nullable Integer port,
+                     @NotNull String command,
+                     @NotNull Logger logger) {
     myHost = host;
     myUsername = username;
     myPort = port;
     myCommand = command;
+    myLogger = logger;
   }
 
 
   public static void main(String... args) {
     boolean debug = Boolean.parseBoolean(System.getenv(GitSSHHandler.TEAMCITY_DEBUG_SSH));
+    InMemoryLogger logger = new InMemoryLogger(debug ? Logger.DEBUG : Logger.INFO);
     try {
-      JSchClient ssh = createClient(args);
+      JSchClient ssh = createClient(logger, args);
       ssh.run();
     } catch (Throwable t) {
+      logger.printLog();
       System.err.println(t.getMessage());
       if (t instanceof NullPointerException || debug)
         t.printStackTrace();
@@ -60,7 +71,7 @@ public class JSchClient {
   }
 
 
-  private static JSchClient createClient(String[] args) {
+  private static JSchClient createClient(@NotNull Logger logger, String[] args) {
     if (args.length != 2 && args.length != 4) {
       System.err.println("Invalid arguments " + Arrays.asList(args));
       System.exit(1);
@@ -84,7 +95,7 @@ public class JSchClient {
       host = host.substring(atIndex + 1);
     }
     String command = args[i];
-    return new JSchClient(host, user, port, command);
+    return new JSchClient(host, user, port, command, logger);
   }
 
 
@@ -92,6 +103,7 @@ public class JSchClient {
     ChannelExec channel = null;
     Session session = null;
     try {
+      JSch.setLogger(myLogger);
       JSch jsch = new JSch();
       String privateKeyPath = System.getenv(GitSSHHandler.TEAMCITY_PRIVATE_KEY_PATH);
       if (privateKeyPath != null) {
@@ -142,6 +154,72 @@ public class JSchClient {
         channel.disconnect();
       if (session != null)
         session.disconnect();
+    }
+  }
+
+
+  private static class InMemoryLogger implements Logger {
+    private final int myMinLogLevel;
+    private final List<LogEntry> myLogEntries;
+    InMemoryLogger(int minLogLevel) {
+      myMinLogLevel = minLogLevel;
+      myLogEntries = new ArrayList<LogEntry>();
+    }
+
+    @Override
+    public boolean isEnabled(final int level) {
+      return level >= myMinLogLevel;
+    }
+
+    @Override
+    public void log(final int level, final String message) {
+      if (isEnabled(level)) {
+        synchronized (myLogEntries) {
+          myLogEntries.add(new LogEntry(System.currentTimeMillis(), level, message));
+        }
+      }
+    }
+
+    void printLog() {
+      SimpleDateFormat dateFormat = new SimpleDateFormat("[HH:mm:ss.SSS]");
+      synchronized (myLogEntries) {
+        for (LogEntry entry : myLogEntries) {
+          System.err.print(dateFormat.format(new Date(entry.myTimestamp)));
+          System.err.print(" ");
+          System.err.print(getLevel(entry.myLogLevel));
+          System.err.print(" ");
+          System.err.println(entry.myMessage);
+        }
+      }
+    }
+
+    @NotNull
+    private String getLevel(int level) {
+      switch (level) {
+        case Logger.DEBUG:
+          return "DEBUG";
+        case Logger.INFO:
+          return "INFO";
+        case Logger.WARN:
+          return "WARN";
+        case Logger.ERROR:
+          return "ERROR";
+        case Logger.FATAL:
+          return "FATAL";
+        default:
+          return "UNKNOWN";
+      }
+    }
+
+    private static class LogEntry {
+      private final long myTimestamp;
+      private final int myLogLevel;
+      private final String myMessage;
+      LogEntry(long timestamp, int logLevel, @NotNull String message) {
+        myTimestamp = timestamp;
+        myLogLevel = logLevel;
+        myMessage = message;
+      }
     }
   }
 }
