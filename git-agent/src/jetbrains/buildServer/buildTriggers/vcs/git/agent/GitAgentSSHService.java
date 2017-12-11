@@ -44,7 +44,7 @@ public class GitAgentSSHService extends GitSSHService {
 
   private final static String JSCH_SSH_LIB = "jsch";
   private final static String TRILEAD_SSH_LIB = "trilead";
-  private final static String DEFAULT_SSH_LIB = TRILEAD_SSH_LIB;
+  private final static String DEFAULT_SSH_LIB = JSCH_SSH_LIB;
 
   private final BuildAgent myAgent;
   private final BuildAgentConfiguration myAgentConfiguration;
