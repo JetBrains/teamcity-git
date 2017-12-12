@@ -132,6 +132,20 @@ public class JSchClient {
 
       if (Boolean.parseBoolean(System.getenv(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV))) {
         session.setConfig("StrictHostKeyChecking", "no");
+      } else {
+        String userHome = System.getProperty("user.home");
+        if (userHome != null) {
+          File homeDir = new File(userHome);
+          File ssh = new File(homeDir, ".ssh");
+          File knownHosts = new File(ssh, "known_hosts");
+          if (knownHosts.isFile()) {
+            try {
+              jsch.setKnownHosts(knownHosts.getAbsolutePath());
+            } catch (Exception e) {
+              myLogger.log(Logger.WARN, "Failed to configure known hosts: '" + e.toString() + "'");
+            }
+          }
+        }
       }
 
       session.connect();
