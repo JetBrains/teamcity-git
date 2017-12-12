@@ -48,8 +48,8 @@ public abstract class GitSSHService {
   /**
    * Path to the generated script
    */
-  private File myScript;
-  private String myScriptPath;
+  protected File myScript;
+  protected String myScriptPath;
   /**
    * Registered handlers
    */
