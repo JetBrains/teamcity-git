@@ -26,6 +26,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootEntry;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -55,8 +57,12 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
       String repository = entry.getKey();
       File mirror = entry.getValue();
       if (!repositoriesUsedInBuild.contains(repository)) {
-        ourLog.debug("Register cleaner for mirror " + mirror.getAbsolutePath());
-        registry.addCleaner(mirror, new Date(myMirrorManager.getLastUsedTime(mirror)));
+        if (isCleanupEnabled(mirror)) {
+          ourLog.debug("Register cleaner for mirror " + mirror.getAbsolutePath());
+          registry.addCleaner(mirror, new Date(myMirrorManager.getLastUsedTime(mirror)));
+        } else {
+          ourLog.debug("Clean-up is disabled in " + repository + " (" + mirror.getName() + ")");
+        }
       }
     }
   }
@@ -77,5 +83,19 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
       }
     }
     return repositories;
+  }
+
+  private boolean isCleanupEnabled(@NotNull File gitDir) {
+    Repository repository = null;
+    try {
+      repository = new RepositoryBuilder().setGitDir(gitDir).setBare().build();
+      return repository.getConfig().getBoolean("teamcity", "freeDiskSpaceCleanupEnabled", true);
+    } catch (Exception e) {
+      return true;
+    } finally {
+      if (repository != null) {
+        repository.close();
+      }
+    }
   }
 }
