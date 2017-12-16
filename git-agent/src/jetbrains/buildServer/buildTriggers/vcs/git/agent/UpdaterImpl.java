@@ -141,12 +141,12 @@ public class UpdaterImpl implements Updater {
 
   private void logInfo(@NotNull String msg) {
     myLogger.message(msg);
-    LOG.info(msg);
+    Loggers.VCS.info(msg);
   }
 
   private void logWarn(@NotNull String msg) {
     myLogger.warning(msg);
-    LOG.warn(msg);
+    Loggers.VCS.warn(msg);
   }
 
   protected void doUpdate() throws VcsException {
