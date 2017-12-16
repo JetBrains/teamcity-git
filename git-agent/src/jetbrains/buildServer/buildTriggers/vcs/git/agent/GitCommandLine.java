@@ -119,12 +119,8 @@ public class GitCommandLine extends GeneralCommandLine {
         }
       }
       if (settings.isUseNativeSsh()) {
-        myLogger.message("Use native ssh (" + PluginConfigImpl.USE_NATIVE_SSH + "=true)");
         if (!myGitVersion.isLessThan(UpdaterImpl.MIN_GIT_SSH_COMMAND) && authSettings.getAuthMethod() == AuthenticationMethod.TEAMCITY_SSH_KEY) {
           configureGitSshCommand(authSettings);
-        } else {
-          myLogger.message("Git " + myGitVersion + " doesn't support the GIT_SSH_COMMAND environment variable, uploaded keys will not work. " +
-                           "Required git version is " + UpdaterImpl.MIN_GIT_SSH_COMMAND);
         }
         return CommandUtil.runCommand(this, settings.getTimeout());
       } else {

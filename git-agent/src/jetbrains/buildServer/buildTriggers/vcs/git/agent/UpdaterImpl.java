@@ -123,11 +123,30 @@ public class UpdaterImpl implements Updater {
 
 
   public void update() throws VcsException {
-    String msg = "Git version: " + myPluginConfig.getGitVersion();
-    myLogger.message(msg);
-    LOG.info(msg);
+    logInfo("Git version: " + myPluginConfig.getGitVersion());
+    logSshOptions(myPluginConfig.getGitVersion());
     checkAuthMethodIsSupported();
     doUpdate();
+  }
+
+  private void logSshOptions(@NotNull GitVersion gitVersion) {
+    if (myPluginConfig.isUseNativeSSH()) {
+      logInfo("Will use native ssh (" + PluginConfigImpl.USE_NATIVE_SSH + "=true)");
+      if (myRoot.getAuthSettings().getAuthMethod() == AuthenticationMethod.TEAMCITY_SSH_KEY && gitVersion.isLessThan(UpdaterImpl.MIN_GIT_SSH_COMMAND)) {
+        logWarn("Git " + gitVersion + " doesn't support the GIT_SSH_COMMAND environment variable, uploaded SSH keys will not work. " +
+                 "Required git version is " + UpdaterImpl.MIN_GIT_SSH_COMMAND);
+      }
+    }
+  }
+
+  private void logInfo(@NotNull String msg) {
+    myLogger.message(msg);
+    LOG.info(msg);
+  }
+
+  private void logWarn(@NotNull String msg) {
+    myLogger.warning(msg);
+    LOG.warn(msg);
   }
 
   protected void doUpdate() throws VcsException {
