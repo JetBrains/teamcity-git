@@ -57,6 +57,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private boolean myRepeatOnEmptyOutput = false;
   private VcsRootSshKeyManager mySshKeyManager;
   private boolean myHasProgress = false;
+  private boolean myUseGitSshCommand = true;
 
   public GitCommandLine(@Nullable GitAgentSSHService ssh,
                         @NotNull ScriptGen scriptGen,
@@ -119,7 +120,7 @@ public class GitCommandLine extends GeneralCommandLine {
         }
       }
       if (settings.isUseNativeSsh()) {
-        if (!myGitVersion.isLessThan(UpdaterImpl.MIN_GIT_SSH_COMMAND) && authSettings.getAuthMethod() == AuthenticationMethod.TEAMCITY_SSH_KEY) {
+        if (!myGitVersion.isLessThan(UpdaterImpl.MIN_GIT_SSH_COMMAND) && authSettings.getAuthMethod() == AuthenticationMethod.TEAMCITY_SSH_KEY && myUseGitSshCommand) {
           configureGitSshCommand(authSettings);
         }
         return CommandUtil.runCommand(this, settings.getTimeout());
@@ -240,6 +241,10 @@ public class GitCommandLine extends GeneralCommandLine {
 
   public void setSshKeyManager(VcsRootSshKeyManager sshKeyManager) {
     mySshKeyManager = sshKeyManager;
+  }
+
+  public void setUseGitSshCommand(boolean useGitSshCommand) {
+    myUseGitSshCommand = useGitSshCommand;
   }
 
   public void addEnvParam(@NotNull String name, @NotNull String value) {

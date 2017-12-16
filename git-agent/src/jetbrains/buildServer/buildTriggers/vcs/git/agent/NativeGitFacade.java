@@ -52,6 +52,7 @@ public class NativeGitFacade implements GitFacade {
   private final Map<String, String> myEnv;
   private final Context myCtx;
   private VcsRootSshKeyManager mySshKeyManager;
+  private boolean myUseGitSshCommand = true;
 
   public NativeGitFacade(@NotNull GitAgentSSHService ssh,
                          @NotNull String gitPath,
@@ -256,11 +257,16 @@ public class NativeGitFacade implements GitFacade {
     cmd.setExePath(myGitPath);
     cmd.setWorkingDirectory(myRepositoryDir);
     cmd.setSshKeyManager(mySshKeyManager);
+    cmd.setUseGitSshCommand(myUseGitSshCommand);
     return cmd;
   }
 
   public void setSshKeyManager(@Nullable VcsRootSshKeyManager sshKeyManager) {
     mySshKeyManager = sshKeyManager;
+  }
+
+  public void setUseGitSshCommand(boolean useGitSshCommand) {
+    myUseGitSshCommand = useGitSshCommand;
   }
 
   @NotNull

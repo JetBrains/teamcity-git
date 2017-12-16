@@ -132,9 +132,13 @@ public class UpdaterImpl implements Updater {
   private void logSshOptions(@NotNull GitVersion gitVersion) {
     if (myPluginConfig.isUseNativeSSH()) {
       logInfo("Will use native ssh (" + PluginConfigImpl.USE_NATIVE_SSH + "=true)");
-      if (myRoot.getAuthSettings().getAuthMethod() == AuthenticationMethod.TEAMCITY_SSH_KEY && gitVersion.isLessThan(UpdaterImpl.MIN_GIT_SSH_COMMAND)) {
-        logWarn("Git " + gitVersion + " doesn't support the GIT_SSH_COMMAND environment variable, uploaded SSH keys will not work. " +
-                 "Required git version is " + UpdaterImpl.MIN_GIT_SSH_COMMAND);
+      if (myRoot.getAuthSettings().getAuthMethod() == AuthenticationMethod.TEAMCITY_SSH_KEY) {
+        if (gitVersion.isLessThan(UpdaterImpl.MIN_GIT_SSH_COMMAND)) {
+          logWarn("Git " + gitVersion + " doesn't support the GIT_SSH_COMMAND environment variable, uploaded SSH keys will not work. " +
+                  "Required git version is " + UpdaterImpl.MIN_GIT_SSH_COMMAND);
+        } else if (!myPluginConfig.isUseGitSshCommand()) {
+          logWarn("Use of GIT_SSH_COMMAND is disabled (" + PluginConfigImpl.USE_GIT_SSH_COMMAND + "=false), uploaded SSH keys will not work.");
+        }
       }
     }
   }
