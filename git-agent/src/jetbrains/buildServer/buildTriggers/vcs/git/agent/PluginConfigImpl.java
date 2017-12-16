@@ -37,6 +37,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
   public static final String IDLE_TIMEOUT = "teamcity.git.idle.timeout.seconds";
   public static final String USE_NATIVE_SSH = "teamcity.git.use.native.ssh";
+  public static final String USE_GIT_SSH_COMMAND = "teamcity.git.useGitSshCommand";
   public static final String USE_MIRRORS = "teamcity.git.use.local.mirrors";
   public static final String USE_ALTERNATES = "teamcity.git.useAlternates";
   public static final String USE_SHALLOW_CLONE = "teamcity.git.use.shallow.clone";
@@ -92,6 +93,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return "true".equals(value);
   }
 
+
+  @Override
+  public boolean isUseGitSshCommand() {
+    String value = myBuild.getSharedConfigParameters().get(USE_GIT_SSH_COMMAND);
+    return !"false".equals(value);
+  }
 
   public boolean isUseLocalMirrors(@NotNull GitVcsRoot root) {
     String buildSetting = myBuild.getSharedConfigParameters().get(USE_MIRRORS);

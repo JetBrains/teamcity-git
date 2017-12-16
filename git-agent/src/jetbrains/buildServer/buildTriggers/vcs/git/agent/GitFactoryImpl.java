@@ -53,6 +53,7 @@ public class GitFactoryImpl implements GitFactory {
     NativeGitFacade git = new NativeGitFacade(mySsh, myPluginConfig.getPathToGit(), myPluginConfig.getGitVersion(), repositoryDir,
                                               myTmpDir, myPluginConfig.isDeleteTempFiles(), myLogger, myPluginConfig.getGitExec(), myEnv, myCtx);
     git.setSshKeyManager(mySsh.getSshKeyManager());
+    git.setUseGitSshCommand(myPluginConfig.isUseGitSshCommand());
     return git;
   }
 }
