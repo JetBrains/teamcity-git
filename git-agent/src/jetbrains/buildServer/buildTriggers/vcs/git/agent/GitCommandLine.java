@@ -138,7 +138,7 @@ public class GitCommandLine extends GeneralCommandLine {
   }
 
 
-  private void configureGitSshCommand(final AuthSettings authSettings) throws VcsException {
+  private void configureGitSshCommand(@NotNull AuthSettings authSettings) throws VcsException {
     //Git has 2 environment variables related to ssh: GIT_SSH and GIT_SSH_COMMAND.
     //We use GIT_SSH_COMMAND because git resolves the executable specified in it,
     //i.e. it finds the 'ssh' executable which is not in the PATH on windows be default.
@@ -150,36 +150,33 @@ public class GitCommandLine extends GeneralCommandLine {
     //The key is decrypted by us because on MacOS ssh seems to ignore the SSH_ASKPASS and
     //runs the MacOS graphical keychain helper. Disabling it via the -o "KeychainIntegration=no"
     //option results in the 'Bad configuration option: keychainintegration' error.
-    String keyId = authSettings.getTeamCitySshKeyId();
-    if (keyId != null && mySshKeyManager != null) {
-      VcsRoot root = authSettings.getRoot();
-      if (root != null) {
-        TeamCitySshKey key = mySshKeyManager.getKey(root);
-        if (key != null) {
-          try {
-            final File privateKey = FileUtil.createTempFile(myTmpDir, "key", "", true);
+    File privateKey = null;
+    try {
+      String keyId = authSettings.getTeamCitySshKeyId();
+      if (keyId != null && mySshKeyManager != null) {
+        VcsRoot root = authSettings.getRoot();
+        if (root != null) {
+          TeamCitySshKey key = mySshKeyManager.getKey(root);
+          if (key != null) {
+            privateKey = FileUtil.createTempFile(myTmpDir, "key", "", true);
+            final File finalPrivateKey = privateKey;
             addPostAction(new Runnable() {
               @Override
               public void run() {
-                FileUtil.delete(privateKey);
+                FileUtil.delete(finalPrivateKey);
               }
             });
             FileUtil.writeFileAndReportErrors(privateKey, new String(key.getPrivateKey()));
-            if (key.isEncrypted()) {
-              KeyPair keyPair = KeyPair.load(new JSch(), privateKey.getAbsolutePath());
-              OutputStream out = null;
-              try {
-                out = new BufferedOutputStream(new FileOutputStream(privateKey));
-                if (!keyPair.decrypt(authSettings.getPassphrase())) {
-                  throw new VcsException("Wrong SSH key passphrase");
-                }
-                keyPair.writePrivateKey(out, null);
-              } catch (Exception e) {
-                FileUtil.delete(privateKey);
-                throw e;
-              } finally {
-                FileUtil.close(out);
+            KeyPair keyPair = KeyPair.load(new JSch(), privateKey.getAbsolutePath());
+            OutputStream out = null;
+            try {
+              out = new BufferedOutputStream(new FileOutputStream(privateKey));
+              if (key.isEncrypted() && !keyPair.decrypt(authSettings.getPassphrase())) {
+                throw new VcsException("Wrong SSH key passphrase");
               }
+              keyPair.writePrivateKey(out, null);
+            } finally {
+              FileUtil.close(out);
             }
             //set permissions to 600, without that ssh client rejects the key on *nix
             privateKey.setReadable(false, false);
@@ -195,13 +192,15 @@ public class GitCommandLine extends GeneralCommandLine {
               gitSshCommand.append(" -o \"StrictHostKeyChecking=no\"");
             }
             addEnvParam("GIT_SSH_COMMAND", gitSshCommand.toString());
-          } catch (Exception e) {
-            if (e instanceof VcsException)
-              throw (VcsException) e;
-            throw new VcsException(e);
           }
         }
       }
+    } catch (Exception e) {
+      if (privateKey != null)
+        FileUtil.delete(privateKey);
+      if (e instanceof VcsException)
+        throw (VcsException) e;
+      throw new VcsException(e);
     }
   }
 
