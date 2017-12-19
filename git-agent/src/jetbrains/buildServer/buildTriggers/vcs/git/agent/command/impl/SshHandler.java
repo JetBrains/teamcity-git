@@ -87,6 +87,7 @@ public class SshHandler implements GitSSHService.Handler {
               String passphrase = myAuthSettings.getPassphrase();
               cmd.addEnvParam(GitSSHHandler.TEAMCITY_PASSPHRASE, passphrase != null ? passphrase : "");
             } catch (Exception e) {
+              deleteKeys();
               throw new VcsException(e);
             }
           }
@@ -103,6 +104,7 @@ public class SshHandler implements GitSSHService.Handler {
     try {
       cmd.addEnvParam(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath());
     } catch (IOException e) {
+      deleteKeys();
       throw new VcsException("SSH script cannot be generated", e);
     }
     myHandlerNo = ssh.registerHandler(this);
@@ -113,10 +115,15 @@ public class SshHandler implements GitSSHService.Handler {
    * Unregister the handler
    */
   public void unregister() {
+    deleteKeys();
+    mySsh.unregisterHandler(myHandlerNo);
+  }
+
+
+  private void deleteKeys() {
     for (File f : myFilesToClean) {
       FileUtil.delete(f);
     }
-    mySsh.unregisterHandler(myHandlerNo);
   }
 
   public boolean verifyServerHostKey(String hostname,
