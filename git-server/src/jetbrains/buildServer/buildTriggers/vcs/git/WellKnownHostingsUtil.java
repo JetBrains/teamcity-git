@@ -104,7 +104,7 @@ public final class WellKnownHostingsUtil {
 
     String repoName = path.substring(gitPrefixIdx + "_git/".length());
 
-    return new VcsHostingRepo("https://" + host + "/_git/" + repoName, owner, repoName);
+    return new VcsHostingRepo("https://" + host + path, owner, repoName);
   }
 
   private static VcsHostingRepo ownerProjectStyleRepo(@NotNull String hostingUrl, @NotNull URIish uri) {
