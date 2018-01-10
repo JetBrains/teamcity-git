@@ -16,16 +16,14 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.jcraft.jsch.ChannelExec;
-import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.Logger;
-import com.jcraft.jsch.Session;
+import com.jcraft.jsch.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.git4idea.ssh.GitSSHHandler;
 
-import java.io.*;
+import java.io.File;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,12 +55,14 @@ public class JSchClient {
 
   public static void main(String... args) {
     boolean debug = Boolean.parseBoolean(System.getenv(GitSSHHandler.TEAMCITY_DEBUG_SSH));
-    InMemoryLogger logger = new InMemoryLogger(debug ? Logger.DEBUG : Logger.INFO);
+    Logger logger = debug ? new StdErrLogger() : new InMemoryLogger(Logger.INFO);
     try {
       JSchClient ssh = createClient(logger, args);
       ssh.run();
     } catch (Throwable t) {
-      logger.printLog();
+      if (logger instanceof InMemoryLogger) {
+        ((InMemoryLogger)logger).printLog();
+      }
       System.err.println(t.getMessage());
       if (t instanceof NullPointerException || debug)
         t.printStackTrace();
@@ -172,6 +172,31 @@ public class JSchClient {
   }
 
 
+  private static class StdErrLogger implements Logger {
+    private final SimpleDateFormat myDateFormat = new SimpleDateFormat("[HH:mm:ss.SSS]");
+    @Override
+    public boolean isEnabled(final int level) {
+      return true;
+    }
+
+    @Override
+    public void log(final int level, final String message) {
+      System.err.print(getTimestamp());
+      System.err.print(" ");
+      System.err.print(getLevel(level));
+      System.err.print(" ");
+      System.err.println(message);
+    }
+
+    @NotNull
+    private String getTimestamp() {
+      synchronized (myDateFormat) {
+        return myDateFormat.format(new Date());
+      }
+    }
+  }
+
+
   private static class InMemoryLogger implements Logger {
     private final int myMinLogLevel;
     private final List<LogEntry> myLogEntries;
@@ -207,24 +232,6 @@ public class JSchClient {
       }
     }
 
-    @NotNull
-    private String getLevel(int level) {
-      switch (level) {
-        case Logger.DEBUG:
-          return "DEBUG";
-        case Logger.INFO:
-          return "INFO";
-        case Logger.WARN:
-          return "WARN";
-        case Logger.ERROR:
-          return "ERROR";
-        case Logger.FATAL:
-          return "FATAL";
-        default:
-          return "UNKNOWN";
-      }
-    }
-
     private static class LogEntry {
       private final long myTimestamp;
       private final int myLogLevel;
@@ -234,6 +241,25 @@ public class JSchClient {
         myLogLevel = logLevel;
         myMessage = message;
       }
+    }
+  }
+
+
+  @NotNull
+  private static String getLevel(int level) {
+    switch (level) {
+      case Logger.DEBUG:
+        return "DEBUG";
+      case Logger.INFO:
+        return "INFO";
+      case Logger.WARN:
+        return "WARN";
+      case Logger.ERROR:
+        return "ERROR";
+      case Logger.FATAL:
+        return "FATAL";
+      default:
+        return "UNKNOWN";
     }
   }
 }
