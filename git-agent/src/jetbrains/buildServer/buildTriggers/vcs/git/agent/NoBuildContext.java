@@ -33,6 +33,12 @@ public class NoBuildContext implements Context {
     return null;
   }
 
+  @Nullable
+  @Override
+  public String getPreferredSshAuthMethods() {
+    return null;
+  }
+
   @Override
   public boolean isProvideCredHelper() {
     return false;

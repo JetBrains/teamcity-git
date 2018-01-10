@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
@@ -66,7 +67,7 @@ public class SshHandler implements GitSSHService.Handler {
                     @NotNull AuthSettings authSettings,
                     @NotNull GitCommandLine cmd,
                     @NotNull File tmpDir,
-                    @Nullable String customSshMacType) throws VcsException {
+                    @NotNull Context ctx) throws VcsException {
     mySsh = ssh;
     myAuthSettings = authSettings;
     cmd.addEnvParam(GitSSHHandler.SSH_PORT_ENV, Integer.toString(mySsh.getXmlRcpPort()));
@@ -94,8 +95,10 @@ public class SshHandler implements GitSSHService.Handler {
         }
       }
     }
-    if (customSshMacType != null)
-      cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_MAC_TYPE, customSshMacType);
+    if (ctx.getSshMacType() != null)
+      cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_MAC_TYPE, ctx.getSshMacType());
+    if (ctx.getPreferredSshAuthMethods() != null)
+      cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_PREFERRED_AUTH_METHODS, ctx.getPreferredSshAuthMethods());
     cmd.addEnvParam(GitSSHHandler.TEAMCITY_DEBUG_SSH, String.valueOf(Loggers.VCS.isDebugEnabled()));
     String teamCityVersion = getTeamCityVersion();
     if (teamCityVersion != null) {
