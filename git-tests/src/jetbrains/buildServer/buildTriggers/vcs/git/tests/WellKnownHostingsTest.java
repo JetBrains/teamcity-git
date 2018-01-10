@@ -115,4 +115,13 @@ public class WellKnownHostingsTest extends BaseTestCase {
     assertEquals("spav5", repo.owner());
     assertEquals("MyFirstProject", repo.repoName());
   }
+
+  public void test_vsts_nested_project() throws URISyntaxException {
+    String url = "https://spav5.visualstudio.com/MyProject/_git/MyFirstProject";
+    VcsHostingRepo repo = WellKnownHostingsUtil.getVSTSRepo(new URIish(url));
+    assertNotNull(repo);
+    assertEquals("https://spav5.visualstudio.com/MyProject/_git/MyFirstProject", repo.repositoryUrl());
+    assertEquals("spav5", repo.owner());
+    assertEquals("MyFirstProject", repo.repoName());
+  }
 }
