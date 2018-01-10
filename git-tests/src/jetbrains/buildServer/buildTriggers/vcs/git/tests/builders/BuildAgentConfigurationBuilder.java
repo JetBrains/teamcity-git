@@ -188,6 +188,11 @@ public class BuildAgentConfigurationBuilder {
       public ValueResolver getParametersResolver() {
         throw new UnsupportedOperationException();
       }
+
+      @Override
+      public boolean removeConfigurationParameter(@NotNull final String key) {
+        return false;
+      }
     };
   }
 

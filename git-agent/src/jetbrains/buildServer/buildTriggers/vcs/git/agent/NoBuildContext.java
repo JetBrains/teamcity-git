@@ -32,4 +32,10 @@ public class NoBuildContext implements Context {
   public String getSshMacType() {
     return null;
   }
+
+  @Nullable
+  @Override
+  public String getPreferredSshAuthMethods() {
+    return null;
+  }
 }
