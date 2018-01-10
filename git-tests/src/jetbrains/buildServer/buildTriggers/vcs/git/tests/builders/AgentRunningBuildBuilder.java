@@ -16,6 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests.builders;
 
+import java.io.File;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.impl.BuildParametersMapImpl;
 import jetbrains.buildServer.agentServer.AgentBuild;
@@ -24,18 +29,11 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.parameters.ValueResolver;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.Option;
-import jetbrains.buildServer.util.PasswordReplacer;
 import jetbrains.buildServer.vcs.VcsChangeInfo;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import static jetbrains.buildServer.util.Util.map;
 
@@ -331,24 +329,6 @@ public class AgentRunningBuildBuilder {
       @NotNull
       @Override
       public String describe(final boolean verbose) { return "no details";}
-
-      @NotNull
-      @Override
-      public PasswordReplacer getPasswordReplacer() {
-        return null;
-      }
-
-      @NotNull
-      @Override
-      public Map<String, String> getArtifactStorageSettings() {
-        return null;
-      }
-
-      @NotNull
-      @Override
-      public List<BuildRunnerSettings> getBuildRunners() {
-        return null;
-      }
     };
   };
 
