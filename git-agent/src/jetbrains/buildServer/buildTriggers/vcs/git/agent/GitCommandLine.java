@@ -119,7 +119,7 @@ public class GitCommandLine extends GeneralCommandLine {
       if (settings.isUseNativeSsh()) {
         return CommandUtil.runCommand(this, settings.getTimeout());
       } else {
-        SshHandler h = new SshHandler(mySsh, mySshKeyManager, authSettings, this, myTmpDir, myCtx.getSshMacType());
+        SshHandler h = new SshHandler(mySsh, mySshKeyManager, authSettings, this, myTmpDir, myCtx);
         try {
           return CommandUtil.runCommand(this, settings.getTimeout());
         } finally {

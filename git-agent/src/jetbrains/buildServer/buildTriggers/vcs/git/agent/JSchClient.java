@@ -16,14 +16,21 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.jcraft.jsch.*;
+import com.jcraft.jsch.ChannelExec;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Logger;
+import com.jcraft.jsch.Session;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.git4idea.ssh.GitSSHHandler;
 
+import javax.security.auth.callback.Callback;
+import javax.security.auth.callback.CallbackHandler;
+import javax.security.auth.callback.UnsupportedCallbackException;
 import java.io.File;
 import java.io.InputStream;
+import java.security.Security;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -148,6 +155,12 @@ public class JSchClient {
         }
       }
 
+      String authMethods = System.getenv(GitSSHHandler.TEAMCITY_SSH_PREFERRED_AUTH_METHODS);
+      if (authMethods != null && authMethods.length() > 0)
+        session.setConfig("PreferredAuthentications", authMethods);
+
+      EmptySecurityCallbackHandler.install();
+
       session.connect();
 
       channel = (ChannelExec) session.openChannel("exec");
@@ -260,6 +273,22 @@ public class JSchClient {
         return "FATAL";
       default:
         return "UNKNOWN";
+    }
+  }
+
+
+  // Doesn't provide any credentials, used instead the default handler from jdk
+  // which reads credentials them from stdin.
+  public static class EmptySecurityCallbackHandler implements CallbackHandler {
+    @Override
+    public void handle(final Callback[] callbacks) throws UnsupportedCallbackException {
+      if (callbacks.length > 0) {
+        throw new UnsupportedCallbackException(callbacks[0], "Unsupported callback");
+      }
+    }
+
+    static void install() {
+      Security.setProperty("auth.login.defaultCallbackHandler", EmptySecurityCallbackHandler.class.getName());
     }
   }
 }
