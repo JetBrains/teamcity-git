@@ -47,6 +47,15 @@ public class BuildContext implements Context {
     return null;
   }
 
+  @Nullable
+  @Override
+  public String getPreferredSshAuthMethods() {
+    String value = myBuild.getSharedConfigParameters().get("teamcity.git.sshPreferredAuthMethods");
+    if (!StringUtil.isEmpty(value))
+      return value;
+    return "publickey,keyboard-interactive,password";
+  }
+
   @Override
   public boolean isProvideCredHelper() {
     return myConfig.isProvideCredHelper();
