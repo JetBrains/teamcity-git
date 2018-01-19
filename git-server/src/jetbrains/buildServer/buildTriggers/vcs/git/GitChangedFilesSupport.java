@@ -45,73 +45,111 @@ public class GitChangedFilesSupport implements ChangedFilesSupport, GitServerExt
 
   @Override
   public void computeChangedFiles(@NotNull VcsRoot root, @NotNull String c1, @NotNull String c2, @NotNull ChangedFilesConsumer consumer) throws VcsException {
-    OperationContext context = myVcs.createContext(root, "compute changed files");
+    ChangedFilesReporter reporter = null;
     try {
-      GitVcsRoot gitRoot = context.getGitRoot();
-      myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-        Repository r = context.getRepository();
-        boolean[] fetchInvoked = new boolean[]{false};
-        RevCommit commit1 = ensureCommitLoaded(gitRoot, r, c1, fetchInvoked);
-        RevCommit commit2 = ensureCommitLoaded(gitRoot, r, c2, fetchInvoked);
+      reporter = createChangedFilesReporter(root);
+      reporter.computeChangedFiles(c1, c2, consumer);
+    } finally {
+      if (reporter != null)
+        reporter.close();
+    }
+  }
+
+
+  @NotNull
+  @Override
+  public ChangedFilesReporter createChangedFilesReporter(@NotNull VcsRoot root) throws VcsException {
+    OperationContext context = myVcs.createContext(root, "compute changed files");
+    GitVcsRoot gitRoot = context.getGitRoot();
+    return new GitChangedFilesReporter(myRepositoryManager, myCommitLoader, context, gitRoot);
+  }
+
+
+  private static class GitChangedFilesReporter implements ChangedFilesSupport.ChangedFilesReporter {
+    private final RepositoryManager myRepositoryManager;
+    private final CommitLoader myCommitLoader;
+    private final OperationContext myContext;
+    private final GitVcsRoot myGitVcsRoot;
+    private boolean myFetchInvoked = false;
+
+    GitChangedFilesReporter(@NotNull RepositoryManager repositoryManager,
+                            @NotNull CommitLoader commitLoader,
+                            @NotNull OperationContext context,
+                            @NotNull GitVcsRoot gitRoot) {
+      myRepositoryManager = repositoryManager;
+      myCommitLoader = commitLoader;
+      myContext = context;
+      myGitVcsRoot = gitRoot;
+    }
+
+    @Override
+    public void computeChangedFiles(@NotNull String c1, @NotNull String c2, @NotNull ChangedFilesConsumer consumer) throws VcsException {
+      myRepositoryManager.runWithDisabledRemove(myGitVcsRoot.getRepositoryDir(), () -> {
+        Repository r = myContext.getRepository();
+        RevCommit commit1 = ensureCommitLoaded(myGitVcsRoot, r, c1);
+        RevCommit commit2 = ensureCommitLoaded(myGitVcsRoot, r, c2);
         reportChanges(r, commit1, commit2, consumer);
       });
-    } finally {
-      context.close();
     }
-  }
 
-
-  private void reportChanges(@NotNull Repository r, @NotNull RevCommit c1, @NotNull RevCommit c2, @NotNull ChangedFilesConsumer consumer) throws VcsException {
-    TreeWalk walk = null;
-    try {
-      walk = new TreeWalk(r);
-      walk.setRecursive(true);
-      walk.setFilter(TreeFilter.ANY_DIFF);
-      walk.addTree(c1.getTree());
-      walk.addTree(c2.getTree());
-      while (walk.next()) {
-        String path = walk.getPathString();
-        if (!consumer.consume(path, getChangeType(walk)))
-          break;
+    private void reportChanges(@NotNull Repository r, @NotNull RevCommit c1, @NotNull RevCommit c2, @NotNull ChangedFilesConsumer consumer) throws VcsException {
+      TreeWalk walk = null;
+      try {
+        walk = new TreeWalk(r);
+        walk.setRecursive(true);
+        walk.setFilter(TreeFilter.ANY_DIFF);
+        walk.addTree(c1.getTree());
+        walk.addTree(c2.getTree());
+        while (walk.next()) {
+          String path = walk.getPathString();
+          if (!consumer.consume(path, getChangeType(walk)))
+            break;
+        }
+      } catch (Exception e) {
+        throw new VcsException("Error while comparing commits " + c1.name() + " and " + c2.name() + ": " + e.getMessage(), e);
+      } finally {
+        if (walk != null)
+          walk.release();
       }
-    } catch (Exception e) {
-      throw new VcsException("Error while comparing commits " + c1.name() + " and " + c2.name() + ": " + e.getMessage(), e);
-    } finally {
-      if (walk != null)
-        walk.release();
     }
-  }
 
 
-  @NotNull
-  private VcsChangeInfo.Type getChangeType(@NotNull TreeWalk walk) {
-    VcsChangeInfo.Type result = VcsChangeInfo.Type.CHANGED;
-    if (walk.getFileMode(0) == FileMode.MISSING) {
-      result = VcsChangeInfo.Type.ADDED;
-    } else if (walk.getFileMode(1) == FileMode.MISSING) {
-      result = VcsChangeInfo.Type.REMOVED;
-    }
-    return result;
-  }
-
-
-  @NotNull
-  private RevCommit ensureCommitLoaded(@NotNull GitVcsRoot root, @NotNull Repository db, @NotNull String commit, boolean[] fetchInvoked) throws VcsException {
-    try {
-      RevCommit result = myCommitLoader.findCommit(db, commit);
-      if (result == null && !fetchInvoked[0]) {
-        Set<RefSpec> spec = Collections.singleton(new RefSpec("refs/*:refs/*").setForceUpdate(true));
-        myCommitLoader.fetch(db, root.getRepositoryFetchURL(), spec, new FetchSettings(root.getAuthSettings()));
-        fetchInvoked[0] = true;
+    @NotNull
+    private VcsChangeInfo.Type getChangeType(@NotNull TreeWalk walk) {
+      VcsChangeInfo.Type result = VcsChangeInfo.Type.CHANGED;
+      if (walk.getFileMode(0) == FileMode.MISSING) {
+        result = VcsChangeInfo.Type.ADDED;
+      } else if (walk.getFileMode(1) == FileMode.MISSING) {
+        result = VcsChangeInfo.Type.REMOVED;
       }
-      result = myCommitLoader.findCommit(db, commit);
-      if (result == null)
-        throw new VcsException("Cannot find commit " + commit);
       return result;
-    } catch (Exception e) {
-      if (e instanceof VcsException)
-        throw (VcsException)e;
-      throw new VcsException("Error while fetching repository", e);
+    }
+
+
+    @NotNull
+    private RevCommit ensureCommitLoaded(@NotNull GitVcsRoot root, @NotNull Repository db, @NotNull String commit) throws VcsException {
+      try {
+        RevCommit result = myCommitLoader.findCommit(db, commit);
+        if (result == null && !myFetchInvoked) {
+          Set<RefSpec> spec = Collections.singleton(new RefSpec("refs/*:refs/*").setForceUpdate(true));
+          myCommitLoader.fetch(db, root.getRepositoryFetchURL(), spec, new FetchSettings(root.getAuthSettings()));
+          myFetchInvoked = true;
+        }
+        result = myCommitLoader.findCommit(db, commit);
+        if (result == null)
+          throw new VcsException("Cannot find commit " + commit);
+        return result;
+      } catch (Exception e) {
+        if (e instanceof VcsException)
+          throw (VcsException)e;
+        throw new VcsException("Error while fetching repository", e);
+      }
+    }
+
+
+    @Override
+    public void close() {
+      myContext.close();
     }
   }
 }

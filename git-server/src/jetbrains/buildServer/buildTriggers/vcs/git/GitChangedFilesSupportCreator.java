@@ -37,10 +37,13 @@ public class GitChangedFilesSupportCreator {
                                        @NotNull RepositoryManager repositoryManager,
                                        @NotNull CommitLoader commitLoader) {
     try {
-      Class<?> extension = Class.forName("jetbrains.buildServer.vcs.ChangedFilesSupport");
+      Class<?> supportClass = Class.forName("jetbrains.buildServer.vcs.ChangedFilesSupport");
+      Class<?> reporterClass = Class.forName("jetbrains.buildServer.vcs.ChangedFilesSupport$ChangedFilesReporter");
       Class<?> consumer = Class.forName("jetbrains.buildServer.vcs.ChangedFilesSupport$ChangedFilesConsumer");
-      Method computeChangedFiles = extension.getDeclaredMethod("computeChangedFiles", VcsRoot.class, String.class, String.class, consumer);
-      if (computeChangedFiles != null) {
+      Method computeChangedFiles = supportClass.getDeclaredMethod("computeChangedFiles", VcsRoot.class, String.class, String.class, consumer);
+      Method createReporter = supportClass.getDeclaredMethod("createChangedFilesReporter", VcsRoot.class);
+      Method reporterComputeChangedFiles = reporterClass.getDeclaredMethod("computeChangedFiles", String.class, String.class, consumer);
+      if (computeChangedFiles != null && createReporter != null && reporterComputeChangedFiles != null) {
         Class<?> implClass = Class.forName("jetbrains.buildServer.buildTriggers.vcs.git.GitChangedFilesSupport");
         Constructor<?> constructor = implClass.getConstructor(GitVcsSupport.class, RepositoryManager.class, CommitLoader.class);
         Object impl = constructor.newInstance(vcs, repositoryManager, commitLoader);
