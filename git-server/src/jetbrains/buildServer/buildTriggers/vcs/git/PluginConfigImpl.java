@@ -560,6 +560,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return TeamCityProperties.getBooleanOrTrue("teamcity.git.treatMissingCommitAsRecoverableError");
   }
 
+  @Override
+  public boolean reportPerParentChangedFiles() {
+    return TeamCityProperties.getBoolean("teamcity.git.reportPerParentChangedFiles");
+  }
+
   @NotNull
   @Override
   public List<String> getRecoverableFetchErrorMessages() {
