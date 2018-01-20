@@ -161,6 +161,8 @@ public interface ServerPluginConfig extends PluginConfig {
 
   boolean treatMissingBranchTipAsRecoverableError();
 
+  boolean reportPerParentChangedFiles();
+
   @NotNull
   List<String> getRecoverableFetchErrorMessages();
 }

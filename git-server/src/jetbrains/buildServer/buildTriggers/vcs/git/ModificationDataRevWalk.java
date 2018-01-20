@@ -108,6 +108,10 @@ class ModificationDataRevWalk extends RevWalk {
       commitId,
       commitId);
 
+    Map<String, String> attributes = builder.getAttributes();
+    if (!attributes.isEmpty())
+      result.setAttributes(attributes);
+
     if (myCurrentCommit.getParentCount() > 0) {
       for (RevCommit parent : myCurrentCommit.getParents()) {
         parseBody(parent);
@@ -147,6 +151,7 @@ class ModificationDataRevWalk extends RevWalk {
     private final String currentVersion;
     private final String parentVersion;
     private final List<VcsChange> changes = new ArrayList<VcsChange>();
+    private final Map<String, String> myAttributes = new HashMap<>();
     private final String repositoryDebugInfo = myGitRoot.debugInfo();
     private final IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(myGitRoot);
     private final Map<String, RevCommit> commitsWithFix = new HashMap<String, RevCommit>();
@@ -169,6 +174,11 @@ class ModificationDataRevWalk extends RevWalk {
       return changes;
     }
 
+    @NotNull
+    public Map<String, String> getAttributes() {
+      return myAttributes;
+    }
+
     /**
      * collect changes for the commit
      */
@@ -178,11 +188,23 @@ class ModificationDataRevWalk extends RevWalk {
         tw.setFilter(filter);
         tw.setRecursive(true);
         myContext.addTree(myGitRoot, tw, myRepository, commit, shouldIgnoreSubmodulesErrors());
-        for (RevCommit parentCommit : commit.getParents()) {
+        RevCommit[] parents = commit.getParents();
+        boolean reportPerParentChangedFiles = myConfig.reportPerParentChangedFiles() && parents.length > 1; // report only for merge commits
+        for (RevCommit parentCommit : parents) {
           myContext.addTree(myGitRoot, tw, myRepository, parentCommit, true);
+          if (reportPerParentChangedFiles) {
+            tw.reportChangedFilesForParentCommit(parentCommit);
+          }
         }
 
         new VcsChangesTreeWalker(tw).walk();
+
+        if (reportPerParentChangedFiles) {
+          Map<String, String> changedFilesAttributes = tw.buildChangedFilesAttributes();
+          if (!changedFilesAttributes.isEmpty()) {
+            myAttributes.putAll(changedFilesAttributes);
+          }
+        }
       } finally {
         tw.release();
       }

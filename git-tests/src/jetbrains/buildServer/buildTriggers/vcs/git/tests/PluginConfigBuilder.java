@@ -71,6 +71,7 @@ public class PluginConfigBuilder {
   private Boolean myIgnoreMissingRemoteRef;
   private Integer myMergeRetryAttempts;
   private Boolean myRunInPlaceGc;
+  private Boolean myReportPerParentChangedFiles;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -368,6 +369,11 @@ public class PluginConfigBuilder {
       public List<String> getRecoverableFetchErrorMessages() {
         return myDelegate.getRecoverableFetchErrorMessages();
       }
+
+      @Override
+      public boolean reportPerParentChangedFiles() {
+        return myReportPerParentChangedFiles != null ? myReportPerParentChangedFiles : myDelegate.reportPerParentChangedFiles();
+      }
     };
   }
 
@@ -548,6 +554,11 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setRunInPlaceGc(boolean runInPlaceGc) {
     myRunInPlaceGc = runInPlaceGc;
+    return this;
+  }
+
+  PluginConfigBuilder setReportPerParentChangedFiles(boolean report) {
+    myReportPerParentChangedFiles = report;
     return this;
   }
 }

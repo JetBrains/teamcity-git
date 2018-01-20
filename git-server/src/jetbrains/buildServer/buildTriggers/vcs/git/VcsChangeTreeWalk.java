@@ -18,14 +18,18 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsChange;
 import org.eclipse.jgit.lib.FileMode;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.*;
 
 /**
  * @author dmitry.neverov
@@ -36,6 +40,9 @@ public class VcsChangeTreeWalk extends TreeWalk {
 
   private final String myRepositoryDebugInfo;
   private final boolean myVerboseTreeWalkLog;
+
+  private final List<String> myParentCommits = new ArrayList<>(0);
+  private final Map<String, List<String>> myPerParentChangedFiles = new HashMap<>();
 
   public VcsChangeTreeWalk(@NotNull ObjectReader repo,
                            @NotNull String repositoryDebugInfo,
@@ -54,10 +61,31 @@ public class VcsChangeTreeWalk extends TreeWalk {
   }
 
 
+  public void reportChangedFilesForParentCommit(@NotNull RevCommit parentCommit) {
+    myParentCommits.add(parentCommit.name());
+    myPerParentChangedFiles.put(parentCommit.name(), new ArrayList<>());
+  }
+
+
+  @NotNull
+  public Map<String, String> buildChangedFilesAttributes() {
+    if (myPerParentChangedFiles.isEmpty())
+      return Collections.emptyMap();
+    Map<String, String> result = new HashMap<>();
+    for (Map.Entry<String, List<String>> entry : myPerParentChangedFiles.entrySet()) {
+      String parentCommit = entry.getKey();
+      List<String> files = entry.getValue();
+      result.put("teamcity.transient.changedFiles." + parentCommit, StringUtil.join("\n", files));
+    }
+    return result;
+  }
+
+
   @Nullable
   VcsChange getVcsChange(String currentVersion, String parentVersion) {
     final String path = getPathString();
     final ChangeType gitChangeType = classifyChange();
+    fillPerParentChangedFiles(path);
 
     if (isExtraDebug())
       LOG.debug("Processing change " + treeWalkInfo(path) + " as " + gitChangeType + " " + myRepositoryDebugInfo);
@@ -68,6 +96,22 @@ public class VcsChangeTreeWalk extends TreeWalk {
     } else {
       String description = gitChangeType == ChangeType.FILE_MODE_CHANGED ? "File mode changed" : null;
       return new VcsChange(type, description, path, path, parentVersion, currentVersion);
+    }
+  }
+
+
+  private void fillPerParentChangedFiles(@NotNull String path) {
+    int treeCount = getTreeCount();
+    if (!myParentCommits.isEmpty() && myParentCommits.size() == treeCount - 1) {
+      for (int i = 1; i < treeCount; i++) {
+        if (!idEqual(0, i)) {
+          String parentCommit = myParentCommits.get(i - 1);
+          List<String> changedFiles = myPerParentChangedFiles.get(parentCommit);
+          if (changedFiles != null) {
+            changedFiles.add(path);
+          }
+        }
+      }
     }
   }
 
