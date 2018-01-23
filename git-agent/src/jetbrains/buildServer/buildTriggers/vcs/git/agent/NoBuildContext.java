@@ -43,4 +43,10 @@ public class NoBuildContext implements Context {
   public boolean isProvideCredHelper() {
     return false;
   }
+
+  @Nullable
+  @Override
+  public AgentPluginConfig getConfig() {
+    return null;
+  }
 }

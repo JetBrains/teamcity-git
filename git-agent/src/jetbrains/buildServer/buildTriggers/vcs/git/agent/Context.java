@@ -32,4 +32,7 @@ public interface Context {
 
   boolean isProvideCredHelper();
 
+  @Nullable
+  AgentPluginConfig getConfig();
+
 }

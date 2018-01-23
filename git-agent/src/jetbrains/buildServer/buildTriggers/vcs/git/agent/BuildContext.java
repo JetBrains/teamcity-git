@@ -60,4 +60,10 @@ public class BuildContext implements Context {
   public boolean isProvideCredHelper() {
     return myConfig.isProvideCredHelper();
   }
+
+  @Nullable
+  @Override
+  public AgentPluginConfig getConfig() {
+    return myConfig;
+  }
 }
