@@ -33,10 +33,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.Security;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class JSchClient {
 
@@ -170,22 +169,118 @@ public class JSchClient {
       channel.setInputStream(System.in);
       channel.setErrStream(System.err);
       InputStream input = channel.getInputStream();
-      channel.connect();
+      Integer timeoutSeconds = getTimeoutSeconds();
+      if (timeoutSeconds != null) {
+        channel.connect(timeoutSeconds * 1000);
+      } else {
+        channel.connect();
+      }
+
 
       if (!channel.isConnected()) {
         throw new IOException("Connection failed");
       }
 
-      byte[] buffer = new byte[BUF_SIZE];
-      int count;
-      while (channel.isConnected() && !channel.isClosed() && (count = input.read(buffer)) != -1) {
-        System.out.write(buffer, 0, count);
+      Copy copyThread = new Copy(channel, input);
+      if (timeoutSeconds != null) {
+        new Timer(copyThread, timeoutSeconds * 1000).start();
       }
+      copyThread.start();
+      copyThread.join();
+      copyThread.rethrowError();
     } finally {
       if (channel != null)
         channel.disconnect();
       if (session != null)
         session.disconnect();
+    }
+  }
+
+
+  @Nullable
+  private Integer getTimeoutSeconds() {
+    String timeout = System.getenv(GitSSHHandler.TEAMCITY_SSH_IDLE_TIMEOUT_SECONDS);
+    if (timeout == null)
+      return null;
+    try {
+      return Integer.parseInt(timeout);
+    } catch (NumberFormatException e) {
+      myLogger.log(Logger.WARN, "Failed to parse idle timeout: '" + timeout + "'");
+      return null;
+    }
+  }
+
+
+  private class Timer extends Thread {
+    private final long myThresholdNanos;
+    private volatile Copy myCopyThread;
+    Timer(@NotNull Copy copyThread, long timeoutSeconds) {
+      myCopyThread = copyThread;
+      myThresholdNanos = TimeUnit.SECONDS.toNanos(timeoutSeconds);
+      setDaemon(true);
+      setName("Timer");
+    }
+
+    @Override
+    public void run() {
+      boolean logged = false;
+      long sleepInterval = Math.min(TimeUnit.SECONDS.toMillis(10), TimeUnit.NANOSECONDS.toMillis(myThresholdNanos));
+      //noinspection InfiniteLoopStatement: it is a daemon thread and doesn't prevent process from termination
+      while (true) {
+        if (System.nanoTime() - myCopyThread.getTimestamp() > myThresholdNanos) {
+          if (!logged) {
+            myLogger.log(Logger.ERROR, String.format("Timeout error: no activity for %s seconds", TimeUnit.NANOSECONDS.toSeconds(myThresholdNanos)));
+            logged = true;
+          }
+          myCopyThread.interrupt();
+        } else {
+          try {
+            Thread.sleep(sleepInterval);
+          } catch (Exception e) {
+            //ignore
+          }
+        }
+      }
+    }
+  }
+
+
+  private class Copy extends Thread {
+    private final ChannelExec myChannel;
+    private final InputStream myInput;
+    private final AtomicLong myTimestamp = new AtomicLong(System.nanoTime());
+    private volatile Exception myError;
+    Copy(@NotNull ChannelExec channel, @NotNull InputStream input) {
+      myChannel = channel;
+      myInput = input;
+      setName("Copy");
+    }
+
+    @Override
+    public void run() {
+      byte[] buffer = new byte[BUF_SIZE];
+      int count;
+      try {
+        while (myChannel.isConnected() && !myChannel.isClosed() && (count = myInput.read(buffer)) != -1) {
+          System.out.write(buffer, 0, count);
+          myTimestamp.set(System.nanoTime());
+          if (System.out.checkError()) {
+            myLogger.log(Logger.ERROR, "Error while writing to stdout");
+            throw new IOException("Error while writing to stdout");
+          }
+        }
+      } catch (Exception e) {
+        myError = e;
+      }
+    }
+
+    long getTimestamp() {
+      return myTimestamp.get();
+    }
+
+    void rethrowError() throws Exception {
+      if (myError != null)
+        throw myError;
     }
   }
 

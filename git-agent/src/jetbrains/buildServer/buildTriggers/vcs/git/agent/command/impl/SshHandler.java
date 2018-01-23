@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentPluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.log.Loggers;
@@ -100,6 +101,9 @@ public class SshHandler implements GitSSHService.Handler {
     if (ctx.getPreferredSshAuthMethods() != null)
       cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_PREFERRED_AUTH_METHODS, ctx.getPreferredSshAuthMethods());
     cmd.addEnvParam(GitSSHHandler.TEAMCITY_DEBUG_SSH, String.valueOf(Loggers.VCS.isDebugEnabled()));
+    AgentPluginConfig config = ctx.getConfig();
+    if (config != null)
+      cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_IDLE_TIMEOUT_SECONDS, String.valueOf(config.getIdleTimeoutSeconds()));
     String teamCityVersion = getTeamCityVersion();
     if (teamCityVersion != null) {
       cmd.addEnvParam(GitSSHHandler.TEAMCITY_VERSION, teamCityVersion);
