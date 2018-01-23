@@ -29,6 +29,7 @@ import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.UnsupportedCallbackException;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.security.Security;
 import java.text.SimpleDateFormat;
@@ -168,12 +169,16 @@ public class JSchClient {
       channel.setCommand(myCommand);
       channel.setInputStream(System.in);
       channel.setErrStream(System.err);
+      InputStream input = channel.getInputStream();
       channel.connect();
 
-      InputStream input = channel.getInputStream();
+      if (!channel.isConnected()) {
+        throw new IOException("Connection failed");
+      }
+
       byte[] buffer = new byte[BUF_SIZE];
       int count;
-      while ((count = input.read(buffer)) != -1) {
+      while (channel.isConnected() && !channel.isClosed() && (count = input.read(buffer)) != -1) {
         System.out.write(buffer, 0, count);
       }
     } finally {
