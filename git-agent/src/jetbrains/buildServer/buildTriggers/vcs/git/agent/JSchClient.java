@@ -181,7 +181,7 @@ public class JSchClient {
         throw new IOException("Connection failed");
       }
 
-      Copy copyThread = new Copy(channel, input);
+      Copy copyThread = new Copy(input);
       if (timeoutSeconds != null) {
         new Timer(copyThread, timeoutSeconds * 1000).start();
       }
@@ -246,12 +246,10 @@ public class JSchClient {
 
 
   private class Copy extends Thread {
-    private final ChannelExec myChannel;
     private final InputStream myInput;
     private final AtomicLong myTimestamp = new AtomicLong(System.nanoTime());
     private volatile Exception myError;
-    Copy(@NotNull ChannelExec channel, @NotNull InputStream input) {
-      myChannel = channel;
+    Copy(@NotNull InputStream input) {
       myInput = input;
       setName("Copy");
     }
@@ -261,7 +259,7 @@ public class JSchClient {
       byte[] buffer = new byte[BUF_SIZE];
       int count;
       try {
-        while (myChannel.isConnected() && !myChannel.isClosed() && (count = myInput.read(buffer)) != -1) {
+        while ((count = myInput.read(buffer)) != -1) {
           System.out.write(buffer, 0, count);
           myTimestamp.set(System.nanoTime());
           if (System.out.checkError()) {
