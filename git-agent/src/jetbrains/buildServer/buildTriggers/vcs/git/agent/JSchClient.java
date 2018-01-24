@@ -178,7 +178,7 @@ public class JSchClient {
 
       byte[] buffer = new byte[BUF_SIZE];
       int count;
-      while (channel.isConnected() && !channel.isClosed() && (count = input.read(buffer)) != -1) {
+      while ((count = input.read(buffer)) != -1) {
         System.out.write(buffer, 0, count);
       }
     } finally {
