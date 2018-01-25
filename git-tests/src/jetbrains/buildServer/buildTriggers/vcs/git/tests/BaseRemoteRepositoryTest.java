@@ -28,13 +28,16 @@ import org.testng.annotations.DataProvider;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 
 public abstract class BaseRemoteRepositoryTest {
 
+  private Set<String> myPropertiesToClean;
   protected TempFiles myTempFiles;
   private String[] myRepositories;
   private Map<String, File> myRemoteRepositories;
@@ -51,6 +54,7 @@ public abstract class BaseRemoteRepositoryTest {
   @BeforeMethod
   public void setUp() throws Exception {
     TestInternalProperties.init();
+    myPropertiesToClean = new HashSet<>();
     myTempFiles = new TempFiles();
     File tmp = myTempFiles.createTempDir();
     myRemoteRepositories = new HashMap<String, File>();
@@ -63,6 +67,7 @@ public abstract class BaseRemoteRepositoryTest {
 
   @AfterMethod
   public void tearDown() {
+    cleanInternalProperties();
     myTempFiles.cleanup();
   }
 
@@ -83,5 +88,17 @@ public abstract class BaseRemoteRepositoryTest {
       new Object[] { Boolean.TRUE },
       new Object[] { Boolean.FALSE }
     };
+  }
+
+  protected void setInternalProperty(@NotNull String propKey, @NotNull String value) {
+    System.setProperty(propKey, value);
+    myPropertiesToClean.add(propKey);
+  }
+
+  private void cleanInternalProperties() {
+    for (String prop : myPropertiesToClean) {
+      System.getProperties().remove(prop);
+    }
+    myPropertiesToClean.clear();
   }
 }
