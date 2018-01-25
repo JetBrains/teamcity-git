@@ -183,7 +183,7 @@ public class JSchClient {
 
       Copy copyThread = new Copy(input);
       if (timeoutSeconds != null) {
-        new Timer(copyThread, timeoutSeconds * 1000).start();
+        new Timer(copyThread, timeoutSeconds).start();
       }
       copyThread.start();
       copyThread.join();
