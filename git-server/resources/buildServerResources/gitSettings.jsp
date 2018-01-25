@@ -27,7 +27,7 @@
 <c:set var="gitPathEnv" value="<%= Constants.TEAMCITY_AGENT_GIT_PATH %>"/>
 <c:set var="teamcitySshKeysEnabled" value="<%= PluginConfigImpl.isTeamcitySshKeysEnabled() %>"/>
 <c:set var="showKnownHostsDbOption" value="<%= PluginConfigImpl.showKnownHostsDbOption() %>"/>
-<c:set var="showCustomClonePath" value="<%= TeamCityProperties.getBooleanOrTrue(Constants.CUSTOM_CLONE_PATH_ENABLED) &&
+<c:set var="showCustomClonePath" value="<%= TeamCityProperties.getBoolean(Constants.CUSTOM_CLONE_PATH_ENABLED) &&
                                             (TeamCityProperties.getBoolean(Constants.SHOW_CUSTOM_CLONE_PATH)
                                             || !StringUtil.isEmpty(propertiesBean.getProperties().get(Constants.PATH))) %>"/>
 <style>

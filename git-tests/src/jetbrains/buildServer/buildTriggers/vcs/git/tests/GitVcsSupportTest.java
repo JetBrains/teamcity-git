@@ -87,6 +87,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   public static final String BEFORE_FIRST_LEVEL_SUBMODULE_ADDED_VERSION = "f3f826ce85d6dad25156b2d7550cedeb1a422f4c";
   public static final String AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION = "ce6044093939bb47283439d97a1c80f759669ff5";
 
+  private Set<String> myPropertiesToClean;
   private File myMainRepositoryDir;
   private File myTmpDir;
   private PluginConfigBuilder myConfigBuilder;
@@ -102,6 +103,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     new TeamCityProperties() {{
       setModel(new BasePropertiesModel() {});
     }};
+    myPropertiesToClean = new HashSet<>();
     myContext = new Mockery();
     myTempFiles = new TempFiles();
     myServerPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
@@ -121,6 +123,7 @@ public class GitVcsSupportTest extends PatchTestCase {
 
   @AfterMethod
   public void tearDown() {
+    cleanInternalProperties();
     myTempFiles.cleanup();
   }
 
@@ -519,6 +522,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test
   @TestFor(issues = "TW-23423")
   public void relative_path_to_repository_should_go_under_git_caches_dir() throws VcsException {
+    setInternalProperty(Constants.CUSTOM_CLONE_PATH_ENABLED, "true");
     String relativePath = "some" + File.separator + "relative" + File.separator + "path";
     VcsRoot root = vcsRoot().withId(1)
       .withFetchUrl(GitUtils.toURL(myMainRepositoryDir))
@@ -682,6 +686,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   @TestFor(issues = "TW-15564")
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void should_create_teamcity_config_in_root_with_custom_path(boolean fetchInSeparateProcess) throws IOException, VcsException {
+    setInternalProperty(Constants.CUSTOM_CLONE_PATH_ENABLED, "true");
     System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     File customRootDir = new File(myTmpDir, "custom-dir");
     VcsRootImpl root = (VcsRootImpl) getRoot("master");
@@ -843,6 +848,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   @TestFor(issues = "TW-16351")
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void should_update_local_ref_when_it_locked(boolean fetchInSeparateProcess) throws Exception {
+    setInternalProperty(Constants.CUSTOM_CLONE_PATH_ENABLED, "true");
     File remoteRepositoryDir = new File(myTmpDir, "repo_for_fetch");
     copyRepository(dataFile("repo_for_fetch.1"), remoteRepositoryDir);
 
@@ -1085,5 +1091,17 @@ public class GitVcsSupportTest extends PatchTestCase {
       result = e.getMessage();
     }
     return result;
+  }
+
+  protected void setInternalProperty(@NotNull String propKey, @NotNull String value) {
+    System.setProperty(propKey, value);
+    myPropertiesToClean.add(propKey);
+  }
+
+  private void cleanInternalProperties() {
+    for (String prop : myPropertiesToClean) {
+      System.getProperties().remove(prop);
+    }
+    myPropertiesToClean.clear();
   }
 }

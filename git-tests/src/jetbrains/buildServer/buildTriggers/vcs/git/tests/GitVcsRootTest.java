@@ -16,11 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.VcsException;
@@ -32,7 +29,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.AssertJUnit.*;
@@ -41,16 +37,15 @@ import static org.testng.AssertJUnit.*;
  * @author dmitry.neverov
  */
 @Test
-public class GitVcsRootTest {
+public class GitVcsRootTest extends BaseRemoteRepositoryTest {
 
   private MirrorManager myMirrorManager;
   private File myDefaultCachesDir;
 
   @BeforeMethod
-  public void setUp() throws IOException {
-    new TeamCityProperties() {{setModel(new BasePropertiesModel() {});}};
-    TempFiles tempFiles = new TempFiles();
-    myDefaultCachesDir = tempFiles.createTempDir();
+  public void setUp() throws Exception {
+    super.setUp();
+    myDefaultCachesDir = myTempFiles.createTempDir();
     ServerPaths serverPaths = new ServerPaths(myDefaultCachesDir.getAbsolutePath());
     ServerPluginConfig config = new PluginConfigBuilder(serverPaths).build();
     myMirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
@@ -78,14 +73,10 @@ public class GitVcsRootTest {
     File cloneDir = new File("");
     VcsRoot root = vcsRoot().withRepositoryPathOnServer(cloneDir.getAbsolutePath()).withFetchUrl("http://some.org/repo").build();
     GitVcsRoot gitRoot1 = new GitVcsRoot(myMirrorManager, root);
-    assertEquals(cloneDir.getAbsoluteFile(), gitRoot1.getRepositoryDir());
-    try {
-      System.setProperty(Constants.CUSTOM_CLONE_PATH_ENABLED, "false");
-      GitVcsRoot gitRoot2 = new GitVcsRoot(myMirrorManager, root);
-      assertTrue(FileUtil.isAncestor(myDefaultCachesDir, gitRoot2.getRepositoryDir(), true));
-    } finally {
-      System.getProperties().remove(Constants.CUSTOM_CLONE_PATH_ENABLED);
-    }
+    assertTrue(FileUtil.isAncestor(myDefaultCachesDir, gitRoot1.getRepositoryDir(), true));
+    setInternalProperty(Constants.CUSTOM_CLONE_PATH_ENABLED, "true");
+    GitVcsRoot gitRoot2 = new GitVcsRoot(myMirrorManager, root);
+    assertEquals(cloneDir.getAbsoluteFile(), gitRoot2.getRepositoryDir());
   }
 
   @DataProvider(name = "urlsWithNewLines")
