@@ -165,6 +165,11 @@ public class JSchClient {
 
       EmptySecurityCallbackHandler.install();
 
+      // It looks like sometimes session/channel close() doesn't interrupt
+      // all reads. Ask jsch to create daemon threads so that uninterrupted
+      // threads don't prevent us from exit.
+      session.setDaemonThread(true);
+
       session.connect();
 
       channel = (ChannelExec) session.openChannel("exec");
