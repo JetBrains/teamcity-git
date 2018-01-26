@@ -16,10 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.jcraft.jsch.ChannelExec;
-import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.Logger;
-import com.jcraft.jsch.Session;
+import com.jcraft.jsch.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -127,6 +124,11 @@ public class JSchClient {
           File dsa = new File(ssh, "id_dsa");
           if (dsa.isFile()) {
             jsch.addIdentity(dsa.getAbsolutePath());
+          }
+          File config = new File(ssh, "config");
+          if (config.isFile()) {
+            ConfigRepository configRepository = OpenSSHConfig.parseFile(config.getAbsolutePath());
+            jsch.setConfigRepository(new TeamCityConfigRepository(configRepository, myUsername));
           }
         }
       }
@@ -392,6 +394,73 @@ public class JSchClient {
 
     static void install() {
       Security.setProperty("auth.login.defaultCallbackHandler", EmptySecurityCallbackHandler.class.getName());
+    }
+  }
+
+
+  // Need to wrap jsch config to workaround its bugs:
+  // https://bugs.eclipse.org/bugs/show_bug.cgi?id=526778
+  // https://bugs.eclipse.org/bugs/show_bug.cgi?id=526867
+  private static class TeamCityConfigRepository implements ConfigRepository {
+    private final ConfigRepository myDelegate;
+    private final String myUser;
+    TeamCityConfigRepository(@NotNull ConfigRepository delegate, @Nullable String user) {
+      myDelegate = delegate;
+      myUser = user;
+    }
+
+    @Override
+    public Config getConfig(final String host) {
+      Config config = myDelegate.getConfig(host);
+      return config != null ? new TeamCityConfig(config, myUser) : null;
+    }
+  }
+
+  private static class TeamCityConfig implements ConfigRepository.Config {
+    private final ConfigRepository.Config myDelegate;
+    private final String myUser;
+    TeamCityConfig(@NotNull ConfigRepository.Config delegate, @Nullable String user) {
+      myDelegate = delegate;
+      myUser = user;
+    }
+
+    @Override
+    public String getHostname() {
+      return myDelegate.getHostname();
+    }
+
+    @Override
+    public String getUser() {
+      // https://bugs.eclipse.org/bugs/show_bug.cgi?id=526778
+      // enforce our username
+      return myUser != null ? myUser : myDelegate.getUser();
+    }
+
+    @Override
+    public int getPort() {
+      return myDelegate.getPort();
+    }
+
+    @Override
+    public String getValue(final String key) {
+      String result = myDelegate.getValue(key);
+      if (result != null) {
+        if ("ServerAliveInterval".equalsIgnoreCase(key) || "ConnectTimeout".equalsIgnoreCase(key)) {
+          // https://bugs.eclipse.org/bugs/show_bug.cgi?id=526867
+          // these timeouts are in seconds, jsch treats them as milliseconds which causes timeout errors
+          try {
+            result = Long.toString(TimeUnit.SECONDS.toMillis(Integer.parseInt(result)));
+          } catch (NumberFormatException e) {
+            // Ignore
+          }
+        }
+      }
+      return result;
+    }
+
+    @Override
+    public String[] getValues(final String key) {
+      return myDelegate.getValues(key);
     }
   }
 }
