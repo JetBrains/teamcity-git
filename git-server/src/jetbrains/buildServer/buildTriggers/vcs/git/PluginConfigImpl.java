@@ -562,7 +562,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   @Override
   public boolean reportPerParentChangedFiles() {
-    return TeamCityProperties.getBoolean("teamcity.git.reportPerParentChangedFiles");
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.reportPerParentChangedFiles");
   }
 
   @NotNull
