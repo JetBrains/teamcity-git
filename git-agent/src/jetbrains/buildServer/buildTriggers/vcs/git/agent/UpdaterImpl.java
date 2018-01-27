@@ -738,6 +738,11 @@ public class UpdaterImpl implements Updater {
       LOG.info("Remove a lock file " + lock.getAbsolutePath());
       FileUtil.delete(lock);
     }
+    File packedRefsLock = new File(dotGit, "packed-refs.lock");
+    if (packedRefsLock.isFile()) {
+      LOG.info("Remove a lock file " + packedRefsLock.getAbsolutePath());
+      FileUtil.delete(packedRefsLock);
+    }
   }
 
   private boolean isSilentFetch() {
