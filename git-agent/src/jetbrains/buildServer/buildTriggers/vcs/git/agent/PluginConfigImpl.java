@@ -24,6 +24,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUti
 import jetbrains.buildServer.util.StringUtil;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.Map;
@@ -53,6 +54,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String EXCLUDE_USERNAME_FROM_HTTP_URL = "teamcity.git.excludeUsernameFromHttpUrl";
   public static final String CLEAN_CRED_HELPER_SCRIPT = "teamcity.git.cleanCredHelperScript";
   public static final String PROVIDE_CRED_HELPER = "teamcity.git.provideCredentialHelper";
+  private static final String USE_DEFAULT_CHARSET = "teamcity.git.useDefaultCharset";
+  private static final String GIT_OUTPUT_CHARSET = "teamcity.git.outputCharset";
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
@@ -279,6 +282,16 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public boolean isProvideCredHelper() {
     String value = myBuild.getSharedConfigParameters().get(PROVIDE_CRED_HELPER);
     return !"false".equals(value);
+  }
+
+  @Nullable
+  @Override
+  public String getGitOutputCharsetName() {
+    String useDefault = myBuild.getSharedConfigParameters().get(USE_DEFAULT_CHARSET);
+    if (Boolean.valueOf(useDefault))
+      return null;
+    String charsetName = myBuild.getSharedConfigParameters().get(GIT_OUTPUT_CHARSET);
+    return StringUtil.isNotEmpty(charsetName) ? charsetName : "UTF-8";
   }
 
   private int parseTimeout(String valueFromBuild) {

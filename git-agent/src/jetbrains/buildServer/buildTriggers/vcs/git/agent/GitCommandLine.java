@@ -38,6 +38,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -284,5 +285,23 @@ public class GitCommandLine extends GeneralCommandLine {
     BuildInterruptReason reason = myCtx.getInterruptionReason();
     if (reason != null)
       throw new CheckoutCanceledException(reason);
+  }
+
+  @Override
+  public Charset getCharset() {
+    // Override the method instead of using the setCharset(), because
+    // setCharset() adds the '-Dfile.encoding={charset}' parameter to
+    // the parameter list which makes git to fail.
+    AgentPluginConfig config = myCtx.getConfig();
+    if (config == null)
+      return super.getCharset();
+    String charsetName = config.getGitOutputCharsetName();
+    if (charsetName == null)
+      return super.getCharset();
+    try {
+      return Charset.forName(charsetName);
+    } catch (UnsupportedCharsetException e) {
+      return super.getCharset();
+    }
   }
 }

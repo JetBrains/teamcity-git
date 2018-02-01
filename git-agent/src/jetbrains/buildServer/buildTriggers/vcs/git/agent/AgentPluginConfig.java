@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * @author dmitry.neverov
@@ -70,6 +71,12 @@ public interface AgentPluginConfig extends PluginConfig {
   boolean isCleanCredHelperScript();
 
   boolean isProvideCredHelper();
+
+  /**
+   * Returns charset name for git output or null if the default charset should be used
+   */
+  @Nullable
+  String getGitOutputCharsetName();
 
   /**
    * Defines how progress output from git commands is written into build log
