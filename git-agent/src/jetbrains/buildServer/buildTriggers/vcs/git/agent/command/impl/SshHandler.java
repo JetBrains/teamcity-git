@@ -110,6 +110,8 @@ public class SshHandler implements GitSSHService.Handler {
     }
     try {
       cmd.addEnvParam(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath());
+      // ask git to treat our command as OpenSSH compatible:
+      cmd.addEnvParam(GitSSHHandler.GIT_SSH_VARIANT_ENV, "ssh");
     } catch (IOException e) {
       deleteKeys();
       throw new VcsException("SSH script cannot be generated", e);
