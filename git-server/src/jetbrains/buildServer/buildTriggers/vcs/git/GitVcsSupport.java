@@ -372,31 +372,23 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   @Override
   public List<Boolean> checkSuitable(@NotNull List<VcsRootEntry> entries, @NotNull Collection<String> paths) throws VcsException {
-    OperationContext context = createContext("checkSuitable");
-    try {
-      Set<GitMapFullPath.FullPath> fullPaths = paths.stream().map(GitMapFullPath.FullPath::new).collect(Collectors.toSet());
+    Set<GitMapFullPath.FullPath> fullPaths = paths.stream().map(GitMapFullPath.FullPath::new).collect(Collectors.toSet());
 
-      //checkout rules do not affect suitability, we can check it for unique root only ignoring different checkout rules
-      Set<VcsRoot> uniqueRoots = entries.stream().map(VcsRootEntry::getVcsRoot).collect(Collectors.toSet());
-      Set<GitVcsRoot> gitRoots = new HashSet<>();
-      for (VcsRoot root : uniqueRoots) {
-        try {
-          gitRoots.add(context.getGitRoot(root));
-        } catch (VcsException e) {
-          //will return false for broken VCS root
-          LOG.warnAndDebugDetails("Error while checking suitability for root " + LogUtil.describe(root) + ", assume root is not suitable", e);
-        }
-      }
+    //checkout rules do not affect suitability, we can check it for unique root only ignoring different checkout rules
+    Set<VcsRoot> uniqueRoots = entries.stream().map(VcsRootEntry::getVcsRoot).collect(Collectors.toSet());
 
-      //several roots with different settings can be cloned into the same dir,
-      //do not compute suitability for given clone dir more than once
-      Map<File, Boolean> cloneDirResults = new HashMap<>();//clone dir -> result for this dir
-      Map<VcsRoot, Boolean> rootResult = new HashMap<>();
-      for (GitVcsRoot gitRoot : gitRoots) {
+    //several roots with different settings can be cloned into the same dir,
+    //do not compute suitability for given clone dir more than once
+    Map<File, Boolean> cloneDirResults = new HashMap<>();//clone dir -> result for this dir
+    Map<VcsRoot, Boolean> rootResult = new HashMap<>();
+    for (VcsRoot root : uniqueRoots) {
+      OperationContext context = createContext(root, "checkSuitable");
+      try {
+        GitVcsRoot gitRoot = context.getGitRoot();
         File cloneDir = gitRoot.getRepositoryDir();
         Boolean cloneDirResult = cloneDirResults.get(cloneDir);
         if (cloneDirResult != null) {
-          rootResult.put(gitRoot.getOriginalRoot(), cloneDirResult);
+          rootResult.put(root, cloneDirResult);
           continue;
         }
 
@@ -408,24 +400,27 @@ public class GitVcsSupport extends ServerVcsSupport
           return false;
         });
 
-        rootResult.put(gitRoot.getOriginalRoot(), suitable);
+        rootResult.put(root, suitable);
         cloneDirResults.put(gitRoot.getRepositoryDir(), suitable);
+      } catch (VcsException e) {
+        //will return false for broken VCS root
+        LOG.warnAndDebugDetails("Error while checking suitability for root " + LogUtil.describe(root) + ", assume root is not suitable", e);
+      } finally {
+        context.close();
       }
-
-      List<Boolean> result = new ArrayList<>();
-      for (VcsRootEntry entry : entries) {
-        Boolean suitable = rootResult.get(entry.getVcsRoot());
-        if (suitable != null) {
-          result.add(suitable);
-        } else {
-          //can be null if the root was broken
-          result.add(false);
-        }
-      }
-      return result;
-    } finally {
-      context.close();
     }
+
+    List<Boolean> result = new ArrayList<>();
+    for (VcsRootEntry entry : entries) {
+      Boolean suitable = rootResult.get(entry.getVcsRoot());
+      if (suitable != null) {
+        result.add(suitable);
+      } else {
+        //can be null if the root was broken
+        result.add(false);
+      }
+    }
+    return result;
   }
 
 
