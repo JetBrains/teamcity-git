@@ -163,6 +163,8 @@ public interface ServerPluginConfig extends PluginConfig {
 
   boolean reportPerParentChangedFiles();
 
+  boolean shouldSetSubmoduleUserInAbsoluteUrls();
+
   @NotNull
   List<String> getRecoverableFetchErrorMessages();
 }

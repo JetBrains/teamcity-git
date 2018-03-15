@@ -565,6 +565,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return TeamCityProperties.getBooleanOrTrue("teamcity.git.reportPerParentChangedFiles");
   }
 
+  @Override
+  public boolean shouldSetSubmoduleUserInAbsoluteUrls() {
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.setSubmoduleUserInAbsoluteUrls");
+  }
+
   @NotNull
   @Override
   public List<String> getRecoverableFetchErrorMessages() {

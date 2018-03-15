@@ -56,18 +56,21 @@ public class OperationContext {
   private final Map<String, Repository> myRepositories = new HashMap<String, Repository>(); //repository path -> repository
   private final Set<String> myAlreadyFetched = new HashSet<String>();
   private final GitProgress myProgress;
+  private final ServerPluginConfig myPluginConfig;
   private final Map<String, StoredConfig> myConfigsCache = new HashMap<String, StoredConfig>(); //repository path -> its config
 
   public OperationContext(@NotNull final CommitLoader commitLoader,
                           @NotNull final RepositoryManager repositoryManager,
                           @Nullable final VcsRoot root,
                           @NotNull final String operation,
-                          @NotNull final GitProgress progress) {
+                          @NotNull final GitProgress progress,
+                          @NotNull final ServerPluginConfig pluginConfig) {
     myCommitLoader = commitLoader;
     myRepositoryManager = repositoryManager;
     myRoot = root;
     myOperation = operation;
     myProgress = progress;
+    myPluginConfig = pluginConfig;
   }
 
 
@@ -248,5 +251,10 @@ public class OperationContext {
   @NotNull
   public RepositoryManager getRepositoryManager() {
     return myRepositoryManager;
+  }
+
+  @NotNull
+  public ServerPluginConfig getPluginConfig() {
+    return myPluginConfig;
   }
 }
