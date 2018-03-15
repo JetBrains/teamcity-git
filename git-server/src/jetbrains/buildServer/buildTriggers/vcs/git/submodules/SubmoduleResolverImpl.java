@@ -17,10 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
-import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
@@ -143,7 +141,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
   }
 
   public URIish resolveSubmoduleUrl(@NotNull String url) throws URISyntaxException {
-    return new URIish(resolveSubmoduleUrl(myContext.getConfig(getRepository()), url));
+    return new URIish(resolveSubmoduleUrl(myContext.getPluginConfig(), myContext.getConfig(getRepository()), url));
   }
 
   private static boolean isRelative(@NotNull String url) {
@@ -151,24 +149,32 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
   }
 
   @NotNull
-  public static String resolveSubmoduleUrl(@NotNull final Repository repository, @NotNull final String relativeUrl) throws URISyntaxException {
-    return resolveSubmoduleUrl(repository.getConfig(), relativeUrl);
+  public static String resolveSubmoduleUrl(@NotNull ServerPluginConfig pluginConfig, @NotNull final Repository repository, @NotNull final String relativeUrl) throws URISyntaxException {
+    return resolveSubmoduleUrl(pluginConfig, repository.getConfig(), relativeUrl);
   }
 
 
   @NotNull
-  private static String resolveSubmoduleUrl(@NotNull StoredConfig mainRepoConfig, @NotNull String submoduleUrl) throws URISyntaxException {
-    if (!isRelative(submoduleUrl)) return submoduleUrl;
+  private static String resolveSubmoduleUrl(@NotNull ServerPluginConfig pluginConfig, @NotNull StoredConfig mainRepoConfig, @NotNull String submoduleUrl) throws URISyntaxException {
+    String mainRepoUrl = mainRepoConfig.getString("teamcity", null, "remote");
+    URIish mainRepoUri = new URIish(mainRepoUrl);
+    if (!isRelative(submoduleUrl)) {
+      String user = mainRepoUri.getUser();
+      URIish submoduleUri = new URIish(submoduleUrl);
+      if (StringUtil.isNotEmpty(user) && pluginConfig.shouldSetSubmoduleUserInAbsoluteUrls() && AuthSettings.requiresCredentials(submoduleUri)) {
+        return submoduleUri.setUser(user).toASCIIString();
+      } else {
+        return submoduleUrl;
+      }
+    }
 
-    String baseUrl = mainRepoConfig.getString("teamcity", null, "remote");
-    URIish u = new URIish(baseUrl);
-    String newPath = u.getPath();
+    String newPath = mainRepoUri.getPath();
     if (newPath.length() == 0) {
       newPath = submoduleUrl;
     } else {
       newPath = GitUtils.normalizePath(newPath + '/' + submoduleUrl);
     }
-    return u.setPath(newPath).toPrivateString();
+    return mainRepoUri.setPath(newPath).toPrivateString();
   }
 
   /**

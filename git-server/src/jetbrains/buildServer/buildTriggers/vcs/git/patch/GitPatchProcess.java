@@ -50,7 +50,7 @@ public class GitPatchProcess {
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, fetcherProperties, sshKeyManager);
     CommitLoader commitLoader = new CommitLoaderImpl(repositoryManager, fetchCommand, mapFullPath);
 
-    OperationContext context = new OperationContext(commitLoader, repositoryManager, settings.getRoot(), "build patch", GitProgress.NO_OP);
+    OperationContext context = new OperationContext(commitLoader, repositoryManager, settings.getRoot(), "build patch", GitProgress.NO_OP, config);
     OutputStream fos = new BufferedOutputStream(new FileOutputStream(settings.getPatchFile()));
     try {
       PatchBuilderImpl patchBuilder = new PatchBuilderImpl(fos);

@@ -374,6 +374,11 @@ public class PluginConfigBuilder {
       public boolean reportPerParentChangedFiles() {
         return myReportPerParentChangedFiles != null ? myReportPerParentChangedFiles : myDelegate.reportPerParentChangedFiles();
       }
+
+      @Override
+      public boolean shouldSetSubmoduleUserInAbsoluteUrls() {
+        return myDelegate.shouldSetSubmoduleUserInAbsoluteUrls();
+      }
     };
   }
 

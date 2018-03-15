@@ -61,7 +61,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
         //fetch service is called before, so we may re-use results of it to avoid extra CPU waste
         final RepositoryStateData currentStateWithTags = myFetchService.getOrCreateRepositoryState(ctx);
 
-        collect(ctx.getRepository(), consumer, currentStateWithTags.getBranchRevisions(), gitRoot.isIncludeCommitInfoSubmodules());
+        collect(ctx, ctx.getRepository(), consumer, currentStateWithTags.getBranchRevisions(), gitRoot.isIncludeCommitInfoSubmodules());
       } catch (Exception e) {
         throw new VcsException(e);
       } finally {
@@ -70,7 +70,8 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     });
   }
 
-  private void collect(@NotNull final Repository db,
+  private void collect(@NotNull OperationContext context,
+                       @NotNull final Repository db,
                        @NotNull final CommitsConsumer consumer,
                        @NotNull final Map<String, String> currentStateWithTags,
                        final boolean includeSubmodules) throws IOException {
@@ -92,7 +93,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
         includeRefs(index, commit);
 
         if (includeSubmodules) {
-          includeSubModules(db, proc, c, commit);
+          includeSubModules(context, db, proc, c, commit);
         }
 
         consumer.consumeCommit(commit);
@@ -102,7 +103,8 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     }
   }
 
-  private void includeSubModules(@NotNull final Repository db,
+  private void includeSubModules(@NotNull final OperationContext context,
+                                 @NotNull final Repository db,
                                  @NotNull final CommitTreeProcessor proc,
                                  @NotNull final RevCommit commit,
                                  @NotNull final CommitDataBean bean) {
@@ -119,7 +121,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
       final String url;
       try {
-        url = SubmoduleResolverImpl.resolveSubmoduleUrl(db, sub.getUrl());
+        url = SubmoduleResolverImpl.resolveSubmoduleUrl(context.getPluginConfig(), db, sub.getUrl());
       } catch (URISyntaxException e) {
         continue;
       }

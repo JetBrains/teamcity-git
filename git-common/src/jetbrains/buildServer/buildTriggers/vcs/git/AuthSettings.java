@@ -167,7 +167,7 @@ public class AuthSettings {
     return "git".equals(uriish.getScheme());
   }
 
-  private boolean requiresCredentials(URIish result) {
+  public static boolean requiresCredentials(URIish result) {
     String scheme = result.getScheme();
     return result.getHost() != null ||
            scheme != null && !scheme.equals("git");
