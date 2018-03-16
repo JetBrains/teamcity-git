@@ -13,4 +13,5 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitGcErrorsHealthReport"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitGcErrorsHealthPage"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitExternalChangeViewerExtension"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitTrustStoreProviderBuildServer"/>
 </beans>

@@ -33,7 +33,6 @@ import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.transport.http.HttpConnectionFactory;
-import org.eclipse.jgit.transport.http.apache.HttpClientConnectionFactory;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -54,20 +53,28 @@ public class TransportFactoryImpl implements TransportFactory {
   private final ServerPluginConfig myConfig;
   private final Map<String,String> myJSchOptions;
   private final VcsRootSshKeyManager mySshKeyManager;
+  private final GitTrustStoreProvider myGitTrustStoreProvider;
 
   public TransportFactoryImpl(@NotNull ServerPluginConfig config,
                               @NotNull VcsRootSshKeyManager sshKeyManager) {
+    this(config, sshKeyManager, new GitTrustStoreProviderStatic(null));
+  }
+
+  public TransportFactoryImpl(@NotNull ServerPluginConfig config,
+                              @NotNull VcsRootSshKeyManager sshKeyManager,
+                              @NotNull GitTrustStoreProvider gitTrustStoreProvider) {
     myConfig = config;
+    myGitTrustStoreProvider = gitTrustStoreProvider;
     myJSchOptions = getJSchCipherOptions();
     mySshKeyManager = sshKeyManager;
     String factoryName = myConfig.getHttpConnectionFactory();
     HttpConnectionFactory f;
     if ("httpClient".equals(factoryName)) {
-      f = new SNIHttpClientConnectionFactory();
+      f = new SNIHttpClientConnectionFactory(() -> myGitTrustStoreProvider.getTrustStore());
     } else if ("httpClientNoSNI".equals(factoryName)) {
-      f = new HttpClientConnectionFactory();
+      f = new SSLHttpClientConnectionFactory(() -> myGitTrustStoreProvider.getTrustStore());
     } else {
-      f = new TeamCityJDKHttpConnectionFactory(myConfig);
+      f = new TeamCityJDKHttpConnectionFactory(myConfig, () -> myGitTrustStoreProvider.getTrustStore());
     }
     HttpTransport.setConnectionFactory(f);
   }

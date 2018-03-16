@@ -26,30 +26,33 @@ import java.net.URL;
 import java.security.KeyStore;
 import java.util.function.Supplier;
 
-public class SNIHttpClientConnectionFactory implements HttpConnectionFactory {
+/**
+ * {@link HttpConnectionFactory} with support of custom ssl trust store.
+ *
+ * Returns instances of {@link SSLHttpClientConnection}.
+ *
+ * @author Mikhail Khorkov
+ * @since 2018.1
+ */
+public class SSLHttpClientConnectionFactory implements HttpConnectionFactory {
 
-  private Supplier<KeyStore> myTrustStoreGetter;
+  @NotNull
+  private final Supplier<KeyStore> myTrustStoreGetter;
 
-  /**
-   * @deprecated use {@link #SNIHttpClientConnectionFactory(Supplier)} instead.
-   */
-  @Deprecated
-  public SNIHttpClientConnectionFactory() {
-    this(() -> null);
-  }
-
-  public SNIHttpClientConnectionFactory(@NotNull Supplier<KeyStore> trustStoreGetter) {
+  public SSLHttpClientConnectionFactory(@NotNull final Supplier<KeyStore> trustStoreGetter) {
     myTrustStoreGetter = trustStoreGetter;
   }
 
+  @Override
   public HttpConnection create(final URL url) throws IOException {
-    SNIHttpClientConnection connection = new SNIHttpClientConnection(url.toString());
+    SSLHttpClientConnection connection = new SSLHttpClientConnection(url.toString());
     connection.setTrustStoreGetter(myTrustStoreGetter);
     return connection;
   }
 
+  @Override
   public HttpConnection create(final URL url, final Proxy proxy) throws IOException {
-    SNIHttpClientConnection connection = new SNIHttpClientConnection(url.toString(), proxy);
+    SSLHttpClientConnection connection = new SSLHttpClientConnection(url.toString(), proxy);
     connection.setTrustStoreGetter(myTrustStoreGetter);
     return connection;
   }

@@ -21,6 +21,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleFetchExce
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.ssl.TrustStoreReader;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
@@ -45,9 +46,10 @@ public class GitPatchProcess {
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, new MirrorManagerImpl(config, new HashCalculatorImpl()));
     GitMapFullPath mapFullPath = new GitMapFullPath(config, new RevisionsCache(config));
     VcsRootSshKeyManager sshKeyManager = new ConstantSshKeyManager(settings.getKeyBytes());
-    TransportFactory transportFactory = new TransportFactoryImpl(config, sshKeyManager);
+    TransportFactory transportFactory = new TransportFactoryImpl(config, sshKeyManager, settings.getGitTrustStoreProvider());
     FetcherProperties fetcherProperties = new FetcherProperties(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, fetcherProperties, sshKeyManager);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, fetcherProperties, sshKeyManager,
+                                                     settings.getGitTrustStoreProvider());
     CommitLoader commitLoader = new CommitLoaderImpl(repositoryManager, fetchCommand, mapFullPath);
 
     OperationContext context = new OperationContext(commitLoader, repositoryManager, settings.getRoot(), "build patch", GitProgress.NO_OP, config);
@@ -124,6 +126,7 @@ public class GitPatchProcess {
     private final byte[] myKeyBytes;
     private final boolean myDebugEnabled;
     private final VcsRoot myRoot;
+    private final GitTrustStoreProvider myGitTrustStoreProvider;
 
     public GitPatchProcessSettings(@NotNull Map<String, String> props) {
       myInternalProperties = readInternalProperties(props);
@@ -136,6 +139,7 @@ public class GitPatchProcess {
       myKeyBytes = readKeyBytes(props);
       myDebugEnabled = readDebugEnabled(props);
       myRoot = readRoot(props);
+      myGitTrustStoreProvider = readGitTrustStoreProvider(props);
     }
 
     @NotNull
@@ -205,6 +209,11 @@ public class GitPatchProcess {
       return new VcsRootImpl(0, props);
     }
 
+    @NotNull
+    private GitTrustStoreProvider readGitTrustStoreProvider(@NotNull Map<String, String> props) {
+      return new GitTrustStoreProviderStatic(props.get(Constants.GIT_TRUST_STORE_PROVIDER));
+    }
+
 
     @NotNull
     public File getInternalProperties() {
@@ -251,6 +260,11 @@ public class GitPatchProcess {
     @NotNull
     public VcsRoot getRoot() {
       return myRoot;
+    }
+
+    @NotNull
+    public GitTrustStoreProvider getGitTrustStoreProvider() {
+      return myGitTrustStoreProvider;
     }
   }
 

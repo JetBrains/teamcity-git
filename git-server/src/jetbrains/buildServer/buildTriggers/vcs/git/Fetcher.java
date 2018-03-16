@@ -92,12 +92,14 @@ public class Fetcher {
                             @NotNull ProgressMonitor progressMonitor) throws IOException, VcsException, URISyntaxException {
     final String fetchUrl = vcsRootProperties.get(Constants.FETCH_URL);
     final String refspecs = vcsRootProperties.get(Constants.REFSPEC);
+    final String trustedCertificatesDir = vcsRootProperties.get(Constants.GIT_TRUST_STORE_PROVIDER);
     AuthSettings auth = new AuthSettings(vcsRootProperties);
     PluginConfigImpl config = new PluginConfigImpl();
 
     GitServerUtil.configureStreamFileThreshold(Integer.MAX_VALUE);
 
-    TransportFactory transportFactory = new TransportFactoryImpl(config, new EmptyVcsRootSshKeyManager());
+    TransportFactory transportFactory = new TransportFactoryImpl(config, new EmptyVcsRootSshKeyManager(),
+                                                                 new GitTrustStoreProviderStatic(trustedCertificatesDir));
     Transport tn = null;
     try {
       Repository repository = new RepositoryBuilder().setBare().setGitDir(repositoryDir).build();

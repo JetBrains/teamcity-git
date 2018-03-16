@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.util.ssl.SSLContextUtil;
 import org.eclipse.jgit.transport.http.HttpConnection;
 import org.eclipse.jgit.transport.http.HttpConnectionFactory;
 import org.jetbrains.annotations.NotNull;
@@ -26,10 +27,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.*;
 import java.security.KeyManagementException;
+import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Basically a copy of org.eclipse.jgit.transport.http.JDKHttpConnectionFactory
@@ -38,9 +41,11 @@ import java.util.Map;
 public class TeamCityJDKHttpConnectionFactory implements HttpConnectionFactory {
 
   private final ServerPluginConfig myConfig;
+  private Supplier<KeyStore> myTrustStoreGetter;
 
-  public TeamCityJDKHttpConnectionFactory(@NotNull ServerPluginConfig config) {
+  public TeamCityJDKHttpConnectionFactory(@NotNull ServerPluginConfig config, @NotNull Supplier<KeyStore> trustStoreGetter) {
     myConfig = config;
+    myTrustStoreGetter = trustStoreGetter;
   }
 
   public HttpConnection create(URL url) throws IOException {
@@ -160,12 +165,26 @@ public class TeamCityJDKHttpConnectionFactory implements HttpConnectionFactory {
     public void configure(KeyManager[] km, TrustManager[] tm, SecureRandom random) throws NoSuchAlgorithmException, KeyManagementException {
       SSLContext ctx = SSLContext.getInstance(myConfig.getHttpConnectionSslProtocol()); //$NON-NLS-1$
       ctx.init(km, tm, random);
-      ((HttpsURLConnection) wrappedUrlConnection).setSSLSocketFactory(new SSLSocketFactoryWithSoLinger(ctx.getSocketFactory(), myConfig.getHttpsSoLinger()));
+      ((HttpsURLConnection) wrappedUrlConnection).setSSLSocketFactory(createSSLSocketFactory(ctx.getSocketFactory()));
     }
 
     private void workaroundSslDeadlock() throws IOException {
-      SSLSocketFactory defaultFactory = ((HttpsURLConnection) wrappedUrlConnection).getSSLSocketFactory();
-      ((HttpsURLConnection) wrappedUrlConnection).setSSLSocketFactory(new SSLSocketFactoryWithSoLinger(defaultFactory, myConfig.getHttpsSoLinger()));
+      ((HttpsURLConnection) wrappedUrlConnection).setSSLSocketFactory(createSSLSocketFactory());
+    }
+
+    private SSLSocketFactory createSSLSocketFactory() {
+      final SSLContext trusted = SSLContextUtil.createUserSSLContext(myTrustStoreGetter.get());
+      final SSLSocketFactory origin;
+      if (trusted != null) {
+        origin = trusted.getSocketFactory();
+      } else {
+        origin = ((HttpsURLConnection) wrappedUrlConnection).getSSLSocketFactory();
+      }
+      return createSSLSocketFactory(origin);
+    }
+
+    private SSLSocketFactory createSSLSocketFactory(@NotNull SSLSocketFactory origin) {
+      return new SSLSocketFactoryWithSoLinger(origin, myConfig.getHttpsSoLinger());
     }
 
     public void setAttribute(String name, Object value) {

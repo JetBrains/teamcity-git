@@ -68,6 +68,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private final CommitLoader myCommitLoader;
   private final VcsRootSshKeyManager mySshKeyManager;
   private final VcsOperationProgressProvider myProgressProvider;
+  private final GitTrustStoreProvider myGitTrustStoreProvider;
   private Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
 
   public GitVcsSupport(@NotNull ServerPluginConfig config,
@@ -80,6 +81,21 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull VcsOperationProgressProvider progressProvider,
                        @NotNull GitResetCacheHandler resetCacheHandler,
                        @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler) {
+    this(config, resetCacheManager, transportFactory, repositoryManager, mapFullPath, commitLoader, sshKeyManager, progressProvider,
+         resetCacheHandler, resetRevisionsCacheHandler, new GitTrustStoreProviderStatic(null));
+  }
+
+  public GitVcsSupport(@NotNull ServerPluginConfig config,
+                       @NotNull ResetCacheRegister resetCacheManager,
+                       @NotNull TransportFactory transportFactory,
+                       @NotNull RepositoryManager repositoryManager,
+                       @NotNull GitMapFullPath mapFullPath,
+                       @NotNull CommitLoader commitLoader,
+                       @NotNull VcsRootSshKeyManager sshKeyManager,
+                       @NotNull VcsOperationProgressProvider progressProvider,
+                       @NotNull GitResetCacheHandler resetCacheHandler,
+                       @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler,
+                       @NotNull GitTrustStoreProvider gitTrustStoreProvider) {
     myConfig = config;
     myTransportFactory = transportFactory;
     myRepositoryManager = repositoryManager;
@@ -90,6 +106,7 @@ public class GitVcsSupport extends ServerVcsSupport
     setStreamFileThreshold();
     resetCacheManager.registerHandler(resetCacheHandler);
     resetCacheManager.registerHandler(resetRevisionsCacheHandler);
+    myGitTrustStoreProvider = gitTrustStoreProvider;
   }
 
   public void setExtensionHolder(@Nullable ExtensionHolder extensionHolder) {
@@ -184,7 +201,9 @@ public class GitVcsSupport extends ServerVcsSupport
     logBuildPatch(root, fromRevision, toRevision);
     GitVcsRoot gitRoot = context.getGitRoot();
     myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-      GitPatchBuilderDispatcher gitPatchBuilder = new GitPatchBuilderDispatcher(myConfig, mySshKeyManager, context, builder, fromRevision, toRevision, checkoutRules);
+      GitPatchBuilderDispatcher gitPatchBuilder = new GitPatchBuilderDispatcher(myConfig, mySshKeyManager, context, builder, fromRevision,
+                                                                                toRevision, checkoutRules,
+                                                                                myGitTrustStoreProvider.serialize());
       try {
         myCommitLoader.loadCommit(context, gitRoot, toRevision);
         gitPatchBuilder.buildPatch();

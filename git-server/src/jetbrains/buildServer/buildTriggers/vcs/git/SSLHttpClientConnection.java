@@ -16,8 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.util.ssl.SSLContextUtil;
 import org.apache.http.*;
 import org.apache.http.client.ClientProtocolException;
@@ -35,20 +33,17 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.CoreConnectionPNames;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HttpContext;
-import org.eclipse.jgit.transport.http.HttpConnection;
+import org.eclipse.jgit.transport.http.apache.HttpClientConnection;
 import org.eclipse.jgit.transport.http.apache.TemporaryBufferEntity;
 import org.eclipse.jgit.transport.http.apache.internal.HttpApacheText;
 import org.eclipse.jgit.util.TemporaryBuffer;
-import org.eclipse.jgit.util.TemporaryBuffer.LocalFile;
 import org.jetbrains.annotations.NotNull;
 
 import javax.net.ssl.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Method;
 import java.net.*;
-import java.net.ProtocolException;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
@@ -61,11 +56,14 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 /**
- * Same as org.eclipse.jgit.transport.http.apache.HttpClientConnection, but
- * always uses a custom SSLSocketFactory which enables SNI
+ * {@link HttpClientConnection} with support of custom ssl trust store.
+ *
+ * It is almost copy-paste of {@link HttpClientConnection}.
+ *
+ * @author Mikhail Khorkov
+ * @since 2018.1
  */
-public class SNIHttpClientConnection implements HttpConnection {
-  private static Logger LOG = Logger.getInstance(SNIHttpClientConnection.class.getName());
+public class SSLHttpClientConnection extends HttpClientConnection {
 
   HttpClient client;
 
@@ -93,9 +91,22 @@ public class SNIHttpClientConnection implements HttpConnection {
 
   SSLContext ctx;
 
-  private Supplier<KeyStore> trustStoreGetter = () -> null;
+  private Map<String, Object> attributes = new HashMap<>();
 
-  private Map<String, Object> attributes = new HashMap<String, Object>();
+  @NotNull
+  private Supplier<KeyStore> myTrustStoreGetter = () -> null;
+
+  public SSLHttpClientConnection(final String urlStr) {
+    super(urlStr);
+  }
+
+  public SSLHttpClientConnection(final String urlStr, final Proxy proxy) {
+    super(urlStr, proxy);
+  }
+
+  public SSLHttpClientConnection(final String urlStr, final Proxy proxy, final HttpClient cl) {
+    super(urlStr, proxy, cl);
+  }
 
   private HttpClient getClient() {
     if (client == null)
@@ -108,33 +119,32 @@ public class SNIHttpClientConnection implements HttpConnection {
                           new HttpHost(adr.getHostName(), adr.getPort()));
     }
     if (timeout != null)
-      params.setIntParameter(CoreConnectionPNames.CONNECTION_TIMEOUT,
-                             timeout.intValue());
+      params.setIntParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, timeout);
     if (readTimeout != null)
-      params.setIntParameter(CoreConnectionPNames.SO_TIMEOUT,
-                             readTimeout.intValue());
+      params.setIntParameter(CoreConnectionPNames.SO_TIMEOUT, readTimeout);
     if (followRedirects != null)
-      params.setBooleanParameter(ClientPNames.HANDLE_REDIRECTS,
-                                 followRedirects.booleanValue());
-    SSLSocketFactory sf = hostnameverifier != null ?
-                          new SNISSLSocketFactory(getSSLContext(), hostnameverifier) :
-                          new SNISSLSocketFactory(getSSLContext());
-    Scheme https = new Scheme("https", 443, sf); //$NON-NLS-1$
-    client.getConnectionManager().getSchemeRegistry().register(https);
+      params.setBooleanParameter(ClientPNames.HANDLE_REDIRECTS, followRedirects);
+    if (hostnameverifier != null) {
+      SSLSocketFactory sf;
+      sf = new SSLSocketFactory(getSSLContext(), hostnameverifier);
+      Scheme https = new Scheme("https", 443, sf); //$NON-NLS-1$
+      client.getConnectionManager().getSchemeRegistry().register(https);
+    }
+
     return client;
   }
 
   private SSLContext getSSLContext() {
-    KeyStore trustStore = trustStoreGetter.get();
+    final KeyStore trustStore = myTrustStoreGetter.get();
     if (trustStore != null) {
       ctx = SSLContextUtil.createUserSSLContext(trustStore);
     }
     if (ctx == null) {
       try {
         ctx = SSLContext.getInstance("TLS"); //$NON-NLS-1$
-        ctx.init(null, null, null);
-      } catch (NoSuchAlgorithmException | KeyManagementException e) {
-        throw new IllegalStateException(HttpApacheText.get().unexpectedSSLContextException, e);
+      } catch (NoSuchAlgorithmException e) {
+        throw new IllegalStateException(
+          HttpApacheText.get().unexpectedSSLContextException, e);
       }
     }
     return ctx;
@@ -147,32 +157,6 @@ public class SNIHttpClientConnection implements HttpConnection {
    */
   public void setBuffer(TemporaryBuffer buffer) {
     this.entity = new TemporaryBufferEntity(buffer);
-  }
-
-  /**
-   * @param urlStr
-   */
-  public SNIHttpClientConnection(String urlStr) {
-    this(urlStr, null);
-  }
-
-  /**
-   * @param urlStr
-   * @param proxy
-   */
-  public SNIHttpClientConnection(String urlStr, Proxy proxy) {
-    this(urlStr, proxy, null);
-  }
-
-  /**
-   * @param urlStr
-   * @param proxy
-   * @param cl
-   */
-  public SNIHttpClientConnection(String urlStr, Proxy proxy, HttpClient cl) {
-    this.client = cl;
-    this.urlStr = urlStr;
-    this.proxy = proxy;
   }
 
   public int getResponseCode() throws IOException {
@@ -200,21 +184,17 @@ public class SNIHttpClientConnection implements HttpConnection {
           HttpEntityEnclosingRequest eReq = (HttpEntityEnclosingRequest) req;
           eReq.setEntity(entity);
         }
-        resp = getClient().execute(req, new ConnectionHttpContext());
+        resp = getClient().execute(req, new SSLHttpClientConnection.ConnectionHttpContext());
         entity.getBuffer().close();
         entity = null;
       } else
-        resp = getClient().execute(req, new ConnectionHttpContext());
+        resp = getClient().execute(req, new SSLHttpClientConnection.ConnectionHttpContext());
   }
 
   public Map<String, List<String>> getHeaderFields() {
-    Map<String, List<String>> ret = new HashMap<String, List<String>>();
+    Map<String, List<String>> ret = new HashMap<>();
     for (Header hdr : resp.getAllHeaders()) {
-      List<String> list = ret.get(hdr.getName());
-      if (list == null) {
-        list = new LinkedList<String>();
-        ret.put(hdr.getName(), list);
-      }
+      List<String> list = ret.computeIfAbsent(hdr.getName(), k -> new LinkedList<>());
       list.add(hdr.getValue());
     }
     return ret;
@@ -224,7 +204,7 @@ public class SNIHttpClientConnection implements HttpConnection {
     req.addHeader(name, value);
   }
 
-  public void setRequestMethod(String method) throws ProtocolException {
+  public void setRequestMethod(String method) {
     this.method = method;
     if ("GET".equalsIgnoreCase(method)) //$NON-NLS-1$
       req = new HttpGet(urlStr);
@@ -243,11 +223,11 @@ public class SNIHttpClientConnection implements HttpConnection {
   }
 
   public void setConnectTimeout(int timeout) {
-    this.timeout = new Integer(timeout);
+    this.timeout = timeout;
   }
 
   public void setReadTimeout(int readTimeout) {
-    this.readTimeout = new Integer(readTimeout);
+    this.readTimeout = readTimeout;
   }
 
   public String getContentType() {
@@ -276,7 +256,7 @@ public class SNIHttpClientConnection implements HttpConnection {
   }
 
   public void setInstanceFollowRedirects(boolean followRedirects) {
-    this.followRedirects = new Boolean(followRedirects);
+    this.followRedirects = followRedirects;
   }
 
   public void setDoOutput(boolean dooutput) {
@@ -286,19 +266,19 @@ public class SNIHttpClientConnection implements HttpConnection {
   public void setFixedLengthStreamingMode(int contentLength) {
     if (entity != null)
       throw new IllegalArgumentException();
-    entity = new TemporaryBufferEntity(new LocalFile(null));
+    entity = new TemporaryBufferEntity(new TemporaryBuffer.LocalFile(null));
     entity.setContentLength(contentLength);
   }
 
-  public OutputStream getOutputStream() throws IOException {
+  public OutputStream getOutputStream() {
     if (entity == null)
-      entity = new TemporaryBufferEntity(new LocalFile(null));
+      entity = new TemporaryBufferEntity(new TemporaryBuffer.LocalFile(null));
     return entity.getBuffer();
   }
 
   public void setChunkedStreamingMode(int chunklen) {
     if (entity == null)
-      entity = new TemporaryBufferEntity(new LocalFile(null));
+      entity = new TemporaryBufferEntity(new TemporaryBuffer.LocalFile(null));
     entity.setChunked(true);
   }
 
@@ -320,17 +300,15 @@ public class SNIHttpClientConnection implements HttpConnection {
         return hostnameverifier.verify(hostname, session);
       }
 
-      public void verify(String host, String[] cns, String[] subjectAlts)
-        throws SSLException {
+      public void verify(String host, String[] cns, String[] subjectAlts) {
         throw new UnsupportedOperationException(); // TODO message
       }
 
-      public void verify(String host, X509Certificate cert)
-        throws SSLException {
+      public void verify(String host, X509Certificate cert) {
         throw new UnsupportedOperationException(); // TODO message
       }
 
-      public void verify(String host, SSLSocket ssl) throws IOException {
+      public void verify(String host, SSLSocket ssl) {
         hostnameverifier.verify(host, ssl.getSession());
       }
     };
@@ -343,10 +321,6 @@ public class SNIHttpClientConnection implements HttpConnection {
 
   public synchronized void setAttribute(String name, Object value) {
     attributes.put(name, value);
-  }
-
-  public void setTrustStoreGetter(@NotNull final Supplier<KeyStore> trustStoreGetter) {
-    this.trustStoreGetter = trustStoreGetter;
   }
 
   private class ConnectionHttpContext implements HttpContext {
@@ -363,39 +337,7 @@ public class SNIHttpClientConnection implements HttpConnection {
     }
   }
 
-
-  private class SNISSLSocketFactory extends SSLSocketFactory {
-    public SNISSLSocketFactory(final SSLContext sslContext) {
-      super(sslContext);
-    }
-
-    public SNISSLSocketFactory(final SSLContext sslContext, final X509HostnameVerifier hostnameVerifier) {
-      super(sslContext, hostnameVerifier);
-    }
-
-    @Override
-    public Socket connectSocket(final int connectTimeout,
-                                final Socket socket,
-                                final HttpHost host,
-                                final InetSocketAddress remoteAddress,
-                                final InetSocketAddress localAddress,
-                                final HttpContext context) throws IOException {
-      if (socket instanceof SSLSocket) {
-        enableSNI((SSLSocket)socket, host);
-      }
-      return super.connectSocket(connectTimeout, socket, host, remoteAddress, localAddress, context);
-    }
-
-    private void enableSNI(SSLSocket socket, final HttpHost host) {
-      String sniEnabled = System.getProperty("jsse.enableSNIExtension");
-      if (StringUtil.isEmpty(sniEnabled) || Boolean.parseBoolean(sniEnabled)) {
-        try {
-          Method method = socket.getClass().getDeclaredMethod("setHost", String.class);
-          method.invoke(socket, host.getHostName());
-        } catch (Exception e) {
-          LOG.info("Cannot enable SNI for host " + host.getHostName() + ", continue without SNI, error: " + e.toString());
-        }
-      }
-    }
+  public void setTrustStoreGetter(@NotNull final Supplier<KeyStore> trustStoreGetter) {
+    myTrustStoreGetter = trustStoreGetter;
   }
 }

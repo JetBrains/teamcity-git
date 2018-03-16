@@ -57,17 +57,26 @@ public class FetchCommandImpl implements FetchCommand {
   private final TransportFactory myTransportFactory;
   private final FetcherProperties myFetcherProperties;
   private final VcsRootSshKeyManager mySshKeyManager;
+  private final GitTrustStoreProvider myGitTrustStoreProvider;
 
   public FetchCommandImpl(@NotNull ServerPluginConfig config,
                           @NotNull TransportFactory transportFactory,
                           @NotNull FetcherProperties fetcherProperties,
                           @NotNull VcsRootSshKeyManager sshKeyManager) {
+    this(config, transportFactory, fetcherProperties, sshKeyManager, new GitTrustStoreProviderStatic(null));
+  }
+
+  public FetchCommandImpl(@NotNull ServerPluginConfig config,
+                          @NotNull TransportFactory transportFactory,
+                          @NotNull FetcherProperties fetcherProperties,
+                          @NotNull VcsRootSshKeyManager sshKeyManager,
+                          @NotNull GitTrustStoreProvider gitTrustStoreProvider) {
     myConfig = config;
     myTransportFactory = transportFactory;
     myFetcherProperties = fetcherProperties;
     mySshKeyManager = sshKeyManager;
+    myGitTrustStoreProvider = gitTrustStoreProvider;
   }
-
 
   public void fetch(@NotNull Repository db,
                     @NotNull URIish fetchURI,
@@ -382,6 +391,7 @@ public class FetchCommandImpl implements FetchCommand {
       properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
       properties.put(Constants.THREAD_DUMP_FILE, threadDump.getAbsolutePath());
       properties.put(Constants.FETCHER_INTERNAL_PROPERTIES_FILE, gitProperties.getAbsolutePath());
+      properties.put(Constants.GIT_TRUST_STORE_PROVIDER, myGitTrustStoreProvider.serialize());
       return VcsUtil.propertiesToStringSecure(properties).getBytes("UTF-8");
     } catch (IOException e) {
       throw new VcsException("Error while generating fetch process input", e);

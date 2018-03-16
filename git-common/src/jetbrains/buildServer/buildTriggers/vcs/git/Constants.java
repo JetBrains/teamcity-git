@@ -109,6 +109,8 @@ public interface Constants {
   //path to internal properties to use in Fetcher
   public static final String FETCHER_INTERNAL_PROPERTIES_FILE = "fetcherInternalPropertiesFile";
 
+  public static final String GIT_TRUST_STORE_PROVIDER = "gitTrustStoreProvider";
+
   /**
    * A prefix for build parameter with vcs branch name of git root
    */
