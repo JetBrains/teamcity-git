@@ -76,10 +76,21 @@ public class JSchClient {
 
 
   private static JSchClient createClient(@NotNull Logger logger, String[] args) {
-    if (args.length != 2 && args.length != 4) {
-      System.err.println("Invalid arguments " + Arrays.asList(args));
-      System.exit(1);
-    }
+    // Git runs ssh as follows (https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables):
+    //
+    //   $GIT_SSH [-p <port>] [username@]host <command>
+    //
+    // e.g.
+    //
+    //   $GIT_SSH 'git@server.com' 'git-upload-pack '\''user/repo.git'\'''
+    //
+    // The git-upload-pack command and its args are passed as a single argument to $GIT_SSH.
+    //
+    // Git LFS also uses $GIT_SSH, but it doesn't combine all arguments into a single $GIT_SSH arg:
+    //
+    //     $GIT_SSH 'git@server.com' 'git-lfs-authenticate' 'user/repo.git' 'download'
+    //
+    // we need to combine them ourselves.
 
     int i = 0;
     Integer port = null;
@@ -98,12 +109,21 @@ public class JSchClient {
       user = host.substring(0, atIndex);
       host = host.substring(atIndex + 1);
     }
+
     String command = args[i];
+    if (i < args.length - 1) { // contains additional arguments for the command
+      StringBuilder commandWithArguments = new StringBuilder(command);
+      for (int j = i + 1; j < args.length; j++) {
+        commandWithArguments.append(" ").append(args[j]);
+      }
+      command = commandWithArguments.toString();
+    }
     return new JSchClient(host, user, port, command, logger);
   }
 
 
   public void run() throws Exception {
+    myLogger.log(Logger.INFO, "SSH command to run: " + myCommand);
     ChannelExec channel = null;
     Session session = null;
     try {
