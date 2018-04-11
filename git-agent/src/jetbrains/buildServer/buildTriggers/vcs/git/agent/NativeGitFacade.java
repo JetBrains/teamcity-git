@@ -216,6 +216,12 @@ public class NativeGitFacade implements GitFacade {
   }
 
   @NotNull
+  @Override
+  public DiffCommand diff() {
+    return new DiffCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   public Branches listBranches() throws VcsException {
     GitCommandLine cmd = createCommandLine();
     cmd.addParameter("branch");

@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.Trinity;
+import jetbrains.buildServer.BuildProblemData;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
 import jetbrains.buildServer.agent.BuildProgressLogger;
@@ -30,6 +31,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorrupte
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitOutdatedIndexException;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
 import org.apache.log4j.Logger;
 import org.eclipse.jgit.errors.ConfigInvalidException;
@@ -43,10 +45,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
@@ -127,6 +126,7 @@ public class UpdaterImpl implements Updater {
     logSshOptions(myPluginConfig.getGitVersion());
     checkAuthMethodIsSupported();
     doUpdate();
+    checkNoDiffWithUpperLimitRevision();
   }
 
   private void logSshOptions(@NotNull GitVersion gitVersion) {
@@ -1046,5 +1046,112 @@ public class UpdaterImpl implements Updater {
           FileUtil.delete(f);
       }
     }
+  }
+
+
+  private void checkNoDiffWithUpperLimitRevision() {
+    if ("false".equals(myBuild.getSharedConfigParameters().get("teamcity.git.checkDiffWithUpperLimitRevision"))) {
+      return;
+    }
+
+    String upperLimitRevision = getUpperLimitRevision();
+    if (upperLimitRevision == null) {
+      return;
+    }
+
+    String message = "Check no diff with upper limit revision " + upperLimitRevision;
+    myLogger.activityStarted(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
+    try {
+      if (!ensureCommitLoaded(upperLimitRevision)) {
+        myLogger.warning("Failed to fetch " + upperLimitRevision + ", will not analyze diff with upper limit revision");
+        return;
+      }
+      List<String> pathsMatchedByRules = getChangedFilesMatchedByRules(upperLimitRevision);
+      if (!pathsMatchedByRules.isEmpty()) {
+        StringBuilder msg = new StringBuilder();
+        msg.append("Files matched by checkout rules changed between build revision and upper-limit revision\n");
+        msg.append("Checkout rules: '").append(myRules.getAsString()).append("'\n");
+        msg.append("Build revision: '").append(myRevision).append("'\n");
+        msg.append("Upper limit revision: '").append(upperLimitRevision).append("'\n");
+        msg.append("Files:\n");
+        for (String path : pathsMatchedByRules) {
+          msg.append("\t").append(path).append("\n");
+        }
+        myLogger.error(msg.toString());
+        String type = "UpperLimitRevisionDiff";
+        myLogger.logBuildProblem(BuildProblemData.createBuildProblem(type + myRoot.getId(), type, "Diff with upper limit revision found"));
+      }
+    } finally {
+      myLogger.activityFinished(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
+    }
+  }
+
+  private boolean ensureCommitLoaded(@NotNull String commit) {
+    if (hasRevision(myTargetDirectory, commit))
+      return true;
+    try {
+      fetchAllBranches();
+    } catch (VcsException e) {
+      LOG.warn("Error while fetching commit " + commit, e);
+      return false;
+    }
+    return hasRevision(myTargetDirectory, commit);
+  }
+
+  @NotNull
+  private List<String> getChangedFilesMatchedByRules(@NotNull String upperLimitRevision) {
+    List<String> pathsMatchedByRules = new ArrayList<String>();
+    List<String> changedFiles = getChangedFiles(upperLimitRevision);
+    for (String file : changedFiles) {
+      if (myRules.map(file) != null) {
+        pathsMatchedByRules.add(file);
+      }
+    }
+    return pathsMatchedByRules;
+  }
+
+  @NotNull
+  private List<String> getChangedFiles(@NotNull String upperLimitRevision) {
+    try {
+      return myGitFactory.create(myTargetDirectory).diff()
+        .setFormat("--name-only")
+        .setCommit1(myRevision)
+        .setCommit2(upperLimitRevision)
+        .call();
+    } catch (VcsException e) {
+      myLogger.warning("Error while computing changed files between build and upper limit revisions: " + e.toString());
+      return Collections.emptyList();
+    }
+  }
+
+  @Nullable
+  private String getUpperLimitRevision() {
+    String rootExtId = getVcsRootExtId();
+    return rootExtId != null ? myBuild.getSharedConfigParameters().get("teamcity.upperLimitRevision." + rootExtId) : null;
+  }
+
+  @Nullable
+  private String getVcsRootExtId() {
+    // We don't have vcs root extId on the agent, deduce it from vcs.number parameters
+    String revisionParamPrefix = "build.vcs.number.";
+    String vcsRootExtId = null;
+    Map<String, String> params = myBuild.getSharedConfigParameters();
+    for (Map.Entry<String, String> param : params.entrySet()) {
+      if (param.getKey().startsWith(revisionParamPrefix) && myRevision.equals(param.getValue())) {
+        String extId = param.getKey().substring(revisionParamPrefix.length());
+        if (StringUtil.isNotEmpty(extId) && Character.isDigit(extId.charAt(0))) {
+          // We have build.vcs.number.<extId> and build.vcs.number.<root number>, ignore the latter (extId cannot start with digit)
+          continue;
+        }
+        if (vcsRootExtId != null) {
+          LOG.debug("Build has more than one VCS root with same revision " + myRevision + ": " + vcsRootExtId + " and " +
+                    extId + ", cannot deduce VCS root extId");
+          return null;
+        } else {
+          vcsRootExtId = extId;
+        }
+      }
+    }
+    return vcsRootExtId;
   }
 }

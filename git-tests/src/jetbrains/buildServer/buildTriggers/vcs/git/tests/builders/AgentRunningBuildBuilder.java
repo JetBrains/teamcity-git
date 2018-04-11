@@ -42,11 +42,16 @@ public class AgentRunningBuildBuilder {
   private Map<String, String> mySharedConfigParameters = new HashMap<String, String>();
   private Map<String, String> mySharedBuildParameters = new HashMap<String, String>();
   private List<VcsRootEntry> myRootEntries = null;
+  private BuildProgressLogger myBuildLogger = null;
 
   public static AgentRunningBuildBuilder runningBuild() {
     return new AgentRunningBuildBuilder();
   }
 
+  public AgentRunningBuildBuilder withBuildLogger(BuildProgressLogger logger) {
+    myBuildLogger = logger;
+    return this;
+  }
 
   public AgentRunningBuildBuilder sharedConfigParams(String... params) {
     mySharedConfigParameters.putAll(map(params));
@@ -98,7 +103,7 @@ public class AgentRunningBuildBuilder {
 
       @NotNull
       public BuildProgressLogger getBuildLogger() {
-        return new NullBuildProgressLogger();
+        return myBuildLogger != null ? myBuildLogger : new NullBuildProgressLogger();
       }
 
       @NotNull

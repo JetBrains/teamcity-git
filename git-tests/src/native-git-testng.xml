@@ -26,6 +26,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.HttpUrlWithUsernameTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RemoteRepositoryConfiguratorTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AutoCheckoutTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.DiffWithUpperLimitRevisionTest"/>
     </classes>
   </test>
 </suite>

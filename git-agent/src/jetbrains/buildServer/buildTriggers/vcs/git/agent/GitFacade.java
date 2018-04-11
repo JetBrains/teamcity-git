@@ -106,4 +106,7 @@ public interface GitFacade {
 
   @NotNull
   UpdateIndexCommand updateIndex();
+
+  @NotNull
+  DiffCommand diff();
 }
