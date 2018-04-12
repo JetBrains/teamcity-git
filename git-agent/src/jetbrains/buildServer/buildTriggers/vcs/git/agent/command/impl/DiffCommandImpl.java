@@ -24,6 +24,7 @@ import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class DiffCommandImpl extends BaseCommandImpl implements DiffCommand {
@@ -73,6 +74,7 @@ public class DiffCommandImpl extends BaseCommandImpl implements DiffCommand {
     }
 
     ExecResult r = CommandUtil.runCommand(cmd);
-    return Arrays.asList(StringUtil.splitByLines(r.getStdout().trim()));
+    String stdout = r.getStdout().trim();
+    return StringUtil.isEmpty(stdout) ? Collections.<String>emptyList() : Arrays.asList(StringUtil.splitByLines(stdout));
   }
 }

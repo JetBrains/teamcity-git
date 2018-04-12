@@ -96,6 +96,14 @@ public class DiffWithUpperLimitRevisionTest extends BaseRemoteRepositoryTest {
   }
 
 
+  public void no_error_when_revisions_are_the_same() throws Exception {
+    String version = "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7";
+    AgentRunningBuild build = createBuild(version, version);
+    myVcsSupport.updateSources(myRoot, new CheckoutRules("+:.=>dir"), version, myCheckoutDir, build, false);
+    then(myBuildLogger.getErrors()).isEmpty();
+  }
+
+
   private AgentRunningBuild createBuild(@NotNull String buildRevision, @Nullable String upperLimitRevision, String... additionalParams) {
     String rootExtId = "RootExtId";
     Map<String, String> params = new HashMap<>();

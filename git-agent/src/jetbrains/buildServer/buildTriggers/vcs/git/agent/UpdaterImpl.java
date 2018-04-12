@@ -1066,6 +1066,12 @@ public class UpdaterImpl implements Updater {
         myLogger.warning("Failed to fetch " + upperLimitRevision + ", will not analyze diff with upper limit revision");
         return;
       }
+
+      if (myRevision.equals(upperLimitRevision)) {
+        myLogger.message("Build revision is the same as the upper limit revision, skip checking diff");
+        return;
+      }
+
       List<String> pathsMatchedByRules = getChangedFilesMatchedByRules(upperLimitRevision);
       if (!pathsMatchedByRules.isEmpty()) {
         StringBuilder msg = new StringBuilder();
@@ -1080,6 +1086,8 @@ public class UpdaterImpl implements Updater {
         myLogger.error(msg.toString());
         String type = "UpperLimitRevisionDiff";
         myLogger.logBuildProblem(BuildProblemData.createBuildProblem(type + myRoot.getId(), type, "Diff with upper limit revision found"));
+      } else {
+        myLogger.message("No diff matched by checkout rules found");
       }
     } finally {
       myLogger.activityFinished(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
