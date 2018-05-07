@@ -21,7 +21,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleFetchExce
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
-import jetbrains.buildServer.util.ssl.TrustStoreReader;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;

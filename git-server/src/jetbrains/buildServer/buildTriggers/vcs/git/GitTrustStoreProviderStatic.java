@@ -17,7 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.util.StringUtil;
-import jetbrains.buildServer.util.ssl.TrustStoreReader;
+import jetbrains.buildServer.util.ssl.TrustStoreIO;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -44,7 +44,7 @@ public class GitTrustStoreProviderStatic implements GitTrustStoreProvider {
     if (myTrustedCertificatesDir == null) {
       return null;
     } else {
-      return TrustStoreReader.readTrustStoreFromDirectory(myTrustedCertificatesDir);
+      return TrustStoreIO.readTrustStoreFromDirectory(myTrustedCertificatesDir);
     }
   }
 
