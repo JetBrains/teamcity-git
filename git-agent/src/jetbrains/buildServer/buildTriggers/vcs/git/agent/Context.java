@@ -35,4 +35,6 @@ public interface Context {
   @Nullable
   AgentPluginConfig getConfig();
 
+  boolean isDebugSsh();
+
 }

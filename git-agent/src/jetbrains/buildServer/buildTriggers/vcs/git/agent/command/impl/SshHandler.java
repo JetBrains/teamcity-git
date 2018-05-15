@@ -100,7 +100,7 @@ public class SshHandler implements GitSSHService.Handler {
       cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_MAC_TYPE, ctx.getSshMacType());
     if (ctx.getPreferredSshAuthMethods() != null)
       cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_PREFERRED_AUTH_METHODS, ctx.getPreferredSshAuthMethods());
-    cmd.addEnvParam(GitSSHHandler.TEAMCITY_DEBUG_SSH, String.valueOf(Loggers.VCS.isDebugEnabled()));
+    cmd.addEnvParam(GitSSHHandler.TEAMCITY_DEBUG_SSH, String.valueOf(ctx.isDebugSsh()));
     AgentPluginConfig config = ctx.getConfig();
     if (config != null)
       cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_IDLE_TIMEOUT_SECONDS, String.valueOf(config.getIdleTimeoutSeconds()));

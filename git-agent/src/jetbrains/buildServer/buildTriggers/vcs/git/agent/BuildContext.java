@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildInterruptReason;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -59,6 +60,11 @@ public class BuildContext implements Context {
   @Override
   public boolean isProvideCredHelper() {
     return myConfig.isProvideCredHelper();
+  }
+
+  @Override
+  public boolean isDebugSsh() {
+    return Loggers.VCS.isDebugEnabled() || Boolean.parseBoolean(myBuild.getSharedConfigParameters().get("teamcity.git.sshDebug"));
   }
 
   @Nullable

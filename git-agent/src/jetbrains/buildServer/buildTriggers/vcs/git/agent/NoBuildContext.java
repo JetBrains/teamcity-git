@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.BuildInterruptReason;
+import jetbrains.buildServer.log.Loggers;
 import org.jetbrains.annotations.Nullable;
 
 public class NoBuildContext implements Context {
@@ -42,6 +43,11 @@ public class NoBuildContext implements Context {
   @Override
   public boolean isProvideCredHelper() {
     return false;
+  }
+
+  @Override
+  public boolean isDebugSsh() {
+    return Loggers.VCS.isDebugEnabled();
   }
 
   @Nullable
