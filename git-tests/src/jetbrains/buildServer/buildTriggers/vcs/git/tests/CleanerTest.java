@@ -34,6 +34,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static org.assertj.core.api.BDDAssertions.then;
@@ -43,6 +44,7 @@ public class CleanerTest extends BaseTestCase {
 
   private static final TempFiles ourTempFiles = new TempFiles();
   private Cleanup myCleanup;
+  private AtomicBoolean myCleanupCalled;
   private GitVcsSupport mySupport;
   private RepositoryManager myRepositoryManager;
   private ServerPluginConfig myConfig;
@@ -88,6 +90,7 @@ public class CleanerTest extends BaseTestCase {
 
     myCleanup.run();
 
+    assertTrue(myCleanupCalled.get());
     File[] files = baseMirrorsDir.listFiles(new FileFilter() {
       public boolean accept(File f) {
         return f.isDirectory();
@@ -134,6 +137,11 @@ public class CleanerTest extends BaseTestCase {
     mySupport = gitBuilder.build();
     myRepositoryManager = gitBuilder.getRepositoryManager();
     myCleanup = new Cleanup(myConfig, myRepositoryManager, new GcErrors());
+    myCleanupCalled = new AtomicBoolean();
+    myCleanup.setCleanupCallWrapper(cleanup -> {
+      myCleanupCalled.set(true);
+      cleanup.run();
+    });
   }
 
 

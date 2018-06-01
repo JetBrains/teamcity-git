@@ -42,6 +42,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 public class Cleanup {
@@ -54,6 +55,8 @@ public class Cleanup {
   private final ServerPluginConfig myConfig;
   private final GcErrors myGcErrors;
   private final AtomicReference<RunGitError> myNativeGitError = new AtomicReference<>();
+  @NotNull
+  private volatile Consumer<Runnable> myCleanupCallWrapper = Runnable::run;
 
   public Cleanup(@NotNull final ServerPluginConfig config,
                  @NotNull final RepositoryManager repositoryManager,
@@ -71,17 +74,23 @@ public class Cleanup {
 
     try {
       LOG.info("Git cleanup started");
-      removeUnusedRepositories();
-      cleanupMonitoringData();
-      if (myConfig.isRunNativeGC()) {
-        runNativeGC();
-      } else if (myConfig.isRunJGitGC()) {
-        runJGitGC();
-      }
+      myCleanupCallWrapper.accept(() -> {
+        removeUnusedRepositories();
+        cleanupMonitoringData();
+        if (myConfig.isRunNativeGC()) {
+          runNativeGC();
+        } else if (myConfig.isRunJGitGC()) {
+          runJGitGC();
+        }
+      });
       LOG.info("Git cleanup finished");
     } finally {
       ourSemaphore.release();
     }
+  }
+
+  public void setCleanupCallWrapper(@NotNull Consumer<Runnable> cleanupCallWrapper) {
+    myCleanupCallWrapper = cleanupCallWrapper;
   }
 
   private void removeUnusedRepositories() {
