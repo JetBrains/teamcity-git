@@ -28,6 +28,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author dmitry.neverov
@@ -56,6 +57,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String PROVIDE_CRED_HELPER = "teamcity.git.provideCredentialHelper";
   private static final String USE_DEFAULT_CHARSET = "teamcity.git.useDefaultCharset";
   private static final String GIT_OUTPUT_CHARSET = "teamcity.git.outputCharset";
+  private static final String LS_REMOTE_TIMEOUT_SECONDS = "teamcity.git.lsRemoteTimeoutSeconds";
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
@@ -294,11 +296,24 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return StringUtil.isNotEmpty(charsetName) ? charsetName : "UTF-8";
   }
 
+  @Override
+  public int getLsRemoteTimeoutSeconds() {
+    int defaultTimeoutSeconds = 5 * 60;
+    String valueFromBuild = myBuild.getSharedConfigParameters().get(LS_REMOTE_TIMEOUT_SECONDS);
+    if (valueFromBuild != null) {
+      return parseTimeout(valueFromBuild, defaultTimeoutSeconds);
+    } else {
+      return defaultTimeoutSeconds;
+    }
+  }
+
   private int parseTimeout(String valueFromBuild) {
     return parseTimeout(valueFromBuild, DEFAULT_IDLE_TIMEOUT);
   }
 
   private int parseTimeout(String valueFromBuild, int defaultValue) {
+    if (valueFromBuild == null)
+      return defaultValue;
     try {
       int timeout = Integer.parseInt(valueFromBuild);
       if (timeout > 0)

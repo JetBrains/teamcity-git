@@ -929,6 +929,7 @@ public class UpdaterImpl implements Updater {
     GitFacade git = myGitFactory.create(workingDir);
     myRemoteRefs = new Refs(git.lsRemote().setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
+      .setTimeout(myPluginConfig.getLsRemoteTimeoutSeconds())
       .call());
     return myRemoteRefs;
   }

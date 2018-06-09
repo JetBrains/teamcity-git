@@ -78,6 +78,8 @@ public interface AgentPluginConfig extends PluginConfig {
   @Nullable
   String getGitOutputCharsetName();
 
+  int getLsRemoteTimeoutSeconds();
+
   /**
    * Defines how progress output from git commands is written into build log
    */

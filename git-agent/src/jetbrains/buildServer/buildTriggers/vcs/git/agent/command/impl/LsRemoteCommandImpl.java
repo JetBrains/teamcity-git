@@ -38,6 +38,7 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
   private AuthSettings myAuthSettings;
   private boolean myUseNativeSsh = false;
   private int myAttemptsLimit = 3;
+  private int myTimeoutSeconds;
 
   public LsRemoteCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -62,6 +63,13 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
   }
 
   @NotNull
+  @Override
+  public LsRemoteCommand setTimeout(int timeoutSeconds) {
+    myTimeoutSeconds = timeoutSeconds;
+    return this;
+  }
+
+  @NotNull
   public List<Ref> call() throws VcsException {
     GitCommandLine cmd = getCmd();
     cmd.addParameter("ls-remote");
@@ -73,6 +81,7 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
     while (true) {
       try {
         ExecResult result = cmd.run(with()
+                                      .timeout(myTimeoutSeconds)
                                       .authSettings(myAuthSettings)
                                       .useNativeSsh(myUseNativeSsh));
         return parse(result.getStdout());

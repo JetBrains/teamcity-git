@@ -35,6 +35,9 @@ public interface LsRemoteCommand extends BaseCommand {
   LsRemoteCommand setUseNativeSsh(boolean useNativeSsh);
 
   @NotNull
+  LsRemoteCommand setTimeout(int timeoutSeconds);
+
+  @NotNull
   public List<Ref> call() throws VcsException;
 
 }
