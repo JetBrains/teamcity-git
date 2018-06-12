@@ -72,9 +72,9 @@ public class GitGcErrorsHealthPage extends HealthStatusItemPageExtension {
     if (errors instanceof Map) {
       String baseDir;
       try {
-        baseDir = new File(myServerPaths.getCachesDir(), "git").getCanonicalPath();
+        baseDir = myServerPaths.getDataDirectory().getCanonicalPath();
       } catch (IOException e) {
-        baseDir = new File(myServerPaths.getCachesDir(), "git").getAbsolutePath();
+        baseDir = myServerPaths.getDataDirectory().getAbsolutePath();
       }
 
       //noinspection unchecked
@@ -85,9 +85,9 @@ public class GitGcErrorsHealthPage extends HealthStatusItemPageExtension {
         if (key instanceof File && value instanceof String) {
           try {
             String relativePath = FileUtil.getRelativePath(baseDir, ((File)key).getCanonicalPath(), File.separatorChar);
-            String url = myMirrorManager.getUrl(relativePath);
+            String url = myMirrorManager.getUrl(((File)key).getName());
             if (url != null) {
-              sortedErrors.put(url, Pair.create(relativePath, (String) value));
+              sortedErrors.put(url, Pair.create("<TeamCity data dir>" + File.separatorChar + relativePath, (String) value));
             }
           } catch (IOException e) {
             LOG.warnAndDebugDetails("Error while preparing health report data", e);
