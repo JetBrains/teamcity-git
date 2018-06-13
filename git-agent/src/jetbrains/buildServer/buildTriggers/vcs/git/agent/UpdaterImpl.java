@@ -712,7 +712,7 @@ public class UpdaterImpl implements Updater {
     /* set config property for path where custom ssl certificates are stored */
     if ("https".equals(myRoot.getRepositoryFetchURL().getScheme())) {
       final String homeDirectory = myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath();
-      final String certDirectory = TrustedCertificatesDirectory.getAllCertificateDirectoryFromHome(homeDirectory);
+      final String certDirectory = TrustedCertificatesDirectory.getAllCertificatesDirectoryFromHome(homeDirectory);
       myGitFactory.create(repositoryDir).setConfig().setPropertyName("http.sslCAPath").setValue(certDirectory).call();
     }
     FetchCommand result = myGitFactory.create(repositoryDir).fetch()
