@@ -22,6 +22,7 @@ import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
+import jetbrains.buildServer.agent.ssl.TrustedCertificatesDirectory;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
@@ -706,7 +707,14 @@ public class UpdaterImpl implements Updater {
   }
 
   @NotNull
-  private FetchCommand getFetch(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout) {
+  private FetchCommand getFetch(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout)
+    throws VcsException {
+    /* set config property for path where custom ssl certificates are stored */
+    if ("https".equals(myRoot.getRepositoryFetchURL().getScheme())) {
+      final String homeDirectory = myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath();
+      final String certDirectory = TrustedCertificatesDirectory.getAllCertificateDirectoryFromHome(homeDirectory);
+      myGitFactory.create(repositoryDir).setConfig().setPropertyName("http.sslCAPath").setValue(certDirectory).call();
+    }
     FetchCommand result = myGitFactory.create(repositoryDir).fetch()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
