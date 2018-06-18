@@ -175,7 +175,7 @@
     </enum>
     <enum name="CheckoutSubmodules">
       <description>Submodules checkout mode</description>
-      <option name="SUBMODULES_CHECKOUT">
+      <option name="SUBMODULES_CHECKOUT" value="CHECKOUT">
         <description>Checkout submodules and show submodule changes in UI</description>
       </option>
       <option name="IGNORE">
