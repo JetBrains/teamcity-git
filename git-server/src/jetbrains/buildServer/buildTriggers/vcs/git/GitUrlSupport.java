@@ -16,6 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.ExtensionsProvider;
+import jetbrains.buildServer.serverSide.ProjectManager;
+import jetbrains.buildServer.serverSide.SProject;
+import jetbrains.buildServer.ssh.ServerSshKeyManager;
+import jetbrains.buildServer.ssh.TeamCitySshKey;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.positioning.PositionAware;
 import jetbrains.buildServer.util.positioning.PositionConstraint;
 import jetbrains.buildServer.vcs.*;
@@ -29,22 +35,30 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * @author dmitry.neverov
  */
-public class GitUrlSupport implements UrlSupport, PositionAware {
+public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, GitServerExtension {
 
   private final GitVcsSupport myGitSupport;
+  private final ProjectManager myProjectManager;
+  private final ExtensionsProvider myExtensionsProvider;
 
-  public GitUrlSupport(@NotNull GitVcsSupport gitSupport) {
+  public GitUrlSupport(@NotNull GitVcsSupport gitSupport,
+                       @NotNull final ProjectManager projectManager,
+                       @NotNull final ExtensionsProvider extensionsProvider) {
     myGitSupport = gitSupport;
+    myProjectManager = projectManager;
+    myExtensionsProvider = extensionsProvider;
+    gitSupport.addExtension(this);
   }
 
   @Nullable
-  public Map<String, String> convertToVcsRootProperties(@NotNull VcsUrl url) throws VcsException {
+  public Map<String, String> convertToVcsRootProperties(@NotNull VcsUrl url, @NotNull VcsOperationContext operationContext) throws VcsException {
     String scmName = getMavenScmName(url);
     if (scmName != null && !"git".equals(scmName) && !"ssh".equals(scmName)) //some other scm provider
       return null;
@@ -69,6 +83,35 @@ public class GitUrlSupport implements UrlSupport, PositionAware {
     VcsHostingRepo ghRepo = WellKnownHostingsUtil.getGitHubRepo(uri);
     if (ghRepo != null)
       refineGithubSettings(ghRepo, props);
+
+    if (AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString().equals(props.get(Constants.AUTH_METHOD))) {
+      // SSH access, before using the default private key which may not be accessible on the agent,
+      // let's iterate over all SSH keys of the current project, maybe we'll find a working one
+      SProject curProject = myProjectManager.findProjectById(operationContext.getCurrentProjectId());
+      ServerSshKeyManager serverSshKeyManager = getSshKeyManager();
+      if (curProject != null && serverSshKeyManager != null) {
+        for (TeamCitySshKey key: serverSshKeyManager.getKeys(curProject)) {
+          if (key.isEncrypted()) continue; // don't know password, so can't use it
+          String keyName = key.getName();
+
+          Map<String, String> propsCopy = new HashMap<>(props);
+          propsCopy.put(Constants.AUTH_METHOD, AuthenticationMethod.TEAMCITY_SSH_KEY.toString());
+          propsCopy.put(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME, keyName);
+
+          SVcsRoot dummyVcsRoot = curProject.createDummyVcsRoot(Constants.VCS_NAME, propsCopy);
+
+          try {
+            myGitSupport.getTestConnectionSupport().testConnection(dummyVcsRoot);
+            return propsCopy;
+          } catch (VcsException e) {
+            if (GitVcsSupport.GIT_REPOSITORY_HAS_NO_BRANCHES.equals(e.getMessage()))
+              throw e;
+          }
+        }
+      }
+
+      // could not find any valid keys, proceed with default test connection
+    }
 
     if ("git".equals(scmName) || "git".equals(uri.getScheme()) || uri.getPath().endsWith(".git")) //git protocol, or git scm provider, or .git suffix
       return props;
@@ -160,5 +203,13 @@ public class GitUrlSupport implements UrlSupport, PositionAware {
   @NotNull
   public PositionConstraint getConstraint() {
     return PositionConstraint.first(); // placed first to avoid problems with GitHub and SVN
+  }
+
+  @Nullable
+  private synchronized ServerSshKeyManager getSshKeyManager() {
+    Collection<ServerSshKeyManager> managers = myExtensionsProvider.getExtensions(ServerSshKeyManager.class);
+    if (managers.isEmpty())
+      return null;
+    return managers.iterator().next();
   }
 }
