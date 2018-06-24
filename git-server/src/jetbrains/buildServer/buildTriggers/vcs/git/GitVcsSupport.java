@@ -69,6 +69,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private final VcsRootSshKeyManager mySshKeyManager;
   private final VcsOperationProgressProvider myProgressProvider;
   private final GitTrustStoreProvider myGitTrustStoreProvider;
+  private final TestConnectionSupport myTestConnection;
   private Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
 
   public GitVcsSupport(@NotNull ServerPluginConfig config,
@@ -80,9 +81,10 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull VcsRootSshKeyManager sshKeyManager,
                        @NotNull VcsOperationProgressProvider progressProvider,
                        @NotNull GitResetCacheHandler resetCacheHandler,
-                       @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler) {
+                       @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler,
+                       @Nullable TestConnectionSupport customTestConnection) {
     this(config, resetCacheManager, transportFactory, repositoryManager, mapFullPath, commitLoader, sshKeyManager, progressProvider,
-         resetCacheHandler, resetRevisionsCacheHandler, new GitTrustStoreProviderStatic(null));
+         resetCacheHandler, resetRevisionsCacheHandler, new GitTrustStoreProviderStatic(null), customTestConnection);
   }
 
   public GitVcsSupport(@NotNull ServerPluginConfig config,
@@ -95,7 +97,8 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull VcsOperationProgressProvider progressProvider,
                        @NotNull GitResetCacheHandler resetCacheHandler,
                        @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler,
-                       @NotNull GitTrustStoreProvider gitTrustStoreProvider) {
+                       @NotNull GitTrustStoreProvider gitTrustStoreProvider,
+                       @Nullable TestConnectionSupport customTestConnection) {
     myConfig = config;
     myTransportFactory = transportFactory;
     myRepositoryManager = repositoryManager;
@@ -107,6 +110,7 @@ public class GitVcsSupport extends ServerVcsSupport
     resetCacheManager.registerHandler(resetCacheHandler);
     resetCacheManager.registerHandler(resetRevisionsCacheHandler);
     myGitTrustStoreProvider = gitTrustStoreProvider;
+    myTestConnection = customTestConnection == null ? this : customTestConnection;
   }
 
   public void setExtensionHolder(@Nullable ExtensionHolder extensionHolder) {
@@ -321,7 +325,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @Override
   public TestConnectionSupport getTestConnectionSupport() {
-    return this;
+    return myTestConnection;
   }
 
   public OperationContext createContext(@NotNull String operation) {
@@ -451,7 +455,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @Override
   public UrlSupport getUrlSupport() {
-    return new GitUrlSupport(this);
+    return null;
   }
 
 

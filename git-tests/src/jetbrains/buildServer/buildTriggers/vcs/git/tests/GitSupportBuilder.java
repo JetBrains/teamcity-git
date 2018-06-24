@@ -22,6 +22,7 @@ import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.MockVcsOperationProgressProvider;
+import jetbrains.buildServer.vcs.TestConnectionSupport;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
@@ -48,6 +49,7 @@ public class GitSupportBuilder {
   private ServerPaths myServerPaths;
   private RepositoryManager myRepositoryManager;
   private TransportFactory myTransportFactory;
+  private TestConnectionSupport myTestConnectionSupport;
   private MirrorManager myMirrorManager;
   private GitMapFullPath myMapFullPath;
   private CommitLoader myCommitLoader;
@@ -72,15 +74,9 @@ public class GitSupportBuilder {
         myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
       } else {
         final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
-        myFetchCommand = new FetchCommand() {
-          public void fetch(@NotNull Repository db,
-                            @NotNull URIish fetchURI,
-                            @NotNull Collection<RefSpec> refspecs,
-                            @NotNull FetchSettings settings)
-            throws IOException, VcsException {
-            myBeforeFetchHook.run();
-            originalCommand.fetch(db, fetchURI, refspecs, settings);
-          }
+        myFetchCommand = (db, fetchURI, refspecs, settings) -> {
+          myBeforeFetchHook.run();
+          originalCommand.fetch(db, fetchURI, refspecs, settings);
         };
       }
     }
@@ -103,7 +99,7 @@ public class GitSupportBuilder {
     ResetRevisionsCacheHandler resetRevisionsCacheHandler = new ResetRevisionsCacheHandler(revisionsCache);
     GitVcsSupport git = new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
                                           new EmptyVcsRootSshKeyManager(), new MockVcsOperationProgressProvider(),
-                                          resetCacheHandler, resetRevisionsCacheHandler);
+                                          resetCacheHandler, resetRevisionsCacheHandler, myTestConnectionSupport);
     git.addExtensions(myExtensions);
     git.setExtensionHolder(myExtensionHolder);
     return git;
@@ -142,6 +138,11 @@ public class GitSupportBuilder {
 
   public GitSupportBuilder withFetchCommand(@NotNull FetchCommand fetchCommand) {
     myFetchCommand = fetchCommand;
+    return this;
+  }
+
+  public GitSupportBuilder withTestConnectionSupport(@NotNull TestConnectionSupport testConnection) {
+    myTestConnectionSupport = testConnection;
     return this;
   }
 
