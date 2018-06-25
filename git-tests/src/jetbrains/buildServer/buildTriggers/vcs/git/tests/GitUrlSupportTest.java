@@ -54,7 +54,7 @@ public class GitUrlSupportTest extends BaseTestCase {
   private List<TeamCitySshKey> myTestKeys = new ArrayList<>();
   private Mock myProjectMock;
   private GitVcsSupport myGitVcsSupport;
-  private Boolean myTestConnectionStubbed;
+  private Boolean myTestConnectionMocked;
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -78,16 +78,18 @@ public class GitUrlSupportTest extends BaseTestCase {
     epMock.stubs().method("getExtensions").with(eq(ServerSshKeyManager.class)).will(returnValue(Collections.singleton(ssh)));
 
     myGitVcsSupport = gitSupport().withServerPaths(paths).withTestConnectionSupport(vcsRoot -> {
-      if (myTestConnectionStubbed) return null;
+      if (myTestConnectionMocked != null && myTestConnectionMocked) return null;
       return myGitVcsSupport.testConnection(vcsRoot);
     }).build();
     myUrlSupport = new GitUrlSupport(myGitVcsSupport, pm, (ExtensionsProvider)epMock.proxy());
   }
 
   @AfterMethod
-  public void tearDown() {
+  public void tearDown() throws Exception {
     myTestKeys.clear();
     myTempFiles.cleanup();
+    myTestConnectionMocked = null;
+    super.tearDown();
   }
 
   @Test
@@ -133,6 +135,8 @@ public class GitUrlSupportTest extends BaseTestCase {
   @Test
   public void convert_scp_like_syntax() throws Exception {
     MavenVcsUrl url = new MavenVcsUrl("scm:git:git@github.com:user/repo.git");
+    myTestConnectionMocked = true;
+
     GitVcsRoot root = toGitRoot(url);
     assertEquals(new URIish(url.getProviderSpecificPart()), root.getRepositoryFetchURL());
     assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
@@ -142,6 +146,8 @@ public class GitUrlSupportTest extends BaseTestCase {
   @Test
   public void convert_scp_like_syntax_with_credentials() throws Exception {
     VcsUrl url = new VcsUrl("scm:git:git@github.com:user/repo.git", new Credentials("user", "pass"));
+    myTestConnectionMocked = true;
+
     GitVcsRoot root = toGitRoot(url);
     assertEquals(new URIish("user@github.com:user/repo.git"), root.getRepositoryFetchURL());
     assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
@@ -164,10 +170,10 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   @Test
   public void ssh_protocol() throws Exception {
-    VcsUrl url = new VcsUrl("ssh://git@github.com:JetBrains/kotlin.git");
+    VcsUrl url = new VcsUrl("ssh://git@github.com/JetBrains/kotlin.git");
     GitVcsRoot root = toGitRoot(url);
 
-    assertEquals("ssh://git@github.com:JetBrains/kotlin.git", root.getProperty(Constants.FETCH_URL));
+    assertEquals("ssh://git@github.com/JetBrains/kotlin.git", root.getProperty(Constants.FETCH_URL));
     assertEquals("refs/heads/master", root.getProperty(Constants.BRANCH_NAME));
     assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT.name(), root.getProperty(Constants.AUTH_METHOD));
   }
@@ -180,7 +186,7 @@ public class GitUrlSupportTest extends BaseTestCase {
 
     Mock vcsRoot = mock(SVcsRoot.class);
     myProjectMock.expects(once()).method("createDummyVcsRoot").with(eq(Constants.VCS_NAME), mapContaining(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME, "key2")).will(returnValue(vcsRoot.proxy()));
-    myTestConnectionStubbed = true;
+    myTestConnectionMocked = true;
 
     GitVcsRoot root = toGitRoot(url);
 

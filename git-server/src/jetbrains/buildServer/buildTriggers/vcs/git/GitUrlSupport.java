@@ -22,6 +22,7 @@ import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.ssh.ServerSshKeyManager;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.positioning.PositionAware;
 import jetbrains.buildServer.util.positioning.PositionConstraint;
 import jetbrains.buildServer.vcs.*;
@@ -84,7 +85,12 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     if (ghRepo != null)
       refineGithubSettings(ghRepo, props);
 
-    if (AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString().equals(props.get(Constants.AUTH_METHOD))) {
+    int numSshKeysTried = 0;
+
+    final TestConnectionSupport testConnectionSupport = myGitSupport.getTestConnectionSupport();
+    assert testConnectionSupport != null;
+
+    if (AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString().equals(props.get(Constants.AUTH_METHOD)) && fetchUrl.endsWith(".git")) {
       // SSH access, before using the default private key which may not be accessible on the agent,
       // let's iterate over all SSH keys of the current project, maybe we'll find a working one
       SProject curProject = myProjectManager.findProjectById(operationContext.getCurrentProjectId());
@@ -101,7 +107,8 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
           SVcsRoot dummyVcsRoot = curProject.createDummyVcsRoot(Constants.VCS_NAME, propsCopy);
 
           try {
-            myGitSupport.getTestConnectionSupport().testConnection(dummyVcsRoot);
+            numSshKeysTried++;
+            testConnectionSupport.testConnection(dummyVcsRoot);
             return propsCopy;
           } catch (VcsException e) {
             if (GitVcsSupport.GIT_REPOSITORY_HAS_NO_BRANCHES.equals(e.getMessage()))
@@ -110,20 +117,41 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
         }
       }
 
-      // could not find any valid keys, proceed with default test connection
+      // could not find any valid keys, proceed with default SSH key
+      try {
+        testConnectionSupport.testConnection(new VcsRootImpl(-1, Constants.VCS_NAME, props));
+        return props;
+      } catch (VcsException e) {
+        if (GitVcsSupport.GIT_REPOSITORY_HAS_NO_BRANCHES.equals(e.getMessage()))
+          throw e;
+
+        String message = "Could not connect to the Git repository by SSH protocol.";
+        if (numSshKeysTried > 0) {
+          message += " Tried " + numSshKeysTried + " SSH " + StringUtil.pluralize("key", numSshKeysTried) +
+                     " accessible from the current project.";
+        } else {
+          message += " Could not find an SSH key in the current project which would work with this Git repository.";
+        }
+
+        throw new VcsException(message + " Error message: " + e.getMessage());
+      }
     }
 
-    if ("git".equals(scmName) || "git".equals(uri.getScheme()) || uri.getPath().endsWith(".git")) //git protocol, or git scm provider, or .git suffix
+    if ("git".equals(scmName) || "git".equals(uri.getScheme()) || fetchUrl.endsWith(".git")) //git protocol, or git scm provider
       return props;
 
+    // not SSH or URL does not end with .git, still try to connect just for the case
     try {
-      myGitSupport.testConnection(new VcsRootImpl(-1, Constants.VCS_NAME, props));
+      testConnectionSupport.testConnection(new VcsRootImpl(-1, Constants.VCS_NAME, props));
       return props;
     } catch (VcsException e) {
-      if (GitServerUtil.isAuthError(e))
-        throw e;
       if (GitVcsSupport.GIT_REPOSITORY_HAS_NO_BRANCHES.equals(e.getMessage()))
         throw e;
+
+      if (GitServerUtil.isAuthError(e)) {
+        throw e;
+      }
+
       return null; // probably not git
     }
   }
