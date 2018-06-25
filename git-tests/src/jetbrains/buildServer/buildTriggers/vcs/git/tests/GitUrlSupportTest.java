@@ -171,6 +171,7 @@ public class GitUrlSupportTest extends BaseTestCase {
   @Test
   public void ssh_protocol() throws Exception {
     VcsUrl url = new VcsUrl("ssh://git@github.com/JetBrains/kotlin.git");
+    myTestConnectionMocked = true;
     GitVcsRoot root = toGitRoot(url);
 
     assertEquals("ssh://git@github.com/JetBrains/kotlin.git", root.getProperty(Constants.FETCH_URL));
