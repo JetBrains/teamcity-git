@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
@@ -26,7 +27,6 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
-import com.intellij.openapi.diagnostic.Logger;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
@@ -88,16 +88,18 @@ public class UpdaterWithMirror extends UpdaterImpl {
     } else {
       FileUtil.delete(bareRepositoryDir);
     }
+    final GitFacade git = myGitFactory.create(bareRepositoryDir);
     boolean newMirror = false;
     if (!bareRepositoryDir.exists()) {
       LOG.info("Init " + mirrorDescription);
       bareRepositoryDir.mkdirs();
-      GitFacade git = myGitFactory.create(bareRepositoryDir);
       git.init().setBare(true).call();
       configureRemoteUrl(bareRepositoryDir);
+      mySSLInvestigator.setCertificateOptions(git);
       newMirror = true;
     } else {
       configureRemoteUrl(bareRepositoryDir);
+      mySSLInvestigator.setCertificateOptions(git);
       boolean outdatedTagsFound = removeOutdatedRefs(bareRepositoryDir);
       if (!outdatedTagsFound) {
         LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
@@ -115,7 +117,6 @@ public class UpdaterWithMirror extends UpdaterImpl {
     if (!fetchRequired && fetchHeadsMode != FetchHeadsMode.ALWAYS)
       return;
     if (!newMirror && optimizeMirrorBeforeFetch()) {
-      GitFacade git = myGitFactory.create(bareRepositoryDir);
       git.gc().call();
       git.repack().call();
     }
@@ -183,6 +184,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
         GitFacade git = myGitFactory.create(repositoryDir);
         git.init().setBare(true).call();
         configureRemoteUrl(repositoryDir);
+        mySSLInvestigator.setCertificateOptions(git);
         fetch(repositoryDir, refspec, false);
       } else {
         LOG.info("Failed to delete repository " + repositoryDir + " after failed checkout, clone repository in another directory");

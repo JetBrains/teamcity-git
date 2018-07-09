@@ -22,7 +22,6 @@ import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
-import jetbrains.buildServer.agent.ssl.TrustedCertificatesDirectory;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
@@ -30,6 +29,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.RefImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitOutdatedIndexException;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
@@ -81,6 +81,7 @@ public class UpdaterImpl implements Updater {
   protected final AgentGitVcsRoot myRoot;
   protected final String myFullBranchName;
   protected final AgentRunningBuild myBuild;
+  protected final SSLInvestigator mySSLInvestigator;
   private final CheckoutRules myRules;
   private final CheckoutMode myCheckoutMode;
   protected final MirrorManager myMirrorManager;
@@ -111,6 +112,8 @@ public class UpdaterImpl implements Updater {
     myRules = rules;
     myCheckoutMode = checkoutMode;
     myMirrorManager = mirrorManager;
+    mySSLInvestigator = new SSLInvestigator(myRoot.getRepositoryFetchURL(), myBuild.getAgentTempDirectory().getPath(),
+                                            myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath());
   }
 
 
@@ -187,6 +190,7 @@ public class UpdaterImpl implements Updater {
         initDirectory(true);
       }
     }
+    mySSLInvestigator.setCertificateOptions(myGitFactory.create(myTargetDirectory));
     removeOrphanedIdxFiles(new File(myTargetDirectory, ".git"));
   }
 
@@ -368,7 +372,7 @@ public class UpdaterImpl implements Updater {
 
 
   private void addSubmoduleUsernames(@NotNull File repositoryDir, @NotNull Config gitModules)
-    throws IOException, ConfigInvalidException, VcsException {
+    throws IOException, VcsException {
     if (!myPluginConfig.isUseMainRepoUserForSubmodules())
       return;
 
@@ -455,9 +459,8 @@ public class UpdaterImpl implements Updater {
       if (scheme == null || "git".equals(scheme)) //no auth for anonymous protocol and for local repositories
         return false;
       String user = uri.getUser();
-      if (user != null) //respect a user specified in config
-        return false;
-      return true;
+      //respect a user specified in config
+      return user == null;
     } catch (URISyntaxException e) {
       return false;
     }
@@ -707,14 +710,7 @@ public class UpdaterImpl implements Updater {
   }
 
   @NotNull
-  private FetchCommand getFetch(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout)
-    throws VcsException {
-    /* set config property for path where custom ssl certificates are stored */
-    if ("https".equals(myRoot.getRepositoryFetchURL().getScheme())) {
-      final String homeDirectory = myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath();
-      final String certDirectory = TrustedCertificatesDirectory.getAllCertificatesDirectoryFromHome(homeDirectory);
-      myGitFactory.create(repositoryDir).setConfig().setPropertyName("http.sslCAPath").setValue(certDirectory).call();
-    }
+  private FetchCommand getFetch(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout) {
     FetchCommand result = myGitFactory.create(repositoryDir).fetch()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
@@ -824,7 +820,8 @@ public class UpdaterImpl implements Updater {
 
     myTargetDirectory.mkdirs();
     myLogger.message("The .git directory is missing in '" + myTargetDirectory + "'. Running 'git init'...");
-    myGitFactory.create(myTargetDirectory).init().call();
+    final GitFacade gitFacade = myGitFactory.create(myTargetDirectory);
+    gitFacade.init().call();
     validateUrls();
     configureRemoteUrl(new File(myTargetDirectory, ".git"));
 
@@ -832,7 +829,7 @@ public class UpdaterImpl implements Updater {
     URIish url = myRoot.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();
     if (pushUrl != null && !pushUrl.equals(fetchUrl.toString())) {
-      myGitFactory.create(myTargetDirectory).setConfig().setPropertyName("remote.origin.pushurl").setValue(pushUrl).call();
+      gitFacade.setConfig().setPropertyName("remote.origin.pushurl").setValue(pushUrl).call();
     }
     setupNewRepository();
     configureSparseCheckout();

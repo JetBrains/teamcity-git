@@ -43,6 +43,7 @@ public class AgentRunningBuildBuilder {
   private Map<String, String> mySharedBuildParameters = new HashMap<String, String>();
   private List<VcsRootEntry> myRootEntries = null;
   private BuildProgressLogger myBuildLogger = null;
+  private BuildAgentConfiguration myConfiguration;
 
   public static AgentRunningBuildBuilder runningBuild() {
     return new AgentRunningBuildBuilder();
@@ -90,6 +91,11 @@ public class AgentRunningBuildBuilder {
       myRootEntries = new ArrayList<>();
     }
     myRootEntries.add(new VcsRootEntry(root, CheckoutRules.DEFAULT));
+    return this;
+  }
+
+  public AgentRunningBuildBuilder withAgentConfiguration(@NotNull final BuildAgentConfiguration configuration) {
+    myConfiguration = configuration;
     return this;
   }
 
@@ -321,12 +327,12 @@ public class AgentRunningBuildBuilder {
 
       @NotNull
       public File getAgentTempDirectory() {
-        throw new UnsupportedOperationException();
+        return new File(FileUtil.getTempDirectory());
       }
 
       @NotNull
       public BuildAgentConfiguration getAgentConfiguration() {
-        throw new UnsupportedOperationException();
+        return myConfiguration;
       }
 
       public <T> T getBuildTypeOptionValue(final Option<T> option) {

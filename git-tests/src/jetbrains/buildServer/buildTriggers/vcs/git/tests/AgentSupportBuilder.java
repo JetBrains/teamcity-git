@@ -37,6 +37,7 @@ class AgentSupportBuilder {
   private GitMetaFactory myGitMetaFactory;
   private BuildAgent myAgent;
   private FS myFS;
+  private GitAgentSSHService myGitAgentSSHService;
 
   AgentSupportBuilder(@NotNull TempFiles tempFiles) {
     myTempFiles = tempFiles;
@@ -74,8 +75,9 @@ class AgentSupportBuilder {
         return false;
       }
     };
-    return new GitAgentVcsSupport(myFS, new MockDirectoryCleaner(),
-                                  new GitAgentSSHService(myAgent, myAgentConfiguration, new MockGitPluginDescriptor(), mySshKeyProvider, buildTracker),
+    myGitAgentSSHService =
+      new GitAgentSSHService(myAgent, myAgentConfiguration, new MockGitPluginDescriptor(), mySshKeyProvider, buildTracker);
+    return new GitAgentVcsSupport(myFS, new MockDirectoryCleaner(), myGitAgentSSHService,
                                   myPluginConfigFactory, myMirrorManager, myGitMetaFactory);
   }
 
@@ -111,5 +113,17 @@ class AgentSupportBuilder {
 
   BuildAgentConfiguration getAgentConfiguration() {
     return myAgentConfiguration;
+  }
+
+  PluginConfigFactoryImpl getPluginConfigFactory() {
+    return myPluginConfigFactory;
+  }
+
+  GitMetaFactory getGitMetaFactory() {
+    return myGitMetaFactory;
+  }
+
+  GitAgentSSHService getGitAgentSSHService() {
+    return myGitAgentSSHService;
   }
 }

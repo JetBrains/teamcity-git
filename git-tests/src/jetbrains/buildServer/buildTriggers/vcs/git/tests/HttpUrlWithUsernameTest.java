@@ -180,6 +180,7 @@ public class HttpUrlWithUsernameTest extends BaseRemoteRepositoryTest {
     return runningBuild()
       .sharedEnvVariable(Constants.TEAMCITY_AGENT_GIT_PATH, myGitPath)
       .sharedConfigParams(configParams)
+      .withAgentConfiguration(myAgentConfiguration)
       .build();
   }
 

@@ -23,6 +23,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class GitCommandProxy implements InvocationHandler {
   private final Object myGitCommand;
@@ -43,7 +44,10 @@ public class GitCommandProxy implements InvocationHandler {
     myInvokedMethods.add(method.getName());
     GitCommandProxyCallback callback = myCallbacks.get(myGitCommandClass.getName() + "." + method.getName());
     if (callback != null) {
-      callback.call(method, args);
+      final Optional<Object> call = callback.call(method, args);
+      if (call != null) {
+        return call.isPresent() ? call.get() : null;
+      }
     }
     Object result = method.invoke(myGitCommand, args);
     if (myGitCommandClass.isInstance(result)) {//case of chaining

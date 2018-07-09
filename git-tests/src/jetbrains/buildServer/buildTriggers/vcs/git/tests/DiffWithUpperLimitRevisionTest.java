@@ -16,17 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.BuildProblemData;
 import jetbrains.buildServer.agent.AgentRunningBuild;
-import jetbrains.buildServer.agent.BuildProgressLogger;
-import jetbrains.buildServer.agent.FlowLogger;
 import jetbrains.buildServer.agent.NullBuildProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
-import jetbrains.buildServer.messages.BuildMessage1;
-import jetbrains.buildServer.messages.Status;
 import jetbrains.buildServer.vcs.CheckoutRules;
-import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -34,7 +28,10 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVersionProvider.getGitPath;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
@@ -114,7 +111,7 @@ public class DiffWithUpperLimitRevisionTest extends BaseRemoteRepositoryTest {
       params.put("teamcity.upperLimitRevision." + rootExtId, upperLimitRevision);
     }
     params.putAll(map(additionalParams));
-    return runningBuild().sharedConfigParams(params).withBuildLogger(myBuildLogger).build();
+    return runningBuild().sharedConfigParams(params).withBuildLogger(myBuildLogger).withAgentConfiguration(myAgentConfiguration).build();
   }
 
 
