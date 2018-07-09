@@ -65,14 +65,15 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
 
     VcsRoot vcsRoot = vcsRootWithAgentGitPath();
 
-    verifyCanCheckout(vcsRoot, CheckoutRules.DEFAULT, runningBuild().addRoot(vcsRoot).build());
+    verifyCanCheckout(vcsRoot, CheckoutRules.DEFAULT, runningBuild().addRoot(vcsRoot).withAgentConfiguration(myAgentConfiguration).build());
   }
 
   public void client_found_by_path_from_environment() throws IOException, VcsException {
     myVcsSupport = vcsSupportWithRealGit();
 
     VcsRoot vcsRoot = vcsRootWithAgentGitPath(null);
-    AgentRunningBuild build = runningBuild().sharedEnvVariable(Constants.TEAMCITY_AGENT_GIT_PATH, getGitPath()).addRoot(vcsRoot).build();
+    AgentRunningBuild build = runningBuild().sharedEnvVariable(Constants.TEAMCITY_AGENT_GIT_PATH, getGitPath()).addRoot(vcsRoot)
+      .withAgentConfiguration(myAgentConfiguration).build();
 
     verifyCanCheckout(vcsRoot, CheckoutRules.DEFAULT, build);
   }
