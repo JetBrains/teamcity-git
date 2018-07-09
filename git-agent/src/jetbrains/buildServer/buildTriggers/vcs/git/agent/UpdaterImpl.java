@@ -31,9 +31,12 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitOutdatedIndexException;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.util.ssl.TrustStoreIO;
 import jetbrains.buildServer.vcs.*;
+import org.apache.commons.codec.CharEncoding;
 import org.apache.log4j.Logger;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.*;
@@ -55,6 +58,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.*;
 public class UpdaterImpl implements Updater {
 
   private final static Logger LOG = Logger.getLogger(UpdaterImpl.class);
+  private final static String CERT_FILE = "git_custom_certificates.crt";
   /** Git version which supports --progress option in the fetch command */
   private final static GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
   //--force option in git submodule update introduced in 1.7.6
@@ -126,6 +130,7 @@ public class UpdaterImpl implements Updater {
     logInfo("Git version: " + myPluginConfig.getGitVersion());
     logSshOptions(myPluginConfig.getGitVersion());
     checkAuthMethodIsSupported();
+    generateCertificateFile();
     doUpdate();
     checkNoDiffWithUpperLimitRevision();
   }
@@ -707,14 +712,7 @@ public class UpdaterImpl implements Updater {
   }
 
   @NotNull
-  private FetchCommand getFetch(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout)
-    throws VcsException {
-    /* set config property for path where custom ssl certificates are stored */
-    if ("https".equals(myRoot.getRepositoryFetchURL().getScheme())) {
-      final String homeDirectory = myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath();
-      final String certDirectory = TrustedCertificatesDirectory.getAllCertificatesDirectoryFromHome(homeDirectory);
-      myGitFactory.create(repositoryDir).setConfig().setPropertyName("http.sslCAPath").setValue(certDirectory).call();
-    }
+  private FetchCommand getFetch(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout) {
     FetchCommand result = myGitFactory.create(repositoryDir).fetch()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
@@ -731,6 +729,41 @@ public class UpdaterImpl implements Updater {
       result.setDepth(1);
 
     return result;
+  }
+
+  protected void setCertificateOptions(@NotNull final GitFacade gitFacade) throws VcsException {
+    if (!TeamCityProperties.getBooleanOrTrue("teamcity.ssl.useCustomTrustStore")) {
+      return;
+    }
+    /* set config property for path where custom ssl certificates are stored */
+    if ("https".equals(myRoot.getRepositoryFetchURL().getScheme())) {
+      final String certificateFileName = generateCertificateFileName();
+      if (!new File(certificateFileName).exists()) {
+        return;
+      }
+      gitFacade.setConfig().setPropertyName("http.sslCAInfo").setValue(certificateFileName).call();
+    }
+  }
+
+  protected void generateCertificateFile() {
+    if (!TeamCityProperties.getBooleanOrTrue("teamcity.ssl.useCustomTrustStore")) {
+      return;
+    }
+    try {
+      final String homeDirectory = myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath();
+      final String certDirectory = TrustedCertificatesDirectory.getAllCertificatesDirectoryFromHome(homeDirectory);
+      final String pemContent = TrustStoreIO.pemContentFromDirectory(certDirectory);
+      if (!pemContent.isEmpty()) {
+        final File file = new File(generateCertificateFileName());
+        FileUtil.writeFile(file, pemContent, CharEncoding.UTF_8);
+      }
+    } catch (IOException e) {
+      LOG.error("Can not write file with certificates", e);
+    }
+  }
+
+  protected String generateCertificateFileName() {
+    return new File(myBuild.getAgentTempDirectory(), CERT_FILE).getPath();
   }
 
   protected void removeRefLocks(@NotNull File dotGit) {
@@ -824,7 +857,8 @@ public class UpdaterImpl implements Updater {
 
     myTargetDirectory.mkdirs();
     myLogger.message("The .git directory is missing in '" + myTargetDirectory + "'. Running 'git init'...");
-    myGitFactory.create(myTargetDirectory).init().call();
+    final GitFacade gitFacade = myGitFactory.create(myTargetDirectory);
+    gitFacade.init().call();
     validateUrls();
     configureRemoteUrl(new File(myTargetDirectory, ".git"));
 
@@ -832,8 +866,9 @@ public class UpdaterImpl implements Updater {
     URIish url = myRoot.getRepositoryPushURL();
     String pushUrl = url == null ? null : url.toString();
     if (pushUrl != null && !pushUrl.equals(fetchUrl.toString())) {
-      myGitFactory.create(myTargetDirectory).setConfig().setPropertyName("remote.origin.pushurl").setValue(pushUrl).call();
+      gitFacade.setConfig().setPropertyName("remote.origin.pushurl").setValue(pushUrl).call();
     }
+    setCertificateOptions(gitFacade);
     setupNewRepository();
     configureSparseCheckout();
   }
