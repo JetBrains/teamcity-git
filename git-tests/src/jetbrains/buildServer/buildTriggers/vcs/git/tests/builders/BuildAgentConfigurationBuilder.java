@@ -127,7 +127,7 @@ public class BuildAgentConfigurationBuilder {
 
       @NotNull
       public File getAgentHomeDirectory() {
-        return myAgentTempDir;
+        throw new UnsupportedOperationException();
       }
 
       @NotNull

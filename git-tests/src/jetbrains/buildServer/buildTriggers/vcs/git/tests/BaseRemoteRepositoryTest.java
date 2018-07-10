@@ -18,9 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
-import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder;
 import jetbrains.buildServer.log.LogInitializer;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
@@ -41,7 +39,6 @@ public abstract class BaseRemoteRepositoryTest {
 
   private Set<String> myPropertiesToClean;
   protected TempFiles myTempFiles;
-  protected BuildAgentConfiguration myAgentConfiguration;
   private String[] myRepositories;
   private Map<String, File> myRemoteRepositories;
 
@@ -66,8 +63,6 @@ public abstract class BaseRemoteRepositoryTest {
       copyRepository(dataFile(r), remoteRepository);
       myRemoteRepositories.put(r, remoteRepository);
     }
-    myAgentConfiguration = BuildAgentConfigurationBuilder.agentConfiguration(myTempFiles.createTempDir(), myTempFiles.createTempDir())
-      .build();
   }
 
   @AfterMethod

@@ -69,8 +69,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
 
   public void update_files_after_checkout_rules_change() throws Exception {
     String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
-    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true")
-      .withAgentConfiguration(myAgentConfiguration).build();
+    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
     CheckoutRules rules = new CheckoutRules("+:dir");
     myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
     then(myCheckoutDir.list()).contains("dir").doesNotContain("readme.txt");
@@ -83,8 +82,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
 
   public void update_files_after_switching_to_default_rules() throws Exception {
     String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
-    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true")
-      .withAgentConfiguration(myAgentConfiguration).build();
+    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
     CheckoutRules rules = new CheckoutRules("+:dir");
     myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
     then(myCheckoutDir.list()).contains("dir").doesNotContain("readme.txt");
@@ -171,8 +169,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
   private void checkRules(@NotNull String version, @NotNull CheckoutRules rules, String... files) throws VcsException {
     FileUtil.delete(myCheckoutDir);
     myCheckoutDir.mkdirs();
-    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true")
-      .withAgentConfiguration(myAgentConfiguration).build();
+    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true").build();
     myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, true);
     then(listFiles(myCheckoutDir)).containsOnly(files);
   }

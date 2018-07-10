@@ -111,7 +111,7 @@ public class DiffWithUpperLimitRevisionTest extends BaseRemoteRepositoryTest {
       params.put("teamcity.upperLimitRevision." + rootExtId, upperLimitRevision);
     }
     params.putAll(map(additionalParams));
-    return runningBuild().sharedConfigParams(params).withBuildLogger(myBuildLogger).withAgentConfiguration(myAgentConfiguration).build();
+    return runningBuild().sharedConfigParams(params).withBuildLogger(myBuildLogger).build();
   }
 
 
