@@ -717,7 +717,8 @@ public class AgentVcsSupportTest {
     myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(unreachableRepository).build();
     try {
       String revision = "abababababababababababababababababababab";
-      AgentRunningBuild build = runningBuild().useLocalMirrors(true).sharedConfigParams("teamcity.git.idle.timeout.seconds", "1").build();
+      AgentRunningBuild build = runningBuild().useLocalMirrors(true).sharedConfigParams("teamcity.git.idle.timeout.seconds", "1")
+        .withAgentConfiguration(myBuilder.getAgentConfiguration()).build();
       myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, revision, myCheckoutDir, build, false);
       fail("update on unreachable repository should fail");
     } catch (VcsException e) {
@@ -768,7 +769,10 @@ public class AgentVcsSupportTest {
     VcsRootImpl root2 = vcsRoot().withAgentGitPath(getGitPath()).withBranch("refs/heads/personal").withFetchUrl(GitUtils.toURL(remoteRepo)).build();
     fs.makeDeleteFail(mirror);
     try {
-      AgentRunningBuild build = runningBuild().useLocalMirrors(true).sharedConfigParams(AgentRuntimeProperties.FAIL_ON_CLEAN_CHECKOUT, "true").build();
+      AgentRunningBuild build = runningBuild().useLocalMirrors(true)
+        .sharedConfigParams(AgentRuntimeProperties.FAIL_ON_CLEAN_CHECKOUT, "true")
+        .withAgentConfiguration(myBuilder.getAgentConfiguration())
+        .build();
       myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
       fail("Should fail");
     } catch (VcsException e) {
@@ -1201,12 +1205,12 @@ public class AgentVcsSupportTest {
 
 
   private AgentRunningBuild createRunningBuild(boolean useLocalMirrors) {
-    return runningBuild().useLocalMirrors(useLocalMirrors).build();
+    return runningBuild().useLocalMirrors(useLocalMirrors).withAgentConfiguration(myBuilder.getAgentConfiguration()).build();
   }
 
 
   private AgentRunningBuild createRunningBuild(final Map<String, String> sharedConfigParameters) {
-    return runningBuild().sharedConfigParams(sharedConfigParameters).build();
+    return runningBuild().sharedConfigParams(sharedConfigParameters).withAgentConfiguration(myBuilder.getAgentConfiguration()).build();
   }
 
 

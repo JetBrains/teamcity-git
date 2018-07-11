@@ -93,6 +93,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       GitFacade git = myGitFactory.create(bareRepositoryDir);
       git.init().setBare(true).call();
       configureRemoteUrl(bareRepositoryDir);
+      setCertificateOptions(git);
       newMirror = true;
     } else {
       configureRemoteUrl(bareRepositoryDir);
@@ -161,6 +162,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
         GitFacade git = myGitFactory.create(repositoryDir);
         git.init().setBare(true).call();
         configureRemoteUrl(repositoryDir);
+        setCertificateOptions(git);
         fetch(repositoryDir, refspec, false);
       } else {
         LOG.info("Failed to delete repository " + repositoryDir + " after failed checkout, clone repository in another directory");
