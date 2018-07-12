@@ -42,10 +42,10 @@ public interface RepositoryManager extends MirrorManager {
   void closeRepository(@NotNull Repository repository);
 
   @NotNull
-  public Object getWriteLock(@NotNull File dir);
+  Object getWriteLock(@NotNull File dir);
 
   @NotNull
-  public ReadWriteLock getRmLock(@NotNull File dir);
+  ReadWriteLock getRmLock(@NotNull File dir);
 
   <T> T runWithDisabledRemove(@NotNull File dir, @NotNull VcsOperation<T> operation) throws VcsException;
 
