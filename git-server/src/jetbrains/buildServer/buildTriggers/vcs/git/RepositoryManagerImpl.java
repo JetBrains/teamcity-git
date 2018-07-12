@@ -54,21 +54,21 @@ public final class RepositoryManagerImpl implements RepositoryManager {
    * try to create repository concurrently some of them could see it in inconsistent state. This map contains
    * locks for repository creation, so only one thread at a time will create repository at give dir.
    */
-  private final ConcurrentMap<File, Object> myCreateLocks = new ConcurrentHashMap<File, Object>();
+  private final ConcurrentMap<String, Object> myCreateLocks = new ConcurrentHashMap<>();
   /**
    * In the past jgit has some concurrency problems, in order to fix them we do only one fetch at a time.
    * Also several concurrent fetches in single repository does not make sense since only one of them succeed.
    * This map contains locks used for fetch and push operations.
    */
-  private final ConcurrentMap<File, Object> myWriteLocks = new ConcurrentHashMap<File, Object>();
+  private final ConcurrentMap<String, Object> myWriteLocks = new ConcurrentHashMap<>();
   /**
    * During cleanup unused bare repositories are removed. This map contains rw locks for repository removal.
    * Fetch/push/create operations should be done with read lock hold, remove operation is done with write lock hold.
    * @see Cleanup
    */
-  private final ConcurrentMap<File, ReadWriteLock> myRmLocks = new ConcurrentHashMap<File, ReadWriteLock>();
+  private final ConcurrentMap<String, ReadWriteLock> myRmLocks = new ConcurrentHashMap<>();
 
-  private final ConcurrentMap<File, Object> myUpdateLastUsedTimeLocks = new ConcurrentHashMap<File, Object>();
+  private final ConcurrentMap<String, Object> myUpdateLastUsedTimeLocks = new ConcurrentHashMap<>();
 
   //repo dir -> last access time (nano seconds)
   private final ConcurrentMap<File, Long> myLastAccessTime = new ConcurrentHashMap<>();
@@ -215,34 +215,30 @@ public final class RepositoryManagerImpl implements RepositoryManager {
 
   @NotNull
   private Object getUpdateLastUsedTimeLock(@NotNull File dir) {
-    try {
-      File canonical = dir.getCanonicalFile();
-      return getOrCreate(myUpdateLastUsedTimeLocks, canonical, new Object());
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    return getOrCreate(myUpdateLastUsedTimeLocks, getCanonicalName(dir), new Object());
   }
 
 
   @NotNull
   public Object getWriteLock(@NotNull final File dir) {
-    try {
-      File canonical = dir.getCanonicalFile();
-      return getOrCreate(myWriteLocks, canonical, new Object());
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    return getOrCreate(myWriteLocks, getCanonicalName(dir), new Object());
   }
 
 
   @NotNull
   public ReadWriteLock getRmLock(@NotNull final File dir) {
-    try {
-      File canonical = dir.getCanonicalFile();
-      return getOrCreate(myRmLocks, canonical, new ReentrantReadWriteLock());
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    return getOrCreate(myRmLocks, getCanonicalName(dir), new ReentrantReadWriteLock());
+  }
+
+  @NotNull
+  private String getCanonicalName(final @NotNull File dir) {
+    String name = dir.getName();
+    if (".".equals(name) || "..".equals(name)) {
+      // call getCanonical in special cases only
+      return FileUtil.getCanonicalFile(dir).getName();
     }
+
+    return name;
   }
 
 
@@ -271,24 +267,15 @@ public final class RepositoryManagerImpl implements RepositoryManager {
 
   @NotNull
   public Object getCreateLock(File dir) {
-    try {
-      File canonical = dir.getCanonicalFile();
-      return getOrCreate(myCreateLocks, canonical, new Object());
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    return getOrCreate(myCreateLocks, getCanonicalName(dir), new Object());
   }
 
 
   public void cleanLocksFor(@NotNull final File dir) {
-    try {
-      File canonical = dir.getCanonicalFile();
-      myWriteLocks.remove(canonical);
-      myCreateLocks.remove(canonical);
-      myRmLocks.remove(canonical);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    final String canonicalName = getCanonicalName(dir);
+    myWriteLocks.remove(canonicalName);
+    myCreateLocks.remove(canonicalName);
+    myRmLocks.remove(canonicalName);
   }
 
   private <K, V> V getOrCreate(ConcurrentMap<K, V> map, K key, V value) {
