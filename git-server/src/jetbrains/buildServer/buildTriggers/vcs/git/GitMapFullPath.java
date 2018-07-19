@@ -192,6 +192,11 @@ public class GitMapFullPath {
         uninteresting.add(oldRef.getObjectId());
     }
 
+    if (updatedHeads.isEmpty()) {
+      // avoid expensive RevWalk.parseAny for uninteresting heads if there are no updated heads
+      return Collections.emptySet();
+    }
+
     RevWalk revWalk = new RevWalk(db);
     try {
       revWalk.sort(RevSort.TOPO);
@@ -206,7 +211,7 @@ public class GitMapFullPath {
           revWalk.markUninteresting((RevCommit) obj);
       }
       Set<String> newCommits = new HashSet<String>();
-      RevCommit newCommit = null;
+      RevCommit newCommit;
       while ((newCommit = revWalk.next()) != null) {
         newCommits.add(newCommit.name());
       }
