@@ -193,6 +193,7 @@ public class UpdaterImpl implements Updater {
         initDirectory(true);
       }
     }
+    setCertificateOptions(myGitFactory.create(myTargetDirectory));
     removeOrphanedIdxFiles(new File(myTargetDirectory, ".git"));
   }
 
@@ -733,7 +734,7 @@ public class UpdaterImpl implements Updater {
   }
 
   protected void setCertificateOptions(@NotNull final GitFacade gitFacade) throws VcsException {
-    if (!TeamCityProperties.getBooleanOrTrue("teamcity.ssl.useCustomTrustStore") ||
+    if (!TeamCityProperties.getBooleanOrTrue("teamcity.ssl.useCustomTrustStore.git") ||
         SystemInfo.isWindows) {
       return;
     }
@@ -741,14 +742,24 @@ public class UpdaterImpl implements Updater {
     if ("https".equals(myRoot.getRepositoryFetchURL().getScheme())) {
       final String certificateFileName = generateCertificateFileName();
       if (!new File(certificateFileName).exists()) {
-        return;
+        try {
+          gitFacade.setConfig().setPropertyName("http.sslCAInfo").unSet().call();
+        } catch (Exception e) {
+          /* ignore exception */
+        }
+        try {
+          gitFacade.setConfig().setPropertyName("http.sslCAPath").unSet().call();
+        } catch (Exception e) {
+          /* ignore exception */
+        }
+      } else {
+        gitFacade.setConfig().setPropertyName("http.sslCAInfo").setValue(certificateFileName).call();
       }
-      gitFacade.setConfig().setPropertyName("http.sslCAInfo").setValue(certificateFileName).call();
     }
   }
 
   protected void generateCertificateFile() {
-    if (!TeamCityProperties.getBooleanOrTrue("teamcity.ssl.useCustomTrustStore") ||
+    if (!TeamCityProperties.getBooleanOrTrue("teamcity.ssl.useCustomTrustStore.git") ||
         SystemInfo.isWindows) {
       return;
     }
@@ -871,7 +882,6 @@ public class UpdaterImpl implements Updater {
     if (pushUrl != null && !pushUrl.equals(fetchUrl.toString())) {
       gitFacade.setConfig().setPropertyName("remote.origin.pushurl").setValue(pushUrl).call();
     }
-    setCertificateOptions(gitFacade);
     setupNewRepository();
     configureSparseCheckout();
   }

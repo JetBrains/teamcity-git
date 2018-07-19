@@ -27,6 +27,9 @@ public interface SetConfigCommand extends BaseCommand {
   @NotNull
   SetConfigCommand setValue(@NotNull String value);
 
+  @NotNull
+  SetConfigCommand unSet();
+
   void call() throws VcsException;
 
 }

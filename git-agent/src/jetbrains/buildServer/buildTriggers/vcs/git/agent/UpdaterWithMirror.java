@@ -86,17 +86,18 @@ public class UpdaterWithMirror extends UpdaterImpl {
     } else {
       FileUtil.delete(bareRepositoryDir);
     }
+    final GitFacade git = myGitFactory.create(bareRepositoryDir);
     boolean newMirror = false;
     if (!bareRepositoryDir.exists()) {
       LOG.info("Init " + mirrorDescription);
       bareRepositoryDir.mkdirs();
-      GitFacade git = myGitFactory.create(bareRepositoryDir);
       git.init().setBare(true).call();
       configureRemoteUrl(bareRepositoryDir);
       setCertificateOptions(git);
       newMirror = true;
     } else {
       configureRemoteUrl(bareRepositoryDir);
+      setCertificateOptions(git);
       boolean outdatedTagsFound = removeOutdatedRefs(bareRepositoryDir);
       if (!outdatedTagsFound) {
         LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
@@ -114,7 +115,6 @@ public class UpdaterWithMirror extends UpdaterImpl {
     if (!fetchRequired && fetchHeadsMode != FetchHeadsMode.ALWAYS)
       return;
     if (!newMirror && optimizeMirrorBeforeFetch()) {
-      GitFacade git = myGitFactory.create(bareRepositoryDir);
       git.gc().call();
       git.repack().call();
     }
