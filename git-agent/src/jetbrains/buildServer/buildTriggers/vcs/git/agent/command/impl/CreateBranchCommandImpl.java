@@ -53,7 +53,7 @@ public class CreateBranchCommandImpl extends BaseCommandImpl implements CreateBr
   public void call() throws VcsException {
     GitCommandLine cmd = getCmd();
     cmd.addParameter("branch");
-    cmd.addParameter("-l");
+    cmd.addParameter("--create-reflog");
     if (myTrack) {
       cmd.addParameter("--track");
     } else {
