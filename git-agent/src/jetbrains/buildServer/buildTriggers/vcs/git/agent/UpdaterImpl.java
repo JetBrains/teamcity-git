@@ -736,25 +736,30 @@ public class UpdaterImpl implements Updater {
   protected void setCertificateOptions(@NotNull final GitFacade gitFacade) throws VcsException {
     if (!TeamCityProperties.getBooleanOrTrue("teamcity.ssl.useCustomTrustStore.git") ||
         SystemInfo.isWindows) {
+      unsetCertificateOptions(gitFacade);
       return;
     }
     /* set config property for path where custom ssl certificates are stored */
     if ("https".equals(myRoot.getRepositoryFetchURL().getScheme())) {
       final String certificateFileName = generateCertificateFileName();
       if (!new File(certificateFileName).exists()) {
-        try {
-          gitFacade.setConfig().setPropertyName("http.sslCAInfo").unSet().call();
-        } catch (Exception e) {
-          /* ignore exception */
-        }
-        try {
-          gitFacade.setConfig().setPropertyName("http.sslCAPath").unSet().call();
-        } catch (Exception e) {
-          /* ignore exception */
-        }
+        unsetCertificateOptions(gitFacade);
       } else {
         gitFacade.setConfig().setPropertyName("http.sslCAInfo").setValue(certificateFileName).call();
       }
+    }
+  }
+
+  protected void unsetCertificateOptions(@NotNull final GitFacade gitFacade) {
+    try {
+      gitFacade.setConfig().setPropertyName("http.sslCAInfo").unSet().call();
+    } catch (Exception e) {
+      /* ignore exception */
+    }
+    try {
+      gitFacade.setConfig().setPropertyName("http.sslCAPath").unSet().call();
+    } catch (Exception e) {
+      /* ignore exception */
     }
   }
 
