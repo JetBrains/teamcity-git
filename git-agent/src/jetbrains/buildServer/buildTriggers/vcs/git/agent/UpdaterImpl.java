@@ -733,9 +733,8 @@ public class UpdaterImpl implements Updater {
     return result;
   }
 
-  protected void setCertificateOptions(@NotNull final GitFacade gitFacade) throws VcsException {
-    if (!TeamCityProperties.getBooleanOrTrue("teamcity.ssl.useCustomTrustStore.git") ||
-        SystemInfo.isWindows) {
+  private void setCertificateOptions(@NotNull final GitFacade gitFacade) throws VcsException {
+    if (!TeamCityProperties.getBoolean("teamcity.ssl.useCustomTrustStore.git")) {
       unsetCertificateOptions(gitFacade);
       return;
     }
@@ -750,7 +749,7 @@ public class UpdaterImpl implements Updater {
     }
   }
 
-  protected void unsetCertificateOptions(@NotNull final GitFacade gitFacade) {
+  private void unsetCertificateOptions(@NotNull final GitFacade gitFacade) {
     try {
       gitFacade.setConfig().setPropertyName("http.sslCAInfo").unSet().call();
     } catch (Exception e) {
@@ -764,8 +763,7 @@ public class UpdaterImpl implements Updater {
   }
 
   protected void generateCertificateFile() {
-    if (!TeamCityProperties.getBooleanOrTrue("teamcity.ssl.useCustomTrustStore.git") ||
-        SystemInfo.isWindows) {
+    if (!TeamCityProperties.getBoolean("teamcity.ssl.useCustomTrustStore.git")) {
       return;
     }
     try {
