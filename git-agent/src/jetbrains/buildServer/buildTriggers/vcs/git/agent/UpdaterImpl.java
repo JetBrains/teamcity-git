@@ -733,7 +733,7 @@ public class UpdaterImpl implements Updater {
     return result;
   }
 
-  private void setCertificateOptions(@NotNull final GitFacade gitFacade) throws VcsException {
+  protected void setCertificateOptions(@NotNull final GitFacade gitFacade) throws VcsException {
     if (!TeamCityProperties.getBoolean("teamcity.ssl.useCustomTrustStore.git")) {
       unsetCertificateOptions(gitFacade);
       return;
