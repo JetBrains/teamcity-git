@@ -16,14 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.Trinity;
 import jetbrains.buildServer.BuildProblemData;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
-import jetbrains.buildServer.agent.ssl.TrustedCertificatesDirectory;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
@@ -31,13 +29,11 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.RefImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitOutdatedIndexException;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
-import jetbrains.buildServer.util.ssl.TrustStoreIO;
 import jetbrains.buildServer.vcs.*;
-import org.apache.commons.codec.CharEncoding;
 import org.apache.log4j.Logger;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.*;
@@ -59,7 +55,6 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.*;
 public class UpdaterImpl implements Updater {
 
   private final static Logger LOG = Logger.getLogger(UpdaterImpl.class);
-  private final static String CERT_FILE = "git_custom_certificates.crt";
   /** Git version which supports --progress option in the fetch command */
   private final static GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
   //--force option in git submodule update introduced in 1.7.6
@@ -86,6 +81,7 @@ public class UpdaterImpl implements Updater {
   protected final AgentGitVcsRoot myRoot;
   protected final String myFullBranchName;
   protected final AgentRunningBuild myBuild;
+  protected final SSLInvestigator mySSLInvestigator;
   private final CheckoutRules myRules;
   private final CheckoutMode myCheckoutMode;
   protected final MirrorManager myMirrorManager;
@@ -116,6 +112,8 @@ public class UpdaterImpl implements Updater {
     myRules = rules;
     myCheckoutMode = checkoutMode;
     myMirrorManager = mirrorManager;
+    mySSLInvestigator = new SSLInvestigator(myRoot.getRepositoryFetchURL(), myBuild.getAgentTempDirectory().getPath(),
+                                            myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath());
   }
 
 
@@ -131,7 +129,6 @@ public class UpdaterImpl implements Updater {
     logInfo("Git version: " + myPluginConfig.getGitVersion());
     logSshOptions(myPluginConfig.getGitVersion());
     checkAuthMethodIsSupported();
-    generateCertificateFile();
     doUpdate();
     checkNoDiffWithUpperLimitRevision();
   }
@@ -193,7 +190,7 @@ public class UpdaterImpl implements Updater {
         initDirectory(true);
       }
     }
-    setCertificateOptions(myGitFactory.create(myTargetDirectory));
+    mySSLInvestigator.setCertificateOptions(myGitFactory.create(myTargetDirectory));
     removeOrphanedIdxFiles(new File(myTargetDirectory, ".git"));
   }
 
@@ -375,7 +372,7 @@ public class UpdaterImpl implements Updater {
 
 
   private void addSubmoduleUsernames(@NotNull File repositoryDir, @NotNull Config gitModules)
-    throws IOException, ConfigInvalidException, VcsException {
+    throws IOException, VcsException {
     if (!myPluginConfig.isUseMainRepoUserForSubmodules())
       return;
 
@@ -462,9 +459,8 @@ public class UpdaterImpl implements Updater {
       if (scheme == null || "git".equals(scheme)) //no auth for anonymous protocol and for local repositories
         return false;
       String user = uri.getUser();
-      if (user != null) //respect a user specified in config
-        return false;
-      return true;
+      //respect a user specified in config
+      return user == null;
     } catch (URISyntaxException e) {
       return false;
     }
@@ -731,56 +727,6 @@ public class UpdaterImpl implements Updater {
       result.setDepth(1);
 
     return result;
-  }
-
-  protected void setCertificateOptions(@NotNull final GitFacade gitFacade) throws VcsException {
-    if (!TeamCityProperties.getBoolean("teamcity.ssl.useCustomTrustStore.git")) {
-      unsetCertificateOptions(gitFacade);
-      return;
-    }
-    /* set config property for path where custom ssl certificates are stored */
-    if ("https".equals(myRoot.getRepositoryFetchURL().getScheme())) {
-      final String certificateFileName = generateCertificateFileName();
-      if (!new File(certificateFileName).exists()) {
-        unsetCertificateOptions(gitFacade);
-      } else {
-        gitFacade.setConfig().setPropertyName("http.sslCAInfo").setValue(certificateFileName).call();
-      }
-    }
-  }
-
-  private void unsetCertificateOptions(@NotNull final GitFacade gitFacade) {
-    try {
-      gitFacade.setConfig().setPropertyName("http.sslCAInfo").unSet().call();
-    } catch (Exception e) {
-      /* ignore exception */
-    }
-    try {
-      gitFacade.setConfig().setPropertyName("http.sslCAPath").unSet().call();
-    } catch (Exception e) {
-      /* ignore exception */
-    }
-  }
-
-  protected void generateCertificateFile() {
-    if (!TeamCityProperties.getBoolean("teamcity.ssl.useCustomTrustStore.git")) {
-      return;
-    }
-    try {
-      final String homeDirectory = myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath();
-      final String certDirectory = TrustedCertificatesDirectory.getAllCertificatesDirectoryFromHome(homeDirectory);
-      final String pemContent = TrustStoreIO.pemContentFromDirectory(certDirectory);
-      if (!pemContent.isEmpty()) {
-        final File file = new File(generateCertificateFileName());
-        FileUtil.writeFile(file, pemContent, CharEncoding.UTF_8);
-      }
-    } catch (IOException e) {
-      LOG.error("Can not write file with certificates", e);
-    }
-  }
-
-  protected String generateCertificateFileName() {
-    return new File(myBuild.getAgentTempDirectory(), CERT_FILE).getPath();
   }
 
   protected void removeRefLocks(@NotNull File dotGit) {

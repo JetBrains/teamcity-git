@@ -56,6 +56,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -639,9 +640,10 @@ public class AgentVcsSupportTest {
     AtomicInteger invocationCount = new AtomicInteger(0);
     loggingFactory.addCallback(FetchCommand.class.getName() + ".call", new GitCommandProxyCallback() {
       @Override
-      public void call(final Method method, final Object[] args) throws VcsException {
+      public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
         if (invocationCount.getAndIncrement() == 0)
           throw new VcsException("TEST ERROR");
+        return null;
       }
     });
     File mirror = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));
@@ -674,7 +676,7 @@ public class AgentVcsSupportTest {
 
     loggingFactory.addCallback(LsRemoteCommand.class.getName() + ".call", new GitCommandProxyCallback() {
       @Override
-      public void call(final Method method, final Object[] args) throws VcsException {
+      public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
         throw new VcsException("TEST ERROR");
       }
     });
@@ -759,9 +761,10 @@ public class AgentVcsSupportTest {
     AtomicInteger invocationCount = new AtomicInteger(0);
     loggingFactory.addCallback(FetchCommand.class.getName() + ".call", new GitCommandProxyCallback() {
       @Override
-      public void call(final Method method, final Object[] args) throws VcsException {
+      public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
         if (invocationCount.getAndIncrement() == 0)
           throw new VcsException("TEST ERROR");
+        return null;
       }
     });
     File mirror = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));

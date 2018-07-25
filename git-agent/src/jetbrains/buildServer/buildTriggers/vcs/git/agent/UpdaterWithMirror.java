@@ -93,11 +93,11 @@ public class UpdaterWithMirror extends UpdaterImpl {
       bareRepositoryDir.mkdirs();
       git.init().setBare(true).call();
       configureRemoteUrl(bareRepositoryDir);
-      setCertificateOptions(git);
+      mySSLInvestigator.setCertificateOptions(git);
       newMirror = true;
     } else {
       configureRemoteUrl(bareRepositoryDir);
-      setCertificateOptions(git);
+      mySSLInvestigator.setCertificateOptions(git);
       boolean outdatedTagsFound = removeOutdatedRefs(bareRepositoryDir);
       if (!outdatedTagsFound) {
         LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
@@ -162,7 +162,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
         GitFacade git = myGitFactory.create(repositoryDir);
         git.init().setBare(true).call();
         configureRemoteUrl(repositoryDir);
-        setCertificateOptions(git);
+        mySSLInvestigator.setCertificateOptions(git);
         fetch(repositoryDir, refspec, false);
       } else {
         LOG.info("Failed to delete repository " + repositoryDir + " after failed checkout, clone repository in another directory");

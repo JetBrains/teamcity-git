@@ -327,7 +327,7 @@ public class AgentRunningBuildBuilder {
 
       @NotNull
       public File getAgentTempDirectory() {
-        throw new UnsupportedOperationException();
+        return new File(FileUtil.getTempDirectory());
       }
 
       @NotNull
