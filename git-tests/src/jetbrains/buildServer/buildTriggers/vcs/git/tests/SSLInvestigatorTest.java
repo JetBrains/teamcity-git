@@ -16,36 +16,29 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import com.sun.net.httpserver.HttpsServer;
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.agent.ssl.TrustedCertificatesDirectory;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.GetConfigCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SetConfigCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
-import jetbrains.buildServer.util.FileUtil;
 import org.eclipse.jgit.transport.URIish;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.jmock.lib.legacy.ClassImposteriser;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
-import javax.net.ssl.SSLContext;
 import java.io.File;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Optional;
 
-import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.*;
 
 /**
- * Unit tests for {@link jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator}.
+ * Unit tests for {@link SSLInvestigator}.
  *
  * @author Mikhail Khorkov
  * @since 2018.1.2
@@ -53,14 +46,32 @@ import static org.testng.Assert.assertEquals;
 @Test
 public class SSLInvestigatorTest {
 
-  private SSLInvestigator instance;
-
   private TempFiles myTempFiles = new TempFiles();
   private File myHomeDirectory;
   private File myTempDirectory;
-  private SSLContext mySSLContext;
   private Mockery myMockery;
   private LoggingGitMetaFactory myLoggingFactory;
+
+  private HttpsServer myServer;
+  private SSLTestUtil mySSLTestUtil;
+  private int myServerPort;
+
+  private enum Plot {FEATURE_OFF, GOOD_CERT, BAD_CERT, NO_CERT}
+
+  private enum Result {ONLY_GET, ONLY_SET, GET_AND_SET, GET_AND_UNSET}
+
+  @BeforeClass
+  public void init() throws Exception {
+    mySSLTestUtil = new SSLTestUtil();
+    myServer = mySSLTestUtil.getHttpsServer();
+    myServerPort = mySSLTestUtil.getServerPort();
+    myServer.start();
+  }
+
+  @AfterClass
+  public void down() {
+    myServer.stop(0);
+  }
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -76,7 +87,6 @@ public class SSLInvestigatorTest {
       setImposteriser(ClassImposteriser.INSTANCE);
     }};
     myLoggingFactory = new LoggingGitMetaFactory();
-    mySSLContext = null;
   }
 
   @AfterMethod
@@ -87,42 +97,42 @@ public class SSLInvestigatorTest {
   @DataProvider(name = "invariants")
   public static Object[][] invariants() {
     return new Object[][] {
-      /* (feature enabled | certificate exists | can connect |custom flag is set already),
-       * number of sets, number of gets, is set or unset */
-      new Object[] {true, true, true, true, 1, 0, true},
-      new Object[] {true, true, true, false, 1, 0, true},
-      new Object[] {true, true, false, true, 1, 1, false},
-      new Object[] {true, true, false, false, 0, 1, false},
+      /* plot of  prerequisites | custom flag is set already | expected result */
+      new Object[]{Plot.FEATURE_OFF, false, Result.ONLY_GET},
+      new Object[]{Plot.FEATURE_OFF, true, Result.GET_AND_UNSET},
 
-      new Object[] {true, false, true, true, 1, 1, false},
-      new Object[] {true, false, true, false, 0, 1, false},
-      new Object[] {true, false, false, true, 1, 1, false},
-      new Object[] {true, false, false, false, 0, 1, false},
+      new Object[]{Plot.BAD_CERT, false, Result.ONLY_GET},
+      new Object[]{Plot.BAD_CERT, true, Result.GET_AND_UNSET},
 
-      new Object[] {false, true, true, true, 1, 1, false},
-      new Object[] {false, true, true, false, 0, 1, false},
-      new Object[] {false, true, false, true, 1, 1, false},
-      new Object[] {false, true, false, false, 0, 1, false},
+      new Object[]{Plot.NO_CERT, false, Result.ONLY_GET},
+      new Object[]{Plot.NO_CERT, true, Result.GET_AND_UNSET},
 
-      new Object[] {false, false, true, true, 1, 1, false},
-      new Object[] {false, false, true, false, 0, 1, false},
-      new Object[] {false, false, false, true, 1, 1, false},
-      new Object[] {false, false, false, false, 0, 1, false},
+      new Object[]{Plot.GOOD_CERT, false, Result.ONLY_SET},
+      new Object[]{Plot.GOOD_CERT, true, Result.ONLY_SET},
     };
   }
 
   @Test(dataProvider = "invariants")
-  public void allTest(boolean featureEnables, boolean certificateExists, boolean canConnect, boolean alreadySet, int sets, int gets,
-                      boolean setOrUnset) throws Exception {
-    if (featureEnables) {
-      System.setProperty("teamcity.ssl.useCustomTrustStore.git", "true");
-    } else {
-      System.setProperty("teamcity.ssl.useCustomTrustStore.git", "false");
-    }
-
-    if (certificateExists) {
-      writeCert();
-      mySSLContext = myMockery.mock(SSLContext.class);
+  public void allTest(Plot plot, boolean alreadySet, Result result) throws Exception {
+    switch (plot) {
+      case FEATURE_OFF: {
+        System.setProperty("teamcity.ssl.useCustomTrustStore.git", "false");
+        break;
+      }
+      case NO_CERT: {
+        System.setProperty("teamcity.ssl.useCustomTrustStore.git", "true");
+        break;
+      }
+      case BAD_CERT: {
+        System.setProperty("teamcity.ssl.useCustomTrustStore.git", "true");
+        myTempFiles.registerAsTempFile(mySSLTestUtil.writeAnotherCert(myHomeDirectory));
+        break;
+      }
+      case GOOD_CERT: {
+        System.setProperty("teamcity.ssl.useCustomTrustStore.git", "true");
+        myTempFiles.registerAsTempFile(mySSLTestUtil.writeServerCert(myHomeDirectory));
+        break;
+      }
     }
 
     final String alreadyInProperties = alreadySet ? "something" : "";
@@ -131,44 +141,39 @@ public class SSLInvestigatorTest {
     myLoggingFactory.addCallback(SetConfigCommand.class.getName() + ".call",
                                  (method, args) -> Optional.empty());
 
-    instance = createInstance("https://foo.bar", mySSLContext, canConnect);
-    final GitFacade gitFacade = createFactory().create(myTempDirectory);
+    final SSLInvestigator instance = createInstance();
 
-    instance.setCertificateOptions(gitFacade);
+    instance.setCertificateOptions(createFactory().create(myTempDirectory));
 
-    assertEquals(myLoggingFactory.getNumberOfCalls(SetConfigCommand.class), sets);
-    if (sets > 0) {
-      assertEquals(setOrUnset, !myLoggingFactory.getInvokedMethods(SetConfigCommand.class).contains("unSet"));
+    switch (result) {
+      case ONLY_GET: {
+        assertEquals(myLoggingFactory.getNumberOfCalls(GetConfigCommand.class), 1);
+        assertEquals(myLoggingFactory.getNumberOfCalls(SetConfigCommand.class), 0);
+        break;
+      }
+      case ONLY_SET: {
+        assertEquals(myLoggingFactory.getNumberOfCalls(GetConfigCommand.class), 0);
+        assertEquals(myLoggingFactory.getNumberOfCalls(SetConfigCommand.class), 1);
+        assertFalse(myLoggingFactory.getInvokedMethods(SetConfigCommand.class).contains("unSet"));
+        break;
+      }
+      case GET_AND_SET: {
+        assertEquals(myLoggingFactory.getNumberOfCalls(GetConfigCommand.class), 1);
+        assertEquals(myLoggingFactory.getNumberOfCalls(SetConfigCommand.class), 1);
+        assertFalse(myLoggingFactory.getInvokedMethods(SetConfigCommand.class).contains("unSet"));
+        break;
+      }
+      case GET_AND_UNSET: {
+        assertEquals(myLoggingFactory.getNumberOfCalls(GetConfigCommand.class), 1);
+        assertEquals(myLoggingFactory.getNumberOfCalls(SetConfigCommand.class), 1);
+        assertTrue(myLoggingFactory.getInvokedMethods(SetConfigCommand.class).contains("unSet"));
+        break;
+      }
     }
-    assertEquals(myLoggingFactory.getNumberOfCalls(GetConfigCommand.class), gets);
   }
 
-  private SSLInvestigator createInstance(String url, SSLContext sslContext, boolean canConnect) throws Exception {
-    return new SSLInvestigator(new URIish(new URL(url)), myTempDirectory.getPath(), myHomeDirectory.getPath(),
-                               new SSLCheckerMock(canConnect), new SSLRetrieverMock(sslContext));
-  }
-
-  private void writeCert() throws Exception {
-    final String certDirectory = TrustedCertificatesDirectory.getAllCertificatesDirectoryFromHome(myHomeDirectory.getPath());
-    final File cert = new File(certDirectory, "cert.pem");
-    myTempFiles.registerAsTempFile(cert);
-    cert.getParentFile().mkdirs();
-    final String certContent = "-----BEGIN CERTIFICATE-----\n" +
-                               "MIICQTCCAaoCCQCgsSqblM1uHDANBgkqhkiG9w0BAQUFADBlMQswCQYDVQQGEwJD\n" +
-                               "TjELMAkGA1UECAwCQ1MxCzAJBgNVBAcMAkxOMQswCQYDVQQKDAJPTjEMMAoGA1UE\n" +
-                               "CwwDT1VOMQswCQYDVQQDDAJDTjEUMBIGCSqGSIb3DQEJARYFYW1haWwwHhcNMTgw\n" +
-                               "NzI1MDc0MTQyWhcNMTkwNzI1MDc0MTQyWjBlMQswCQYDVQQGEwJDTjELMAkGA1UE\n" +
-                               "CAwCQ1MxCzAJBgNVBAcMAkxOMQswCQYDVQQKDAJPTjEMMAoGA1UECwwDT1VOMQsw\n" +
-                               "CQYDVQQDDAJDTjEUMBIGCSqGSIb3DQEJARYFYW1haWwwgZ8wDQYJKoZIhvcNAQEB\n" +
-                               "BQADgY0AMIGJAoGBALd6XvMOgLUrjioJxgudKQlcqbPbihcWWha1SvfY491Ya93Q\n" +
-                               "q3R8AiLybJqidfdlDZFA/fiXsIs+LnQD9S+uFdC83u2gpzqlIim7A7w/X4B8JClP\n" +
-                               "wNS8AebnAcn8FEgi9AOHsoBb/mitke6gUkf5TUAwsdsTDi2YV7Rdmy1Ux6GVAgMB\n" +
-                               "AAEwDQYJKoZIhvcNAQEFBQADgYEAPPh1TupBgST6RVyWvJvXlcnPm3LOH3J8Jd3V\n" +
-                               "+bm6+W4zs1TLjZgOzGLoTR05INISahYDjAlYZm2v0aOYm2MdxZepxSec/47K4HL2\n" +
-                               "gr3hMGf7xFwTNLwxNmiTiBneuTcxfinGxAp+grq9jMaZXGWKorS1ATnyWmpXfQ8j\n" +
-                               "ESLNmVw=\n" +
-                               "-----END CERTIFICATE-----";
-    FileUtil.writeFile(cert, certContent, "UTF-8");
+  private SSLInvestigator createInstance() throws Exception {
+    return new SSLInvestigator(new URIish(new URL("https://localhost:" + myServerPort)), myTempDirectory.getPath(), myHomeDirectory.getPath());
   }
 
   private GitFactory createFactory() throws Exception {
@@ -187,34 +192,5 @@ public class SSLInvestigatorTest {
     }});
     final GitProgressLogger logger = myMockery.mock(GitProgressLogger.class);
     return myLoggingFactory.createFactory(ssh, pluginConfig, logger, myTempFiles.createTempDir(), Collections.emptyMap(), context);
-  }
-
-  private static class SSLRetrieverMock implements SSLInvestigator.SSLContextRetriever {
-
-    private final SSLContext mySslContext;
-
-    private SSLRetrieverMock(@Nullable final SSLContext sslContext) {
-      mySslContext = sslContext;
-    }
-
-    @Nullable
-    @Override
-    public SSLContext retrieve(@NotNull final String homeDirectory) {
-      return mySslContext;
-    }
-  }
-
-  private static class SSLCheckerMock implements SSLInvestigator.SSLChecker {
-
-    private final boolean myCan;
-
-    private SSLCheckerMock(final boolean can) {
-      myCan = can;
-    }
-
-    @Override
-    public boolean canConnect(@NotNull final SSLContext sslContext, @NotNull final String host, final int port) throws Exception {
-      return myCan;
-    }
   }
 }
