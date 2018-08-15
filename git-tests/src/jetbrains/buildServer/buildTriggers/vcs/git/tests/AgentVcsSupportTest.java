@@ -687,14 +687,14 @@ public class AgentVcsSupportTest {
     loggingFactory.addCallback(FetchCommand.class.getName() + ".call", new GitCommandProxyCallback() {
       @Override
       public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
-        if (invocationCount.getAndIncrement() <= 2)
+        if (invocationCount.getAndIncrement() <= 1)
           throw new VcsException("TEST ERROR");
         return null;
       }
     });
     File mirror = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));
 
-    //try to fetch unknown branch, first fetch fails, second succeeds. If it's not ensure that delete of the mirror also fails
+    //try to fetch unknown branch, first&second fetch fails, third succeeds. If it's not ensure that delete of the mirror also fails
     //build should succeed anyway
     fs.makeDeleteFail(mirror);
     VcsRootImpl root2 = vcsRoot().withAgentGitPath(getGitPath()).withBranch("refs/heads/personal").withFetchUrl(GitUtils.toURL(remoteRepo)).build();
