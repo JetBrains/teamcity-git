@@ -22,12 +22,10 @@ import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
-import jetbrains.buildServer.util.StringUtil;
-import jetbrains.buildServer.util.ThreadUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
-import com.intellij.openapi.diagnostic.Logger;
+import org.apache.log4j.Logger;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
@@ -37,7 +35,6 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -45,7 +42,7 @@ import java.util.Map;
  */
 public class UpdaterWithMirror extends UpdaterImpl {
 
-  private final static Logger LOG = Logger.getInstance(UpdaterWithMirror.class.getName());
+  private final static Logger LOG = Logger.getLogger(UpdaterWithMirror.class);
 
   public UpdaterWithMirror(@NotNull FS fs,
                            @NotNull AgentPluginConfig pluginConfig,
@@ -157,23 +154,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
                            @NotNull String refspec) throws VcsException {
     removeRefLocks(repositoryDir);
     try {
-      final int[] retryTimeouts = getRetryTimeouts();
-      for (int i = 0; i <= retryTimeouts.length; i++) {
-        try {
-          fetch(repositoryDir, refspec, false);
-          break;
-        } catch (VcsException e) {
-          // Throw exception after latest attempt
-          if (i == retryTimeouts.length) throw e;
-          int wait = retryTimeouts[i];
-          LOG.warnAndDebugDetails("Failed to fetch mirror, will retry after " + wait + " seconds.", e);
-          ThreadUtil.sleep(wait * 1000);
-        }
-      }
+      fetch(repositoryDir, refspec, false);
     } catch (VcsException e) {
       if (myPluginConfig.isFailOnCleanCheckout() || !repeatFetchAttempt || !shouldFetchFromScratch(e))
         throw e;
-      LOG.warnAndDebugDetails("Failed to fetch mirror", e);
       if (cleanDir(repositoryDir)) {
         GitFacade git = myGitFactory.create(repositoryDir);
         git.init().setBare(true).call();
@@ -311,22 +295,5 @@ public class UpdaterWithMirror extends UpdaterImpl {
       i++;
     }
     return branchName;
-  }
-
-  private int[] getRetryTimeouts() {
-    String value = myBuild.getSharedConfigParameters().get("teamcity.git.fetchMirrorRetryTimeouts");
-    if (value == null) return new int[]{5, 10, 15, 30}; // total 60 seconds
-
-    List<String> split = StringUtil.split(value, true, ',');
-    int[] result = new int[split.size()];
-    for (int i = 0; i < result.length; i++) {
-      int parsed = 1;
-      try {
-        parsed = Integer.parseInt(split.get(i));
-      } catch (NumberFormatException ignored) {
-      }
-      result[i] = parsed;
-    }
-    return result;
   }
 }
