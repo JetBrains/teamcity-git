@@ -655,6 +655,7 @@ public class AgentVcsSupportTest {
     AgentRunningBuild build = runningBuild()
       .useLocalMirrors(true)
       .sharedConfigParams("teamcity.git.fetchMirrorRetryTimeouts", "")
+      .withAgentConfiguration(myBuilder.getAgentConfiguration())
       .build();
     myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
     File mirrorAfterBuild = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));
@@ -700,6 +701,7 @@ public class AgentVcsSupportTest {
     AgentRunningBuild build = runningBuild()
       .useLocalMirrors(true)
       .sharedConfigParams("teamcity.git.fetchMirrorRetryTimeouts", "0,0")
+      .withAgentConfiguration(myBuilder.getAgentConfiguration())
       .build();
     myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
     File mirrorAfterBuild = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));
