@@ -650,9 +650,57 @@ public class AgentVcsSupportTest {
     //build should succeed anyway
     fs.makeDeleteFail(mirror);
     VcsRootImpl root2 = vcsRoot().withAgentGitPath(getGitPath()).withBranch("refs/heads/personal").withFetchUrl(GitUtils.toURL(remoteRepo)).build();
-    myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, createRunningBuild(true), false);
+    AgentRunningBuild build = runningBuild()
+      .useLocalMirrors(true)
+      .sharedConfigParams("teamcity.git.fetchMirrorRetryTimeouts", "")
+      .build();
+    myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
     File mirrorAfterBuild = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));
     then(mirrorAfterBuild).isNotEqualTo(mirror);//repository was remapped to another dir
+  }
+
+  @TestFor(issues = "TW-56415")
+  public void should_retry_fetch_mirror() throws Exception {
+    MockFS fs = new MockFS();
+    LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
+    myVcsSupport = myBuilder.setGitMetaFactory(loggingFactory).setFS(fs).build();
+
+    File repo = dataFile("repo_for_fetch.1");
+    File remoteRepo = myTempFiles.createTempDir();
+    copyRepository(repo, remoteRepo);
+
+    //run build to prepare mirror
+    VcsRootImpl root = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(remoteRepo)).build();
+    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "add81050184d3c818560bdd8839f50024c188586", myCheckoutDir, createRunningBuild(true), false);
+
+    //update remote repo: add personal branch
+    delete(remoteRepo);
+    File updatedRepo = dataFile("repo_for_fetch.2.personal");
+    copyRepository(updatedRepo, remoteRepo);
+
+
+    //make first fetch in local mirror to fail:
+    AtomicInteger invocationCount = new AtomicInteger(0);
+    loggingFactory.addCallback(FetchCommand.class.getName() + ".call", new GitCommandProxyCallback() {
+      @Override
+      public void call(final Method method, final Object[] args) throws VcsException {
+        if (invocationCount.getAndIncrement() == 0)
+          throw new VcsException("TEST ERROR");
+      }
+    });
+    File mirror = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));
+
+    //try to fetch unknown branch, first fetch fails, second succeeds. If it's not ensure that delete of the mirror also fails
+    //build should succeed anyway
+    fs.makeDeleteFail(mirror);
+    VcsRootImpl root2 = vcsRoot().withAgentGitPath(getGitPath()).withBranch("refs/heads/personal").withFetchUrl(GitUtils.toURL(remoteRepo)).build();
+    AgentRunningBuild build = runningBuild()
+      .useLocalMirrors(true)
+      .sharedConfigParams("teamcity.git.fetchMirrorRetryTimeouts", "0")
+      .build();
+    myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
+    File mirrorAfterBuild = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));
+    then(mirrorAfterBuild).isEqualTo(mirror);//repository was remapped to another dir
   }
 
 
@@ -759,7 +807,7 @@ public class AgentVcsSupportTest {
     loggingFactory.addCallback(FetchCommand.class.getName() + ".call", new GitCommandProxyCallback() {
       @Override
       public void call(final Method method, final Object[] args) throws VcsException {
-        if (invocationCount.getAndIncrement() == 0)
+        if (invocationCount.getAndIncrement() <= 1)
           throw new VcsException("TEST ERROR");
       }
     });
@@ -768,7 +816,11 @@ public class AgentVcsSupportTest {
     VcsRootImpl root2 = vcsRoot().withAgentGitPath(getGitPath()).withBranch("refs/heads/personal").withFetchUrl(GitUtils.toURL(remoteRepo)).build();
     fs.makeDeleteFail(mirror);
     try {
-      AgentRunningBuild build = runningBuild().useLocalMirrors(true).sharedConfigParams(AgentRuntimeProperties.FAIL_ON_CLEAN_CHECKOUT, "true").build();
+      AgentRunningBuild build = runningBuild()
+        .useLocalMirrors(true)
+        .sharedConfigParams(AgentRuntimeProperties.FAIL_ON_CLEAN_CHECKOUT, "true")
+        .sharedConfigParams("teamcity.git.fetchMirrorRetryTimeouts", "0")
+        .build();
       myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
       fail("Should fail");
     } catch (VcsException e) {
