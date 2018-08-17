@@ -23,7 +23,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.util.StringUtil;
-import jetbrains.buildServer.util.ThreadUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -162,12 +161,18 @@ public class UpdaterWithMirror extends UpdaterImpl {
         try {
           fetch(repositoryDir, refspec, false);
           break;
+        } catch (GitExecTimeout e) {
+          throw e;
         } catch (VcsException e) {
           // Throw exception after latest attempt
           if (i == retryTimeouts.length) throw e;
           int wait = retryTimeouts[i];
           LOG.warnAndDebugDetails("Failed to fetch mirror, will retry after " + wait + " seconds.", e);
-          ThreadUtil.sleep(wait * 1000);
+          try {
+            Thread.sleep(wait * 1000);
+          } catch (InterruptedException e1) {
+            throw new VcsException("Failed to fetch mirror", e1);
+          }
         }
       }
     } catch (VcsException e) {

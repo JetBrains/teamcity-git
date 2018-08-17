@@ -682,7 +682,7 @@ public class AgentVcsSupportTest {
     copyRepository(updatedRepo, remoteRepo);
 
 
-    //make first fetch in local mirror to fail:
+    //make first two fetches in local mirror to fail:
     AtomicInteger invocationCount = new AtomicInteger(0);
     loggingFactory.addCallback(FetchCommand.class.getName() + ".call", new GitCommandProxyCallback() {
       @Override
@@ -705,7 +705,67 @@ public class AgentVcsSupportTest {
       .build();
     myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
     File mirrorAfterBuild = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));
-    then(mirrorAfterBuild).isEqualTo(mirror);//repository was remapped to another dir
+    then(mirrorAfterBuild).isEqualTo(mirror);//repository was not remapped to another dir
+  }
+
+  @TestFor(issues = "TW-56415")
+  public void should_not_retry_fetch_mirror_for_exec_timeout() throws Exception {
+    MockFS fs = new MockFS();
+    LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
+    myVcsSupport = myBuilder.setGitMetaFactory(loggingFactory).setFS(fs).build();
+
+    File repo = dataFile("repo_for_fetch.1");
+    File remoteRepo = myTempFiles.createTempDir();
+    copyRepository(repo, remoteRepo);
+
+    //run build to prepare mirror
+    VcsRootImpl root = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(remoteRepo)).build();
+    myVcsSupport
+      .updateSources(root, CheckoutRules.DEFAULT, "add81050184d3c818560bdd8839f50024c188586", myCheckoutDir, createRunningBuild(true),
+                     false);
+
+    //update remote repo: add personal branch
+    delete(remoteRepo);
+    File updatedRepo = dataFile("repo_for_fetch.2.personal");
+    copyRepository(updatedRepo, remoteRepo);
+
+    //make first two fetches in local mirror to fail:
+    loggingFactory.addCallback(FetchCommand.class.getName() + ".call", new GitCommandProxyCallback() {
+      volatile boolean thrown = false;
+
+      @Override
+      public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
+        if (!thrown) {
+          thrown = true;
+          throw new GitExecTimeout();
+        }
+        fail("Should not try to fetch again");
+        return null;
+      }
+    });
+    File mirror = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));
+
+    //try to fetch unknown branch, first fetch fails with exec timeout, repo would be remapped
+    VcsRootImpl root2 =
+      vcsRoot().withAgentGitPath(getGitPath()).withBranch("refs/heads/personal").withFetchUrl(GitUtils.toURL(remoteRepo)).build();
+    AgentRunningBuild build = runningBuild()
+      .useLocalMirrors(true)
+      .sharedConfigParams("teamcity.git.fetchMirrorRetryTimeouts", "0,0")
+      .withAgentConfiguration(myBuilder.getAgentConfiguration())
+      .build();
+
+    try {
+      myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
+      fail("GitExecTimeout exception expected");
+    } catch (GitExecTimeout ignored) {
+    }
+
+    //try again, should succeed without remapping, means previous code has not changed mirror directory
+    loggingFactory.addCallback(FetchCommand.class.getName() + ".call", (method, args) -> null);
+    myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
+
+    File mirrorAfterBuild = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));
+    then(mirrorAfterBuild).isEqualTo(mirror);//repository was not remapped to another dir
   }
 
 
