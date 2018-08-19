@@ -164,6 +164,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
         } catch (GitExecTimeout e) {
           throw e;
         } catch (VcsException e) {
+          if (!repeatFetchAttempt) throw e;
           // Throw exception after latest attempt
           if (i == retryTimeouts.length) throw e;
           int wait = retryTimeouts[i];
