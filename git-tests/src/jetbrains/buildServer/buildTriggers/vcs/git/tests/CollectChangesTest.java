@@ -633,21 +633,28 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
 
   public void report_per_parent_changed_files() throws Exception {
-    // 4 f1=2, f2=2
+    // 4 f1=2, f2=2, f3=2
     // |\
-    // | 3 f1=1, f2=2
-    // 2 | f1=2, f2=1
+    // | 3 f1=1, f2=2, f3=2
+    // 2 | f1=2, f2=1, f3=1
     // |/
-    // 1 f1=1, f2=1
+    // 1 f1=1, f2=1, f3=1
 
     // setup repo
     File repoDir = myTempFiles.createTempDir();
     Git git = Git.init().setDirectory(repoDir).call();
 
-    File f1 = new File(repoDir, "f1");
-    File f2 = new File(repoDir, "f2");
+    File parentDir1 = new File(repoDir, "dir1/dir2/dir3");
+    File parentDir2 = new File(repoDir, "dir1/dir2");
+    parentDir1.mkdirs();
+    parentDir2.mkdirs();
+
+    File f1 = new File(parentDir1, "f1");
+    File f2 = new File(parentDir2, "f2");
+    File f3 = new File(repoDir, "f3");
     FileUtil.writeFileAndReportErrors(f1, "1");
     FileUtil.writeFileAndReportErrors(f2, "1");
+    FileUtil.writeFileAndReportErrors(f3, "1");
     git.add().addFilepattern(".").call();
     RevCommit c1 = git.commit().setAll(true).setMessage("1").call();
 
@@ -657,6 +664,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     git.branchCreate().setName("branch1").setStartPoint(c1).call();
     git.checkout().setName("branch1").call();
     FileUtil.writeFileAndReportErrors(f2, "2");
+    FileUtil.writeFileAndReportErrors(f3, "2");
     RevCommit c3 = git.commit().setAll(true).setMessage("3").call();
 
     git.checkout().setName("master").call();
@@ -687,10 +695,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
     ModificationData m4 = vcs.getCollectChangesPolicy().collectChanges(root, s23, s4, CheckoutRules.DEFAULT).get(0);
     then(m4.getAttributes()).containsOnly(
-      MapEntry.entry("teamcity.transient.changedFiles." + c2.name(), "f2"),
-      MapEntry.entry("teamcity.transient.changedFiles." + c3.name(), "f1"));
+      MapEntry.entry("teamcity.transient.changedFiles." + c2.name(), "f3\ndir1/dir2/\n./f2"),
+      MapEntry.entry("teamcity.transient.changedFiles." + c3.name(), "dir1/dir2/dir3/\n./f1"));
   }
-
 
   private GitVcsSupport git() {
     return gitSupport().withPluginConfig(myConfig).build();
