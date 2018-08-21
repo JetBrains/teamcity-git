@@ -75,7 +75,40 @@ public class VcsChangeTreeWalk extends TreeWalk {
     for (Map.Entry<String, List<String>> entry : myPerParentChangedFiles.entrySet()) {
       String parentCommit = entry.getKey();
       List<String> files = entry.getValue();
-      result.put("teamcity.transient.changedFiles." + parentCommit, StringUtil.join("\n", files));
+      Map<String, List<String>> groupedByCommonPrefix = new HashMap<>();
+      for (String path: files) {
+        int separatorIdx = path.lastIndexOf('/');
+        String prefix = "";
+        String fileName = path;
+        if (separatorIdx != -1) {
+          prefix = path.substring(0, separatorIdx + 1);
+          fileName = path.substring(separatorIdx+1);
+        }
+
+        final String finalFileName = fileName;
+        groupedByCommonPrefix.compute(prefix, (k, v) -> {
+          if (v == null) {
+            v = new ArrayList<>();
+          }
+          v.add(finalFileName);
+          return v;
+        });
+      }
+
+      StringBuilder value = new StringBuilder();
+      for (String path: groupedByCommonPrefix.keySet()) {
+        if (path.length() > 0) {
+          value.append(path).append('\n');
+        }
+        for (String fileName: groupedByCommonPrefix.get(path)) {
+          if (path.length() > 0) {
+            value.append("./");
+          }
+          value.append(fileName).append('\n');
+        }
+      }
+
+      result.put("teamcity.transient.changedFiles." + parentCommit, value.length() > 0 ? value.substring(0, value.length()-1) : "");
     }
     return result;
   }
