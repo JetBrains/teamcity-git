@@ -43,17 +43,20 @@ public class JSchClient {
   private final Integer myPort;
   private final String myCommand;
   private final Logger myLogger;
+  private final Map<String, String> myOptions;
 
   private JSchClient(@NotNull String host,
                      @Nullable String username,
                      @Nullable Integer port,
                      @NotNull String command,
-                     @NotNull Logger logger) {
+                     @NotNull Logger logger,
+                     @NotNull Map<String, String> options) {
     myHost = host;
     myUsername = username;
     myPort = port;
     myCommand = command;
     myLogger = logger;
+    myOptions = options;
   }
 
 
@@ -92,7 +95,16 @@ public class JSchClient {
     //
     // we need to combine them ourselves.
 
+    final Map<String, String> options = new HashMap<String, String>();
+
     int i = 0;
+
+    if ("-o".equals(args[i])) {
+      i++;
+      final String[] op = args[i++].split("=");
+      options.put(op[0], op[1]);
+    }
+
     Integer port = null;
     //noinspection HardCodedStringLiteral
     if ("-p".equals(args[i])) {
@@ -118,7 +130,7 @@ public class JSchClient {
       }
       command = commandWithArguments.toString();
     }
-    return new JSchClient(host, user, port, command, logger);
+    return new JSchClient(host, user, port, command, logger, options);
   }
 
 
@@ -180,6 +192,12 @@ public class JSchClient {
       String authMethods = System.getenv(GitSSHHandler.TEAMCITY_SSH_PREFERRED_AUTH_METHODS);
       if (authMethods != null && authMethods.length() > 0)
         session.setConfig("PreferredAuthentications", authMethods);
+
+      if (!myOptions.isEmpty()) {
+        for (final Map.Entry<String, String> opEntry : myOptions.entrySet()) {
+          session.setConfig(opEntry.getKey(), opEntry.getValue());
+        }
+      }
 
       EmptySecurityCallbackHandler.install();
 
