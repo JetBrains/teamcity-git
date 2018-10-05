@@ -513,6 +513,10 @@ public class GitServerUtil {
       Throwable cause = e.getCause();
       if (cause instanceof JSchException && "channel is not opened.".equals(cause.getMessage())) {
         return runWithNewTransport(r, url, authSettings, transportFactory, tn -> tn.fetch(progress, refSpecs));
+      } if ("http".equals(url.getScheme()) && url.getHost().contains("github.com") &&
+            e.getMessage() != null && e.getMessage().contains("301")) {
+        /* github returns 301 status code in case we use http protocol */
+        throw new TransportException("Please use https protocol in VCS root instead of http.", e);
       } else {
         if (ignoreMissingRemoteRef) {
           String missingRef = getMissingRemoteRef(e);
