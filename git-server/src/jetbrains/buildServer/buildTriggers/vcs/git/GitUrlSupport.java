@@ -46,13 +46,11 @@ import java.util.Map;
 public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, GitServerExtension {
 
   private final GitVcsSupport myGitSupport;
-  private final ExtensionsProvider myExtensionsProvider;
-  private ProjectManager myProjectManager;
+  private volatile ExtensionsProvider myExtensionsProvider;
+  private volatile ProjectManager myProjectManager;
 
-  public GitUrlSupport(@NotNull GitVcsSupport gitSupport,
-                       @NotNull final ExtensionsProvider extensionsProvider) {
+  public GitUrlSupport(@NotNull GitVcsSupport gitSupport) {
     myGitSupport = gitSupport;
-    myExtensionsProvider = extensionsProvider;
     gitSupport.addExtension(this);
   }
 
@@ -60,6 +58,12 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
   // have to do it this way because Upsource loads Git plugin and it does not have project manager bean
   public void setProjectManager(@NotNull final ProjectManager projectManager) {
     myProjectManager = projectManager;
+  }
+
+  // ExtensionsProvider will be set by {@link GitUrlSupportInitializer}
+  // have to do it this way because Upsource loads Git plugin and it does not have ExtensionsProvider bean
+  public void setExtensionsProvider(@NotNull final ExtensionsProvider extensionsProvider) {
+    myExtensionsProvider = extensionsProvider;
   }
 
   @Nullable
@@ -239,6 +243,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
 
   @Nullable
   private synchronized ServerSshKeyManager getSshKeyManager() {
+    if (myExtensionsProvider == null) return null;
     Collection<ServerSshKeyManager> managers = myExtensionsProvider.getExtensions(ServerSshKeyManager.class);
     if (managers.isEmpty())
       return null;

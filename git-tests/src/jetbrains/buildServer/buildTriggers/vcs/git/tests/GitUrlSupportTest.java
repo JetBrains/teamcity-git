@@ -81,8 +81,9 @@ public class GitUrlSupportTest extends BaseTestCase {
       if (myTestConnectionMocked != null && myTestConnectionMocked) return null;
       return myGitVcsSupport.testConnection(vcsRoot);
     }).build();
-    myUrlSupport = new GitUrlSupport(myGitVcsSupport, (ExtensionsProvider)epMock.proxy());
+    myUrlSupport = new GitUrlSupport(myGitVcsSupport);
     myUrlSupport.setProjectManager(pm);
+    myUrlSupport.setExtensionsProvider((ExtensionsProvider)epMock.proxy());
   }
 
   @AfterMethod
