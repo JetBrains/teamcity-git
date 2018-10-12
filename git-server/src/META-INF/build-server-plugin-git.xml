@@ -43,5 +43,5 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.RevisionsCache"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.ResetRevisionsCacheHandler"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitResetCacheHandler"/>
-  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitTrustStoreProviderBuildServer"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitTrustStoreProviderImpl"/>
 </beans>

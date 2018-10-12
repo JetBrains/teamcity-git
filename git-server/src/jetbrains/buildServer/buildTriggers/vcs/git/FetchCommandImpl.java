@@ -391,7 +391,10 @@ public class FetchCommandImpl implements FetchCommand {
       properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
       properties.put(Constants.THREAD_DUMP_FILE, threadDump.getAbsolutePath());
       properties.put(Constants.FETCHER_INTERNAL_PROPERTIES_FILE, gitProperties.getAbsolutePath());
-      properties.put(Constants.GIT_TRUST_STORE_PROVIDER, myGitTrustStoreProvider.serialize());
+      final File trustedCertificatesDir = myGitTrustStoreProvider.getTrustedCertificatesDir();
+      if (trustedCertificatesDir != null) {
+        properties.put(Constants.GIT_TRUST_STORE_PROVIDER, trustedCertificatesDir.getAbsolutePath());
+      }
       return VcsUtil.propertiesToStringSecure(properties).getBytes("UTF-8");
     } catch (IOException e) {
       throw new VcsException("Error while generating fetch process input", e);

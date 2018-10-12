@@ -63,7 +63,7 @@ public final class GitPatchBuilderDispatcher {
                                    @Nullable String fromRevision,
                                    @NotNull String toRevision,
                                    @NotNull CheckoutRules rules,
-                                   @NotNull String trustedCertificatesDir) throws VcsException {
+                                   @Nullable String trustedCertificatesDir) throws VcsException {
     myConfig = config;
     mySshKeyManager = sshKeyManager;
     myContext = context;
@@ -135,7 +135,9 @@ public final class GitPatchBuilderDispatcher {
     props.put(Constants.PATCHER_PATCH_FILE, patchFile.getCanonicalPath());
     props.put(Constants.PATCHER_UPLOADED_KEY, getUploadedKey());
     props.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
-    props.put(Constants.GIT_TRUST_STORE_PROVIDER, myTrustedCertificatesDir);
+    if (myTrustedCertificatesDir != null) {
+      props.put(Constants.GIT_TRUST_STORE_PROVIDER, myTrustedCertificatesDir);
+    }
     props.putAll(myGitRoot.getProperties());
     return VcsUtil.propertiesToStringSecure(props).getBytes("UTF-8");
   }

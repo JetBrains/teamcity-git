@@ -16,11 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.ssl.TrustStoreIO;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.security.KeyStore;
 
 /**
@@ -48,20 +47,9 @@ public class GitTrustStoreProviderStatic implements GitTrustStoreProvider {
     }
   }
 
-  @NotNull
+  @Nullable
   @Override
-  public String serialize() {
-    return myTrustedCertificatesDir != null ? myTrustedCertificatesDir : "";
-  }
-
-  @NotNull
-  @Override
-  public GitTrustStoreProvider deserialize(@NotNull final String serialized) {
-    if (StringUtil.isEmptyOrSpaces(serialized)) {
-      myTrustedCertificatesDir = null;
-    } else {
-      myTrustedCertificatesDir = serialized;
-    }
-    return this;
+  public File getTrustedCertificatesDir() {
+    return myTrustedCertificatesDir == null ? null : new File(myTrustedCertificatesDir);
   }
 }

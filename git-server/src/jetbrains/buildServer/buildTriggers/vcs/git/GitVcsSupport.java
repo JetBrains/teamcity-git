@@ -205,9 +205,10 @@ public class GitVcsSupport extends ServerVcsSupport
     logBuildPatch(root, fromRevision, toRevision);
     GitVcsRoot gitRoot = context.getGitRoot();
     myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+      final File trustedCertificatesDir = myGitTrustStoreProvider.getTrustedCertificatesDir();
       GitPatchBuilderDispatcher gitPatchBuilder = new GitPatchBuilderDispatcher(myConfig, mySshKeyManager, context, builder, fromRevision,
                                                                                 toRevision, checkoutRules,
-                                                                                myGitTrustStoreProvider.serialize());
+                                                                                trustedCertificatesDir == null ? null : trustedCertificatesDir.getAbsolutePath());
       try {
         myCommitLoader.loadCommit(context, gitRoot, toRevision);
         gitPatchBuilder.buildPatch();

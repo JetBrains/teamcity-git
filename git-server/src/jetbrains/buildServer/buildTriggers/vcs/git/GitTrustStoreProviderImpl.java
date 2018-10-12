@@ -16,12 +16,14 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.ServiceLocator;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TrustedCertificatesDirectory;
 import jetbrains.buildServer.util.ssl.SSLTrustStoreProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.security.KeyStore;
 
 /**
@@ -30,36 +32,28 @@ import java.security.KeyStore;
  * @author Mikhail Khorkov
  * @since tc-2018.1
  */
-public class GitTrustStoreProviderBuildServer implements GitTrustStoreProvider {
+public class GitTrustStoreProviderImpl implements GitTrustStoreProvider {
 
   @NotNull
   private final SSLTrustStoreProvider mySSLTrustStoreProvider;
+  private volatile File myTrustedCertificatesDir;
 
-  @NotNull
-  private final ServerPaths myServerPaths;
-
-  public GitTrustStoreProviderBuildServer(@NotNull final SSLTrustStoreProvider sslTrustStoreProvider,
-                                          @NotNull final ServerPaths serverPaths) {
+  public GitTrustStoreProviderImpl(@NotNull final SSLTrustStoreProvider sslTrustStoreProvider) {
     mySSLTrustStoreProvider = sslTrustStoreProvider;
-    myServerPaths = serverPaths;
+  }
+
+  public void setTrustedCertificatesDir(@Nullable final File trustedCertificatesDir) {
+    myTrustedCertificatesDir = trustedCertificatesDir;
+  }
+
+  @Nullable
+  public File getTrustedCertificatesDir() {
+    return myTrustedCertificatesDir;
   }
 
   @Nullable
   @Override
   public KeyStore getTrustStore() {
     return mySSLTrustStoreProvider.getTrustStore();
-  }
-
-  @NotNull
-  @Override
-  public String serialize() {
-    return TrustedCertificatesDirectory
-      .getCertificateDirectoryForProject(myServerPaths.getProjectsDir().getPath(), TrustedCertificatesDirectory.ROOT_PROJECT_ID);
-  }
-
-  @NotNull
-  @Override
-  public GitTrustStoreProvider deserialize(@NotNull final String serialized) {
-    return this;
   }
 }
