@@ -46,16 +46,20 @@ import java.util.Map;
 public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, GitServerExtension {
 
   private final GitVcsSupport myGitSupport;
-  private final ProjectManager myProjectManager;
   private final ExtensionsProvider myExtensionsProvider;
+  private ProjectManager myProjectManager;
 
   public GitUrlSupport(@NotNull GitVcsSupport gitSupport,
-                       @NotNull final ProjectManager projectManager,
                        @NotNull final ExtensionsProvider extensionsProvider) {
     myGitSupport = gitSupport;
-    myProjectManager = projectManager;
     myExtensionsProvider = extensionsProvider;
     gitSupport.addExtension(this);
+  }
+
+  // project manager will be set by {@link GitUrlSupportInitializer}
+  // have to do it this way because Upsource loads Git plugin and it does not have project manager bean
+  public void setProjectManager(@NotNull final ProjectManager projectManager) {
+    myProjectManager = projectManager;
   }
 
   @Nullable
@@ -90,7 +94,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     final TestConnectionSupport testConnectionSupport = myGitSupport.getTestConnectionSupport();
     assert testConnectionSupport != null;
 
-    if (AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString().equals(props.get(Constants.AUTH_METHOD)) && fetchUrl.endsWith(".git")) {
+    if (AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString().equals(props.get(Constants.AUTH_METHOD)) && fetchUrl.endsWith(".git") && myProjectManager != null) {
       // SSH access, before using the default private key which may not be accessible on the agent,
       // let's iterate over all SSH keys of the current project, maybe we'll find a working one
       SProject curProject = myProjectManager.findProjectById(operationContext.getCurrentProjectId());
