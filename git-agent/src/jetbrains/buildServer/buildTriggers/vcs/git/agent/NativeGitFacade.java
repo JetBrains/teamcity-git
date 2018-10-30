@@ -180,6 +180,16 @@ public class NativeGitFacade implements GitFacade {
   }
 
   @NotNull
+  public LsTreeCommand lsTree() {
+    return new LsTreeCommandImpl(createCommandLine());
+  }
+
+  @NotNull
+  public RevParseCommand revParse() {
+    return new RevParseCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   public SubmoduleUpdateCommand submoduleUpdate() {
     return new SubmoduleUpdateCommandImpl(createCommandLine());
   }

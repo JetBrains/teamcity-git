@@ -52,7 +52,7 @@ public class RemoteRepositoryConfigurator {
    * @param root VCS root of interest
    * @throws VcsException in case of any error
    */
-  public void configure(@NotNull GitVcsRoot root) throws VcsException {
+  public void configure(@NotNull GitVcsRoot root, URIish fetchUrl) throws VcsException {
     File gitDir = getGitDir();
     Repository repository = null;
     try {

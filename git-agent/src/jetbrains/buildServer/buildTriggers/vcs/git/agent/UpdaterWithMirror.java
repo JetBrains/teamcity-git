@@ -22,22 +22,28 @@ import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsTreeResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.errors.ConfigInvalidException;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
 
 /**
  * @author dmitry.neverov
@@ -70,7 +76,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     String message = "Update git mirror (" + myRoot.getRepositoryDir() + ")";
     myLogger.activityStarted(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
     try {
-      updateLocalMirror(true);
+      updateLocalMirror(true, myRoot.getRepositoryDir(), myRoot.getRepositoryFetchURL(), myFullBranchName, myRevision);
       //prepare refs for copying into working dir repository
       myGitFactory.create(myRoot.getRepositoryDir()).packRefs().call();
     } finally {
@@ -78,8 +84,11 @@ public class UpdaterWithMirror extends UpdaterImpl {
     }
   }
 
-  private void updateLocalMirror(boolean repeatFetchAttempt) throws VcsException {
-    File bareRepositoryDir = myRoot.getRepositoryDir();
+  private void updateLocalMirror(boolean repeatFetchAttempt,
+                                 File bareRepositoryDir,
+                                 URIish fetchUrl,
+                                 String branchname,
+                                 String... revisions) throws VcsException {
     String mirrorDescription = "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
     LOG.info("Update " + mirrorDescription);
     boolean fetchRequired = true;
@@ -94,24 +103,26 @@ public class UpdaterWithMirror extends UpdaterImpl {
       LOG.info("Init " + mirrorDescription);
       bareRepositoryDir.mkdirs();
       git.init().setBare(true).call();
-      configureRemoteUrl(bareRepositoryDir);
+      configureRemoteUrl(bareRepositoryDir, fetchUrl);
       mySSLInvestigator.setCertificateOptions(git);
       newMirror = true;
     } else {
-      configureRemoteUrl(bareRepositoryDir);
+      configureRemoteUrl(bareRepositoryDir, fetchUrl);
       mySSLInvestigator.setCertificateOptions(git);
-      boolean outdatedTagsFound = removeOutdatedRefs(bareRepositoryDir);
-      if (!outdatedTagsFound) {
-        LOG.debug("Try to find revision " + myRevision + " in " + mirrorDescription);
-        Ref ref = getRef(bareRepositoryDir, GitUtils.createRemoteRef(myFullBranchName));
-        if (ref != null && myRevision.equals(ref.getObjectId().name())) {
-          LOG.info("No fetch required for revision '" + myRevision + "' in " + mirrorDescription);
-          fetchRequired = false;
+      boolean outdatedRefsFound = removeOutdatedRefs(bareRepositoryDir);
+      if (!outdatedRefsFound) {
+        for (String revision : revisions) {
+          LOG.debug("Try to find revision " + revision + " in " + mirrorDescription);
+          Ref ref = getRef(bareRepositoryDir, GitUtils.createRemoteRef(branchname));
+          if (ref != null && revision.equals(ref.getObjectId().name())) {
+            LOG.info("No fetch required for revision '" + revision + "' in " + mirrorDescription);
+            fetchRequired = false;
+          }
         }
       }
     }
     FetchHeadsMode fetchHeadsMode = myPluginConfig.getFetchHeadsMode();
-    Ref ref = getRef(bareRepositoryDir, myFullBranchName);
+    Ref ref = getRef(bareRepositoryDir, branchname);
     if (ref == null)
       fetchRequired = true;
     if (!fetchRequired && fetchHeadsMode != FetchHeadsMode.ALWAYS)
@@ -126,25 +137,27 @@ public class UpdaterWithMirror extends UpdaterImpl {
         String msg = getForcedHeadsFetchMessage();
         LOG.info(msg);
         myLogger.message(msg);
-        fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+refs/heads/*:refs/heads/*");
-        if (!myFullBranchName.startsWith("refs/heads/") && !hasRevision(bareRepositoryDir, myRevision))
-          fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName));
+        fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, revisions);
+        if (!myFullBranchName.startsWith("refs/heads/") && !hasRevisions(bareRepositoryDir, revisions))
+          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, revisions);
         break;
       case BEFORE_BUILD_BRANCH:
-        fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+refs/heads/*:refs/heads/*");
-        if (!myFullBranchName.startsWith("refs/heads/") && !hasRevision(bareRepositoryDir, myRevision))
-          fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName));
+        fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, revisions);
+        if (!myFullBranchName.startsWith("refs/heads/") && !hasRevisions(bareRepositoryDir, revisions))
+          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, revisions);
         break;
       case AFTER_BUILD_BRANCH:
-        fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+" + myFullBranchName + ":" + GitUtils.expandRef(myFullBranchName));
-        if (!hasRevision(bareRepositoryDir, myRevision))
-          fetchMirror(repeatFetchAttempt, bareRepositoryDir, "+refs/heads/*:refs/heads/*");
+        if (!hasRevisions(bareRepositoryDir, revisions)) {
+          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, revisions);
+          if (!hasRevisions(bareRepositoryDir, revisions)) {
+            fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, revisions);
+          }
+        }
         break;
       default:
         throw new VcsException("Unknown FetchHeadsMode: " + fetchHeadsMode);
     }
   }
-
 
   private boolean optimizeMirrorBeforeFetch() {
     return "true".equals(myBuild.getSharedConfigParameters().get("teamcity.git.optimizeMirrorBeforeFetch"));
@@ -153,7 +166,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
   private void fetchMirror(boolean repeatFetchAttempt,
                            @NotNull File repositoryDir,
-                           @NotNull String refspec) throws VcsException {
+                           @NotNull URIish fetchUrl,
+                           @NotNull String refspec,
+                           @NotNull String branchname,
+                           @NotNull String... revisions) throws VcsException {
     removeRefLocks(repositoryDir);
     try {
       final int[] retryTimeouts = getRetryTimeouts();
@@ -183,13 +199,13 @@ public class UpdaterWithMirror extends UpdaterImpl {
       if (cleanDir(repositoryDir)) {
         GitFacade git = myGitFactory.create(repositoryDir);
         git.init().setBare(true).call();
-        configureRemoteUrl(repositoryDir);
+        configureRemoteUrl(repositoryDir, fetchUrl);
         mySSLInvestigator.setCertificateOptions(git);
         fetch(repositoryDir, refspec, false);
       } else {
         LOG.info("Failed to delete repository " + repositoryDir + " after failed checkout, clone repository in another directory");
         myMirrorManager.invalidate(repositoryDir);
-        updateLocalMirror(false);
+        updateLocalMirror(false, repositoryDir, fetchUrl, branchname, revisions);
       }
     }
   }
@@ -217,7 +233,6 @@ public class UpdaterWithMirror extends UpdaterImpl {
       return false;
     }
   }
-
 
   @Override
   protected void setupExistingRepository() throws VcsException {
@@ -269,12 +284,11 @@ public class UpdaterWithMirror extends UpdaterImpl {
     }
   }
 
-
   private void setUseLocalMirror() throws VcsException {
     //read remote url from config instead of VCS root, they can be different
     //e.g. due to username exclusion from http(s) urls
     String remoteUrl = readRemoteUrl();
-    String localMirrorUrl = getLocalMirrorUrl();
+    String localMirrorUrl = getLocalMirrorUrl(myRoot.getRepositoryDir());
     GitFacade git = myGitFactory.create(myTargetDirectory);
     git.setConfig()
       .setPropertyName("url." + localMirrorUrl + ".insteadOf")
@@ -286,11 +300,13 @@ public class UpdaterWithMirror extends UpdaterImpl {
       .call();
   }
 
-  private String getLocalMirrorUrl() throws VcsException {
+  private String getLocalMirrorUrl(File repositoryDir) throws VcsException {
     try {
-      return new URIish(myRoot.getRepositoryDir().toURI().toASCIIString()).toString();
+      // Cloning from local git repos is faster when using the absolute path, than when using the 'file://' syntax
+      // See `man git clone` --local flag
+      return new URIish(repositoryDir.getAbsolutePath()).toString();
     } catch (URISyntaxException e) {
-      throw new VcsException("Cannot create uri for local mirror " + myRoot.getRepositoryDir().getAbsolutePath(), e);
+      throw new VcsException("Cannot create uri for local mirror " + repositoryDir.getAbsolutePath(), e);
     }
   }
 
@@ -331,5 +347,147 @@ public class UpdaterWithMirror extends UpdaterImpl {
       result[i] = parsed;
     }
     return result;
+  }
+
+  @Override
+  protected void updateSubmodules(@NotNull final File repositoryDir) throws VcsException, ConfigInvalidException, IOException {
+    GitFacade git = myGitFactory.create(repositoryDir);
+
+    String revision = git.revParse().setRef("HEAD").call();
+    if (!StringUtil.isEmpty(revision)) {
+      File dotGitModules = new File(repositoryDir, ".gitmodules");
+      Config gitModules = readGitModules(dotGitModules);
+      if (gitModules == null)
+        return;
+
+      Repository r = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
+      StoredConfig gitConfig = r.getConfig();
+
+      Map<String, AggregatedSubmodule> aggregatedSubmodules = new HashMap<String, AggregatedSubmodule>();
+
+      Set<String> submodules = gitModules.getSubsections("submodule");
+      for (String submoduleName : submodules) {
+        String url = gitConfig.getString("submodule", submoduleName, "url");
+        if (url == null) {
+          Loggers.VCS.info(".git/config doesn't contain an url for submodule '" + submoduleName + "', use url from .gitmodules");
+          url = gitModules.getString("submodule", submoduleName, "url");
+        }
+        if (StringUtil.isEmpty(url)) { // shouldn't happen unless .gitmodules is malformed & missing a url
+          Loggers.VCS.warn("Could not determine submodule url for '" + submoduleName + "'");
+          continue;
+        }
+
+        String submodulePath = gitModules.getString("submodule", submoduleName, "path");
+        if (StringUtil.isEmpty(submodulePath)) { // // shouldn't happen unless .gitmodules is malformed & missing a path
+          Loggers.VCS.warn("Could not determine submodule path for '" + submoduleName + "'");
+          continue;
+        }
+
+        String submoduleRevision = getSubmoduleRevision(git, revision, submodulePath);
+        if (StringUtil.isEmpty(submoduleRevision)) { // submodule path specified in .gitmodules may not actually exist
+          Loggers.VCS.warn("Could not determine submodule commit for '" + submoduleName + "', at path '" + submodulePath + "'");
+          continue;
+        }
+
+        // Build a map of submodule url -> (names, paths, commits)
+        // The same submodule url can be checked out to multiple paths & at different commits, but we only need one local mirror.
+        AggregatedSubmodule aggregatedSubmodule;
+        if (aggregatedSubmodules.containsKey(url)) {
+          aggregatedSubmodule = aggregatedSubmodules.get(url);
+        } else {
+          aggregatedSubmodule = new AggregatedSubmodule(url);
+        }
+
+        aggregatedSubmodule.addSubmoduleName(submoduleName);
+        aggregatedSubmodule.addSubmodulePath(submodulePath);
+        aggregatedSubmodule.addSubmoduleRevision(submoduleRevision);
+
+        aggregatedSubmodules.put(url, aggregatedSubmodule);
+      }
+
+      for (AggregatedSubmodule submodule : aggregatedSubmodules.values()) {
+        File mirrorRepositoryDir = myMirrorManager.getMirrorDir(submodule.getUrl());
+
+        if (!hasRevisions(mirrorRepositoryDir, submodule.getRevisions()))
+          updateLocalMirror(true,
+                  mirrorRepositoryDir,
+                  myRoot.getAuthSettings().createAuthURI(submodule.getUrl()),
+                  "refs/heads/*",
+                  submodule.getRevisions());
+
+        for (String name : submodule.getNames()) {
+          setUseLocalSubmoduleMirror(repositoryDir, name, getLocalMirrorUrl(mirrorRepositoryDir));
+        }
+      }
+    }
+
+    super.updateSubmodules(repositoryDir);
+  }
+
+  private String getSubmoduleRevision(@NotNull GitFacade git, @NotNull String revision, @NotNull String path) throws VcsException {
+    LsTreeResult lsTreeResult = git.lsTree().setRevision(revision).setPath(path).call();
+    if (lsTreeResult == null) {
+      return null;
+    }
+    return lsTreeResult.getObject();
+  }
+
+  private void setUseLocalSubmoduleMirror(@NotNull File repositoryDir, @NotNull String submoduleName, @NotNull String localMirrorUrl) throws VcsException {
+    GitFacade git = myGitFactory.create(repositoryDir);
+    git.setConfig()
+            .setPropertyName("submodule." + submoduleName + ".url")
+            .setValue(localMirrorUrl)
+            .call();
+  }
+
+  private boolean hasRevisions(@NotNull File repositoryDir, String... revisions) {
+    for (String revision : revisions) {
+      if (!hasRevision(repositoryDir, revision)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static final class AggregatedSubmodule {
+    private final String url;
+    private final Set<String> names;
+    private final Set<String> paths;
+    private final Set<String> revisions;
+
+    public AggregatedSubmodule(String url) {
+      this.url = url;
+      this.names = new HashSet<String>();
+      this.paths = new HashSet<String>();
+      this.revisions = new HashSet<String>();
+    }
+
+    public void addSubmoduleName(@NotNull String name) {
+      this.names.add(name);
+    }
+
+    public void addSubmodulePath(@NotNull String path) {
+      this.paths.add(path);
+    }
+
+    public void addSubmoduleRevision(@NotNull String revision) {
+      this.revisions.add(revision);
+    }
+
+    public String getUrl() {
+      return url;
+    }
+
+    public String[] getNames() {
+      return names.toArray(new String[0]);
+    }
+
+    public String[] getPaths() {
+      return paths.toArray(new String[0]);
+    }
+
+    public String[] getRevisions() {
+      return revisions.toArray(new String[0]);
+    }
   }
 }

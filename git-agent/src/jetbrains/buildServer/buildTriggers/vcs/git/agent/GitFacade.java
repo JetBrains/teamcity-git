@@ -70,6 +70,12 @@ public interface GitFacade {
   LogCommand log();
 
   @NotNull
+  LsTreeCommand lsTree();
+
+  @NotNull
+  RevParseCommand revParse();
+
+  @NotNull
   SubmoduleInitCommand submoduleInit();
 
   SubmoduleSyncCommand submoduleSync();
