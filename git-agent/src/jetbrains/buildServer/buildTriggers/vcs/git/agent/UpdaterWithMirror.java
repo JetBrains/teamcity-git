@@ -353,17 +353,17 @@ public class UpdaterWithMirror extends UpdaterImpl {
   protected void updateSubmodules(@NotNull final File repositoryDir) throws VcsException, ConfigInvalidException, IOException {
     GitFacade git = myGitFactory.create(repositoryDir);
 
+    Repository r = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
+    StoredConfig gitConfig = r.getConfig();
+
+    Map<String, AggregatedSubmodule> aggregatedSubmodules = new HashMap<String, AggregatedSubmodule>();
+
     String revision = git.revParse().setRef("HEAD").call();
     if (!StringUtil.isEmpty(revision)) {
       File dotGitModules = new File(repositoryDir, ".gitmodules");
       Config gitModules = readGitModules(dotGitModules);
       if (gitModules == null)
         return;
-
-      Repository r = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
-      StoredConfig gitConfig = r.getConfig();
-
-      Map<String, AggregatedSubmodule> aggregatedSubmodules = new HashMap<String, AggregatedSubmodule>();
 
       Set<String> submodules = gitModules.getSubsections("submodule");
       for (String submoduleName : submodules) {
@@ -416,12 +416,24 @@ public class UpdaterWithMirror extends UpdaterImpl {
                   submodule.getRevisions());
 
         for (String name : submodule.getNames()) {
+          // Change the submodule url so that `git submodule update` will clone/fetch from the local mirror directory
           setUseLocalSubmoduleMirror(r.getDirectory(), name, getLocalMirrorUrl(mirrorRepositoryDir));
         }
       }
     }
 
     super.updateSubmodules(repositoryDir);
+
+    for (AggregatedSubmodule submodule : aggregatedSubmodules.values()) {
+      for (String name : submodule.getNames()) {
+        File submoduleDir = new File(r.getDirectory().toString() + File.separator + "modules" + File.separator + name);
+        if (submoduleDir.exists()) {
+          // Fix the submodule's origin url - it will be equal to a local mirror directory since it was cloned/fetched from there
+          // However, this breaks relative submodules which need to be relative to their origin url, not the mirror directory
+          setUseRemoteSubmoduleOrigin(submoduleDir, submodule.getUrl());
+        }
+      }
+    }
   }
 
   private String getSubmoduleRevision(@NotNull GitFacade git, @NotNull String revision, @NotNull String path) throws VcsException {
@@ -438,6 +450,14 @@ public class UpdaterWithMirror extends UpdaterImpl {
             .setPropertyName("submodule." + submoduleName + ".url")
             .setValue(localMirrorUrl)
             .call();
+  }
+
+  private void setUseRemoteSubmoduleOrigin(@NotNull File repositoryDir, @NotNull String originUrl) throws VcsException {
+    GitFacade git = myGitFactory.create(repositoryDir);
+    git.setConfig()
+      .setPropertyName("remote.origin.url")
+      .setValue(originUrl)
+      .call();
   }
 
   private boolean hasRevisions(@NotNull File repositoryDir, String... revisions) {
