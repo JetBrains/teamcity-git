@@ -58,8 +58,9 @@ public class LoggingGitMetaFactory implements GitMetaFactory {
       return 0;
     int result = 0;
     for (String method : methods) {
-      if ("call".equals(method))
+      if ("call".equals(method) || "callWithIgnoreExitCode".equals(method)) {
         result++;
+      }
     }
     return result;
   }

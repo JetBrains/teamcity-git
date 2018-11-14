@@ -136,10 +136,10 @@ public class SSLInvestigatorTest {
     }
 
     final String alreadyInProperties = alreadySet ? "something" : "";
-    myLoggingFactory.addCallback(GetConfigCommand.class.getName() + ".call",
-                                 (method, args) -> Optional.of(alreadyInProperties));
-    myLoggingFactory.addCallback(SetConfigCommand.class.getName() + ".call",
-                                 (method, args) -> Optional.empty());
+    final GitCommandProxyCallback gitCommandProxyCallback = (method, args) -> Optional.of(alreadyInProperties);
+    myLoggingFactory.addCallback(GetConfigCommand.class.getName() + ".call", gitCommandProxyCallback);
+    myLoggingFactory.addCallback(GetConfigCommand.class.getName() + ".callWithIgnoreExitCode", gitCommandProxyCallback);
+    myLoggingFactory.addCallback(SetConfigCommand.class.getName() + ".call", (method, args) -> Optional.empty());
 
     final SSLInvestigator instance = createInstance();
 
