@@ -156,7 +156,7 @@ public class SSLInvestigator {
 
   private void deleteSslOption(@NotNull final GitFacade gitFacade) {
     try {
-      final String previous = gitFacade.getConfig().setPropertyName("http.sslCAInfo").call();
+      final String previous = gitFacade.getConfig().setPropertyName("http.sslCAInfo").callWithIgnoreExitCode();
       if (!StringUtil.isEmptyOrSpaces(previous)) {
         /* do not need custom certificate then remove corresponding options if exists */
         gitFacade.setConfig().setPropertyName("http.sslCAInfo").unSet().call();
@@ -170,7 +170,7 @@ public class SSLInvestigator {
     try {
       gitFacade.setConfig().setPropertyName("http.sslCAInfo").setValue(path).call();
     } catch (Exception e) {
-      LOG.error("Error while setting sslCAInfo git option");
+      LOG.error("Error while setting sslCAInfo git option", e);
     }
   }
 

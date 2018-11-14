@@ -38,9 +38,18 @@ public class GetConfigCommandImpl extends BaseCommandImpl implements GetConfigCo
 
   @NotNull
   public String call() throws VcsException {
+    return callWithLevel();
+  }
+
+  @NotNull
+  public String callWithIgnoreExitCode() throws VcsException {
+    return callWithLevel("info");
+  }
+
+  private String callWithLevel(String... logLevel) throws VcsException {
     GitCommandLine cmd = getCmd();
     cmd.addParameters("config", myName);
-    ExecResult r = CommandUtil.runCommand(cmd);
+    ExecResult r = CommandUtil.runCommand(cmd, logLevel);
     CommandUtil.failIfNotEmptyStdErr(cmd, r);
     return r.getStdout().trim();
   }

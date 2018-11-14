@@ -27,4 +27,6 @@ public interface GetConfigCommand extends BaseCommand {
   @NotNull
   String call() throws VcsException;
 
+  @NotNull
+  String callWithIgnoreExitCode() throws VcsException;
 }

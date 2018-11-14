@@ -34,12 +34,16 @@ public class CommandUtil {
 
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
   public static void checkCommandFailed(@NotNull String cmdName, @NotNull ExecResult res, String... errorsLogLevel) throws VcsException {
-    if (res.getExitCode() != 0 || res.getException() != null) {
-      commandFailed(cmdName, res);
-    }
-    if (res.getStderr().length() > 0) {
-      logMessage("Error output produced by: " + cmdName, errorsLogLevel);
-      logMessage(res.getStderr().trim(), errorsLogLevel);
+    if ("info".equals(logLevel(errorsLogLevel)) && res.getExitCode() != 0 && res.getException() == null) {
+      logMessage("'" + cmdName + "' exit code: " + res.getExitCode() + ". It is expected behaviour.", "info");
+    } else {
+      if (res.getExitCode() != 0 || res.getException() != null) {
+        commandFailed(cmdName, res);
+      }
+      if (res.getStderr().length() > 0) {
+        logMessage("Error output produced by: " + cmdName, errorsLogLevel);
+        logMessage(res.getStderr().trim(), errorsLogLevel);
+      }
     }
   }
 
@@ -82,17 +86,18 @@ public class CommandUtil {
    * @param level   level to use
    */
   private static void logMessage(String message, String... level) {
-    String theLevel;
-    if (level.length > 0) {
-      theLevel = level[0];
-    } else {
-      theLevel = "warn";
-    }
+    final String theLevel = logLevel(level);
     if (theLevel.equals("warn")) {
       Loggers.VCS.warn(message);
     } else if (theLevel.equals("debug")) {
       Loggers.VCS.debug(message);
+    } else if (theLevel.equals("info")) {
+      Loggers.VCS.info(message);
     }
+  }
+
+  private static String logLevel(String... level) {
+    return level.length > 0 ? level[0] : "warn";
   }
 
   public static ExecResult runCommand(@NotNull GitCommandLine cli, final String... errorsLogLevel) throws VcsException {
