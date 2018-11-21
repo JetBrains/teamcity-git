@@ -98,6 +98,8 @@ public class GitClonesUpdater {
         });
       } catch (VcsException e1) {
         Loggers.VCS.warnAndDebugDetails("Could not update local clone for: " + LogUtil.describe(root), e1);
+      } finally {
+        context.close();
       }
     }
   }
