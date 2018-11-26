@@ -31,6 +31,8 @@ import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.internal.JGitText;
+import org.eclipse.jgit.internal.storage.file.MemoryMappedPackIndex;
+import org.eclipse.jgit.internal.storage.file.PackIndex;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileBasedConfig;
@@ -66,6 +68,12 @@ public class GitServerUtil {
    * Amount of characters displayed for in the display version of revision number
    */
   public static final int DISPLAY_VERSION_AMOUNT = 40;
+
+  public static void setupMemoryMappedIndexReading() {
+    if (TeamCityProperties.getBoolean("teamcity.server.git.useMemoryMappedIndex")) {
+      PackIndex.setPackIndexFactory(new MemoryMappedPackIndex());
+    }
+  }
 
   /**
    * Ensures that a bare repository exists at the specified path.

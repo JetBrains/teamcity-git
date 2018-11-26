@@ -96,6 +96,7 @@ public class Fetcher {
     AuthSettings auth = new AuthSettings(vcsRootProperties);
     PluginConfigImpl config = new PluginConfigImpl();
 
+    GitServerUtil.setupMemoryMappedIndexReading();
     GitServerUtil.configureStreamFileThreshold(Integer.MAX_VALUE);
 
     TransportFactory transportFactory = new TransportFactoryImpl(config, new EmptyVcsRootSshKeyManager(),

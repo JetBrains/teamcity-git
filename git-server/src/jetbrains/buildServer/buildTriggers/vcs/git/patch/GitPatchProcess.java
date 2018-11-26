@@ -40,6 +40,7 @@ public class GitPatchProcess {
     GitServerUtil.configureInternalProperties(settings.getInternalProperties());
     GitServerUtil.configureStreamFileThreshold(Integer.MAX_VALUE);
     GitServerUtil.configureExternalProcessLogger(settings.isDebugEnabled());
+    GitServerUtil.setupMemoryMappedIndexReading();
 
     PluginConfigImpl config = new PluginConfigImpl(new ConstantCachePaths(settings.getGitCachesDir()));
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, new MirrorManagerImpl(config, new HashCalculatorImpl()));
