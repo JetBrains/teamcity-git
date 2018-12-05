@@ -54,7 +54,7 @@ public class GitClonesUpdater {
                                          @NotNull final RepositoryState newState) {
         if (serverResponsibility.canCheckForChanges()) return;
 
-        if (!TeamCityProperties.getBoolean("teamcity.git.localClones.updateIfNoCheckingForChangesResponsibility")) return;
+        if (!TeamCityProperties.getBooleanOrTrue("teamcity.git.localClones.updateIfNoCheckingForChangesResponsibility")) return;
 
         if (root.getVcsName().equals(Constants.VCS_NAME)) {
           myScheduledForUpdate.put(root, RepositoryStateFactory.toData(newState));
