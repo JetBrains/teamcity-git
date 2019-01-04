@@ -100,6 +100,11 @@ public final class RepositoryManagerImpl implements RepositoryManager {
     myMirrorManager.invalidate(dir);
   }
 
+  @Override
+  public void removeMirrorDir(@NotNull final File dir) {
+    myMirrorManager.removeMirrorDir(dir);
+  }
+
 
   @NotNull
   public Map<String, File> getMappings() {

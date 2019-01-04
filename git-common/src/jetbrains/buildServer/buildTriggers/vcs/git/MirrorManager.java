@@ -49,6 +49,12 @@ public interface MirrorManager {
    */
   void invalidate(@NotNull File dir);
 
+  /**
+   * Removes mirror directory
+   * @param dir directory to remove
+   */
+  void removeMirrorDir(@NotNull final File dir);
+
 
   @NotNull
   Map<String, File> getMappings();
