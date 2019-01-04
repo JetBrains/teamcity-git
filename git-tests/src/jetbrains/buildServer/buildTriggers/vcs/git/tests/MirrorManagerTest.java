@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.util.FileUtil;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
@@ -91,6 +92,23 @@ public class MirrorManagerTest {
       String dir = entry.getValue();
       assertEquals(new File(baseMirrorsDir, dir), mirrorManager.getMirrorDir(url));
     }
+  }
+
+  public void should_ignore_non_existing_directories() throws Exception {
+    File baseMirrorsDir = myConfig.getCachesDir();
+    File map = new File(baseMirrorsDir, "map");
+
+    FileUtil.writeFileAndReportErrors(map, "git://some.org/repository1.git = git-11111111.git\n" +
+                                           "git://some.org/repository2.git = git-22222222.git");
+
+    getRepository(new File(baseMirrorsDir, "git-22222222.git"), new URIish("git://some.org/repository2.git"));
+
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl());
+    assertEquals(1, mirrorManager.getMappings().size());
+    assertTrue(mirrorManager.getMappings().containsKey("git://some.org/repository2.git"));
+
+    String mapping = FileUtil.readText(map);
+    assertFalse(mapping.contains("git-11111111.git"));
   }
 
 

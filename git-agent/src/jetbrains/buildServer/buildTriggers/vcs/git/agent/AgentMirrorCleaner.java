@@ -38,7 +38,7 @@ import java.util.Set;
 
 public class AgentMirrorCleaner implements DirectoryCleanersProvider {
 
-  private final static Logger ourLog = Logger.getInstance(AgentMirrorCleaner.class.getName());
+  private final static Logger LOG = Logger.getInstance(AgentMirrorCleaner.class.getName());
   private final MirrorManager myMirrorManager;
 
   public AgentMirrorCleaner(@NotNull MirrorManager mirrorManager) {
@@ -53,15 +53,23 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
   public void registerDirectoryCleaners(@NotNull DirectoryCleanersProviderContext context,
                                         @NotNull DirectoryCleanersRegistry registry) {
     Set<String> repositoriesUsedInBuild = getRunningBuildRepositories(context);
-    for (Map.Entry<String, File> entry : myMirrorManager.getMappings().entrySet()) {
+    final Map<String, File> mappings = myMirrorManager.getMappings();
+    for (Map.Entry<String, File> entry : mappings.entrySet()) {
       String repository = entry.getKey();
       File mirror = entry.getValue();
       if (!repositoriesUsedInBuild.contains(repository)) {
+
+        if (!mirror.isDirectory()) {
+          myMirrorManager.removeMirrorDir(mirror);
+          LOG.debug("Found non existing mirror directory: " + mirror.getAbsolutePath() + ", removed it from the list of mirrors");
+          continue;
+        }
+
         if (isCleanupEnabled(mirror)) {
-          ourLog.debug("Register cleaner for mirror " + mirror.getAbsolutePath());
+          LOG.debug("Register cleaner for mirror " + mirror.getAbsolutePath());
           registry.addCleaner(mirror, new Date(myMirrorManager.getLastUsedTime(mirror)));
         } else {
-          ourLog.debug("Clean-up is disabled in " + repository + " (" + mirror.getName() + ")");
+          LOG.debug("Clean-up is disabled in " + repository + " (" + mirror.getName() + ")");
         }
       }
     }
@@ -76,10 +84,10 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
       try {
         GitVcsRoot gitRoot = new GitVcsRoot(myMirrorManager, root);
         String repositoryUrl = gitRoot.getRepositoryFetchURL().toString();
-        ourLog.debug("Repository " + repositoryUrl + " is used in the build, its mirror won't be cleaned");
+        LOG.debug("Repository " + repositoryUrl + " is used in the build, its mirror won't be cleaned");
         repositories.add(gitRoot.getRepositoryFetchURL().toString());
       } catch (VcsException e) {
-        ourLog.warn("Error while creating git root " + root.getName() + ". If the root has a mirror on agent, the mirror might be cleaned", e);
+        LOG.warn("Error while creating git root " + root.getName() + ". If the root has a mirror on agent, the mirror might be cleaned", e);
       }
     }
     return repositories;

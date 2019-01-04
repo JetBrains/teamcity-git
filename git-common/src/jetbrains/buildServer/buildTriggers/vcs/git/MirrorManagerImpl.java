@@ -80,6 +80,16 @@ public class MirrorManagerImpl implements MirrorManager {
     }
   }
 
+  public void removeMirrorDir(@NotNull final File dir) {
+    synchronized (myLock) {
+      List<String> urlsMappedToDir = getUrlsMappedToDir(dir);
+      for (String url : urlsMappedToDir) {
+        myMirrorMap.remove(url);
+      }
+      saveMappingToFile();
+      FileUtil.delete(dir);
+    }
+  }
 
   @NotNull
   public Map<String, File> getMappings() {
@@ -250,6 +260,8 @@ public class MirrorManagerImpl implements MirrorManager {
 
   private void readMappings() {
     synchronized (myLock) {
+      boolean mappingsFileHasObsoleteDirs = false;
+
       for (String line : readLines(myMapFile)) {
         int separatorIndex = line.lastIndexOf(" = ");
         if (separatorIndex == -1) {
@@ -258,12 +270,23 @@ public class MirrorManagerImpl implements MirrorManager {
         } else {
           String url = line.substring(0, separatorIndex);
           String dirName = line.substring(separatorIndex + 3);
+
+          if (!new File(myBaseMirrorsDir, dirName).isDirectory()) {
+            LOG.info("Skip mapping " + line + ": " + dirName + " because the specified directory does not exist");
+            mappingsFileHasObsoleteDirs = true;
+            continue;
+          }
+
           if (myMirrorMap.values().contains(dirName)) {
             LOG.error("Skip mapping " + line + ": " + dirName + " is used for url other than " + url);
           } else {
             myMirrorMap.put(url, dirName);
           }
         }
+      }
+
+      if (mappingsFileHasObsoleteDirs) {
+        saveMappingToFile();
       }
     }
   }
@@ -335,11 +358,12 @@ public class MirrorManagerImpl implements MirrorManager {
 
   @NotNull
   private File[] findRepositoryDirs() {
-    return myBaseMirrorsDir.listFiles(new FileFilter() {
+    final File[] dirs = myBaseMirrorsDir.listFiles(new FileFilter() {
       public boolean accept(File f) {
         return f.isDirectory() && new File(f, "config").exists();
       }
     });
+    return dirs != null ? dirs : new File[0];
   }
 
 
