@@ -58,7 +58,7 @@ public class GitGcErrorsHealthPage extends HealthStatusItemPageExtension {
   public boolean isAvailable(@NotNull HttpServletRequest request) {
     if (!super.isAvailable(request))
       return false;
-    if (!SessionUser.getUser(request).isPermissionGrantedGlobally(Permission.CHANGE_SERVER_SETTINGS)) return false;
+    if (!SessionUser.getUser(request).isPermissionGrantedGlobally(Permission.MANAGE_SERVER_INSTALLATION)) return false;
     HealthStatusItem item = getStatusItem(request);
     Object path = item.getAdditionalData().get(GitGcErrorsHealthReport.ERRORS_KEY);
     return path instanceof Map && !((Map) path).isEmpty();
