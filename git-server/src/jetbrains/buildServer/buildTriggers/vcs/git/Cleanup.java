@@ -123,7 +123,13 @@ public class Cleanup {
   }
 
   private List<File> getAllRepositoryDirs() {
-    return new ArrayList<File>(FileUtil.getSubDirectories(myRepositoryManager.getBaseMirrorsDir()));
+    List<File> dirs = new ArrayList<>();
+    for (File d: FileUtil.getSubDirectories(myRepositoryManager.getBaseMirrorsDir())) {
+      if (d.getName().endsWith(".git")) { // there can be some other directories like .gc or .old, we should ignore them
+        dirs.add(d);
+      }
+    }
+    return dirs;
   }
 
   private void cleanupMonitoringData() {
