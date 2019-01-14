@@ -263,14 +263,14 @@ public class Cleanup {
     rmWriteLock.lock();
     long lockDuration = System.currentTimeMillis() - lockStart;
     try {
-      if (!originalRepo.renameTo(oldDir)) {
+      if (!renameDir(originalRepo, oldDir, 5)) {
         myGcErrors.registerError(originalRepo, "Failed to rename " + originalRepo.getName() + " to " + oldDir.getName());
-        LOG.warn("Failed to rename " + originalRepo.getName() + " to " + oldDir.getName());
+        LOG.warn("Failed to rename " + originalRepo.getName() + " to " + oldDir.getName() + " after several attempts");
         return;
       }
-      if (!gcRepo.renameTo(originalRepo)) {
+      if (!renameDir(gcRepo, originalRepo, 5)) {
         myGcErrors.registerError(originalRepo, "Failed to rename " + gcRepo.getName() + " to " + originalRepo.getName());
-        LOG.warn("Failed to rename " + gcRepo.getName() + " to " + originalRepo.getName() + ", will try restoring old repository");
+        LOG.warn("Failed to rename " + gcRepo.getName() + " to " + originalRepo.getName() + " after several attempts, will try restoring old repository");
         if (!oldDir.renameTo(originalRepo)) {
           LOG.warn("Failed to rename " + oldDir.getName() + " to " + originalRepo.getName());
         }
@@ -290,6 +290,19 @@ public class Cleanup {
       LOG.info(msg);
     }
     myGcErrors.clearError(originalRepo);
+  }
+
+  @SuppressWarnings({"BooleanMethodIsAlwaysInverted", "SameParameterValue"})
+  private boolean renameDir(@NotNull File prevDir, @NotNull File newDir, int numAttempts) {
+    try {
+      for (int i=0; i<numAttempts; i++) {
+        if (prevDir.renameTo(newDir)) return true;
+        Thread.sleep(100);
+      }
+    } catch (InterruptedException e) {
+      LOG.warn("Could not rename directory " + prevDir.getAbsolutePath() + " to " + newDir.getAbsolutePath() + ", operation was interrupted");
+    }
+    return false;
   }
 
   private void repack(final File gcRepo) throws VcsException {
