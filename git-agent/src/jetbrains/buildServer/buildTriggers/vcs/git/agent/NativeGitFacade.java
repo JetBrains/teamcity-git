@@ -140,6 +140,11 @@ public class NativeGitFacade implements GitFacade {
   }
 
   @NotNull
+  public UpdateRefBatchCommand updateRefBatch() {
+    return new UpdateRefBatchCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   public CheckoutCommand checkout() {
     return new CheckoutCommandImpl(createCommandLine());
   }

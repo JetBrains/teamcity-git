@@ -52,6 +52,9 @@ public interface GitFacade {
   UpdateRefCommand updateRef();
 
   @NotNull
+  UpdateRefBatchCommand updateRefBatch();
+
+  @NotNull
   CheckoutCommand checkout();
 
   @NotNull

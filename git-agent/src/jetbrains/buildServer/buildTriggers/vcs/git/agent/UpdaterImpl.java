@@ -31,6 +31,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorrupte
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitOutdatedIndexException;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
@@ -62,6 +63,7 @@ public class UpdaterImpl implements Updater {
   public final static GitVersion GIT_WITH_SPARSE_CHECKOUT = new GitVersion(1, 7, 4);
   public final static GitVersion BROKEN_SPARSE_CHECKOUT = new GitVersion(2, 7, 0);
   public final static GitVersion MIN_GIT_SSH_COMMAND = new GitVersion(2, 3, 0);//GIT_SSH_COMMAND was introduced in git 2.3.0
+  public final static GitVersion GIT_UPDATE_REFS_STDIN = new GitVersion(1, 8, 5); // update-refs with '--stdin' support
   /**
    * Git version supporting an empty credential helper - the only way to disable system/global/local cred helper
    */
@@ -895,10 +897,11 @@ public class UpdaterImpl implements Updater {
     GitFacade git = myGitFactory.create(workingDir);
     ShowRefResult showRefResult = git.showRef().call();
     Refs localRefs = new Refs(showRefResult.getValidRefs());
-    if (localRefs.isEmpty() && showRefResult.getInvalidRefs().isEmpty())
+    Set<String> invalidRefs = showRefResult.getInvalidRefs();
+    if (localRefs.isEmpty() && invalidRefs.isEmpty())
       return false;
-    for (String invalidRef : showRefResult.getInvalidRefs()) {
-      git.updateRef().setRef(invalidRef).delete().call();
+    if (!invalidRefs.isEmpty()) {
+      removeRefs(git, invalidRefs);
       outdatedRefsRemoved = true;
     }
     final Refs remoteRefs;
@@ -916,14 +919,36 @@ public class UpdaterImpl implements Updater {
     //tracking branches (refs/remote/origin/topic), while git remote origin prune
     //removes only the latter. We need that because in some cases git cannot handle
     //rename of the branch (TW-28735).
+    final List<String> localRefsToDelete = new ArrayList<String>();
     for (Ref localRef : localRefs.list()) {
       Ref correspondingRemoteRef = createCorrespondingRemoteRef(localRef);
       if (remoteRefs.isOutdated(correspondingRemoteRef)) {
-        git.updateRef().setRef(localRef.getName()).delete().call();
-        outdatedRefsRemoved = true;
+        localRefsToDelete.add(localRef.getName());
       }
     }
+    if (!localRefsToDelete.isEmpty()) {
+      removeRefs(git, localRefsToDelete);
+      outdatedRefsRemoved = true;
+    }
     return outdatedRefsRemoved;
+  }
+
+  private void removeRefs(final GitFacade git, final Collection<String> invalidRefs) throws VcsException {
+    if (myPluginConfig.getGitVersion().isLessThan(UpdaterImpl.GIT_UPDATE_REFS_STDIN)) {
+      for (String invalidRef : invalidRefs) {
+        git.updateRef().setRef(invalidRef).delete().call();
+      }
+    } else {
+      List<List<String>> split = CollectionsUtil.split(new ArrayList<String>(invalidRefs), 1000);
+      for (final List<String> batch : split) {
+        if (batch.isEmpty()) continue;
+        UpdateRefBatchCommand command = git.updateRefBatch();
+        for (final String invalidRef : batch) {
+          command.delete(invalidRef, null);
+        }
+        command.call();
+      }
+    }
   }
 
 
