@@ -20,6 +20,7 @@ import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.StreamUtil;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
+import jetbrains.buildServer.TestNGUtil;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
@@ -28,6 +29,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefBatchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
@@ -58,6 +60,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 
@@ -974,6 +977,53 @@ public class AgentVcsSupportTest {
 
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
     assertNoTagExist("refs/tags/v0.5");
+  }
+
+  @Test(dataProvider = "mirrors")
+  @TestFor(issues = "TW-58811")
+  public void deleted_thousands_tags_in_remote_repository_should_be_deleted_in_local_repository_effectively(Boolean useMirrors)
+    throws Exception {
+    GitVersion version = new NativeGitFacade(getGitPath(), GitProgressLogger.NO_OP).version().call();
+    if (version.isLessThan(UpdaterImpl.GIT_UPDATE_REFS_STDIN)) {
+      TestNGUtil.skip("Requires git version at least " + UpdaterImpl.GIT_UPDATE_REFS_STDIN);
+    }
+
+    LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
+    myVcsSupport = myBuilder.setGitMetaFactory(loggingFactory).setFS(new MockFS()).build();
+
+
+    final String newCommit = "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6";
+
+    long start = System.nanoTime();
+    for (int i = 1; i <= 10000; i++) {
+      updateRef(myMainRepo, "refs/tags/x" + i, newCommit);
+    }
+    System.out.println("Creating tags took " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + "ms");
+
+    AgentRunningBuild build = createRunningBuild(useMirrors);
+
+    start = System.nanoTime();
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+    System.out.println("First sources update took " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + "ms");
+
+    start = System.nanoTime();
+    for (int i = 1; i <= 5000; i++) {
+      removeTag(myMainRepo, "refs/tags/x" + i);
+    }
+    System.out.println("Removing tags took " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + "ms");
+
+    start = System.nanoTime();
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+    System.out.println("Second sources update took " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + "ms");
+
+    assertNoTagExist("refs/tags/x1");
+    assertNoTagExist("refs/tags/x2500");
+    assertNoTagExist("refs/tags/x5000");
+
+    // there should be no non-batch updates in second build
+    then(loggingFactory.getNumberOfCalls(UpdateRefCommand.class)).isLessThan(10);
+    // Removed 5k tags, each batch command takes 1k. With mirrors - x2
+    then(loggingFactory.getNumberOfCalls(UpdateRefBatchCommand.class)).isEqualTo(useMirrors ? 10 : 5);
   }
 
 

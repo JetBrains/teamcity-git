@@ -31,7 +31,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorrupte
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitOutdatedIndexException;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
@@ -934,14 +933,21 @@ public class UpdaterImpl implements Updater {
   }
 
   private void removeRefs(final GitFacade git, final Collection<String> invalidRefs) throws VcsException {
-    if (myPluginConfig.getGitVersion().isLessThan(UpdaterImpl.GIT_UPDATE_REFS_STDIN)) {
+    int size = invalidRefs.size();
+    if (size == 0) return;
+    if (size == 1 || myPluginConfig.getGitVersion().isLessThan(UpdaterImpl.GIT_UPDATE_REFS_STDIN)) {
+      if (size > 100) {
+        logWarn("Removing a lot of refs (" + size + ") may be inefficient using git " + myPluginConfig.getGitVersion()
+                + ". It's recommended to update git to latest version");
+      }
       for (String invalidRef : invalidRefs) {
         git.updateRef().setRef(invalidRef).delete().call();
       }
     } else {
-      List<List<String>> split = CollectionsUtil.split(new ArrayList<String>(invalidRefs), 1000);
-      for (final List<String> batch : split) {
+      List<List<String>> batches = makeBatches(new ArrayList<String>(invalidRefs), 1000);
+      for (final List<String> batch : batches) {
         if (batch.isEmpty()) continue;
+        logInfo("Removing refs: " + batch);
         UpdateRefBatchCommand command = git.updateRefBatch();
         for (final String invalidRef : batch) {
           command.delete(invalidRef, null);
@@ -951,6 +957,19 @@ public class UpdaterImpl implements Updater {
     }
   }
 
+  private static <E> List<List<E>> makeBatches(List<E> source, int eachSize) {
+    if (source.isEmpty()) return Collections.emptyList();
+    final int size = source.size();
+    if (size < eachSize) return Collections.singletonList(source);
+    ArrayList<List<E>> result = new ArrayList<List<E>>();
+    int start = 0;
+    while (start < size) {
+      List<E> sub = source.subList(start, Math.min(start + eachSize, size));
+      if (!sub.isEmpty()) result.add(sub);
+      start += eachSize;
+    }
+    return result;
+  }
 
   @NotNull
   private Refs getRemoteRefs(@NotNull File workingDir) throws VcsException {

@@ -75,8 +75,15 @@ public class FastByteArrayBuilder {
     } while (length > 0);
   }
 
+  @Override
   public String toString() {
-    return new String(toByteArrayUnsafe());
+    byte[] last = buffers.peekLast();
+    return "FastByteArrayBuilder{" +
+           "size=" + size() +
+           ", buffers.length=" + buffers.size() +
+           ", buffers.last.length=" + (last != null ? last.length : null) +
+           ", index=" + index +
+           '}';
   }
 
   public int size() {
