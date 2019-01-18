@@ -26,28 +26,28 @@ import org.jetbrains.annotations.Nullable;
  */
 public interface UpdateRefBatchCommand extends BaseCommand {
 
-  // Supported commands
-  // update SP <ref> SP <newValue> [SP <oldValue>] LF
-  // create SP <ref> SP <newValue> LF
-  // delete SP <ref> [SP <oldValue>] LF
-  // verify SP <ref> [SP <oldValue>] LF
-  // option SP <opt> LF
+  // Supported commands, input format with '-z' arg:
+  // update SP <ref> NUL <newValue> NUL [<oldValue>] NUL
+  // create SP <ref> NUL <newValue> NUL
+  // delete SP <ref> NUL [<oldValue>] NUL
+  // verify SP <ref> NUL [<oldValue>] NUL
+  // option SP <opt> NUL
 
 
   @NotNull
-  UpdateRefBatchCommand update(@NotNull String ref, @NotNull String value, @Nullable String oldValue) throws VcsException;
+  UpdateRefBatchCommand update(@NotNull String ref, @NotNull String value, @Nullable String oldValue);
 
   @NotNull
-  UpdateRefBatchCommand create(@NotNull String ref, @NotNull String value) throws VcsException;
+  UpdateRefBatchCommand create(@NotNull String ref, @NotNull String value);
 
   @NotNull
-  UpdateRefBatchCommand delete(@NotNull String ref, @Nullable String oldValue) throws VcsException;
+  UpdateRefBatchCommand delete(@NotNull String ref, @Nullable String oldValue);
 
   @NotNull
-  UpdateRefBatchCommand verify(@NotNull String ref, @Nullable String oldValue) throws VcsException;
+  UpdateRefBatchCommand verify(@NotNull String ref, @Nullable String oldValue);
 
   @NotNull
-  UpdateRefBatchCommand option(@NotNull String option) throws VcsException;
+  UpdateRefBatchCommand option(@NotNull String option);
 
   void call() throws VcsException;
 

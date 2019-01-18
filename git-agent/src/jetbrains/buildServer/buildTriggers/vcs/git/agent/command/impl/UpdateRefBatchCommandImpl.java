@@ -22,15 +22,13 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefBatchC
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.springframework.util.FastByteArrayOutputStream;
-
-import java.io.IOException;
+import org.jetbrains.git4idea.util.FastByteArrayBuilder;
 
 import static org.apache.commons.codec.Charsets.UTF_8;
 
 
 public class UpdateRefBatchCommandImpl extends BaseCommandImpl implements UpdateRefBatchCommand {
-  private FastByteArrayOutputStream myInput = new FastByteArrayOutputStream();
+  private FastByteArrayBuilder myInput = new FastByteArrayBuilder();
 
   public UpdateRefBatchCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -38,92 +36,52 @@ public class UpdateRefBatchCommandImpl extends BaseCommandImpl implements Update
 
   @NotNull
   @Override
-  public UpdateRefBatchCommand update(@NotNull final String ref, @NotNull final String value, @Nullable final String oldValue)
-    throws VcsException {
+  public UpdateRefBatchCommand update(@NotNull final String ref, @NotNull final String value, @Nullable final String oldValue) {
     //update SP <ref> NUL <newValue> NUL [<oldValue>] NUL
-    try {
-      myInput.write("update".getBytes(UTF_8));
-      myInput.write(0x20);
-      myInput.write(ref.getBytes(UTF_8));
-      myInput.write(0x0);
-      myInput.write(value.getBytes(UTF_8));
-      myInput.write(0x0);
-      if (oldValue != null) {
-        myInput.write(oldValue.getBytes(UTF_8));
-      }
-      myInput.write(0x0);
-    } catch (IOException ignored) {
-      throw new VcsException("Failed to generate update-ref command binary input");
-    }
+    cmd("update");
+    arg(ref);
+    arg(value);
+    arg(oldValue);
     return this;
   }
 
 
   @NotNull
   @Override
-  public UpdateRefBatchCommand create(@NotNull final String ref, @NotNull final String value) throws VcsException {
+  public UpdateRefBatchCommand create(@NotNull final String ref, @NotNull final String value) {
     //create SP <ref> NUL <newValue> NUL
-    try {
-      myInput.write("create".getBytes(UTF_8));
-      myInput.write(0x20);
-      myInput.write(ref.getBytes(UTF_8));
-      myInput.write(0x0);
-    } catch (IOException ignored) {
-      throw new VcsException("Failed to generate update-ref command binary input");
-    }
+    cmd("create");
+    arg(ref);
+    arg(value);
     return this;
   }
 
   @NotNull
   @Override
-  public UpdateRefBatchCommand delete(@NotNull final String ref, @Nullable final String oldValue) throws VcsException {
+  public UpdateRefBatchCommand delete(@NotNull final String ref, @Nullable final String oldValue) {
     //delete SP <ref> NUL [<oldValue>] NUL
-    try {
-      myInput.write("delete".getBytes(UTF_8));
-      myInput.write(0x20);
-      myInput.write(ref.getBytes(UTF_8));
-      myInput.write(0x0);
-      if (oldValue != null) {
-        myInput.write(oldValue.getBytes(UTF_8));
-      }
-      myInput.write(0x0);
-    } catch (IOException ignored) {
-      throw new VcsException("Failed to generate update-ref command binary input");
-    }
+    cmd("delete");
+    arg(ref);
+    arg(oldValue);
     return this;
   }
 
   @NotNull
   @Override
-  public UpdateRefBatchCommand verify(@NotNull final String ref, @Nullable final String oldValue) throws VcsException {
+  public UpdateRefBatchCommand verify(@NotNull final String ref, @Nullable final String oldValue) {
     //verify SP <ref> NUL [<oldValue>] NUL
-    try {
-      myInput.write("verify".getBytes(UTF_8));
-      myInput.write(0x20);
-      myInput.write(ref.getBytes(UTF_8));
-      myInput.write(0x0);
-      if (oldValue != null) {
-        myInput.write(oldValue.getBytes(UTF_8));
-      }
-      myInput.write(0x0);
-    } catch (IOException ignored) {
-      throw new VcsException("Failed to generate update-ref command binary input");
-    }
+    cmd("verify");
+    arg(ref);
+    arg(oldValue);
     return this;
   }
 
   @NotNull
   @Override
-  public UpdateRefBatchCommand option(@NotNull final String option) throws VcsException {
+  public UpdateRefBatchCommand option(@NotNull final String option) {
     //option SP <opt> NUL
-    try {
-      myInput.write("option".getBytes(UTF_8));
-      myInput.write(0x20);
-      myInput.write(option.getBytes(UTF_8));
-      myInput.write(0x0);
-    } catch (IOException ignored) {
-      throw new VcsException("Failed to generate update-ref command binary input");
-    }
+    cmd("option");
+    arg(option);
     return this;
   }
 
@@ -135,5 +93,17 @@ public class UpdateRefBatchCommandImpl extends BaseCommandImpl implements Update
     byte[] input = myInput.toByteArray();
     ExecResult r = CommandUtil.runCommand(cmd, input);
     CommandUtil.failIfNotEmptyStdErr(cmd, r);
+  }
+
+  private void cmd(String cmd) {
+    myInput.append(cmd.getBytes(UTF_8));
+    myInput.append((byte)0x20); // SP
+  }
+
+  private void arg(@Nullable final String arg) {
+    if (arg != null) {
+      myInput.append(arg.getBytes(UTF_8));
+    }
+    myInput.append((byte)0x0); // NUL
   }
 }
