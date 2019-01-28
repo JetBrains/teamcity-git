@@ -98,10 +98,15 @@ public class CommitLoaderImpl implements CommitLoader {
     lock.lock();
     try {
       final long finish = System.currentTimeMillis();
-      Map<String, Ref> oldRefs = new HashMap<String, Ref>(db.getAllRefs());
-      PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + (finish - start) + "ms");
+      final long waitTime = finish - start;
+      if (waitTime > 20000) {
+        // if wait time was significant, report it in progress
+        settings.getProgress().reportProgress("Waited for exclusive lock in cloned directory, wait time: " + waitTime + "ms");
+      }
+      Map<String, Ref> oldRefs = new HashMap<>(db.getAllRefs());
+      PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + waitTime + "ms");
       myFetchCommand.fetch(db, fetchURI, refspecs, settings);
-      Map<String, Ref> newRefs = new HashMap<String, Ref>(db.getAllRefs());
+      Map<String, Ref> newRefs = new HashMap<>(db.getAllRefs());
       myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
     } finally {
       lock.unlock();
