@@ -17,10 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.serverSide.BuildServerAdapter;
-import jetbrains.buildServer.serverSide.BuildServerListener;
-import jetbrains.buildServer.serverSide.ServerResponsibility;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.ThreadUtil;
 import jetbrains.buildServer.util.executors.ExecutorsFactory;
@@ -87,14 +84,16 @@ public class GitClonesUpdater {
 
       OperationContext context = myVcs.createContext(root, "updating local clone");
       try {
-        GitVcsRoot gitRoot = context.getGitRoot();
-        myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-          Repository repo = context.getRepository();
-          try {
-            myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, repo, true, state);
-          } catch (Exception e1) {
-            throw new VcsException(e1);
-          }
+        ReadOnlyRestrictor.doReadOnlyCommandLine(() -> {
+          GitVcsRoot gitRoot = context.getGitRoot();
+          myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+            Repository repo = context.getRepository();
+            try {
+              myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, repo, true, state);
+            } catch (Exception e1) {
+              throw new VcsException(e1);
+            }
+          });
         });
       } catch (VcsException e1) {
         Loggers.VCS.warnAndDebugDetails("Could not update local clone for: " + LogUtil.describe(root), e1);
