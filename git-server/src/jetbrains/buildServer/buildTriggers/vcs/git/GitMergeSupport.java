@@ -34,6 +34,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static java.util.Arrays.asList;
 
@@ -159,7 +160,9 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
       return MergeResult.createMergeError(e.getConflicts());
     }
 
-    synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
+    ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
+    lock.lock();
+    try {
       final Transport tn = myTransportFactory.createTransport(db, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings(),
                                                               myPluginConfig.getPushTimeoutSeconds());
       try {
@@ -178,6 +181,8 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
       } finally {
         tn.close();
       }
+    } finally {
+      lock.unlock();
     }
   }
 

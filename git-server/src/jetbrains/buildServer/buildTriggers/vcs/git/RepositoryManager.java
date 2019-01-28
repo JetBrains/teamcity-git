@@ -24,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author dmitry.neverov
@@ -42,7 +43,7 @@ public interface RepositoryManager extends MirrorManager {
   void closeRepository(@NotNull Repository repository);
 
   @NotNull
-  Object getWriteLock(@NotNull File dir);
+  ReentrantLock getWriteLock(@NotNull File dir);
 
   @NotNull
   ReadWriteLock getRmLock(@NotNull File dir);

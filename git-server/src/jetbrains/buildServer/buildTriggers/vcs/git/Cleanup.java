@@ -42,6 +42,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -183,8 +184,12 @@ public class Cleanup {
       }
       if (enoughDiskSpaceForGC(gitDir, freeDiskSpace)) {
         if (runInPlace) {
-          synchronized (myRepositoryManager.getWriteLock(gitDir)) {
+          ReentrantLock lock = myRepositoryManager.getWriteLock(gitDir);
+          lock.lock();
+          try {
             runNativeGC(gitDir);
+          } finally {
+            lock.unlock();
           }
         } else {
           runGcInCopy(gitDir);
@@ -475,7 +480,9 @@ public class Cleanup {
     Boolean nativeGitInstalled = null;
     boolean enableNativeGitLogged = false;
     for (File gitDir : allDirs) {
-      synchronized (myRepositoryManager.getWriteLock(gitDir)) {
+      ReentrantLock lock = myRepositoryManager.getWriteLock(gitDir);
+      lock.lock();
+      try {
         try {
           LOG.info("Start garbage collection in " + gitDir.getAbsolutePath());
           long repositoryStartNanos = System.nanoTime();
@@ -499,7 +506,10 @@ public class Cleanup {
             }
           }
         }
+      } finally {
+        lock.unlock();
       }
+
       runGCCounter++;
       final long repositoryFinishNanos = System.nanoTime();
       if ((repositoryFinishNanos - startNanos) > gcTimeQuotaNanos) {

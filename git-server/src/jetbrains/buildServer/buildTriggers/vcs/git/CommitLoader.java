@@ -38,7 +38,7 @@ public interface CommitLoader {
                        @NotNull GitVcsRoot root,
                        @NotNull String revision) throws VcsException, IOException;
 
-  public void fetch(@NotNull Repository db,
+  void fetch(@NotNull Repository db,
                     @NotNull URIish fetchURI,
                     @NotNull Collection<RefSpec> refspecs,
                     @NotNull FetchSettings settings) throws IOException, VcsException;
@@ -47,5 +47,5 @@ public interface CommitLoader {
   RevCommit getCommit(@NotNull Repository repository, @NotNull ObjectId commitId) throws IOException;
 
   @Nullable
-  public RevCommit findCommit(@NotNull Repository r, @NotNull String sha);
+  RevCommit findCommit(@NotNull Repository r, @NotNull String sha);
 }
