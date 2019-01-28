@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static java.util.Arrays.asList;
 
@@ -163,7 +164,9 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
 
         ObjectId commitId = createCommit(gitRoot, lastCommit, treeId, commitSettings.getUserName(), nonEmptyMessage(commitSettings));
 
-        synchronized (myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir())) {
+        ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
+        lock.lock();
+        try {
           final Transport tn = myTransportFactory.createTransport(myDb, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings(),
                                                                   myPluginConfig.getPushTimeoutSeconds());
           try {
@@ -188,6 +191,8 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
           } finally {
             tn.close();
           }
+        } finally {
+          lock.unlock();
         }
       } catch (Exception e) {
         throw myContext.wrapException(e);

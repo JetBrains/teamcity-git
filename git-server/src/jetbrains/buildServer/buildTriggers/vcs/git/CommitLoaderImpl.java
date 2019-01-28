@@ -33,13 +33,14 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static java.util.Arrays.asList;
 
 public class CommitLoaderImpl implements CommitLoader {
 
   private static final Logger LOG = Logger.getInstance(CommitLoaderImpl.class.getName());
-  private static final Logger PERFORMANCE_LOG = Logger.getInstance(CommitLoaderImpl.class.getName() + ".Performance");
+  public static final Logger PERFORMANCE_LOG = Logger.getInstance(CommitLoaderImpl.class.getName() + ".Performance");
 
   private final RepositoryManager myRepositoryManager;
   private final FetchCommand myFetchCommand;
@@ -92,13 +93,18 @@ public class CommitLoaderImpl implements CommitLoader {
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
     final long start = System.currentTimeMillis();
-    synchronized (myRepositoryManager.getWriteLock(repositoryDir)) {
+
+    ReentrantLock lock = myRepositoryManager.getWriteLock(repositoryDir);
+    lock.lock();
+    try {
       final long finish = System.currentTimeMillis();
       Map<String, Ref> oldRefs = new HashMap<String, Ref>(db.getAllRefs());
       PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + (finish - start) + "ms");
       myFetchCommand.fetch(db, fetchURI, refspecs, settings);
       Map<String, Ref> newRefs = new HashMap<String, Ref>(db.getAllRefs());
       myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
+    } finally {
+      lock.unlock();
     }
   }
 

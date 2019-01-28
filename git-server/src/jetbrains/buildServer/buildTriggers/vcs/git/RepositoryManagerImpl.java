@@ -36,6 +36,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getWrongUrlError;
@@ -60,7 +61,7 @@ public final class RepositoryManagerImpl implements RepositoryManager {
    * Also several concurrent fetches in single repository does not make sense since only one of them succeed.
    * This map contains locks used for fetch and push operations.
    */
-  private final ConcurrentMap<String, Object> myWriteLocks = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, ReentrantLock> myWriteLocks = new ConcurrentHashMap<>();
   /**
    * During cleanup unused bare repositories are removed. This map contains rw locks for repository removal.
    * Fetch/push/create operations should be done with read lock hold, remove operation is done with write lock hold.
@@ -225,8 +226,8 @@ public final class RepositoryManagerImpl implements RepositoryManager {
 
 
   @NotNull
-  public Object getWriteLock(@NotNull final File dir) {
-    return getOrCreate(myWriteLocks, getCanonicalName(dir), new Object());
+  public ReentrantLock getWriteLock(@NotNull final File dir) {
+    return getOrCreate(myWriteLocks, getCanonicalName(dir), new ReentrantLock());
   }
 
 
