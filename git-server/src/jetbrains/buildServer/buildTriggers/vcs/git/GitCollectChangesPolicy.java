@@ -33,6 +33,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -155,6 +156,21 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       String revision = GitUtils.versionRevision(entry.getValue());
       if (myCommitLoader.findCommit(db, revision) != null)
         continue;
+
+      ReentrantLock lock = myRepositoryManager.getWriteLock(root.getRepositoryDir());
+      if (!lock.tryLock()) {
+        // some other thread fetches data to our repository,
+        // to avoid unnecessary fetches we need to wait for this operation to complete and then try to find commit again
+        lock.lock();
+        try {
+          if (myCommitLoader.findCommit(db, revision) != null)
+            continue;
+        } finally {
+          lock.unlock();
+        }
+      } else {
+        lock.unlock();
+      }
 
       if (!fetch.isInvoked())
         fetch.fetchTrackedRefs();
