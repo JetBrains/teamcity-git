@@ -113,6 +113,41 @@ public class CommitLoaderImpl implements CommitLoader {
     }
   }
 
+  public boolean fetchIfNoCommit(@NotNull Repository db,
+                              @NotNull URIish fetchURI,
+                              @NotNull Collection<RefSpec> refspecs,
+                              @NotNull FetchSettings settings,
+                              @NotNull String sha) throws IOException, VcsException {
+    File repositoryDir = db.getDirectory();
+    assert repositoryDir != null : "Non-local repository";
+    final long start = System.currentTimeMillis();
+
+    if (findCommit(db, sha) != null) return false;
+
+    ReentrantLock lock = myRepositoryManager.getWriteLock(repositoryDir);
+    lock.lock();
+    try {
+      final long finish = System.currentTimeMillis();
+      final long waitTime = finish - start;
+      if (waitTime > 20000) {
+        // if wait time was significant, report it in progress
+        settings.getProgress().reportProgress("Waited for exclusive lock in cloned directory, wait time: " + waitTime + "ms");
+      }
+      PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + waitTime + "ms");
+
+      if (findCommit(db, sha) != null) return false;
+
+      Map<String, Ref> oldRefs = new HashMap<>(db.getAllRefs());
+      myFetchCommand.fetch(db, fetchURI, refspecs, settings);
+      Map<String, Ref> newRefs = new HashMap<>(db.getAllRefs());
+      myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
+    } finally {
+      lock.unlock();
+    }
+
+    return true;
+  }
+
   @NotNull
   public RevCommit getCommit(@NotNull Repository repository, @NotNull ObjectId commitId) throws IOException {
     final long start = System.currentTimeMillis();

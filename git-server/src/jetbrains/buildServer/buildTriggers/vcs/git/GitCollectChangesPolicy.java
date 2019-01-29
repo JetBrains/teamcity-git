@@ -33,7 +33,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -157,23 +156,8 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       if (myCommitLoader.findCommit(db, revision) != null)
         continue;
 
-      ReentrantLock lock = myRepositoryManager.getWriteLock(root.getRepositoryDir());
-      if (!lock.tryLock()) {
-        // some other thread fetches data to our repository,
-        // to avoid unnecessary fetches we need to wait for this operation to complete and then try to find commit again
-        lock.lock();
-        try {
-          if (myCommitLoader.findCommit(db, revision) != null)
-            continue;
-        } finally {
-          lock.unlock();
-        }
-      } else {
-        lock.unlock();
-      }
-
       if (!fetch.isInvoked())
-        fetch.fetchTrackedRefs();
+        fetch.fetchTrackedRefsIfNoCommit(revision);
 
       if (myCommitLoader.findCommit(db, revision) != null)
         continue;
@@ -284,6 +268,11 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL(), calculateRefSpecsForFetch(), settings);
     }
 
+    void fetchTrackedRefsIfNoCommit(@NotNull String sha) throws IOException, VcsException {
+      FetchSettings settings = new FetchSettings(myRoot.getAuthSettings(), myProgress);
+      myInvoked = myCommitLoader.fetchIfNoCommit(myDb, myRoot.getRepositoryFetchURL(), calculateRefSpecsForFetch(), settings, sha);
+    }
+
     void fetchAllRefs() throws IOException, VcsException {
       myInvoked = true;
       myAllRefsFetched = true;
@@ -299,7 +288,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       return myAllRefsFetched;
     }
 
-    private Collection<RefSpec> calculateRefSpecsForFetch() throws VcsException {
+    private Collection<RefSpec> calculateRefSpecsForFetch() {
       List<RefSpec> specs = new ArrayList<RefSpec>();
       Map<String, Ref> remoteRepositoryRefs;
       try {
