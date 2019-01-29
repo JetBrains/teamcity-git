@@ -43,6 +43,16 @@ public interface CommitLoader {
                     @NotNull Collection<RefSpec> refspecs,
                     @NotNull FetchSettings settings) throws IOException, VcsException;
 
+  /**
+   * performs fetch only if specified sha is not in repository already
+   * @return true if fetch was performed and false otherwise
+   */
+  boolean fetchIfNoCommit(@NotNull Repository db,
+                       @NotNull URIish fetchURI,
+                       @NotNull Collection<RefSpec> refspecs,
+                       @NotNull FetchSettings settings,
+                       @NotNull String sha) throws IOException, VcsException;
+
   @NotNull
   RevCommit getCommit(@NotNull Repository repository, @NotNull ObjectId commitId) throws IOException;
 
