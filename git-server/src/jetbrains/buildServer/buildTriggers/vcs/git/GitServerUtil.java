@@ -70,8 +70,11 @@ public class GitServerUtil {
   public static final int DISPLAY_VERSION_AMOUNT = 40;
 
   public static void setupMemoryMappedIndexReading() {
-    if (TeamCityProperties.getBoolean("teamcity.server.git.useMemoryMappedIndex")) {
+    if (TeamCityProperties.getBooleanOrTrue("teamcity.server.git.useMemoryMappedIndex")) {
       PackIndex.setPackIndexFactory(new MemoryMappedPackIndex());
+      LOG.debug("Git memory mapped index files is on");
+    } else {
+      LOG.debug("Git memory mapped index files is off");
     }
   }
 
