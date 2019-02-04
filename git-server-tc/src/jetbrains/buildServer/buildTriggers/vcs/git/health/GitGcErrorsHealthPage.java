@@ -19,9 +19,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git.health;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
+import jetbrains.buildServer.serverSide.NodeSpecificConfigs;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.auth.Permission;
 import jetbrains.buildServer.serverSide.healthStatus.HealthStatusItem;
+import jetbrains.buildServer.serverSide.impl.ErrorMessageSanitizer;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.web.openapi.PagePlaces;
 import jetbrains.buildServer.web.openapi.PluginDescriptor;
@@ -66,16 +68,23 @@ public class GitGcErrorsHealthPage extends HealthStatusItemPageExtension {
 
   @Override
   public void fillModel(@NotNull final Map<String, Object> model, @NotNull final HttpServletRequest request) {
+    ErrorMessageSanitizer errorMessageSanitizer = new ErrorMessageSanitizer();
+
     HealthStatusItem item = getStatusItem(request);
     Object errors = item.getAdditionalData().get(GitGcErrorsHealthReport.ERRORS_KEY);
     Map<String, Pair<String, String>> sortedErrors = new TreeMap<>();
     if (errors instanceof Map) {
-      String baseDir;
+      File mainDataDirectory;
       try {
-        baseDir = myServerPaths.getDataDirectory().getCanonicalPath();
+        mainDataDirectory = myServerPaths.getDataDirectory().getCanonicalFile();
       } catch (IOException e) {
-        baseDir = myServerPaths.getDataDirectory().getAbsolutePath();
+        mainDataDirectory = myServerPaths.getDataDirectory().getAbsoluteFile();
       }
+
+      errorMessageSanitizer.addSanitizedPath(mainDataDirectory.getAbsolutePath(), "<TeamCity Data Directory>");
+
+      File currentNodeDataDir = NodeSpecificConfigs.getNodeDataDirectory(mainDataDirectory);
+      errorMessageSanitizer.addSanitizedPath(currentNodeDataDir.getAbsolutePath(), "<Node Data Directory>");
 
       //noinspection unchecked
       Set<Map.Entry> entries = ((Map)errors).entrySet();
@@ -84,10 +93,9 @@ public class GitGcErrorsHealthPage extends HealthStatusItemPageExtension {
         Object value = entry.getValue();
         if (key instanceof File && value instanceof String) {
           try {
-            String relativePath = FileUtil.getRelativePath(baseDir, ((File)key).getCanonicalPath(), File.separatorChar);
             String url = myMirrorManager.getUrl(((File)key).getName());
             if (url != null) {
-              sortedErrors.put(url, Pair.create("<TeamCity data dir>" + File.separatorChar + relativePath, (String) value));
+              sortedErrors.put(url, Pair.create(errorMessageSanitizer.sanitize(((File)key).getCanonicalPath()), (String) value));
             }
           } catch (IOException e) {
             LOG.warnAndDebugDetails("Error while preparing health report data", e);
