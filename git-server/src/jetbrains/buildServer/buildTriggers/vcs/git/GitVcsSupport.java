@@ -22,6 +22,7 @@ import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
@@ -402,6 +403,10 @@ public class GitVcsSupport extends ServerVcsSupport
     //checkout rules do not affect suitability, we can check it for unique root only ignoring different checkout rules
     Set<VcsRoot> uniqueRoots = entries.stream().map(VcsRootEntry::getVcsRoot).collect(Collectors.toSet());
 
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Checking suitable repositories in " + uniqueRoots.size() + " roots for " + paths.size() + " paths: [" + StringUtil.join(", ", paths) + "], " + fullPaths.size() + " unique");
+    }
+
     //several roots with different settings can be cloned into the same dir,
     //do not compute suitability for given clone dir more than once
     Map<File, Boolean> cloneDirResults = new HashMap<>();//clone dir -> result for this dir
@@ -426,7 +431,7 @@ public class GitVcsSupport extends ServerVcsSupport
         });
 
         rootResult.put(root, suitable);
-        cloneDirResults.put(gitRoot.getRepositoryDir(), suitable);
+        cloneDirResults.put(cloneDir, suitable);
       } catch (VcsException e) {
         //will return false for broken VCS root
         LOG.warnAndDebugDetails("Error while checking suitability for root " + LogUtil.describe(root) + ", assume root is not suitable", e);
