@@ -112,7 +112,7 @@ public class GitMapFullPath {
     Boolean hasRevision = repositoryCache.hasRevision(revision);
     if (hasRevision != null) {
       if (LOG.isDebugEnabled())
-        LOG.debug("RevisionCache hit: root " + LogUtil.describe(root) + (hasRevision ? "contains " : "doesn't contain ") + "revision " + revision);
+        LOG.debug("RevisionCache hit: root " + LogUtil.describe(root) + (hasRevision ? " contains " : " doesn't contain ") + "revision " + revision);
       return hasRevision;
     } else {
       if (LOG.isDebugEnabled())
