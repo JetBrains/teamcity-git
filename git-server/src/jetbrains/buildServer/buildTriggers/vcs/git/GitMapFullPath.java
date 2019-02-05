@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.parameters.ReferencesResolverUtil;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.eclipse.jgit.lib.Constants;
@@ -84,15 +85,21 @@ public class GitMapFullPath {
     }
 
     try {
-      if (path.containsRevision()) {
-        if (path.containsHintRevision()) {
-          //if full path has a hint revision, first check if repository contains it;
-          //a hint revision should rarely change and most likely will be cached
-          return repositoryContainsRevision(context, root, path.getHintRevision(), RevisionCacheType.HINT_CACHE) &&
-                 repositoryContainsRevision(context, root, path.getRevision(), RevisionCacheType.COMMIT_CACHE);
-        } else {
-          return repositoryContainsRevision(context, root, path.getRevision(), RevisionCacheType.COMMIT_CACHE);
+      if (path.containsHintRevision()) {
+        // if full path has a hint revision, use it as it should rarely change and most likely will be cached
+        // if hint revision is not found, the repositories are different
+        if (!repositoryContainsRevision(context, root, path.getHintRevision(), RevisionCacheType.HINT_CACHE)) {
+          return false;
         }
+
+        // main revision might not yet be present in the repository, as we do not do fetch before the operation,
+        // so just pushed revision is likely to be missing
+        if (!TeamCityProperties.getBoolean("teamcity.git.mapFullPath.checkRevisionWhenHintRevisionIsFound") || !path.containsRevision()) {
+          return true;
+        }
+      }
+      if (path.containsRevision()) {
+        return repositoryContainsRevision(context, root, path.getRevision(), RevisionCacheType.COMMIT_CACHE);
       } else {
         return urlsMatch(root, path);
       }

@@ -173,8 +173,6 @@ public class MapFullPathTest {
     final String remoteUrl2 = myRemoteRepositoryDir2.getAbsolutePath();
     myContext.checking(new Expectations() {{
       one(commitLoader).findCommit(with(repositoryWithUrl(remoteUrl1)), with(hintCommit)); will(returnValue(commit));
-      one(commitLoader).findCommit(with(repositoryWithUrl(remoteUrl1)), with(lastCommonCommit1)); will(returnValue(commit));
-      one(commitLoader).findCommit(with(repositoryWithUrl(remoteUrl1)), with(lastCommonCommit2)); will(returnValue(commit));
       //only single check for repository which doesn't contain a hint commit:
       one(commitLoader).findCommit(with(repositoryWithUrl(remoteUrl2)), with(hintCommit)); will(returnValue(null));
     }});
