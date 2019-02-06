@@ -26,6 +26,7 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
+import jetbrains.vcs.api.VcsSettings;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Ref;
@@ -440,15 +441,23 @@ public class GitVcsSupport extends ServerVcsSupport
       }
     }
 
+    int suitableCount = 0;
     List<Boolean> result = new ArrayList<>();
     for (VcsRootEntry entry : entries) {
       Boolean suitable = rootResult.get(entry.getVcsRoot());
       if (suitable != null) {
         result.add(suitable);
+        if (suitable) suitableCount++;
       } else {
         //can be null if the root was broken
         result.add(false);
       }
+    }
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Found " + suitableCount + " suitable root entries in " + entries.size() + " entries for " + paths.size() + " paths: [" +
+                StringUtil.join(", ", paths) + "], VCS roots: " +
+                entries.stream().map(VcsSettings::getVcsRoot).filter(root -> Boolean.TRUE.equals(rootResult.get(root))).distinct()
+                  .map(root -> root.describe(false)).collect(Collectors.joining(", ")));
     }
     return result;
   }
