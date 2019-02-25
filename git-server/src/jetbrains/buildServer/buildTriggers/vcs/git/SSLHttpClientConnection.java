@@ -17,22 +17,22 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.util.ssl.SSLContextUtil;
-import org.apache.http.*;
+import org.apache.http.Header;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpEntityEnclosingRequest;
+import org.apache.http.HttpHost;
 import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.*;
 import org.apache.http.client.params.ClientPNames;
 import org.apache.http.conn.params.ConnRoutePNames;
 import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.conn.ssl.X509HostnameVerifier;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.CoreConnectionPNames;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HttpContext;
+import org.eclipse.jgit.transport.http.HttpConnection;
 import org.eclipse.jgit.transport.http.apache.HttpClientConnection;
 import org.eclipse.jgit.transport.http.apache.TemporaryBufferEntity;
 import org.eclipse.jgit.transport.http.apache.internal.HttpApacheText;
@@ -43,16 +43,17 @@ import javax.net.ssl.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.*;
+import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
+import java.net.Proxy;
+import java.net.URL;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -63,15 +64,15 @@ import java.util.function.Supplier;
  * @author Mikhail Khorkov
  * @since 2018.1
  */
-public class SSLHttpClientConnection extends HttpClientConnection {
+public class SSLHttpClientConnection implements HttpConnection {
 
-  HttpClient client;
+  CloseableHttpClient client;
 
   String urlStr;
 
   HttpUriRequest req;
 
-  HttpResponse resp = null;
+  CloseableHttpResponse resp = null;
 
   String method = "GET"; //$NON-NLS-1$
 
@@ -96,19 +97,34 @@ public class SSLHttpClientConnection extends HttpClientConnection {
   @NotNull
   private Supplier<KeyStore> myTrustStoreGetter = () -> null;
 
-  public SSLHttpClientConnection(final String urlStr) {
-    super(urlStr);
+  private Function<SSLHttpClientConnection, Collection<Scheme>> myAdditionalSchemesProvider;
+
+  public SSLHttpClientConnection(final String urlStr, final Function<SSLHttpClientConnection, Collection<Scheme>> additionalSchemesProvider) {
+    this(urlStr, null, additionalSchemesProvider);
   }
 
-  public SSLHttpClientConnection(final String urlStr, final Proxy proxy) {
-    super(urlStr, proxy);
+  public SSLHttpClientConnection(final String urlStr,
+                                 final Proxy proxy,
+                                 final Function<SSLHttpClientConnection, Collection<Scheme>> additionalSchemesProvider) {
+    this(urlStr, proxy, null, additionalSchemesProvider);
   }
 
-  public SSLHttpClientConnection(final String urlStr, final Proxy proxy, final HttpClient cl) {
-    super(urlStr, proxy, cl);
+  public SSLHttpClientConnection(final String urlStr,
+                                 final Proxy proxy,
+                                 final CloseableHttpClient cl,
+                                 final Function<SSLHttpClientConnection, Collection<Scheme>> additionalSchemesProvider) {
+    this.client = cl;
+    this.urlStr = urlStr;
+    this.proxy = proxy;
+
+    myAdditionalSchemesProvider = additionalSchemesProvider;
   }
 
-  private HttpClient getClient() {
+  public X509HostnameVerifier getHostnameVerifier() {
+    return hostnameverifier;
+  }
+
+  private CloseableHttpClient getClient() {
     if (client == null)
       client = new DefaultHttpClient();
     HttpParams params = client.getParams();
@@ -124,17 +140,16 @@ public class SSLHttpClientConnection extends HttpClientConnection {
       params.setIntParameter(CoreConnectionPNames.SO_TIMEOUT, readTimeout);
     if (followRedirects != null)
       params.setBooleanParameter(ClientPNames.HANDLE_REDIRECTS, followRedirects);
-    if (hostnameverifier != null) {
-      SSLSocketFactory sf;
-      sf = new SSLSocketFactory(getSSLContext(), hostnameverifier);
-      Scheme https = new Scheme("https", 443, sf); //$NON-NLS-1$
-      client.getConnectionManager().getSchemeRegistry().register(https);
+
+    final Collection<Scheme> schemes = myAdditionalSchemesProvider.apply(this);
+    for (Scheme scheme : schemes) {
+      client.getConnectionManager().getSchemeRegistry().register(scheme);
     }
 
     return client;
   }
 
-  private SSLContext getSSLContext() {
+  public SSLContext getSSLContext() {
     final KeyStore trustStore = myTrustStoreGetter.get();
     if (trustStore != null) {
       ctx = SSLContextUtil.createUserSSLContext(trustStore);
@@ -142,7 +157,8 @@ public class SSLHttpClientConnection extends HttpClientConnection {
     if (ctx == null) {
       try {
         ctx = SSLContext.getInstance("TLS"); //$NON-NLS-1$
-      } catch (NoSuchAlgorithmException e) {
+        ctx.init(null, null, null);
+      } catch (NoSuchAlgorithmException | KeyManagementException e) {
         throw new IllegalStateException(
           HttpApacheText.get().unexpectedSSLContextException, e);
       }
@@ -241,7 +257,53 @@ public class SSLHttpClientConnection extends HttpClientConnection {
   }
 
   public InputStream getInputStream() throws IOException {
-    return resp.getEntity().getContent();
+    final InputStream delegate = resp.getEntity().getContent();
+    return new InputStream() {
+      public int read() throws IOException {
+        return delegate.read();
+      }
+
+      public int read(@NotNull final byte[] b) throws IOException {
+        return delegate.read(b);
+      }
+
+      public int read(@NotNull final byte[] b, final int off, final int len) throws IOException {
+        return delegate.read(b, off, len);
+      }
+
+      public long skip(final long n) throws IOException {
+        return delegate.skip(n);
+      }
+
+      public int available() throws IOException {
+        return delegate.available();
+      }
+
+      public void close() throws IOException {
+        try {
+          delegate.close();
+        } catch (Throwable ignore) {}
+        try {
+          resp.close();
+        } catch (Throwable ignore) {}
+        try {
+          client.close();
+          client = null;
+        } catch (Throwable ignore) {}
+      }
+
+      public void mark(final int readlimit) {
+        delegate.mark(readlimit);
+      }
+
+      public void reset() throws IOException {
+        delegate.reset();
+      }
+
+      public boolean markSupported() {
+        return delegate.markSupported();
+      }
+    };
   }
 
   // will return only the first field
