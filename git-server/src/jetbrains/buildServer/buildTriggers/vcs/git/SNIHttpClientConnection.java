@@ -95,7 +95,7 @@ public class SNIHttpClientConnection implements HttpConnection {
 
   private Map<String, Object> attributes = new HashMap<String, Object>();
 
-  private HttpClient getClient() {
+  private CloseableHttpClient getClient() {
     if (client == null)
       client = new DefaultHttpClient();
     HttpParams params = client.getParams();
