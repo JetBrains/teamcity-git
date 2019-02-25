@@ -289,6 +289,7 @@ public class SNIHttpClientConnection implements HttpConnection {
             resp.close();
           } finally {
             client.close();
+            client = null;
           }
         }
       }
