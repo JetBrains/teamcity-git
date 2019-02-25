@@ -22,15 +22,13 @@ import jetbrains.buildServer.util.ssl.SSLContextUtil;
 import org.apache.http.*;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.*;
 import org.apache.http.client.params.ClientPNames;
 import org.apache.http.conn.params.ConnRoutePNames;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.conn.ssl.X509HostnameVerifier;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.CoreConnectionPNames;
 import org.apache.http.params.HttpParams;
@@ -67,13 +65,13 @@ import java.util.function.Supplier;
 public class SNIHttpClientConnection implements HttpConnection {
   private static Logger LOG = Logger.getInstance(SNIHttpClientConnection.class.getName());
 
-  HttpClient client;
+  CloseableHttpClient client;
 
   String urlStr;
 
   HttpUriRequest req;
 
-  HttpResponse resp = null;
+  CloseableHttpResponse resp = null;
 
   String method = "GET"; //$NON-NLS-1$
 
@@ -169,7 +167,7 @@ public class SNIHttpClientConnection implements HttpConnection {
    * @param proxy
    * @param cl
    */
-  public SNIHttpClientConnection(String urlStr, Proxy proxy, HttpClient cl) {
+  public SNIHttpClientConnection(String urlStr, Proxy proxy, CloseableHttpClient cl) {
     this.client = cl;
     this.urlStr = urlStr;
     this.proxy = proxy;
@@ -261,7 +259,52 @@ public class SNIHttpClientConnection implements HttpConnection {
   }
 
   public InputStream getInputStream() throws IOException {
-    return resp.getEntity().getContent();
+    final InputStream delegate = resp.getEntity().getContent();
+    return new InputStream() {
+      public int read() throws IOException {
+        return delegate.read();
+      }
+
+      public int read(final byte[] b) throws IOException {
+        return delegate.read(b);
+      }
+
+      public int read(final byte[] b, final int off, final int len) throws IOException {
+        return delegate.read(b, off, len);
+      }
+
+      public long skip(final long n) throws IOException {
+        return delegate.skip(n);
+      }
+
+      public int available() throws IOException {
+        return delegate.available();
+      }
+
+      public void close() throws IOException {
+        try {
+          delegate.close();
+        } finally {
+          try {
+            resp.close();
+          } finally {
+            client.close();
+          }
+        }
+      }
+
+      public void mark(final int readlimit) {
+        delegate.mark(readlimit);
+      }
+
+      public void reset() throws IOException {
+        delegate.reset();
+      }
+
+      public boolean markSupported() {
+        return delegate.markSupported();
+      }
+    };
   }
 
   // will return only the first field
