@@ -107,18 +107,19 @@ public class SNIHttpClientConnection implements HttpConnection {
     }
     if (timeout != null)
       params.setIntParameter(CoreConnectionPNames.CONNECTION_TIMEOUT,
-                             timeout.intValue());
+                             timeout);
     if (readTimeout != null)
       params.setIntParameter(CoreConnectionPNames.SO_TIMEOUT,
-                             readTimeout.intValue());
+                             readTimeout);
     if (followRedirects != null)
       params.setBooleanParameter(ClientPNames.HANDLE_REDIRECTS,
-                                 followRedirects.booleanValue());
+                                 followRedirects);
     SSLSocketFactory sf = hostnameverifier != null ?
                           new SNISSLSocketFactory(getSSLContext(), hostnameverifier) :
                           new SNISSLSocketFactory(getSSLContext());
     Scheme https = new Scheme("https", 443, sf); //$NON-NLS-1$
     client.getConnectionManager().getSchemeRegistry().register(https);
+
     return client;
   }
 
@@ -208,11 +209,7 @@ public class SNIHttpClientConnection implements HttpConnection {
   public Map<String, List<String>> getHeaderFields() {
     Map<String, List<String>> ret = new HashMap<String, List<String>>();
     for (Header hdr : resp.getAllHeaders()) {
-      List<String> list = ret.get(hdr.getName());
-      if (list == null) {
-        list = new LinkedList<String>();
-        ret.put(hdr.getName(), list);
-      }
+      List<String> list = ret.computeIfAbsent(hdr.getName(), k -> new LinkedList<String>());
       list.add(hdr.getValue());
     }
     return ret;

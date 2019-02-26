@@ -142,7 +142,8 @@ public class SSLHttpClientConnection extends HttpClientConnection {
     if (ctx == null) {
       try {
         ctx = SSLContext.getInstance("TLS"); //$NON-NLS-1$
-      } catch (NoSuchAlgorithmException e) {
+        ctx.init(null, null, null);
+      } catch (NoSuchAlgorithmException | KeyManagementException e) {
         throw new IllegalStateException(
           HttpApacheText.get().unexpectedSSLContextException, e);
       }
