@@ -27,7 +27,6 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.params.ClientPNames;
 import org.apache.http.conn.params.ConnRoutePNames;
 import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.conn.ssl.X509HostnameVerifier;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.CoreConnectionPNames;
@@ -97,28 +96,25 @@ public class SSLHttpClientConnection implements HttpConnection {
 
   private Function<SSLHttpClientConnection, Collection<Scheme>> myAdditionalSchemesProvider;
 
-  public SSLHttpClientConnection(final String urlStr) {
-    this(urlStr, null, null);
+  public SSLHttpClientConnection(final String urlStr, final Function<SSLHttpClientConnection, Collection<Scheme>> additionalSchemesProvider) {
+    this(urlStr, null, additionalSchemesProvider);
   }
 
-  public SSLHttpClientConnection(final String urlStr, final Proxy proxy) {
-    this(urlStr, proxy, null);
+  public SSLHttpClientConnection(final String urlStr,
+                                 final Proxy proxy,
+                                 final Function<SSLHttpClientConnection, Collection<Scheme>> additionalSchemesProvider) {
+    this(urlStr, proxy, null, additionalSchemesProvider);
   }
 
-  public SSLHttpClientConnection(final String urlStr, final Proxy proxy, final HttpClient cl) {
+  public SSLHttpClientConnection(final String urlStr,
+                                 final Proxy proxy,
+                                 final HttpClient cl,
+                                 final Function<SSLHttpClientConnection, Collection<Scheme>> additionalSchemesProvider) {
     this.client = cl;
     this.urlStr = urlStr;
     this.proxy = proxy;
 
-    myAdditionalSchemesProvider = (clientConnection) -> {
-      final X509HostnameVerifier hostnameVerifier = clientConnection.getHostnameVerifier();
-      if (hostnameVerifier != null) {
-        SSLSocketFactory sf;
-        sf = new SSLSocketFactory(clientConnection.getSSLContext(), hostnameVerifier);
-        return Collections.singleton(new Scheme("https", 443, sf));
-      }
-      return Collections.emptyList();
-    };
+    myAdditionalSchemesProvider = additionalSchemesProvider;
   }
 
   public X509HostnameVerifier getHostnameVerifier() {
@@ -150,7 +146,7 @@ public class SSLHttpClientConnection implements HttpConnection {
     return client;
   }
 
-  private SSLContext getSSLContext() {
+  public SSLContext getSSLContext() {
     final KeyStore trustStore = myTrustStoreGetter.get();
     if (trustStore != null) {
       ctx = SSLContextUtil.createUserSSLContext(trustStore);

@@ -27,7 +27,6 @@ import org.apache.http.client.methods.*;
 import org.apache.http.client.params.ClientPNames;
 import org.apache.http.conn.params.ConnRoutePNames;
 import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.conn.ssl.X509HostnameVerifier;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -122,7 +121,7 @@ public class SNIHttpClientConnection implements HttpConnection {
     return client;
   }
 
-  private SSLContext getSSLContext() {
+  public SSLContext getSSLContext() {
     KeyStore trustStore = trustStoreGetter.get();
     if (trustStore != null) {
       ctx = SSLContextUtil.createUserSSLContext(trustStore);
@@ -149,35 +148,37 @@ public class SNIHttpClientConnection implements HttpConnection {
 
   /**
    * @param urlStr
+   * @param additionalSchemesProvider
    */
-  public SNIHttpClientConnection(String urlStr) {
-    this(urlStr, null, null);
+  public SNIHttpClientConnection(String urlStr, final Function<SNIHttpClientConnection, Collection<Scheme>> additionalSchemesProvider) {
+    this(urlStr, null, null, additionalSchemesProvider);
   }
 
   /**
    * @param urlStr
    * @param proxy
+   * @param additionalSchemesProvider
    */
-  public SNIHttpClientConnection(String urlStr, Proxy proxy) {
-    this(urlStr, proxy, null);
+  public SNIHttpClientConnection(String urlStr,
+                                 Proxy proxy,
+                                 final Function<SNIHttpClientConnection, Collection<Scheme>> additionalSchemesProvider) {
+    this(urlStr, proxy, null, additionalSchemesProvider);
   }
 
   /**
    * @param urlStr
    * @param proxy
    * @param cl
+   * @param additionalSchemesProvider
    */
-  public SNIHttpClientConnection(String urlStr, Proxy proxy, CloseableHttpClient cl) {
+  public SNIHttpClientConnection(String urlStr,
+                                 Proxy proxy,
+                                 CloseableHttpClient cl,
+                                 final Function<SNIHttpClientConnection, Collection<Scheme>> additionalSchemesProvider) {
     this.client = cl;
     this.urlStr = urlStr;
     this.proxy = proxy;
-    myAdditionalSchemesProvider = (clientConnection) -> {
-      final X509HostnameVerifier hostnameVerifier = clientConnection.getHostnameVerifier();
-      SSLSocketFactory sf = hostnameVerifier != null ?
-                            new SNISSLSocketFactory(clientConnection.getSSLContext(), hostnameVerifier) :
-                            new SNISSLSocketFactory(clientConnection.getSSLContext());
-      return Collections.singleton(new Scheme("https", 443, sf));
-    };
+    myAdditionalSchemesProvider = additionalSchemesProvider;
   }
 
   public X509HostnameVerifier getHostnameVerifier() {
