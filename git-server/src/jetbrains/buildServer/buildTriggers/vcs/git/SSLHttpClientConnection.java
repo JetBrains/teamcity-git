@@ -17,17 +17,17 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.util.ssl.SSLContextUtil;
-import org.apache.http.*;
+import org.apache.http.Header;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpEntityEnclosingRequest;
+import org.apache.http.HttpHost;
 import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.*;
 import org.apache.http.client.params.ClientPNames;
 import org.apache.http.conn.params.ConnRoutePNames;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.ssl.X509HostnameVerifier;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.CoreConnectionPNames;
 import org.apache.http.params.HttpParams;
@@ -43,7 +43,10 @@ import javax.net.ssl.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.*;
+import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
+import java.net.Proxy;
+import java.net.URL;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
@@ -63,13 +66,13 @@ import java.util.function.Supplier;
  */
 public class SSLHttpClientConnection implements HttpConnection {
 
-  HttpClient client;
+  CloseableHttpClient client;
 
   String urlStr;
 
   HttpUriRequest req;
 
-  HttpResponse resp = null;
+  CloseableHttpResponse resp = null;
 
   String method = "GET"; //$NON-NLS-1$
 
@@ -108,7 +111,7 @@ public class SSLHttpClientConnection implements HttpConnection {
 
   public SSLHttpClientConnection(final String urlStr,
                                  final Proxy proxy,
-                                 final HttpClient cl,
+                                 final CloseableHttpClient cl,
                                  final Function<SSLHttpClientConnection, Collection<Scheme>> additionalSchemesProvider) {
     this.client = cl;
     this.urlStr = urlStr;
@@ -121,7 +124,7 @@ public class SSLHttpClientConnection implements HttpConnection {
     return hostnameverifier;
   }
 
-  private HttpClient getClient() {
+  private CloseableHttpClient getClient() {
     if (client == null)
       client = new DefaultHttpClient();
     HttpParams params = client.getParams();
@@ -254,7 +257,53 @@ public class SSLHttpClientConnection implements HttpConnection {
   }
 
   public InputStream getInputStream() throws IOException {
-    return resp.getEntity().getContent();
+    final InputStream delegate = resp.getEntity().getContent();
+    return new InputStream() {
+      public int read() throws IOException {
+        return delegate.read();
+      }
+
+      public int read(@NotNull final byte[] b) throws IOException {
+        return delegate.read(b);
+      }
+
+      public int read(@NotNull final byte[] b, final int off, final int len) throws IOException {
+        return delegate.read(b, off, len);
+      }
+
+      public long skip(final long n) throws IOException {
+        return delegate.skip(n);
+      }
+
+      public int available() throws IOException {
+        return delegate.available();
+      }
+
+      public void close() throws IOException {
+        try {
+          delegate.close();
+        } catch (Throwable ignore) {}
+        try {
+          resp.close();
+        } catch (Throwable ignore) {}
+        try {
+          client.close();
+          client = null;
+        } catch (Throwable ignore) {}
+      }
+
+      public void mark(final int readlimit) {
+        delegate.mark(readlimit);
+      }
+
+      public void reset() throws IOException {
+        delegate.reset();
+      }
+
+      public boolean markSupported() {
+        return delegate.markSupported();
+      }
+    };
   }
 
   // will return only the first field
