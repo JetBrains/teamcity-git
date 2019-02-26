@@ -95,7 +95,7 @@ public class SSLHttpClientConnection implements HttpConnection {
   @NotNull
   private Supplier<KeyStore> myTrustStoreGetter = () -> null;
 
-  private Function<X509HostnameVerifier, Collection<Scheme>> myAdditionalSchemesProvider;
+  private Function<SSLHttpClientConnection, Collection<Scheme>> myAdditionalSchemesProvider;
 
   public SSLHttpClientConnection(final String urlStr) {
     this(urlStr, null, null);
@@ -110,14 +110,19 @@ public class SSLHttpClientConnection implements HttpConnection {
     this.urlStr = urlStr;
     this.proxy = proxy;
 
-    myAdditionalSchemesProvider = (hostnameVerifier) -> {
-      if (hostnameverifier != null) {
+    myAdditionalSchemesProvider = (clientConnection) -> {
+      final X509HostnameVerifier hostnameVerifier = clientConnection.getHostnameVerifier();
+      if (hostnameVerifier != null) {
         SSLSocketFactory sf;
-        sf = new SSLSocketFactory(getSSLContext(), hostnameverifier);
+        sf = new SSLSocketFactory(clientConnection.getSSLContext(), hostnameVerifier);
         return Collections.singleton(new Scheme("https", 443, sf));
       }
       return Collections.emptyList();
     };
+  }
+
+  public X509HostnameVerifier getHostnameVerifier() {
+    return hostnameverifier;
   }
 
   private HttpClient getClient() {
@@ -137,7 +142,7 @@ public class SSLHttpClientConnection implements HttpConnection {
     if (followRedirects != null)
       params.setBooleanParameter(ClientPNames.HANDLE_REDIRECTS, followRedirects);
 
-    final Collection<Scheme> schemes = myAdditionalSchemesProvider.apply(hostnameverifier);
+    final Collection<Scheme> schemes = myAdditionalSchemesProvider.apply(this);
     for (Scheme scheme : schemes) {
       client.getConnectionManager().getSchemeRegistry().register(scheme);
     }

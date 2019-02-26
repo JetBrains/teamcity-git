@@ -18,7 +18,10 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.util.ssl.SSLContextUtil;
-import org.apache.http.*;
+import org.apache.http.Header;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpEntityEnclosingRequest;
+import org.apache.http.HttpHost;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.*;
 import org.apache.http.client.params.ClientPNames;
@@ -43,7 +46,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.*;
-import java.net.ProtocolException;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
@@ -90,7 +92,7 @@ public class SNIHttpClientConnection implements HttpConnection {
 
   private Map<String, Object> attributes = new HashMap<String, Object>();
 
-  private Function<X509HostnameVerifier, Collection<Scheme>> myAdditionalSchemesProvider;
+  private Function<SNIHttpClientConnection, Collection<Scheme>> myAdditionalSchemesProvider;
 
   private CloseableHttpClient getClient() {
     if (client == null)
@@ -112,7 +114,7 @@ public class SNIHttpClientConnection implements HttpConnection {
       params.setBooleanParameter(ClientPNames.HANDLE_REDIRECTS,
                                  followRedirects);
 
-    final Collection<Scheme> schemes = myAdditionalSchemesProvider.apply(hostnameverifier);
+    final Collection<Scheme> schemes = myAdditionalSchemesProvider.apply(this);
     for (Scheme scheme : schemes) {
       client.getConnectionManager().getSchemeRegistry().register(scheme);
     }
@@ -169,12 +171,17 @@ public class SNIHttpClientConnection implements HttpConnection {
     this.client = cl;
     this.urlStr = urlStr;
     this.proxy = proxy;
-    myAdditionalSchemesProvider = (hostnameVerifier) -> {
+    myAdditionalSchemesProvider = (clientConnection) -> {
+      final X509HostnameVerifier hostnameVerifier = clientConnection.getHostnameVerifier();
       SSLSocketFactory sf = hostnameVerifier != null ?
-                            new SNISSLSocketFactory(getSSLContext(), hostnameVerifier) :
-                            new SNISSLSocketFactory(getSSLContext());
+                            new SNISSLSocketFactory(clientConnection.getSSLContext(), hostnameVerifier) :
+                            new SNISSLSocketFactory(clientConnection.getSSLContext());
       return Collections.singleton(new Scheme("https", 443, sf));
     };
+  }
+
+  public X509HostnameVerifier getHostnameVerifier() {
+    return hostnameverifier;
   }
 
   public int getResponseCode() throws IOException {
