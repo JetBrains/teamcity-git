@@ -52,10 +52,8 @@ import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -95,6 +93,8 @@ public class SNIHttpClientConnection implements HttpConnection {
 
   private Map<String, Object> attributes = new HashMap<String, Object>();
 
+  private Function<X509HostnameVerifier, Collection<Scheme>> myAdditionalSchemesProvider;
+
   private CloseableHttpClient getClient() {
     if (client == null)
       client = new DefaultHttpClient();
@@ -114,11 +114,11 @@ public class SNIHttpClientConnection implements HttpConnection {
     if (followRedirects != null)
       params.setBooleanParameter(ClientPNames.HANDLE_REDIRECTS,
                                  followRedirects);
-    SSLSocketFactory sf = hostnameverifier != null ?
-                          new SNISSLSocketFactory(getSSLContext(), hostnameverifier) :
-                          new SNISSLSocketFactory(getSSLContext());
-    Scheme https = new Scheme("https", 443, sf); //$NON-NLS-1$
-    client.getConnectionManager().getSchemeRegistry().register(https);
+
+    final Collection<Scheme> schemes = myAdditionalSchemesProvider.apply(hostnameverifier);
+    for (Scheme scheme : schemes) {
+      client.getConnectionManager().getSchemeRegistry().register(scheme);
+    }
 
     return client;
   }
@@ -152,7 +152,7 @@ public class SNIHttpClientConnection implements HttpConnection {
    * @param urlStr
    */
   public SNIHttpClientConnection(String urlStr) {
-    this(urlStr, null);
+    this(urlStr, null, null);
   }
 
   /**
@@ -172,6 +172,12 @@ public class SNIHttpClientConnection implements HttpConnection {
     this.client = cl;
     this.urlStr = urlStr;
     this.proxy = proxy;
+    myAdditionalSchemesProvider = (hostnameVerifier) -> {
+      SSLSocketFactory sf = hostnameVerifier != null ?
+                            new SNISSLSocketFactory(getSSLContext(), hostnameVerifier) :
+                            new SNISSLSocketFactory(getSSLContext());
+      return Collections.singleton(new Scheme("https", 443, sf));
+    };
   }
 
   public int getResponseCode() throws IOException {

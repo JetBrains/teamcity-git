@@ -49,10 +49,8 @@ import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -96,16 +94,26 @@ public class SSLHttpClientConnection extends HttpClientConnection {
   @NotNull
   private Supplier<KeyStore> myTrustStoreGetter = () -> null;
 
+  private Function<X509HostnameVerifier, Collection<Scheme>> myAdditionalSchemesProvider;
+
   public SSLHttpClientConnection(final String urlStr) {
-    super(urlStr);
+    this(urlStr, null, null);
   }
 
   public SSLHttpClientConnection(final String urlStr, final Proxy proxy) {
-    super(urlStr, proxy);
+    this(urlStr, proxy, null);
   }
 
   public SSLHttpClientConnection(final String urlStr, final Proxy proxy, final HttpClient cl) {
     super(urlStr, proxy, cl);
+    myAdditionalSchemesProvider = (hostnameVerifier) -> {
+      if (hostnameverifier != null) {
+        SSLSocketFactory sf;
+        sf = new SSLSocketFactory(getSSLContext(), hostnameverifier);
+        return Collections.singleton(new Scheme("https", 443, sf));
+      }
+      return Collections.emptyList();
+    };
   }
 
   private HttpClient getClient() {
@@ -124,11 +132,10 @@ public class SSLHttpClientConnection extends HttpClientConnection {
       params.setIntParameter(CoreConnectionPNames.SO_TIMEOUT, readTimeout);
     if (followRedirects != null)
       params.setBooleanParameter(ClientPNames.HANDLE_REDIRECTS, followRedirects);
-    if (hostnameverifier != null) {
-      SSLSocketFactory sf;
-      sf = new SSLSocketFactory(getSSLContext(), hostnameverifier);
-      Scheme https = new Scheme("https", 443, sf); //$NON-NLS-1$
-      client.getConnectionManager().getSchemeRegistry().register(https);
+
+    final Collection<Scheme> schemes = myAdditionalSchemesProvider.apply(hostnameverifier);
+    for (Scheme scheme : schemes) {
+      client.getConnectionManager().getSchemeRegistry().register(scheme);
     }
 
     return client;
