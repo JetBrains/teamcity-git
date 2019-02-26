@@ -35,7 +35,7 @@ import java.util.function.Supplier;
 public class SNIHttpClientConnectionFactory implements HttpConnectionFactory {
 
   private Supplier<KeyStore> myTrustStoreGetter;
-  private Function<SNIHttpClientConnection, Collection<Scheme>>
+  private Function<SSLHttpClientConnection, Collection<Scheme>>
     mySNIadditionalSchemesProvider = (clientConnection) -> {
     final X509HostnameVerifier hostnameVerifier = clientConnection.getHostnameVerifier();
     SSLSocketFactory sf = hostnameVerifier != null ?
@@ -57,13 +57,13 @@ public class SNIHttpClientConnectionFactory implements HttpConnectionFactory {
   }
 
   public HttpConnection create(final URL url) throws IOException {
-    SNIHttpClientConnection connection = new SNIHttpClientConnection(url.toString(), mySNIadditionalSchemesProvider);
+    SSLHttpClientConnection connection = new SSLHttpClientConnection(url.toString(), mySNIadditionalSchemesProvider);
     connection.setTrustStoreGetter(myTrustStoreGetter);
     return connection;
   }
 
   public HttpConnection create(final URL url, final Proxy proxy) throws IOException {
-    SNIHttpClientConnection connection = new SNIHttpClientConnection(url.toString(), proxy, mySNIadditionalSchemesProvider);
+    SSLHttpClientConnection connection = new SSLHttpClientConnection(url.toString(), proxy, mySNIadditionalSchemesProvider);
     connection.setTrustStoreGetter(myTrustStoreGetter);
     return connection;
   }
