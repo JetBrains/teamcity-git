@@ -33,6 +33,7 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.CoreConnectionPNames;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HttpContext;
+import org.eclipse.jgit.transport.http.HttpConnection;
 import org.eclipse.jgit.transport.http.apache.HttpClientConnection;
 import org.eclipse.jgit.transport.http.apache.TemporaryBufferEntity;
 import org.eclipse.jgit.transport.http.apache.internal.HttpApacheText;
@@ -61,7 +62,7 @@ import java.util.function.Supplier;
  * @author Mikhail Khorkov
  * @since 2018.1
  */
-public class SSLHttpClientConnection extends HttpClientConnection {
+public class SSLHttpClientConnection implements HttpConnection {
 
   HttpClient client;
 
@@ -105,7 +106,10 @@ public class SSLHttpClientConnection extends HttpClientConnection {
   }
 
   public SSLHttpClientConnection(final String urlStr, final Proxy proxy, final HttpClient cl) {
-    super(urlStr, proxy, cl);
+    this.client = cl;
+    this.urlStr = urlStr;
+    this.proxy = proxy;
+
     myAdditionalSchemesProvider = (hostnameVerifier) -> {
       if (hostnameverifier != null) {
         SSLSocketFactory sf;
