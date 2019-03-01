@@ -137,6 +137,10 @@ public class MockBuildAgent implements BuildAgent {
     throw new UnsupportedOperationException();
   }
 
+  public boolean buildInterrupted(String buildId, String comment, boolean needRequeue) {
+    throw new UnsupportedOperationException();
+  }
+
   public boolean isBuildFailing(final String buildId) throws InterruptedException {
     throw new UnsupportedOperationException();
   }
