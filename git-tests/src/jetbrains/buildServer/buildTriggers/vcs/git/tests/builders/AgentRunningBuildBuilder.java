@@ -107,6 +107,11 @@ public class AgentRunningBuildBuilder {
         return new File(FileUtil.getTempDirectory());
       }
 
+      @Override
+      public void interruptBuild(@NotNull final String comment, final boolean reQueue) {
+
+      }
+
       @NotNull
       public BuildProgressLogger getBuildLogger() {
         return myBuildLogger != null ? myBuildLogger : new NullBuildProgressLogger();
