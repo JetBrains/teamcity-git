@@ -31,6 +31,7 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.Transport;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.*;
@@ -41,6 +42,7 @@ import static java.util.Arrays.asList;
 public class GitMergeSupport implements MergeSupport, GitServerExtension {
 
   private static final Logger LOG = Logger.getInstance(GitMergeSupport.class.getName());
+  private final static String SRC_BRANCH_NAME_KEY = "teamcity.automerge.srcBranchLogicalName";
 
   private final GitVcsSupport myVcs;
   private final CommitLoader myCommitLoader;
@@ -157,7 +159,9 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
       commitId = mergeCommits(gitRoot, db, srcCommit, dstBranchLastCommit, message, options);
     } catch (MergeFailedException e) {
       LOG.debug("Merge error, root " + gitRoot + ", revision " + srcRevision + ", destination " + dstBranch, e);
-      return MergeResult.createMergeError(e.getConflicts());
+      MergeResult result = MergeResult.createMergeError(e.getConflicts());
+      result.setMergeError("Unable to merge " + prettySrc(options, srcRevision) + " into " + dstBranch);
+      return result;
     }
 
     ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
@@ -184,6 +188,13 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     } finally {
       lock.unlock();
     }
+  }
+
+  @NotNull
+  private String prettySrc(@NotNull final MergeOptions options, @NotNull final String srcRevision) {
+    @Nullable String srcBranch = options.getOption(SRC_BRANCH_NAME_KEY);
+    final String revision = "revision " + srcRevision;
+    return srcBranch != null ? srcBranch + " (" + revision + ")" : revision;
   }
 
 
