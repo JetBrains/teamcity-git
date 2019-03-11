@@ -42,7 +42,6 @@ import static java.util.Arrays.asList;
 public class GitMergeSupport implements MergeSupport, GitServerExtension {
 
   private static final Logger LOG = Logger.getInstance(GitMergeSupport.class.getName());
-  private final static String SRC_BRANCH_NAME_KEY = "teamcity.automerge.srcBranchLogicalName";
 
   private final GitVcsSupport myVcs;
   private final CommitLoader myCommitLoader;
@@ -192,7 +191,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
 
   @NotNull
   private String prettySrc(@NotNull final MergeOptions options, @NotNull final String srcRevision) {
-    @Nullable String srcBranch = options.getOption(SRC_BRANCH_NAME_KEY);
+    @Nullable String srcBranch = options.getSourceBranchName();
     final String revision = "revision " + srcRevision;
     return srcBranch != null ? srcBranch + " (" + revision + ")" : revision;
   }
