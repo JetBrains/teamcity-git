@@ -166,7 +166,7 @@ public class FetchCommandImpl implements FetchCommand {
         Map<String, String> properties = settings.getAuthSettings().toMap();
         properties.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.name());
         properties.put(Constants.PRIVATE_KEY_PATH, teamcityPrivateKey.getAbsolutePath());
-        preparedSettings = new AuthSettings(properties, settings.getAuthSettings().getRoot());
+        preparedSettings = new AuthSettings(properties, settings.getAuthSettings().getRoot(), new URIishHelperImpl());
       }
       byte[] fetchProcessInput = getFetchProcessInputBytes(preparedSettings, repository.getDirectory(), uri, specs, threadDump, gitPropertiesFile);
       ByteArrayOutputStream stdoutBuffer = settings.createStdoutBuffer();

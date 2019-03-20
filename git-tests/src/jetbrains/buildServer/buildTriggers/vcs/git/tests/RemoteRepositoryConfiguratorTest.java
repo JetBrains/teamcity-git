@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
+import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
@@ -244,7 +245,7 @@ public class RemoteRepositoryConfiguratorTest {
 
   @NotNull
   private GitVcsRoot createRoot(@NotNull VcsRootBuilder root) throws VcsException {
-    return new GitVcsRoot(myMirrorManager, root.build());
+    return new GitVcsRoot(myMirrorManager, root.build(), new URIishHelperImpl());
   }
 
 

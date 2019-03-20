@@ -23,19 +23,13 @@ import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.MockVcsOperationProgressProvider;
 import jetbrains.buildServer.vcs.TestConnectionSupport;
-import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.transport.RefSpec;
-import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.jmock.lib.legacy.ClassImposteriser;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 public class GitSupportBuilder {
@@ -80,7 +74,7 @@ public class GitSupportBuilder {
         };
       }
     }
-    myMirrorManager = new MirrorManagerImpl(myPluginConfig, new HashCalculatorImpl());
+    myMirrorManager = new MirrorManagerImpl(myPluginConfig, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
     myRepositoryManager = new RepositoryManagerImpl(myPluginConfig, myMirrorManager);
     final ResetCacheRegister resetCacheManager;
     if (myResetCacheManager == null) {

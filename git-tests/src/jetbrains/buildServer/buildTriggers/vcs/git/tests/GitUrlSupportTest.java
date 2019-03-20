@@ -61,7 +61,7 @@ public class GitUrlSupportTest extends BaseTestCase {
     super.setUp();
     ServerPaths paths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
     PluginConfig config = new PluginConfigBuilder(paths).build();
-    myMirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    myMirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
 
     myProjectMock = mock(SProject.class);
 
@@ -106,7 +106,7 @@ public class GitUrlSupportTest extends BaseTestCase {
     for (String url : urls) {
       MavenVcsUrl vcsUrl = new MavenVcsUrl(url);
       GitVcsRoot root = toGitRoot(vcsUrl);
-      assertEquals(new URIish(vcsUrl.getProviderSpecificPart()), root.getRepositoryFetchURL());
+      assertEquals(new URIish(vcsUrl.getProviderSpecificPart()), root.getRepositoryFetchURL().get());
       checkAuthMethod(vcsUrl, root);
     }
 
@@ -140,7 +140,7 @@ public class GitUrlSupportTest extends BaseTestCase {
     myTestConnectionMocked = true;
 
     GitVcsRoot root = toGitRoot(url);
-    assertEquals(new URIish(url.getProviderSpecificPart()), root.getRepositoryFetchURL());
+    assertEquals(new URIish(url.getProviderSpecificPart()), root.getRepositoryFetchURL().get());
     assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
     assertEquals("git", root.getAuthSettings().toMap().get(Constants.USERNAME));
   }
@@ -151,7 +151,7 @@ public class GitUrlSupportTest extends BaseTestCase {
     myTestConnectionMocked = true;
 
     GitVcsRoot root = toGitRoot(url);
-    assertEquals(new URIish("user@github.com:user/repo.git"), root.getRepositoryFetchURL());
+    assertEquals(new URIish("user@github.com:user/repo.git"), root.getRepositoryFetchURL().get());
     assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
     assertEquals("user", root.getAuthSettings().toMap().get(Constants.USERNAME));
     assertNull(root.getAuthSettings().toMap().get(Constants.PASSWORD));
@@ -286,6 +286,6 @@ public class GitUrlSupportTest extends BaseTestCase {
     Map<String, String> properties = myUrlSupport.convertToVcsRootProperties(url, createRootContext());
     assertNotNull(properties);
     VcsRootImpl myRoot = new VcsRootImpl(1, properties);
-    return new GitVcsRoot(myMirrorManager, myRoot);
+    return new GitVcsRoot(myMirrorManager, myRoot, new URIishHelperImpl());
   }
 }

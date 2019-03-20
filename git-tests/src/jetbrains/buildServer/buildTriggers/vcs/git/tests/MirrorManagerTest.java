@@ -62,7 +62,7 @@ public class MirrorManagerTest {
     String clashingUrl1 = "git://some.org/first-clashing-url.git";
     String clashingUrl2 = "git://some.org/second-clashing-url.git";
     HashCalculator clashingHash = new ClashingHashCalculator(Arrays.asList(clashingUrl1, clashingUrl2));
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, clashingHash);
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, clashingHash, new RemoteRepositoryUrlInvestigatorImpl());
     File dir1 = mirrorManager.getMirrorDir(clashingUrl1);
     File dir2 = mirrorManager.getMirrorDir(clashingUrl2);
     assertFalse(dir1.equals(dir2));
@@ -85,7 +85,7 @@ public class MirrorManagerTest {
     createRepositories(baseMirrorsDir, existingRepositories);
     assertFalse(map.exists());
 
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl());
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
     assertTrue(map.exists());
     for (Map.Entry<String, String> entry : existingRepositories.entrySet()) {
       String url = entry.getKey();
@@ -103,7 +103,7 @@ public class MirrorManagerTest {
 
     getRepository(new File(baseMirrorsDir, "git-22222222.git"), new URIish("git://some.org/repository2.git"));
 
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl());
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
     assertEquals(1, mirrorManager.getMappings().size());
     assertTrue(mirrorManager.getMappings().containsKey("git://some.org/repository2.git"));
 
@@ -113,7 +113,7 @@ public class MirrorManagerTest {
 
 
   public void should_give_different_dirs_for_same_url_if_dir_was_invalidated() {
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl());
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
     String url = "git://some.org/repository.git";
     File dir1 = mirrorManager.getMirrorDir(url);
     mirrorManager.invalidate(dir1);
@@ -126,10 +126,10 @@ public class MirrorManagerTest {
     String url1 = "git://some.org/repository1.git";
     String url2 = "git://some.org/repository2.git";
     HashCalculator clashingHash = new ClashingHashCalculator(Arrays.asList(url1, url2));
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, clashingHash);
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfig, clashingHash, new RemoteRepositoryUrlInvestigatorImpl());
     File dir1 = mirrorManager.getMirrorDir(url1);
     mirrorManager.invalidate(dir1);
-    mirrorManager = new MirrorManagerImpl(myConfig, clashingHash); //restart
+    mirrorManager = new MirrorManagerImpl(myConfig, clashingHash, new RemoteRepositoryUrlInvestigatorImpl()); //restart
     File dir2 = mirrorManager.getMirrorDir(url2);
     assertFalse(dir1.equals(dir2));
   }

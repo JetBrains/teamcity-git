@@ -58,7 +58,7 @@ public class RemoteRepositoryConfigurator {
     try {
       repository = new RepositoryBuilder().setGitDir(gitDir).build();
       StoredConfig config = repository.getConfig();
-      URIish fetchUrl = root.getRepositoryFetchURL();
+      URIish fetchUrl = root.getRepositoryFetchURL().get();
       String scheme = fetchUrl.getScheme();
       String user = fetchUrl.getUser();
       if (myExcludeUsernameFromHttpUrls && isHttp(scheme) && !StringUtil.isEmpty(user)) {

@@ -20,9 +20,6 @@ import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
-import org.eclipse.jgit.lib.PersonIdent;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,10 +33,10 @@ public class GitVcsRoot {
 
   protected final MirrorManager myMirrorManager;
   private final VcsRoot myDelegate;
-  private final URIish myRepositoryFetchURL;
-  private final URIish myRepositoryFetchURLNoFixErrors;
-  private final URIish myRepositoryPushURL;
-  private final URIish myRepositoryPushURLNoFixErrors;
+  private final CommonURIish myRepositoryFetchURL;
+  private final CommonURIish myRepositoryFetchURLNoFixErrors;
+  private final CommonURIish myRepositoryPushURL;
+  private final CommonURIish myRepositoryPushURLNoFixErrors;
   private final String myRef;
   private final UserNameStyle myUsernameStyle;
   private final SubmodulesCheckoutPolicy mySubmodulePolicy;
@@ -53,29 +50,31 @@ public class GitVcsRoot {
   private File myCustomRepositoryDir;
   private final Boolean myUseAgentMirrors;
   private final boolean myIncludeContentHashes;
+  private final URIishHelper myURIishHelper;
 
-  public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root) throws VcsException {
-    this(mirrorManager, root, root.getProperty(Constants.BRANCH_NAME));
+  public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root, @NotNull URIishHelper urIishHelper) throws VcsException {
+    this(mirrorManager, root, root.getProperty(Constants.BRANCH_NAME), urIishHelper);
   }
 
-  public GitVcsRoot(@NotNull MirrorManager mirrorManager, @NotNull VcsRoot root, @Nullable String ref) throws VcsException {
+  public GitVcsRoot(@NotNull MirrorManager mirrorManager, @NotNull VcsRoot root, @Nullable String ref, @NotNull URIishHelper urIishHelper) throws VcsException {
     myMirrorManager = mirrorManager;
     myDelegate = root;
     myCustomRepositoryDir = getPath();
     myRef = ref;
+    myURIishHelper = urIishHelper;
     myUsernameStyle = readUserNameStyle();
     mySubmodulePolicy = readSubmodulesPolicy();
-    myAuthSettings = new AuthSettings(this);
+    myAuthSettings = new AuthSettings(this, urIishHelper);
     String rawFetchUrl = getProperty(Constants.FETCH_URL);
     if (rawFetchUrl.contains("\n") || rawFetchUrl.contains("\r"))
       throw new VcsException("Newline in fetch url '" + rawFetchUrl + "'");
-    myRepositoryFetchURL = myAuthSettings.createAuthURI(rawFetchUrl);
-    myRepositoryFetchURLNoFixErrors = myAuthSettings.createAuthURI(rawFetchUrl, false);
+    myRepositoryFetchURL = myURIishHelper.createAuthURI(myAuthSettings, rawFetchUrl);
+    myRepositoryFetchURLNoFixErrors = myURIishHelper.createAuthURI(myAuthSettings, rawFetchUrl, false);
     String pushUrl = getProperty(Constants.PUSH_URL);
     if (pushUrl != null && (pushUrl.contains("\n") || pushUrl.contains("\r")))
       throw new VcsException("Newline in push url '" + pushUrl + "'");
-    myRepositoryPushURL = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURL : myAuthSettings.createAuthURI(pushUrl);
-    myRepositoryPushURLNoFixErrors = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURLNoFixErrors : myAuthSettings.createAuthURI(pushUrl, false);
+    myRepositoryPushURL = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURL : myURIishHelper.createAuthURI(myAuthSettings, pushUrl);
+    myRepositoryPushURLNoFixErrors = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURLNoFixErrors : myURIishHelper.createAuthURI(myAuthSettings, pushUrl, false);
     myUsernameForTags = getProperty(Constants.USERNAME_FOR_TAGS);
     myBranchSpec = getProperty(Constants.BRANCH_SPEC);
     myAutoCrlf = Boolean.valueOf(getProperty(Constants.SERVER_SIDE_AUTO_CRLF, "false"));
@@ -87,19 +86,12 @@ public class GitVcsRoot {
   }
 
   public GitVcsRoot getRootForBranch(@NotNull String branch) throws VcsException {
-    return new GitVcsRoot(myMirrorManager, myDelegate, branch);
+    return new GitVcsRoot(myMirrorManager, myDelegate, branch, myURIishHelper);
   }
 
   @Nullable
   public String getBranchSpec() {
     return myBranchSpec;
-  }
-
-  @NotNull
-  public PersonIdent getTagger(@NotNull Repository r) {
-    if (myUsernameForTags == null)
-      return new PersonIdent(r);
-    return parseIdent();
   }
 
   @Nullable
@@ -197,11 +189,11 @@ public class GitVcsRoot {
   /**
    * @return the URL for the repository
    */
-  public URIish getRepositoryFetchURL() {
+  public CommonURIish getRepositoryFetchURL() {
     return myRepositoryFetchURL;
   }
 
-  public URIish getRepositoryFetchURLNoFixedErrors() {
+  public CommonURIish getRepositoryFetchURLNoFixedErrors() {
     return myRepositoryFetchURLNoFixErrors;
   }
 
@@ -222,12 +214,16 @@ public class GitVcsRoot {
   /**
    * @return the push URL for the repository
    */
-  public URIish getRepositoryPushURL() {
+  public CommonURIish getRepositoryPushURL() {
     return myRepositoryPushURL;
   }
 
-  public URIish getRepositoryPushURLNoFixedErrors() {
+  public CommonURIish getRepositoryPushURLNoFixedErrors() {
     return myRepositoryPushURLNoFixErrors;
+  }
+
+  public String getUsernameForTags() {
+    return myUsernameForTags;
   }
 
   @NotNull
@@ -255,23 +251,6 @@ public class GitVcsRoot {
      * Name and Email (John Smith &ltjsmith@example.org&gt)
      */
     FULL
-  }
-
-  private PersonIdent parseIdent() {
-    return parseIdent(myUsernameForTags);
-  }
-
-  @NotNull
-  public PersonIdent parseIdent(@NotNull String ident) {
-    int emailStartIdx = ident.indexOf("<");
-    if (emailStartIdx == -1)
-      return new PersonIdent(ident, "");
-    int emailEndIdx = ident.lastIndexOf(">");
-    if (emailEndIdx < emailStartIdx)
-      return new PersonIdent(ident, "");
-    String username = ident.substring(0, emailStartIdx).trim();
-    String email = ident.substring(emailStartIdx + 1, emailEndIdx);
-    return new PersonIdent(username, email);
   }
 
   public VcsRoot getOriginalRoot() {

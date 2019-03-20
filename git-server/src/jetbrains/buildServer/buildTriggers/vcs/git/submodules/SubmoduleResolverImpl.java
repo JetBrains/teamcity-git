@@ -161,7 +161,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
     if (!isRelative(submoduleUrl)) {
       String user = mainRepoUri.getUser();
       URIish submoduleUri = new URIish(submoduleUrl);
-      if (StringUtil.isNotEmpty(user) && pluginConfig.shouldSetSubmoduleUserInAbsoluteUrls() && AuthSettings.requiresCredentials(submoduleUri)) {
+      if (StringUtil.isNotEmpty(user) && pluginConfig.shouldSetSubmoduleUserInAbsoluteUrls() && URIishHelperImpl.requiresCredentials(submoduleUri)) {
         return submoduleUri.setUser(user).toASCIIString();
       } else {
         return submoduleUrl;

@@ -167,7 +167,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
         lock.lock();
         try {
-          final Transport tn = myTransportFactory.createTransport(myDb, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings(),
+          final Transport tn = myTransportFactory.createTransport(myDb, gitRoot.getRepositoryPushURL().get(), gitRoot.getAuthSettings(),
                                                                   myPluginConfig.getPushTimeoutSeconds());
           try {
             RemoteRefUpdate ru = new RemoteRefUpdate(myDb, null, commitId, GitUtils.expandRef(gitRoot.getRef()), false, null, lastCommit);
@@ -216,7 +216,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       commit.setTreeId(treeId);
       if (!ObjectId.zeroId().equals(parentCommit.getId()))
         commit.setParentIds(parentCommit);
-      commit.setCommitter(gitRoot.getTagger(myDb));
+      commit.setCommitter(PersonIdentFactory.getTagger(gitRoot, myDb));
       switch (gitRoot.getUsernameStyle()) {
         case EMAIL:
           int idx = userName.indexOf("@");
@@ -233,7 +233,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
           commit.setAuthor(new PersonIdent(userName, userName + "@TeamCity"));
           break;
         case FULL:
-          commit.setAuthor(gitRoot.parseIdent(userName));
+          commit.setAuthor(PersonIdentFactory.parseIdent(userName));
           break;
       }
       commit.setMessage(description);
@@ -304,7 +304,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(gitRoot.getRef()))
         .setDestination(GitUtils.expandRef(gitRoot.getRef()))
         .setForceUpdate(true);
-      myCommitLoader.fetch(myDb, gitRoot.getRepositoryFetchURL(), asList(spec), new FetchSettings(gitRoot.getAuthSettings()));
+      myCommitLoader.fetch(myDb, gitRoot.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(gitRoot.getAuthSettings()));
       Ref defaultBranch = myDb.getRef(GitUtils.expandRef(gitRoot.getRef()));
       return myCommitLoader.loadCommit(myContext, gitRoot, defaultBranch.getObjectId().name());
     }

@@ -24,10 +24,6 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
-import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Ref;
-import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -98,24 +94,6 @@ public class GitUtils {
     } else {
       return "refs/heads/" + ref;
     }
-  }
-
-  public static String getShortBranchName(@NotNull String fullRefName) {
-    if (isRegularBranch(fullRefName))
-      return fullRefName.substring(Constants.R_HEADS.length());
-    return fullRefName;
-  }
-
-  public static boolean isTag(@NotNull Ref ref) {
-    return isTag(ref.getName());
-  }
-
-  public static boolean isTag(@NotNull String fullRefName) {
-    return fullRefName.startsWith(Constants.R_TAGS);
-  }
-
-  public static boolean isRegularBranch(@NotNull String fullRefName) {
-    return fullRefName.startsWith(Constants.R_HEADS);
   }
 
   /**
@@ -192,11 +170,6 @@ public class GitUtils {
     return rc.toString();
   }
 
-
-  public static boolean isAnonymousGitWithUsername(@NotNull URIish uri) {
-    return "git".equals(uri.getScheme()) && uri.getUser() != null;
-  }
-
   /**
    * Returns build parameter name with the vcs branch name for given
    * git VCS root
@@ -223,19 +196,6 @@ public class GitUtils {
     }
     return dotGit;
   }
-
-  @NotNull
-  public static String getRevision(@NotNull final Ref ref) {
-    return getObjectId(ref).name();
-  }
-
-  @NotNull
-  public static ObjectId getObjectId(@NotNull final Ref ref) {
-    if (isTag(ref) && ref.getPeeledObjectId() != null)
-      return ref.getPeeledObjectId();
-    return ref.getObjectId();
-  }
-
 
   /**
    * Returns short file name for the given file on windows. The file must exist.
