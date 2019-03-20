@@ -61,7 +61,7 @@ public class GitFileContentDispatcher implements VcsFileContentProvider {
     try {
       if (GitServerUtil.isCloned(ctx.getRepository()))
         return genericProvider;
-      VcsHostingRepo ghRepo = WellKnownHostingsUtil.getGitHubRepo(ctx.getGitRoot().getRepositoryFetchURL());
+      VcsHostingRepo ghRepo = WellKnownHostingsUtil.getGitHubRepo(ctx.getGitRoot().getRepositoryFetchURL().get());
       if (ghRepo == null)
         return genericProvider;
       return new GitHubRawFileContentProvider(myVcs, genericProvider, ghRepo.owner(), ghRepo.repoName());

@@ -177,7 +177,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
 
   private void refineGithubSettings(@NotNull VcsHostingRepo ghRepo, @NotNull Map<String, String> props) {
     GitHubClient client = new GitHubClient();
-    AuthSettings auth = new AuthSettings(props);
+    AuthSettings auth = new AuthSettings(props, new URIishHelperImpl());
     if (auth.getAuthMethod() == AuthenticationMethod.PASSWORD && auth.getUserName() != null && auth.getPassword() != null) {
       client.setCredentials(auth.getUserName(), auth.getPassword());
     }

@@ -265,19 +265,19 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     void fetchTrackedRefs() throws IOException, VcsException {
       myInvoked = true;
       FetchSettings settings = new FetchSettings(myRoot.getAuthSettings(), myProgress);
-      myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL(), calculateRefSpecsForFetch(), settings);
+      myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL().get(), calculateRefSpecsForFetch(), settings);
     }
 
     void fetchTrackedRefsIfNoCommit(@NotNull String sha) throws IOException, VcsException {
       FetchSettings settings = new FetchSettings(myRoot.getAuthSettings(), myProgress);
-      myInvoked = myCommitLoader.fetchIfNoCommit(myDb, myRoot.getRepositoryFetchURL(), calculateRefSpecsForFetch(), settings, sha);
+      myInvoked = myCommitLoader.fetchIfNoCommit(myDb, myRoot.getRepositoryFetchURL().get(), calculateRefSpecsForFetch(), settings, sha);
     }
 
     void fetchAllRefs() throws IOException, VcsException {
       myInvoked = true;
       myAllRefsFetched = true;
       FetchSettings settings = new FetchSettings(myRoot.getAuthSettings(), myProgress);
-      myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL(), Collections.singleton(new RefSpec("refs/*:refs/*").setForceUpdate(true)), settings);
+      myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL().get(), Collections.singleton(new RefSpec("refs/*:refs/*").setForceUpdate(true)), settings);
     }
 
     boolean isInvoked() {

@@ -113,7 +113,7 @@ public class UpdaterImpl implements Updater {
     myRules = rules;
     myCheckoutMode = checkoutMode;
     myMirrorManager = mirrorManager;
-    mySSLInvestigator = new SSLInvestigator(myRoot.getRepositoryFetchURL(), myBuild.getAgentTempDirectory().getPath(),
+    mySSLInvestigator = new SSLInvestigator(myRoot.getRepositoryFetchURL().<URIish>get(), myBuild.getAgentTempDirectory().getPath(),
                                             myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath());
   }
 
@@ -210,8 +210,8 @@ public class UpdaterImpl implements Updater {
     final GitFacade git = myGitFactory.create(myTargetDirectory);
     boolean branchChanged = false;
     removeIndexLock();
-    if (isRegularBranch(myFullBranchName)) {
-      String branchName = getShortBranchName(myFullBranchName);
+    if (GitUtilsAgent.isRegularBranch(myFullBranchName)) {
+      String branchName = GitUtilsAgent.getShortBranchName(myFullBranchName);
       Branches branches = git.listBranches();
       if (branches.isCurrentBranch(branchName)) {
         removeIndexLock();
@@ -243,7 +243,7 @@ public class UpdaterImpl implements Updater {
           git.setUpstream(branchName, GitUtils.createRemoteRef(myFullBranchName)).call();
         }
       }
-    } else if (isTag(myFullBranchName)) {
+    } else if (GitUtilsAgent.isTag(myFullBranchName)) {
       final String shortName = myFullBranchName.substring("refs/tags/".length());
       runAndFixIndexErrors(git, new VcsCommand() {
         @Override
@@ -826,8 +826,8 @@ public class UpdaterImpl implements Updater {
     validateUrls();
     configureRemoteUrl(new File(myTargetDirectory, ".git"));
 
-    URIish fetchUrl = myRoot.getRepositoryFetchURL();
-    URIish url = myRoot.getRepositoryPushURL();
+    URIish fetchUrl = myRoot.getRepositoryFetchURL().get();
+    URIish url = myRoot.getRepositoryPushURL().get();
     String pushUrl = url == null ? null : url.toString();
     if (pushUrl != null && !pushUrl.equals(fetchUrl.toString())) {
       gitFacade.setConfig().setPropertyName("remote.origin.pushurl").setValue(pushUrl).call();
@@ -882,11 +882,11 @@ public class UpdaterImpl implements Updater {
 
 
   private void validateUrls() {
-    URIish fetch = myRoot.getRepositoryFetchURL();
-    if (isAnonymousGitWithUsername(fetch))
+    URIish fetch = myRoot.getRepositoryFetchURL().get();
+    if (GitUtilsAgent.isAnonymousGitWithUsername(fetch))
       LOG.warn("Fetch URL '" + fetch.toString() + "' for root " + myRoot.getName() + " uses an anonymous git protocol and contains a username, fetch will probably fail");
-    URIish push  = myRoot.getRepositoryPushURL();
-    if (!fetch.equals(push) && isAnonymousGitWithUsername(push))
+    URIish push  = myRoot.getRepositoryPushURL().get();
+    if (!fetch.equals(push) && GitUtilsAgent.isAnonymousGitWithUsername(push))
       LOG.warn("Push URL '" + push.toString() + "'for root " + myRoot.getName() + " uses an anonymous git protocol and contains a username, push will probably fail");
   }
 

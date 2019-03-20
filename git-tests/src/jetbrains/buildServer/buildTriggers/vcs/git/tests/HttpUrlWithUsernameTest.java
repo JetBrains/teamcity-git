@@ -21,6 +21,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.util.FileUtil;
@@ -168,7 +169,7 @@ public class HttpUrlWithUsernameTest extends BaseRemoteRepositoryTest {
 
   @NotNull
   private StoredConfig getMirrorConfig(@NotNull VcsRootImpl root) throws IOException, VcsException {
-    GitVcsRoot gitRoot = new GitVcsRoot(myMirrorManager, root);
+    GitVcsRoot gitRoot = new GitVcsRoot(myMirrorManager, root, new URIishHelperImpl());
     File mirrorDir = myMirrorManager.getMirrorDir(gitRoot.getRepositoryFetchURL().toString());
     Repository r = new RepositoryBuilder().setGitDir(mirrorDir).build();
     return r.getConfig();

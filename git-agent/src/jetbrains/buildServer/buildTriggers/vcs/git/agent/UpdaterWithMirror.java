@@ -236,7 +236,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
   protected void ensureCommitLoaded(boolean fetchRequired) throws VcsException {
     if (myPluginConfig.isUseShallowClone()) {
       File mirrorRepositoryDir = myRoot.getRepositoryDir();
-      if (GitUtils.isTag(myFullBranchName)) {
+      if (GitUtilsAgent.isTag(myFullBranchName)) {
         //handle tags specially: if we fetch a temporary branch which points to a commit
         //tags points to, git fetches both branch and tag, tries to make a local
         //branch to track both of them and fails.

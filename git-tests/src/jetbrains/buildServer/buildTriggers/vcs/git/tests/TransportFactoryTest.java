@@ -83,9 +83,9 @@ public class TransportFactoryTest {
       .withUsername("user")
       .withPassword("pwd")
       .build();
-    AuthSettings authSettings = new AuthSettings(root);
+    AuthSettings authSettings = new AuthSettings(root, new URIishHelperImpl());
     TransportFactory factory = new TransportFactoryImpl(myConfigBuilder.build(), new EmptyVcsRootSshKeyManager());
-    factory.createTransport(r, authSettings.createAuthURI("git://some.org/repo.git"), authSettings);
+    factory.createTransport(r, new URIishHelperImpl().createAuthURI(authSettings, "git://some.org/repo.git").get(), authSettings);
   }
 
 
@@ -95,8 +95,8 @@ public class TransportFactoryTest {
     FileUtil.copyDir(original, copy);
 
     VcsRootImpl root = getVcsRoot(copy);
-    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigBuilder.build(), new HashCalculatorImpl());
-    GitVcsRoot gitRoot = new GitVcsRoot(mirrorManager, root);
+    MirrorManager mirrorManager = new MirrorManagerImpl(myConfigBuilder.build(), new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
+    GitVcsRoot gitRoot = new GitVcsRoot(mirrorManager, root, new URIishHelperImpl());
     Repository repository = new RepositoryBuilder().setGitDir(copy).setBare().build();
     return factory.createTransport(repository, new URIish(GitUtils.toURL(original)), gitRoot.getAuthSettings());
   }

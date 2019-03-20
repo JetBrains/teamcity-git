@@ -93,7 +93,7 @@ public class Fetcher {
     final String fetchUrl = vcsRootProperties.get(Constants.FETCH_URL);
     final String refspecs = vcsRootProperties.get(Constants.REFSPEC);
     final String trustedCertificatesDir = vcsRootProperties.get(Constants.GIT_TRUST_STORE_PROVIDER);
-    AuthSettings auth = new AuthSettings(vcsRootProperties);
+    AuthSettings auth = new AuthSettings(vcsRootProperties, new URIishHelperImpl());
     PluginConfigImpl config = new PluginConfigImpl();
 
     GitServerUtil.setupMemoryMappedIndexReading();

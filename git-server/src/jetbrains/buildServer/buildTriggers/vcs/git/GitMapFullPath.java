@@ -148,7 +148,7 @@ public class GitMapFullPath {
       return false;
     }
 
-    final URIish settingsUrl = root.getRepositoryFetchURL();
+    final URIish settingsUrl = root.getRepositoryFetchURL().get();
     if (settingsUrl == null) {
       return false;
     }

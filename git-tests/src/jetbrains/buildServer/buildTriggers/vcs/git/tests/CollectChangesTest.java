@@ -251,7 +251,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     git.collectChanges(root, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", CheckoutRules.DEFAULT);
 
     ServerPluginConfig config = myConfig.build();
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
     ResetCacheHandler resetHandler = new GitResetCacheHandler(repositoryManager, new GcErrors());
     for (String cache : resetHandler.listCaches())
@@ -528,7 +528,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
     //delete clone on server to emulate git gc which prunes the '22d8a6d243915cb9f878a0ef95a0999bb5f56715'
     //commit unreachable from branches (tags are not fetched by default)
-    MirrorManagerImpl mirrors = new MirrorManagerImpl(myConfig.build(), new HashCalculatorImpl());
+    MirrorManagerImpl mirrors = new MirrorManagerImpl(myConfig.build(), new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
     File cloneOnServer = mirrors.getMirrorDir(repo.getCanonicalPath());
     FileUtil.delete(cloneOnServer);
 

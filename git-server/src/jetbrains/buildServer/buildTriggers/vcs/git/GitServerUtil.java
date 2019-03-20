@@ -246,7 +246,7 @@ public class GitServerUtil {
 
   @NotNull
   public static NotSupportedException friendlyNotSupportedException(@NotNull GitVcsRoot root, @NotNull NotSupportedException nse)  {
-    URIish fetchURI = root.getRepositoryFetchURL();
+    URIish fetchURI = root.getRepositoryFetchURL().get();
     if (isRedundantColon(fetchURI)) {
       //url with username looks like ssh://username/hostname:/path/to/repo - it will
       //confuse user even further, so show url without user name
@@ -595,5 +595,29 @@ public class GitServerUtil {
       LOG.warn("Cannot parse the " + commit.name() + " commit author due to unknown commit encoding '" + e.getCharsetName() + "'");
       return new PersonIdent("Cannot parse author", "Cannot parse author");
     }
+  }
+
+  public static boolean isAnonymousGitWithUsername(@NotNull URIish uri) {
+    return "git".equals(uri.getScheme()) && uri.getUser() != null;
+  }
+
+  @NotNull
+  public static String getRevision(@NotNull final Ref ref) {
+    return getObjectId(ref).name();
+  }
+
+  @NotNull
+  public static ObjectId getObjectId(@NotNull final Ref ref) {
+    if (isTag(ref) && ref.getPeeledObjectId() != null)
+      return ref.getPeeledObjectId();
+    return ref.getObjectId();
+  }
+
+  public static boolean isTag(@NotNull Ref ref) {
+    return isTag(ref.getName());
+  }
+
+  public static boolean isTag(@NotNull String fullRefName) {
+    return fullRefName.startsWith(org.eclipse.jgit.lib.Constants.R_TAGS);
   }
 }

@@ -32,7 +32,7 @@ import java.io.File;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
-import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isAnonymousGitWithUsername;
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.isAnonymousGitWithUsername;
 
 /**
  * @author dmitry.neverov
@@ -91,15 +91,15 @@ public class TestConnectionCommand {
 
 
   private void checkFetchConnection(@NotNull GitVcsRoot root) throws NotSupportedException, VcsException, TransportException {
-    validate(root.getRepositoryFetchURLNoFixedErrors());
+    validate(root.getRepositoryFetchURLNoFixedErrors().get());
     myGit.getCurrentState(root);
   }
 
 
   private void checkPushConnection(GitVcsRoot root, Repository r) throws NotSupportedException, VcsException, TransportException {
     if (!root.getRepositoryFetchURLNoFixedErrors().equals(root.getRepositoryPushURLNoFixedErrors())) {
-      validate(root.getRepositoryPushURLNoFixedErrors());
-      final Transport push = myTransportFactory.createTransport(r, root.getRepositoryPushURLNoFixedErrors(), root.getAuthSettings());
+      validate(root.getRepositoryPushURLNoFixedErrors().get());
+      final Transport push = myTransportFactory.createTransport(r, root.getRepositoryPushURLNoFixedErrors().get(), root.getAuthSettings());
       PushConnection c = null;
       try {
         c = push.openPush();

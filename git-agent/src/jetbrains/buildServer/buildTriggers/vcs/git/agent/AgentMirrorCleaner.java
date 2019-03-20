@@ -82,7 +82,7 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
       if (!Constants.VCS_NAME.equals(root.getVcsName()))
         continue;
       try {
-        GitVcsRoot gitRoot = new GitVcsRoot(myMirrorManager, root);
+        GitVcsRoot gitRoot = new GitVcsRoot(myMirrorManager, root, new URIishHelperImpl());
         String repositoryUrl = gitRoot.getRepositoryFetchURL().toString();
         LOG.debug("Repository " + repositoryUrl + " is used in the build, its mirror won't be cleaned");
         repositories.add(gitRoot.getRepositoryFetchURL().toString());
