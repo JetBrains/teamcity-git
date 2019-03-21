@@ -33,6 +33,7 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.merge.MergeStrategy;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
@@ -697,6 +698,51 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     then(m4.getAttributes()).containsOnly(
       MapEntry.entry("teamcity.transient.changedFiles." + c2.name(), "f3\ndir1/dir2/\n./f2"),
       MapEntry.entry("teamcity.transient.changedFiles." + c3.name(), "dir1/dir2/dir3/\n./f1"));
+  }
+
+  @TestFor(issues = "TW-59696")
+  @Test(enabled = false)
+  public void report_per_parent_changed_files_during_merge_file_content_taken_from_one_of_parents() throws Exception {
+    // setup repo
+    File repoDir = myTempFiles.createTempDir();
+    Git git = Git.init().setDirectory(repoDir).call();
+
+    File parentDir1 = new File(repoDir, "dir1");
+    parentDir1.mkdirs();
+
+    File f1 = new File(parentDir1, "f1");
+    FileUtil.writeFileAndReportErrors(f1, "1");
+    git.add().addFilepattern(".").call();
+    RevCommit c1 = git.commit().setAll(true).setMessage("1").call();
+
+    git.branchCreate().setName("branch1").setStartPoint(c1).call();
+    git.checkout().setName("branch1").call();
+    FileUtil.writeFileAndReportErrors(f1, "2");
+    RevCommit c2 = git.commit().setAll(true).setMessage("2").call();
+
+    git.checkout().setName("master").call();
+    FileUtil.writeFileAndReportErrors(f1, "2 ");
+    RevCommit c3 = git.commit().setAll(true).setMessage("3").call();
+
+    MergeResult result = git.merge().include(c2).setStrategy(MergeStrategy.OURS).setCommit(true).setMessage("4").call();
+    String c4 = result.getNewHead().name();
+
+    myConfig.setReportPerParentChangedFiles(true);
+    ServerPluginConfig config = myConfig.build();
+    GitVcsSupport vcs = gitSupport().withPluginConfig(config).build();
+
+    // collect changes
+    VcsRoot root = vcsRoot().withFetchUrl(repoDir).build();
+
+    RepositoryStateData s1 = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", c3.name()));
+    RepositoryStateData s2 = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", c4));
+
+    ModificationData merge = vcs.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT).get(0);
+    then(merge.getAttributes()).isNotEmpty();
+
+    then(merge.getAttributes()).containsOnly(
+      MapEntry.entry("teamcity.transient.changedFiles." + c2.name(), "dir1/\n./f1"),
+      MapEntry.entry("teamcity.transient.changedFiles." + c3.name(), "dir1/\n./f1"));
   }
 
   private GitVcsSupport git() {
