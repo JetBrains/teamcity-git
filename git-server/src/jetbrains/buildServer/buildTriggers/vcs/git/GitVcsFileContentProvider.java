@@ -76,7 +76,7 @@ public class GitVcsFileContentProvider extends GitAbstractVcsFileContentProvider
         return data;
       } finally {
         logPerformance(gitRoot, filePath, start);
-        tw.release();
+        tw.close();
       }
     } catch (Exception e) {
       throw context.wrapException(e);

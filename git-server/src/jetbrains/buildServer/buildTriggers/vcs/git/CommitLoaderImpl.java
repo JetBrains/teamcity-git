@@ -155,7 +155,7 @@ public class CommitLoaderImpl implements CommitLoader {
     try {
       return walk.parseCommit(commitId);
     } finally {
-      walk.release();
+      walk.close();
       final long finish = System.currentTimeMillis();
       if (PERFORMANCE_LOG.isDebugEnabled()) {
         PERFORMANCE_LOG.debug("[RevWalk.parseCommit] repository=" + repository.getDirectory().getAbsolutePath() + ", commit=" + commitId.name() + ", took: " + (finish - start) + "ms");

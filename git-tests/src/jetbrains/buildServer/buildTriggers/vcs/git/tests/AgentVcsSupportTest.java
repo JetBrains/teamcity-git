@@ -907,7 +907,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
-    Ref tagRef = r.getRef("refs/tags/v1.0");
+    Ref tagRef = r.exactRef("refs/tags/v1.0");
     assertNotNull(tagRef);
   }
 
@@ -958,7 +958,7 @@ public class AgentVcsSupportTest {
                                GitUtils.makeVersion("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", 1289483394000L), myCheckoutDir, myBuild,
                                false);
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
-    Ref headRef = r.getRef("HEAD");
+    Ref headRef = r.exactRef("HEAD");
     assertEquals("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", headRef.getObjectId().name());
   }
 
@@ -1039,7 +1039,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
     assertTagExists("refs/tags/v1.0");
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
-    Ref tag = r.getRef("refs/tags/v1.0");
+    Ref tag = r.exactRef("refs/tags/v1.0");
     assertEquals("Local tag is not updated", newCommit, tag.getObjectId().name());
   }
 
@@ -1140,12 +1140,12 @@ public class AgentVcsSupportTest {
 
   private void assertNoTagExist(String tag) throws IOException {
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
-    assertNull("tag \'" + tag + "\' exists", r.getRef(tag));
+    assertNull("tag \'" + tag + "\' exists", r.exactRef(tag));
   }
 
   private void assertTagExists(String tag) throws IOException {
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
-    assertNotNull("tag \'" + tag + "\' doesn't exist", r.getRef(tag));
+    assertNotNull("tag \'" + tag + "\' doesn't exist", r.exactRef(tag));
   }
 
   @DataProvider(name = "mirrors")

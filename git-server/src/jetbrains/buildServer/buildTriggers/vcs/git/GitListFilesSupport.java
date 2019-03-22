@@ -68,7 +68,7 @@ public class GitListFilesSupport implements ListDirectChildrenPolicy {
       throw new VcsException(e);
     } finally {
       if (walk != null)
-        walk.release();
+        walk.close();
       context.close();
     }
   }
@@ -94,7 +94,7 @@ public class GitListFilesSupport implements ListDirectChildrenPolicy {
         walk.addTree(tree);
       } finally {
         if (walk1 != null)
-          walk1.release();
+          walk1.close();
       }
     }
     walk.setRecursive(false);

@@ -111,7 +111,7 @@ public class SubmoduleAwareTreeIteratorFactory {
       parser.reset(reader, commit.getTree().getId());
       return parser;
     } finally {
-      reader.release();
+      reader.close();
     }
   }
 

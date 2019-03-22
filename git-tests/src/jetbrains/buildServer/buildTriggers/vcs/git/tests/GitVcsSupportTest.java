@@ -814,7 +814,7 @@ public class GitVcsSupportTest extends PatchTestCase {
             e.printStackTrace();
           }
         }
-        LockFile lock = new LockFile(new File(customRootDir.getAbsolutePath(), "mock"), FS.DETECTED);
+        LockFile lock = new LockFile(new File(customRootDir.getAbsolutePath(), "mock"));
         try {
           while (true) {//do mapFullPath while fetch is executed (we cannot acquire a lock while it is executed)
             if (!lock.lock()) {

@@ -16,13 +16,19 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import org.apache.http.config.Registry;
+import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.scheme.Scheme;
+import org.apache.http.conn.socket.ConnectionSocketFactory;
+import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLSocketFactory;
-import org.apache.http.conn.ssl.X509HostnameVerifier;
+import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
 import org.eclipse.jgit.transport.http.HttpConnection;
 import org.eclipse.jgit.transport.http.HttpConnectionFactory;
 import org.jetbrains.annotations.NotNull;
 
+import javax.net.ssl.HostnameVerifier;
 import java.io.IOException;
 import java.net.Proxy;
 import java.net.URL;
@@ -35,13 +41,17 @@ import java.util.function.Supplier;
 public class SNIHttpClientConnectionFactory implements HttpConnectionFactory {
 
   private Supplier<KeyStore> myTrustStoreGetter;
-  private Function<SSLHttpClientConnection, Collection<Scheme>>
-    mySNIadditionalSchemesProvider = (clientConnection) -> {
-    final X509HostnameVerifier hostnameVerifier = clientConnection.getHostnameVerifier();
-    SSLSocketFactory sf = hostnameVerifier != null ?
-                          new SNISSLSocketFactory(clientConnection.getSSLContext(), hostnameVerifier) :
-                          new SNISSLSocketFactory(clientConnection.getSSLContext());
-    return Collections.singleton(new Scheme("https", 443, sf));
+  private final SSLSchemePatcher mySSLSchemePatcher = (clientBuilder, sslContext, hostnameVerifier) -> {
+    SSLConnectionSocketFactory cf = hostnameVerifier != null
+                                    ? new SSLConnectionSocketFactory(sslContext, hostnameVerifier)
+                                    : new SSLConnectionSocketFactory(sslContext);
+    clientBuilder.setSSLSocketFactory(cf);
+    Registry<ConnectionSocketFactory> registry = RegistryBuilder
+      .<ConnectionSocketFactory> create()
+      .register("https", cf)
+      .register("http", PlainConnectionSocketFactory.INSTANCE)
+      .build();
+    clientBuilder.setConnectionManager(new BasicHttpClientConnectionManager(registry));
   };
 
   /**
@@ -57,13 +67,13 @@ public class SNIHttpClientConnectionFactory implements HttpConnectionFactory {
   }
 
   public HttpConnection create(final URL url) throws IOException {
-    SSLHttpClientConnection connection = new SSLHttpClientConnection(url.toString(), mySNIadditionalSchemesProvider);
+    SSLHttpClientConnection connection = new SSLHttpClientConnection(url.toString(), mySSLSchemePatcher);
     connection.setTrustStoreGetter(myTrustStoreGetter);
     return connection;
   }
 
   public HttpConnection create(final URL url, final Proxy proxy) throws IOException {
-    SSLHttpClientConnection connection = new SSLHttpClientConnection(url.toString(), proxy, mySNIadditionalSchemesProvider);
+    SSLHttpClientConnection connection = new SSLHttpClientConnection(url.toString(), proxy, mySSLSchemePatcher);
     connection.setTrustStoreGetter(myTrustStoreGetter);
     return connection;
   }

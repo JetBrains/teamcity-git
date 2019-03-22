@@ -327,7 +327,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
         ioe.initCause(e);
         throw ioe;
       } finally {
-        if (or != null) or.release();
+        if (or != null) or.close();
       }
       return createSubmoduleAwareTreeIterator(this,
                                               p,
@@ -345,7 +345,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
       try {
         ati = myWrappedIterator.createSubtreeIterator(or);
       } finally {
-        or.release();
+        or.close();
       }
       return createSubmoduleAwareTreeIterator(this,
                                               ati,

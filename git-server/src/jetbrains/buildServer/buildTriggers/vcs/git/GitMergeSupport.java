@@ -151,7 +151,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     if (srcCommit == null)
       srcCommit = myCommitLoader.loadCommit(context, gitRoot, srcRevision);
 
-    Ref dstRef = db.getRef(dstBranch);
+    Ref dstRef = db.exactRef(dstBranch);
     RevCommit dstBranchLastCommit = myCommitLoader.loadCommit(context, gitRoot, dstRef.getObjectId().name());
     ObjectId commitId;
     try {
@@ -212,7 +212,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
           return srcCommit;
         }
       } finally {
-        walk.release();
+        walk.close();
       }
     }
 
@@ -328,7 +328,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
 
       return orig2rebased.get(toRebase.get(toRebase.size() - 1));
     } finally {
-      walk.release();
+      walk.close();
     }
   }
 

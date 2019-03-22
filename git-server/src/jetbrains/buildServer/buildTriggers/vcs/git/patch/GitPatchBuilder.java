@@ -94,7 +94,7 @@ public class GitPatchBuilder {
       finish();
     } finally {
       if (myTreeWalk != null)
-        myTreeWalk.release();
+        myTreeWalk.close();
     }
   }
 

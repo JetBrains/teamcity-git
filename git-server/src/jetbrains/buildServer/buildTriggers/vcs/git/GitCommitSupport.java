@@ -31,7 +31,7 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.treewalk.TreeWalk;
-import org.eclipse.jgit.util.io.EolCanonicalizingInputStream;
+import org.eclipse.jgit.util.io.AutoLFInputStream;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.ByteArrayInputStream;
@@ -114,18 +114,18 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         FileUtil.copy(content, bytes);
         //taken from WorkingTreeIterator
-        EolCanonicalizingInputStream eolStream = new EolCanonicalizingInputStream(new ByteArrayInputStream(bytes.toByteArray()), true, true);
+        AutoLFInputStream eolStream = new AutoLFInputStream(new ByteArrayInputStream(bytes.toByteArray()), true, true);
         long length;
         try {
           length = computeLength(eolStream);
-        } catch (EolCanonicalizingInputStream.IsBinaryException e) {
+        } catch (AutoLFInputStream.IsBinaryException e) {
           //binary file, insert as is:
           myObjectMap.put(path, myObjectWriter.insert(Constants.OBJ_BLOB, bytes.toByteArray()));
           return;
         } finally {
           eolStream.close();
         }
-        eolStream = new EolCanonicalizingInputStream(new ByteArrayInputStream(bytes.toByteArray()), true, true);
+        eolStream = new AutoLFInputStream(new ByteArrayInputStream(bytes.toByteArray()), true, true);
         myObjectMap.put(path, myObjectWriter.insert(Constants.OBJ_BLOB, length, eolStream));
       } catch (IOException e) {
         throw new VcsException("Error while inserting file content to repository, file: " + path, e);
@@ -299,13 +299,13 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       } catch (Exception e) {
         //will try to fetch
       } finally {
-        revWalk.release();
+        revWalk.close();
       }
       RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(gitRoot.getRef()))
         .setDestination(GitUtils.expandRef(gitRoot.getRef()))
         .setForceUpdate(true);
       myCommitLoader.fetch(myDb, gitRoot.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(gitRoot.getAuthSettings()));
-      Ref defaultBranch = myDb.getRef(GitUtils.expandRef(gitRoot.getRef()));
+      Ref defaultBranch = myDb.exactRef(GitUtils.expandRef(gitRoot.getRef()));
       return myCommitLoader.loadCommit(myContext, gitRoot, defaultBranch.getObjectId().name());
     }
 
