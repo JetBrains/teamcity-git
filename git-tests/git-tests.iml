@@ -20,11 +20,11 @@
     <orderEntry type="library" name="TeamCity Agent" level="project" />
     <orderEntry type="library" name="TeamCity server" level="project" />
     <orderEntry type="library" name="jsch" level="project" />
-    <orderEntry type="library" name="jgit" level="project" />
     <orderEntry type="library" name="TeamCity Vcs Api" level="project" />
     <orderEntry type="module" module-name="git-server-tc" />
     <orderEntry type="library" name="quartz-1.6.0" level="project" />
     <orderEntry type="library" name="httpclient" level="project" />
     <orderEntry type="library" name="JavaEWAH-0.7.9" level="project" />
+    <orderEntry type="library" name="jgit-server" level="project" />
   </component>
 </module>

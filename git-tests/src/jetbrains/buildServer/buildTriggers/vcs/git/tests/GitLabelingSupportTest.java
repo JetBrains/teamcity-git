@@ -92,7 +92,7 @@ public class GitLabelingSupportTest extends BaseRemoteRepositoryTest {
       assertEquals(tagger.getName(), "John Doe");
       assertEquals(tagger.getEmailAddress(), "john.doe@some.org");
     } finally {
-      revWalk.release();
+      revWalk.close();
       r.close();
     }
   }
@@ -125,7 +125,7 @@ public class GitLabelingSupportTest extends BaseRemoteRepositoryTest {
     } catch (MissingObjectException e) {
       fail("Not all objects were pushed, labeled commit " + erasedCommit + " is missing");
     } finally {
-      walk.release();
+      walk.close();
       r.close();
     }
   }

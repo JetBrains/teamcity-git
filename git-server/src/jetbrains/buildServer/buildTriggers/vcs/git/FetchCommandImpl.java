@@ -126,7 +126,7 @@ public class FetchCommandImpl implements FetchCommand {
   private void unlockRef(Repository db, Ref ref) throws IOException, InterruptedException {
     File refFile = new File(db.getDirectory(), ref.getName());
     File refLockFile = new File(db.getDirectory(), ref.getName() + ".lock");
-    LockFile lock = new LockFile(refFile, FS.DETECTED);
+    LockFile lock = new LockFile(refFile);
     try {
       if (!lock.lock()) {
         LOG.warn("Cannot lock the ref " + ref.getName() + ", will wait and try again");

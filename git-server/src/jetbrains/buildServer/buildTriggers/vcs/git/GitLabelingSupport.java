@@ -162,7 +162,7 @@ public class GitLabelingSupport implements LabelingSupport {
     } catch (Exception e) {
       return null;
     } finally {
-      walk.release();
+      walk.close();
     }
   }
 
@@ -235,7 +235,7 @@ public class GitLabelingSupport implements LabelingSupport {
           throw new PackHeuristicsFailed("Failed to determine if the tagged object " + myTagObject.getObject() + " is present in the remote repository", e);
         return false;
       } finally {
-        walk.release();
+        walk.close();
       }
     }
 

@@ -392,7 +392,7 @@ public class GitServerUtil {
           return true;
       }
     } finally {
-      reader.release();
+      reader.close();
     }
     return false;
   }

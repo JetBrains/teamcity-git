@@ -17,6 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.util.ssl.SSLContextUtil;
+import org.apache.http.Header;
+import org.eclipse.jgit.annotations.NonNull;
 import org.eclipse.jgit.transport.http.HttpConnection;
 import org.eclipse.jgit.transport.http.HttpConnectionFactory;
 import org.jetbrains.annotations.NotNull;
@@ -30,9 +32,12 @@ import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * Basically a copy of org.eclipse.jgit.transport.http.JDKHttpConnectionFactory
@@ -120,6 +125,10 @@ public class TeamCityJDKHttpConnectionFactory implements HttpConnectionFactory {
 
     public String getHeaderField(String name) {
       return wrappedUrlConnection.getHeaderField(name);
+    }
+
+    public List<String> getHeaderFields(@NonNull String name) {
+      return Collections.unmodifiableList(wrappedUrlConnection.getHeaderFields().get(name));
     }
 
     public int getContentLength() {
