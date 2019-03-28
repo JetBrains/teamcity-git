@@ -135,7 +135,7 @@ public class Cleanup {
   }
 
   @NotNull
-  private List<File> getGcCopyRepositoryDirs() {
+  private List<File> getRepositoryDirCopiesCreatedByGc() {
     List<File> dirs = new ArrayList<>();
     for (File d: FileUtil.getSubDirectories(myRepositoryManager.getBaseMirrorsDir())) {
       if (d.getName().contains(".git.gc")) {
@@ -171,6 +171,15 @@ public class Cleanup {
   private void runNativeGC() {
     final long startNanos = System.nanoTime();
     final long gcTimeQuotaNanos = TimeUnit.MINUTES.toNanos(myConfig.getNativeGCQuotaMinutes());
+
+    List<File> brokenGcCopyDirs = getRepositoryDirCopiesCreatedByGc();
+    if (!brokenGcCopyDirs.isEmpty()) {
+      LOG.info("Found several copies of repositories directories left after the failed GC attempts: " + brokenGcCopyDirs + ", will remove all of them");
+    }
+    for (File brokenDir: brokenGcCopyDirs) {
+      FileUtil.delete(brokenDir);
+    }
+
     List<File> allDirs = getAllRepositoryDirs();
     myGcErrors.retainErrors(allDirs);
     if (allDirs.isEmpty()) {
@@ -178,14 +187,6 @@ public class Cleanup {
       //reset error, no reason to show it if there is no repositories
       myNativeGitError.set(null);
       return;
-    }
-
-    List<File> brokenGcCopyDirs = getGcCopyRepositoryDirs();
-    if (!brokenGcCopyDirs.isEmpty()) {
-      LOG.info("Found several copies of repositories directories left after the failed GC attempts: " + brokenGcCopyDirs + ", will remove all of them");
-    }
-    for (File brokenDir: brokenGcCopyDirs) {
-      FileUtil.delete(brokenDir);
     }
 
     if (!isNativeGitInstalled()) {
