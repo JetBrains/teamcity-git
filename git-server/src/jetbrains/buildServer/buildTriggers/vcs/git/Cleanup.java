@@ -101,7 +101,7 @@ public class Cleanup {
       LOG.info("Remove unused git repository dir " + dir.getAbsolutePath());
       Lock rmLock = myRepositoryManager.getRmLock(dir).writeLock();
       rmLock.lock();
-      boolean deleted = false;
+      boolean deleted;
       try {
         deleted = FileUtil.delete(dir);
       } finally {
@@ -123,10 +123,22 @@ public class Cleanup {
     return myRepositoryManager.getExpiredDirs();
   }
 
+  @NotNull
   private List<File> getAllRepositoryDirs() {
     List<File> dirs = new ArrayList<>();
     for (File d: FileUtil.getSubDirectories(myRepositoryManager.getBaseMirrorsDir())) {
       if (d.getName().endsWith(".git")) { // there can be some other directories like .gc or .old, we should ignore them
+        dirs.add(d);
+      }
+    }
+    return dirs;
+  }
+
+  @NotNull
+  private List<File> getRepositoryDirCopiesCreatedByGc() {
+    List<File> dirs = new ArrayList<>();
+    for (File d: FileUtil.getSubDirectories(myRepositoryManager.getBaseMirrorsDir())) {
+      if (d.getName().contains(".git.gc")) {
         dirs.add(d);
       }
     }
@@ -159,6 +171,15 @@ public class Cleanup {
   private void runNativeGC() {
     final long startNanos = System.nanoTime();
     final long gcTimeQuotaNanos = TimeUnit.MINUTES.toNanos(myConfig.getNativeGCQuotaMinutes());
+
+    List<File> brokenGcCopyDirs = getRepositoryDirCopiesCreatedByGc();
+    if (!brokenGcCopyDirs.isEmpty()) {
+      LOG.info("Found several copies of repositories directories left after the failed GC attempts: " + brokenGcCopyDirs + ", will remove all of them");
+    }
+    for (File brokenDir: brokenGcCopyDirs) {
+      FileUtil.delete(brokenDir);
+    }
+
     List<File> allDirs = getAllRepositoryDirs();
     myGcErrors.retainErrors(allDirs);
     if (allDirs.isEmpty()) {
@@ -167,6 +188,7 @@ public class Cleanup {
       myNativeGitError.set(null);
       return;
     }
+
     if (!isNativeGitInstalled()) {
       LOG.info("Cannot find native git, skip running git gc");
       return;
