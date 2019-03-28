@@ -198,7 +198,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   public int getNativeGCQuotaMinutes() {
-    return TeamCityProperties.getInteger("teamcity.server.git.gc.quota.minutes", 60);
+    return TeamCityProperties.getInteger("teamcity.server.git.gc.quota.minutes", 300);
   }
 
   public String getFetchClasspath() {
