@@ -51,7 +51,6 @@ import java.util.*;
 public class FetchCommandImpl implements FetchCommand {
 
   private static Logger LOG = Logger.getInstance(FetchCommandImpl.class.getName());
-  private static Logger PERFORMANCE_LOG = Logger.getInstance(FetchCommandImpl.class.getName() + ".Performance");
 
   private final ServerPluginConfig myConfig;
   private final TransportFactory myTransportFactory;
@@ -176,8 +175,8 @@ public class FetchCommandImpl implements FetchCommand {
       ExecResult result = SimpleCommandLineProcessRunner.runCommandSecure(cl, cl.getCommandLineString(), fetchProcessInput,
                                                                           processEventHandler, stdoutBuffer, stderrBuffer);
 
-      if (PERFORMANCE_LOG.isDebugEnabled())
-        PERFORMANCE_LOG.debug("[fetch in separate process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
+      final long fetchTime = System.currentTimeMillis() - fetchStart;
+      LOG.info("Git fetch process finished for: " + uri + " in directory: " + repository.getDirectory() + ", took " + fetchTime + "ms");
 
       VcsException commandError = CommandLineUtil.getCommandLineError("git fetch",
                                                                       " (repository dir: <TeamCity data dir>/system/caches/git/" + repository.getDirectory().getName() + ")",
@@ -296,9 +295,8 @@ public class FetchCommandImpl implements FetchCommand {
     } finally {
       clean(db);
       tn.close();
-      if (PERFORMANCE_LOG.isDebugEnabled()) {
-        PERFORMANCE_LOG.debug("[fetch in server process] root=" + debugInfo + ", took " + (System.currentTimeMillis() - fetchStart) + "ms");
-      }
+      final long fetchTime = System.currentTimeMillis() - fetchStart;
+      LOG.info("Git fetch finished for: " + uri + " in directory: " + db.getDirectory() + ", took " + fetchTime + "ms");
     }
   }
 
