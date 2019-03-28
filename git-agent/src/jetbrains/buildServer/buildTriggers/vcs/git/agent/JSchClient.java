@@ -79,60 +79,8 @@ public class JSchClient {
 
 
   private static JSchClient createClient(@NotNull Logger logger, String[] args) {
-    // Git runs ssh as follows (https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables):
-    //
-    //   $GIT_SSH [-p <port>] [username@]host <command>
-    //
-    // e.g.
-    //
-    //   $GIT_SSH 'git@server.com' 'git-upload-pack '\''user/repo.git'\'''
-    //
-    // The git-upload-pack command and its args are passed as a single argument to $GIT_SSH.
-    //
-    // Git LFS also uses $GIT_SSH, but it doesn't combine all arguments into a single $GIT_SSH arg:
-    //
-    //     $GIT_SSH 'git@server.com' 'git-lfs-authenticate' 'user/repo.git' 'download'
-    //
-    // we need to combine them ourselves.
-
-    final Map<String, String> options = new HashMap<String, String>();
-
-    int i = 0;
-
-    if ("-o".equals(args[i])) {
-      i++;
-      final String[] op = args[i++].split("=");
-      options.put(op[0], op[1]);
-    }
-
-    Integer port = null;
-    //noinspection HardCodedStringLiteral
-    if ("-p".equals(args[i])) {
-      i++;
-      port = Integer.parseInt(args[i++]);
-    }
-    String host = args[i++];
-    String user;
-    int atIndex = host.lastIndexOf('@');
-    if (atIndex == -1) {
-      user = null;
-    }
-    else {
-      user = host.substring(0, atIndex);
-      host = host.substring(atIndex + 1);
-    }
-
-    String command = args[i];
-    if (i < args.length - 1) { // contains additional arguments for the command
-      StringBuilder commandWithArguments = new StringBuilder(command);
-      for (int j = i + 1; j < args.length; j++) {
-        commandWithArguments.append(" ").append(args[j]);
-      }
-      command = commandWithArguments.toString();
-    }
-    return new JSchClient(host, user, port, command, logger, options);
+    return SSHCommandLine.parse(args, logger).createClient();
   }
-
 
   public void run() throws Exception {
     myLogger.log(Logger.INFO, "SSH command to run: " + myCommand);
@@ -499,6 +447,138 @@ public class JSchClient {
     @Override
     public String[] getValues(final String key) {
       return myDelegate.getValues(key);
+    }
+  }
+
+  public static class SSHCommandLine {
+
+    private String myHost;
+    private String myUser;
+    private Integer myPort;
+    private String myCommand;
+    private Map<String, String> options;
+    private final Logger myLogger;
+
+    private SSHCommandLine(
+      @NotNull final String host,
+      @Nullable final String user,
+      @Nullable final Integer port,
+      @NotNull final String command,
+      @NotNull final Map<String, String> options,
+      @NotNull final Logger logger) {
+      myHost = host;
+      myUser = user;
+      myPort = port;
+      myCommand = command;
+      this.options = options;
+      myLogger = logger;
+    }
+
+    @NotNull
+    public String getHost() {
+      return myHost;
+    }
+
+    @Nullable
+    public String getUser() {
+      return myUser;
+    }
+
+    @Nullable
+    public Integer getPort() {
+      return myPort;
+    }
+
+    @NotNull
+    public String getCommand() {
+      return myCommand;
+    }
+
+    @NotNull
+    public Map<String, String> getOptions() {
+      return options;
+    }
+
+    @NotNull
+    public Logger getLogger() {
+      return myLogger;
+    }
+
+    /**
+     * Git runs ssh as follows (<a href="https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables">Docs</a>):
+     *
+     * <code>$GIT_SSH [-p &lt;port&gt;] [username@]host &lt;command&gt;</code>
+     * <p>
+     * e.g. <code>$GIT_SSH 'git@server.com' 'git-upload-pack '\''user/repo.git'\'''</code>
+     * <p>
+     * The git-upload-pack command and its args are passed as a single argument to $GIT_SSH.
+     * <p>
+     * Git LFS also uses $GIT_SSH, but it doesn't combine all arguments into a single $GIT_SSH arg:
+     * <p>
+     * <code>$GIT_SSH 'git@server.com' 'git-lfs-authenticate' 'user/repo.git' 'download'</code>
+     * <p>
+     * we need to combine them ourselves.
+     */
+    public static SSHCommandLine parse(String[] args, Logger logger) {
+      final String line = join(args);
+      logger.log(Logger.DEBUG, "Call ssh: " + line);
+
+      LinkedList<String> list = new LinkedList<String>(Arrays.asList(args));
+
+      Integer port = null;
+      final Map<String, String> options = new HashMap<String, String>();
+      for (Iterator<String> it = list.iterator(); it.hasNext(); ) {
+        final String next = it.next();
+        if ("-o".equals(next)) {
+          it.remove();
+          final String[] op = it.next().split("=");
+          options.put(op[0], op[1]);
+          it.remove();
+
+        } else if ("-p".equals(next)) {
+          it.remove();
+          port = Integer.parseInt(it.next());
+          it.remove();
+        }
+      }
+
+      String user;
+      String host = list.pollFirst();
+      int atIndex = host.lastIndexOf('@');
+      if (atIndex == -1) {
+        user = null;
+      } else {
+        user = host.substring(0, atIndex);
+        host = host.substring(atIndex + 1);
+      }
+
+      final String command = join(list);
+
+      return new SSHCommandLine(host, user, port, command, options, logger);
+    }
+
+    private static String join(String[] toJoin) {
+      return join(Arrays.asList(toJoin));
+    }
+
+    private static String join(Iterable toJoin) {
+      final String separator = " ";
+      final StringBuilder result = new StringBuilder();
+      final Iterator it = toJoin.iterator();
+      while (it.hasNext()) {
+        Object item = it.next();
+        if (item != null) {
+          result.append(item);
+          if (it.hasNext()) {
+            result.append(separator);
+          }
+        }
+      }
+      return result.toString();
+    }
+
+    public JSchClient createClient() {
+      return new JSchClient(myHost, myUser, myPort, myCommand, myLogger, options);
     }
   }
 }
