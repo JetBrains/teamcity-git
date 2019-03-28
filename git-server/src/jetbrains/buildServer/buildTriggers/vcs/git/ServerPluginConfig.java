@@ -157,6 +157,9 @@ public interface ServerPluginConfig extends PluginConfig {
 
   int getRepackIdleTimeoutSeconds();
 
+  @NotNull
+  List<String> getRepackCommandArguments();
+
   int getPackRefsIdleTimeoutSeconds();
 
   boolean treatMissingBranchTipAsRecoverableError();

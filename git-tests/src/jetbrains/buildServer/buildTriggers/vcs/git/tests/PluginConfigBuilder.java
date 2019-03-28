@@ -354,6 +354,12 @@ public class PluginConfigBuilder {
         return myDelegate.getRepackIdleTimeoutSeconds();
       }
 
+      @NotNull
+      @Override
+      public List<String> getRepackCommandArguments() {
+        return myDelegate.getRepackCommandArguments();
+      }
+
       @Override
       public int getPackRefsIdleTimeoutSeconds() {
         return myDelegate.getPackRefsIdleTimeoutSeconds();

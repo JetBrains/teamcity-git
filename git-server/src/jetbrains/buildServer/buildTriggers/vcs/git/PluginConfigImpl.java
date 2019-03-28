@@ -30,6 +30,7 @@ import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.AbstractPatchBuilder;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsPersonalSupport;
@@ -548,6 +549,12 @@ public class PluginConfigImpl implements ServerPluginConfig {
   @Override
   public int getRepackIdleTimeoutSeconds() {
     return TeamCityProperties.getInteger("teamcity.git.repackIdleTimeoutSeconds", (int) TimeUnit.MINUTES.toSeconds(30));
+  }
+
+  @Override
+  @NotNull
+  public List<String> getRepackCommandArguments() {
+    return StringUtil.splitCommandArgumentsAndUnquote(TeamCityProperties.getProperty("teamcity.git.repack.args", "-a -d"));
   }
 
   @Override

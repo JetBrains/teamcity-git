@@ -338,7 +338,7 @@ public class Cleanup {
     cmd.setWorkingDirectory(gcRepo);
     cmd.setExePath(myConfig.getPathToGit());
     cmd.addParameter("repack");
-    cmd.addParameters("-a", "-d");
+    cmd.addParameters(myConfig.getRepackCommandArguments());
     ExecResult result = SimpleCommandLineProcessRunner.runCommand(cmd, null, new SimpleCommandLineProcessRunner.RunCommandEventsAdapter() {
       @Override
       public Integer getOutputIdleSecondsTimeout() {
