@@ -170,7 +170,7 @@ public class JSchClient {
       }
 
 
-      if (!channel.isConnected()) {
+      if (!channel.isConnected() && input.available() == 0) {
         throw new IOException("Connection failed");
       }
 
