@@ -25,6 +25,7 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.util.TimePrinter;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.internal.storage.file.PackFile;
@@ -231,7 +232,8 @@ public class Cleanup {
       }
     }
     final long finishNanos = System.nanoTime();
-    LOG.info("Git garbage collection finished, it took " + TimeUnit.NANOSECONDS.toMillis(finishNanos - startNanos) + "ms");
+    final long deltaMillis = TimeUnit.NANOSECONDS.toMillis(finishNanos - startNanos);
+    LOG.info("Git garbage collection finished, it took " + TimePrinter.createMillisecondsFormatter().formatTime(deltaMillis));
   }
 
 
