@@ -198,12 +198,9 @@ public class UpdaterWithMirror extends UpdaterImpl {
   private boolean shouldFetchFromScratch(@NotNull VcsException e) {
     if (e instanceof GitExecTimeout)
       return false;
-    String msg = e.getMessage();
-    if (msg.contains("Couldn't find remote ref") ||
-        msg.contains("Could not read from remote repository")) {
-      return false;
-    }
-    return true;
+    String msg = e.getMessage().toLowerCase();
+    return !msg.contains("couldn't find remote ref") &&
+           !msg.contains("could not read from remote repository");
   }
 
 
