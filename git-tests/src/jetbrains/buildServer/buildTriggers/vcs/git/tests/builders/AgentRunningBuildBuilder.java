@@ -232,11 +232,6 @@ public class AgentRunningBuildBuilder {
         return null;
       }
 
-      @Override
-      public void interruptBuild(@NotNull final String comment, final boolean reQueue) {
-
-      }
-
       public boolean isBuildFailingOnServer() throws InterruptedException {
         throw new UnsupportedOperationException();
       }
