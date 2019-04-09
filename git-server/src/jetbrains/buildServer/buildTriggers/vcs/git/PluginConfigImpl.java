@@ -309,11 +309,15 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   @NotNull
   public List<String> getOptionsForSeparateProcess() {
-    List<String> options = new ArrayList<String>();
+    List<String> options = new ArrayList<>();
     addProxySettingsForSeparateProcess(options);
     addSslTrustStoreSettingsForSeparateProcess(options);
     addInheritedOption(options, "java.net.preferIPv6Addresses");
     addInheritedOption(options, "jsse.enableSNIExtension");
+    String additionalCommandLineOpts = TeamCityProperties.getProperty("teamcity.git.separateProcess.additionalArguments");
+    if (!StringUtil.isEmpty(additionalCommandLineOpts)) {
+      options.addAll(StringUtil.splitCommandArgumentsAndUnquote(additionalCommandLineOpts));
+    }
     return options;
   }
 
