@@ -113,7 +113,6 @@ public class GitVcsSupport extends ServerVcsSupport
     resetCacheManager.registerHandler(resetRevisionsCacheHandler);
     myGitTrustStoreProvider = gitTrustStoreProvider;
     myTestConnection = customTestConnection == null ? this : customTestConnection;
-    GitServerUtil.setupMemoryMappedIndexReading();
   }
 
   public void setExtensionHolder(@Nullable ExtensionHolder extensionHolder) {
