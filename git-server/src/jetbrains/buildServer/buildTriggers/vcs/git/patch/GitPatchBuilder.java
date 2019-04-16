@@ -18,7 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
+import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
