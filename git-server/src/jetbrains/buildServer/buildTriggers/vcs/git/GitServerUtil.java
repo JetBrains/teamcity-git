@@ -293,6 +293,7 @@ public class GitServerUtil {
    * @throws VcsException if any ref was not successfully updated
    */
   public static void checkFetchSuccessful(Repository db, FetchResult result) throws VcsException {
+    TreeSet<String> conflictsWithoutDb = new TreeSet<>();
     for (TrackingRefUpdate update : result.getTrackingRefUpdates()) {
       String localRefName = update.getLocalName();
       RefUpdate.Result status = update.getResult();
@@ -305,7 +306,7 @@ public class GitServerUtil {
             if (os == OSInfo.OSType.WINDOWS || os == OSInfo.OSType.MACOSX) {
               Set<String> refNames = db.getRefDatabase().getRefs(RefDatabase.ALL).keySet();
               for (String ref : refNames) {
-                if (!localRefName.equals(ref) && localRefName.equalsIgnoreCase(ref))
+                if (localRefName.equalsIgnoreCase(ref))
                   caseSensitiveConflicts.add(ref);
               }
             }
@@ -318,17 +319,21 @@ public class GitServerUtil {
             msg = "Failed to fetch ref " + localRefName + ": it clashes with " + StringUtil.join(", ", conflicts) +
                   ". Please remove conflicting refs from repository.";
           } else if (!caseSensitiveConflicts.isEmpty()) {
-            msg = "Failed to fetch ref " + localRefName + ": on case-insensitive file system it clashes with " +
-                  StringUtil.join(", ", caseSensitiveConflicts) +
+            msg = "Failed to fetch ref " + localRefName + ": on case-insensitive file system it clashes with another ref" +
                   ". Please remove conflicting refs from repository.";
           } else {
-            msg = "Fail to update '" + localRefName + "' (" + status.name() + ")";
+            //msg = "Fail to update '" + localRefName + "' (" + status.name() + ")";
+            conflictsWithoutDb.add(localRefName);
+            continue;
           }
           throw new VcsException(msg);
         } else {
           throw new VcsException("Fail to update '" + localRefName + "' (" + status.name() + ")");
         }
       }
+    }
+    if (!conflictsWithoutDb.isEmpty()) {
+      throw new VcsException("Fail to update '" + StringUtil.join(", ", conflictsWithoutDb) + "' (" + RefUpdate.Result.LOCK_FAILURE.name() + ")");
     }
   }
 
