@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
+import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 
 import java.io.IOException;
 

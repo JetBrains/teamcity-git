@@ -18,7 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
-import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
+import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
 import jetbrains.buildServer.vcs.VcsException;
