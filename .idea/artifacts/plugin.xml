@@ -9,7 +9,6 @@
     </properties>
     <root id="root">
       <element id="directory" name="server">
-        <element id="library" level="project" name="jgit" />
         <element id="library" level="project" name="jsch" />
         <element id="artifact" artifact-name="git-server.jar" />
         <element id="artifact" artifact-name="git-server-tc.jar" />
@@ -18,6 +17,7 @@
         <element id="library" level="project" name="org.eclipse.egit.github.core-2.4.0-SNAPSHOT" />
         <element id="library" level="project" name="httpclient" />
         <element id="library" level="project" name="JavaEWAH-0.7.9" />
+        <element id="library" level="project" name="jgit-server" />
       </element>
       <element id="directory" name="agent">
         <element id="archive" name="jetbrains.git.zip">
