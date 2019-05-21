@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dsl-extension kind="vcs" type="jetbrains.git" generateDslJar="true">
   <class name="GitVcsRoot">
-    <description>Git [VCS root](https://confluence.jetbrains.com/display/TCDL/Git)</description>
+    <description>Git [VCS root](https://www.jetbrains.com/help/teamcity/?Git)</description>
   </class>
   <params>
     <param name="url" mandatory="true">
@@ -18,7 +18,7 @@
     </param>
     <param name="teamcity:branchSpec" dslName="branchSpec">
       <description>
-        [Branch specification](https://confluence.jetbrains.com/display/TCDL/Working+with+Feature+Branches#WorkingwithFeatureBranches-branchSpec)
+        [Branch specification](https://www.jetbrains.com/help/teamcity/?Working+with+Feature+Branches#WorkingwithFeatureBranches-branchSpec)
         to use in VCS root
       </description>
     </param>
@@ -30,7 +30,7 @@
     </param>
     <param name="usernameStyle" dslName="userNameStyle" type="UserNameStyle">
       <description>
-        Defines how TeamCity retrieves [VCS username](https://confluence.jetbrains.com/display/TCDL/Managing+Users+and+User+Groups#ManagingUsersandUserGroups-vcsUsername)
+        Defines how TeamCity retrieves [VCS username](https://www.jetbrains.com/help/teamcity/?Managing+Users+and+User+Groups#ManagingUsersandUserGroups-vcsUsername)
         from git commit.
         @see UserNameStyle
       </description>
@@ -96,17 +96,17 @@
       </option>
       <option name="uploadedKey" value="TEAMCITY_SSH_KEY">
         <description>
-          Uploaded [SSH key](https://confluence.jetbrains.com/display/TCDL/SSH+Keys+Management) with the specified name.
+          Uploaded [SSH key](https://www.jetbrains.com/help/teamcity/?SSH+Keys+Management) with the specified name.
         </description>
         <param name="username" dslName="userName">
           <description>Username to use, overwrites the username in the url</description>
         </param>
         <param name="teamcitySshKey" dslName="uploadedKey" mandatory="true">
-          <description>Name of the uploaded [SSH key](https://confluence.jetbrains.com/display/TCDL/SSH+Keys+Management) to use</description>
+          <description>Name of the uploaded [SSH key](https://www.jetbrains.com/help/teamcity/?SSH+Keys+Management) to use</description>
         </param>
         <param name="secure:passphrase" dslName="passphrase">
           <description>
-            Passphrase for the uploaded [SSH key](https://confluence.jetbrains.com/display/TCDL/SSH+Keys+Management).
+            Passphrase for the uploaded [SSH key](https://www.jetbrains.com/help/teamcity/?SSH+Keys+Management).
             Leave it empty if the key is not encrypted.
           </description>
         </param>
@@ -145,7 +145,7 @@
   <types>
     <enum name="UserNameStyle">
       <description>
-        Defines how TeamCity retrieves [VCS username](https://confluence.jetbrains.com/display/TCDL/Managing+Users+and+User+Groups#ManagingUsersandUserGroups-vcsUsername)
+        Defines how TeamCity retrieves [VCS username](https://www.jetbrains.com/help/teamcity/?Managing+Users+and+User+Groups#ManagingUsersandUserGroups-vcsUsername)
         from git commit.
 
         When the git config contains the following
