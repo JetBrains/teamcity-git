@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.JSch;
+import com.jcraft.jzlib.JZlib;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.plugins.beans.PluginDescriptor;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
@@ -85,6 +86,7 @@ public class GitAgentSSHService extends GitSSHService {
       if (myScript == null || myScriptPath == null || !myScript.exists()) {
         ScriptGenerator generator = new ScriptGenerator(GitSSHHandler.GIT_SSH_PREFIX, JSchClient.class, getTempDir());
         generator.addClasses(JSch.class);
+        generator.addClasses(JZlib.class);
         generator.addClasses(GitUtils.class);
         generator.addClasses(NotNull.class);
         generator.addClasses(GitSSHHandler.class);

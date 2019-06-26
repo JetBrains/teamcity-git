@@ -20,6 +20,7 @@ import com.googlecode.javaewah.EWAHCompressedBitmap;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.*;
+import com.jcraft.jzlib.JZlib;
 import gnu.trove.TObjectHashingStrategy;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchProcess;
@@ -241,6 +242,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
       Logger.class,
       GitVcsRoot.class,
       JSch.class,
+      JZlib.class,
       Decoder.class,
       TObjectHashingStrategy.class,
       EncryptUtil.class,
