@@ -16,9 +16,9 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
+import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
 import jetbrains.buildServer.util.StringUtil;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.URIish;
@@ -64,7 +64,7 @@ public class SubmoduleUrlResolver {
       final String subUser = submoduleUri.getUser();
       if (StringUtil.isNotEmpty(mainUser)
           && StringUtil.isEmpty(subUser)
-          && AuthSettings.requiresCredentials(submoduleUri)
+          && URIishHelperImpl.requiresCredentials(submoduleUri)
           && pluginConfig.shouldSetSubmoduleUserInAbsoluteUrls()
       ) {
         /* use main repo user as sub repo user only if sub repo user is empty */
