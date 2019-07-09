@@ -330,7 +330,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     //setup fetcher with counter
     ServerPluginConfig config = myConfig.build();
     VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager);
+    final MemoryStorageImpl memoryStorage = new MemoryStorageImpl(config);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager,
+                                                     memoryStorage);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withFetchCommand(fetchCounter).build();
 
@@ -360,7 +362,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     //setup fetcher with counter
     ServerPluginConfig config = myConfig.withPerBranchFetch(true).build();
     VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager);
+    final MemoryStorageImpl memoryStorage = new MemoryStorageImpl(config);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager,
+                                                     memoryStorage);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withFetchCommand(fetchCounter).build();
 
@@ -390,7 +394,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     //setup fetcher with a counter
     ServerPluginConfig config = myConfig.build();
     VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager);
+    final MemoryStorageImpl memoryStorage = new MemoryStorageImpl(config);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager,
+                                                     memoryStorage);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withFetchCommand(fetchCounter).build();
 
@@ -600,7 +606,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
     AtomicBoolean updateRepo = new AtomicBoolean(false);
     //wrapper for fetch command which will remove ref in remote repository just before fetch
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager) {
+    final MemoryStorageImpl memoryStorage = new MemoryStorageImpl(config);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager,
+                                                     memoryStorage) {
       @Override
       public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull FetchSettings settings) throws IOException, VcsException {
         if (updateRepo.get()) {
