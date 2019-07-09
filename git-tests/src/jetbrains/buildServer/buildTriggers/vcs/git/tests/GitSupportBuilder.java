@@ -78,7 +78,7 @@ public class GitSupportBuilder {
         };
       }
     }
-    myMirrorManager = new MirrorManagerImpl(myPluginConfig, new HashCalculatorImpl());
+    myMirrorManager = new MirrorManagerImpl(myPluginConfig, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
     myRepositoryManager = new RepositoryManagerImpl(myPluginConfig, myMirrorManager);
     final ResetCacheRegister resetCacheManager;
     if (myResetCacheManager == null) {

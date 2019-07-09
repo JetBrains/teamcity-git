@@ -54,7 +54,7 @@ class AgentSupportBuilder {
     if (myPluginConfigFactory == null)
       myPluginConfigFactory = new PluginConfigFactoryImpl(myAgentConfiguration, myGitDetector);
     if (myMirrorManager == null)
-      myMirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl());
+      myMirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfiguration), new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
     if (mySshKeyProvider == null)
       mySshKeyProvider = new MockVcsRootSshKeyManagerProvider();
     if (myGitMetaFactory == null)

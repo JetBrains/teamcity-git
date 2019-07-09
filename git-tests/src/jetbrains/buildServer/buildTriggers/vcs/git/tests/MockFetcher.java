@@ -29,7 +29,7 @@ public class MockFetcher {
 
   public static void main(String... args) throws Exception {
     String repositoryPath = new File(".").getAbsolutePath();
-    LockFile lock = new LockFile(new File(repositoryPath, "mock"), FS.DETECTED);
+    LockFile lock = new LockFile(new File(repositoryPath, "mock"));
     lock.lock();
     try {
       Thread.sleep(10000);

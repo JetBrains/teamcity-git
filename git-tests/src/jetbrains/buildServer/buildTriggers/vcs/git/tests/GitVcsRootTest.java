@@ -48,7 +48,7 @@ public class GitVcsRootTest extends BaseRemoteRepositoryTest {
     myDefaultCachesDir = myTempFiles.createTempDir();
     ServerPaths serverPaths = new ServerPaths(myDefaultCachesDir.getAbsolutePath());
     ServerPluginConfig config = new PluginConfigBuilder(serverPaths).build();
-    myMirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    myMirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
   }
 
   public void fetch_url_for_repository_in_local_filesystem_should_not_contain_password() throws Exception {
@@ -58,13 +58,13 @@ public class GitVcsRootTest extends BaseRemoteRepositoryTest {
       .withUsername("user")
       .withPassword("pass")
       .build();
-    GitVcsRoot s = new GitVcsRoot(myMirrorManager, root);
-    assertEquals(new URIish(pathInLocalFS), s.getRepositoryFetchURL());
+    GitVcsRoot s = new GitVcsRoot(myMirrorManager, root, new URIishHelperImpl());
+    assertEquals(new URIish(pathInLocalFS), s.getRepositoryFetchURL().get());
   }
 
   public void cred_prod() throws Exception {
     VcsRoot root = vcsRoot().withFetchUrl("git://git@some.org/repository.git").build();
-    GitVcsRoot gitRoot = new GitVcsRoot(myMirrorManager, root);
+    GitVcsRoot gitRoot = new GitVcsRoot(myMirrorManager, root, new URIishHelperImpl());
     assertNull("User is not stripped from the url with anonymous protocol", gitRoot.getRepositoryFetchURL().getUser());
   }
 
@@ -72,10 +72,10 @@ public class GitVcsRootTest extends BaseRemoteRepositoryTest {
   public void disabling_custom_clones() throws Exception {
     File cloneDir = new File("");
     VcsRoot root = vcsRoot().withRepositoryPathOnServer(cloneDir.getAbsolutePath()).withFetchUrl("http://some.org/repo").build();
-    GitVcsRoot gitRoot1 = new GitVcsRoot(myMirrorManager, root);
+    GitVcsRoot gitRoot1 = new GitVcsRoot(myMirrorManager, root, new URIishHelperImpl());
     assertTrue(FileUtil.isAncestor(myDefaultCachesDir, gitRoot1.getRepositoryDir(), true));
     setInternalProperty(Constants.CUSTOM_CLONE_PATH_ENABLED, "true");
-    GitVcsRoot gitRoot2 = new GitVcsRoot(myMirrorManager, root);
+    GitVcsRoot gitRoot2 = new GitVcsRoot(myMirrorManager, root, new URIishHelperImpl());
     assertEquals(cloneDir.getAbsoluteFile(), gitRoot2.getRepositoryDir());
   }
 
@@ -94,7 +94,7 @@ public class GitVcsRootTest extends BaseRemoteRepositoryTest {
   @Test(dataProvider = "urlsWithNewLines")
   public void new_line_in_fetch_url(@NotNull String url) throws VcsException {
     try {
-      new GitVcsRoot(myMirrorManager, vcsRoot().withFetchUrl(url).build());
+      new GitVcsRoot(myMirrorManager, vcsRoot().withFetchUrl(url).build(), new URIishHelperImpl());
       fail("No error for url '" + url + "'");
     } catch (VcsException e) {
       //expected
@@ -105,7 +105,7 @@ public class GitVcsRootTest extends BaseRemoteRepositoryTest {
   @Test(dataProvider = "urlsWithNewLines")
   public void new_line_in_push_url(@NotNull String url) throws VcsException {
     try {
-      new GitVcsRoot(myMirrorManager, vcsRoot().withFetchUrl("http://some.org/repo.git").withPushUrl(url).build());
+      new GitVcsRoot(myMirrorManager, vcsRoot().withFetchUrl("http://some.org/repo.git").withPushUrl(url).build(), new URIishHelperImpl());
       fail("No error for url '" + url + "'");
     } catch (VcsException e) {
       //expected

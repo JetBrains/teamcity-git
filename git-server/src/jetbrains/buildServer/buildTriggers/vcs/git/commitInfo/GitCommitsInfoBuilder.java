@@ -37,7 +37,6 @@ import java.util.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getAuthorIdent;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.getFullUserName;
-import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 
 public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExtension {
   private static final Logger LOG = Logger.getLogger(GitCommitsInfoBuilder.class.getName());
@@ -135,7 +134,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
     Set<String> refs = refIndex.get(commit.getVersion());
     if (refs != null) {
       for (String ref : refs) {
-        if (isTag(ref)) {
+        if (GitServerUtil.isTag(ref)) {
           commit.addTag(ref);
         } else {
           commit.addBranch(ref);

@@ -25,6 +25,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -111,7 +112,7 @@ public class SubmoduleAwareTreeIteratorFactory {
       parser.reset(reader, commit.getTree().getId());
       return parser;
     } finally {
-      reader.release();
+      reader.close();
     }
   }
 

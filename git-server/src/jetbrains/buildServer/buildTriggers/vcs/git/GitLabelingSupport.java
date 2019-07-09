@@ -87,7 +87,7 @@ public class GitLabelingSupport implements LabelingSupport {
         String commitSHA = GitUtils.versionRevision(version);
         RevCommit commit = myCommitLoader.loadCommit(context, gitRoot, commitSHA);
         Git git = new Git(r);
-        Ref tagRef = git.tag().setTagger(gitRoot.getTagger(r))
+        Ref tagRef = git.tag().setTagger(PersonIdentFactory.getTagger(gitRoot, r))
           .setName(label)
           .setObjectId(commit)
           .call();
@@ -114,7 +114,7 @@ public class GitLabelingSupport implements LabelingSupport {
                       @NotNull Ref tagRef,
                       @NotNull RevisionsInfo revisionsInfo) throws VcsException, IOException {
     long pushStart = System.currentTimeMillis();
-    final Transport tn = myTransportFactory.createTransport(r, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings(), myConfig.getPushTimeoutSeconds());
+    final Transport tn = myTransportFactory.createTransport(r, gitRoot.getRepositoryPushURL().get(), gitRoot.getAuthSettings(), myConfig.getPushTimeoutSeconds());
     PushConnection c = null;
     try {
       c = tn.openPush();
@@ -162,7 +162,7 @@ public class GitLabelingSupport implements LabelingSupport {
     } catch (Exception e) {
       return null;
     } finally {
-      walk.release();
+      walk.close();
     }
   }
 
@@ -235,7 +235,7 @@ public class GitLabelingSupport implements LabelingSupport {
           throw new PackHeuristicsFailed("Failed to determine if the tagged object " + myTagObject.getObject() + " is present in the remote repository", e);
         return false;
       } finally {
-        walk.release();
+        walk.close();
       }
     }
 
@@ -324,7 +324,8 @@ public class GitLabelingSupport implements LabelingSupport {
       String ref = e.getKey();
       if (defaultBranch.equals(ref)) {
         revisions.put(ref, e.getValue());
-      } else if (!GitUtils.isTag(ref)) {
+      } else if (!GitServerUtil
+        .isTag(ref)) {
         revisions.put(ref, e.getValue());
       }
     }

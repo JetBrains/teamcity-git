@@ -38,6 +38,7 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+import org.junit.Ignore;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -251,7 +252,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     git.collectChanges(root, "2c7e90053e0f7a5dd25ea2a16ef8909ba71826f6", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", CheckoutRules.DEFAULT);
 
     ServerPluginConfig config = myConfig.build();
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
     RepositoryManager repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
     ResetCacheHandler resetHandler = new GitResetCacheHandler(repositoryManager, new GcErrors());
     for (String cache : resetHandler.listCaches())
@@ -496,6 +497,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
 
   @TestFor(issues = {"TW-41943", "TW-46600"})
+  @Test(enabled = false) /* jGit v5 does not fail on broken encoding */
   public void collect_changes_with_broken_commit_encoding() throws Exception {
     myLogger.enableDebug();//TW-46600 happens only when debug is enabled
     VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
@@ -528,7 +530,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
     //delete clone on server to emulate git gc which prunes the '22d8a6d243915cb9f878a0ef95a0999bb5f56715'
     //commit unreachable from branches (tags are not fetched by default)
-    MirrorManagerImpl mirrors = new MirrorManagerImpl(myConfig.build(), new HashCalculatorImpl());
+    MirrorManagerImpl mirrors = new MirrorManagerImpl(myConfig.build(), new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
     File cloneOnServer = mirrors.getMirrorDir(repo.getCanonicalPath());
     FileUtil.delete(cloneOnServer);
 
@@ -557,7 +559,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     return new Object[][] {
       {
         "refs/heads/Master",
-        "Failed to fetch ref refs/heads/Master: on case-insensitive file system it clashes with refs/heads/master. Please remove conflicting refs from repository."
+        "Failed to fetch ref refs/heads/Master: on case-insensitive file system it clashes with another ref. Please remove conflicting refs from repository."
       },
       {
         "refs/heads/master/release",

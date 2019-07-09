@@ -41,7 +41,7 @@ public class AgentGitVcsRoot extends GitVcsRoot {
 
 
   public AgentGitVcsRoot(MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root) throws VcsException {
-    super(mirrorManager, root);
+    super(mirrorManager, root, new URIishHelperImpl());
     myLocalRepositoryDir = localRepositoryDir;
     String clean = getProperty(Constants.AGENT_CLEAN_POLICY);
     myCleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);

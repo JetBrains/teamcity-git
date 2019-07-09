@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests.command;
 import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
@@ -79,7 +80,7 @@ public class FetchCommandImplTest {
     FetchCommand fetch = new FetchCommandImpl(failedCmd)
       .setRefspec("+refs/heads/*:refs/remotes/origin/*")
       .setTimeout(3600)
-      .setAuthSettings(new AuthSettings(new HashMap<String, String>()));
+      .setAuthSettings(new AuthSettings(new HashMap<String, String>(), new URIishHelperImpl()));
 
     try {
       fetch.call();

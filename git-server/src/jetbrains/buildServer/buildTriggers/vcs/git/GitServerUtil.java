@@ -246,7 +246,7 @@ public class GitServerUtil {
 
   @NotNull
   public static NotSupportedException friendlyNotSupportedException(@NotNull GitVcsRoot root, @NotNull NotSupportedException nse)  {
-    URIish fetchURI = root.getRepositoryFetchURL();
+    URIish fetchURI = root.getRepositoryFetchURL().get();
     if (isRedundantColon(fetchURI)) {
       //url with username looks like ssh://username/hostname:/path/to/repo - it will
       //confuse user even further, so show url without user name
@@ -293,6 +293,7 @@ public class GitServerUtil {
    * @throws VcsException if any ref was not successfully updated
    */
   public static void checkFetchSuccessful(Repository db, FetchResult result) throws VcsException {
+    TreeSet<String> conflictsWithoutDb = new TreeSet<>();
     for (TrackingRefUpdate update : result.getTrackingRefUpdates()) {
       String localRefName = update.getLocalName();
       RefUpdate.Result status = update.getResult();
@@ -305,7 +306,7 @@ public class GitServerUtil {
             if (os == OSInfo.OSType.WINDOWS || os == OSInfo.OSType.MACOSX) {
               Set<String> refNames = db.getRefDatabase().getRefs(RefDatabase.ALL).keySet();
               for (String ref : refNames) {
-                if (!localRefName.equals(ref) && localRefName.equalsIgnoreCase(ref))
+                if (localRefName.equalsIgnoreCase(ref))
                   caseSensitiveConflicts.add(ref);
               }
             }
@@ -318,17 +319,21 @@ public class GitServerUtil {
             msg = "Failed to fetch ref " + localRefName + ": it clashes with " + StringUtil.join(", ", conflicts) +
                   ". Please remove conflicting refs from repository.";
           } else if (!caseSensitiveConflicts.isEmpty()) {
-            msg = "Failed to fetch ref " + localRefName + ": on case-insensitive file system it clashes with " +
-                  StringUtil.join(", ", caseSensitiveConflicts) +
+            msg = "Failed to fetch ref " + localRefName + ": on case-insensitive file system it clashes with another ref" +
                   ". Please remove conflicting refs from repository.";
           } else {
-            msg = "Fail to update '" + localRefName + "' (" + status.name() + ")";
+            //msg = "Fail to update '" + localRefName + "' (" + status.name() + ")";
+            conflictsWithoutDb.add(localRefName);
+            continue;
           }
           throw new VcsException(msg);
         } else {
           throw new VcsException("Fail to update '" + localRefName + "' (" + status.name() + ")");
         }
       }
+    }
+    if (!conflictsWithoutDb.isEmpty()) {
+      throw new VcsException("Fail to update '" + StringUtil.join(", ", conflictsWithoutDb) + "' (" + RefUpdate.Result.LOCK_FAILURE.name() + ")");
     }
   }
 
@@ -392,7 +397,7 @@ public class GitServerUtil {
           return true;
       }
     } finally {
-      reader.release();
+      reader.close();
     }
     return false;
   }
@@ -595,5 +600,29 @@ public class GitServerUtil {
       LOG.warn("Cannot parse the " + commit.name() + " commit author due to unknown commit encoding '" + e.getCharsetName() + "'");
       return new PersonIdent("Cannot parse author", "Cannot parse author");
     }
+  }
+
+  public static boolean isAnonymousGitWithUsername(@NotNull URIish uri) {
+    return "git".equals(uri.getScheme()) && uri.getUser() != null;
+  }
+
+  @NotNull
+  public static String getRevision(@NotNull final Ref ref) {
+    return getObjectId(ref).name();
+  }
+
+  @NotNull
+  public static ObjectId getObjectId(@NotNull final Ref ref) {
+    if (isTag(ref) && ref.getPeeledObjectId() != null)
+      return ref.getPeeledObjectId();
+    return ref.getObjectId();
+  }
+
+  public static boolean isTag(@NotNull Ref ref) {
+    return isTag(ref.getName());
+  }
+
+  public static boolean isTag(@NotNull String fullRefName) {
+    return fullRefName.startsWith(org.eclipse.jgit.lib.Constants.R_TAGS);
   }
 }

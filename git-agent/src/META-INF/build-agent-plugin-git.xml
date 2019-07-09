@@ -13,6 +13,7 @@
   <bean id="hashCalculator" class="jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl"/>
   <bean id="mirrorConfig" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentMirrorConfig"/>
   <bean id="mirrorCleaner" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentMirrorCleaner"/>
+  <bean id="remoteRepositoryUrlInvestigator" class="jetbrains.buildServer.buildTriggers.vcs.git.agent.RemoteRepositoryUrlInvestigatorImpl"/>
   <bean id="mirrorManager" class="jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.agent.SshKeyManagerProviderImpl"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.agent.GitMetaFactoryImpl"/>

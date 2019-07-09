@@ -26,6 +26,7 @@
     <constructor-arg index="11"><null/></constructor-arg>
   </bean>
   <bean id="urlSupport" class="jetbrains.buildServer.buildTriggers.vcs.git.GitUrlSupport"/>
+  <bean id="remoteRepositoryUrlInvestigator" class="jetbrains.buildServer.buildTriggers.vcs.git.RemoteRepositoryUrlInvestigatorImpl"/>
   <bean id="mirrorManager" class="jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl"/>
   <bean id="memoryStorage" class="jetbrains.buildServer.buildTriggers.vcs.git.MemoryStorageImpl"/>
   <bean id="hashCalculator" class="jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl"/>

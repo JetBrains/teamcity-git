@@ -19,10 +19,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentMirrorConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.RemoteRepositoryUrlInvestigatorImpl;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.VcsException;
@@ -66,7 +68,7 @@ public class AgentConfigPluginTest {
       allowing(myAgentConfig).getCacheDirectory("git"); will(returnValue(new File("")));
     }});
 
-    myMirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfig), new HashCalculatorImpl());
+    myMirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfig), new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
   }
 
 
@@ -154,7 +156,7 @@ public class AgentConfigPluginTest {
   private GitVcsRoot gitVcsRoot(String... properties) throws VcsException {
     Map<String, String> props = new HashMap<String, String>(map(properties));
     props.put(Constants.FETCH_URL, "git://some.org");
-    return new GitVcsRoot(myMirrorManager, new VcsRootImpl(1, Constants.VCS_NAME, props));
+    return new GitVcsRoot(myMirrorManager, new VcsRootImpl(1, Constants.VCS_NAME, props), new URIishHelperImpl());
   }
 
 

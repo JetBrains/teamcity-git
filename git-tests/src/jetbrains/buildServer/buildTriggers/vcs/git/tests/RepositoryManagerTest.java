@@ -207,7 +207,7 @@ public class RepositoryManagerTest {
 
   private RepositoryManager getRepositoryManager() {
     ServerPluginConfig config = myPluginConfig.build();
-    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl());
+    MirrorManager mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
     return new RepositoryManagerImpl(config, mirrorManager);
   }
 }

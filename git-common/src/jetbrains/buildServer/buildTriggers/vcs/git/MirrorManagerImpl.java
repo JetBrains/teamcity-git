@@ -18,9 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.util.FileUtil;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.RepositoryBuilder;
-import org.eclipse.jgit.lib.StoredConfig;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -44,11 +41,17 @@ public class MirrorManagerImpl implements MirrorManager {
   private final Set<String> myInvalidDirNames = new HashSet<String>();
   private final Object myLock = new Object();
   private final HashCalculator myHashCalculator;
+  private final RemoteRepositoryUrlInvestigator myRemoteRepositoryUrlInvestigator;
 
 
-  public MirrorManagerImpl(@NotNull MirrorConfig config, @NotNull HashCalculator hash) {
+  public MirrorManagerImpl(
+    @NotNull MirrorConfig config,
+    @NotNull HashCalculator hash,
+    @NotNull RemoteRepositoryUrlInvestigator remoteRepositoryUrlInvestigator
+  ) {
     myHashCalculator = hash;
     myBaseMirrorsDir = config.getCachesDir();
+    myRemoteRepositoryUrlInvestigator = remoteRepositoryUrlInvestigator;
     myMapFile = new File(myBaseMirrorsDir, "map");
     myInvalidDirsFile = new File(myBaseMirrorsDir, "invalid");
     loadInvalidDirs();
@@ -342,7 +345,7 @@ public class MirrorManagerImpl implements MirrorManager {
     if (subDirs.length > 0) {
       LOG.info(subDirs.length + " existing repositories found");
       for (File dir : subDirs) {
-        String url = getRemoteRepositoryUrl(dir);
+        String url = myRemoteRepositoryUrlInvestigator.getRemoteRepositoryUrl(dir);
         if (url != null) {
           result.put(url, dir.getName());
         } else {
@@ -364,21 +367,5 @@ public class MirrorManagerImpl implements MirrorManager {
       }
     });
     return dirs != null ? dirs : new File[0];
-  }
-
-
-  @Nullable
-  private String getRemoteRepositoryUrl(@NotNull final File repositoryDir) {
-    try {
-      Repository r = new RepositoryBuilder().setBare().setGitDir(repositoryDir).build();
-      StoredConfig config = r.getConfig();
-      String teamcityRemote = config.getString("teamcity", null, "remote");
-      if (teamcityRemote != null)
-        return teamcityRemote;
-      return config.getString("remote", "origin", "url");
-    } catch (Exception e) {
-      LOG.warn("Error while trying to get remote repository url at " + repositoryDir.getAbsolutePath(), e);
-      return null;
-    }
   }
 }

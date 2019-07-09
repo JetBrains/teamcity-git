@@ -146,12 +146,12 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
                               @NotNull String message,
                               @NotNull MergeOptions options) throws IOException, VcsException {
     RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(dstBranch)).setDestination(GitUtils.expandRef(dstBranch)).setForceUpdate(true);
-    myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL(), asList(spec), new FetchSettings(gitRoot.getAuthSettings()));
+    myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(gitRoot.getAuthSettings()));
     RevCommit srcCommit = myCommitLoader.findCommit(db, srcRevision);
     if (srcCommit == null)
       srcCommit = myCommitLoader.loadCommit(context, gitRoot, srcRevision);
 
-    Ref dstRef = db.getRef(dstBranch);
+    Ref dstRef = db.exactRef(dstBranch);
     RevCommit dstBranchLastCommit = myCommitLoader.loadCommit(context, gitRoot, dstRef.getObjectId().name());
     ObjectId commitId;
     try {
@@ -166,7 +166,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
     lock.lock();
     try {
-      final Transport tn = myTransportFactory.createTransport(db, gitRoot.getRepositoryPushURL(), gitRoot.getAuthSettings(),
+      final Transport tn = myTransportFactory.createTransport(db, gitRoot.getRepositoryPushURL().get(), gitRoot.getAuthSettings(),
                                                               myPluginConfig.getPushTimeoutSeconds());
       try {
         RemoteRefUpdate ru = new RemoteRefUpdate(db, null, commitId, GitUtils.expandRef(dstBranch), false, null, dstBranchLastCommit);
@@ -212,7 +212,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
           return srcCommit;
         }
       } finally {
-        walk.release();
+        walk.close();
       }
     }
 
@@ -254,8 +254,9 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     ObjectId writtenTreeId = dc.writeTree(inserter);
 
     CommitBuilder commitBuilder = new CommitBuilder();
-    commitBuilder.setCommitter(gitRoot.getTagger(db));
-    commitBuilder.setAuthor(gitRoot.getTagger(db));
+    final PersonIdent tagger = PersonIdentFactory.getTagger(gitRoot, db);
+    commitBuilder.setCommitter(tagger);
+    commitBuilder.setAuthor(tagger);
     commitBuilder.setMessage(message);
     commitBuilder.addParentId(dstCommit);
     commitBuilder.addParentId(srcCommit);
@@ -327,7 +328,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
 
       return orig2rebased.get(toRebase.get(toRebase.size() - 1));
     } finally {
-      walk.release();
+      walk.close();
     }
   }
 
@@ -358,7 +359,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     cb.setTreeId(merger.getResultTreeId());
     cb.setParentId(base);
     cb.setAuthor(GitServerUtil.getAuthorIdent(original));
-    cb.setCommitter(gitRoot.getTagger(db));
+    cb.setCommitter(PersonIdentFactory.getTagger(gitRoot, db));
     cb.setMessage(GitServerUtil.getFullMessage(original));
     final ObjectId objectId = inserter.insert(cb);
     inserter.flush();

@@ -146,7 +146,7 @@ public class CleanerTest extends BaseTestCase {
 
 
   private File getRepositoryDir(VcsRoot root) throws VcsException {
-    GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root);
+    GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root, new URIishHelperImpl());
     return gitRoot.getRepositoryDir();
   }
 

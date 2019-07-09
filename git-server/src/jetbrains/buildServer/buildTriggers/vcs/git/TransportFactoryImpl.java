@@ -92,7 +92,7 @@ public class TransportFactoryImpl implements TransportFactory {
       checkUrl(url);
       URIish preparedURI = prepareURI(url);
       final Transport t = Transport.open(r, preparedURI);
-      t.setCredentialsProvider(authSettings.toCredentialsProvider());
+      t.setCredentialsProvider(new AuthCredentialsProvider(authSettings));
       if (t instanceof SshTransport) {
         SshTransport ssh = (SshTransport)t;
         ssh.setSshSessionFactory(getSshSessionFactory(authSettings, url));

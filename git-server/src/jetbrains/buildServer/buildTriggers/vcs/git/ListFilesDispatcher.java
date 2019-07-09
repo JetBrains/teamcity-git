@@ -55,7 +55,7 @@ public class ListFilesDispatcher implements ListDirectChildrenPolicy {
     try {
       if (GitServerUtil.isCloned(ctx.getRepository()))
         return genericListFiles;
-      VcsHostingRepo ghRepo = WellKnownHostingsUtil.getGitHubRepo(ctx.getGitRoot().getRepositoryFetchURL());
+      VcsHostingRepo ghRepo = WellKnownHostingsUtil.getGitHubRepo(ctx.getGitRoot().getRepositoryFetchURL().get());
       if (ghRepo == null)
         return genericListFiles;
       return new GitHubListFilesSupport(myVcs, genericListFiles, ghRepo.owner(), ghRepo.repoName());

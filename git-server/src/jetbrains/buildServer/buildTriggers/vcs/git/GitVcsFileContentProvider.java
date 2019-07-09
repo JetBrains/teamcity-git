@@ -17,7 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
+import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
@@ -76,7 +76,7 @@ public class GitVcsFileContentProvider extends GitAbstractVcsFileContentProvider
         return data;
       } finally {
         logPerformance(gitRoot, filePath, start);
-        tw.release();
+        tw.close();
       }
     } catch (Exception e) {
       throw context.wrapException(e);

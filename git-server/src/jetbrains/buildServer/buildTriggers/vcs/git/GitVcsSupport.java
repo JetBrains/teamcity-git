@@ -45,8 +45,6 @@ import java.util.stream.Collectors;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
-import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getRevision;
-import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.isTag;
 import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
 
@@ -146,8 +144,8 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     if (toVersion == null)
       return Collections.emptyList();
-    GitVcsRoot fromGitRoot = new GitVcsRoot(myRepositoryManager, fromRoot);
-    GitVcsRoot toGitRoot = new GitVcsRoot(myRepositoryManager, toRoot);
+    GitVcsRoot fromGitRoot = new GitVcsRoot(myRepositoryManager, fromRoot, new URIishHelperImpl());
+    GitVcsRoot toGitRoot = new GitVcsRoot(myRepositoryManager, toRoot, new URIishHelperImpl());
     RepositoryStateData fromState = RepositoryStateData.createVersionState(fromGitRoot.getRef(), fromVersion);
     RepositoryStateData toState = RepositoryStateData.createVersionState(toGitRoot.getRef(), toVersion);
     return getCollectChangesPolicy().collectChanges(fromRoot, fromState, toRoot, toState, checkoutRules);
@@ -159,7 +157,7 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     if (currentVersion == null)
       return Collections.emptyList();
-    GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root);
+    GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root, new URIishHelperImpl());
     RepositoryStateData fromState = RepositoryStateData.createVersionState(gitRoot.getRef(), fromVersion);
     RepositoryStateData toState = RepositoryStateData.createVersionState(gitRoot.getRef(), currentVersion);
     return getCollectChangesPolicy().collectChanges(root, fromState, toState, checkoutRules);
@@ -168,7 +166,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public RepositoryStateData getCurrentState(@NotNull VcsRoot root) throws VcsException {
-    GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root);
+    GitVcsRoot gitRoot = new GitVcsRoot(myRepositoryManager, root, new URIishHelperImpl());
     return getCurrentState(gitRoot);
   }
 
@@ -181,9 +179,9 @@ public class GitVcsSupport extends ServerVcsSupport
       for (Ref ref : getRemoteRefs(gitRoot.getOriginalRoot()).values()) {
         if (!ref.getName().startsWith("ref"))
           continue;
-        if (!gitRoot.isReportTags() && isTag(ref) && !fullRef.equals(ref.getName()))
+        if (!gitRoot.isReportTags() && GitServerUtil.isTag(ref) && !fullRef.equals(ref.getName()))
           continue;
-        branchRevisions.put(ref.getName(), getRevision(ref));
+        branchRevisions.put(ref.getName(), GitServerUtil.getRevision(ref));
       }
       if (branchRevisions.get(fullRef) == null && !gitRoot.isIgnoreMissingDefaultBranch()) {
         if (branchRevisions.isEmpty()) {
@@ -502,7 +500,7 @@ public class GitVcsSupport extends ServerVcsSupport
       Transport transport = null;
       FetchConnection connection = null;
       try {
-        transport = myTransportFactory.createTransport(db, gitRoot.getRepositoryFetchURL(), gitRoot.getAuthSettings(), timeout);
+        transport = myTransportFactory.createTransport(db, gitRoot.getRepositoryFetchURL().get(), gitRoot.getAuthSettings(), timeout);
         connection = transport.openFetch();
         return connection.getRefsMap();
       } catch (NotSupportedException nse) {
@@ -555,7 +553,7 @@ public class GitVcsSupport extends ServerVcsSupport
     final OperationContext context = createContext(root, "client-mapping");
     try {
       GitVcsRoot gitRoot = context.getGitRoot();
-      URIish uri = gitRoot.getRepositoryFetchURL();
+      URIish uri = gitRoot.getRepositoryFetchURL().get();
       return Collections.singletonList(new VcsClientMapping(String.format("|%s|%s", uri.toString(), rule.getFrom()), rule.getTo()));
     } finally {
       context.close();

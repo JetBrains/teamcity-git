@@ -77,7 +77,7 @@ public class CommitLoaderImpl implements CommitLoader {
       LOG.debug("Cannot find commit " + commitSHA + " in the branch " + root.getRef() +
                 " of repository " + root.debugInfo() + ", fetch all branches");
       RefSpec spec = new RefSpec().setSourceDestination("refs/*", "refs/*").setForceUpdate(true);
-      fetch(db, root.getRepositoryFetchURL(), asList(spec), new FetchSettings(root.getAuthSettings()));
+      fetch(db, root.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(root.getAuthSettings()));
       try {
         return getCommit(db, commitId);
       } catch (IOException e1) {
@@ -155,7 +155,7 @@ public class CommitLoaderImpl implements CommitLoader {
     try {
       return walk.parseCommit(commitId);
     } finally {
-      walk.release();
+      walk.close();
       final long finish = System.currentTimeMillis();
       if (PERFORMANCE_LOG.isDebugEnabled()) {
         PERFORMANCE_LOG.debug("[RevWalk.parseCommit] repository=" + repository.getDirectory().getAbsolutePath() + ", commit=" + commitId.name() + ", took: " + (finish - start) + "ms");
@@ -176,6 +176,6 @@ public class CommitLoaderImpl implements CommitLoader {
     throws VcsException, IOException {
     final String refName = GitUtils.expandRef(root.getRef());
     RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
-    fetch(repository, root.getRepositoryFetchURL(), asList(spec), new FetchSettings(root.getAuthSettings()));
+    fetch(repository, root.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(root.getAuthSettings()));
   }
 }

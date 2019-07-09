@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2018 JetBrains s.r.o.
+ * Copyright 2000-2019 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
+package org.eclipse.jgit.treewalk;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleFetchException;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolver;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
@@ -26,8 +28,6 @@ import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.treewalk.AbstractTreeIterator;
-import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -85,7 +85,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   /**
    * Submodule reference mode bits
    */
-  protected static final int GITLINK_MODE_BITS = FileMode.GITLINK.getBits();
+  public static final int GITLINK_MODE_BITS = FileMode.GITLINK.getBits();
   /**
    * Tree mode bits
    */
@@ -154,7 +154,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   }
 
 
-  void setCheckoutRules(CheckoutRules rules) {
+  public void setCheckoutRules(CheckoutRules rules) {
     myRules = rules;
   }
 
@@ -327,7 +327,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
         ioe.initCause(e);
         throw ioe;
       } finally {
-        if (or != null) or.release();
+        if (or != null) or.close();
       }
       return createSubmoduleAwareTreeIterator(this,
                                               p,
@@ -345,7 +345,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
       try {
         ati = myWrappedIterator.createSubtreeIterator(or);
       } finally {
-        or.release();
+        or.close();
       }
       return createSubmoduleAwareTreeIterator(this,
                                               ati,
@@ -362,5 +362,61 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   @Override
   public boolean hasId() {
     return true;
+  }
+
+  /**
+   * Compare the path of this current entry to another iterator's entry.
+   *
+   * @param p
+   *            the other iterator to compare the path against.
+   * @return -1 if this entry sorts first; 0 if the entries are equal; 1 if
+   *         p's entry sorts first.
+   */
+  public int pathCompare(AbstractTreeIterator p) {
+    return pathCompare(p, p.getEntryRawMode());
+  }
+
+  int pathCompare(AbstractTreeIterator p, int pMode) {
+    // Its common when we are a subtree for both parents to match;
+    // when this happens everything in path[0..cPos] is known to
+    // be equal and does not require evaluation again.
+    //
+    int cPos = alreadyMatch(this, p);
+    return pathCompare(p.getEntryPathBuffer(), cPos, p.getEntryPathLength(), pMode, cPos);
+  }
+
+  private static int alreadyMatch(AbstractTreeIterator a,
+                                  AbstractTreeIterator b) {
+    for (;;) {
+      final AbstractTreeIterator ap = a.parent;
+      final AbstractTreeIterator bp = b.parent;
+      if (ap == null || bp == null)
+        return 0;
+      if (ap.matches == bp.matches)
+        return a.getNameOffset();
+      a = ap;
+      b = bp;
+    }
+  }
+
+  private int pathCompare(byte[] b, int bPos, int bEnd, int bMode, int aPos) {
+    final byte[] a = path;
+    final int aEnd = pathLen;
+
+    for (; aPos < aEnd && bPos < bEnd; aPos++, bPos++) {
+      final int cmp = (a[aPos] & 0xff) - (b[bPos] & 0xff);
+      if (cmp != 0)
+        return cmp;
+    }
+
+    if (aPos < aEnd)
+      return (a[aPos] & 0xff) - lastPathChar(bMode);
+    if (bPos < bEnd)
+      return lastPathChar(mode) - (b[bPos] & 0xff);
+    return lastPathChar(mode) - lastPathChar(bMode);
+  }
+
+  private static int lastPathChar(final int mode) {
+    return FileMode.TREE.equals(mode) ? '/' : '\0';
   }
 }

@@ -126,7 +126,7 @@ public class FetchCommandImpl implements FetchCommand {
   private void unlockRef(Repository db, Ref ref) throws IOException, InterruptedException {
     File refFile = new File(db.getDirectory(), ref.getName());
     File refLockFile = new File(db.getDirectory(), ref.getName() + ".lock");
-    LockFile lock = new LockFile(refFile, FS.DETECTED);
+    LockFile lock = new LockFile(refFile);
     try {
       if (!lock.lock()) {
         LOG.warn("Cannot lock the ref " + ref.getName() + ", will wait and try again");
@@ -175,7 +175,7 @@ public class FetchCommandImpl implements FetchCommand {
           Map<String, String> properties = settings.getAuthSettings().toMap();
           properties.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.name());
           properties.put(Constants.PRIVATE_KEY_PATH, teamcityPrivateKey.getAbsolutePath());
-          preparedSettings = new AuthSettings(properties, settings.getAuthSettings().getRoot());
+          preparedSettings = new AuthSettings(properties, settings.getAuthSettings().getRoot(), new URIishHelperImpl());
         }
         byte[] fetchProcessInput =
           getFetchProcessInputBytes(preparedSettings, repository.getDirectory(), uri, specs, threadDump, gitPropertiesFile);

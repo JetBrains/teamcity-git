@@ -83,7 +83,7 @@ public class OperationContext {
   }
 
   public Repository getRepository(GitVcsRoot settings) throws VcsException {
-    return getRepository(settings.getRepositoryDir(), settings.getRepositoryFetchURL());
+    return getRepository(settings.getRepositoryDir(), settings.getRepositoryFetchURL().get());
   }
 
   public Repository getRepository(File repositoryDir, URIish fetchUrl) throws VcsException {
@@ -114,7 +114,7 @@ public class OperationContext {
   }
 
   public GitVcsRoot getGitRoot(@NotNull VcsRoot root) throws VcsException {
-    return new GitVcsRoot(myRepositoryManager, root);
+    return new GitVcsRoot(myRepositoryManager, root, new URIishHelperImpl());
   }
 
   @NotNull

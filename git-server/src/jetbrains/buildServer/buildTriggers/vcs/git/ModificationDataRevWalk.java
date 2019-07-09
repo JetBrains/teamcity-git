@@ -18,7 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
-import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIterator;
+import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
 import jetbrains.buildServer.vcs.VcsException;
@@ -206,7 +206,7 @@ class ModificationDataRevWalk extends RevWalk {
           }
         }
       } finally {
-        tw.release();
+        tw.close();
       }
     }
 
@@ -265,7 +265,7 @@ class ModificationDataRevWalk extends RevWalk {
             }
           }
         } finally {
-          tw2.release();
+          tw2.close();
         }
       }
 
@@ -316,12 +316,12 @@ class ModificationDataRevWalk extends RevWalk {
               }
             }
           } finally {
-            prevTreeWalk.release();
+            prevTreeWalk.close();
           }
         }
         return result;
       } finally {
-        revWalk.release();
+        revWalk.close();
       }
     }
   }

@@ -26,6 +26,7 @@ import jetbrains.buildServer.agent.AgentRuntimeProperties;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
@@ -409,7 +410,7 @@ public class AgentVcsSupportTest {
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
-    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot);
+    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
     File bareRepositoryDir = root.getRepositoryDir();
     assertTrue(bareRepositoryDir.exists());
     //check some dirs that should be present in the bare repository:
@@ -436,7 +437,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildBeforeUsingMirrors, false);
     AgentRunningBuild buildWithMirrorsEnabled = createRunningBuild(true);
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
-    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot);
+    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
     String localMirrorUrl = new URIish(root.getRepositoryDir().toURI().toASCIIString()).toString();
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
     assertEquals(root.getRepositoryFetchURL().toString(), r.getConfig().getString("url", localMirrorUrl, "insteadOf"));
@@ -466,7 +467,7 @@ public class AgentVcsSupportTest {
 
   public void stop_use_any_mirror_if_agent_property_changed_to_false() throws Exception {
     AgentRunningBuild build2 = createRunningBuild(false);
-    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot);
+    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
 
     //add some mirror
@@ -527,7 +528,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
 
     //corrupt local mirror
-    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot);
+    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
     File mirror = myBuilder.getMirrorManager().getMirrorDir(root.getRepositoryFetchURL().toString());
     File[] children = mirror.listFiles();
     if (children != null) {
@@ -550,7 +551,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build, true);
 
     //manually create a branch tmp_branch_for_build with, it seems like it wasn't removed due to errors in previous checkouts
-    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot);
+    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
     File mirror = myBuilder.getMirrorManager().getMirrorDir(root.getRepositoryFetchURL().toString());
     File emptyBranchFile = new File(mirror, "refs" + File.separator + "heads" + File.separator + "tmp_branch_for_build");
     FileUtil.writeToFile(emptyBranchFile, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653\n".getBytes());
@@ -906,7 +907,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
-    Ref tagRef = r.getRef("refs/tags/v1.0");
+    Ref tagRef = r.exactRef("refs/tags/v1.0");
     assertNotNull(tagRef);
   }
 
@@ -957,7 +958,7 @@ public class AgentVcsSupportTest {
                                GitUtils.makeVersion("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", 1289483394000L), myCheckoutDir, myBuild,
                                false);
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
-    Ref headRef = r.getRef("HEAD");
+    Ref headRef = r.exactRef("HEAD");
     assertEquals("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", headRef.getObjectId().name());
   }
 
@@ -1038,7 +1039,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
     assertTagExists("refs/tags/v1.0");
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
-    Ref tag = r.getRef("refs/tags/v1.0");
+    Ref tag = r.exactRef("refs/tags/v1.0");
     assertEquals("Local tag is not updated", newCommit, tag.getObjectId().name());
   }
 
@@ -1139,12 +1140,12 @@ public class AgentVcsSupportTest {
 
   private void assertNoTagExist(String tag) throws IOException {
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
-    assertNull("tag \'" + tag + "\' exists", r.getRef(tag));
+    assertNull("tag \'" + tag + "\' exists", r.exactRef(tag));
   }
 
   private void assertTagExists(String tag) throws IOException {
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
-    assertNotNull("tag \'" + tag + "\' doesn't exist", r.getRef(tag));
+    assertNotNull("tag \'" + tag + "\' doesn't exist", r.exactRef(tag));
   }
 
   @DataProvider(name = "mirrors")
