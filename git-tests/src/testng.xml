@@ -49,6 +49,8 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RevisionsCacheTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.WellKnownHostingsTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SSHCommandLineTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.FetchMemoryProviderTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.MemoryStorageTest"/>
     </classes>
   </test>
 </suite>
