@@ -18,13 +18,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.RefSpec;
@@ -141,40 +139,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
   }
 
   public URIish resolveSubmoduleUrl(@NotNull String url) throws URISyntaxException {
-    return new URIish(resolveSubmoduleUrl(myContext.getPluginConfig(), myContext.getConfig(getRepository()), url));
-  }
-
-  private static boolean isRelative(@NotNull String url) {
-    return url.startsWith(".");
-  }
-
-  @NotNull
-  public static String resolveSubmoduleUrl(@NotNull ServerPluginConfig pluginConfig, @NotNull final Repository repository, @NotNull final String relativeUrl) throws URISyntaxException {
-    return resolveSubmoduleUrl(pluginConfig, repository.getConfig(), relativeUrl);
-  }
-
-
-  @NotNull
-  private static String resolveSubmoduleUrl(@NotNull ServerPluginConfig pluginConfig, @NotNull StoredConfig mainRepoConfig, @NotNull String submoduleUrl) throws URISyntaxException {
-    String mainRepoUrl = mainRepoConfig.getString("teamcity", null, "remote");
-    URIish mainRepoUri = new URIish(mainRepoUrl);
-    if (!isRelative(submoduleUrl)) {
-      String user = mainRepoUri.getUser();
-      URIish submoduleUri = new URIish(submoduleUrl);
-      if (StringUtil.isNotEmpty(user) && pluginConfig.shouldSetSubmoduleUserInAbsoluteUrls() && AuthSettings.requiresCredentials(submoduleUri)) {
-        return submoduleUri.setUser(user).toASCIIString();
-      } else {
-        return submoduleUrl;
-      }
-    }
-
-    String newPath = mainRepoUri.getPath();
-    if (newPath.length() == 0) {
-      newPath = submoduleUrl;
-    } else {
-      newPath = GitUtils.normalizePath(newPath + '/' + submoduleUrl);
-    }
-    return mainRepoUri.setPath(newPath).toPrivateString();
+    return new URIish(SubmoduleUrlResolver.resolveSubmoduleUrl(myContext.getPluginConfig(), myContext.getConfig(getRepository()), url));
   }
 
   /**

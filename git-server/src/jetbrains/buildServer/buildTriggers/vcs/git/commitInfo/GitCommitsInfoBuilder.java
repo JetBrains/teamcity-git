@@ -19,7 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.commitInfo;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.Submodule;
-import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleUrlResolver;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmodulesConfig;
 import jetbrains.buildServer.vcs.*;
 import org.apache.log4j.Logger;
@@ -121,7 +121,7 @@ public class GitCommitsInfoBuilder implements CommitsInfoBuilder, GitServerExten
 
       final String url;
       try {
-        url = SubmoduleResolverImpl.resolveSubmoduleUrl(context.getPluginConfig(), db, sub.getUrl());
+        url = SubmoduleUrlResolver.resolveSubmoduleUrl(context.getPluginConfig(), db.getConfig(), sub.getUrl());
       } catch (URISyntaxException e) {
         continue;
       }
