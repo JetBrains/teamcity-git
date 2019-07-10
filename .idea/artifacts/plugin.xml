@@ -16,7 +16,7 @@
         <element id="library" level="project" name="quartz-1.6.0" />
         <element id="library" level="project" name="org.eclipse.egit.github.core-2.4.0-SNAPSHOT" />
         <element id="library" level="project" name="httpclient" />
-        <element id="library" level="project" name="JavaEWAH-0.7.9" />
+        <element id="library" level="project" name="JavaEWAH" />
         <element id="library" level="project" name="jgit-server" />
       </element>
       <element id="directory" name="agent">

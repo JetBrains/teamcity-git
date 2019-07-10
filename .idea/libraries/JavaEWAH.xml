@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="JavaEWAH">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/common/JavaEWAH-1.1.6.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/lib/common/src/JavaEWAH-1.1.6-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
