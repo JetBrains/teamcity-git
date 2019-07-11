@@ -123,6 +123,30 @@ public class ServerPluginConfigTest {
     assertNull(config.getJschProxy());
   }
 
+  @TestFor(issues = "TW-57178")
+  public void test_modern_proxy_settings() {
+    final String httpProxyHost = "some.org";
+    final String httpProxyPort = "3128";
+    final String httpNonProxyHosts = "localhost|*.mydomain.com";
+    final String httpsProxyPort = "3129";
+    final String httpsProxyHost = "other.org";
+    System.setProperty("teamcity.http.proxyHost", httpProxyHost);
+    System.setProperty("teamcity.http.proxyPort", httpProxyPort);
+    System.setProperty("teamcity.http.nonProxyHosts", httpNonProxyHosts);
+    System.setProperty("teamcity.https.proxyHost", httpsProxyHost);
+    System.setProperty("teamcity.https.proxyPort", httpsProxyPort);
+
+    ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
+    assertEquals(asList("-Dhttp.proxyHost=" + httpProxyHost,
+                        "-Dhttp.proxyPort=" + httpProxyPort,
+                        SystemInfo.isUnix ? "-Dhttp.nonProxyHosts=" + httpNonProxyHosts
+                                          : "-Dhttp.nonProxyHosts=\"" + httpNonProxyHosts + "\"",
+                        "-Dhttps.proxyHost=" + httpsProxyHost,
+                        "-Dhttps.proxyPort=" + httpsProxyPort),
+                 config.getOptionsForSeparateProcess());
+    assertNull(config.getJschProxy());
+  }
+
   @TestFor(issues = "TW-26507")
   public void ssh_proxy_settings() {
     final String sshProxyHost = "acme.org";

@@ -354,36 +354,35 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   private void addHttpProxyHost(@NotNull final List<String> proxySettings) {
-    String httpProxyHost = TeamCityProperties.getProperty("http.proxyHost");
+    String httpProxyHost = getFirstNotNullProperty("teamcity.http.proxyHost", "http.proxyHost");
     if (!isEmpty(httpProxyHost))
       proxySettings.add("-Dhttp.proxyHost=" + httpProxyHost);
   }
 
   private void addHttpProxyPort(List<String> proxySettings) {
-    int httpProxyPort = TeamCityProperties.getInteger("http.proxyPort", -1);
+    int httpProxyPort = getFirstNotNullIntegerProperty("teamcity.http.proxyPort", "http.proxyPort");
     if (httpProxyPort != -1)
       proxySettings.add("-Dhttp.proxyPort=" + httpProxyPort);
   }
 
   private void addHttpNonProxyHosts(List<String> proxySettings) {
-    String httpNonProxyHosts = TeamCityProperties.getProperty("http.nonProxyHosts");
+    String httpNonProxyHosts = getFirstNotNullProperty("teamcity.http.nonProxyHosts", "http.nonProxyHosts");
     if (!isEmpty(httpNonProxyHosts)) {
-      if (SystemInfo.isUnix) {
-        proxySettings.add("-Dhttp.nonProxyHosts=" + httpNonProxyHosts);
-      } else {
-        proxySettings.add("-Dhttp.nonProxyHosts=\"" + httpNonProxyHosts + "\"");
+      if (!SystemInfo.isUnix) {
+        httpNonProxyHosts = "\"" + httpNonProxyHosts + "\"";
       }
+      proxySettings.add("-Dhttp.nonProxyHosts=" + httpNonProxyHosts);
     }
   }
 
   private void addHttpsProxyHost(List<String> proxySettings) {
-    String httpsProxyHost = TeamCityProperties.getProperty("https.proxyHost");
+    String httpsProxyHost = getFirstNotNullProperty("teamcity.https.proxyHost", "https.proxyHost");
     if (!isEmpty(httpsProxyHost))
       proxySettings.add("-Dhttps.proxyHost=" + httpsProxyHost);
   }
 
   private void addHttpsProxyPort(List<String> proxySettings) {
-    int httpsProxyPort = TeamCityProperties.getInteger("https.proxyPort", -1);
+    int httpsProxyPort = getFirstNotNullIntegerProperty("teamcity.https.proxyPort", "https.proxyPort");
     if (httpsProxyPort != -1)
       proxySettings.add("-Dhttps.proxyPort=" + httpsProxyPort);
   }
@@ -398,6 +397,27 @@ public class PluginConfigImpl implements ServerPluginConfig {
     int sshProxyPort = TeamCityProperties.getInteger(TEAMCITY_GIT_SSH_PROXY_PORT, -1);
     if (sshProxyPort != -1)
       proxySettings.add("-Dteamcity.git.sshProxyPort=" + sshProxyPort);
+  }
+
+  @Nullable
+  private String getFirstNotNullProperty(String ... keys) {
+    for (String key : keys) {
+      final String value = TeamCityProperties.getProperty(key);
+      if (!isEmpty(value)) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  private int getFirstNotNullIntegerProperty(String ... keys) {
+    for (String key : keys) {
+      final int value = TeamCityProperties.getInteger(key);
+      if (value != 0) {
+        return value;
+      }
+    }
+    return -1;
   }
 
   @NotNull

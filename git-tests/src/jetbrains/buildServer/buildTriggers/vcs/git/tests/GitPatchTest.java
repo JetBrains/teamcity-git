@@ -136,6 +136,24 @@ public class GitPatchTest extends PatchTestCase {
     checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
   }
 
+  @TestFor(issues = "TW-57178")
+  public void should_pass_modern_proxy_settings_to_patch_in_separate_process() throws Exception {
+    String classpath = myConfigBuilder.build().getPatchClasspath() + File.pathSeparator +
+                       composeClasspath(new Class[]{CheckProxyPropertiesPatchBuilder.class}, null, null);
+    myConfigBuilder.setSeparateProcessForPatch(true)
+      .setPatchClassPath(classpath)
+      .setPatchBuilderClassName(CheckProxyPropertiesPatchBuilder.class.getName());
+    System.setProperty("teamcity.http.proxyHost", "httpProxyHost");
+    System.setProperty("teamcity.http.proxyPort", "81");
+    System.setProperty("teamcity.https.proxyHost", "httpsProxyHost");
+    System.setProperty("teamcity.https.proxyPort", "82");
+    System.setProperty("teamcity.http.nonProxyHosts", "some.org");
+    System.setProperty("teamcity.git.sshProxyType", "http");
+    System.setProperty("teamcity.git.sshProxyHost", "sshProxyHost");
+    System.setProperty("teamcity.git.sshProxyPort", "83");
+    checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
+  }
+
 
   @Test(dataProvider = "patchInSeparateProcess")
   public void build_patch_several_roots(boolean patchInSeparateProcess) throws Exception {
