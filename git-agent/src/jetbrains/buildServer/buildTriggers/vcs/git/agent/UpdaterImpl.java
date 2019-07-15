@@ -626,9 +626,9 @@ public class UpdaterImpl implements Updater {
         break;
       case BEFORE_BUILD_BRANCH:
         remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
-        if (!fetchRequired && remoteRef != null && myRevision.equals(remoteRef.getObjectId().name()) && hasRevision(myTargetDirectory, myRevision))
+        if (isNotNeedFetch(fetchRequired, remoteRef)) {
           return;
-        myLogger.message("Commit '" + myRevision + "' is not found in local clone. Running 'git fetch'...");
+        }
         fetchAllBranches();
         if (!myFullBranchName.startsWith("refs/heads/")) {
           remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
@@ -638,9 +638,9 @@ public class UpdaterImpl implements Updater {
         break;
       case AFTER_BUILD_BRANCH:
         remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
-        if (!fetchRequired && remoteRef != null && myRevision.equals(remoteRef.getObjectId().name()) && hasRevision(myTargetDirectory, myRevision))
+        if (isNotNeedFetch(fetchRequired, remoteRef)) {
           return;
-        myLogger.message("Commit '" + myRevision + "' is not found in local clone. Running 'git fetch'...");
+        }
         fetchDefaultBranch();
         if (hasRevision(myTargetDirectory, myRevision))
           return;
@@ -659,6 +659,19 @@ public class UpdaterImpl implements Updater {
     throw new RevisionNotFoundException(msg);
   }
 
+  private boolean isNotNeedFetch(boolean fetchRequired, Ref remoteRef) {
+    if (fetchRequired) {
+      myLogger.message("Local clone state requires 'git fetch'...");
+    } else if (hasRevision(myTargetDirectory, myRevision)) {
+      myLogger.message("Commit '" + myRevision + "' is in local clone.");
+      if (remoteRef != null && myRevision.equals(remoteRef.getObjectId().name())) {
+        return true;
+      }
+    } else {
+      myLogger.message("Commit '" + myRevision + "' is not found in local clone. Running 'git fetch'...");
+    }
+    return false;
+  }
 
   protected String getForcedHeadsFetchMessage() {
     return "Forced fetch of all heads (" + PluginConfigImpl.FETCH_ALL_HEADS + "=" + myBuild.getSharedConfigParameters().get(PluginConfigImpl.FETCH_ALL_HEADS) + ")";
