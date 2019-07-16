@@ -663,12 +663,14 @@ public class UpdaterImpl implements Updater {
     if (fetchRequired) {
       myLogger.message("Local clone state requires 'git fetch'...");
     } else if (hasRevision(myTargetDirectory, myRevision)) {
-      myLogger.message("Commit '" + myRevision + "' is in local clone.");
       if (remoteRef != null && myRevision.equals(remoteRef.getObjectId().name())) {
         return true;
+      } else {
+        final String ref = remoteRef != null ? remoteRef.getObjectId().name() : "'null'";
+        myLogger.debug("Commit '" + myRevision + "' is in server's local repository clone. Remote ref name is " + ref);
       }
     } else {
-      myLogger.message("Commit '" + myRevision + "' is not found in local clone. Running 'git fetch'...");
+      myLogger.message("Commit '" + myRevision + "' is not found in server's local repository clone. Running 'git fetch'...");
     }
     return false;
   }
