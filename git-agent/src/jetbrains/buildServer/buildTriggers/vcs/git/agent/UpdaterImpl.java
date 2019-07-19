@@ -651,6 +651,10 @@ public class UpdaterImpl implements Updater {
         throw new VcsException("Unknown FetchHeadsMode: " + fetchHeadsMode);
     }
 
+    checkHasRevisionOrThrow();
+  }
+
+  protected void checkHasRevisionOrThrow() throws RevisionNotFoundException {
     if (hasRevision(myTargetDirectory, myRevision))
       return;
 
@@ -667,10 +671,10 @@ public class UpdaterImpl implements Updater {
         return true;
       } else {
         final String ref = remoteRef != null ? remoteRef.getObjectId().name() : "'null'";
-        myLogger.debug("Commit '" + myRevision + "' is in server's local repository clone. Remote ref name is " + ref);
+        myLogger.debug("Commit '" + myRevision + "' is in agent's local repository clone. Remote ref name is " + ref);
       }
     } else {
-      myLogger.message("Commit '" + myRevision + "' is not found in server's local repository clone. Running 'git fetch'...");
+      myLogger.message("Commit '" + myRevision + "' is not found in agent's local repository clone. Running 'git fetch'...");
     }
     return false;
   }
