@@ -19,6 +19,18 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
@@ -33,19 +45,6 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
-import java.util.regex.Pattern;
 
 public class Cleanup {
 
@@ -348,12 +347,12 @@ public class Cleanup {
       }
       @Override
       public void onProcessFinished(@NotNull final Process ps) {
-        LOG.info("[" + gcRepo.getName() + "] 'git repack -a -d' finished in " + (System.currentTimeMillis() - start) + "ms");
+        LOG.info("[" + gcRepo.getName() + "] \"" + cmd.getCommandLineString() + "\" finished in " + TimePrinter.createMillisecondsFormatter().formatTime((System.currentTimeMillis() - start)));
       }
     });
     VcsException commandError = CommandLineUtil.getCommandLineError("git repack", result);
     if (commandError != null) {
-      LOG.warnAndDebugDetails("Error while running 'git repack' in " + gcRepo.getAbsolutePath(), commandError);
+      LOG.warnAndDebugDetails("Error while running 'git repack' in \"" + gcRepo.getAbsolutePath() + "\"", commandError);
       throw commandError;
     }
   }
