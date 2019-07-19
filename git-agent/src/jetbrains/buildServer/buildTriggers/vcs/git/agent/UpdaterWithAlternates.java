@@ -66,7 +66,7 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
 
   @Override
   protected void ensureCommitLoaded(boolean fetchRequired) throws VcsException {
-    super.fetchFromOriginalRepository(fetchRequired);
+    checkHasRevisionOrThrow();
   }
 
 
