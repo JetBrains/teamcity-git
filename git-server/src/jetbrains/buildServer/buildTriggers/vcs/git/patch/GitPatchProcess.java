@@ -49,9 +49,8 @@ public class GitPatchProcess {
     VcsRootSshKeyManager sshKeyManager = new ConstantSshKeyManager(settings.getKeyBytes());
     TransportFactory transportFactory = new TransportFactoryImpl(config, sshKeyManager, settings.getGitTrustStoreProvider());
     FetcherProperties fetcherProperties = new FetcherProperties(config);
-    final MemoryStorageImpl memoryStorage = new MemoryStorageImpl(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, fetcherProperties, sshKeyManager,
-                                                     settings.getGitTrustStoreProvider(), memoryStorage);
+                                                     settings.getGitTrustStoreProvider());
     CommitLoader commitLoader = new CommitLoaderImpl(repositoryManager, fetchCommand, mapFullPath);
 
     OperationContext context = new OperationContext(commitLoader, repositoryManager, settings.getRoot(), "build patch", GitProgress.NO_OP, config);

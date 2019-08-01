@@ -129,10 +129,6 @@ public class PluginConfigBuilder {
         return myDelegate.getFetchProcessJavaPath();
       }
 
-      public long freeRAM() {
-        return 1024 * 1024 * 1024 + 1024; // a little more then 1GB
-      }
-
       public String getFetchProcessMaxMemory() {
         return myFetchProcessMaxMemory != null ? myFetchProcessMaxMemory : myDelegate.getFetchProcessMaxMemory();
       }

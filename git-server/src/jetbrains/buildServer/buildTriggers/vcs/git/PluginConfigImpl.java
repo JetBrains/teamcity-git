@@ -145,12 +145,13 @@ public class PluginConfigImpl implements ServerPluginConfig {
     } catch (ClassNotFoundException e) {
       return "512M";
     }
-    final Long freeRAM = GitServerUtil.getFreePhysicalMemorySize();
-    if (freeRAM != null && freeRAM > GB) {
-       return "1024M";
-    } else {
-      return "512M";
+    OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+    if (osBean instanceof com.sun.management.OperatingSystemMXBean) {
+      long freeRAM = ((com.sun.management.OperatingSystemMXBean) osBean).getFreePhysicalMemorySize();
+      if (freeRAM > GB)
+        return "1024M";
     }
+    return "512M";
   }
 
 
