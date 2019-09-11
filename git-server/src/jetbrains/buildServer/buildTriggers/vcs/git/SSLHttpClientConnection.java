@@ -20,8 +20,10 @@ import jetbrains.buildServer.util.ssl.SSLContextUtil;
 import org.apache.http.*;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.*;
+import org.apache.http.cookie.CookieSpec;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
@@ -135,15 +137,17 @@ public class SSLHttpClientConnection implements HttpConnection {
           new HttpHost(adr.getHostName(), adr.getPort()));
       }
       if (timeout != null) {
-        configBuilder.setConnectTimeout(timeout.intValue());
+        configBuilder.setConnectTimeout(timeout);
       }
       if (readTimeout != null) {
-        configBuilder.setSocketTimeout(readTimeout.intValue());
+        configBuilder.setSocketTimeout(readTimeout);
       }
       if (followRedirects != null) {
         configBuilder
-          .setRedirectsEnabled(followRedirects.booleanValue());
+          .setRedirectsEnabled(followRedirects);
       }
+      /* ignore cookie. Some cookies can produce errors on a parse and validation state (TW-61906) */
+      configBuilder.setCookieSpec(CookieSpecs.IGNORE_COOKIES);
       mySSLSchemePatcher.apply(clientBuilder, getSSLContext(), hostnameverifier);
       clientBuilder.setDefaultRequestConfig(configBuilder.build());
       client = clientBuilder.build();
@@ -225,11 +229,7 @@ public class SSLHttpClientConnection implements HttpConnection {
   public Map<String, List<String>> getHeaderFields() {
     Map<String, List<String>> ret = new HashMap<>();
     for (Header hdr : resp.getAllHeaders()) {
-      List<String> list = ret.get(hdr.getName());
-      if (list == null) {
-        list = new LinkedList<>();
-        ret.put(hdr.getName(), list);
-      }
+      List<String> list = ret.computeIfAbsent(hdr.getName(), k -> new LinkedList<>());
       for (HeaderElement hdrElem : hdr.getElements()) {
         list.add(hdrElem.toString());
       }
@@ -245,7 +245,7 @@ public class SSLHttpClientConnection implements HttpConnection {
 
   /** {@inheritDoc} */
   @Override
-  public void setRequestMethod(String method) throws ProtocolException {
+  public void setRequestMethod(String method) {
     this.method = method;
     if (METHOD_GET.equalsIgnoreCase(method)) {
       req = new HttpGet(url.toString());
@@ -270,13 +270,13 @@ public class SSLHttpClientConnection implements HttpConnection {
   /** {@inheritDoc} */
   @Override
   public void setConnectTimeout(int timeout) {
-    this.timeout = Integer.valueOf(timeout);
+    this.timeout = timeout;
   }
 
   /** {@inheritDoc} */
   @Override
   public void setReadTimeout(int readTimeout) {
-    this.readTimeout = Integer.valueOf(readTimeout);
+    this.readTimeout = readTimeout;
   }
 
   /** {@inheritDoc} */
@@ -316,7 +316,7 @@ public class SSLHttpClientConnection implements HttpConnection {
         return delegate.available();
       }
 
-      public void close() throws IOException {
+      public void close() {
         try {
           delegate.close();
         } catch (Throwable ignore) {}
@@ -353,8 +353,7 @@ public class SSLHttpClientConnection implements HttpConnection {
 
   @Override
   public List<String> getHeaderFields(@NonNull String name) {
-    return Collections.unmodifiableList(Arrays.asList(resp.getHeaders(name))
-                                          .stream().map(Header::getValue).collect(Collectors.toList()));
+    return Collections.unmodifiableList(Arrays.stream(resp.getHeaders(name)).map(Header::getValue).collect(Collectors.toList()));
   }
 
   /** {@inheritDoc} */
@@ -376,7 +375,7 @@ public class SSLHttpClientConnection implements HttpConnection {
   /** {@inheritDoc} */
   @Override
   public void setInstanceFollowRedirects(boolean followRedirects) {
-    this.followRedirects = Boolean.valueOf(followRedirects);
+    this.followRedirects = followRedirects;
   }
 
   /** {@inheritDoc} */
@@ -396,7 +395,7 @@ public class SSLHttpClientConnection implements HttpConnection {
 
   /** {@inheritDoc} */
   @Override
-  public OutputStream getOutputStream() throws IOException {
+  public OutputStream getOutputStream() {
     if (entity == null)
       entity = new TemporaryBufferEntity(new TemporaryBuffer.LocalFile(null));
     return entity.getBuffer();
