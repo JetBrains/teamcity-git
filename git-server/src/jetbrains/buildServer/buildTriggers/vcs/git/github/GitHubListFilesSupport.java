@@ -79,7 +79,7 @@ public class GitHubListFilesSupport implements ListDirectChildrenPolicy {
       return null;
     if (parentDir.equals("") && !path.contains("/"))
       return path;
-    String subPath = path.substring(parentDir.length() + 1);
+    String subPath = parentDir.endsWith("/") ? path.substring(parentDir.length()) : path.substring(parentDir.length() + 1);
     if (subPath.contains("/"))
       return null;
     return subPath;
