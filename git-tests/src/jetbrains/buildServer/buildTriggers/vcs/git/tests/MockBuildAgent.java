@@ -67,6 +67,10 @@ public class MockBuildAgent implements BuildAgent {
     throw new UnsupportedOperationException();
   }
 
+  public boolean buildDetachedFromAgent(String buildId, String lastStepId) {
+    throw new UnsupportedOperationException();
+  }
+
   public void ensureIdle() {
     throw new UnsupportedOperationException();
   }
