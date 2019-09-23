@@ -396,69 +396,55 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   @Override
   public List<Boolean> checkSuitable(@NotNull List<VcsRootEntry> entries, @NotNull Collection<String> paths) throws VcsException {
-    Set<GitMapFullPath.FullPath> fullPaths = paths.stream().map(GitMapFullPath.FullPath::new).collect(Collectors.toSet());
+    /* firstly we will check path for root by hashes and urls, then, if the check is passed, we will check checkout rules too */
 
-    //checkout rules do not affect suitability, we can check it for unique root only ignoring different checkout rules
-    Set<VcsRoot> uniqueRoots = entries.stream().map(VcsRootEntry::getVcsRoot).collect(Collectors.toSet());
+    /* as a vcs root can repeat in specified entries we will remember which path already  first checked for the root and a check result */
+    final Map<VcsRoot, Map<GitMapFullPath.FullPath, Boolean>> rootPathCache = new HashMap<>();
 
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Checking suitable repositories in " + uniqueRoots.size() + " roots for " + paths.size() + " paths: [" + StringUtil.join(", ", paths) + "], " + fullPaths.size() + " unique");
-    }
+    final Set<GitMapFullPath.FullPath> fullPaths = paths.stream().map(GitMapFullPath.FullPath::new).collect(Collectors.toSet());
+    final List<Boolean> result = new ArrayList<>(entries.size());
+    /* for logging */
+    final Set<VcsRoot> suitableRoots = new HashSet<>();
 
-    //several roots with different settings can be cloned into the same dir,
-    //do not compute suitability for given clone dir more than once
-    Map<File, Boolean> cloneDirResults = new HashMap<>();//clone dir -> result for this dir
-    Map<VcsRoot, Boolean> rootResult = new HashMap<>();
-    for (VcsRoot root : uniqueRoots) {
+    for (VcsRootEntry entry : entries) {
+      final VcsRoot root = entry.getVcsRoot();
       OperationContext context = createContext(root, "checkSuitable");
       try {
-        GitVcsRoot gitRoot = context.getGitRoot();
-        File cloneDir = gitRoot.getRepositoryDir();
-        Boolean cloneDirResult = cloneDirResults.get(cloneDir);
-        if (cloneDirResult != null) {
-          rootResult.put(root, cloneDirResult);
-          continue;
-        }
+        final GitVcsRoot gitRoot = context.getGitRoot();
+        final File cloneDir = gitRoot.getRepositoryDir();
 
-        boolean suitable = myRepositoryManager.runWithDisabledRemove(cloneDir, () -> {
+        result.add(myRepositoryManager.runWithDisabledRemove(cloneDir, () -> {
           for (GitMapFullPath.FullPath path : fullPaths) {
-            if (myMapFullPath.repositoryContainsPath(context, gitRoot, path))
+            final Map<GitMapFullPath.FullPath, Boolean> cache = rootPathCache.computeIfAbsent(root, vcsRoot -> new HashMap<>());
+            if (cache.get(path) == null) {
+              cache.put(path, myMapFullPath.repositoryContainsPath(context, gitRoot, path));
+            }
+            final Boolean cacheSuitable = cache.get(path);
+            /* if hash or url is suitable and checkout rules are suitable too*/
+            if (cacheSuitable && entry.getCheckoutRules().map(path.getMappedPaths()).size() != 0) {
+              suitableRoots.add(root);
               return true;
+            }
           }
           return false;
-        });
-
-        rootResult.put(root, suitable);
-        cloneDirResults.put(cloneDir, suitable);
+        }));
       } catch (VcsException e) {
-        //will return false for broken VCS root
+        /* will return false for broken VCS root */
         LOG.warnAndDebugDetails("Error while checking suitability for root " + LogUtil.describe(root) + ", assume root is not suitable", e);
+        result.add(false);
       } finally {
         context.close();
       }
     }
 
-    int suitableCount = 0;
-    List<Boolean> result = new ArrayList<>();
-    for (VcsRootEntry entry : entries) {
-      Boolean suitable = rootResult.get(entry.getVcsRoot());
-      if (suitable != null) {
-        result.add(suitable);
-        if (suitable) suitableCount++;
-      } else {
-        //can be null if the root was broken
-        result.add(false);
-      }
-    }
+    final long suitableCount = result.stream().filter(suitable -> suitable).count();
     if (LOG.isDebugEnabled()) {
       LOG.debug("Found " + suitableCount + " suitable root entries in " + entries.size() + " entries for " + paths.size() + " paths: [" +
                 StringUtil.join(", ", paths) + "], VCS roots: " +
-                entries.stream().map(VcsSettings::getVcsRoot).filter(root -> Boolean.TRUE.equals(rootResult.get(root))).distinct()
-                  .map(root -> root.describe(false)).collect(Collectors.joining(", ")));
+                suitableRoots.stream().map(root -> root.describe(false)).collect(Collectors.joining(", ")));
     }
     return result;
   }
-
 
   @Override
   public boolean isAgentSideCheckoutAvailable() {
