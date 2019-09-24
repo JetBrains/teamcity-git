@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.Pair;
 import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
@@ -45,6 +46,7 @@ import java.util.stream.Collectors;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
+import static jetbrains.buildServer.util.CollectionsUtil.retainMatched;
 import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
 
@@ -395,55 +397,81 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   @Override
-  public List<Boolean> checkSuitable(@NotNull List<VcsRootEntry> entries, @NotNull Collection<String> paths) throws VcsException {
-    /* firstly we will check path for root by hashes and urls, then, if the check is passed, we will check checkout rules too */
+  public List<Boolean> checkSuitable(@NotNull List<VcsRootEntry> entries, @NotNull Collection<String> paths) {
+    Set<GitMapFullPath.FullPath> fullPaths = paths.stream().map(GitMapFullPath.FullPath::new).collect(Collectors.toSet());
+    Set<VcsRoot> uniqueVcsRoots = entries.stream().map(VcsSettings::getVcsRoot).collect(Collectors.toSet());
 
-    /* as a vcs root can repeat in specified entries we will remember which path already  first checked for the root and a check result */
-    final Map<VcsRoot, Map<GitMapFullPath.FullPath, Boolean>> rootPathCache = new HashMap<>();
-
-    final Set<GitMapFullPath.FullPath> fullPaths = paths.stream().map(GitMapFullPath.FullPath::new).collect(Collectors.toSet());
-    final List<Boolean> result = new ArrayList<>(entries.size());
+    Map<VcsRoot, List<GitMapFullPath.FullPath>> vcsRootsWithPaths = findVcsRootsWithPaths(fullPaths, uniqueVcsRoots);
     /* for logging */
     final Set<VcsRoot> suitableRoots = new HashSet<>();
 
-    for (VcsRootEntry entry : entries) {
-      final VcsRoot root = entry.getVcsRoot();
-      OperationContext context = createContext(root, "checkSuitable");
-      try {
-        final GitVcsRoot gitRoot = context.getGitRoot();
-        final File cloneDir = gitRoot.getRepositoryDir();
+    Map<Pair<CheckoutRules, GitMapFullPath.FullPath>, Boolean> checkoutRulesCache = new HashMap<>();
 
-        result.add(myRepositoryManager.runWithDisabledRemove(cloneDir, () -> {
-          for (GitMapFullPath.FullPath path : fullPaths) {
-            final Map<GitMapFullPath.FullPath, Boolean> cache = rootPathCache.computeIfAbsent(root, vcsRoot -> new HashMap<>());
-            if (cache.get(path) == null) {
-              cache.put(path, myMapFullPath.repositoryContainsPath(context, gitRoot, path));
-            }
-            final Boolean cacheSuitable = cache.get(path);
-            /* if hash or url is suitable and checkout rules are suitable too*/
-            if (cacheSuitable && entry.getCheckoutRules().map(path.getMappedPaths()).size() != 0) {
-              suitableRoots.add(root);
-              return true;
-            }
-          }
-          return false;
-        }));
-      } catch (VcsException e) {
-        /* will return false for broken VCS root */
-        LOG.warnAndDebugDetails("Error while checking suitability for root " + LogUtil.describe(root) + ", assume root is not suitable", e);
-        result.add(false);
-      } finally {
-        context.close();
+    List<Boolean> res = new ArrayList<>();
+    for (VcsRootEntry re: entries) {
+      List<GitMapFullPath.FullPath> applicablePaths = vcsRootsWithPaths.get(re.getVcsRoot());
+      if (applicablePaths == null) {
+        res.add(false);
+      } else {
+
+        boolean suitable = false;
+        for (GitMapFullPath.FullPath p: applicablePaths) {
+          if (!checkoutRulesCache.compute(Pair.create(re.getCheckoutRules(), p), (pair, r) -> pair.getFirst().map(pair.getSecond().getMappedPaths()).size() > 0)) continue;
+
+          suitable = true;
+          suitableRoots.add(re.getVcsRoot());
+          break;
+        }
+
+        res.add(suitable);
       }
     }
 
-    final long suitableCount = result.stream().filter(suitable -> suitable).count();
+    final long suitableCount = res.stream().filter(suitable -> suitable).count();
     if (LOG.isDebugEnabled()) {
       LOG.debug("Found " + suitableCount + " suitable root entries in " + entries.size() + " entries for " + paths.size() + " paths: [" +
                 StringUtil.join(", ", paths) + "], VCS roots: " +
                 suitableRoots.stream().map(root -> root.describe(false)).collect(Collectors.joining(", ")));
     }
-    return result;
+    return res;
+  }
+
+  @NotNull
+  private Map<VcsRoot, List<GitMapFullPath.FullPath>> findVcsRootsWithPaths(@NotNull Collection<GitMapFullPath.FullPath> paths, @NotNull Collection<VcsRoot> vcsRoots) {
+    Map<VcsRoot, List<GitMapFullPath.FullPath>> res = new HashMap<>();
+
+    Map<File, List<GitMapFullPath.FullPath>> cloneDir2PathsCache = new HashMap<>();
+    for (VcsRoot root: vcsRoots) {
+      OperationContext context = createContext(root, "repositoryContainsPath");
+      try {
+        final GitVcsRoot gitRoot = context.getGitRoot();
+        final File cloneDir = gitRoot.getRepositoryDir();
+
+        List<GitMapFullPath.FullPath> applicablePaths = cloneDir2PathsCache.compute(cloneDir, (dir, list) -> {
+          if (list == null) list = new ArrayList<>();
+
+          try {
+            for (GitMapFullPath.FullPath path : paths) {
+              if (myMapFullPath.repositoryContainsPath(context, gitRoot, path)) {
+                list.add(path);
+              }
+            }
+          } catch (VcsException e) {
+            LOG.warnAndDebugDetails("Error while checking suitability for root " + LogUtil.describe(root) + ", assume root is not suitable", e);
+          }
+
+          return list;
+        });
+
+        if (!applicablePaths.isEmpty()) res.put(root, applicablePaths);
+      } catch (VcsException e) {
+        LOG.warnAndDebugDetails("Error while checking suitability for root " + LogUtil.describe(root) + ", assume root is not suitable", e);
+      } finally {
+        context.close();
+      }
+    }
+
+    return res;
   }
 
   @Override
