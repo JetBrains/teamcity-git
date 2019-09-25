@@ -22,6 +22,7 @@ import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
@@ -398,10 +399,12 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   @Override
   public List<Boolean> checkSuitable(@NotNull List<VcsRootEntry> entries, @NotNull Collection<String> paths) {
+    boolean analyzeCheckoutRules = TeamCityProperties.getBoolean("teamcity.git.checkSuitable.analyzeCheckoutRules");
+
     Set<GitMapFullPath.FullPath> fullPaths = paths.stream().map(GitMapFullPath.FullPath::new).collect(Collectors.toSet());
     Set<VcsRoot> uniqueVcsRoots = entries.stream().map(VcsSettings::getVcsRoot).collect(Collectors.toSet());
 
-    Map<VcsRoot, List<GitMapFullPath.FullPath>> vcsRootsWithPaths = findVcsRootsWithPaths(fullPaths, uniqueVcsRoots);
+    Map<VcsRoot, List<GitMapFullPath.FullPath>> vcsRootsWithPaths = findVcsRootsWithPaths(fullPaths, uniqueVcsRoots, !analyzeCheckoutRules);
     /* for logging */
     final Set<VcsRoot> suitableRoots = new HashSet<>();
 
@@ -413,14 +416,18 @@ public class GitVcsSupport extends ServerVcsSupport
       if (applicablePaths == null) {
         res.add(false);
       } else {
-
         boolean suitable = false;
-        for (GitMapFullPath.FullPath p: applicablePaths) {
-          if (!checkoutRulesCache.compute(Pair.create(re.getCheckoutRules(), p), (pair, r) -> pair.getFirst().map(pair.getSecond().getMappedPaths()).size() > 0)) continue;
 
+        if (analyzeCheckoutRules) {
+          for (GitMapFullPath.FullPath p: applicablePaths) {
+            if (!checkoutRulesCache.compute(Pair.create(re.getCheckoutRules(), p), (pair, r) -> pair.getFirst().map(pair.getSecond().getMappedPaths()).size() > 0)) continue;
+
+            suitable = true;
+            suitableRoots.add(re.getVcsRoot());
+            break;
+          }
+        } else {
           suitable = true;
-          suitableRoots.add(re.getVcsRoot());
-          break;
         }
 
         res.add(suitable);
@@ -437,7 +444,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  private Map<VcsRoot, List<GitMapFullPath.FullPath>> findVcsRootsWithPaths(@NotNull Collection<GitMapFullPath.FullPath> paths, @NotNull Collection<VcsRoot> vcsRoots) {
+  private Map<VcsRoot, List<GitMapFullPath.FullPath>> findVcsRootsWithPaths(@NotNull Collection<GitMapFullPath.FullPath> paths, @NotNull Collection<VcsRoot> vcsRoots, boolean stopOnFirstFoundPath) {
     Map<VcsRoot, List<GitMapFullPath.FullPath>> res = new HashMap<>();
 
     Map<File, List<GitMapFullPath.FullPath>> cloneDir2PathsCache = new HashMap<>();
@@ -454,6 +461,7 @@ public class GitVcsSupport extends ServerVcsSupport
             for (GitMapFullPath.FullPath path : paths) {
               if (myMapFullPath.repositoryContainsPath(context, gitRoot, path)) {
                 list.add(path);
+                if (stopOnFirstFoundPath) break;
               }
             }
           } catch (VcsException e) {
