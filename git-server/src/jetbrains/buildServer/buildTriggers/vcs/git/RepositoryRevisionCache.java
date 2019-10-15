@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.RecentEntriesCache;
+import jetbrains.buildServer.util.StringPool;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -72,7 +73,7 @@ public final class RepositoryRevisionCache {
 
 
   private void saveRevision(@NotNull String revision, boolean has) throws IOException {
-    myCache.put(revision, has);
+    myCache.put(StringPool.getFromPool(revision), has);
   }
 
 
@@ -108,7 +109,7 @@ public final class RepositoryRevisionCache {
         return true;
       });
       for (String commit : forUpdate) {
-        myCache.put(commit, true);
+        saveRevision(commit, true);
       }
       if (!forUpdate.isEmpty())
         write();
