@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
@@ -323,10 +324,7 @@ public class FetchCommandImpl implements FetchCommand {
   }
 
   private boolean isTimeout(@NotNull ExecResult result) {
-    //noinspection ThrowableResultOfMethodCallIgnored
-    final Throwable exception = result.getException();
-    return exception instanceof InterruptedException &&
-           "Timeout exception".equals(exception.getMessage());
+    return result.getException() instanceof ProcessTimeoutException;
   }
 
   /**
