@@ -50,6 +50,7 @@ import java.util.stream.Collectors;
 
 import static jetbrains.buildServer.SimpleCommandLineProcessRunner.getCharset;
 import static jetbrains.buildServer.SimpleCommandLineProcessRunner.getThreadNameCommandLine;
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.MB;
 import static jetbrains.buildServer.util.NamedThreadFactory.executeWithNewThreadName;
 
 /**
@@ -64,24 +65,28 @@ public class FetchCommandImpl implements FetchCommand {
   private final FetcherProperties myFetcherProperties;
   private final VcsRootSshKeyManager mySshKeyManager;
   private final GitTrustStoreProvider myGitTrustStoreProvider;
+  private final MemoryStorage myMemoryStorage;
 
   public FetchCommandImpl(@NotNull ServerPluginConfig config,
                           @NotNull TransportFactory transportFactory,
                           @NotNull FetcherProperties fetcherProperties,
-                          @NotNull VcsRootSshKeyManager sshKeyManager) {
-    this(config, transportFactory, fetcherProperties, sshKeyManager, new GitTrustStoreProviderStatic(null));
+                          @NotNull VcsRootSshKeyManager sshKeyManager,
+                          final MemoryStorage memoryStorage) {
+    this(config, transportFactory, fetcherProperties, sshKeyManager, new GitTrustStoreProviderStatic(null), memoryStorage);
   }
 
   public FetchCommandImpl(@NotNull ServerPluginConfig config,
                           @NotNull TransportFactory transportFactory,
                           @NotNull FetcherProperties fetcherProperties,
                           @NotNull VcsRootSshKeyManager sshKeyManager,
-                          @NotNull GitTrustStoreProvider gitTrustStoreProvider) {
+                          @NotNull GitTrustStoreProvider gitTrustStoreProvider,
+                          final MemoryStorage memoryStorage) {
     myConfig = config;
     myTransportFactory = transportFactory;
     myFetcherProperties = fetcherProperties;
     mySshKeyManager = sshKeyManager;
     myGitTrustStoreProvider = gitTrustStoreProvider;
+    myMemoryStorage = memoryStorage;
   }
 
   public void fetch(@NotNull Repository db,
@@ -154,86 +159,106 @@ public class FetchCommandImpl implements FetchCommand {
                                       @NotNull URIish uri,
                                       @NotNull Collection<RefSpec> specs,
                                       @NotNull FetchSettings settings) throws VcsException {
-    final long fetchStart = System.currentTimeMillis();
-    final String debugInfo = getDebugInfo(repository, uri, specs);
 
-    File gitPropertiesFile = null;
-    File teamcityPrivateKey = null;
-    FetchInterrupter fetchInterrupter = null;
-    try {
-      GeneralCommandLine cl = createFetcherCommandLine(repository, uri);
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Start fetch process for " + debugInfo);
-      }
+    final FetchMemoryProvider fetchMemoryProvider = new FetchMemoryProvider(uri.toString(), myMemoryStorage, myConfig);
+    long xmx = fetchMemoryProvider.getNextTryMemoryAmount();
+    while (xmx > -1) {
 
-      File threadDump = getDumpFile(repository, null);
-      File gcDump = getDumpFile(repository, "gc");
-      gitPropertiesFile = myFetcherProperties.getPropertiesFile();
-      teamcityPrivateKey = getTeamCityPrivateKey(settings.getAuthSettings());
-      AuthSettings preparedSettings = settings.getAuthSettings();
-      if (teamcityPrivateKey != null) {
-        Map<String, String> properties = settings.getAuthSettings().toMap();
-        properties.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.name());
-        properties.put(Constants.PRIVATE_KEY_PATH, teamcityPrivateKey.getAbsolutePath());
-        preparedSettings = new AuthSettings(properties, settings.getAuthSettings().getRoot(), new URIishHelperImpl());
-      }
-      byte[] fetchProcessInput =
-        getFetchProcessInputBytes(preparedSettings, repository.getDirectory(), uri, specs, threadDump, gcDump, gitPropertiesFile);
-      ByteArrayOutputStream stdoutBuffer = settings.createStdoutBuffer();
-      settings.getProgress().reportProgress("git fetch " + uri);
+      final long fetchStart = System.currentTimeMillis();
+      final String debugInfo = getDebugInfo(repository, uri, specs);
 
-      final String commandLineLog = cl.getCommandLineString();
-      final ExecResult result = new ExecResult(getCharset(cl));
-      final CommandLineExecutor clExecutor = new CommandLineExecutor(cl);
-      fetchInterrupter = new FetchInterrupter(clExecutor, gcDump, commandLineLog);
-      fetchInterrupter.start();
-      executeWithNewThreadName("Running child process: " + getThreadNameCommandLine(commandLineLog), () -> {
-        clExecutor.setRetVal(result);
-        clExecutor.setIdleTimeout(myConfig.getFetchTimeout());
-        clExecutor.setInitialProccesInput(fetchProcessInput);
-        clExecutor.setOutpurGobblerFactory(procStream -> new StreamGobbler(procStream, null, "StdOut for " + commandLineLog, stdoutBuffer));
-
-        try {
-          if (LOG.isDebugEnabled())
-            LOG.debug("Fetch process for " + debugInfo + " started");
-
-          clExecutor.runProcess();
-
-          if (LOG.isDebugEnabled())
-            LOG.debug("Fetch process for " + debugInfo + " finished");
-        } catch (ExecutionException e) {
-          result.setException(e);
+      File gitPropertiesFile = null;
+      File teamcityPrivateKey = null;
+      FetchInterrupter fetchInterrupter = null;
+      try {
+        GeneralCommandLine cl = createFetcherCommandLine(repository, uri, xmx);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Start fetch process for " + debugInfo);
         }
-      });
 
-      final long fetchTime = System.currentTimeMillis() - fetchStart;
-      LOG.info("Git fetch process finished for: " + uri + " in directory: " + repository.getDirectory() + ", took " + fetchTime + "ms");
+        File threadDump = getDumpFile(repository, null);
+        File gcDump = getDumpFile(repository, "gc");
+        gitPropertiesFile = myFetcherProperties.getPropertiesFile();
+        teamcityPrivateKey = getTeamCityPrivateKey(settings.getAuthSettings());
+        AuthSettings preparedSettings = settings.getAuthSettings();
+        if (teamcityPrivateKey != null) {
+          Map<String, String> properties = settings.getAuthSettings().toMap();
+          properties.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.name());
+          properties.put(Constants.PRIVATE_KEY_PATH, teamcityPrivateKey.getAbsolutePath());
+          preparedSettings = new AuthSettings(properties, settings.getAuthSettings().getRoot(), new URIishHelperImpl());
+        }
+        byte[] fetchProcessInput =
+          getFetchProcessInputBytes(preparedSettings, repository.getDirectory(), uri, specs, threadDump, gcDump,
+                                    gitPropertiesFile);
+        ByteArrayOutputStream stdoutBuffer = settings.createStdoutBuffer();
+        settings.getProgress().reportProgress("git fetch " + uri);
 
-      VcsException commandError = CommandLineUtil.getCommandLineError("git fetch",
-                                                                      " (repository dir: <TeamCity data dir>/system/caches/git/" + repository.getDirectory().getName() + ")",
-                                                                      result, true, true);
-      if (commandError != null) {
-        commandError.setRecoverable(isRecoverable(commandError));
-        if (isOutOfMemoryError(result))
-          LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory=" + myConfig.getFetchProcessMaxMemory() + ", try to increase it.");
-        if (isTimeout(result))
-          logTimeout(debugInfo, threadDump);
-        clean(repository);
-        throw commandError;
+        final String commandLineLog = cl.getCommandLineString();
+        final ExecResult result = new ExecResult(getCharset(cl));
+        final CommandLineExecutor clExecutor = new CommandLineExecutor(cl);
+        fetchInterrupter = new FetchInterrupter(clExecutor, gcDump, xmx, commandLineLog);
+        fetchInterrupter.start();
+        executeWithNewThreadName("Running child process: " + getThreadNameCommandLine(commandLineLog), () -> {
+          clExecutor.setRetVal(result);
+          clExecutor.setIdleTimeout(myConfig.getFetchTimeout());
+          clExecutor.setInitialProccesInput(fetchProcessInput);
+          clExecutor.setOutpurGobblerFactory(
+            procStream -> new StreamGobbler(procStream, null, "StdOut for " + commandLineLog, stdoutBuffer));
+
+          try {
+            if (LOG.isDebugEnabled())
+              LOG.debug("Fetch process for " + debugInfo + " started");
+
+            clExecutor.runProcess();
+
+            if (LOG.isDebugEnabled())
+              LOG.debug("Fetch process for " + debugInfo + " finished");
+          } catch (ExecutionException e) {
+            result.setException(e);
+          }
+        });
+
+        final long fetchTime = System.currentTimeMillis() - fetchStart;
+        LOG.info("Git fetch process finished for: " + uri + " in directory: " + repository.getDirectory() + ", took " +
+                 fetchTime + "ms");
+
+        VcsException commandError = CommandLineUtil.getCommandLineError("git fetch",
+                                                                        " (repository dir: <TeamCity data dir>/system/caches/git/" +
+                                                                        repository.getDirectory().getName() + ")",
+                                                                        result, true, true);
+        if (commandError != null) {
+          commandError.setRecoverable(isRecoverable(commandError));
+          /* if the process had no enough memory or we kill it because gc */
+          if (isOutOfMemoryError(result) || fetchInterrupter.isInterrupted()) {
+            xmx = fetchMemoryProvider.getNextTryMemoryAmount();
+            if (xmx > -1) {
+              LOG.warn("There is not enough memory for git fetch (" + xmx + "M), will retry with increased value.");
+              clean(repository);
+              continue;
+            } else {
+              LOG.warn("There is not enough memory for git fetch (" + xmx + "M)");
+            }
+          }
+          if (isTimeout(result))
+            logTimeout(debugInfo, threadDump);
+          clean(repository);
+          throw commandError;
+        }
+        if (result.getStderr().length() > 0) {
+          LOG.warn("Error output produced by git fetch:\n" + result.getStderr());
+        }
+
+        LOG.debug("Fetch process output:\n" + result.getStdout());
+      } finally {
+        settings.getProgress().reportProgress("git fetch " + uri + " finished");
+        if (teamcityPrivateKey != null)
+          FileUtil.delete(teamcityPrivateKey);
+        if (gitPropertiesFile != null)
+          FileUtil.delete(gitPropertiesFile);
+        if (fetchInterrupter != null)
+          fetchInterrupter.finish();
       }
-      if (result.getStderr().length() > 0) {
-        LOG.warn("Error output produced by git fetch:\n" + result.getStderr());
-      }
-
-      LOG.debug("Fetch process output:\n" + result.getStdout());
-    } finally {
-      settings.getProgress().reportProgress("git fetch " + uri + " finished");
-      if (teamcityPrivateKey != null)
-        FileUtil.delete(teamcityPrivateKey);
-      if (gitPropertiesFile != null)
-        FileUtil.delete(gitPropertiesFile);
-      if (fetchInterrupter != null)
-        fetchInterrupter.finish();
+      return;
     }
   }
 
@@ -295,14 +320,16 @@ public class FetchCommandImpl implements FetchCommand {
     return new File(repository.getDirectory(), myConfig.getMonitoringDirName());
   }
 
-  private GeneralCommandLine createFetcherCommandLine(@NotNull final Repository repository, @NotNull final URIish uri) {
+  private GeneralCommandLine createFetcherCommandLine(
+    @NotNull final Repository repository, @NotNull final URIish uri, long xmx
+  ) {
     GeneralCommandLine cl = new GeneralCommandLine();
     cl.setWorkingDirectory(repository.getDirectory());
     cl.setExePath(myConfig.getFetchProcessJavaPath());
     cl.addParameters(myConfig.getOptionsForSeparateProcess());
     cl.setPassParentEnvs(myConfig.passEnvToChildProcess());
 
-    cl.addParameters("-Xmx" + myConfig.getFetchProcessMaxMemory(),
+    cl.addParameters("-Xmx" + xmx + "M",
                      "-cp", myConfig.getFetchClasspath(),
                      myConfig.getFetcherClassName(),
                      uri.toString());//last parameter is not used in Fetcher, but is useful to distinguish fetch processes
@@ -453,6 +480,11 @@ public class FetchCommandImpl implements FetchCommand {
     private final StreamGobbler myProcGcDump;
     @NotNull
     private final String myCommandLineLog;
+    private final long myXmx;
+
+    private final int myCriticalGcDurationSec;
+    private final int myCriticalMemoryUsagePercent;
+    private final int myCriticalMemoryCleanedPercent;
 
     private volatile boolean myFinished = false;
 
@@ -463,8 +495,10 @@ public class FetchCommandImpl implements FetchCommand {
     FetchInterrupter(
       @NotNull final CommandLineExecutor lcExecutor,
       @NotNull final File procGcDump,
+      @NotNull final long xmx,
       @NotNull final String commandLineLog
     ) throws VcsException {
+      myXmx = xmx;
       try {
         myLcExecutor = lcExecutor;
         //noinspection ResultOfMethodCallIgnored
@@ -473,6 +507,9 @@ public class FetchCommandImpl implements FetchCommand {
           new StreamGobbler(new FileInputStream(procGcDump), null, "GcDump reader for" + commandLineLog);
         myCommandLineLog = commandLineLog;
 
+        myCriticalGcDurationSec = TeamCityProperties.getInteger("teamcity.git.fetch.process.interruption.criticalGcDurationSec", 60 * 5);
+        myCriticalMemoryUsagePercent = TeamCityProperties.getInteger("teamcity.git.fetch.process.interruption.criticalMemoryUsagePercent", 100);
+        myCriticalMemoryCleanedPercent = TeamCityProperties.getInteger("teamcity.git.fetch.process.interruption.criticalMemoryCleanedPercent", 0);
         setName(NamedThreadUtil.getTcThreadPrefix() + "FetchInterrupter: " + myCommandLineLog);
       } catch (IOException e) {
         throw new VcsException("Fail to create fetch interrupter for " + commandLineLog);
@@ -486,7 +523,9 @@ public class FetchCommandImpl implements FetchCommand {
     @Override
     public void run() {
       try {
-
+        if (!TeamCityProperties.getBoolean("teamcity.git.fetch.process.interruption.enable")) {
+          return;
+        }
         myProcGcDump.start();
         while (!myFinished) {
           Thread.sleep(10 * 1000);
@@ -535,11 +574,27 @@ public class FetchCommandImpl implements FetchCommand {
     }
 
     private boolean procIsStuck(@NotNull List<MemoryDumpLine> memoryDumpLines) {
-      return false;
+      if (memoryDumpLines.size() < 1) {
+        return false;
+      }
+
+      final MemoryDumpLine lastLine = memoryDumpLines.get(memoryDumpLines.size() - 1);
+      final long cleaned = percent(myXmx, lastLine.getMemoryCleanedMB());
+      final long usage = percent(myXmx, lastLine.getMemoryAfterMB());
+      final long gcDurationSec = lastLine.getGcDurationSec();
+
+      return cleaned < myCriticalMemoryCleanedPercent
+             || usage > myCriticalMemoryUsagePercent
+             || gcDurationSec > myCriticalGcDurationSec;
+    }
+
+    private int percent(final long all, final long part) {
+      return (int) (((double)part / all) * 100);
     }
 
     private void destroyProc() {
       myInterrupted = true;
+      myFinished = true;
       myLcExecutor.destroyProcess();
     }
 
@@ -573,12 +628,24 @@ public class FetchCommandImpl implements FetchCommand {
       return myGcDuration;
     }
 
+    long getGcDurationSec() {
+      return myGcDuration / 1000;
+    }
+
     long getMemoryBefore() {
       return myMemoryBefore;
     }
 
     long getMemoryAfter() {
       return myMemoryAfter;
+    }
+
+    long getMemoryAfterMB() {
+      return myMemoryAfter / MB;
+    }
+
+    long getMemoryCleanedMB() {
+      return (myMemoryBefore - myMemoryAfter) / MB;
     }
   }
 }

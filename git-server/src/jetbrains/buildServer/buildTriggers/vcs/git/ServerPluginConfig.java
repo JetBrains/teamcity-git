@@ -45,6 +45,7 @@ public interface ServerPluginConfig extends PluginConfig {
   String getFetchProcessJavaPath();
 
 
+  @NotNull
   String getFetchProcessMaxMemory();
 
   String getGcProcessMaxMemory();
