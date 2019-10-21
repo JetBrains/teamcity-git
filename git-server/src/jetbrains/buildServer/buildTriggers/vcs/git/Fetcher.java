@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import javafx.util.Pair;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
@@ -26,15 +27,23 @@ import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.transport.*;
 import org.jetbrains.annotations.NotNull;
 
+import javax.management.Notification;
+import javax.management.NotificationEmitter;
+import javax.management.NotificationListener;
+import javax.management.openmbean.CompositeData;
 import java.io.*;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryUsage;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.MB;
 
 /**
  * Method main of this class is supposed to be run in separate process to avoid OutOfMemoryExceptions in server's process
@@ -46,10 +55,12 @@ public class Fetcher {
   public static void main(String[] args) throws IOException, VcsException, URISyntaxException {
     boolean debug = false;
     ScheduledExecutorService exec = Executors.newScheduledThreadPool(1);
+    GcListener gcListener = null;
     final long start = System.currentTimeMillis();
     try {
       Map<String, String> properties = VcsUtil.stringToProperties(GitServerUtil.readInput());
       String threadDumpFilePath = properties.remove(Constants.THREAD_DUMP_FILE);
+      String gcDumpFilePath = properties.remove(Constants.GC_DUMP_FILE);
       String repositoryPath = properties.remove(Constants.REPOSITORY_DIR_PROPERTY_NAME);
       debug = "true".equals(properties.remove(Constants.VCS_DEBUG_ENABLED));
 
@@ -58,9 +69,11 @@ public class Fetcher {
       String internalPropsFile = properties.remove(Constants.FETCHER_INTERNAL_PROPERTIES_FILE);
       GitServerUtil.configureInternalProperties(new File(internalPropsFile));
 
-      ByteArrayOutputStream output = new ByteArrayOutputStream();
-      FetchProgressMonitor progress = new FetchProgressMonitor(new PrintStream(output));
-      exec.scheduleAtFixedRate(new Monitoring(threadDumpFilePath, output), 10, 10, TimeUnit.SECONDS);
+      ByteArrayOutputStream gitOutput = new ByteArrayOutputStream();
+      FetchProgressMonitor progress = new FetchProgressMonitor(new PrintStream(gitOutput));
+      gcListener = new GcListener(gcDumpFilePath);
+      gcListener.startListen();
+      exec.scheduleAtFixedRate(new Monitoring(threadDumpFilePath, gitOutput), 10, 10, TimeUnit.SECONDS);
       fetch(new File(repositoryPath), properties, progress);
 
       if (System.currentTimeMillis() - start <= new PluginConfigImpl().getMonitoringFileThresholdMillis()) {
@@ -75,6 +88,7 @@ public class Fetcher {
       System.exit(1);
     } finally {
       exec.shutdown();
+      FileUtil.close(gcListener);
     }
   }
 
@@ -192,7 +206,109 @@ public class Fetcher {
     public void run() {
       String threadDump = DiagnosticUtil.threadDumpToString();
       String gitProgress = myGitOutput.toString();
-      FileUtil.writeFile(myFile, threadDump + "\ngit progress:\n" + gitProgress);
+      long memoryUsage = memoryUsage();
+      FileUtil.writeFile(myFile, threadDump + "\ngit progress:\n" + gitProgress + "\nmemory usage (MB):\n" + memoryUsage);
+    }
+
+    private long memoryUsage() {
+      return (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / MB;
+    }
+  }
+
+  private static class GcListener implements NotificationListener, Closeable {
+    private static Method ourGarbageCollectionNotificationInfo_from = null;
+    private static Method ourGarbageCollectionNotificationInfo_getGcInfo = null;
+    private static Method ourGcInfo_getMemoryUsageAfterGc = null;
+    private static Method ourGcInfo_getMemoryUsageBeforeGc = null;
+    private static Method ourGcInfo_getGcDuration = null;
+    private static boolean isGcEventListenerInitialized = false;
+
+    static {
+      try {
+        final Class<?> GarbageCollectionNotificationInfoClass = Class.forName("com.sun.management.GarbageCollectionNotificationInfo");
+        ourGarbageCollectionNotificationInfo_from = GarbageCollectionNotificationInfoClass.getMethod("from", CompositeData.class);
+        ourGarbageCollectionNotificationInfo_getGcInfo = GarbageCollectionNotificationInfoClass.getMethod("getGcInfo");
+        ourGcInfo_getMemoryUsageAfterGc = Class.forName("com.sun.management.GcInfo").getMethod("getMemoryUsageAfterGc");
+        ourGcInfo_getMemoryUsageBeforeGc = Class.forName("com.sun.management.GcInfo").getMethod("getMemoryUsageBeforeGc");
+        ourGcInfo_getGcDuration = Class.forName("com.sun.management.GcInfo").getMethod("getDuration");
+        isGcEventListenerInitialized = true;
+      } catch (ClassNotFoundException ignore) {
+        System.out.println("Cannot initialize GC listener: class not found");
+      } catch (Throwable t) {
+        System.out.println("Cannot initialize GC listener \n" + t);
+      }
+    }
+
+    @NotNull
+    private final String myGcDumpFilePath;
+    @NotNull
+    private FileWriter myGcDumpFile;
+
+    private GcListener(@NotNull final String gcDumpFilePath) {
+      myGcDumpFilePath = gcDumpFilePath;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Pair<Long, Long> getGcMemoryDiff(final Object gcInfo) throws IllegalAccessException, InvocationTargetException {
+      final Map<String, MemoryUsage> before = (Map<String, MemoryUsage>)ourGcInfo_getMemoryUsageBeforeGc.invoke(gcInfo);
+      final Map<String, MemoryUsage> after = (Map<String, MemoryUsage>)ourGcInfo_getMemoryUsageAfterGc.invoke(gcInfo);
+      final Set<String> names = new HashSet<>(before.keySet());
+      names.addAll(after.keySet());
+
+      long bTotal = 0, aTotal = 0;
+      for (String name : names) {
+        bTotal += before.get(name).getUsed();
+        aTotal += after.get(name).getUsed();
+      }
+      return new Pair<>(bTotal, aTotal);
+    }
+
+    private long getGcDuration(final Object gcInfo) throws IllegalAccessException, InvocationTargetException {
+      return (Long)ourGcInfo_getGcDuration.invoke(gcInfo);
+    }
+
+    private Object getGcInfo(final CompositeData userData) throws IllegalAccessException, InvocationTargetException {
+      final Object notificationInfo = ourGarbageCollectionNotificationInfo_from.invoke(null, (CompositeData)userData);
+      return ourGarbageCollectionNotificationInfo_getGcInfo.invoke(notificationInfo);
+    }
+
+    @Override
+    public void handleNotification(final Notification notification, final Object handback) {
+      if (!isGcEventListenerInitialized) return;
+      try {
+        if ("com.sun.management.gc.notification".equals(notification.getType())) {
+          CompositeData cd = (CompositeData)notification.getUserData();
+          if (!cd.get("gcAction").toString().toLowerCase().contains("major")) {
+            return;
+          }
+          final Object gcInfo = getGcInfo(cd);
+          final long duration = getGcDuration(gcInfo);
+          final Pair<Long, Long> gcMemoryDiff = getGcMemoryDiff(gcInfo);
+          final long now = System.currentTimeMillis();
+          myGcDumpFile.write(now + " ; " + duration + " ; " + gcMemoryDiff.getKey() + " ; " + gcMemoryDiff.getValue() + "\n");
+          /* do flush to getting gc info as soon as possible */
+          myGcDumpFile.flush();
+        }
+      } catch (Throwable ignore) {
+      }
+    }
+
+    void startListen() throws IOException {
+      if (!isGcEventListenerInitialized) {
+        return;
+      }
+      myGcDumpFile = new FileWriter(myGcDumpFilePath);
+      final List<GarbageCollectorMXBean> garbageCollectorMXBeans = ManagementFactory.getGarbageCollectorMXBeans();
+      for (GarbageCollectorMXBean gcBean : garbageCollectorMXBeans) {
+        if (gcBean instanceof NotificationEmitter) {
+          ((NotificationEmitter)gcBean).addNotificationListener(this, null, null);
+        }
+      }
+    }
+
+    @Override
+    public void close() {
+      FileUtil.close(myGcDumpFile);
     }
   }
 }

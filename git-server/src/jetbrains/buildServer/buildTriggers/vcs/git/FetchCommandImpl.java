@@ -16,16 +16,18 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.ProcessTimeoutException;
-import jetbrains.buildServer.SimpleCommandLineProcessRunner;
+import com.intellij.openapi.util.text.StringUtil;
+import jetbrains.buildServer.*;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.NamedThreadUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
@@ -37,14 +39,18 @@ import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
-import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.Collectors;
+
+import static jetbrains.buildServer.SimpleCommandLineProcessRunner.getCharset;
+import static jetbrains.buildServer.SimpleCommandLineProcessRunner.getThreadNameCommandLine;
+import static jetbrains.buildServer.util.NamedThreadFactory.executeWithNewThreadName;
 
 /**
 * @author dmitry.neverov
@@ -153,29 +159,52 @@ public class FetchCommandImpl implements FetchCommand {
 
     File gitPropertiesFile = null;
     File teamcityPrivateKey = null;
+    FetchInterrupter fetchInterrupter = null;
     try {
       GeneralCommandLine cl = createFetcherCommandLine(repository, uri);
-      if (LOG.isDebugEnabled())
+      if (LOG.isDebugEnabled()) {
         LOG.debug("Start fetch process for " + debugInfo);
+      }
 
-        File threadDump = getThreadDumpFile(repository);
-        gitPropertiesFile = myFetcherProperties.getPropertiesFile();
-        FetcherEventHandler processEventHandler = new FetcherEventHandler(debugInfo);
-        teamcityPrivateKey = getTeamCityPrivateKey(settings.getAuthSettings());
-        AuthSettings preparedSettings = settings.getAuthSettings();
-        if (teamcityPrivateKey != null) {
-          Map<String, String> properties = settings.getAuthSettings().toMap();
-          properties.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.name());
-          properties.put(Constants.PRIVATE_KEY_PATH, teamcityPrivateKey.getAbsolutePath());
-          preparedSettings = new AuthSettings(properties, settings.getAuthSettings().getRoot(), new URIishHelperImpl());
+      File threadDump = getDumpFile(repository, null);
+      File gcDump = getDumpFile(repository, "gc");
+      gitPropertiesFile = myFetcherProperties.getPropertiesFile();
+      teamcityPrivateKey = getTeamCityPrivateKey(settings.getAuthSettings());
+      AuthSettings preparedSettings = settings.getAuthSettings();
+      if (teamcityPrivateKey != null) {
+        Map<String, String> properties = settings.getAuthSettings().toMap();
+        properties.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.name());
+        properties.put(Constants.PRIVATE_KEY_PATH, teamcityPrivateKey.getAbsolutePath());
+        preparedSettings = new AuthSettings(properties, settings.getAuthSettings().getRoot(), new URIishHelperImpl());
+      }
+      byte[] fetchProcessInput =
+        getFetchProcessInputBytes(preparedSettings, repository.getDirectory(), uri, specs, threadDump, gcDump, gitPropertiesFile);
+      ByteArrayOutputStream stdoutBuffer = settings.createStdoutBuffer();
+      settings.getProgress().reportProgress("git fetch " + uri);
+
+      final String commandLineLog = cl.getCommandLineString();
+      final ExecResult result = new ExecResult(getCharset(cl));
+      final CommandLineExecutor clExecutor = new CommandLineExecutor(cl);
+      fetchInterrupter = new FetchInterrupter(clExecutor, gcDump, commandLineLog);
+      fetchInterrupter.start();
+      executeWithNewThreadName("Running child process: " + getThreadNameCommandLine(commandLineLog), () -> {
+        clExecutor.setRetVal(result);
+        clExecutor.setIdleTimeout(myConfig.getFetchTimeout());
+        clExecutor.setInitialProccesInput(fetchProcessInput);
+        clExecutor.setOutpurGobblerFactory(procStream -> new StreamGobbler(procStream, null, "StdOut for " + commandLineLog, stdoutBuffer));
+
+        try {
+          if (LOG.isDebugEnabled())
+            LOG.debug("Fetch process for " + debugInfo + " started");
+
+          clExecutor.runProcess();
+
+          if (LOG.isDebugEnabled())
+            LOG.debug("Fetch process for " + debugInfo + " finished");
+        } catch (ExecutionException e) {
+          result.setException(e);
         }
-        byte[] fetchProcessInput =
-          getFetchProcessInputBytes(preparedSettings, repository.getDirectory(), uri, specs, threadDump, gitPropertiesFile);
-        ByteArrayOutputStream stdoutBuffer = settings.createStdoutBuffer();
-        ByteArrayOutputStream stderrBuffer = new ByteArrayOutputStream();
-        settings.getProgress().reportProgress("git fetch " + uri);
-        ExecResult result = SimpleCommandLineProcessRunner.runCommandSecure(cl, cl.getCommandLineString(), fetchProcessInput,
-                                                                            processEventHandler, stdoutBuffer, stderrBuffer);
+      });
 
       final long fetchTime = System.currentTimeMillis() - fetchStart;
       LOG.info("Git fetch process finished for: " + uri + " in directory: " + repository.getDirectory() + ", took " + fetchTime + "ms");
@@ -203,6 +232,8 @@ public class FetchCommandImpl implements FetchCommand {
         FileUtil.delete(teamcityPrivateKey);
       if (gitPropertiesFile != null)
         FileUtil.delete(gitPropertiesFile);
+      if (fetchInterrupter != null)
+        fetchInterrupter.finish();
     }
   }
 
@@ -251,11 +282,13 @@ public class FetchCommandImpl implements FetchCommand {
     LOG.warn(message.toString());
   }
 
-  private File getThreadDumpFile(@NotNull Repository repository) {
-    File threadDumpsDir = getMonitoringDir(repository);
-    threadDumpsDir.mkdirs();
+  private File getDumpFile(@NotNull Repository repository, @Nullable String nameSuffix) {
+    File dumpsDir = getMonitoringDir(repository);
+    //noinspection ResultOfMethodCallIgnored
+    dumpsDir.mkdirs();
+    final String suffix = nameSuffix != null ? nameSuffix : "";
     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH.mm.ss");
-    return new File(threadDumpsDir, sdf.format(Dates.now()) + ".txt");
+    return new File(dumpsDir, sdf.format(Dates.now()) + suffix + ".txt");
   }
 
   private File getMonitoringDir(@NotNull Repository repository) {
@@ -379,6 +412,7 @@ public class FetchCommandImpl implements FetchCommand {
                                            @NotNull URIish uri,
                                            @NotNull Collection<RefSpec> specs,
                                            @NotNull File threadDump,
+                                           @NotNull File gcDump,
                                            @NotNull File gitProperties) throws VcsException {
     try {
       Map<String, String> properties = new HashMap<String, String>(authSettings.toMap());
@@ -387,12 +421,13 @@ public class FetchCommandImpl implements FetchCommand {
       properties.put(Constants.REFSPEC, serializeSpecs(specs));
       properties.put(Constants.VCS_DEBUG_ENABLED, String.valueOf(Loggers.VCS.isDebugEnabled()));
       properties.put(Constants.THREAD_DUMP_FILE, threadDump.getAbsolutePath());
+      properties.put(Constants.GC_DUMP_FILE, gcDump.getAbsolutePath());
       properties.put(Constants.FETCHER_INTERNAL_PROPERTIES_FILE, gitProperties.getAbsolutePath());
       final File trustedCertificatesDir = myGitTrustStoreProvider.getTrustedCertificatesDir();
       if (trustedCertificatesDir != null) {
         properties.put(Constants.GIT_TRUST_STORE_PROVIDER, trustedCertificatesDir.getAbsolutePath());
       }
-      return VcsUtil.propertiesToStringSecure(properties).getBytes("UTF-8");
+      return VcsUtil.propertiesToStringSecure(properties).getBytes(StandardCharsets.UTF_8);
     } catch (IOException e) {
       throw new VcsException("Error while generating fetch process input", e);
     }
@@ -408,5 +443,142 @@ public class FetchCommandImpl implements FetchCommand {
         sb.append(Constants.RECORD_SEPARATOR);
     }
     return sb.toString();
+  }
+
+  private static class FetchInterrupter extends Thread {
+
+    @NotNull
+    private final CommandLineExecutor myLcExecutor;
+    @NotNull
+    private final StreamGobbler myProcGcDump;
+    @NotNull
+    private final String myCommandLineLog;
+
+    private volatile boolean myFinished = false;
+
+    private volatile boolean myInterrupted = false;
+
+    private long lastDumpActivity = 0;
+
+    FetchInterrupter(
+      @NotNull final CommandLineExecutor lcExecutor,
+      @NotNull final File procGcDump,
+      @NotNull final String commandLineLog
+    ) throws VcsException {
+      try {
+        myLcExecutor = lcExecutor;
+        //noinspection ResultOfMethodCallIgnored
+        procGcDump.createNewFile();
+        myProcGcDump =
+          new StreamGobbler(new FileInputStream(procGcDump), null, "GcDump reader for" + commandLineLog);
+        myCommandLineLog = commandLineLog;
+
+        setName(NamedThreadUtil.getTcThreadPrefix() + "FetchInterrupter: " + myCommandLineLog);
+      } catch (IOException e) {
+        throw new VcsException("Fail to create fetch interrupter for " + commandLineLog);
+      }
+    }
+
+    void finish() {
+      myFinished = true;
+    }
+
+    @Override
+    public void run() {
+      try {
+
+        myProcGcDump.start();
+        while (!myFinished) {
+          Thread.sleep(10 * 1000);
+          if (myFinished) {
+            return;
+          }
+          if (hasMoreGcDumps() && procIsStuck(parseDump(readDump()))) {
+            destroyProc();
+            return;
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn("Exception while analyzing memory dump for " + myCommandLineLog);
+      } finally {
+        myProcGcDump.notifyProcessExit();
+      }
+    }
+
+    @NotNull
+    private String readDump() {
+      return StringUtil.convertLineSeparators(new String(myProcGcDump.getReadBytes(), StandardCharsets.UTF_8));
+    }
+
+    @NotNull
+    private List<MemoryDumpLine> parseDump(@NotNull String dump) {
+      final List<MemoryDumpLine> result = new ArrayList<>();
+      for (final String line : dump.split("\n")) {
+        if (StringUtil.isEmpty(line)) {
+          continue;
+        }
+        final String[] raw = line.split(";");
+        if (raw.length < 4) {
+          continue;
+        }
+        final List<Long> split =
+          Arrays.stream(raw).map(String::trim).map(Long::valueOf).collect(Collectors.toList());
+        result.add(new MemoryDumpLine(split.get(0), split.get(1), split.get(2), split.get(3)));
+      }
+      return result;
+    }
+
+    private boolean hasMoreGcDumps() {
+      final long oldValue = lastDumpActivity;
+      lastDumpActivity = myProcGcDump.getLastActivityTimestamp();
+      return oldValue != lastDumpActivity;
+    }
+
+    private boolean procIsStuck(@NotNull List<MemoryDumpLine> memoryDumpLines) {
+      return false;
+    }
+
+    private void destroyProc() {
+      myInterrupted = true;
+      myLcExecutor.destroyProcess();
+    }
+
+    @Override
+    public boolean isInterrupted() {
+      return myInterrupted;
+    }
+  }
+
+  private static class MemoryDumpLine {
+    private long myTimestamp;
+    private long myGcDuration;
+    private long myMemoryBefore;
+    private long myMemoryAfter;
+
+    MemoryDumpLine(final long timestamp,
+                          final long gcDuration,
+                          final long memoryBefore,
+                          final long memoryAfter) {
+      myTimestamp = timestamp;
+      myGcDuration = gcDuration;
+      myMemoryBefore = memoryBefore;
+      myMemoryAfter = memoryAfter;
+    }
+
+    long getTimestamp() {
+      return myTimestamp;
+    }
+
+    long getGcDuration() {
+      return myGcDuration;
+    }
+
+    long getMemoryBefore() {
+      return myMemoryBefore;
+    }
+
+    long getMemoryAfter() {
+      return myMemoryAfter;
+    }
   }
 }
