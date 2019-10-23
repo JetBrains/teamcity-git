@@ -230,15 +230,22 @@ public class FetchCommandImpl implements FetchCommand {
           commandError.setRecoverable(isRecoverable(commandError));
           /* if the process had no enough memory or we kill it because gc */
           if (isOutOfMemoryError(result) || fetchInterrupter.isInterrupted()) {
-            xmx = fetchMemoryProvider.getNextTryMemoryAmount();
-            if (xmx > -1) {
-              LOG.warn("There is not enough memory for git fetch (" + xmx + "M), will retry with increased value.");
-              clean(repository);
-              continue;
+            if (!TeamCityProperties.getBoolean("teamcity.git.fetch.process.max.memory.auto.enable")) {
+              LOG.warn("There is not enough memory for git fetch, teamcity.git.fetch.process.max.memory="
+                       + myConfig.getFetchProcessMaxMemory() + ", try to increase it.");
             } else {
-              LOG.warn("There is not enough memory for git fetch (" + xmx + "M)");
+              xmx = fetchMemoryProvider.getNextTryMemoryAmount();
+              if (xmx > -1) {
+                LOG.warn("There is not enough memory for git fetch (" + xmx + "M), will retry with increased value.");
+                clean(repository);
+                continue;
+              } else {
+                LOG.warn("There is not enough memory for git fetch (" + xmx + "M)");
+              }
             }
           }
+
+          //teamcity.git.fetch.process.max.memory
           if (isTimeout(result))
             logTimeout(debugInfo, threadDump);
           clean(repository);
