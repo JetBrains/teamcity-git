@@ -17,29 +17,27 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.SystemInfo;
+import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Provider of xmx value for separate fetch process.
  *
- * @author Mikhail Khorkov
+ * @author vbedrosova
  * @since 2019.2
  */
 public class FetchMemoryProvider {
 
   private static Logger LOG = Logger.getInstance(FetchMemoryProvider.class.getName());
   private static double MULTIPLE_FACTOR = 1.4;
-  private static long MAX_MEMORY_VALUE_MB = 10 * 1024 * 1024; // 10GB
 
   private final String myUrl;
   private final MemoryStorage myMemoryStorage;
   private final ServerPluginConfig myConfig;
-  private FreeRAMProvider myFreeRAMProvider = new FreeRAMProviderImpl();
-
-  private long myLastValue = 0;
 
   public FetchMemoryProvider(final String url,
                              final MemoryStorage memoryStorage,
@@ -49,76 +47,85 @@ public class FetchMemoryProvider {
     myConfig = config;
   }
 
-  /**
-   * Returns amount of memory to set xmx flag for separate fetch process.
-   *
-   * Each call of the method will return more value then previous one.
-   * If the new value equals or less then a previous one then -1 will be returned.
-   * If the new value more then 10GB then -1 will be returned.
-   */
-  public long getNextTryMemoryAmount() {
-    final long previous = myLastValue;
+  public interface XmxConsumer {
+    boolean withXmx(@NotNull Long xmx, boolean canIncrease) throws VcsException;
+  }
 
-    if (myLastValue == -1) {
-      return myLastValue;
-    } else if (myLastValue == 0) {
-      Long value = myMemoryStorage.getCachedMemoryValue(myUrl);
-      if (value == null) {
-        value = userPreferenceOrDefaultInMB();
+  public void withXmx(@NotNull XmxConsumer consumer) throws VcsException {
+    final Long[] values = getMemoryValues().stream().toArray(Long[]::new);
+    for (int i = 0; i < values.length; ++i) {
+      final Long xmx = values[i];
+      if (consumer.withXmx(xmx, i == values.length - 1)) {
+        myMemoryStorage.setCachedMemoryValue(myUrl, xmx);
+        return;
       }
-      myLastValue = value;
-    } else {
-      myLastValue = (long)(myLastValue * MULTIPLE_FACTOR);
-    }
-
-    final Long freeRAM = myFreeRAMProvider.freeRAMInMB();
-    if (freeRAM != null && myLastValue > freeRAM) {
-      myLastValue = freeRAM;
-    }
-
-    if (previous == myLastValue || previous > myLastValue || myLastValue > MAX_MEMORY_VALUE_MB) {
-      myLastValue = -1;
       myMemoryStorage.deleteCachedMemoryValue(myUrl);
-    } else {
-      myMemoryStorage.setCachedMemoryValue(myUrl, myLastValue);
     }
+  }
 
-    return myLastValue;
+  @Nullable
+  private Long getExplicitXmxMB() {
+    final Long xmx = GitServerUtil.convertMemorySizeToBytes(myConfig.getExplicitFetchProcessMaxMemory());
+    return xmx == null ? null : xmx / GitServerUtil.MB;
   }
 
   @NotNull
-  private Long userPreferenceOrDefaultInMB() {
+  private List<Long> getMemoryValues() {
+    final Long explicitXmx = getExplicitXmxMB();
+    if (explicitXmx != null) {
+      return Collections.singletonList(explicitXmx);
+    }
+
+    long xmx;
+    final Long cachedXmx = myMemoryStorage.getCachedMemoryValue(myUrl);
+    if (cachedXmx == null) {
+      xmx = userPreferenceOrDefaultMB();
+    } else {
+      xmx = cachedXmx;
+    }
+
+    final ArrayList<Long> values = new ArrayList<>();
+
+    final long maxXmx = getMaxXmxMB();
+    while (xmx <= maxXmx) {
+      values.add(xmx);
+      xmx *= MULTIPLE_FACTOR;
+    }
+    if (values.isEmpty()) {
+      // anyway try last value
+      values.add(xmx);
+    }
+    return values;
+  }
+
+  // https://www.oracle.com/technetwork/java/hotspotfaq-138619.html#gc_heap_32bit
+  @NotNull
+  private Long getMaxXmxMB() {
+    long res;
+    if (SystemInfo.is32Bit) { //32bit Java
+      res = SystemInfo.isWindows
+            ? 1433 * GitServerUtil.MB // ~1.4G
+            : 4 * GitServerUtil.GB;
+    } else {
+      res = 8 * GitServerUtil.GB;
+    }
+    final Long freeRAM = getFreeRAM();
+    return freeRAM == null || freeRAM > res ? res / GitServerUtil.MB : userPreferenceOrDefaultMB();
+  }
+
+  @Nullable
+  public Long getFreeRAM() {
+    return GitServerUtil.getFreePhysicalMemorySize();
+  }
+
+  @NotNull
+  private Long userPreferenceOrDefaultMB() {
     final String preferenceWithM = myConfig.getFetchProcessMaxMemory();
     final Long parsed = GitServerUtil.convertMemorySizeToBytes(preferenceWithM);
     if (parsed == null) {
       LOG.warn("Cannot parse memory value '" + preferenceWithM + "'");
       return 512L;
     }
-    return parsed / (1024 * 1024);
-  }
-
-  public void setFreeRAMProvider(@NotNull final FreeRAMProvider freeRAMProvider) {
-    myFreeRAMProvider = freeRAMProvider;
-  }
-
-  public interface FreeRAMProvider {
-    /**
-     * Return free memory space in MB or <code>null</code>.
-     */
-    @Nullable
-    Long freeRAMInMB();
-  }
-
-  public static class FreeRAMProviderImpl implements FreeRAMProvider {
-
-    /**
-     * Return free memory space in MB or <code>null</code>.
-     */
-    @Nullable
-    @Override
-    public Long freeRAMInMB() {
-      return Optional.ofNullable(GitServerUtil.getFreePhysicalMemorySize())
-        .map(f -> f / 1024 / 1024).orElse(null);
-    }
+    return parsed / GitServerUtil.MB;
   }
 }
