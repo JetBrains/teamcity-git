@@ -29,7 +29,6 @@ import static jetbrains.buildServer.SimpleCommandLineProcessRunner.getThreadName
 import static jetbrains.buildServer.util.NamedThreadFactory.executeWithNewThreadName;
 
 /**
- * @author Mikhail Khorkov
  * @author vbedrosova
  */
 public class GitProcessExecutor {
@@ -40,16 +39,12 @@ public class GitProcessExecutor {
   @NotNull private final ExecResult myEmptyResult;
   private volatile boolean myInterrupted = false;
 
-  @NotNull private final CommandLineExecutor.StreamGobblerFactory myOutputGobblerFactory;
-
   public GitProcessExecutor(@NotNull final GeneralCommandLine commandLine,
                             @NotNull final CommandLineExecutor.StreamGobblerFactory outputGobblerFactory) {
-    myCommandLineExecutor = new CommandLineExecutor(commandLine);
+    myCommandLineExecutor = new CommandLineExecutor(commandLine, null, outputGobblerFactory);
     myCommandLine = commandLine.getCommandLineString();
 
     myEmptyResult = new ExecResult(SimpleCommandLineProcessRunner.getCharset(commandLine));
-
-    myOutputGobblerFactory = outputGobblerFactory;
   }
 
   @NotNull
@@ -58,13 +53,9 @@ public class GitProcessExecutor {
     final long startTime = System.currentTimeMillis();
 
     executeWithNewThreadName("Running child process: " + getThreadNameCommandLine(myCommandLine), () -> {
-      myCommandLineExecutor.setIdleTimeout(idleTimeout);
-      myCommandLineExecutor.setInitialProccesInput(input);
-      myCommandLineExecutor.setOutpurGobblerFactory(myOutputGobblerFactory);
-
       try {
         listener.processStarted();
-        result.set(myCommandLineExecutor.runProcess());
+        result.set(myCommandLineExecutor.runProcess(input, idleTimeout));
         listener.processFinished();
       } catch (ExecutionException e) {
         result.get().setException(e);
