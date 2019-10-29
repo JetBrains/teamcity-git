@@ -50,6 +50,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.WellKnownHostingsTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SSHCommandLineTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SubmoduleUrlResolverTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.FetchMemoryProviderTest"/>
     </classes>
   </test>
 </suite>
