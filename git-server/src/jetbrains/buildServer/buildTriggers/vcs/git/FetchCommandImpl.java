@@ -176,13 +176,6 @@ public class FetchCommandImpl implements FetchCommand {
       File gcDump = getDumpFile(repository, "gc");
       gitPropertiesFile = myFetcherProperties.getPropertiesFile();
       teamcityPrivateKey = getTeamCityPrivateKey(settings.getAuthSettings());
-      AuthSettings preparedSettings = settings.getAuthSettings();
-      if (teamcityPrivateKey != null) {
-        Map<String, String> properties = settings.getAuthSettings().toMap();
-        properties.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.name());
-        properties.put(Constants.PRIVATE_KEY_PATH, teamcityPrivateKey.getAbsolutePath());
-        preparedSettings = new AuthSettings(properties, settings.getAuthSettings().getRoot(), new URIishHelperImpl());
-      }
 
       final GeneralCommandLine cl = createFetcherCommandLine(repository, uri, xmx);
       final String commandLineString = cl.getCommandLineString();
@@ -201,7 +194,7 @@ public class FetchCommandImpl implements FetchCommand {
       final String debugInfo = getDebugInfo(repository, uri, specs);
 
       final GitProcessExecutor.GitExecResult gitResult = processExecutor.runProcess(
-        getFetchProcessInputBytes(preparedSettings, repository.getDirectory(), uri, specs, getDumpFile(repository, null), gcDump, gitPropertiesFile),
+        getFetchProcessInputBytes(getAuthSettings(settings, teamcityPrivateKey), repository.getDirectory(), uri, specs, getDumpFile(repository, null), gcDump, gitPropertiesFile),
         myConfig.getFetchTimeout(),
         new GitProcessExecutor.ProcessExecutorAdapter() {
           @Override
@@ -268,6 +261,18 @@ public class FetchCommandImpl implements FetchCommand {
     }
 
     return true;
+  }
+
+  @NotNull
+  private AuthSettings getAuthSettings(@NotNull final FetchSettings settings, @Nullable final File teamcityPrivateKey) {
+    AuthSettings preparedSettings = settings.getAuthSettings();
+    if (teamcityPrivateKey != null) {
+      Map<String, String> properties = settings.getAuthSettings().toMap();
+      properties.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.name());
+      properties.put(Constants.PRIVATE_KEY_PATH, teamcityPrivateKey.getAbsolutePath());
+      preparedSettings = new AuthSettings(properties, settings.getAuthSettings().getRoot(), new URIishHelperImpl());
+    }
+    return preparedSettings;
   }
 
   private boolean isRecoverable(@NotNull VcsException exception) {
