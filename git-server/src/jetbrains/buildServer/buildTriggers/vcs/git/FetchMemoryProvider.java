@@ -79,7 +79,7 @@ public class FetchMemoryProvider {
     long xmx;
     final Long cachedXmx = myMemoryStorage.getCachedMemoryValue(myUrl);
     if (cachedXmx == null) {
-      xmx = userPreferenceOrDefaultMB();
+      xmx = getExplicitOrDefaultXmxMB();
     } else {
       xmx = cachedXmx;
     }
@@ -98,19 +98,27 @@ public class FetchMemoryProvider {
     return values;
   }
 
-  // https://www.oracle.com/technetwork/java/hotspotfaq-138619.html#gc_heap_32bit
-  @NotNull
-  private Long getMaxXmxMB() {
-    long res;
-    if (SystemInfo.is32Bit) { //32bit Java
-      res = SystemInfo.isWindows
-            ? 1433 * GitServerUtil.MB // ~1.4G
-            : 4 * GitServerUtil.GB;
-    } else {
-      res = 8 * GitServerUtil.GB;
-    }
+  private long getMaxXmxMB() {
+    long maxXmx = getSystemDependentMaxXmx();
     final Long freeRAM = getFreeRAM();
-    return freeRAM == null || freeRAM > res ? res / GitServerUtil.MB : userPreferenceOrDefaultMB();
+    if (freeRAM == null) return 512L;
+    if (freeRAM < maxXmx) {
+      do {
+        maxXmx /= MULTIPLE_FACTOR;
+      } while (maxXmx > freeRAM);
+    }
+    return maxXmx / GitServerUtil.MB;
+  }
+
+  // https://www.oracle.com/technetwork/java/hotspotfaq-138619.html#gc_heap_32bit
+  public long getSystemDependentMaxXmx() {
+    if (SystemInfo.is32Bit) { // 32 bit Java
+      if (SystemInfo.isWindows && System.getenv("ProgramFiles(x86)") == null) {  // 32 bit Windows
+        return 1433 * GitServerUtil.MB; // ~1.4G
+      }
+      return 4 * GitServerUtil.GB;
+    }
+    return 8 * GitServerUtil.GB;
   }
 
   @Nullable
@@ -118,12 +126,11 @@ public class FetchMemoryProvider {
     return GitServerUtil.getFreePhysicalMemorySize();
   }
 
-  @NotNull
-  private Long userPreferenceOrDefaultMB() {
-    final String preferenceWithM = myConfig.getFetchProcessMaxMemory();
-    final Long parsed = GitServerUtil.convertMemorySizeToBytes(preferenceWithM);
+  private long getExplicitOrDefaultXmxMB() {
+    final String explicitOrDefault = myConfig.getFetchProcessMaxMemory();
+    final Long parsed = GitServerUtil.convertMemorySizeToBytes(explicitOrDefault);
     if (parsed == null) {
-      LOG.warn("Cannot parse memory value '" + preferenceWithM + "'");
+      LOG.warn("Cannot parse memory value '" + explicitOrDefault + "'");
       return 512L;
     }
     return parsed / GitServerUtil.MB;

@@ -55,36 +55,51 @@ public class FetchMemoryProviderTest {
   @Test
   public void no_cache_all() throws Throwable {
     then(getValues(null, null, 16 * GitServerUtil.GB)).containsExactly(
-      1024L, 1433L, 2006L, 2808L, 3931L, 5503L, 7704L
+      1024L, 1433L, 2006L, 2808L, 3931L
     );
   }
 
   @Test
   public void no_cache() throws Throwable {
-    then(getValues(null, 4096L, 16 * GitServerUtil.GB)).containsExactly(
-      1024L, 1433L, 2006L, 2808L, 3931L, 5503L
+    then(getValues(null, 2048L, 16 * GitServerUtil.GB)).containsExactly(
+      1024L, 1433L, 2006L, 2808L
+    );
+  }
+
+  @Test
+  public void with_cache_all() throws Throwable {
+    myMemoryStorage.put(URL, 512L);
+    then(getValues(null, null, 16 * GitServerUtil.GB)).containsExactly(
+      512L, 716L, 1002L, 1402L, 1962L, 2746L, 3844L
     );
   }
 
   @Test
   public void with_cache() throws Throwable {
-    myMemoryStorage.put(URL, 2048L);
-    then(getValues(null, 4096L, 16 * GitServerUtil.GB)).containsExactly(
-      2048L, 2867L, 4013L, 5618L
+    myMemoryStorage.put(URL, 512L);
+    then(getValues(null, 2048L, 16 * GitServerUtil.GB)).containsExactly(
+      512L, 716L, 1002L, 1402L, 1962L, 2746L
+    );
+  }
+
+  @Test
+  public void free_RAM_all() throws Throwable {
+    then(getValues(null, 4096L, 2 * GitServerUtil.GB)).containsExactly(
+      1024L, 1433L
     );
   }
 
   @Test
   public void free_RAM() throws Throwable {
     then(getValues(null, 4096L, 2 * GitServerUtil.GB)).containsExactly(
-      1024L
+      1024L, 1433L
     );
   }
 
   @NotNull
-  private List<Long> getValues(@Nullable String explicitXmx, @Nullable Long acceptedXmx, @Nullable final Long freeRAM) throws VcsException {
+  private List<Long> getValues(@Nullable String explicitXmx, @Nullable final Long acceptedXmx, @Nullable final Long freeRAM) throws VcsException {
     final ArrayList<Long> res = new ArrayList<>();
-    createProvider(URL, explicitXmx, freeRAM).withXmx((v, canIncrease) -> {
+    createProvider(explicitXmx, freeRAM).withXmx((v, canIncrease) -> {
       res.add(v);
       return acceptedXmx != null && v >= acceptedXmx;
     });
@@ -92,8 +107,8 @@ public class FetchMemoryProviderTest {
   }
 
   @NotNull
-  private FetchMemoryProvider createProvider(@NotNull final String url, @Nullable final String explicitXmx, @Nullable final Long freeRAM) {
-    return new FetchMemoryProvider(url, new MemoryStorage() {
+  private FetchMemoryProvider createProvider(@Nullable final String explicitXmx, @Nullable final Long freeRAM) {
+    return new FetchMemoryProvider(URL, new MemoryStorage() {
       @Nullable
       @Override
       public Long getCachedMemoryValue(@NotNull final String url) {
@@ -109,17 +124,29 @@ public class FetchMemoryProviderTest {
       public void deleteCachedMemoryValue(@NotNull final String url) {
         myMemoryStorage.remove(url);
       }
-    }, new PluginConfigImpl() {
+
+      }, new PluginConfigImpl() {
       @Nullable
       @Override
       public String getExplicitFetchProcessMaxMemory() {
         return explicitXmx;
+      }
+
+      @NotNull
+      @Override
+      public String getFetchProcessMaxMemory() {
+        return "1024M";
       }
     }) {
       @Nullable
       @Override
       public Long getFreeRAM() {
         return freeRAM;
+      }
+
+      @Override
+      public long getSystemDependentMaxXmx() {
+        return 4 * GitServerUtil.GB;
       }
     };
   }
