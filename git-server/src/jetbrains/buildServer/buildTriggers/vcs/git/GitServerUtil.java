@@ -306,7 +306,7 @@ public class GitServerUtil {
             if (os == OSInfo.OSType.WINDOWS || os == OSInfo.OSType.MACOSX) {
               Set<String> refNames = db.getRefDatabase().getRefs(RefDatabase.ALL).keySet();
               for (String ref : refNames) {
-                if (localRefName.equalsIgnoreCase(ref))
+                if (!localRefName.equals(ref) && localRefName.equalsIgnoreCase(ref))
                   caseSensitiveConflicts.add(ref);
               }
             }
@@ -319,7 +319,8 @@ public class GitServerUtil {
             msg = "Failed to fetch ref " + localRefName + ": it clashes with " + StringUtil.join(", ", conflicts) +
                   ". Please remove conflicting refs from repository.";
           } else if (!caseSensitiveConflicts.isEmpty()) {
-            msg = "Failed to fetch ref " + localRefName + ": on case-insensitive file system it clashes with another ref" +
+            msg = "Failed to fetch ref " + localRefName + ": on case-insensitive file system it clashes with " +
+                  StringUtil.join(", ", caseSensitiveConflicts) +
                   ". Please remove conflicting refs from repository.";
           } else {
             //msg = "Fail to update '" + localRefName + "' (" + status.name() + ")";

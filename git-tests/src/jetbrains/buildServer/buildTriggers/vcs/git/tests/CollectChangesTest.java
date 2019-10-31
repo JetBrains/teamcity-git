@@ -38,7 +38,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Ignore;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -497,7 +496,6 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
 
   @TestFor(issues = {"TW-41943", "TW-46600"})
-  @Test(enabled = false) /* jGit v5 does not fail on broken encoding */
   public void collect_changes_with_broken_commit_encoding() throws Exception {
     myLogger.enableDebug();//TW-46600 happens only when debug is enabled
     VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
@@ -559,7 +557,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     return new Object[][] {
       {
         "refs/heads/Master",
-        "Failed to fetch ref refs/heads/Master: on case-insensitive file system it clashes with another ref. Please remove conflicting refs from repository."
+        "Failed to fetch ref refs/heads/Master: on case-insensitive file system it clashes with refs/heads/master. Please remove conflicting refs from repository."
       },
       {
         "refs/heads/master/release",
