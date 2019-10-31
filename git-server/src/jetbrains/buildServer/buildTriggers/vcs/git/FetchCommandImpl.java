@@ -35,7 +35,6 @@ import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.internal.storage.file.LockFile;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
@@ -362,8 +361,9 @@ public class FetchCommandImpl implements FetchCommand {
     final Transport tn = myTransportFactory.createTransport(db, uri, settings.getAuthSettings());
     try {
       pruneRemovedBranches(db, tn, uri, settings.getAuthSettings());
-      FetchResult result = GitServerUtil.fetch(db, uri, settings.getAuthSettings(), myTransportFactory, tn, settings.createProgressMonitor(), refSpecs, myConfig.ignoreMissingRemoteRef());
-      GitServerUtil.checkFetchSuccessful(db, result);
+      GitServerUtil
+        .fetchAndCheckResults(db, uri, settings.getAuthSettings(), myTransportFactory, tn, settings.createProgressMonitor(), refSpecs,
+                              myConfig.ignoreMissingRemoteRef());
     } catch (OutOfMemoryError oom) {
       LOG.warn("There is not enough memory for git fetch, try to run fetch in a separate process.");
       clean(db);

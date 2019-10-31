@@ -292,7 +292,7 @@ public class GitServerUtil {
    * @param result fetch result
    * @throws VcsException if any ref was not successfully updated
    */
-  public static void checkFetchSuccessful(Repository db, FetchResult result) throws VcsException {
+  public static void checkFetchSuccessful(@NotNull Repository db, @NotNull FetchResult result, @NotNull Set<String> refNamesLocal) throws VcsException {
     TreeSet<String> conflictsWithoutDb = new TreeSet<>();
     for (TrackingRefUpdate update : result.getTrackingRefUpdates()) {
       String localRefName = update.getLocalName();
@@ -304,8 +304,8 @@ public class GitServerUtil {
           try {
             OSInfo.OSType os = OSInfo.getOSType();
             if (os == OSInfo.OSType.WINDOWS || os == OSInfo.OSType.MACOSX) {
-              Set<String> refNames = db.getRefDatabase().getRefs(RefDatabase.ALL).keySet();
-              for (String ref : refNames) {
+              // here we need to check ref names before the fetch, otherwise they can be corrupted after an unsuccessful fetch (bug in jgit)
+              for (String ref : refNamesLocal) {
                 if (!localRefName.equals(ref) && localRefName.equalsIgnoreCase(ref))
                   caseSensitiveConflicts.add(ref);
               }
@@ -512,6 +512,21 @@ public class GitServerUtil {
       return true;
     List<String> amazonHosts = config.getAmazonHosts();
     return amazonHosts.contains(host);
+  }
+
+  @NotNull
+  public static FetchResult fetchAndCheckResults(@NotNull Repository r,
+                                                 @NotNull URIish url,
+                                                 @NotNull AuthSettings authSettings,
+                                                 @NotNull TransportFactory transportFactory,
+                                                 @NotNull Transport transport,
+                                                 @NotNull ProgressMonitor progress,
+                                                 @NotNull Collection<RefSpec> refSpecs,
+                                                 boolean ignoreMissingRemoteRef) throws VcsException, IOException {
+    final Set<String> refNames = r.getRefDatabase().getRefsByPrefix(RefDatabase.ALL).stream().map(Ref::getName).collect(Collectors.toSet());
+    FetchResult result = GitServerUtil.fetch(r, url, authSettings, transportFactory, transport, progress, refSpecs, ignoreMissingRemoteRef);
+    GitServerUtil.checkFetchSuccessful(r, result, refNames);
+    return result;
   }
 
 

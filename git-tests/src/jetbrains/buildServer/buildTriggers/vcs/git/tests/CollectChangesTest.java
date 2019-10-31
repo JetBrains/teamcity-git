@@ -496,6 +496,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
 
   @TestFor(issues = {"TW-41943", "TW-46600"})
+  @Test(enabled = false) /* jGit v5 does not fail on broken encoding */
   public void collect_changes_with_broken_commit_encoding() throws Exception {
     myLogger.enableDebug();//TW-46600 happens only when debug is enabled
     VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
