@@ -65,13 +65,9 @@ public class GitSupportBuilder {
     Mockery context = new Mockery();
     if (myFetchCommand == null) {
       if (myBeforeFetchHook == null) {
-        final MemoryStorageImpl memoryStorage = new MemoryStorageImpl(myPluginConfig);
-        myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager(),
-                                              memoryStorage);
+        myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
       } else {
-        final MemoryStorageImpl memoryStorage = new MemoryStorageImpl(myPluginConfig);
-        final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager(),
-                                                                  memoryStorage);
+        final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
         myFetchCommand = (db, fetchURI, refspecs, settings) -> {
           myBeforeFetchHook.run();
           originalCommand.fetch(db, fetchURI, refspecs, settings);

@@ -48,7 +48,6 @@ import org.eclipse.jgit.transport.FetchConnection;
 import org.eclipse.jgit.transport.PushConnection;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
-import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
@@ -932,9 +931,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   public void getCurrentVersion_should_not_do_fetch() throws Exception {
     ServerPluginConfig config = myConfigBuilder.build();
     VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
-    final MemoryStorageImpl memoryStorage = new MemoryStorageImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager,
-                                                     memoryStorage);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
 
@@ -1021,8 +1018,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       }
     };
 
-    final MemoryStorageImpl memoryStorage = new MemoryStorageImpl(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, new FetcherProperties(config), manager, memoryStorage);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, new FetcherProperties(config), manager);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport()
       .withPluginConfig(config)

@@ -35,31 +35,42 @@ public class FetchMemoryProvider {
   private static Logger LOG = Logger.getInstance(FetchMemoryProvider.class.getName());
   private static double MULTIPLE_FACTOR = 1.4;
 
-  private final String myUrl;
-  private final MemoryStorage myMemoryStorage;
+  private final XmxStorage myStorage;
   private final ServerPluginConfig myConfig;
 
-  public FetchMemoryProvider(final String url,
-                             final MemoryStorage memoryStorage,
+  public FetchMemoryProvider(final XmxStorage storage,
                              final ServerPluginConfig config) {
-    myUrl = url;
-    myMemoryStorage = memoryStorage;
+    myStorage = storage;
     myConfig = config;
   }
 
   public interface XmxConsumer {
-    boolean withXmx(@NotNull Long xmx, boolean canIncrease) throws VcsException;
+    /**
+     * @param xmx value in MB
+     * @param canIncrease flag showing if this attempt is final or xmx can be increased more
+     * @return true if attempt was successful
+     * @throws VcsException in case of attempt failure
+     */
+    boolean withXmx(@NotNull Integer xmx, boolean canIncrease) throws VcsException;
+  }
+
+  public interface XmxStorage {
+    /** @return stored xmx value in MB or null if none available */
+    @Nullable Integer read();
+
+    /** @param xmx xmx value in MB to be stored for future attempts */
+    void write(@Nullable Integer xmx);
   }
 
   public void withXmx(@NotNull XmxConsumer consumer) throws VcsException {
     final Long[] values = getMemoryValues().stream().toArray(Long[]::new);
     for (int i = 0; i < values.length; ++i) {
-      final Long xmx = values[i];
+      final Integer xmx = values[i].intValue();
       if (consumer.withXmx(xmx, i == values.length - 1)) {
-        myMemoryStorage.setCachedMemoryValue(myUrl, xmx);
+        myStorage.write(xmx);
         return;
       }
-      myMemoryStorage.deleteCachedMemoryValue(myUrl);
+      myStorage.write(null);
     }
   }
 
@@ -77,7 +88,7 @@ public class FetchMemoryProvider {
     }
 
     long xmx;
-    final Long cachedXmx = myMemoryStorage.getCachedMemoryValue(myUrl);
+    final Integer cachedXmx = myStorage.read();
     if (cachedXmx == null) {
       xmx = getExplicitOrDefaultXmxMB();
     } else {

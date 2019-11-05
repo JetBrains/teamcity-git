@@ -23,6 +23,7 @@ import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.StreamGobbler;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessExecutor;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessStuckMonitor;
+import jetbrains.buildServer.buildTriggers.vcs.git.process.RepositoryFetchXmxStorage;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -59,28 +60,24 @@ public class FetchCommandImpl implements FetchCommand {
   private final FetcherProperties myFetcherProperties;
   private final VcsRootSshKeyManager mySshKeyManager;
   private final GitTrustStoreProvider myGitTrustStoreProvider;
-  private final MemoryStorage myMemoryStorage;
 
   public FetchCommandImpl(@NotNull ServerPluginConfig config,
                           @NotNull TransportFactory transportFactory,
                           @NotNull FetcherProperties fetcherProperties,
-                          @NotNull VcsRootSshKeyManager sshKeyManager,
-                          final MemoryStorage memoryStorage) {
-    this(config, transportFactory, fetcherProperties, sshKeyManager, new GitTrustStoreProviderStatic(null), memoryStorage);
+                          @NotNull VcsRootSshKeyManager sshKeyManager) {
+    this(config, transportFactory, fetcherProperties, sshKeyManager, new GitTrustStoreProviderStatic(null));
   }
 
   public FetchCommandImpl(@NotNull ServerPluginConfig config,
                           @NotNull TransportFactory transportFactory,
                           @NotNull FetcherProperties fetcherProperties,
                           @NotNull VcsRootSshKeyManager sshKeyManager,
-                          @NotNull GitTrustStoreProvider gitTrustStoreProvider,
-                          final MemoryStorage memoryStorage) {
+                          @NotNull GitTrustStoreProvider gitTrustStoreProvider) {
     myConfig = config;
     myTransportFactory = transportFactory;
     myFetcherProperties = fetcherProperties;
     mySshKeyManager = sshKeyManager;
     myGitTrustStoreProvider = gitTrustStoreProvider;
-    myMemoryStorage = memoryStorage;
   }
 
   public void fetch(@NotNull Repository db,
@@ -153,13 +150,12 @@ public class FetchCommandImpl implements FetchCommand {
                                       @NotNull URIish uri,
                                       @NotNull Collection<RefSpec> specs,
                                       @NotNull FetchSettings settings) throws VcsException {
-    new FetchMemoryProvider(uri.toString(), myMemoryStorage, myConfig).withXmx((xmx, canIncrease)  -> {
+    new FetchMemoryProvider(new RepositoryFetchXmxStorage(repository), myConfig).withXmx((xmx, canIncrease)  -> {
       if (attemptFetchInSeparateProcess(xmx, repository, uri, specs, settings)) return true;
 
       LOG.warn("There is not enough memory for git fetch (" + xmx + "M)" + (canIncrease ? ", will retry with increased value" : ""));
       return false;
-    }
-    );
+    });
   }
 
   private boolean attemptFetchInSeparateProcess(long xmx,
