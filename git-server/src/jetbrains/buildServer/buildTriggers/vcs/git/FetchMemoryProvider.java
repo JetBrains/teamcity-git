@@ -66,7 +66,7 @@ public class FetchMemoryProvider {
     final Long[] values = getMemoryValues().stream().toArray(Long[]::new);
     for (int i = 0; i < values.length; ++i) {
       final Integer xmx = values[i].intValue();
-      if (consumer.withXmx(xmx, i == values.length - 1)) {
+      if (consumer.withXmx(xmx, i < values.length - 1)) {
         myStorage.write(xmx);
         return;
       }
