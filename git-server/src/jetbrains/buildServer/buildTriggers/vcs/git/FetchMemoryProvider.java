@@ -63,14 +63,18 @@ public class FetchMemoryProvider {
   }
 
   public void withXmx(@NotNull XmxConsumer consumer) throws VcsException {
+    final Long explicitXmx = getExplicitXmxMB();
+    if (explicitXmx != null) {
+      myStorage.write(null);
+      consumer.withXmx(explicitXmx.intValue(), false);
+      return;
+    }
+
     final Long[] values = getMemoryValues().stream().toArray(Long[]::new);
     for (int i = 0; i < values.length; ++i) {
       final Integer xmx = values[i].intValue();
-      if (consumer.withXmx(xmx, i < values.length - 1)) {
-        myStorage.write(xmx);
-        return;
-      }
-      myStorage.write(null);
+      myStorage.write(xmx);
+      if (consumer.withXmx(xmx, i < values.length - 1)) break;
     }
   }
 

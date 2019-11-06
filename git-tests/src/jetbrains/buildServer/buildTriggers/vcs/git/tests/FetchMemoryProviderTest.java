@@ -54,7 +54,7 @@ public class FetchMemoryProviderTest {
     then(getValues(null, null, 16 * GitServerUtil.GB)).containsExactly(
       1024, 1433, 2006, 2808, 3931
     );
-    then(myStorage).isNull();
+    then(myStorage).isEqualTo(3931);
   }
 
   @Test
@@ -71,7 +71,7 @@ public class FetchMemoryProviderTest {
     then(getValues(null, null, 16 * GitServerUtil.GB)).containsExactly(
       512, 716, 1002, 1402, 1962, 2746, 3844
     );
-    then(myStorage).isNull();
+    then(myStorage).isEqualTo(3844);
   }
 
   @Test
@@ -88,7 +88,7 @@ public class FetchMemoryProviderTest {
     then(getValues(null, 4096, 2 * GitServerUtil.GB)).containsExactly(
       1024, 1433
     );
-    then(myStorage).isNull();
+    then(myStorage).isEqualTo(1433);
   }
 
   @Test

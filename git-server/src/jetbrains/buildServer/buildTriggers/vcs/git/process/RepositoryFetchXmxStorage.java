@@ -43,7 +43,7 @@ public class RepositoryFetchXmxStorage implements FetchMemoryProvider.XmxStorage
   }
 
   public RepositoryFetchXmxStorage(@NotNull final File repoDir) {
-    myStorage = new File(repoDir, "teamcity");
+    myStorage = new File(repoDir, "teamcity.properties");
   }
 
   @NotNull
@@ -56,12 +56,12 @@ public class RepositoryFetchXmxStorage implements FetchMemoryProvider.XmxStorage
   public Integer read() {
     if (!myStorage.isFile()) return null;
     try {
-      final String line = FileUtil.readText(myStorage, "UTF-8");
+      final String line = FileUtil.readText(myStorage, "UTF-8"); // TODO: we may want to use java.util.Properties here
       if (line.startsWith(PREFIX) && line.endsWith(SUFFIX)) {
         return Integer.parseInt(line.substring(PREFIX.length(), line.length() - SUFFIX.length()));
       }
     } catch (Exception e) {
-      LOG.warn("Failed to read xmx value from " + myStorage.getAbsolutePath(), e);
+      LOG.warn("Failed to read fetch xmx value from " + myStorage.getAbsolutePath(), e);
     }
     return null;
   }
@@ -74,7 +74,7 @@ public class RepositoryFetchXmxStorage implements FetchMemoryProvider.XmxStorage
       try {
         FileUtil.writeFile(myStorage, line, "UTF-8");
       } catch (IOException e) {
-        LOG.warn("Failed to write xmx value \"" + line + "\" to " + myStorage.getAbsolutePath(), e);
+        LOG.warn("Failed to write fetch xmx value \"" + line + "\" to " + myStorage.getAbsolutePath(), e);
       }
     }
   }

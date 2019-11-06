@@ -153,7 +153,7 @@ public class FetchCommandImpl implements FetchCommand {
     new FetchMemoryProvider(new RepositoryFetchXmxStorage(repository), myConfig).withXmx((xmx, canIncrease)  -> {
       if (attemptFetchInSeparateProcess(xmx, repository, uri, specs, settings)) return true;
 
-      LOG.warn("There is not enough memory for git fetch (" + xmx + "M)" + (canIncrease ? ", will retry with increased value" : ""));
+      LOG.warn("There is not enough memory for git fetch (" + xmx + "M)" + (canIncrease ? ", will retry with increased value" : ". Please contact your system administrator."));
       return false;
     });
   }
