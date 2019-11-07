@@ -72,6 +72,7 @@ public class RepositoryFetchXmxStorage implements FetchMemoryProvider.XmxStorage
     if (xmx != null) {
       final String line = String.format(PREFIX + "%d" + SUFFIX, xmx);
       try {
+        FileUtil.createParentDirs(myStorage);
         FileUtil.writeFile(myStorage, line, "UTF-8");
       } catch (IOException e) {
         LOG.warn("Failed to write fetch xmx value \"" + line + "\" to " + myStorage.getAbsolutePath(), e);
