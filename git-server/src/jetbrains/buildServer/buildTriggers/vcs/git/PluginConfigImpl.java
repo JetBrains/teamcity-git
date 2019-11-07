@@ -82,8 +82,12 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private static final String ACCESS_TIME_UPDATE_RATE_MINUTES = "teamcity.git.accessTimeUpdateRateMinutes";
   private static final String MERGE_RETRY_ATTEMPTS = "teamcity.git.mergeRetryAttemps";
   private static final String GET_REPOSITORY_STATE_TIMEOUT_SECONDS = "teamcity.git.repositoryStateTimeoutSeconds";
+  public static final String TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY = "teamcity.git.fetch.process.max.memory";
+  public static final String TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY_LIMIT = "teamcity.git.fetch.process.max.memory.limit";
+
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
+
   private final File myCachesDir;
   private final Set<String> myFetcherPropertyNames = setOf(TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS,
                                                            TEAMCITY_GIT_SSH_PROXY_TYPE,
@@ -175,7 +179,12 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   @Nullable
   public String getExplicitFetchProcessMaxMemory() {
-    return TeamCityProperties.getPropertyOrNull("teamcity.git.fetch.process.max.memory");
+    return TeamCityProperties.getPropertyOrNull(TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY);
+  }
+
+  @Nullable
+  public String getMaximumFetchProcessMaxMemory() {
+    return TeamCityProperties.getPropertyOrNull(TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY_LIMIT);
   }
 
   public boolean isSeparateProcessForFetch() {

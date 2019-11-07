@@ -147,6 +147,11 @@ public class PluginConfigBuilder {
         return myDelegate.getExplicitFetchProcessMaxMemory();
       }
 
+      @Nullable
+      public String getMaximumFetchProcessMaxMemory() {
+        return myDelegate.getMaximumFetchProcessMaxMemory();
+      }
+
       public boolean isSeparateProcessForFetch() {
         return mySeparateProcessForFetch != null ? mySeparateProcessForFetch : myDelegate.isSeparateProcessForFetch();
       }
