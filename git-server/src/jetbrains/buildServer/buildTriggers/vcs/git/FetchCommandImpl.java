@@ -150,15 +150,13 @@ public class FetchCommandImpl implements FetchCommand {
                                       @NotNull URIish uri,
                                       @NotNull Collection<RefSpec> specs,
                                       @NotNull FetchSettings settings) throws VcsException {
-    new FetchMemoryProvider(new RepositoryFetchXmxStorage(repository), myConfig).withXmx((xmx, canIncrease)  -> {
-      if (attemptFetchInSeparateProcess(xmx, repository, uri, specs, settings)) return true;
-
-      LOG.warn("There is not enough memory for git fetch (" + xmx + "M)" + (canIncrease ? ", will retry with increased value" : ". Please contact your system administrator."));
-      return false;
-    });
+    final FetchMemoryProvider xmxProvider = new FetchMemoryProvider(new RepositoryFetchXmxStorage(repository), myConfig, getDebugInfo(repository, uri, specs));
+    while (xmxProvider.hasNext()) {
+      if (attemptFetchInSeparateProcess(xmxProvider.next(), xmxProvider.hasNext(), repository, uri, specs, settings)) break;
+    }
   }
 
-  private boolean attemptFetchInSeparateProcess(long xmx,
+  private boolean attemptFetchInSeparateProcess(long xmx, boolean canIncreaseXmx,
                                                 @NotNull Repository repository,
                                                 @NotNull URIish uri,
                                                 @NotNull Collection<RefSpec> specs,
@@ -222,10 +220,13 @@ public class FetchCommandImpl implements FetchCommand {
         LOG.info("Git fetch process failed for: " + uri + " in directory: " + repository.getDirectory() + ", took " + gitResult.getDuration() + "ms");
         commandError.setRecoverable(isRecoverable(commandError));
 
-        /* if the process had no enough memory or we kill it because gc */
+        /* if the process had not enough memory or we kill it because gc */
         if (gitResult.isOutOfMemoryError() || gitResult.isInterrupted()) {
-          clean(repository);
-          return false;
+          LOG.warn("There is not enough memory for git fetch (" + xmx + "M)" + (canIncreaseXmx ? ", will retry with increased value" : ". Please contact your system administrator."));
+          if (canIncreaseXmx) {
+            clean(repository);
+            return false;
+          }
         }
 
         if (gitResult.isTimeout()) {

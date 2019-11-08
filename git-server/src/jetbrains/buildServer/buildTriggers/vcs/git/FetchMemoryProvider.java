@@ -17,12 +17,15 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.Ref;
 import com.intellij.openapi.util.SystemInfo;
-import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.MB;
 
 /**
  * Provider of xmx value for separate fetch process.
@@ -30,28 +33,28 @@ import java.util.*;
  * @author vbedrosova
  * @since 2019.2
  */
-public class FetchMemoryProvider {
+public class FetchMemoryProvider implements Iterator<Integer> {
 
   private static Logger LOG = Logger.getInstance(FetchMemoryProvider.class.getName());
-  private static double MULTIPLE_FACTOR = 1.4;
+  private static double MULTIPLY_FACTOR = 1.4;
 
-  private final XmxStorage myStorage;
-  private final ServerPluginConfig myConfig;
+  @NotNull private final XmxStorage myStorage;
+  @NotNull private final String myDebugInfo;
 
-  public FetchMemoryProvider(final XmxStorage storage,
-                             final ServerPluginConfig config) {
+  @Nullable private final Integer myExplicitXmx;
+  @Nullable private final Integer myExplicitMaxXmx;
+
+  @Nullable private Ref<Integer> myNext = null;
+  @Nullable private Integer myPrev = null;
+
+  public FetchMemoryProvider(@NotNull final XmxStorage storage,
+                             @NotNull final ServerPluginConfig config,
+                             @NotNull final String debugInfo) {
     myStorage = storage;
-    myConfig = config;
-  }
+    myDebugInfo = debugInfo;
 
-  public interface XmxConsumer {
-    /**
-     * @param xmx value in MB
-     * @param canIncrease flag showing if this attempt is final or xmx can be increased more
-     * @return true if attempt was successful
-     * @throws VcsException in case of attempt failure
-     */
-    boolean withXmx(@NotNull Integer xmx, boolean canIncrease) throws VcsException;
+    myExplicitXmx = getInMB(config.getExplicitFetchProcessMaxMemory());
+    myExplicitMaxXmx = getInMB(config.getMaximumFetchProcessMaxMemory());
   }
 
   public interface XmxStorage {
@@ -62,92 +65,155 @@ public class FetchMemoryProvider {
     void write(@Nullable Integer xmx);
   }
 
-  public void withXmx(@NotNull XmxConsumer consumer) throws VcsException {
-    final Long explicitXmx = getExplicitXmxMB();
-    if (explicitXmx != null) {
-      myStorage.write(null);
-      consumer.withXmx(explicitXmx.intValue(), false);
-      return;
+  @Override
+  public boolean hasNext() {
+    if (myNext == null) {
+      myNext = new Ref<>(getNext());
     }
+    return myNext.get() != null;
+  }
 
-    final Long[] values = getMemoryValues().stream().toArray(Long[]::new);
-    for (int i = 0; i < values.length; ++i) {
-      final Integer xmx = values[i].intValue();
-      myStorage.write(xmx);
-      if (consumer.withXmx(xmx, i < values.length - 1)) break;
+  @Override
+  public Integer next() {
+    if (hasNext() && myNext != null) {
+      final Integer next = myNext.get();
+      myNext = null;
+      return next;
     }
+    throw new NoSuchElementException();
   }
 
   @Nullable
-  private Long getExplicitXmxMB() {
-    final Long xmx = GitServerUtil.convertMemorySizeToBytes(myConfig.getExplicitFetchProcessMaxMemory());
-    return xmx == null ? null : xmx / GitServerUtil.MB;
+  private Integer getNext() {
+    if (isAutoSetupDisabled() && isFirstAttempt()) {
+      debug("Automatic git fetch -Xmx setup is disabled. Using explicitly specified " + PluginConfigImpl.TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY + " internal property: " + myExplicitXmx + "M");
+      return saveAndReturn(myExplicitXmx);
+
+    } else if (isAutoSetupDisabled()) {
+      return null;
+
+    } else if (isFirstAttempt()) {
+      Integer initial = myStorage.read();
+      debug(initial == null
+            ? "Using default initial git fetch -Xmx:" + (initial = getDefaultStartXmx()) + "M"
+            : "Using previously cached git fetch -Xmx: " + initial + "M");
+      return saveAndReturn(applyExplicitLimit(initial));
+    }
+    else if (wasExplicitLimitReached()) {
+      return null;
+    }
+
+    final int next = (int)(myPrev * MULTIPLY_FACTOR);
+
+    if (myExplicitMaxXmx  == null) {
+      final Integer freeRAM = getFreeRAM();
+      if (freeRAM == null) {
+        final int maxXmx = getSystemDependentMaxXmx();
+        if (next > maxXmx) {
+          warn("git fetch -Xmx limit calculated based on the current system maximum: " + maxXmx + "M");
+          return saveAndReturnNull(maxXmx);
+        }
+      } else {
+        if (next > freeRAM - getTCUsedApprox()) {
+          LOG.warn("Free RAM " + freeRAM + "M is considered not enough to start a new get fetch process with -Xmx: " + next + ". Looks like the system lacks memory. Please contact your system administrator.");
+          return saveAndReturnNull(next);
+        }
+      }
+    }
+    return saveAndReturn(applyExplicitLimit(next));
+  }
+
+  // approximation of how much memory server itself may need
+  public int getTCUsedApprox() {
+    return (int) ((Runtime.getRuntime().maxMemory() - Runtime.getRuntime().totalMemory()) / MB);
   }
 
   @NotNull
-  private List<Long> getMemoryValues() {
-    final Long explicitXmx = getExplicitXmxMB();
-    if (explicitXmx != null) {
-      return Collections.singletonList(explicitXmx);
-    }
-
-    long xmx;
-    final Integer cachedXmx = myStorage.read();
-    if (cachedXmx == null) {
-      xmx = getExplicitOrDefaultXmxMB();
-    } else {
-      xmx = cachedXmx;
-    }
-
-    final ArrayList<Long> values = new ArrayList<>();
-
-    final long maxXmx = getMaxXmxMB();
-    while (xmx <= maxXmx) {
-      values.add(xmx);
-      xmx *= MULTIPLE_FACTOR;
-    }
-    if (values.isEmpty()) {
-      // anyway try last value
-      values.add(xmx);
-    }
-    return values;
-  }
-
-  private long getMaxXmxMB() {
-    long maxXmx = getSystemDependentMaxXmx();
-    final Long freeRAM = getFreeRAM();
-    if (freeRAM == null) return 512L;
-    if (freeRAM < maxXmx) {
-      do {
-        maxXmx /= MULTIPLE_FACTOR;
-      } while (maxXmx > freeRAM);
-    }
-    return maxXmx / GitServerUtil.MB;
-  }
-
-  // https://www.oracle.com/technetwork/java/hotspotfaq-138619.html#gc_heap_32bit
-  public long getSystemDependentMaxXmx() {
-    if (SystemInfo.is32Bit) { // 32 bit Java
-      if (SystemInfo.isWindows && System.getenv("ProgramFiles(x86)") == null) {  // 32 bit Windows
-        return 1433 * GitServerUtil.MB; // ~1.4G
-      }
-      return 4 * GitServerUtil.GB;
-    }
-    return 8 * GitServerUtil.GB;
+  private Integer saveAndReturn(@NotNull Integer xmx) {
+    myStorage.write(xmx);
+    return myPrev = xmx;
   }
 
   @Nullable
-  public Long getFreeRAM() {
-    return GitServerUtil.getFreePhysicalMemorySize();
+  private Integer saveAndReturnNull(@NotNull Integer xmx) {
+    saveAndReturn(xmx);
+    return null;
   }
 
-  private long getExplicitOrDefaultXmxMB() {
-    final String explicitOrDefault = myConfig.getFetchProcessMaxMemory();
-    final Long parsed = GitServerUtil.convertMemorySizeToBytes(explicitOrDefault);
-    if (parsed == null) {
-      LOG.warn("Cannot parse memory value '" + explicitOrDefault + "'");
-      return 512L;
+  private boolean isAutoSetupDisabled() {
+    return myExplicitXmx != null;
+  }
+
+  private boolean isFirstAttempt() {
+    return myPrev == null;
+  }
+
+  @Nullable
+  private static Integer getInMB(@Nullable String val) {
+    final Long bytes = GitServerUtil.convertMemorySizeToBytes(val);
+    return bytes == null ? null : (int)(bytes / MB);
+  }
+
+  // https://www.oracle.com/technetwork/java/hotspotfaq-138619.html#gc_heap_32bit
+  public int getSystemDependentMaxXmx() {
+    if (SystemInfo.is32Bit) { // 32 bit Java
+      if (SystemInfo.isWindows && System.getenv("ProgramFiles(x86)") == null) {  // 32 bit Windows
+        return (int) Math.round(1.4 * 1024);
+      }
+      return 4 * 1024;
     }
-    return parsed / GitServerUtil.MB;
+    return 8 * 1024;
+  }
+
+  @Nullable
+  public Integer getFreeRAM() {
+    final Long freeRamBytes = GitServerUtil.getFreePhysicalMemorySize();
+    return freeRamBytes == null ? null : (int) (freeRamBytes / MB);
+  }
+
+  private int getDefaultStartXmx() {
+    // we borrow the logic from PluginConfigImpl.getFetchProcessMaxMemory to preserve the default behaviour
+    try {
+      Class.forName("com.sun.management.OperatingSystemMXBean");
+    } catch (ClassNotFoundException e) {
+      return 512;
+    }
+    final Long freeRAM = GitServerUtil.getFreePhysicalMemorySize();
+    if (freeRAM != null && freeRAM > GitServerUtil.GB) {
+      return 1024;
+    } else {
+      return 512;
+    }
+  }
+
+  private int applyExplicitLimit(int xmx) {
+    if (myExplicitMaxXmx == null) return xmx;
+    if (xmx > myExplicitMaxXmx) {
+      info("git fetch -Xmx: " + xmx + "M is limited by the explicitly specified " + PluginConfigImpl.TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY_LIMIT + " internal property: " + myExplicitMaxXmx + "M");
+      return myExplicitMaxXmx;
+    }
+    return xmx;
+  }
+
+  private boolean wasExplicitLimitReached() {
+    if (myExplicitMaxXmx == null || isFirstAttempt()) return false;
+    return myExplicitMaxXmx.equals(myPrev);
+  }
+
+  private void debug(@NotNull String s) {
+    LOG.debug(withInfo(s));
+  }
+
+  private void info(@NotNull String s) {
+    LOG.warn(withInfo(s));
+  }
+
+  private void warn(@NotNull String s) {
+    LOG.warn(withInfo(s));
+  }
+
+  @NotNull
+  private String withInfo(@NotNull final String s) {
+    return s + " for " + myDebugInfo;
   }
 }

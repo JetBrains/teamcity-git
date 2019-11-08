@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.FetchMemoryProvider;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -43,23 +42,22 @@ public class FetchMemoryProviderTest {
 
   @Test
   public void explicit_xmx() throws Throwable {
-    then(getValues("20G", null, null)).containsExactly(20480);
-    then(getValues("512M", null, null)).containsExactly(512);
-    then(getValues("1G", null, null)).containsExactly(1024);
-    then(myStorage).isNull();
+    then(getValues("20G",null, null, null)).containsExactly(20480).containsExactly(myStorage);
+    then(getValues("512M", null, null, null)).containsExactly(512).containsExactly(myStorage);
+    then(getValues("1G", null, null, null)).containsExactly(1024).containsExactly(myStorage);
   }
 
   @Test
   public void no_cache_all() throws Throwable {
-    then(getValues(null, null, 16 * GitServerUtil.GB)).containsExactly(
-      1024, 1433, 2006, 2808, 3931
+    then(getValues(null, null, null, 8 * 1024)).containsExactly(
+      1024, 1433, 2006, 2808, 3931, 5503
     );
-    then(myStorage).isEqualTo(3931);
+    then(myStorage).isEqualTo(7704);
   }
 
   @Test
   public void no_cache() throws Throwable {
-    then(getValues(null, 2048, 16 * GitServerUtil.GB)).containsExactly(
+    then(getValues(null, null, 2048, 8 * 1024)).containsExactly(
       1024, 1433, 2006, 2808
     );
     then(myStorage).isEqualTo(2808);
@@ -68,49 +66,108 @@ public class FetchMemoryProviderTest {
   @Test
   public void with_cache_all() throws Throwable {
     myStorage = 512;
-    then(getValues(null, null, 16 * GitServerUtil.GB)).containsExactly(
-      512, 716, 1002, 1402, 1962, 2746, 3844
+    then(getValues(null, null, null, 8 * 1024)).containsExactly(
+      512, 716, 1002, 1402, 1962, 2746, 3844, 5381
     );
-    then(myStorage).isEqualTo(3844);
+    then(myStorage).isEqualTo(7533);
   }
 
   @Test
   public void with_cache() throws Throwable {
     myStorage = 512;
-    then(getValues(null, 2048, 16 * GitServerUtil.GB)).containsExactly(
+    then(getValues(null, null, 2048, 8 * 1024)).containsExactly(
       512, 716, 1002, 1402, 1962, 2746
     );
     then(myStorage).isEqualTo(2746);
   }
 
   @Test
-  public void free_RAM_all() throws Throwable {
-    then(getValues(null, 4096, 2 * GitServerUtil.GB)).containsExactly(
-      1024, 1433
+  public void system_limit_all() throws Throwable {
+    then(getValues(null, null, null, null)).containsExactly(
+      1024, 1433, 2006, 2808, 3931
     );
-    then(myStorage).isEqualTo(1433);
+    then(myStorage).isEqualTo(4096);
   }
 
   @Test
-  public void free_RAM() throws Throwable {
-    then(getValues(null, 1024, 2 * GitServerUtil.GB)).containsExactly(
-      1024
+  public void system_limit_unreached() throws Throwable {
+    then(getValues(null, null, 2048, null)).containsExactly(
+      1024, 1433, 2006, 2808
+    );
+    then(myStorage).isEqualTo(2808);
+  }
+
+  @Test
+  public void system_limit_with_cache_all() throws Throwable {
+    myStorage = 512;
+    then(getValues(null, null, null, null)).containsExactly(
+      512, 716, 1002, 1402, 1962, 2746, 3844
+    );
+    then(myStorage).isEqualTo(4096);
+  }
+
+  @Test
+  public void system_limit_with_cache() throws Throwable {
+    myStorage = 512;
+    then(getValues(null, null, 1024, null)).containsExactly(
+      512, 716, 1002, 1402
+    );
+    then(myStorage).isEqualTo(1402);
+  }
+
+  @Test
+  public void explicit_limit_all() throws Throwable {
+    then(getValues(null, "2G", null, 8 * 2014)).containsExactly(
+      1024, 1433, 2006, 2048
+    );
+    then(myStorage).isEqualTo(2048);
+  }
+
+  @Test
+  public void explicit_limit_unreached() throws Throwable {
+    then(getValues(null, "4G", 2048, 8 * 2014)).containsExactly(
+      1024, 1433, 2006, 2808
+    );
+    then(myStorage).isEqualTo(2808);
+  }
+
+  @Test
+  public void explicit_limit_initial() throws Throwable {
+    then(getValues(null, "512M", null, 8 * 2014)).containsExactly(
+      512
+    );
+    then(myStorage).isEqualTo(512);
+  }
+
+  @Test
+  public void explicit_limit_cache() throws Throwable {
+    myStorage = 512;
+    then(getValues(null, "1G", null, 8 * 2014)).containsExactly(
+      512, 716, 1002, 1024
     );
     then(myStorage).isEqualTo(1024);
   }
 
+  @Test
+  public void explicit_xmx_explicit_limit() throws Throwable {
+    then(getValues("20G","2G", null, null)).containsExactly(20480).containsExactly(myStorage);
+    then(getValues("512M", "2G", null, null)).containsExactly(512).containsExactly(myStorage);
+  }
+
   @NotNull
-  private List<Integer> getValues(@Nullable String explicitXmx, @Nullable final Integer acceptedXmx, @Nullable final Long freeRAM) throws VcsException {
+  private List<Integer> getValues(@Nullable String explicitXmx, @Nullable final String maxXmx, @Nullable final Integer acceptedXmx, @Nullable final Integer freeRAM) throws VcsException {
     final ArrayList<Integer> res = new ArrayList<>();
-    createProvider(explicitXmx, freeRAM).withXmx((v, canIncrease) -> {
+    final FetchMemoryProvider provider = createProvider(explicitXmx, maxXmx, freeRAM);
+    while (provider.hasNext()) {
+      final Integer v = provider.next();
       res.add(v);
-      return acceptedXmx != null && v >= acceptedXmx;
-    });
+      if (acceptedXmx != null && v >= acceptedXmx) break;
+    }
     return res;
   }
 
   @NotNull
-  private FetchMemoryProvider createProvider(@Nullable final String explicitXmx, @Nullable final Long freeRAM) {
+  private FetchMemoryProvider createProvider(@Nullable final String explicitXmx, @Nullable final String maxXmx, @Nullable final Integer freeRAM) {
     return new FetchMemoryProvider(new FetchMemoryProvider.XmxStorage() {
       @Nullable
       @Override
@@ -129,21 +186,32 @@ public class FetchMemoryProviderTest {
         return explicitXmx;
       }
 
+      @Nullable
+      @Override
+      public String getMaximumFetchProcessMaxMemory() {
+        return maxXmx;
+      }
+
       @NotNull
       @Override
       public String getFetchProcessMaxMemory() {
         return "1024M";
       }
-    }) {
+    }, "test debug info") {
       @Nullable
       @Override
-      public Long getFreeRAM() {
+      public Integer getFreeRAM() {
         return freeRAM;
       }
 
       @Override
-      public long getSystemDependentMaxXmx() {
-        return 4 * GitServerUtil.GB;
+      public int getTCUsedApprox() {
+        return 1024;
+      }
+
+      @Override
+      public int getSystemDependentMaxXmx() {
+        return 4 * 1024;
       }
     };
   }
