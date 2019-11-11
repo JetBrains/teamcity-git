@@ -16,7 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import javafx.util.Pair;
+import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
