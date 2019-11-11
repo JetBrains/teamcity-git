@@ -55,27 +55,37 @@ public class RepositoryFetchXmxStorage implements FetchMemoryProvider.XmxStorage
   @Override
   public Integer read() {
     if (!myStorage.isFile()) return null;
+
+    String line;
     try {
-      final String line = FileUtil.readText(myStorage, "UTF-8"); // TODO: we may want to use java.util.Properties here
-      if (line.startsWith(PREFIX) && line.endsWith(SUFFIX)) {
-        return Integer.parseInt(line.substring(PREFIX.length(), line.length() - SUFFIX.length()));
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to read fetch xmx value from " + myStorage.getAbsolutePath(), e);
+      line = FileUtil.readText(myStorage, "UTF-8"); // TODO: we may want to use java.util.Properties here
+    } catch (IOException e) {
+      LOG.warn("Failed to read fetch Xmx value from " + myStorage.getAbsolutePath(), e);
+      return null;
     }
+
+    if (line.startsWith(PREFIX) && line.endsWith(SUFFIX)) {
+      try {
+        return Integer.parseInt(line.substring(PREFIX.length(), line.length() - SUFFIX.length()));
+      } catch (NumberFormatException ignored) {
+        // report below
+      }
+    }
+    LOG.warn("Failed to parse fetch Xmx value \"" + line + "\" from " + myStorage.getAbsolutePath());
     return null;
   }
 
   @Override
   public void write(@Nullable final Integer xmx) {
-    FileUtil.delete(myStorage, 3);
+    FileUtil.delete(myStorage);
     if (xmx != null) {
       final String line = String.format(PREFIX + "%d" + SUFFIX, xmx);
       try {
         FileUtil.createParentDirs(myStorage);
         FileUtil.writeFile(myStorage, line, "UTF-8");
       } catch (IOException e) {
-        LOG.warn("Failed to write fetch xmx value \"" + line + "\" to " + myStorage.getAbsolutePath(), e);
+        LOG.warn("Failed to write fetch Xmx value \"" + line + "\" to " + myStorage.getAbsolutePath(), e);
+        FileUtil.delete(myStorage);
       }
     }
   }
