@@ -44,6 +44,8 @@ public class FetchMemoryProvider implements Iterator<Integer> {
   @Nullable private final Integer myExplicitXmx;
   @Nullable private final Integer myExplicitMaxXmx;
 
+  private final int mySystemDependentMaxXmx;
+
   @Nullable private Ref<Integer> myNext = null;
   @Nullable private Integer myPrev = null;
 
@@ -55,6 +57,8 @@ public class FetchMemoryProvider implements Iterator<Integer> {
 
     myExplicitXmx = getInMB(config.getExplicitFetchProcessMaxMemory());
     myExplicitMaxXmx = getInMB(config.getMaximumFetchProcessMaxMemory());
+
+    mySystemDependentMaxXmx = getSystemDependentMaxXmx();
   }
 
   public interface XmxStorage {
@@ -78,7 +82,7 @@ public class FetchMemoryProvider implements Iterator<Integer> {
     if (hasNext() && myNext != null) {
       final Integer next = myNext.get();
       myNext = null;
-      return next;
+      return saveAndReturn(next);
     }
     throw new NoSuchElementException();
   }
@@ -87,7 +91,7 @@ public class FetchMemoryProvider implements Iterator<Integer> {
   private Integer getNext() {
     if (isAutoSetupDisabled() && isFirstAttempt()) {
       debug("Automatic git fetch -Xmx setup is disabled. Using explicitly specified " + PluginConfigImpl.TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY + " internal property: " + myExplicitXmx + "M");
-      return saveAndReturn(myExplicitXmx);
+      return myExplicitXmx;
 
     } else if (isAutoSetupDisabled()) {
       return null;
@@ -97,34 +101,35 @@ public class FetchMemoryProvider implements Iterator<Integer> {
       debug(initial == null
             ? "Using default initial git fetch -Xmx:" + (initial = getDefaultStartXmx()) + "M"
             : "Using previously cached git fetch -Xmx: " + initial + "M");
-      return saveAndReturn(applyExplicitLimit(initial));
-    }
-    else if (wasExplicitLimitReached()) {
+      return applyExplicitLimit(initial);
+
+    } else if (wasExplicitLimitReached() || wasSystemLimitReached()) {
       return null;
     }
 
     final int next = (int)(myPrev * MULTIPLY_FACTOR);
 
     if (myExplicitMaxXmx  == null) {
+      if (next > mySystemDependentMaxXmx) {
+        warn("git fetch -Xmx limit calculated based on the current system maximum: " + mySystemDependentMaxXmx + "M");
+        return mySystemDependentMaxXmx;
+      }
+
       final Integer freeRAM = getFreeRAM();
-      if (freeRAM == null) {
-        final int maxXmx = getSystemDependentMaxXmx();
-        if (next > maxXmx) {
-          warn("git fetch -Xmx limit calculated based on the current system maximum: " + maxXmx + "M");
-          return saveAndReturnNull(maxXmx);
-        }
-      } else {
-        if (next > freeRAM - getTCUsedApprox()) {
-          LOG.warn("Free RAM " + freeRAM + "M is considered not enough to start a new get fetch process with -Xmx: " + next + ". Looks like the system lacks memory. Please contact your system administrator.");
-          return saveAndReturnNull(next);
-        }
+      if (freeRAM == null) return next;
+
+      final int maxXmx = freeRAM - getTCApprox();
+      if (maxXmx <= myPrev) return null;
+      if (next > maxXmx) {
+        LOG.warn("Free RAM " + freeRAM + "M is considered not enough to start a new get fetch process with -Xmx: " + next + ". Looks like the system lacks memory. Please contact your system administrator.");
+        return maxXmx;
       }
     }
-    return saveAndReturn(applyExplicitLimit(next));
+    return applyExplicitLimit(next);
   }
 
   // approximation of how much memory server itself may need
-  protected int getTCUsedApprox() {
+  protected int getTCApprox() {
     return (int) ((Runtime.getRuntime().maxMemory() - Runtime.getRuntime().totalMemory()) / MB);
   }
 
@@ -132,12 +137,6 @@ public class FetchMemoryProvider implements Iterator<Integer> {
   private Integer saveAndReturn(@NotNull Integer xmx) {
     myStorage.write(xmx);
     return myPrev = xmx;
-  }
-
-  @Nullable
-  private Integer saveAndReturnNull(@NotNull Integer xmx) {
-    saveAndReturn(xmx);
-    return null;
   }
 
   private boolean isAutoSetupDisabled() {
@@ -154,15 +153,10 @@ public class FetchMemoryProvider implements Iterator<Integer> {
     return bytes == null ? null : (int)(bytes / MB);
   }
 
-  // https://www.oracle.com/technetwork/java/hotspotfaq-138619.html#gc_heap_32bit
   protected int getSystemDependentMaxXmx() {
-    if (SystemInfo.is32Bit) { // 32 bit Java
-      if (SystemInfo.isWindows && System.getenv("ProgramFiles(x86)") == null) {  // 32 bit Windows
-        return (int) Math.round(1.4 * 1024);
-      }
-      return 4 * 1024;
-    }
-    return 8 * 1024;
+    if (SystemInfo.is64Bit) return 4 * 1024;
+    if (SystemInfo.isWindows) return 1024; //x86 Windows
+    return 2 * 1048; //x86 other OS
   }
 
   @Nullable
@@ -198,6 +192,11 @@ public class FetchMemoryProvider implements Iterator<Integer> {
   private boolean wasExplicitLimitReached() {
     if (myExplicitMaxXmx == null || isFirstAttempt()) return false;
     return myExplicitMaxXmx.equals(myPrev);
+  }
+
+  private boolean wasSystemLimitReached() {
+    if (myPrev == null) return false;
+    return myPrev.equals(mySystemDependentMaxXmx);
   }
 
   private void debug(@NotNull String s) {

@@ -152,11 +152,11 @@ public class FetchCommandImpl implements FetchCommand {
                                       @NotNull FetchSettings settings) throws VcsException {
     final FetchMemoryProvider xmxProvider = new FetchMemoryProvider(new RepositoryFetchXmxStorage(repository), myConfig, getDebugInfo(repository, uri, specs));
     while (xmxProvider.hasNext()) {
-      if (attemptFetchInSeparateProcess(xmxProvider.next(), xmxProvider.hasNext(), repository, uri, specs, settings)) break;
+      if (attemptFetchInSeparateProcess(xmxProvider, repository, uri, specs, settings)) break;
     }
   }
 
-  private boolean attemptFetchInSeparateProcess(long xmx, boolean canIncreaseXmx,
+  private boolean attemptFetchInSeparateProcess(@NotNull Iterator<Integer> xmxProvider,
                                                 @NotNull Repository repository,
                                                 @NotNull URIish uri,
                                                 @NotNull Collection<RefSpec> specs,
@@ -170,13 +170,14 @@ public class FetchCommandImpl implements FetchCommand {
       gitPropertiesFile = myFetcherProperties.getPropertiesFile();
       teamcityPrivateKey = getTeamCityPrivateKey(settings.getAuthSettings());
 
+      final Integer xmx = xmxProvider.next();
       final GeneralCommandLine cl = createFetcherCommandLine(repository, uri, xmx);
       final String commandLineString = cl.getCommandLineString();
       final GitProcessExecutor processExecutor = new GitProcessExecutor(cl, procStream -> new StreamGobbler(procStream, null,
                                                                                                             "StdOut for " +
                                                                                                             commandLineString,
                                                                                                             settings.createStdoutBuffer()));
-      processStuckMonitor = new GitProcessStuckMonitor(gcDump, xmx, commandLineString) {
+      processStuckMonitor = new GitProcessStuckMonitor(gcDump, xmx.longValue(), commandLineString) {
         @Override
         protected void stuckDetected() {
           processExecutor.interrupt();
@@ -222,6 +223,7 @@ public class FetchCommandImpl implements FetchCommand {
 
         /* if the process had not enough memory or we kill it because gc */
         if (gitResult.isOutOfMemoryError() || gitResult.isInterrupted()) {
+          final boolean canIncreaseXmx = xmxProvider.hasNext();
           LOG.warn("There is not enough memory for git fetch (" + xmx + "M)" + (canIncreaseXmx ? ", will retry with increased value" : ". Please contact your system administrator."));
           if (canIncreaseXmx) {
             clean(repository);

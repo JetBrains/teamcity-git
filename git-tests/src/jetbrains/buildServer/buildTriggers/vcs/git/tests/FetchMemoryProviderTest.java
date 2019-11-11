@@ -48,11 +48,11 @@ public class FetchMemoryProviderTest {
   }
 
   @Test
-  public void no_cache_all() throws Throwable {
-    then(getValues(null, null, null, 8 * 1024)).containsExactly(
-      1024, 1433, 2006, 2808, 3931, 5503
+  public void free_RAM_all() throws Throwable {
+    then(getValues(null, null, null, 3 * 1024)).containsExactly(
+      1024, 1433, 2006, 2048
     );
-    then(myStorage).isEqualTo(7704);
+    then(myStorage).isEqualTo(2048);
   }
 
   @Test
@@ -64,12 +64,12 @@ public class FetchMemoryProviderTest {
   }
 
   @Test
-  public void with_cache_all() throws Throwable {
+  public void free_RAM_with_cache() throws Throwable {
     myStorage = 512;
-    then(getValues(null, null, null, 8 * 1024)).containsExactly(
-      512, 716, 1002, 1402, 1962, 2746, 3844, 5381
+    then(getValues(null, null, null, 3 * 1024)).containsExactly(
+      512, 716, 1002, 1402, 1962, 2048
     );
-    then(myStorage).isEqualTo(7533);
+    then(myStorage).isEqualTo(2048);
   }
 
   @Test
@@ -84,7 +84,7 @@ public class FetchMemoryProviderTest {
   @Test
   public void system_limit_all() throws Throwable {
     then(getValues(null, null, null, null)).containsExactly(
-      1024, 1433, 2006, 2808, 3931
+      1024, 1433, 2006, 2808, 3931, 4096
     );
     then(myStorage).isEqualTo(4096);
   }
@@ -101,7 +101,7 @@ public class FetchMemoryProviderTest {
   public void system_limit_with_cache_all() throws Throwable {
     myStorage = 512;
     then(getValues(null, null, null, null)).containsExactly(
-      512, 716, 1002, 1402, 1962, 2746, 3844
+      512, 716, 1002, 1402, 1962, 2746, 3844, 4096
     );
     then(myStorage).isEqualTo(4096);
   }
@@ -205,7 +205,7 @@ public class FetchMemoryProviderTest {
       }
 
       @Override
-      protected int getTCUsedApprox() {
+      protected int getTCApprox() {
         return 1024;
       }
 
