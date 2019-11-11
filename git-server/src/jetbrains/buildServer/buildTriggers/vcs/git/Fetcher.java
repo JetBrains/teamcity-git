@@ -283,7 +283,7 @@ public class Fetcher {
           final long duration = getGcDuration(gcInfo);
           final Pair<Long, Long> gcMemoryDiff = getGcMemoryDiff(gcInfo);
           final long now = System.currentTimeMillis();
-          myGcDumpFile.write(now + " ; " + duration + " ; " + gcMemoryDiff.getKey() + " ; " + gcMemoryDiff.getValue() + "\n");
+          myGcDumpFile.write(now + " ; " + duration + " ; " + gcMemoryDiff.getFirst() + " ; " + gcMemoryDiff.getSecond() + "\n");
           /* do flush to getting gc info as soon as possible */
           myGcDumpFile.flush();
         }
