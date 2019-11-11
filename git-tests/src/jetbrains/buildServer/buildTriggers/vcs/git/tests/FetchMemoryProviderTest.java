@@ -200,18 +200,23 @@ public class FetchMemoryProviderTest {
     }, "test debug info") {
       @Nullable
       @Override
-      public Integer getFreeRAM() {
+      protected Integer getFreeRAM() {
         return freeRAM;
       }
 
       @Override
-      public int getTCUsedApprox() {
+      protected int getTCUsedApprox() {
         return 1024;
       }
 
       @Override
-      public int getSystemDependentMaxXmx() {
+      protected int getSystemDependentMaxXmx() {
         return 4 * 1024;
+      }
+
+      @Override
+      protected int getDefaultStartXmx() {
+        return 1024;
       }
     };
   }

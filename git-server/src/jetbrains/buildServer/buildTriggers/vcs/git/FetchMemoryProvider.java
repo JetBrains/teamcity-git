@@ -124,7 +124,7 @@ public class FetchMemoryProvider implements Iterator<Integer> {
   }
 
   // approximation of how much memory server itself may need
-  public int getTCUsedApprox() {
+  protected int getTCUsedApprox() {
     return (int) ((Runtime.getRuntime().maxMemory() - Runtime.getRuntime().totalMemory()) / MB);
   }
 
@@ -155,7 +155,7 @@ public class FetchMemoryProvider implements Iterator<Integer> {
   }
 
   // https://www.oracle.com/technetwork/java/hotspotfaq-138619.html#gc_heap_32bit
-  public int getSystemDependentMaxXmx() {
+  protected int getSystemDependentMaxXmx() {
     if (SystemInfo.is32Bit) { // 32 bit Java
       if (SystemInfo.isWindows && System.getenv("ProgramFiles(x86)") == null) {  // 32 bit Windows
         return (int) Math.round(1.4 * 1024);
@@ -166,12 +166,12 @@ public class FetchMemoryProvider implements Iterator<Integer> {
   }
 
   @Nullable
-  public Integer getFreeRAM() {
+  protected Integer getFreeRAM() {
     final Long freeRamBytes = GitServerUtil.getFreePhysicalMemorySize();
     return freeRamBytes == null ? null : (int) (freeRamBytes / MB);
   }
 
-  private int getDefaultStartXmx() {
+  protected int getDefaultStartXmx() {
     // we borrow the logic from PluginConfigImpl.getFetchProcessMaxMemory to preserve the default behaviour
     try {
       Class.forName("com.sun.management.OperatingSystemMXBean");
