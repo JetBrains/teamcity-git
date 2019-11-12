@@ -212,7 +212,7 @@ public class FetchCommandImpl implements FetchCommand {
 
 
       final ExecResult result = gitResult.getExecResult();
-      final VcsException commandError = CommandLineUtil.getCommandLineError("git fetch",
+      VcsException commandError = CommandLineUtil.getCommandLineError("git fetch",
                                                                             " (repository dir: <TeamCity data dir>/system/caches/git/" +
                                                                             repository.getDirectory().getName() + ")",
                                                                             result, true, true);
@@ -229,6 +229,7 @@ public class FetchCommandImpl implements FetchCommand {
             clean(repository);
             return false;
           }
+          commandError = new VcsException("There is not enough memory for git fetch (last attempted -Xmx=" + xmx + "M). Please contact your system administrator", commandError);
         }
 
         if (gitResult.isTimeout()) {
