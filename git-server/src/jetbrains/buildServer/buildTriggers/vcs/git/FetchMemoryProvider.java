@@ -115,6 +115,8 @@ public class FetchMemoryProvider implements Iterator<Integer> {
       if (freeRAM == null) return next;
 
       final int maxXmx = freeRAM - getTCApprox();
+      if (maxXmx <= 0) return next;
+
       if (next >= maxXmx) {
         myIsLimitReached = true;
         if (isFirstAttempt() || myPrev < maxXmx) {
