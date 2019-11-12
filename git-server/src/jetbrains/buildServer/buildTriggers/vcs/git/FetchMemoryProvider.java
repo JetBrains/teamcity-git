@@ -48,6 +48,7 @@ public class FetchMemoryProvider implements Iterator<Integer> {
 
   @Nullable private Ref<Integer> myNext = null;
   @Nullable private Integer myPrev = null;
+  private boolean myIsLimitReached = false;
 
   public FetchMemoryProvider(@NotNull final XmxStorage storage,
                              @NotNull final ServerPluginConfig config,
@@ -93,36 +94,36 @@ public class FetchMemoryProvider implements Iterator<Integer> {
       debug("Automatic git fetch -Xmx setup is disabled. Using explicitly specified " + PluginConfigImpl.TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY + " internal property: " + myExplicitXmx + "M");
       return myExplicitXmx;
 
-    } else if (isAutoSetupDisabled()) {
-      return null;
-
-    } else if (isFirstAttempt()) {
-      Integer initial = myStorage.read();
-      debug(initial == null
-            ? "Using default initial git fetch -Xmx:" + (initial = getDefaultStartXmx()) + "M"
-            : "Using previously cached git fetch -Xmx: " + initial + "M");
-      return applyExplicitLimit(initial);
-
-    } else if (wasExplicitLimitReached() || wasSystemLimitReached()) {
+    } else if (isAutoSetupDisabled() || myIsLimitReached) {
       return null;
     }
 
-    final int next = (int)(myPrev * MULTIPLY_FACTOR);
+    Integer next;
+    if (isFirstAttempt()) {
+      next = myStorage.read();
+      debug(next == null
+            ? "Using default initial git fetch -Xmx:" + (next = getDefaultStartXmx()) + "M"
+            : "Using previously cached git fetch -Xmx: " + next + "M");
+    } else next = (int)(myPrev * MULTIPLY_FACTOR);
 
     if (myExplicitMaxXmx  == null) {
-      if (next > mySystemDependentMaxXmx) {
-        warn("git fetch -Xmx limit calculated based on the current system maximum: " + mySystemDependentMaxXmx + "M");
-        return mySystemDependentMaxXmx;
+      if (next >= mySystemDependentMaxXmx) {
+        return applySystemLimit(next);
       }
 
       final Integer freeRAM = getFreeRAM();
       if (freeRAM == null) return next;
 
       final int maxXmx = freeRAM - getTCApprox();
-      if (maxXmx <= myPrev) return null;
-      if (next > maxXmx) {
-        LOG.warn("Free RAM " + freeRAM + "M is considered not enough to start a new get fetch process with -Xmx: " + next + ". Looks like the system lacks memory. Please contact your system administrator.");
-        return maxXmx;
+      if (next >= maxXmx) {
+        myIsLimitReached = true;
+        if (isFirstAttempt() || myPrev < maxXmx) {
+          if (next > maxXmx) {
+            info("git fetch -Xmx limit calculated based on the current free RAM: " + maxXmx + "M");
+          }
+          return maxXmx;
+        }
+        return null;
       }
     }
     return applyExplicitLimit(next);
@@ -182,21 +183,25 @@ public class FetchMemoryProvider implements Iterator<Integer> {
 
   private int applyExplicitLimit(int xmx) {
     if (myExplicitMaxXmx == null) return xmx;
-    if (xmx > myExplicitMaxXmx) {
-      info("git fetch -Xmx: " + xmx + "M is limited by the explicitly specified " + PluginConfigImpl.TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY_LIMIT + " internal property: " + myExplicitMaxXmx + "M");
+    if (xmx >= myExplicitMaxXmx) {
+      myIsLimitReached = true;
+      if (xmx > myExplicitMaxXmx) {
+        info("git fetch -Xmx is limited by the explicitly specified " + PluginConfigImpl.TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY_LIMIT + " internal property: " + myExplicitMaxXmx + "M");
+      }
       return myExplicitMaxXmx;
     }
     return xmx;
   }
 
-  private boolean wasExplicitLimitReached() {
-    if (myExplicitMaxXmx == null || isFirstAttempt()) return false;
-    return myExplicitMaxXmx.equals(myPrev);
-  }
-
-  private boolean wasSystemLimitReached() {
-    if (myPrev == null) return false;
-    return myPrev.equals(mySystemDependentMaxXmx);
+  private int applySystemLimit(int xmx) {
+    if (xmx >= mySystemDependentMaxXmx) {
+      myIsLimitReached = true;
+      if (xmx > mySystemDependentMaxXmx) {
+        info("git fetch -Xmx limit calculated based on the current system maximum: " + mySystemDependentMaxXmx + "M");
+      }
+      return mySystemDependentMaxXmx;
+    }
+    return xmx;
   }
 
   private void debug(@NotNull String s) {

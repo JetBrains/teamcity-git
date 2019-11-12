@@ -21,7 +21,9 @@ import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -149,9 +151,85 @@ public class FetchMemoryProviderTest {
   }
 
   @Test
+  public void test_RAM_increase() throws Throwable {
+    then(getValues(null, null, null, 3 * 1024)).containsExactly(
+      1024, 1433, 2006, 2048
+    );
+    then(getValues(null, null, null, 4 * 1024)).containsExactly(
+      2048, 2867, 3072
+    );
+  }
+
+  @Test
+  public void test_RAM_decrease() throws Throwable {
+    then(getValues(null, null, null, 4 * 1024)).containsExactly(
+      1024, 1433, 2006, 2808, 3072
+    );
+    then(getValues(null, null, null, 3 * 1024)).containsExactly(
+      2048
+    );
+  }
+
+  @Test
   public void explicit_xmx_explicit_limit() throws Throwable {
     then(getValues("20G","2G", null, null)).containsExactly(20480).containsExactly(myStorage);
     then(getValues("512M", "2G", null, null)).containsExactly(512).containsExactly(myStorage);
+  }
+
+  @DataProvider(name = "test_storage_dp")
+  public static Object[][] createData() {
+    return new Object[][] {
+      new Object[] { 8 * 1024, 4 * 1024 },
+      new Object[] { null, 4 * 1024 },
+      new Object[] { 4000, 4000 - 1024 }
+    };
+  }
+  @Test(dataProvider = "test_storage_dp")
+  public void test_storage(@Nullable Integer freeRam, int maxXmx) {
+    {
+      final FetchMemoryProvider p1 = createProvider(null, null, freeRam);
+
+      Assert.assertTrue(p1.hasNext());
+      then(myStorage).isNull();
+
+      Assert.assertTrue(p1.hasNext());
+      then(myStorage).isNull();
+
+      then(p1.next()).isNotNull().isEqualTo(1024).isEqualTo(myStorage);
+      Assert.assertTrue(p1.hasNext());
+      then(myStorage).isEqualTo(1024);
+
+      then(p1.next()).isNotNull().isEqualTo(1433).isEqualTo(myStorage);
+      Assert.assertTrue(p1.hasNext());
+      then(myStorage).isEqualTo(1433);
+    }
+
+    {
+      final FetchMemoryProvider p2 = createProvider(null, null, freeRam);
+      Assert.assertTrue(p2.hasNext());
+      then(myStorage).isEqualTo(1433);
+
+      then(p2.next()).isNotNull().isEqualTo(1433).isEqualTo(myStorage);
+      Assert.assertTrue(p2.hasNext());
+      then(myStorage).isEqualTo(1433);
+
+      then(p2.next()).isNotNull().isEqualTo(2006).isEqualTo(myStorage);
+      Assert.assertTrue(p2.hasNext());
+      then(myStorage).isEqualTo(2006);
+
+      while (p2.hasNext()) p2.next();
+      then(myStorage).isEqualTo(maxXmx);
+    }
+
+    {
+      final FetchMemoryProvider p3 = createProvider(null, null, freeRam);
+      Assert.assertTrue(p3.hasNext());
+      then(myStorage).isEqualTo(maxXmx);
+
+      then(p3.next()).isNotNull().isEqualTo(maxXmx).isEqualTo(myStorage);
+      Assert.assertFalse(p3.hasNext());
+      then(myStorage).isEqualTo(maxXmx);
+    }
   }
 
   @NotNull
