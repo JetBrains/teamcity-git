@@ -69,9 +69,9 @@ public abstract class GitProcessStuckMonitor extends Thread {
         new StreamGobbler(new FileInputStream(procGcDump), null, "GcDump reader for" + commandLineLog);
       myCommandLineLog = commandLineLog;
 
-      myCriticalGcDurationSec = TeamCityProperties.getInteger("teamcity.git.fetch.process.interruption.criticalGcDurationSec", 60 * 5);
-      myCriticalMemoryUsagePercent = TeamCityProperties.getInteger("teamcity.git.fetch.process.interruption.criticalMemoryUsagePercent", 100);
-      myCriticalMemoryCleanedPercent = TeamCityProperties.getInteger("teamcity.git.fetch.process.interruption.criticalMemoryCleanedPercent", 0);
+      myCriticalGcDurationSec = TeamCityProperties.getInteger("teamcity.git.fetch.processMonitor.criticalGcDurationSec", 60 * 5);
+      myCriticalMemoryUsagePercent = TeamCityProperties.getInteger("teamcity.git.fetch.processMonitor.criticalMemoryUsagePercent", 100);
+      myCriticalMemoryCleanedPercent = TeamCityProperties.getInteger("teamcity.git.fetch.processMonitor.criticalMemoryCleanedPercent", 0);
       setName(NamedThreadUtil.getTcThreadPrefix() + "FetchInterrupter: " + myCommandLineLog);
     } catch (IOException e) {
       throw new VcsException("Fail to create fetch interrupter for " + commandLineLog);
@@ -85,7 +85,7 @@ public abstract class GitProcessStuckMonitor extends Thread {
   @Override
   public void run() {
     try {
-      if (!TeamCityProperties.getBoolean("teamcity.git.fetch.process.interruption.enable")) {
+      if (!TeamCityProperties.getBoolean("teamcity.git.fetch.processMonitor.enable")) {
         return;
       }
       myProcGcDump.start();
