@@ -36,10 +36,12 @@ import static org.assertj.core.api.BDDAssertions.then;
 public class FetchMemoryProviderTest {
 
   @Nullable private Integer myStorage;
+  private float myMultFactor;
 
   @BeforeMethod
   public void setUp() throws IOException {
     myStorage = null;
+    myMultFactor = PluginConfigImpl.FETCH_PROCESS_MAX_MEMORY_MULT_FACTOR_DEFAULT;
   }
 
   @Test
@@ -47,6 +49,12 @@ public class FetchMemoryProviderTest {
     then(getValues("20G",null, null, null)).containsExactly(20480).containsExactly(myStorage);
     then(getValues("512M", null, null, null)).containsExactly(512).containsExactly(myStorage);
     then(getValues("1G", null, null, null)).containsExactly(1024).containsExactly(myStorage);
+  }
+
+  @Test
+  public void increase_disabled() throws Throwable {
+    myMultFactor = 1;
+    then(getValues(null,null, null, null)).containsExactly(1024).containsExactly(myStorage);
   }
 
   @Test
@@ -274,6 +282,11 @@ public class FetchMemoryProviderTest {
       @Override
       public String getFetchProcessMaxMemory() {
         return "1024M";
+      }
+
+      @Override
+      public float getFetchProcessMemoryMultiplyFactor() {
+        return myMultFactor;
       }
     }, "test debug info") {
       @Nullable

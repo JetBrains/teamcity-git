@@ -88,6 +88,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
 
+  public static final float FETCH_PROCESS_MAX_MEMORY_MULT_FACTOR_DEFAULT = 1.4f;
+
   private final File myCachesDir;
   private final Set<String> myFetcherPropertyNames = setOf(TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS,
                                                            TEAMCITY_GIT_SSH_PROXY_TYPE,
@@ -620,5 +622,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
       return Collections.emptyList();
     String[] errors = errorsStr.split(",");
     return asList(errors);
+  }
+
+  @Override
+  public float getFetchProcessMemoryMultiplyFactor() {
+    return TeamCityProperties.getFloat("teamcity.git.fetch.process.max.memory.multiply.factor", FETCH_PROCESS_MAX_MEMORY_MULT_FACTOR_DEFAULT);
   }
 }

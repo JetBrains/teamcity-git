@@ -152,6 +152,11 @@ public class PluginConfigBuilder {
         return myDelegate.getMaximumFetchProcessMaxMemory();
       }
 
+      @Override
+      public float getFetchProcessMemoryMultiplyFactor() {
+        return myDelegate.getFetchProcessMemoryMultiplyFactor();
+      }
+
       public boolean isSeparateProcessForFetch() {
         return mySeparateProcessForFetch != null ? mySeparateProcessForFetch : myDelegate.isSeparateProcessForFetch();
       }

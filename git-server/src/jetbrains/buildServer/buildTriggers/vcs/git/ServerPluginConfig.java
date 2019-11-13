@@ -56,6 +56,8 @@ public interface ServerPluginConfig extends PluginConfig {
   @Nullable
   String getMaximumFetchProcessMaxMemory();
 
+  float getFetchProcessMemoryMultiplyFactor();
+
   boolean isSeparateProcessForFetch();
 
   boolean isSeparateProcessForPatch();

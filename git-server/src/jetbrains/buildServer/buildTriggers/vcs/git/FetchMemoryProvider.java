@@ -36,7 +36,6 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.MB;
 public class FetchMemoryProvider implements Iterator<Integer> {
 
   private static Logger LOG = Logger.getInstance(FetchMemoryProvider.class.getName());
-  private static double MULTIPLY_FACTOR = 1.4;
 
   @NotNull private final XmxStorage myStorage;
   @NotNull private final String myDebugInfo;
@@ -45,6 +44,8 @@ public class FetchMemoryProvider implements Iterator<Integer> {
   @Nullable private final Integer myExplicitMaxXmx;
 
   private final int mySystemDependentMaxXmx;
+  private final int myDefaultStartXmx;
+  private final float myMultFactor;
 
   @Nullable private Ref<Integer> myNext = null;
   @Nullable private Integer myPrev = null;
@@ -60,6 +61,8 @@ public class FetchMemoryProvider implements Iterator<Integer> {
     myExplicitMaxXmx = getInMB(config.getMaximumFetchProcessMaxMemory());
 
     mySystemDependentMaxXmx = getSystemDependentMaxXmx();
+    myDefaultStartXmx = getDefaultStartXmx();
+    myMultFactor = config.getFetchProcessMemoryMultiplyFactor();
   }
 
   public interface XmxStorage {
@@ -90,11 +93,15 @@ public class FetchMemoryProvider implements Iterator<Integer> {
 
   @Nullable
   private Integer getNext() {
-    if (isAutoSetupDisabled() && isFirstAttempt()) {
+    if (isExplicitXmxProvided() && isFirstAttempt()) {
       debug("Automatic git fetch -Xmx setup is disabled. Using explicitly specified " + PluginConfigImpl.TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY + " internal property: " + myExplicitXmx + "M");
       return myExplicitXmx;
 
-    } else if (isAutoSetupDisabled() || myIsLimitReached) {
+    } else if (isXmxIncreaseDisabled() && isFirstAttempt()) {
+      debug("Automatic git fetch -Xmx setup is disabled. Using default -Xmx: " + myDefaultStartXmx + "M");
+      return myDefaultStartXmx;
+
+    } else if (isExplicitXmxProvided() || isXmxIncreaseDisabled() || myIsLimitReached) {
       return null;
     }
 
@@ -104,7 +111,10 @@ public class FetchMemoryProvider implements Iterator<Integer> {
       debug(next == null
             ? "Using default initial git fetch -Xmx:" + (next = getDefaultStartXmx()) + "M"
             : "Using previously cached git fetch -Xmx: " + next + "M");
-    } else next = (int)(myPrev * MULTIPLY_FACTOR);
+    } else {
+      next = (int)(myPrev * myMultFactor);
+      info("Increased -Xmx value (limits not yet checked): " + next + "M");
+    }
 
     if (myExplicitMaxXmx  == null) {
       if (next >= mySystemDependentMaxXmx) {
@@ -142,8 +152,12 @@ public class FetchMemoryProvider implements Iterator<Integer> {
     return myPrev = xmx;
   }
 
-  private boolean isAutoSetupDisabled() {
+  private boolean isExplicitXmxProvided() {
     return myExplicitXmx != null;
+  }
+
+  private boolean isXmxIncreaseDisabled() {
+    return myMultFactor <= 1;
   }
 
   private boolean isFirstAttempt() {
