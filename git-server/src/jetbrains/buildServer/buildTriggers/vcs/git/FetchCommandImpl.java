@@ -42,6 +42,7 @@ import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -173,10 +174,8 @@ public class FetchCommandImpl implements FetchCommand {
       final Integer xmx = xmxProvider.next();
       final GeneralCommandLine cl = createFetcherCommandLine(repository, uri, xmx);
       final String commandLineString = cl.getCommandLineString();
-      final GitProcessExecutor processExecutor = new GitProcessExecutor(cl, procStream -> new StreamGobbler(procStream, null,
-                                                                                                            "StdOut for " +
-                                                                                                            commandLineString,
-                                                                                                            settings.createStdoutBuffer()));
+      final GitProcessExecutor processExecutor = new GitProcessExecutor(cl);
+
       processStuckMonitor = new GitProcessStuckMonitor(gcDump, xmx.longValue(), commandLineString) {
         @Override
         protected void stuckDetected() {
@@ -190,6 +189,8 @@ public class FetchCommandImpl implements FetchCommand {
       final GitProcessExecutor.GitExecResult gitResult = processExecutor.runProcess(
         getFetchProcessInputBytes(getAuthSettings(settings, teamcityPrivateKey), repository.getDirectory(), uri, specs, getDumpFile(repository, null), gcDump, gitPropertiesFile),
         myConfig.getFetchTimeout(),
+        settings.createStdoutBuffer(),
+        new ByteArrayOutputStream(),
         new GitProcessExecutor.ProcessExecutorAdapter() {
           @Override
           public void processStarted() {

@@ -25,6 +25,8 @@ import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.ByteArrayOutputStream;
+
 import static jetbrains.buildServer.SimpleCommandLineProcessRunner.getThreadNameCommandLine;
 import static jetbrains.buildServer.util.NamedThreadFactory.executeWithNewThreadName;
 
@@ -39,23 +41,25 @@ public class GitProcessExecutor {
   @NotNull private final ExecResult myEmptyResult;
   private volatile boolean myInterrupted = false;
 
-  public GitProcessExecutor(@NotNull final GeneralCommandLine commandLine,
-                            @NotNull final CommandLineExecutor.StreamGobblerFactory outputGobblerFactory) {
-    myCommandLineExecutor = new CommandLineExecutor(commandLine, null, outputGobblerFactory);
+  public GitProcessExecutor(@NotNull final GeneralCommandLine commandLine) {
+    myCommandLineExecutor = new CommandLineExecutor(commandLine);
     myCommandLine = commandLine.getCommandLineString();
 
     myEmptyResult = new ExecResult(SimpleCommandLineProcessRunner.getCharset(commandLine));
   }
 
   @NotNull
-  public GitExecResult runProcess(@NotNull final byte[] input, final int idleTimeout, @NotNull ProcessExecutorListener listener) {
+  public GitExecResult runProcess(@NotNull final byte[] input, final int idleTimeout,
+                                  @NotNull final ByteArrayOutputStream stdoutBuffer,
+                                  @NotNull final ByteArrayOutputStream stderrBuffer,
+                                  @NotNull ProcessExecutorListener listener) {
     final Ref<ExecResult> result = new Ref<>(myEmptyResult);
     final long startTime = System.currentTimeMillis();
 
     executeWithNewThreadName("Running child process: " + getThreadNameCommandLine(myCommandLine), () -> {
       try {
         listener.processStarted();
-        result.set(myCommandLineExecutor.runProcess(input, idleTimeout));
+        result.set(myCommandLineExecutor.runProcess(input, idleTimeout, stdoutBuffer, stderrBuffer));
         listener.processFinished();
       } catch (ExecutionException e) {
         result.get().setException(e);
