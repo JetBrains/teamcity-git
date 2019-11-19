@@ -20,10 +20,9 @@ import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.StreamGobbler;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessExecutor;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessStuckMonitor;
-import jetbrains.buildServer.buildTriggers.vcs.git.process.RepositoryFetchXmxStorage;
+import jetbrains.buildServer.buildTriggers.vcs.git.process.RepositoryXmxStorage;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -151,7 +150,7 @@ public class FetchCommandImpl implements FetchCommand {
                                       @NotNull URIish uri,
                                       @NotNull Collection<RefSpec> specs,
                                       @NotNull FetchSettings settings) throws VcsException {
-    final FetchMemoryProvider xmxProvider = new FetchMemoryProvider(new RepositoryFetchXmxStorage(repository), myConfig, getDebugInfo(repository, uri, specs));
+    final ProcessXmxProvider xmxProvider = new ProcessXmxProvider(new RepositoryXmxStorage(repository, "fetch"), myConfig, "fetch", getDebugInfo(repository, uri, specs));
     while (xmxProvider.hasNext()) {
       if (attemptFetchInSeparateProcess(xmxProvider, repository, uri, specs, settings)) break;
     }

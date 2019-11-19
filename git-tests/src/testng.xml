@@ -50,8 +50,8 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.WellKnownHostingsTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SSHCommandLineTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SubmoduleUrlResolverTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.FetchMemoryProviderTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RepositoryFetchXmxStorageTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ProcessXmxProviderTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RepositoryXmxStorageTest"/>
     </classes>
   </test>
 </suite>

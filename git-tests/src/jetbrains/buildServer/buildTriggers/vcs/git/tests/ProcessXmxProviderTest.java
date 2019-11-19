@@ -16,7 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.FetchMemoryProvider;
+import jetbrains.buildServer.buildTriggers.vcs.git.ProcessXmxProvider;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -33,7 +33,7 @@ import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
 
 @Test
-public class FetchMemoryProviderTest {
+public class ProcessXmxProviderTest {
 
   @Nullable private Integer myStorage;
   private float myMultFactor;
@@ -195,7 +195,7 @@ public class FetchMemoryProviderTest {
   @Test(dataProvider = "test_storage_dp")
   public void test_storage(@Nullable Integer freeRam, int maxXmx) {
     {
-      final FetchMemoryProvider p1 = createProvider(null, null, freeRam);
+      final ProcessXmxProvider p1 = createProvider(null, null, freeRam);
 
       Assert.assertTrue(p1.hasNext());
       then(myStorage).isNull();
@@ -213,7 +213,7 @@ public class FetchMemoryProviderTest {
     }
 
     {
-      final FetchMemoryProvider p2 = createProvider(null, null, freeRam);
+      final ProcessXmxProvider p2 = createProvider(null, null, freeRam);
       Assert.assertTrue(p2.hasNext());
       then(myStorage).isEqualTo(1433);
 
@@ -230,7 +230,7 @@ public class FetchMemoryProviderTest {
     }
 
     {
-      final FetchMemoryProvider p3 = createProvider(null, null, freeRam);
+      final ProcessXmxProvider p3 = createProvider(null, null, freeRam);
       Assert.assertTrue(p3.hasNext());
       then(myStorage).isEqualTo(maxXmx);
 
@@ -243,7 +243,7 @@ public class FetchMemoryProviderTest {
   @NotNull
   private List<Integer> getValues(@Nullable String explicitXmx, @Nullable final String maxXmx, @Nullable final Integer acceptedXmx, @Nullable final Integer freeRAM) throws VcsException {
     final ArrayList<Integer> res = new ArrayList<>();
-    final FetchMemoryProvider provider = createProvider(explicitXmx, maxXmx, freeRAM);
+    final ProcessXmxProvider provider = createProvider(explicitXmx, maxXmx, freeRAM);
     while (provider.hasNext()) {
       final Integer v = provider.next();
       res.add(v);
@@ -253,8 +253,8 @@ public class FetchMemoryProviderTest {
   }
 
   @NotNull
-  private FetchMemoryProvider createProvider(@Nullable final String explicitXmx, @Nullable final String maxXmx, @Nullable final Integer freeRAM) {
-    return new FetchMemoryProvider(new FetchMemoryProvider.XmxStorage() {
+  private ProcessXmxProvider createProvider(@Nullable final String explicitXmx, @Nullable final String maxXmx, @Nullable final Integer freeRAM) {
+    return new ProcessXmxProvider(new ProcessXmxProvider.XmxStorage() {
       @Nullable
       @Override
       public Integer read() {
@@ -288,7 +288,7 @@ public class FetchMemoryProviderTest {
       public float getFetchProcessMemoryMultiplyFactor() {
         return myMultFactor;
       }
-    }, "test debug info") {
+    }, "fetch", "test debug info") {
       @Nullable
       @Override
       protected Integer getFreeRAM() {

@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Ref;
 import com.intellij.openapi.util.SystemInfo;
+import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,17 +29,18 @@ import java.util.NoSuchElementException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.MB;
 
 /**
- * Provider of xmx value for separate fetch process.
+ * Provider of xmx value for separate fetch or patch process.
  *
  * @author vbedrosova
  * @since 2019.2
  */
-public class FetchMemoryProvider implements Iterator<Integer> {
+public class ProcessXmxProvider implements Iterator<Integer> {
 
-  private static Logger LOG = Logger.getInstance(FetchMemoryProvider.class.getName());
+  private static Logger LOG = Logger.getInstance(ProcessXmxProvider.class.getName());
 
   @NotNull private final XmxStorage myStorage;
   @NotNull private final String myDebugInfo;
+  @NotNull private final String myProcess;
 
   @Nullable private final Integer myExplicitXmx;
   @Nullable private final Integer myExplicitMaxXmx;
@@ -51,10 +53,12 @@ public class FetchMemoryProvider implements Iterator<Integer> {
   @Nullable private Integer myPrev = null;
   private boolean myIsLimitReached = false;
 
-  public FetchMemoryProvider(@NotNull final XmxStorage storage,
-                             @NotNull final ServerPluginConfig config,
-                             @NotNull final String debugInfo) {
+  public ProcessXmxProvider(@NotNull final XmxStorage storage,
+                            @NotNull final ServerPluginConfig config,
+                            @NotNull final String process,
+                            @NotNull final String debugInfo) {
     myStorage = storage;
+    myProcess = process;
     myDebugInfo = debugInfo;
 
     myExplicitXmx = getInMB(config.getExplicitFetchProcessMaxMemory());
@@ -94,11 +98,11 @@ public class FetchMemoryProvider implements Iterator<Integer> {
   @Nullable
   private Integer getNext() {
     if (isExplicitXmxProvided() && isFirstAttempt()) {
-      debug("Automatic git fetch -Xmx setup is disabled. Using explicitly specified " + PluginConfigImpl.TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY + " internal property: " + myExplicitXmx + "M");
+      debug("Automatic -Xmx setup is disabled. Using explicitly specified " + PluginConfigImpl.TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY + " internal property: " + myExplicitXmx + "M");
       return myExplicitXmx;
 
     } else if (isXmxIncreaseDisabled() && isFirstAttempt()) {
-      debug("Automatic git fetch -Xmx setup is disabled. Using default -Xmx: " + myDefaultStartXmx + "M");
+      debug("Automatic -Xmx setup is disabled. Using default -Xmx: " + myDefaultStartXmx + "M");
       return myDefaultStartXmx;
 
     } else if (isExplicitXmxProvided() || isXmxIncreaseDisabled() || myIsLimitReached) {
@@ -109,8 +113,8 @@ public class FetchMemoryProvider implements Iterator<Integer> {
     if (isFirstAttempt()) {
       next = myStorage.read();
       debug(next == null
-            ? "Using default initial git fetch -Xmx:" + (next = getDefaultStartXmx()) + "M"
-            : "Using previously cached git fetch -Xmx: " + next + "M");
+            ? "Using default initial -Xmx:" + (next = getDefaultStartXmx()) + "M"
+            : "Using previously cached -Xmx: " + next + "M");
     } else {
       next = (int)(myPrev * myMultFactor);
       info("Increased -Xmx value (limits not yet checked): " + next + "M");
@@ -131,7 +135,7 @@ public class FetchMemoryProvider implements Iterator<Integer> {
         myIsLimitReached = true;
         if (isFirstAttempt() || myPrev < maxXmx) {
           if (next > maxXmx) {
-            info("git fetch -Xmx limit calculated based on the current free RAM: " + maxXmx + "M");
+            info("-Xmx limit calculated based on the current free RAM: " + maxXmx + "M");
           }
           return maxXmx;
         }
@@ -202,7 +206,7 @@ public class FetchMemoryProvider implements Iterator<Integer> {
     if (xmx >= myExplicitMaxXmx) {
       myIsLimitReached = true;
       if (xmx > myExplicitMaxXmx) {
-        info("git fetch -Xmx is limited by the explicitly specified " + PluginConfigImpl.TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY_LIMIT + " internal property: " + myExplicitMaxXmx + "M");
+        info("-Xmx is limited by the explicitly specified " + PluginConfigImpl.TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY_LIMIT + " internal property: " + myExplicitMaxXmx + "M");
       }
       return myExplicitMaxXmx;
     }
@@ -213,7 +217,7 @@ public class FetchMemoryProvider implements Iterator<Integer> {
     if (xmx >= mySystemDependentMaxXmx) {
       myIsLimitReached = true;
       if (xmx > mySystemDependentMaxXmx) {
-        info("git fetch -Xmx limit calculated based on the current system maximum: " + mySystemDependentMaxXmx + "M");
+        info("-Xmx limit calculated based on the current system maximum: " + mySystemDependentMaxXmx + "M");
       }
       return mySystemDependentMaxXmx;
     }
@@ -234,6 +238,6 @@ public class FetchMemoryProvider implements Iterator<Integer> {
 
   @NotNull
   private String withInfo(@NotNull final String s) {
-    return s + " for " + myDebugInfo;
+    return "git " + myProcess + " process: " + StringUtil.decapitalize(s) + " for " + myDebugInfo;
   }
 }
