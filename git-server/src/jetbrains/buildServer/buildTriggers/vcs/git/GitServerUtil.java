@@ -455,10 +455,6 @@ public class GitServerUtil {
   }
 
 
-  public static boolean isCannotCreateJvmError(@NotNull ExecResult result) {
-    return result.getStderr().contains("Could not create the Java Virtual Machine");
-  }
-
   @Nullable
   public static Long convertMemorySizeToBytes(@Nullable String memory) {
     if (memory == null)

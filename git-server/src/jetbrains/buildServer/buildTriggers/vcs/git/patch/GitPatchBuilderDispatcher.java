@@ -18,10 +18,10 @@ package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
-import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessExecutor;
+import jetbrains.buildServer.buildTriggers.vcs.git.process.RepositoryXmxStorage;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -90,30 +90,45 @@ public final class GitPatchBuilderDispatcher {
   }
 
   private void buildPatchInSeparateProcess() throws Exception {
-    GeneralCommandLine patchCmd = createPatchCommandLine();
-    File patchFile = FileUtil.createTempFile("git", "patch");
-    File internalProperties = getPatchPropertiesFile();
-    try {
-      byte[] patchProcessInput = getInput(patchFile, internalProperties);
-      LineAwareByteArrayOutputStream.LineListener listener = new NoOpLineListener();
-      ByteArrayOutputStream stdout = new LineAwareByteArrayOutputStream(Charset.forName("UTF-8"), listener, false);
-      ByteArrayOutputStream stderr = new ByteArrayOutputStream();
-      ExecResult result = SimpleCommandLineProcessRunner.runCommandSecure(patchCmd, patchCmd.getCommandLineString(), patchProcessInput,
-                                                                          new PatchProcessEventsHandler(), stdout, stderr);
-      if (GitServerUtil.isCannotCreateJvmError(result)) {
-        String configuredXmx = myConfig.getExplicitFetchProcessMaxMemory();
-        Long xmxBytes = GitServerUtil.convertMemorySizeToBytes(configuredXmx);
-        Long physicalMemory = GitServerUtil.getFreePhysicalMemorySize();
-        if (xmxBytes != null && physicalMemory != null && xmxBytes > physicalMemory)
-          LOG.warn("Not enough memory for git patch, teamcity.git.fetch.process.max.memory=" + configuredXmx);
+    final String rootStr = LogUtil.describe(myGitRoot);
+    final ProcessXmxProvider xmxProvider = new ProcessXmxProvider(new RepositoryXmxStorage(myContext.getRepository(), "patch"), myConfig, "patch", rootStr);
+    Integer xmx = xmxProvider.getNextXmx();
+    while (xmx != null) {
+      final GeneralCommandLine patchCmd = createPatchCommandLine(xmx);
+      final File patchFile = FileUtil.createTempFile("git", "patch");
+      final File internalProperties = getPatchPropertiesFile();
+      try {
+        final ByteArrayOutputStream stdout = new LineAwareByteArrayOutputStream(Charset.forName("UTF-8"), new NoOpLineListener(), false);
+        final ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+
+        final GitProcessExecutor.GitExecResult gitResult = new GitProcessExecutor(patchCmd).runProcess(
+          getInput(patchFile, internalProperties),
+          myConfig.getPatchProcessIdleTimeoutSeconds(),
+          stdout, stderr,
+          new GitProcessExecutor.ProcessExecutorAdapter());
+
+        VcsException patchError = CommandLineUtil.getCommandLineError("build patch", gitResult.getExecResult());
+        if (patchError != null) {
+          if (gitResult.isOutOfMemoryError()) {
+            xmx = xmxProvider.getNextXmx();
+            if (xmx != null) {
+              FileUtil.delete(patchFile);
+              continue;
+            }
+            throw new VcsException("There is not enough memory for git patch (last attempted -Xmx" + xmx + "M). Please contact your system administrator", patchError);
+
+          } else if (gitResult.isTimeout()) {
+            throw new VcsException("git patch for root " + rootStr + " was idle for more than " + myConfig.getFetchTimeout() + " second(s), try increasing the timeout using the " + PluginConfigImpl.TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS + " property", patchError);
+          }
+          throw patchError;
+        }
+
+        new LowLevelPatcher(new FileInputStream(patchFile)).applyPatch(new NoExitLowLevelPatchTranslator(((PatchBuilderEx)myBuilder).getLowLevelBuilder()));
+        break;
+      } finally {
+        FileUtil.delete(patchFile);
+        FileUtil.delete(internalProperties);
       }
-      VcsException patchError = CommandLineUtil.getCommandLineError("build patch", result);
-      if (patchError != null)
-        throw patchError;
-      new LowLevelPatcher(new FileInputStream(patchFile)).applyPatch(new NoExitLowLevelPatchTranslator(((PatchBuilderEx)myBuilder).getLowLevelBuilder()));
-    } finally {
-      FileUtil.delete(patchFile);
-      FileUtil.delete(internalProperties);
     }
   }
 
@@ -167,12 +182,12 @@ public final class GitPatchBuilderDispatcher {
       .buildPatch();
   }
 
-  private GeneralCommandLine createPatchCommandLine() throws VcsException {
+  private GeneralCommandLine createPatchCommandLine(int xmx) throws VcsException {
     GeneralCommandLine cmd = new GeneralCommandLine();
     cmd.setWorkingDirectory(myContext.getRepository(myGitRoot).getDirectory());
     cmd.setExePath(myConfig.getFetchProcessJavaPath());
     cmd.addParameters(myConfig.getOptionsForSeparateProcess());
-    cmd.addParameters("-Xmx" + myConfig.getFetchProcessMaxMemory(),
+    cmd.addParameters("-Xmx" + xmx + "M",
                      "-cp", myConfig.getPatchClasspath(),
                      myConfig.getPatchBuilderClassName(),
                      myGitRoot.getRepositoryFetchURL().toString());
@@ -180,23 +195,13 @@ public final class GitPatchBuilderDispatcher {
     return cmd;
   }
 
-
-  private final class PatchProcessEventsHandler extends SimpleCommandLineProcessRunner.RunCommandEventsAdapter {
-    @Nullable
-    @Override
-    public Integer getOutputIdleSecondsTimeout() {
-      return myConfig.getPatchProcessIdleTimeoutSeconds();
-    }
-  }
-
-
-  private final class NoOpLineListener implements LineAwareByteArrayOutputStream.LineListener {
+  private static final class NoOpLineListener implements LineAwareByteArrayOutputStream.LineListener {
     public void newLineDetected(@NotNull final String line) {
     }
   }
 
 
-  private final class NoExitLowLevelPatchTranslator extends LowLevelPatchTranslator {
+  private static final class NoExitLowLevelPatchTranslator extends LowLevelPatchTranslator {
     public NoExitLowLevelPatchTranslator(@NotNull final LowLevelPatchBuilder builder) {
       super(builder);
     }
