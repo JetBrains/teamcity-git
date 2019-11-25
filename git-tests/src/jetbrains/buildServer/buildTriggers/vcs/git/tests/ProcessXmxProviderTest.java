@@ -16,12 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.ProcessXmxProvider;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.ProcessXmxProvider;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -197,45 +196,35 @@ public class ProcessXmxProviderTest {
     {
       final ProcessXmxProvider p1 = createProvider(null, null, freeRam);
 
-      Assert.assertTrue(p1.hasNext());
       then(myStorage).isNull();
 
-      Assert.assertTrue(p1.hasNext());
-      then(myStorage).isNull();
-
-      then(p1.next()).isNotNull().isEqualTo(1024).isEqualTo(myStorage);
-      Assert.assertTrue(p1.hasNext());
+      then(p1.getNextXmx()).isNotNull().isEqualTo(1024).isEqualTo(myStorage);
       then(myStorage).isEqualTo(1024);
 
-      then(p1.next()).isNotNull().isEqualTo(1433).isEqualTo(myStorage);
-      Assert.assertTrue(p1.hasNext());
+      then(p1.getNextXmx()).isNotNull().isEqualTo(1433).isEqualTo(myStorage);
       then(myStorage).isEqualTo(1433);
     }
 
     {
       final ProcessXmxProvider p2 = createProvider(null, null, freeRam);
-      Assert.assertTrue(p2.hasNext());
       then(myStorage).isEqualTo(1433);
 
-      then(p2.next()).isNotNull().isEqualTo(1433).isEqualTo(myStorage);
-      Assert.assertTrue(p2.hasNext());
+      then(p2.getNextXmx()).isNotNull().isEqualTo(1433).isEqualTo(myStorage);
       then(myStorage).isEqualTo(1433);
 
-      then(p2.next()).isNotNull().isEqualTo(2006).isEqualTo(myStorage);
-      Assert.assertTrue(p2.hasNext());
+      then(p2.getNextXmx()).isNotNull().isEqualTo(2006).isEqualTo(myStorage);
       then(myStorage).isEqualTo(2006);
 
-      while (p2.hasNext()) p2.next();
+      Integer xmx = p2.getNextXmx();
+      while (xmx != null) xmx = p2.getNextXmx();
       then(myStorage).isEqualTo(maxXmx);
     }
 
     {
       final ProcessXmxProvider p3 = createProvider(null, null, freeRam);
-      Assert.assertTrue(p3.hasNext());
       then(myStorage).isEqualTo(maxXmx);
 
-      then(p3.next()).isNotNull().isEqualTo(maxXmx).isEqualTo(myStorage);
-      Assert.assertFalse(p3.hasNext());
+      then(p3.getNextXmx()).isNotNull().isEqualTo(maxXmx).isEqualTo(myStorage);
       then(myStorage).isEqualTo(maxXmx);
     }
   }
@@ -244,10 +233,11 @@ public class ProcessXmxProviderTest {
   private List<Integer> getValues(@Nullable String explicitXmx, @Nullable final String maxXmx, @Nullable final Integer acceptedXmx, @Nullable final Integer freeRAM) throws VcsException {
     final ArrayList<Integer> res = new ArrayList<>();
     final ProcessXmxProvider provider = createProvider(explicitXmx, maxXmx, freeRAM);
-    while (provider.hasNext()) {
-      final Integer v = provider.next();
+    Integer v = provider.getNextXmx();
+    while (v != null) {
       res.add(v);
       if (acceptedXmx != null && v >= acceptedXmx) break;
+      v = provider.getNextXmx();
     }
     return res;
   }

@@ -150,116 +150,105 @@ public class FetchCommandImpl implements FetchCommand {
                                       @NotNull URIish uri,
                                       @NotNull Collection<RefSpec> specs,
                                       @NotNull FetchSettings settings) throws VcsException {
-    final ProcessXmxProvider xmxProvider = new ProcessXmxProvider(new RepositoryXmxStorage(repository, "fetch"), myConfig, "fetch", getDebugInfo(repository, uri, specs));
-    while (xmxProvider.hasNext()) {
-      if (attemptFetchInSeparateProcess(xmxProvider, repository, uri, specs, settings)) break;
-    }
-  }
+    final String debugInfo = getDebugInfo(repository, uri, specs);
+    final ProcessXmxProvider xmxProvider = new ProcessXmxProvider(new RepositoryXmxStorage(repository, "fetch"), myConfig, "fetch", debugInfo);
+    Integer xmx = xmxProvider.getNextXmx();
+    while (xmx != null) {
+      File gitPropertiesFile = null;
+      File teamcityPrivateKey = null;
+      GitProcessStuckMonitor processStuckMonitor = null;
+      try {
 
-  private boolean attemptFetchInSeparateProcess(@NotNull Iterator<Integer> xmxProvider,
-                                                @NotNull Repository repository,
-                                                @NotNull URIish uri,
-                                                @NotNull Collection<RefSpec> specs,
-                                                @NotNull FetchSettings settings) throws VcsException {
-    File gitPropertiesFile = null;
-    File teamcityPrivateKey = null;
-    GitProcessStuckMonitor processStuckMonitor = null;
-    try {
+        File gcDump = getDumpFile(repository, "gc");
+        gitPropertiesFile = myFetcherProperties.getPropertiesFile();
+        teamcityPrivateKey = getTeamCityPrivateKey(settings.getAuthSettings());
 
-      File gcDump = getDumpFile(repository, "gc");
-      gitPropertiesFile = myFetcherProperties.getPropertiesFile();
-      teamcityPrivateKey = getTeamCityPrivateKey(settings.getAuthSettings());
+        final GeneralCommandLine cl = createFetcherCommandLine(repository, uri, xmx);
+        final String commandLineString = cl.getCommandLineString();
+        final GitProcessExecutor processExecutor = new GitProcessExecutor(cl);
 
-      final Integer xmx = xmxProvider.next();
-      final GeneralCommandLine cl = createFetcherCommandLine(repository, uri, xmx);
-      final String commandLineString = cl.getCommandLineString();
-      final GitProcessExecutor processExecutor = new GitProcessExecutor(cl);
-
-      processStuckMonitor = new GitProcessStuckMonitor(gcDump, xmx.longValue(), commandLineString) {
-        @Override
-        protected void stuckDetected() {
-          processExecutor.interrupt();
-        }
-      };
-      processStuckMonitor.start();
-
-      final String debugInfo = getDebugInfo(repository, uri, specs);
-
-      final GitProcessExecutor.GitExecResult gitResult = processExecutor.runProcess(
-        getFetchProcessInputBytes(getAuthSettings(settings, teamcityPrivateKey), repository.getDirectory(), uri, specs, getDumpFile(repository, null), gcDump, gitPropertiesFile),
-        myConfig.getFetchTimeout(),
-        settings.createStdoutBuffer(),
-        new ByteArrayOutputStream(),
-        new GitProcessExecutor.ProcessExecutorAdapter() {
+        processStuckMonitor = new GitProcessStuckMonitor(gcDump, xmx.longValue(), commandLineString) {
           @Override
-          public void processStarted() {
-            if (LOG.isDebugEnabled()) LOG.debug("Fetch process for " + debugInfo + " started in separate process with command line: " + commandLineString);
-            settings.getProgress().reportProgress("git fetch " + uri);
+          protected void stuckDetected() {
+            processExecutor.interrupt();
+          }
+        };
+        processStuckMonitor.start();
+
+        final GitProcessExecutor.GitExecResult gitResult = processExecutor.runProcess(
+          getFetchProcessInputBytes(getAuthSettings(settings, teamcityPrivateKey), repository.getDirectory(), uri, specs, getDumpFile(repository, null), gcDump, gitPropertiesFile),
+          myConfig.getFetchTimeout(),
+          settings.createStdoutBuffer(),
+          new ByteArrayOutputStream(),
+          new GitProcessExecutor.ProcessExecutorAdapter() {
+            @Override
+            public void processStarted() {
+              if (LOG.isDebugEnabled()) LOG.debug("git fetch process for " + debugInfo + " started in separate process with command line: " + commandLineString);
+              settings.getProgress().reportProgress("git fetch " + uri);
+            }
+
+            @Override
+            public void processFinished() {
+              if (LOG.isDebugEnabled()) LOG.debug("git fetch process for " + debugInfo + " finished");
+              settings.getProgress().reportProgress("git fetch " + uri + " finished");
+            }
+
+            @Override
+            public void processFailed(@NotNull final ExecutionException e) {
+              if (LOG.isDebugEnabled()) LOG.debug("git fetch process for " + debugInfo + " failed");
+              settings.getProgress().reportProgress("git fetch " + uri + " failed");
+            }
+          });
+
+
+        final ExecResult result = gitResult.getExecResult();
+        VcsException commandError = CommandLineUtil.getCommandLineError("git fetch",
+                                                                        " (repository dir: <TeamCity data dir>/system/caches/git/" +
+                                                                        repository.getDirectory().getName() + ")",
+                                                                        result, true, true);
+        if (commandError != null) {
+          commandError.setRecoverable(isRecoverable(commandError));
+
+          /* if the process had not enough memory or we killed it because gc */
+          if (gitResult.isOutOfMemoryError() || gitResult.isInterrupted()) {
+            xmx = xmxProvider.getNextXmx();
+            if (xmx != null) {
+              clean(repository);
+              continue;
+            }
+            commandError = new VcsException("There is not enough memory for git fetch (last attempted -Xmx" + xmx + "M). Please contact your system administrator", commandError);
           }
 
-          @Override
-          public void processFinished() {
-            if (LOG.isDebugEnabled()) LOG.debug("Fetch process for " + debugInfo + " finished");
-            settings.getProgress().reportProgress("git fetch " + uri + " finished");
+          LOG.info("git fetch process failed for: " + uri + " in directory: " + repository.getDirectory() + ", took " + gitResult.getDuration() + "ms");
+
+          if (gitResult.isTimeout()) {
+            logTimeout(debugInfo, getDumpFile(repository, null));
           }
 
-          @Override
-          public void processFailed(@NotNull final ExecutionException e) {
-            if (LOG.isDebugEnabled()) LOG.debug("Fetch process for " + debugInfo + " failed");
-            settings.getProgress().reportProgress("git fetch " + uri + " failed");
-          }
-        });
-
-
-      final ExecResult result = gitResult.getExecResult();
-      VcsException commandError = CommandLineUtil.getCommandLineError("git fetch",
-                                                                            " (repository dir: <TeamCity data dir>/system/caches/git/" +
-                                                                            repository.getDirectory().getName() + ")",
-                                                                            result, true, true);
-      if (commandError != null) {
-
-        LOG.info("Git fetch process failed for: " + uri + " in directory: " + repository.getDirectory() + ", took " + gitResult.getDuration() + "ms");
-        commandError.setRecoverable(isRecoverable(commandError));
-
-        /* if the process had not enough memory or we kill it because gc */
-        if (gitResult.isOutOfMemoryError() || gitResult.isInterrupted()) {
-          final boolean canIncreaseXmx = xmxProvider.hasNext();
-          LOG.warn("There is not enough memory for git fetch (" + xmx + "M)" + (canIncreaseXmx ? ", will retry with increased value" : ". Please contact your system administrator."));
-          if (canIncreaseXmx) {
-            clean(repository);
-            return false;
-          }
-          commandError = new VcsException("There is not enough memory for git fetch (last attempted -Xmx=" + xmx + "M). Please contact your system administrator", commandError);
+          clean(repository);
+          throw commandError;
         }
 
-        if (gitResult.isTimeout()) {
-          logTimeout(debugInfo, getDumpFile(repository, null));
+        LOG.info("git fetch process finished for: " + uri + " in directory: " + repository.getDirectory() + ", took " + gitResult.getDuration() + "ms");
+
+        if (result.getStderr().length() > 0) {
+          LOG.warn("Error output produced by git fetch:\n" + result.getStderr());
         }
 
-        clean(repository);
-        throw commandError;
-      }
-
-      LOG.info("Git fetch process finished for: " + uri + " in directory: " + repository.getDirectory() + ", took " + gitResult.getDuration() + "ms");
-
-      if (result.getStderr().length() > 0) {
-        LOG.warn("Error output produced by git fetch:\n" + result.getStderr());
-      }
-
-      LOG.debug("Fetch process output:\n" + result.getStdout());
-    } finally {
-      if (teamcityPrivateKey != null) {
-        FileUtil.delete(teamcityPrivateKey);
-      }
-      if (gitPropertiesFile != null) {
-        FileUtil.delete(gitPropertiesFile);
-      }
-      if (processStuckMonitor != null) {
-        processStuckMonitor.finish();
+        LOG.debug("git fetch process output:\n" + result.getStdout());
+        break;
+      } finally {
+        if (teamcityPrivateKey != null) {
+          FileUtil.delete(teamcityPrivateKey);
+        }
+        if (gitPropertiesFile != null) {
+          FileUtil.delete(gitPropertiesFile);
+        }
+        if (processStuckMonitor != null) {
+          processStuckMonitor.finish();
+        }
       }
     }
-
-    return true;
   }
 
   @NotNull
@@ -310,10 +299,10 @@ public class FetchCommandImpl implements FetchCommand {
 
   private void logTimeout(@NotNull String debugInfo, @NotNull File threadDump) {
     StringBuilder message = new StringBuilder();
-    message.append("Fetch in root ").append(debugInfo)
-      .append(" took more than ")
+    message.append("git fetch for root ").append(debugInfo)
+      .append(" was idle for more than ")
       .append(myConfig.getFetchTimeout())
-      .append(" second(s), try increasing a timeout using the " + PluginConfigImpl.TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS + " property.");
+      .append(" second(s), try increasing the timeout using the " + PluginConfigImpl.TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS + " property.");
     if (threadDump.exists())
       message.append(" Fetch progress details can be found in ").append(threadDump.getAbsolutePath());
     LOG.warn(message.toString());
@@ -388,7 +377,7 @@ public class FetchCommandImpl implements FetchCommand {
     for (RefSpec spec : refSpecs) {
       sb.append(spec).append(" ");
     }
-    return " (" + (db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"") + uri.toString() + "#" + sb.toString() + ")";
+    return "(" + (db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"") + uri.toString() + "#" + sb.toString() + ")";
   }
 
 

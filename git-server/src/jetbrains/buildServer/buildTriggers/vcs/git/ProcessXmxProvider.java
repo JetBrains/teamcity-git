@@ -17,14 +17,10 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.util.Ref;
 import com.intellij.openapi.util.SystemInfo;
 import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Iterator;
-import java.util.NoSuchElementException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.MB;
 
@@ -34,7 +30,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.MB;
  * @author vbedrosova
  * @since 2019.2
  */
-public class ProcessXmxProvider implements Iterator<Integer> {
+public class ProcessXmxProvider {
 
   private static Logger LOG = Logger.getInstance(ProcessXmxProvider.class.getName());
 
@@ -49,7 +45,6 @@ public class ProcessXmxProvider implements Iterator<Integer> {
   private final int myDefaultStartXmx;
   private final float myMultFactor;
 
-  @Nullable private Ref<Integer> myNext = null;
   @Nullable private Integer myPrev = null;
   private boolean myIsLimitReached = false;
 
@@ -77,22 +72,9 @@ public class ProcessXmxProvider implements Iterator<Integer> {
     void write(@Nullable Integer xmx);
   }
 
-  @Override
-  public boolean hasNext() {
-    if (myNext == null) {
-      myNext = new Ref<>(getNext());
-    }
-    return myNext.get() != null;
-  }
-
-  @Override
-  public Integer next() {
-    if (hasNext() && myNext != null) {
-      final Integer next = myNext.get();
-      myNext = null;
-      return saveAndReturn(next);
-    }
-    throw new NoSuchElementException();
+  @Nullable
+  public Integer getNextXmx() {
+    return saveAndReturn(logIncreasedXmx(getNext()));
   }
 
   @Nullable
@@ -113,11 +95,10 @@ public class ProcessXmxProvider implements Iterator<Integer> {
     if (isFirstAttempt()) {
       next = myStorage.read();
       debug(next == null
-            ? "Using default initial -Xmx:" + (next = getDefaultStartXmx()) + "M"
+            ? "Using default initial -Xmx: " + (next = getDefaultStartXmx()) + "M"
             : "Using previously cached -Xmx: " + next + "M");
     } else {
       next = (int)(myPrev * myMultFactor);
-      info("Increased -Xmx value (limits not yet checked): " + next + "M");
     }
 
     if (myExplicitMaxXmx  == null) {
@@ -150,8 +131,9 @@ public class ProcessXmxProvider implements Iterator<Integer> {
     return (int) ((Runtime.getRuntime().maxMemory() - Runtime.getRuntime().totalMemory()) / MB);
   }
 
-  @NotNull
-  private Integer saveAndReturn(@NotNull Integer xmx) {
+  @Nullable
+  private Integer saveAndReturn(@Nullable Integer xmx) {
+    if (xmx == null) return null;
     myStorage.write(xmx);
     return myPrev = xmx;
   }
@@ -224,12 +206,21 @@ public class ProcessXmxProvider implements Iterator<Integer> {
     return xmx;
   }
 
+  @Nullable
+  private Integer logIncreasedXmx(@Nullable Integer xmx) {
+    if (xmx == null) return null;
+    if (myPrev != null && xmx > myPrev) {
+      info("There is not enough memory (attempted -Xmx" + myPrev + "M), will use increased -Xmx=" + xmx + "M");
+    }
+    return xmx;
+  }
+
   private void debug(@NotNull String s) {
     LOG.debug(withInfo(s));
   }
 
   private void info(@NotNull String s) {
-    LOG.warn(withInfo(s));
+    LOG.info(withInfo(s));
   }
 
   private void warn(@NotNull String s) {
@@ -238,6 +229,6 @@ public class ProcessXmxProvider implements Iterator<Integer> {
 
   @NotNull
   private String withInfo(@NotNull final String s) {
-    return "git " + myProcess + " process: " + StringUtil.decapitalize(s) + " for " + myDebugInfo;
+    return "git " + myProcess + " process: " + StringUtil.decapitalize(s) + " " + myDebugInfo;
   }
 }
