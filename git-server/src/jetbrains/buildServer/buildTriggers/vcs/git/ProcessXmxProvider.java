@@ -74,28 +74,28 @@ public class ProcessXmxProvider {
 
   @Nullable
   public Integer getNextXmx() {
-    return saveAndReturn(logIncreasedXmx(getNext()));
-  }
-
-  @Nullable
-  private Integer getNext() {
     if (isExplicitXmxProvided() && isFirstAttempt()) {
       debug("Automatic -Xmx setup is disabled. Using explicitly specified " + PluginConfigImpl.TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY + " internal property: " + myExplicitXmx + "M");
-      return myExplicitXmx;
+      return removeFromStorageAndReturn(myExplicitXmx);
 
     } else if (isXmxIncreaseDisabled() && isFirstAttempt()) {
       debug("Automatic -Xmx setup is disabled. Using default -Xmx: " + myDefaultStartXmx + "M");
-      return myDefaultStartXmx;
+      return removeFromStorageAndReturn(myDefaultStartXmx);
 
     } else if (isExplicitXmxProvided() || isXmxIncreaseDisabled() || myIsLimitReached) {
       return null;
     }
 
+    return saveAndReturn(logIncreasedXmx(getNext()));
+  }
+
+  @Nullable
+  private Integer getNext() {
     Integer next;
     if (isFirstAttempt()) {
       next = myStorage.read();
       debug(next == null
-            ? "Using default initial -Xmx: " + (next = getDefaultStartXmx()) + "M"
+            ? "Using default initial -Xmx: " + (next = myDefaultStartXmx) + "M"
             : "Using previously cached -Xmx: " + next + "M");
     } else {
       next = (int)(myPrev * myMultFactor);
@@ -135,6 +135,11 @@ public class ProcessXmxProvider {
   private Integer saveAndReturn(@Nullable Integer xmx) {
     if (xmx == null) return null;
     myStorage.write(xmx);
+    return myPrev = xmx;
+  }
+
+  private int removeFromStorageAndReturn(int xmx) {
+    myStorage.write(null);
     return myPrev = xmx;
   }
 

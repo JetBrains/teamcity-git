@@ -45,15 +45,21 @@ public class ProcessXmxProviderTest {
 
   @Test
   public void explicit_xmx() throws Throwable {
-    then(getValues("20G",null, null, null)).containsExactly(20480).containsExactly(myStorage);
-    then(getValues("512M", null, null, null)).containsExactly(512).containsExactly(myStorage);
-    then(getValues("1G", null, null, null)).containsExactly(1024).containsExactly(myStorage);
+    myStorage = 2048;
+    then(getValues("20G",null, null, null)).containsExactly(20480);
+    then(myStorage).isNull();
+    then(getValues("512M", null, null, null)).containsExactly(512);
+    then(myStorage).isNull();
+    then(getValues("1G", null, null, null)).containsExactly(1024);
+    then(myStorage).isNull();
   }
 
   @Test
   public void increase_disabled() throws Throwable {
     myMultFactor = 1;
-    then(getValues(null,null, null, null)).containsExactly(1024).containsExactly(myStorage);
+    myStorage = 2048;
+    then(getValues(null,null, null, null)).containsExactly(1024);
+    then(myStorage).isNull();
   }
 
   @Test
@@ -179,8 +185,11 @@ public class ProcessXmxProviderTest {
 
   @Test
   public void explicit_xmx_explicit_limit() throws Throwable {
-    then(getValues("20G","2G", null, null)).containsExactly(20480).containsExactly(myStorage);
-    then(getValues("512M", "2G", null, null)).containsExactly(512).containsExactly(myStorage);
+    myStorage = 2048;
+    then(getValues("20G","2G", null, null)).containsExactly(20480);
+    then(myStorage).isNull();
+    then(getValues("512M", "2G", null, null)).containsExactly(512);
+    then(myStorage).isNull();
   }
 
   @DataProvider(name = "test_storage_dp")
