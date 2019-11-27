@@ -91,7 +91,7 @@ public final class GitPatchBuilderDispatcher {
 
   private void buildPatchInSeparateProcess() throws Exception {
     final String rootStr = LogUtil.describe(myGitRoot);
-    final ProcessXmxProvider xmxProvider = new ProcessXmxProvider(new RepositoryXmxStorage(myContext.getRepository(), "patch"), myConfig, "patch", rootStr);
+    final ProcessXmxProvider xmxProvider = new ProcessXmxProvider(new RepositoryXmxStorage(myContext.getRepository(), "patch"), myConfig, "patch", "(root: " + rootStr + ")");
     Integer xmx = xmxProvider.getNextXmx();
     while (xmx != null) {
       final GeneralCommandLine patchCmd = createPatchCommandLine(xmx);
