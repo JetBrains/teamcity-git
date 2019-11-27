@@ -89,7 +89,7 @@ public class ProcessXmxProvider {
     return saveAndReturn(logIncreasedXmx(getNext()));
   }
 
-  @Nullable
+  @NotNull
   private Integer getNext() {
     Integer next;
     if (isFirstAttempt()) {
@@ -101,34 +101,7 @@ public class ProcessXmxProvider {
       next = (int)(myPrev * myMultFactor);
     }
 
-    if (myExplicitMaxXmx  == null) {
-      if (next >= mySystemDependentMaxXmx) {
-        return applySystemLimit(next);
-      }
-
-      final Integer freeRAM = getFreeRAM();
-      if (freeRAM == null) return next;
-
-      final int maxXmx = freeRAM - getTCApprox();
-      if (maxXmx <= 0) return next;
-
-      if (next >= maxXmx) {
-        myIsLimitReached = true;
-        if (isFirstAttempt() || myPrev < maxXmx) {
-          if (next > maxXmx) {
-            info("-Xmx limit calculated based on the current free RAM: " + maxXmx + "M");
-          }
-          return maxXmx;
-        }
-        return null;
-      }
-    }
-    return applyExplicitLimit(next);
-  }
-
-  // approximation of how much memory server itself may need
-  protected int getTCApprox() {
-    return (int) ((Runtime.getRuntime().maxMemory() - Runtime.getRuntime().totalMemory()) / MB);
+    return myExplicitMaxXmx == null ? applySystemLimit(next) : applyExplicitLimit(next);
   }
 
   @Nullable
@@ -165,12 +138,6 @@ public class ProcessXmxProvider {
     if (SystemInfo.is64Bit) return 4 * 1024;
     if (SystemInfo.isWindows) return 1024; //x86 Windows
     return 2 * 1048; //x86 other OS
-  }
-
-  @Nullable
-  protected Integer getFreeRAM() {
-    final Long freeRamBytes = GitServerUtil.getFreePhysicalMemorySize();
-    return freeRamBytes == null ? null : (int) (freeRamBytes / MB);
   }
 
   protected int getDefaultStartXmx() {

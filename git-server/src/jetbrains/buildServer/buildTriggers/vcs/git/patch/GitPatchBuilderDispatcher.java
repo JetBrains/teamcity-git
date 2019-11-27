@@ -110,8 +110,9 @@ public final class GitPatchBuilderDispatcher {
         VcsException patchError = CommandLineUtil.getCommandLineError("build patch", gitResult.getExecResult());
         if (patchError != null) {
           if (gitResult.isOutOfMemoryError()) {
-            xmx = xmxProvider.getNextXmx();
-            if (xmx != null) {
+            final Integer nextXmx = xmxProvider.getNextXmx();
+            if (nextXmx != null) {
+              xmx = nextXmx;
               FileUtil.delete(patchFile);
               continue;
             }

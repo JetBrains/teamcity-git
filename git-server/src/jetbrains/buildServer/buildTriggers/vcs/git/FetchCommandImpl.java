@@ -211,8 +211,9 @@ public class FetchCommandImpl implements FetchCommand {
 
           /* if the process had not enough memory or we killed it because gc */
           if (gitResult.isOutOfMemoryError() || gitResult.isInterrupted()) {
-            xmx = xmxProvider.getNextXmx();
-            if (xmx != null) {
+            final Integer nextXmx = xmxProvider.getNextXmx();
+            if (nextXmx != null) {
+              xmx = nextXmx;
               clean(repository);
               continue;
             }

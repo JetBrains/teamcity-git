@@ -63,28 +63,11 @@ public class ProcessXmxProviderTest {
   }
 
   @Test
-  public void free_RAM_all() throws Throwable {
-    then(getValues(null, null, null, 3 * 1024)).containsExactly(
-      1024, 1433, 2006, 2048
-    );
-    then(myStorage).isEqualTo(2048);
-  }
-
-  @Test
   public void no_cache() throws Throwable {
     then(getValues(null, null, 2048, 8 * 1024)).containsExactly(
       1024, 1433, 2006, 2808
     );
     then(myStorage).isEqualTo(2808);
-  }
-
-  @Test
-  public void free_RAM_with_cache() throws Throwable {
-    myStorage = 512;
-    then(getValues(null, null, null, 3 * 1024)).containsExactly(
-      512, 716, 1002, 1402, 1962, 2048
-    );
-    then(myStorage).isEqualTo(2048);
   }
 
   @Test
@@ -164,26 +147,6 @@ public class ProcessXmxProviderTest {
   }
 
   @Test
-  public void test_RAM_increase() throws Throwable {
-    then(getValues(null, null, null, 3 * 1024)).containsExactly(
-      1024, 1433, 2006, 2048
-    );
-    then(getValues(null, null, null, 4 * 1024)).containsExactly(
-      2048, 2867, 3072
-    );
-  }
-
-  @Test
-  public void test_RAM_decrease() throws Throwable {
-    then(getValues(null, null, null, 4 * 1024)).containsExactly(
-      1024, 1433, 2006, 2808, 3072
-    );
-    then(getValues(null, null, null, 3 * 1024)).containsExactly(
-      2048
-    );
-  }
-
-  @Test
   public void explicit_xmx_explicit_limit() throws Throwable {
     myStorage = 2048;
     then(getValues("20G","2G", null, null)).containsExactly(20480);
@@ -197,7 +160,6 @@ public class ProcessXmxProviderTest {
     return new Object[][] {
       new Object[] { 8 * 1024, 4 * 1024 },
       new Object[] { null, 4 * 1024 },
-      new Object[] { 4000, 4000 - 1024 }
     };
   }
   @Test(dataProvider = "test_storage_dp")
@@ -215,7 +177,7 @@ public class ProcessXmxProviderTest {
     }
 
     {
-      final ProcessXmxProvider p2 = createProvider(null, null, freeRam);
+      final ProcessXmxProvider p2 = createProvider(null, "", freeRam);
       then(myStorage).isEqualTo(1433);
 
       then(p2.getNextXmx()).isNotNull().isEqualTo(1433).isEqualTo(myStorage);
@@ -230,7 +192,7 @@ public class ProcessXmxProviderTest {
     }
 
     {
-      final ProcessXmxProvider p3 = createProvider(null, null, freeRam);
+      final ProcessXmxProvider p3 = createProvider(null, "", freeRam);
       then(myStorage).isEqualTo(maxXmx);
 
       then(p3.getNextXmx()).isNotNull().isEqualTo(maxXmx).isEqualTo(myStorage);
@@ -288,17 +250,6 @@ public class ProcessXmxProviderTest {
         return myMultFactor;
       }
     }, "fetch", "test debug info") {
-      @Nullable
-      @Override
-      protected Integer getFreeRAM() {
-        return freeRAM;
-      }
-
-      @Override
-      protected int getTCApprox() {
-        return 1024;
-      }
-
       @Override
       protected int getSystemDependentMaxXmx() {
         return 4 * 1024;
