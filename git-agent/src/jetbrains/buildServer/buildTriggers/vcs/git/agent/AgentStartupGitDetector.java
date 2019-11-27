@@ -25,6 +25,7 @@ import jetbrains.buildServer.agent.AgentLifeCycleListener;
 import jetbrains.buildServer.agent.BuildAgent;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.util.EventDispatcher;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -113,6 +114,7 @@ public class AgentStartupGitDetector extends AgentLifeCycleAdapter {
       cmd.setPassParentEnvs(true);
       cmd.setExePath("git-lfs");
       cmd.addParameter("env");
+      cmd.setWorkingDirectory(FileUtil.createTempDirectory("gitLfs", "")); // workaround for https://youtrack.jetbrains.com/issue/TW-63074
       ExecResult result = SimpleCommandLineProcessRunner.runCommand(cmd, new byte[0]);
       if (result.getExitCode() != 0)
         return;
