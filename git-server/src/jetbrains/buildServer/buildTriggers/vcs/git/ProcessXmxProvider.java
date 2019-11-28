@@ -91,17 +91,18 @@ public class ProcessXmxProvider {
 
   @NotNull
   private Integer getNext() {
-    Integer next;
-    if (isFirstAttempt()) {
-      next = myStorage.read();
-      debug(next == null
-            ? "Using default initial -Xmx: " + (next = myDefaultStartXmx) + "M"
-            : "Using previously cached -Xmx: " + next + "M");
-    } else {
-      next = (int)(myPrev * myMultFactor);
-    }
-
+    int next = isFirstAttempt() ? getInitialXmx() : (int)(myPrev * myMultFactor);
     return myExplicitMaxXmx == null ? applySystemLimit(next) : applyExplicitLimit(next);
+  }
+
+  private int getInitialXmx() {
+    Integer init = myStorage.read();
+    if (init == null) {
+      debug("Using default initial -Xmx: " + myDefaultStartXmx + "M");
+      return myDefaultStartXmx;
+    }
+    debug("Using previously cached -Xmx: " + init + "M");
+    return init;
   }
 
   @Nullable
