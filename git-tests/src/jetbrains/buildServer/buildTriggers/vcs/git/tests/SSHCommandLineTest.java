@@ -22,9 +22,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author Mikhail Khorkov
@@ -77,22 +75,6 @@ public class SSHCommandLineTest {
     Assert.assertEquals(line.getLogger(), logger);
   }
 
-  @Test
-  public void test() throws Throwable {
-          /*
-      line
-      host
-      user
-      port
-      command
-      options
-      logger
-       */
-    final JSchClient.SSHCommandLine line = JSchClient.SSHCommandLine.parse("localhost -p 8888 hostname".split(" "), logger());
-    line.createClient().run();
-
-  }
-
   private static Map<String, String> toMap(String... list) {
     if (list == null || list.length == 0) {
       return Collections.emptyMap();
@@ -108,11 +90,10 @@ public class SSHCommandLineTest {
     return new Logger() {
       @Override
       public boolean isEnabled(final int level) {
-        return true;
+        return false;
       }
       @Override
       public void log(final int level, final String message) {
-        System.out.println(message);
       }
     };
   }
