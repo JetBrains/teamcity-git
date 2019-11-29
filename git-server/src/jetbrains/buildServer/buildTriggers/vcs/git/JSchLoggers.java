@@ -37,18 +37,18 @@ public interface JSchLoggers {
   }
 
   static <V> V evaluateWithLoggingLevel(@NotNull Level level, @NotNull Callable<V> action) throws Exception {
-    final Level prevLevel = LOG4J_JSCH_LOGGER.currentLevel;
+    final Level prevLevel = LOG4J_JSCH_LOGGER.currentLevel.get();
     try {
-      LOG4J_JSCH_LOGGER.currentLevel = level;
+      LOG4J_JSCH_LOGGER.currentLevel.set(level);
       return action.call();
     } finally {
-      LOG4J_JSCH_LOGGER.currentLevel = prevLevel;
+      LOG4J_JSCH_LOGGER.currentLevel.set(prevLevel);
     }
   }
 
   final class JSchLogger implements Logger {
 
-    @NotNull private volatile Level currentLevel = Level.WARN;
+    @NotNull private final ThreadLocal<Level> currentLevel = ThreadLocal.withInitial(() -> Level.WARN);
 
     @Override
     public boolean isEnabled(int level) {
@@ -63,7 +63,9 @@ public interface JSchLoggers {
           Loggers.VCS.error(message);
         } else if (log4jLevel.isGreaterOrEqual(Level.WARN)) {
           Loggers.VCS.warn(message);
-        } else if (log4jLevel.isGreaterOrEqual(Level.INFO) || isLevelEnabled(Level.DEBUG) && !Loggers.VCS.isDebugEnabled()) {
+        } else if (log4jLevel.isGreaterOrEqual(Level.INFO)) {
+          Loggers.VCS.info(message);
+        } else if (isLevelEnabled(Level.DEBUG) && !Loggers.VCS.isDebugEnabled()) { // try to be more verbose
           Loggers.VCS.info(message);
         } else {
           Loggers.VCS.debug(message);
@@ -72,7 +74,7 @@ public interface JSchLoggers {
     }
 
     private boolean isLevelEnabled(@NotNull Level level) {
-      return level.isGreaterOrEqual(Level.toLevel(TeamCityProperties.getPropertyOrNull("teamcity.git.sshLoggingLevel"), currentLevel));
+      return level.isGreaterOrEqual(Level.toLevel(TeamCityProperties.getPropertyOrNull("teamcity.git.sshLoggingLevel"), currentLevel.get()));
     }
 
     @NotNull
