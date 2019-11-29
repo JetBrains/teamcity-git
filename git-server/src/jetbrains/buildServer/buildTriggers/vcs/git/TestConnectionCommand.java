@@ -20,6 +20,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.*;
+import org.apache.log4j.Level;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
@@ -55,30 +56,32 @@ public class TestConnectionCommand {
 
 
   public String testConnection(@NotNull OperationContext context) throws Exception {
-    GitVcsRoot root = context.getGitRoot();
-    File repositoryTempDir = null;
-    try {
-      repositoryTempDir = FileUtil.createTempDirectory("git-testcon", "");
-      root.setCustomRepositoryDir(repositoryTempDir);
-      Repository r = context.getRepository();
+    return JSchLoggers.evaluateWithLoggingLevel(Level.DEBUG, () -> {
+      GitVcsRoot root = context.getGitRoot();
+      File repositoryTempDir = null;
       try {
-        if (LOG.isDebugEnabled())
-          LOG.debug("Opening connection for " + root.debugInfo());
-        validateBranchSpec(root);
-        checkFetchConnection(root);
-        checkPushConnection(root, r);
-        return null;
-      } catch (NotSupportedException nse) {
-        throw friendlyNotSupportedException(root, nse);
-      } catch (TransportException te) {
-        throw friendlyTransportException(te, root);
+        repositoryTempDir = FileUtil.createTempDirectory("git-testcon", "");
+        root.setCustomRepositoryDir(repositoryTempDir);
+        Repository r = context.getRepository();
+        try {
+          if (LOG.isDebugEnabled())
+            LOG.debug("Opening connection for " + root.debugInfo());
+          validateBranchSpec(root);
+          checkFetchConnection(root);
+          checkPushConnection(root, r);
+          return null;
+        } catch (NotSupportedException nse) {
+          throw friendlyNotSupportedException(root, nse);
+        } catch (TransportException te) {
+          throw friendlyTransportException(te, root);
+        }
+      } finally {
+        if (repositoryTempDir != null) {
+          myRepositoryManager.cleanLocksFor(repositoryTempDir);
+          FileUtil.delete(repositoryTempDir);
+        }
       }
-    } finally {
-      if (repositoryTempDir != null) {
-        myRepositoryManager.cleanLocksFor(repositoryTempDir);
-        FileUtil.delete(repositoryTempDir);
-      }
-    }
+    });
   }
 
   private void validateBranchSpec(@NotNull GitVcsRoot root) throws VcsException {

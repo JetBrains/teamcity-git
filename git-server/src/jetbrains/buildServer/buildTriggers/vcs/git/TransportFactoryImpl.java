@@ -77,6 +77,7 @@ public class TransportFactoryImpl implements TransportFactory {
       f = new TeamCityJDKHttpConnectionFactory(myConfig, () -> myGitTrustStoreProvider.getTrustStore());
     }
     HttpTransport.setConnectionFactory(f);
+    JSchLoggers.initJSchLogger();
   }
 
   public Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings) throws NotSupportedException, VcsException {

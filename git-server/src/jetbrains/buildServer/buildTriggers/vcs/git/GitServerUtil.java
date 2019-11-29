@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.serverSide.FileWatchingPropertiesModel;
@@ -442,6 +443,8 @@ public class GitServerUtil {
     org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
     org.apache.log4j.Logger.getLogger("org.eclipse.jgit").setLevel(debugEnabled ? Level.DEBUG : Level.OFF);
     org.apache.log4j.Logger.getLogger("jetbrains.buildServer.buildTriggers.vcs.git").setLevel(debugEnabled ? Level.DEBUG : Level.INFO);
+
+    JSch.setLogger(debugEnabled ? JSchLoggers.STD_DEBUG_JSCH_LOGGER : JSchLoggers.STD_JSCH_LOGGER);
   }
 
 
