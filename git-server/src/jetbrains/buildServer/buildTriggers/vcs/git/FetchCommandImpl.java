@@ -28,6 +28,7 @@ import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.TimePrinter;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
@@ -220,7 +221,8 @@ public class FetchCommandImpl implements FetchCommand {
             commandError = new VcsException("There is not enough memory for git fetch (last attempted -Xmx" + xmx + "M). Please contact your system administrator", commandError);
           }
 
-          LOG.info("git fetch process failed for: " + uri + " in directory: " + repository.getDirectory() + ", took " + gitResult.getDuration() + "ms");
+          LOG.info("git fetch process failed for \"" + uri + "\" in directory \"" + repository.getDirectory() + "\", took " +
+                   TimePrinter.createMillisecondsFormatter().formatTime(gitResult.getDuration()));
 
           if (gitResult.isTimeout()) {
             logTimeout(debugInfo, getDumpFile(repository, null));
