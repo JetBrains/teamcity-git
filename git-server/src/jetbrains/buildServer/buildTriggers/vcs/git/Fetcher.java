@@ -88,7 +88,6 @@ public class Fetcher {
       System.exit(1);
     } finally {
       exec.shutdown();
-      FileUtil.close(gcListener);
     }
   }
 
@@ -213,7 +212,7 @@ public class Fetcher {
     }
   }
 
-  private static class GcListener implements NotificationListener, Closeable {
+  private static class GcListener implements NotificationListener {
     private static Method ourGarbageCollectionNotificationInfo_from = null;
     private static Method ourGarbageCollectionNotificationInfo_getGcInfo = null;
     private static Method ourGcInfo_getMemoryUsageAfterGc = null;
@@ -238,12 +237,10 @@ public class Fetcher {
     }
 
     @NotNull
-    private final String myGcDumpFilePath;
-    @NotNull
-    private FileWriter myGcDumpFile;
+    private final File myGcDumpFile;
 
     private GcListener(@NotNull final String gcDumpFilePath) {
-      myGcDumpFilePath = gcDumpFilePath;
+      myGcDumpFile = new File(gcDumpFilePath);
     }
 
     @SuppressWarnings("unchecked")
@@ -283,30 +280,23 @@ public class Fetcher {
           final long duration = getGcDuration(gcInfo);
           final Pair<Long, Long> gcMemoryDiff = getGcMemoryDiff(gcInfo);
           final long now = System.currentTimeMillis();
-          myGcDumpFile.write(now + " ; " + duration + " ; " + gcMemoryDiff.getFirst() + " ; " + gcMemoryDiff.getSecond() + "\n");
-          /* do flush to getting gc info as soon as possible */
-          myGcDumpFile.flush();
+          FileUtil.writeFile(myGcDumpFile, now + " ; " + duration + " ; " + gcMemoryDiff.getFirst() + " ; " + gcMemoryDiff.getSecond() + "\n", "UTF-8");
         }
-      } catch (Throwable ignore) {
+      } catch (Throwable t) {
+        System.out.println("Exception while persisting gc notification " + notification + " to " + myGcDumpFile.getAbsolutePath() + "\n" + t);
       }
     }
 
-    void startListen() throws IOException {
+    void startListen() {
       if (!isGcEventListenerInitialized) {
         return;
       }
-      myGcDumpFile = new FileWriter(myGcDumpFilePath);
       final List<GarbageCollectorMXBean> garbageCollectorMXBeans = ManagementFactory.getGarbageCollectorMXBeans();
       for (GarbageCollectorMXBean gcBean : garbageCollectorMXBeans) {
         if (gcBean instanceof NotificationEmitter) {
           ((NotificationEmitter)gcBean).addNotificationListener(this, null, null);
         }
       }
-    }
-
-    @Override
-    public void close() {
-      FileUtil.close(myGcDumpFile);
     }
   }
 }
