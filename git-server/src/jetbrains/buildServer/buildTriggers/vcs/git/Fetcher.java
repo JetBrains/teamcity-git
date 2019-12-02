@@ -201,10 +201,14 @@ public class Fetcher {
     }
 
     public void run() {
-      String threadDump = DiagnosticUtil.threadDumpToString();
-      String gitProgress = myGitOutput.toString();
-      long memoryUsage = memoryUsage();
-      FileUtil.writeFile(myFile, threadDump + "\ngit progress:\n" + gitProgress + "\nmemory usage (MB):\n" + memoryUsage);
+      try {
+        String threadDump = DiagnosticUtil.threadDumpToString();
+        String gitProgress = myGitOutput.toString();
+        long memoryUsage = memoryUsage();
+        FileUtil.writeFile(myFile, threadDump + "\ngit progress:\n" + gitProgress + "\nmemory usage (MB):\n" + memoryUsage, "UTF-8");
+      } catch (IOException e) {
+        System.err.println("Exception while persisting thread dump to " + myFile.getAbsolutePath() + "\n" + e);
+      }
     }
 
     private long memoryUsage() {
@@ -230,9 +234,9 @@ public class Fetcher {
         ourGcInfo_getGcDuration = Class.forName("com.sun.management.GcInfo").getMethod("getDuration");
         isGcEventListenerInitialized = true;
       } catch (ClassNotFoundException ignore) {
-        System.out.println("Cannot initialize GC listener: class not found");
+        System.err.println("Cannot initialize GC listener: class not found");
       } catch (Throwable t) {
-        System.out.println("Cannot initialize GC listener \n" + t);
+        System.err.println("Cannot initialize GC listener \n" + t);
       }
     }
 
@@ -283,7 +287,7 @@ public class Fetcher {
           FileUtil.writeFile(myGcDumpFile, now + " ; " + duration + " ; " + gcMemoryDiff.getFirst() + " ; " + gcMemoryDiff.getSecond() + "\n", "UTF-8");
         }
       } catch (Throwable t) {
-        System.out.println("Exception while persisting gc notification " + notification + " to " + myGcDumpFile.getAbsolutePath() + "\n" + t);
+        System.err.println("Exception while persisting gc notification " + notification + " to " + myGcDumpFile.getAbsolutePath() + "\n" + t);
       }
     }
 
