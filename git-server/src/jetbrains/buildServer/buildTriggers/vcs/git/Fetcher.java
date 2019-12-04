@@ -79,6 +79,7 @@ public class Fetcher {
       if (System.currentTimeMillis() - start <= new PluginConfigImpl().getMonitoringFileThresholdMillis()) {
         FileUtil.delete(new File(threadDumpFilePath));
       }
+      FileUtil.delete(new File(gcDumpFilePath));
     } catch (Throwable t) {
       if (debug || isImportant(t)) {
         t.printStackTrace(System.err);
