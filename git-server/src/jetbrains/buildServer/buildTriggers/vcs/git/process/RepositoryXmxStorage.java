@@ -92,7 +92,7 @@ public class RepositoryXmxStorage implements ProcessXmxProvider.XmxStorage {
     try {
       properties = PropertiesUtil.loadProperties(myStorage);
     } catch (IOException e) {
-      LOG.warn("Failed to write " + myProcessName + " -Xmx value from " + myStorage.getAbsolutePath(), e);
+      LOG.warn("Failed to read " + myProcessName + " -Xmx value from " + myStorage.getAbsolutePath(), e);
       return;
     }
 
