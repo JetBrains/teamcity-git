@@ -66,16 +66,19 @@ public class Fetcher {
       if (System.currentTimeMillis() - start <= new PluginConfigImpl().getMonitoringFileThresholdMillis()) {
         FileUtil.delete(new File(threadDumpFilePath));
       }
+      return;
+
     } catch (Throwable t) {
       if (debug || isImportant(t)) {
         t.printStackTrace(System.err);
       } else {
         System.err.println(t.getMessage());
       }
-      System.exit(1);
     } finally {
       exec.shutdown();
     }
+
+    System.exit(1);
   }
 
   /**
