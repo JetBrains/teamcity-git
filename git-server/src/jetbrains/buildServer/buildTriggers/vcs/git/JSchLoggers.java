@@ -48,7 +48,7 @@ public interface JSchLoggers {
 
   final class JSchLogger implements Logger {
 
-    @NotNull private final ThreadLocal<Level> currentLevel = ThreadLocal.withInitial(() -> Level.WARN);
+    @NotNull private final ThreadLocal<Level> currentLevel = ThreadLocal.withInitial(() -> Level.ERROR);
 
     @Override
     public boolean isEnabled(int level) {
