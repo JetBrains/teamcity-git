@@ -54,7 +54,7 @@ import java.util.*;
 */
 public class FetchCommandImpl implements FetchCommand {
 
-  private static Logger LOG = Logger.getInstance(FetchCommandImpl.class.getName());
+  private static final Logger LOG = Logger.getInstance(FetchCommandImpl.class.getName());
 
   private final ServerPluginConfig myConfig;
   private final TransportFactory myTransportFactory;
