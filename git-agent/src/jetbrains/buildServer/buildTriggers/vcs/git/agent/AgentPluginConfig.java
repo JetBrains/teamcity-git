@@ -32,6 +32,8 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isUseLocalMirrors(@NotNull GitVcsRoot root);
 
+  boolean isUseLocalMirrorsForSubmodules(@NotNull GitVcsRoot root);
+
   boolean isUseAlternates(@NotNull GitVcsRoot root);
 
   boolean isUseShallowClone();
