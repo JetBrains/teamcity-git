@@ -88,7 +88,6 @@ public class UpdaterWithMirror extends UpdaterImpl {
                                  String... revisions) throws VcsException {
     String mirrorDescription = "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
     LOG.info("Update " + mirrorDescription);
-    boolean fetchRequired = true;
     if (isValidGitRepo(bareRepositoryDir)) {
       removeOrphanedIdxFiles(bareRepositoryDir);
     } else {
@@ -96,6 +95,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     }
     final GitFacade git = myGitFactory.create(bareRepositoryDir);
     boolean newMirror = false;
+    boolean fetchRequired = false;
     if (!bareRepositoryDir.exists()) {
       LOG.info("Init " + mirrorDescription);
       bareRepositoryDir.mkdirs();
@@ -103,17 +103,22 @@ public class UpdaterWithMirror extends UpdaterImpl {
       configureRemoteUrl(bareRepositoryDir, fetchUrl);
       mySSLInvestigator.setCertificateOptions(git);
       newMirror = true;
+      fetchRequired = true;
     } else {
       configureRemoteUrl(bareRepositoryDir, fetchUrl);
       mySSLInvestigator.setCertificateOptions(git);
       boolean outdatedRefsFound = removeOutdatedRefs(bareRepositoryDir);
-      if (!outdatedRefsFound) {
+      if (outdatedRefsFound) {
+        fetchRequired = true;
+      } else {
         for (String revision : revisions) {
-          LOG.debug("Try to find revision " + revision + " in " + mirrorDescription);
+          LOG.debug("Trying to find revision " + revision + " in " + mirrorDescription);
           Ref ref = getRef(bareRepositoryDir, GitUtils.createRemoteRef(branchname));
           if (ref != null && revision.equals(ref.getObjectId().name())) {
-            LOG.info("No fetch required for revision '" + revision + "' in " + mirrorDescription);
-            fetchRequired = false;
+            LOG.debug("No fetch required for revision '" + revision + "' in " + mirrorDescription);
+          } else {
+            LOG.info("Fetch required for revision '" + revision + "' in " + mirrorDescription);
+            fetchRequired = true;
           }
         }
       }
@@ -135,20 +140,18 @@ public class UpdaterWithMirror extends UpdaterImpl {
         LOG.info(msg);
         myLogger.message(msg);
         fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, revisions);
-        if (!myFullBranchName.startsWith("refs/heads/") && !hasRevisions(bareRepositoryDir, revisions))
+        if (!branchname.startsWith("refs/heads/") && !hasRevisions(bareRepositoryDir, revisions))
           fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, revisions);
         break;
       case BEFORE_BUILD_BRANCH:
         fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, revisions);
-        if (!myFullBranchName.startsWith("refs/heads/") && !hasRevisions(bareRepositoryDir, revisions))
+        if (!branchname.startsWith("refs/heads/") && !hasRevisions(bareRepositoryDir, revisions))
           fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, revisions);
         break;
       case AFTER_BUILD_BRANCH:
+        fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, revisions);
         if (!hasRevisions(bareRepositoryDir, revisions)) {
-          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, revisions);
-          if (!hasRevisions(bareRepositoryDir, revisions)) {
-            fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, revisions);
-          }
+          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, revisions);
         }
         break;
       default:
