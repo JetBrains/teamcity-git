@@ -18,11 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
-import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
-import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.RemoteRepositoryConfigurator;
 import jetbrains.buildServer.log.LogInitializer;
@@ -215,7 +211,8 @@ public class RemoteRepositoryConfiguratorTest {
     RemoteRepositoryConfigurator configurator = new RemoteRepositoryConfigurator();
     configurator.setGitDir(r.getDirectory());
     configurator.setExcludeUsernameFromHttpUrls(setup.isExcludeUsernameFromHttpUrl());
-    configurator.configure(createRoot(setup.getRoot()));
+    final GitVcsRoot root = createRoot(setup.getRoot());
+    configurator.configure(root, root.getRepositoryFetchURL());
 
     StoredConfig config = r.getConfig();
     then(config.getString("remote", "origin", "url")).isEqualTo(setup.getExpectedUrl());

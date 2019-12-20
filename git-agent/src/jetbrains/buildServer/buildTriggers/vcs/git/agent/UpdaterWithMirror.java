@@ -20,6 +20,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
+import jetbrains.buildServer.buildTriggers.vcs.git.CommonURIish;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsTreeResult;
@@ -37,11 +38,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
 
@@ -86,7 +83,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
   private void updateLocalMirror(boolean repeatFetchAttempt,
                                  File bareRepositoryDir,
-                                 URIish fetchUrl,
+                                 CommonURIish fetchUrl,
                                  String branchname,
                                  String... revisions) throws VcsException {
     String mirrorDescription = "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
@@ -166,7 +163,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
   private void fetchMirror(boolean repeatFetchAttempt,
                            @NotNull File repositoryDir,
-                           @NotNull URIish fetchUrl,
+                           @NotNull CommonURIish fetchUrl,
                            @NotNull String refspec,
                            @NotNull String branchname,
                            @NotNull String... revisions) throws VcsException {
@@ -351,6 +348,11 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
   @Override
   protected void updateSubmodules(@NotNull final File repositoryDir) throws VcsException, ConfigInvalidException, IOException {
+    if (!myPluginConfig.isUseLocalMirrorsForSubmodules(myRoot)) {
+      super.updateSubmodules(repositoryDir);
+      return;
+    }
+
     GitFacade git = myGitFactory.create(repositoryDir);
 
     Repository r = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
@@ -411,7 +413,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
         if (!hasRevisions(mirrorRepositoryDir, submodule.getRevisions()))
           updateLocalMirror(true,
                   mirrorRepositoryDir,
-                  myRoot.getAuthSettings().createAuthURI(submodule.getUrl()),
+                  new URIishHelperImpl().createAuthURI(myRoot.getAuthSettings(), submodule.getUrl()),
                   "refs/heads/*",
                   submodule.getRevisions());
 

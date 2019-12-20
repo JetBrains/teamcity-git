@@ -857,7 +857,7 @@ public class UpdaterImpl implements Updater {
   }
 
 
-  void configureRemoteUrl(@NotNull File gitDir, URIish remoteUrl) throws VcsException {
+  void configureRemoteUrl(@NotNull File gitDir, CommonURIish remoteUrl) throws VcsException {
     RemoteRepositoryConfigurator cfg = new RemoteRepositoryConfigurator();
     cfg.setGitDir(gitDir);
     cfg.setExcludeUsernameFromHttpUrls(myPluginConfig.isExcludeUsernameFromHttpUrl() && !myPluginConfig.getGitVersion().isLessThan(UpdaterImpl.CREDENTIALS_SECTION_VERSION));
