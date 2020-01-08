@@ -329,12 +329,12 @@ public class GitServerUtil {
           }
           throw new VcsException(msg);
         } else {
-          throw new VcsException("Fail to update '" + localRefName + "' (" + status.name() + ")");
+          throw new VcsException("Failed to update '" + localRefName + "' (" + status.name() + ")");
         }
       }
     }
     if (!conflictsWithoutDb.isEmpty()) {
-      throw new VcsException("Fail to update '" + StringUtil.join(", ", conflictsWithoutDb) + "' (" + RefUpdate.Result.LOCK_FAILURE.name() + ")");
+      throw new VcsException("Failed to update '" + StringUtil.join(", ", conflictsWithoutDb) + "' (" + RefUpdate.Result.LOCK_FAILURE.name() + ")");
     }
   }
 
