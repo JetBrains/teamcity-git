@@ -119,9 +119,9 @@ public class SshHandler implements GitSSHService.Handler {
     myHandlerNo = ssh.registerHandler(this);
     cmd.addEnvParam(GitSSHHandler.SSH_HANDLER_ENV, Integer.toString(myHandlerNo));
 
-    final String sendEnv = ctx.getSshSendEnv();
+    final String sendEnv = ctx.getSshRequestToken();
     if (StringUtil.isNotEmpty(sendEnv)) {
-      cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_SEND_ENV, sendEnv);
+      cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_REQUEST_TOKEN, sendEnv);
     }
   }
 

@@ -162,9 +162,9 @@ public class JSchClient {
       channel.setInputStream(System.in);
       channel.setErrStream(System.err);
 
-      final String sendEnv = System.getenv(GitSSHHandler.TEAMCITY_SSH_SEND_ENV);
+      final String sendEnv = System.getenv(GitSSHHandler.TEAMCITY_SSH_REQUEST_TOKEN);
       if (isNotEmpty(sendEnv)) {
-        channel.setEnv(GitSSHHandler.TEAMCITY_REQUEST_TOKEN, sendEnv);
+        channel.setEnv(GitSSHHandler.TEAMCITY_SSH_REQUEST_TOKEN, sendEnv);
       }
 
       InputStream input = channel.getInputStream();

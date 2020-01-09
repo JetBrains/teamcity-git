@@ -58,7 +58,7 @@ public class NoBuildContext implements Context {
 
   @Nullable
   @Override
-  public String getSshSendEnv() {
+  public String getSshRequestToken() {
     return null;
   }
 }
