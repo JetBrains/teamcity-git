@@ -138,7 +138,7 @@ public class JSchClient {
       }
 
       String authMethods = System.getenv(GitSSHHandler.TEAMCITY_SSH_PREFERRED_AUTH_METHODS);
-      if (authMethods != null && authMethods.length() > 0)
+      if (isNotEmpty(authMethods))
         session.setConfig("PreferredAuthentications", authMethods);
 
       if (!myOptions.isEmpty()) {
@@ -161,6 +161,12 @@ public class JSchClient {
       channel.setCommand(myCommand);
       channel.setInputStream(System.in);
       channel.setErrStream(System.err);
+
+      final String sendEnv = System.getenv(GitSSHHandler.TEAMCITY_SSH_SEND_ENV);
+      if (isNotEmpty(sendEnv)) {
+        channel.setEnv(GitSSHHandler.TEAMCITY_REQUEST_TOKEN, sendEnv);
+      }
+
       InputStream input = channel.getInputStream();
       Integer timeoutSeconds = getTimeoutSeconds();
       if (timeoutSeconds != null) {
@@ -189,6 +195,9 @@ public class JSchClient {
     }
   }
 
+  public static boolean isNotEmpty(@Nullable String s) {
+    return s != null && s.length() > 0;
+  }
 
   @Nullable
   private Integer getTimeoutSeconds() {

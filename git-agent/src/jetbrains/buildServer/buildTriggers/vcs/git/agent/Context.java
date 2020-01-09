@@ -37,4 +37,7 @@ public interface Context {
 
   boolean isDebugSsh();
 
+  @Nullable
+  String getSshSendEnv();
+
 }

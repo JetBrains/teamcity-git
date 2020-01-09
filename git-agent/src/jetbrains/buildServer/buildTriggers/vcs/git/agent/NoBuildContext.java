@@ -55,4 +55,10 @@ public class NoBuildContext implements Context {
   public AgentPluginConfig getConfig() {
     return null;
   }
+
+  @Nullable
+  @Override
+  public String getSshSendEnv() {
+    return null;
+  }
 }

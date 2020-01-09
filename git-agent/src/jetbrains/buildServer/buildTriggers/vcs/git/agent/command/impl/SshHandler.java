@@ -21,10 +21,10 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentPluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
-import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.version.ServerVersionHolder;
@@ -118,6 +118,11 @@ public class SshHandler implements GitSSHService.Handler {
     }
     myHandlerNo = ssh.registerHandler(this);
     cmd.addEnvParam(GitSSHHandler.SSH_HANDLER_ENV, Integer.toString(myHandlerNo));
+
+    final String sendEnv = ctx.getSshSendEnv();
+    if (StringUtil.isNotEmpty(sendEnv)) {
+      cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_SEND_ENV, sendEnv);
+    }
   }
 
   /**

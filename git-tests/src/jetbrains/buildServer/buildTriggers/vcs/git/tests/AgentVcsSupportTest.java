@@ -23,11 +23,11 @@ import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.TestNGUtil;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefBatchCommand;
@@ -1336,6 +1336,19 @@ public class AgentVcsSupportTest {
     then(idxInMirror).doesNotExist();
   }
 
+//  @TestFor(issues = "TW-63886")
+//  public void test_ssh_SendEnv() throws Exception {
+//    VcsRoot root = vcsRoot().withFetchUrl("ssh://root@localhost:8888/repo.git")
+//      .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_DEFAULT)
+//      .build();
+//
+//    AgentRunningBuild build = createRunningBuild(map(
+//      PluginConfigImpl.USE_MIRRORS, "true",
+//      BuildContext.TEAMCITY_GIT_SSH_DEBUG, "true",
+//      BuildContext.TEAMCITY_GIT_SSH_SEND_ENV, "123456"));
+//
+//    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "a540b3cab44a513b5b420582701dca2e8805d772", myCheckoutDir, build, false);
+//  }
 
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
     myVcsRootId++;
