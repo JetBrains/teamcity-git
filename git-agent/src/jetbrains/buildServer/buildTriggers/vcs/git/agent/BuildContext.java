@@ -26,7 +26,7 @@ import org.jetbrains.annotations.Nullable;
 public class BuildContext implements Context {
 
   public static final String TEAMCITY_GIT_SSH_DEBUG = "teamcity.git.sshDebug";
-  public static final String TEAMCITY_GIT_SSH_REQUEST_TOKEN = "teamcity.git.sshSendEnvRequestToken";
+  public static final String TEAMCITY_GIT_SSH_REQUEST_TOKEN = "teamcity.internal.git.sshSendEnvRequestToken";
 
   private final AgentRunningBuild myBuild;
   private final AgentPluginConfig myConfig;
