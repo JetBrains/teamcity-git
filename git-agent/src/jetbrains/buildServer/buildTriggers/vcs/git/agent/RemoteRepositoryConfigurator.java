@@ -72,7 +72,7 @@ public class RemoteRepositoryConfigurator {
       config.setString("remote", "origin", "fetch", "+refs/heads/*:refs/remotes/origin/*");
       config.save();
     } catch (Exception e) {
-      throw new VcsException("Error while configuring remote repository at " + gitDir, e);
+      throw new VcsException("Error while configuring remote repository at " + gitDir + ": " + e.getMessage(), e);
     } finally {
       if (repository != null)
         repository.close();
