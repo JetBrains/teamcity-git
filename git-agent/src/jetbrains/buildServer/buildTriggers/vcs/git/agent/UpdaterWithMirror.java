@@ -208,7 +208,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       } else {
         LOG.info("Failed to delete repository " + repositoryDir + " after failed checkout, clone repository in another directory");
         myMirrorManager.invalidate(repositoryDir);
-        updateLocalMirror(false, repositoryDir, fetchUrl, branchname, revisions);
+        updateLocalMirror(false, myMirrorManager.getMirrorDir(fetchUrl.toString()), fetchUrl, branchname, revisions);
       }
     }
   }
@@ -307,7 +307,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     try {
       // Cloning from local git repos is faster when using the absolute path, than when using the 'file://' syntax
       // See `man git clone` --local flag
-      return new URIish(repositoryDir.getAbsolutePath()).toString();
+      return new URIish(repositoryDir.toURI().toASCIIString()).toString();
     } catch (URISyntaxException e) {
       throw new VcsException("Cannot create uri for local mirror " + repositoryDir.getAbsolutePath(), e);
     }
