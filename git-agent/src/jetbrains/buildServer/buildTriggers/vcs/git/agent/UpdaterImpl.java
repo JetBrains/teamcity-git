@@ -82,7 +82,6 @@ public class UpdaterImpl implements Updater {
   protected final AgentGitVcsRoot myRoot;
   protected final String myFullBranchName;
   protected final AgentRunningBuild myBuild;
-  protected final SSLInvestigator mySSLInvestigator;
   private final CheckoutRules myRules;
   private final CheckoutMode myCheckoutMode;
   protected final MirrorManager myMirrorManager;
@@ -113,8 +112,6 @@ public class UpdaterImpl implements Updater {
     myRules = rules;
     myCheckoutMode = checkoutMode;
     myMirrorManager = mirrorManager;
-    mySSLInvestigator = new SSLInvestigator(myRoot.getRepositoryFetchURL().<URIish>get(), myBuild.getAgentTempDirectory().getPath(),
-                                            myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath());
   }
 
 
@@ -191,8 +188,14 @@ public class UpdaterImpl implements Updater {
         initDirectory(true);
       }
     }
-    mySSLInvestigator.setCertificateOptions(myGitFactory.create(myTargetDirectory));
+    getSSLInvestigator(myRoot.getRepositoryFetchURL()).setCertificateOptions(myGitFactory.create(myTargetDirectory));
     removeOrphanedIdxFiles(new File(myTargetDirectory, ".git"));
+  }
+
+  @NotNull
+  protected SSLInvestigator getSSLInvestigator(@NotNull CommonURIish remoteUrl) {
+    return new SSLInvestigator(remoteUrl.<URIish>get(), myBuild.getAgentTempDirectory().getPath(),
+                               myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath());
   }
 
   protected void setupNewRepository() throws VcsException {

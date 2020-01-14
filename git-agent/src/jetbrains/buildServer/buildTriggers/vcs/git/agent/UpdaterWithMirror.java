@@ -25,6 +25,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsTreeResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -94,6 +95,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       FileUtil.delete(bareRepositoryDir);
     }
     final GitFacade git = myGitFactory.create(bareRepositoryDir);
+    final SSLInvestigator sslInvestigator = getSSLInvestigator(fetchUrl);
     boolean newMirror = false;
     boolean fetchRequired = false;
     if (!bareRepositoryDir.exists()) {
@@ -101,12 +103,12 @@ public class UpdaterWithMirror extends UpdaterImpl {
       bareRepositoryDir.mkdirs();
       git.init().setBare(true).call();
       configureRemoteUrl(bareRepositoryDir, fetchUrl);
-      mySSLInvestigator.setCertificateOptions(git);
+      sslInvestigator.setCertificateOptions(git);
       newMirror = true;
       fetchRequired = true;
     } else {
       configureRemoteUrl(bareRepositoryDir, fetchUrl);
-      mySSLInvestigator.setCertificateOptions(git);
+      sslInvestigator.setCertificateOptions(git);
       boolean outdatedRefsFound = removeOutdatedRefs(bareRepositoryDir);
       if (outdatedRefsFound) {
         fetchRequired = true;
@@ -139,19 +141,19 @@ public class UpdaterWithMirror extends UpdaterImpl {
         String msg = getForcedHeadsFetchMessage();
         LOG.info(msg);
         myLogger.message(msg);
-        fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, revisions);
+        fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, sslInvestigator, revisions);
         if (!branchname.startsWith("refs/heads/") && !hasRevisions(bareRepositoryDir, revisions))
-          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, revisions);
+          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, sslInvestigator, revisions);
         break;
       case BEFORE_BUILD_BRANCH:
-        fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, revisions);
+        fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, sslInvestigator, revisions);
         if (!branchname.startsWith("refs/heads/") && !hasRevisions(bareRepositoryDir, revisions))
-          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, revisions);
+          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, sslInvestigator, revisions);
         break;
       case AFTER_BUILD_BRANCH:
-        fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, revisions);
+        fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, sslInvestigator, revisions);
         if (!hasRevisions(bareRepositoryDir, revisions)) {
-          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, revisions);
+          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, sslInvestigator, revisions);
         }
         break;
       default:
@@ -169,6 +171,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
                            @NotNull CommonURIish fetchUrl,
                            @NotNull String refspec,
                            @NotNull String branchname,
+                           @NotNull SSLInvestigator sslInvestigator,
                            @NotNull String... revisions) throws VcsException {
     removeRefLocks(repositoryDir);
     try {
@@ -200,7 +203,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
         GitFacade git = myGitFactory.create(repositoryDir);
         git.init().setBare(true).call();
         configureRemoteUrl(repositoryDir, fetchUrl);
-        mySSLInvestigator.setCertificateOptions(git);
+        sslInvestigator.setCertificateOptions(git);
         fetch(repositoryDir, refspec, false);
       } else {
         LOG.info("Failed to delete repository " + repositoryDir + " after failed checkout, clone repository in another directory");
