@@ -124,7 +124,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
   @Override
   public boolean isUseLocalMirrorsForSubmodules(@NotNull final GitVcsRoot root) {
-    return isUseLocalMirrors(root) && Boolean.parseBoolean(myBuild.getSharedConfigParameters().get(USE_MIRRORS_FOR_SUBMODULES));
+    return Boolean.parseBoolean(myBuild.getSharedConfigParameters().get(USE_MIRRORS_FOR_SUBMODULES));
   }
 
   public boolean isUseAlternates(@NotNull GitVcsRoot root) {
