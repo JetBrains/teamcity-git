@@ -147,7 +147,7 @@ public class SSLInvestigator {
       return mySSLChecker.canConnect(sslContext, myFetchURL.getHost(), port);
 
     } catch (Exception e) {
-      LOG.error("Unexpected error while try to connect to git server " + myFetchURL.toString()
+      LOG.error("Unexpected error while trying to connect to git server " + myFetchURL.toString()
                 + " for checking custom certificates", e);
       /* unexpected error. do not use custom certificate then */
       return false;

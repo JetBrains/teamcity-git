@@ -309,26 +309,38 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, pullRequestCommit, myCheckoutDir, build, false);
   }
 
+  @Test
+  public void testSubmodulesCheckout() throws Exception {
+    testSubmodulesCheckout(false);
+  }
+
+  @Test
+  public void testSubmodulesCheckoutWithMirrors() throws Exception {
+    testSubmodulesCheckout(true);
+  }
 
   /**
    * Test checkout submodules on agent. Machine that runs this test should have git installed.
    */
-  public void testSubmodulesCheckout() throws Exception {
+  private void testSubmodulesCheckout(boolean useMirrorsForSubmodules) throws Exception {
+    final AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.USE_MIRRORS, useMirrorsForSubmodules ? "true" : null);
+      put(PluginConfigImpl.USE_MIRRORS_FOR_SUBMODULES, useMirrorsForSubmodules ? "true" : "false");
+    }});
+
     myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
     myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
 
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.SUBMODULE_ADDED_VERSION,
-                               myCheckoutDir, myBuild, false);
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.SUBMODULE_ADDED_VERSION, myCheckoutDir, build, false);
 
     assertTrue(new File(myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
   }
-
 
   /**
    * Test non-recursive submodules checkout: submodules of submodules are not retrieved
    */
   public void testSubSubmodulesCheckoutNonRecursive() throws Exception {
-    testSubSubmoduleCheckout(false);
+    testSubSubmoduleCheckout(false, false);
   }
 
 
@@ -336,9 +348,16 @@ public class AgentVcsSupportTest {
    * Test recursive submodules checkout: submodules of submodules are retrieved
    */
   public void testSubSubmodulesCheckoutRecursive() throws Exception {
-    testSubSubmoduleCheckout(true);
+    testSubSubmoduleCheckout(true, false);
   }
 
+  public void testSubSubmodulesCheckoutNonRecursiveWithMirrors() throws Exception {
+    testSubSubmoduleCheckout(false, true);
+  }
+
+  public void testSubSubmodulesCheckoutRecursiveWithMirrors() throws Exception {
+    testSubSubmoduleCheckout(true, true);
+  }
 
   @TestFor(issues = "TW-27043")
   public void clean_files_in_submodules() throws Exception {
@@ -363,6 +382,21 @@ public class AgentVcsSupportTest {
     assertFalse(untrackedFileSubmodule.exists());
     assertFalse(untrackedFileSubSubmodule.exists());
   }
+
+//  @TestFor(issues = "TW-15492")
+//  public void submodules_with_mirrors() throws Exception {
+//    myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(dataFile("repo_with_submodules.git")).withUseMirrors(true).build();
+////    myRoot.addProperty(Constants.BRANCH_NAME, );
+//    if (true) {
+//      myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+//    } else {
+//      myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT.name());
+//    }
+//
+//    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION,
+//                               myCheckoutDir, myBuild, false);
+//
+//  }
 
 
   @DataProvider(name = "ignoredLongFileNames")
@@ -1362,7 +1396,7 @@ public class AgentVcsSupportTest {
   }
 
 
-  private void testSubSubmoduleCheckout(boolean recursiveSubmoduleCheckout) throws Exception {
+  private void testSubSubmoduleCheckout(boolean recursiveSubmoduleCheckout, boolean useMirrorsForSubmodules) throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "sub-submodule");
     if (recursiveSubmoduleCheckout) {
       myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
@@ -1370,8 +1404,11 @@ public class AgentVcsSupportTest {
       myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT.name());
     }
 
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION,
-                               myCheckoutDir, myBuild, false);
+    final AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.USE_MIRRORS_FOR_SUBMODULES, useMirrorsForSubmodules ? "true" : "false");
+    }});
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION, myCheckoutDir, build, false);
 
     assertTrue(new File(myCheckoutDir, "first-level-submodule" + File.separator + "submoduleFile.txt").exists());
     if (recursiveSubmoduleCheckout) {

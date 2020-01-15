@@ -36,8 +36,8 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
 import org.apache.log4j.Logger;
 import org.eclipse.jgit.errors.ConfigInvalidException;
-import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -50,7 +50,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
-import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.*;
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
 
 public class UpdaterImpl implements Updater {
 
@@ -82,7 +82,6 @@ public class UpdaterImpl implements Updater {
   protected final AgentGitVcsRoot myRoot;
   protected final String myFullBranchName;
   protected final AgentRunningBuild myBuild;
-  protected final SSLInvestigator mySSLInvestigator;
   private final CheckoutRules myRules;
   private final CheckoutMode myCheckoutMode;
   protected final MirrorManager myMirrorManager;
@@ -113,8 +112,6 @@ public class UpdaterImpl implements Updater {
     myRules = rules;
     myCheckoutMode = checkoutMode;
     myMirrorManager = mirrorManager;
-    mySSLInvestigator = new SSLInvestigator(myRoot.getRepositoryFetchURL().<URIish>get(), myBuild.getAgentTempDirectory().getPath(),
-                                            myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath());
   }
 
 
@@ -183,7 +180,7 @@ public class UpdaterImpl implements Updater {
       initDirectory(false);
     } else {
       try {
-        configureRemoteUrl(new File(myTargetDirectory, ".git"));
+        configureRemoteUrl(new File(myTargetDirectory, ".git"), myRoot.getRepositoryFetchURL());
         setupExistingRepository();
         configureSparseCheckout();
       } catch (Exception e) {
@@ -191,8 +188,14 @@ public class UpdaterImpl implements Updater {
         initDirectory(true);
       }
     }
-    mySSLInvestigator.setCertificateOptions(myGitFactory.create(myTargetDirectory));
+    getSSLInvestigator(myRoot.getRepositoryFetchURL()).setCertificateOptions(myGitFactory.create(myTargetDirectory));
     removeOrphanedIdxFiles(new File(myTargetDirectory, ".git"));
+  }
+
+  @NotNull
+  protected SSLInvestigator getSSLInvestigator(@NotNull CommonURIish remoteUrl) {
+    return new SSLInvestigator(remoteUrl.<URIish>get(), myBuild.getAgentTempDirectory().getPath(),
+                               myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath());
   }
 
   protected void setupNewRepository() throws VcsException {
@@ -326,6 +329,17 @@ public class UpdaterImpl implements Updater {
     return result;
   }
 
+  protected void updateSubmodules(@NotNull final File repositoryDir) throws VcsException, ConfigInvalidException, IOException {
+    GitFacade git = myGitFactory.create(repositoryDir);
+    SubmoduleUpdateCommand submoduleUpdate = git.submoduleUpdate()
+            .setAuthSettings(myRoot.getAuthSettings())
+            .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
+            .setTimeout(SILENT_TIMEOUT)
+            .setForce(isForceUpdateSupported());
+    configureLFS(submoduleUpdate);
+    submoduleUpdate.call();
+  }
+
   private void checkoutSubmodules(@NotNull final File repositoryDir) throws VcsException {
     File dotGitModules = new File(repositoryDir, ".gitmodules");
     try {
@@ -341,13 +355,7 @@ public class UpdaterImpl implements Updater {
       addSubmoduleUsernames(repositoryDir, gitModules);
 
       long start = System.currentTimeMillis();
-      SubmoduleUpdateCommand submoduleUpdate = git.submoduleUpdate()
-        .setAuthSettings(myRoot.getAuthSettings())
-        .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
-        .setTimeout(SILENT_TIMEOUT)
-        .setForce(isForceUpdateSupported());
-      configureLFS(submoduleUpdate);
-      submoduleUpdate.call();
+      updateSubmodules(repositoryDir);
 
       if (recursiveSubmoduleCheckout()) {
         for (String submodulePath : getSubmodulePaths(gitModules)) {
@@ -443,7 +451,7 @@ public class UpdaterImpl implements Updater {
 
 
   @Nullable
-  private Config readGitModules(@NotNull File dotGitModules) throws IOException, ConfigInvalidException {
+  protected Config readGitModules(@NotNull File dotGitModules) throws IOException, ConfigInvalidException {
     if (!dotGitModules.exists())
       return null;
     String content = FileUtil.readText(dotGitModules);
@@ -468,7 +476,7 @@ public class UpdaterImpl implements Updater {
   }
 
 
-  private Set<String> getSubmodulePaths(@NotNull Config config) {
+  protected Set<String> getSubmodulePaths(@NotNull Config config) {
     Set<String> paths = new HashSet<String>();
     Set<String> submodules = config.getSubsections("submodule");
     for (String submoduleName : submodules) {
@@ -839,7 +847,7 @@ public class UpdaterImpl implements Updater {
     final GitFacade gitFacade = myGitFactory.create(myTargetDirectory);
     gitFacade.init().call();
     validateUrls();
-    configureRemoteUrl(new File(myTargetDirectory, ".git"));
+    configureRemoteUrl(new File(myTargetDirectory, ".git"), myRoot.getRepositoryFetchURL());
 
     URIish fetchUrl = myRoot.getRepositoryFetchURL().get();
     URIish url = myRoot.getRepositoryPushURL().get();
@@ -852,11 +860,11 @@ public class UpdaterImpl implements Updater {
   }
 
 
-  void configureRemoteUrl(@NotNull File gitDir) throws VcsException {
+  void configureRemoteUrl(@NotNull File gitDir, CommonURIish remoteUrl) throws VcsException {
     RemoteRepositoryConfigurator cfg = new RemoteRepositoryConfigurator();
     cfg.setGitDir(gitDir);
     cfg.setExcludeUsernameFromHttpUrls(myPluginConfig.isExcludeUsernameFromHttpUrl() && !myPluginConfig.getGitVersion().isLessThan(UpdaterImpl.CREDENTIALS_SECTION_VERSION));
-    cfg.configure(myRoot);
+    cfg.configure(myRoot, remoteUrl);
   }
 
 
@@ -988,7 +996,7 @@ public class UpdaterImpl implements Updater {
 
   @NotNull
   private Refs getRemoteRefs(@NotNull File workingDir) throws VcsException {
-    if (myRemoteRefs != null)
+    if (myRemoteRefs != null && myTargetDirectory.equals(workingDir))
       return myRemoteRefs;
     GitFacade git = myGitFactory.create(workingDir);
     myRemoteRefs = new Refs(git.lsRemote().setAuthSettings(myRoot.getAuthSettings())
