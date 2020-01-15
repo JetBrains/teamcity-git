@@ -439,6 +439,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
           // Fix the submodule's origin url - it will be equal to a local mirror directory since it was cloned/fetched from there
           // However, this breaks relative submodules which need to be relative to their origin url, not the mirror directory
           setUseRemoteSubmoduleOrigin(submoduleDir, submodule.getUrl());
+          myGitFactory.create(submoduleDir).packRefs().call();
         }
       }
     }
