@@ -87,7 +87,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
                                  CommonURIish fetchUrl,
                                  String branchname,
                                  String... revisions) throws VcsException {
-    String mirrorDescription = "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
+    String mirrorDescription = (isRootRepositoryDir(bareRepositoryDir) ? "" : "submodule ") + "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
     LOG.info("Update " + mirrorDescription);
     if (isValidGitRepo(bareRepositoryDir)) {
       removeOrphanedIdxFiles(bareRepositoryDir);
@@ -476,6 +476,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
       }
     }
     return true;
+  }
+
+  private boolean isRootRepositoryDir(@NotNull File dir) {
+    return dir.equals(myRoot.getRepositoryDir());
   }
 
   private static final class AggregatedSubmodule {
