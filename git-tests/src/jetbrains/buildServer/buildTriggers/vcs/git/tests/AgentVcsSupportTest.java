@@ -383,21 +383,6 @@ public class AgentVcsSupportTest {
     assertFalse(untrackedFileSubSubmodule.exists());
   }
 
-//  @TestFor(issues = "TW-15492")
-//  public void submodules_with_mirrors() throws Exception {
-//    myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(dataFile("repo_with_submodules.git")).withUseMirrors(true).build();
-////    myRoot.addProperty(Constants.BRANCH_NAME, );
-//    if (true) {
-//      myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
-//    } else {
-//      myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.NON_RECURSIVE_CHECKOUT.name());
-//    }
-//
-//    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION,
-//                               myCheckoutDir, myBuild, false);
-//
-//  }
-
 
   @DataProvider(name = "ignoredLongFileNames")
   public Object[][] ignoredLongFileNames() {
