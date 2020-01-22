@@ -18,25 +18,23 @@ package jetbrains.buildServer.buildTriggers.vcs.git.health;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
+import java.io.File;
+import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import javax.servlet.http.HttpServletRequest;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.serverSide.NodeSpecificConfigs;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.auth.Permission;
 import jetbrains.buildServer.serverSide.healthStatus.HealthStatusItem;
 import jetbrains.buildServer.serverSide.impl.ErrorMessageSanitizer;
-import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.web.openapi.PagePlaces;
 import jetbrains.buildServer.web.openapi.PluginDescriptor;
 import jetbrains.buildServer.web.openapi.healthStatus.HealthStatusItemPageExtension;
 import jetbrains.buildServer.web.util.SessionUser;
 import org.jetbrains.annotations.NotNull;
-
-import javax.servlet.http.HttpServletRequest;
-import java.io.File;
-import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
 
 public class GitGcErrorsHealthPage extends HealthStatusItemPageExtension {
 
@@ -68,7 +66,6 @@ public class GitGcErrorsHealthPage extends HealthStatusItemPageExtension {
 
   @Override
   public void fillModel(@NotNull final Map<String, Object> model, @NotNull final HttpServletRequest request) {
-    ErrorMessageSanitizer errorMessageSanitizer = new ErrorMessageSanitizer();
 
     HealthStatusItem item = getStatusItem(request);
     Object errors = item.getAdditionalData().get(GitGcErrorsHealthReport.ERRORS_KEY);
@@ -81,8 +78,7 @@ public class GitGcErrorsHealthPage extends HealthStatusItemPageExtension {
         mainDataDirectory = myServerPaths.getDataDirectory().getAbsoluteFile();
       }
 
-      errorMessageSanitizer.addSanitizedPath(mainDataDirectory.getAbsolutePath(), "<TeamCity Data Directory>");
-
+      ErrorMessageSanitizer errorMessageSanitizer = new ErrorMessageSanitizer(mainDataDirectory.getAbsolutePath(), "<TeamCity Data Directory>");
       File currentNodeDataDir = NodeSpecificConfigs.getNodeDataDirectory(mainDataDirectory);
       errorMessageSanitizer.addSanitizedPath(currentNodeDataDir.getAbsolutePath(), "<Node Data Directory>");
 
