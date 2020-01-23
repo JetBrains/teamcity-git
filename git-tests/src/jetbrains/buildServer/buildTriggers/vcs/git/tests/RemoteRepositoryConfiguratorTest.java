@@ -212,7 +212,7 @@ public class RemoteRepositoryConfiguratorTest {
     configurator.setGitDir(r.getDirectory());
     configurator.setExcludeUsernameFromHttpUrls(setup.isExcludeUsernameFromHttpUrl());
     final GitVcsRoot root = createRoot(setup.getRoot());
-    configurator.configure(root, root.getRepositoryFetchURL());
+    configurator.configure(root.getRepositoryFetchURL());
 
     StoredConfig config = r.getConfig();
     then(config.getString("remote", "origin", "url")).isEqualTo(setup.getExpectedUrl());
