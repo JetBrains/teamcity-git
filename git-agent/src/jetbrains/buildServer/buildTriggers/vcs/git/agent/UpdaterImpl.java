@@ -864,7 +864,7 @@ public class UpdaterImpl implements Updater {
     RemoteRepositoryConfigurator cfg = new RemoteRepositoryConfigurator();
     cfg.setGitDir(gitDir);
     cfg.setExcludeUsernameFromHttpUrls(myPluginConfig.isExcludeUsernameFromHttpUrl() && !myPluginConfig.getGitVersion().isLessThan(UpdaterImpl.CREDENTIALS_SECTION_VERSION));
-    cfg.configure(myRoot, remoteUrl);
+    cfg.configure(remoteUrl);
   }
 
 

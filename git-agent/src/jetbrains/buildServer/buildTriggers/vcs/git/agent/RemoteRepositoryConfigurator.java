@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.CommonURIish;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
@@ -50,10 +49,10 @@ public class RemoteRepositoryConfigurator {
 
   /**
    * Configures and save the remote repository for specified VCS root
-   * @param root VCS root of interest
+   * @param fetchUrl fetchUrl remote repository URL
    * @throws VcsException in case of any error
    */
-  public void configure(@NotNull GitVcsRoot root, @NotNull CommonURIish fetchUrl) throws VcsException {
+  public void configure(@NotNull CommonURIish fetchUrl) throws VcsException {
     File gitDir = getGitDir();
     Repository repository = null;
     try {
@@ -62,7 +61,7 @@ public class RemoteRepositoryConfigurator {
       String scheme = fetchUrl.getScheme();
       String user = fetchUrl.getUser();
       if (myExcludeUsernameFromHttpUrls && isHttp(scheme) && !StringUtil.isEmpty(user)) {
-        CommonURIish fetchUrlNoUser = new CommonURIishImpl(((URIish)fetchUrl.get()).setUser(null));
+        URIish fetchUrlNoUser = ((URIish) fetchUrl.get()).setUser(null);
         config.setString("remote", "origin", "url", fetchUrlNoUser.toString());
         config.setString("credential", null, "username", user);
       } else {
