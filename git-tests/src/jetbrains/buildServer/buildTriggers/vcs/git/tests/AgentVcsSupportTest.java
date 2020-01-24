@@ -311,21 +311,32 @@ public class AgentVcsSupportTest {
 
   @Test
   public void testSubmodulesCheckout() throws Exception {
-    testSubmodulesCheckout(false);
+    testSubmodulesCheckout(false, false);
+  }
+
+  @Test
+  public void testSubmodulesCheckoutWithAlternates() throws Exception {
+    testSubmodulesCheckout(false, true);
   }
 
   @Test
   public void testSubmodulesCheckoutWithMirrors() throws Exception {
-    testSubmodulesCheckout(true);
+    testSubmodulesCheckout(true, false);
+  }
+
+  @Test
+  public void testSubmodulesCheckoutWithMirrorsWithAlternates() throws Exception {
+    testSubmodulesCheckout(true, true);
   }
 
   /**
    * Test checkout submodules on agent. Machine that runs this test should have git installed.
    */
-  private void testSubmodulesCheckout(boolean useMirrorsForSubmodules) throws Exception {
+  private void testSubmodulesCheckout(boolean useMirrorsForSubmodules, boolean useAlternates) throws Exception {
     final AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
       put(PluginConfigImpl.USE_MIRRORS, useMirrorsForSubmodules ? "true" : null);
       put(PluginConfigImpl.USE_MIRRORS_FOR_SUBMODULES, useMirrorsForSubmodules ? "true" : "false");
+      put(PluginConfigImpl.USE_ALTERNATES, useAlternates ? "true" : "false");
     }});
 
     myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
@@ -336,27 +347,23 @@ public class AgentVcsSupportTest {
     assertTrue(new File(myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
   }
 
-  /**
-   * Test non-recursive submodules checkout: submodules of submodules are not retrieved
-   */
-  public void testSubSubmodulesCheckoutNonRecursive() throws Exception {
-    testSubSubmoduleCheckout(false, false);
+  @DataProvider(name = "threeBoolean")
+  public Object[][] threeBoolean() {
+    return new Object[][] {
+      {false, false, false},
+      {true, false, false},
+      {false, true, false},
+      {false, false, true},
+      {true, true, false},
+      {false, true, true},
+      {true, false, true},
+      {true, true, true}
+    };
   }
 
-
-  /**
-   * Test recursive submodules checkout: submodules of submodules are retrieved
-   */
-  public void testSubSubmodulesCheckoutRecursive() throws Exception {
-    testSubSubmoduleCheckout(true, false);
-  }
-
-  public void testSubSubmodulesCheckoutNonRecursiveWithMirrors() throws Exception {
-    testSubSubmoduleCheckout(false, true);
-  }
-
-  public void testSubSubmodulesCheckoutRecursiveWithMirrors() throws Exception {
-    testSubSubmoduleCheckout(true, true);
+  @Test(dataProvider = "threeBoolean")
+  public void testSubSubmodulesCheckout(boolean recursiveSubmoduleCheckout, boolean useMirrorsForSubmodules, boolean useAlternates) throws Exception {
+    doTestSubSubmoduleCheckout(recursiveSubmoduleCheckout, useMirrorsForSubmodules, useAlternates);
   }
 
   @TestFor(issues = "TW-27043")
@@ -1381,7 +1388,7 @@ public class AgentVcsSupportTest {
   }
 
 
-  private void testSubSubmoduleCheckout(boolean recursiveSubmoduleCheckout, boolean useMirrorsForSubmodules) throws Exception {
+  private void doTestSubSubmoduleCheckout(boolean recursiveSubmoduleCheckout, boolean useMirrorsForSubmodules, boolean useAlternates) throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "sub-submodule");
     if (recursiveSubmoduleCheckout) {
       myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
@@ -1391,6 +1398,7 @@ public class AgentVcsSupportTest {
 
     final AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
       put(PluginConfigImpl.USE_MIRRORS_FOR_SUBMODULES, useMirrorsForSubmodules ? "true" : "false");
+      put(PluginConfigImpl.USE_ALTERNATES, useAlternates ? "true" : "false");
     }});
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION, myCheckoutDir, build, false);

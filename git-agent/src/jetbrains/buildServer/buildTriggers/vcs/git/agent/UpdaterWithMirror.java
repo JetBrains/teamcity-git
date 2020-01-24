@@ -27,6 +27,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsTreeResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.util.CollectionsUtil;
+import jetbrains.buildServer.util.Converter;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
@@ -82,7 +84,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     }
   }
 
-  private void updateLocalMirror(boolean repeatFetchAttempt,
+  protected void updateLocalMirror(boolean repeatFetchAttempt,
                                  File bareRepositoryDir,
                                  CommonURIish fetchUrl,
                                  String branchname,
@@ -359,90 +361,94 @@ public class UpdaterWithMirror extends UpdaterImpl {
       return;
     }
 
-    GitFacade git = myGitFactory.create(repositoryDir);
+    final Collection<AggregatedSubmodule> aggregatedSubmodules = getSubmodules(repositoryDir);
 
-    Repository r = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
-    StoredConfig gitConfig = r.getConfig();
+    for (AggregatedSubmodule submodule : aggregatedSubmodules) {
+      final File mirrorDir = myMirrorManager.getMirrorDir(submodule.getUrl());
 
-    Map<String, AggregatedSubmodule> aggregatedSubmodules = new HashMap<String, AggregatedSubmodule>();
+      updateSubmoduleMirror(submodule, mirrorDir);
 
-    String revision = git.revParse().setRef("HEAD").call();
-    if (!StringUtil.isEmpty(revision)) {
-      File dotGitModules = new File(repositoryDir, ".gitmodules");
-      Config gitModules = readGitModules(dotGitModules);
-      if (gitModules == null)
-        return;
-
-      Set<String> submodules = gitModules.getSubsections("submodule");
-      for (String submoduleName : submodules) {
-        String url = gitConfig.getString("submodule", submoduleName, "url");
-        if (url == null) {
-          Loggers.VCS.info(".git/config doesn't contain an url for submodule '" + submoduleName + "', use url from .gitmodules");
-          url = gitModules.getString("submodule", submoduleName, "url");
-        }
-        if (StringUtil.isEmpty(url)) { // shouldn't happen unless .gitmodules is malformed & missing a url
-          Loggers.VCS.warn("Could not determine submodule url for '" + submoduleName + "'");
-          continue;
-        }
-
-        String submodulePath = gitModules.getString("submodule", submoduleName, "path");
-        if (StringUtil.isEmpty(submodulePath)) { // // shouldn't happen unless .gitmodules is malformed & missing a path
-          Loggers.VCS.warn("Could not determine submodule path for '" + submoduleName + "'");
-          continue;
-        }
-
-        String submoduleRevision = getSubmoduleRevision(git, revision, submodulePath);
-        if (StringUtil.isEmpty(submoduleRevision)) { // submodule path specified in .gitmodules may not actually exist
-          Loggers.VCS.warn("Could not determine submodule commit for '" + submoduleName + "', at path '" + submodulePath + "'");
-          continue;
-        }
-
-        // Build a map of submodule url -> (names, paths, commits)
-        // The same submodule url can be checked out to multiple paths & at different commits, but we only need one local mirror.
-        AggregatedSubmodule aggregatedSubmodule;
-        if (aggregatedSubmodules.containsKey(url)) {
-          aggregatedSubmodule = aggregatedSubmodules.get(url);
-        } else {
-          aggregatedSubmodule = new AggregatedSubmodule(url);
-        }
-
-        aggregatedSubmodule.addSubmoduleName(submoduleName);
-        aggregatedSubmodule.addSubmodulePath(submodulePath);
-        aggregatedSubmodule.addSubmoduleRevision(submoduleRevision);
-
-        aggregatedSubmodules.put(url, aggregatedSubmodule);
-      }
-
-      for (AggregatedSubmodule submodule : aggregatedSubmodules.values()) {
-        File mirrorRepositoryDir = myMirrorManager.getMirrorDir(submodule.getUrl());
-
-        if (!hasRevisions(mirrorRepositoryDir, submodule.getRevisions()))
-          updateLocalMirror(true,
-                  mirrorRepositoryDir,
-                  new URIishHelperImpl().createAuthURI(myRoot.getAuthSettings(), submodule.getUrl()),
-                  "refs/heads/*",
-                  submodule.getRevisions());
-
-        for (String name : submodule.getNames()) {
-          // Change the submodule url so that `git submodule update` will clone/fetch from the local mirror directory
-          setUseLocalSubmoduleMirror(r.getDirectory(), name, getLocalMirrorUrl(mirrorRepositoryDir));
-        }
+      for (String name : submodule.getNames()) {
+        // Change the submodule url so that `git submodule update` will clone/fetch from the local mirror directory
+        setUseLocalSubmoduleMirror(repositoryDir, name, getLocalMirrorUrl(mirrorDir));
       }
     }
 
     super.updateSubmodules(repositoryDir);
 
-    for (AggregatedSubmodule submodule : aggregatedSubmodules.values()) {
+    for (AggregatedSubmodule submodule : aggregatedSubmodules) {
       for (String name : submodule.getNames()) {
-        File submoduleDir = new File(r.getDirectory().toString() + File.separator + "modules" + File.separator + name);
-        if (submoduleDir.exists()) {
+        final File submoduleGitDir = new File(repositoryDir.toString() + File.separator + "modules" + File.separator + name);
+        if (submoduleGitDir.exists()) {
           // Fix the submodule's origin url - it will be equal to a local mirror directory since it was cloned/fetched from there
           // However, this breaks relative submodules which need to be relative to their origin url, not the mirror directory
-          setUseRemoteSubmoduleOrigin(submoduleDir, submodule.getUrl());
-          myGitFactory.create(submoduleDir).packRefs().call();
+          setUseRemoteSubmoduleOrigin(submoduleGitDir, submodule.getUrl());
         }
       }
     }
+  }
+
+  protected void updateSubmoduleMirror(final AggregatedSubmodule submodule, final File mirrorRepositoryDir) throws VcsException {
+    if (!hasRevisions(mirrorRepositoryDir, submodule.getRevisions()))
+      updateLocalMirror(true,
+                        mirrorRepositoryDir,
+                        new URIishHelperImpl().createAuthURI(myRoot.getAuthSettings(), submodule.getUrl()),
+                        "refs/heads/*",
+                        submodule.getRevisions());
+    myGitFactory.create(mirrorRepositoryDir).packRefs().call();
+  }
+
+  @NotNull
+  protected Collection<AggregatedSubmodule> getSubmodules(@NotNull File repositoryDir) throws IOException, VcsException, ConfigInvalidException {
+    final GitFacade git = myGitFactory.create(repositoryDir);
+    final String revision = git.revParse().setRef("HEAD").call();
+    if (StringUtil.isEmpty(revision)) return Collections.emptyList();
+
+    final Config gitModules = readGitModules(new File(repositoryDir, ".gitmodules"));
+    if (gitModules == null) return Collections.emptyList();
+
+    final StoredConfig gitConfig = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build().getConfig();
+    final Set<String> submodules = gitModules.getSubsections("submodule");
+    final Map<String, AggregatedSubmodule> aggregatedSubmodules = new HashMap<String, AggregatedSubmodule>();
+
+    for (String submoduleName : submodules) {
+      String url = gitConfig.getString("submodule", submoduleName, "url");
+      if (url == null) {
+        Loggers.VCS.info(".git/config doesn't contain an url for submodule '" + submoduleName + "', use url from .gitmodules");
+        url = gitModules.getString("submodule", submoduleName, "url");
+      }
+
+      if (StringUtil.isEmpty(url)) { // shouldn't happen unless .gitmodules is malformed & missing a url
+        Loggers.VCS.warn("Could not determine submodule url for '" + submoduleName + "'");
+        continue;
+      }
+
+      final String submodulePath = gitModules.getString("submodule", submoduleName, "path");
+      if (StringUtil.isEmpty(submodulePath)) { // // shouldn't happen unless .gitmodules is malformed & missing a path
+        Loggers.VCS.warn("Could not determine submodule path for '" + submoduleName + "'");
+        continue;
+      }
+
+      final String submoduleRevision = getSubmoduleRevision(git, revision, submodulePath);
+      if (StringUtil.isEmpty(submoduleRevision)) { // submodule path specified in .gitmodules may not actually exist
+        Loggers.VCS.warn("Could not determine submodule commit for '" + submoduleName + "', at path '" + submodulePath + "'");
+        continue;
+      }
+
+      // Build a map of submodule url -> (names, paths, commits)
+      // The same submodule url can be checked out to multiple paths & at different commits, but we only need one local mirror.
+      AggregatedSubmodule aggregatedSubmodule;
+      if (aggregatedSubmodules.containsKey(url)) {
+        aggregatedSubmodule = aggregatedSubmodules.get(url);
+      } else {
+        aggregatedSubmodule = new AggregatedSubmodule(url);
+      }
+
+      aggregatedSubmodule.addSubmodule(new Submodule(submoduleName, submodulePath, submoduleRevision));
+      aggregatedSubmodules.put(url, aggregatedSubmodule);
+    }
+
+    return aggregatedSubmodules.values();
   }
 
   private String getSubmoduleRevision(@NotNull GitFacade git, @NotNull String revision, @NotNull String path) throws VcsException {
@@ -453,7 +459,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     return lsTreeResult.getObject();
   }
 
-  private void setUseLocalSubmoduleMirror(@NotNull File repositoryDir, @NotNull String submoduleName, @NotNull String localMirrorUrl) throws VcsException {
+  protected void setUseLocalSubmoduleMirror(@NotNull File repositoryDir, @NotNull String submoduleName, @NotNull String localMirrorUrl) throws VcsException {
     GitFacade git = myGitFactory.create(repositoryDir);
     git.setConfig()
             .setPropertyName("submodule." + submoduleName + ".url")
@@ -461,7 +467,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
             .call();
   }
 
-  private void setUseRemoteSubmoduleOrigin(@NotNull File repositoryDir, @NotNull String originUrl) throws VcsException {
+  protected void setUseRemoteSubmoduleOrigin(@NotNull File repositoryDir, @NotNull String originUrl) throws VcsException {
     GitFacade git = myGitFactory.create(repositoryDir);
     git.setConfig()
       .setPropertyName("remote.origin.url")
@@ -469,7 +475,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       .call();
   }
 
-  private boolean hasRevisions(@NotNull File repositoryDir, String... revisions) {
+  protected boolean hasRevisions(@NotNull File repositoryDir, String... revisions) {
     for (String revision : revisions) {
       if (!hasRevision(repositoryDir, revision)) {
         return false;
@@ -482,45 +488,73 @@ public class UpdaterWithMirror extends UpdaterImpl {
     return dir.equals(myRoot.getRepositoryDir());
   }
 
-  private static final class AggregatedSubmodule {
-    private final String url;
-    private final Set<String> names;
-    private final Set<String> paths;
-    private final Set<String> revisions;
+  protected static final class AggregatedSubmodule {
+    @NotNull private final String myUrl;
+    @NotNull private final ArrayList<Submodule> mySubmodules = new ArrayList<Submodule>();
 
-    public AggregatedSubmodule(String url) {
-      this.url = url;
-      this.names = new HashSet<String>();
-      this.paths = new HashSet<String>();
-      this.revisions = new HashSet<String>();
+    public AggregatedSubmodule(@NotNull String url) {
+      myUrl = url;
     }
 
-    public void addSubmoduleName(@NotNull String name) {
-      this.names.add(name);
+    public void addSubmodule(@NotNull Submodule s) {
+      mySubmodules.add(s);
     }
 
-    public void addSubmodulePath(@NotNull String path) {
-      this.paths.add(path);
-    }
-
-    public void addSubmoduleRevision(@NotNull String revision) {
-      this.revisions.add(revision);
-    }
-
+    @NotNull
     public String getUrl() {
-      return url;
+      return myUrl;
     }
 
+    @NotNull
+    public List<Submodule> getSubmodules() {
+      return mySubmodules;
+    }
+
+    @NotNull
     public String[] getNames() {
-      return names.toArray(new String[0]);
+      return CollectionsUtil.convertCollection(mySubmodules, new Converter<String, Submodule>() {
+        @Override
+        public String createFrom(@NotNull final Submodule s) {
+          return s.getName();
+        }
+      }).toArray(new String[0]);
     }
 
-    public String[] getPaths() {
-      return paths.toArray(new String[0]);
-    }
-
+    @NotNull
     public String[] getRevisions() {
-      return revisions.toArray(new String[0]);
+      return CollectionsUtil.convertCollection(mySubmodules, new Converter<String, Submodule>() {
+        @Override
+        public String createFrom(@NotNull final Submodule s) {
+          return s.getRevision();
+        }
+      }).toArray(new String[0]);
+    }
+  }
+
+  protected static final class Submodule {
+    @NotNull private final String myName;
+    @NotNull private final String myPath;
+    @NotNull private final String myRevision;
+
+    public Submodule(@NotNull final String name, @NotNull final String path, @NotNull final String revision) {
+      myName = name;
+      myPath = path;
+      myRevision = revision;
+    }
+
+    @NotNull
+    public String getName() {
+      return myName;
+    }
+
+    @NotNull
+    public String getPath() {
+      return myPath;
+    }
+
+    @NotNull
+    public String getRevision() {
+      return myRevision;
     }
   }
 }
