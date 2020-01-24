@@ -24,6 +24,7 @@ import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
+import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -34,6 +35,8 @@ import java.util.List;
 public class UpdaterWithAlternates extends UpdaterWithMirror {
 
   private final static Logger LOG = Logger.getLogger(UpdaterWithMirror.class);
+
+  @NotNull private final File myGitDir;
 
   public UpdaterWithAlternates(@NotNull FS fs,
                                @NotNull AgentPluginConfig pluginConfig,
@@ -47,20 +50,18 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
                                @NotNull CheckoutRules rules,
                                @NotNull CheckoutMode mode) throws VcsException {
     super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode);
+    myGitDir = new File(myTargetDirectory, ".git");
   }
 
 
   @Override
   protected void setupExistingRepository() throws VcsException {
-    setupAlternates();
-    setupLfsStorage();
+    setupRepository(myGitDir, myRoot.getRepositoryDir());
   }
-
 
   @Override
   protected void setupNewRepository() throws VcsException {
-    setupAlternates();
-    setupLfsStorage();
+    setupRepository(myGitDir, myRoot.getRepositoryDir());
   }
 
 
@@ -69,17 +70,21 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
     super.fetchFromOriginalRepository(fetchRequired);
   }
 
+  private void setupRepository(@NotNull File gitDir, @NotNull File mirrorDir) throws VcsException {
+    setupAlternates(gitDir, mirrorDir);
+    setupLfsStorage(gitDir, mirrorDir);
+  }
 
-  private void setupLfsStorage() throws VcsException {
+  private void setupLfsStorage(@NotNull File gitDir, @NotNull File mirrorDir) throws VcsException {
     //add lfs.storage = <mirror/lfs>
-    GitFacade git = myGitFactory.create(myTargetDirectory);
-    File mirrorLfs = new File(myRoot.getRepositoryDir(), "lfs");
+    GitFacade git = myGitFactory.create(gitDir);
+    File mirrorLfs = new File(mirrorDir, "lfs");
     String lfsStorage = git.resolvePath(mirrorLfs);
     git.setConfig()
       .setPropertyName("lfs.storage")
       .setValue(lfsStorage)
       .call();
-    File checkoutDirLfs = new File(new File(myTargetDirectory, ".git"), "lfs");
+    File checkoutDirLfs = new File(gitDir, "lfs");
     if (!mirrorLfs.exists() && checkoutDirLfs.isDirectory()) {
       //If mirror doesn't have lfs storage and checkout dir has one, copy it to
       //the mirror in order to not fetch lfs files from scratch. This situation occurs
@@ -92,16 +97,15 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
   }
 
 
-  private void setupAlternates() throws VcsException {
-    File gitDir = new File(myTargetDirectory, ".git");
+  private void setupAlternates(@NotNull File gitDir, @NotNull File mirrorDir) throws VcsException {
     if (!gitDir.exists())
       throw new IllegalStateException(gitDir.getAbsolutePath() + " doesn't exist");
     File objectsInfo = new File(new File(gitDir, "objects"), "info");
     objectsInfo.mkdirs();
     File alternates = new File(objectsInfo, "alternates");
     try {
-      FileUtil.writeFileAndReportErrors(alternates, getAlternatePath());
-      copyRefs();
+      FileUtil.writeFileAndReportErrors(alternates, getAlternatePath(gitDir, mirrorDir));
+      copyRefs(gitDir, mirrorDir);
     } catch (IOException e) {
       LOG.warn("Error while configuring alternates at " + alternates.getAbsoluteFile(), e);
       throw new VcsException(e);
@@ -109,22 +113,21 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
   }
 
   @NotNull
-  private String getAlternatePath() throws VcsException {
-    return myGitFactory.create(myTargetDirectory).resolvePath(new File(myRoot.getRepositoryDir(), "objects"));
+  private String getAlternatePath(@NotNull File gitDir, @NotNull File mirrorDir) throws VcsException {
+    return myGitFactory.create(gitDir).resolvePath(new File(mirrorDir, "objects"));
   }
 
-  private void copyRefs() {
-    File targetDotGit = new File(myTargetDirectory, ".git");
+  private void copyRefs(@NotNull File gitDir, @NotNull File mirrorDir) {
     try {
-      copyPackedRefs(targetDotGit);
+      copyPackedRefs(gitDir, mirrorDir);
     } catch (Exception e) {
       LOG.warn("Error while packing refs, will copy them one by one", e);
-      copyRefsOneByOne(targetDotGit);
+      copyRefsOneByOne(gitDir, mirrorDir);
     }
   }
 
-  private void copyRefsOneByOne(@NotNull File targetDotGit) {
-    File srcDir = new File(myRoot.getRepositoryDir(), "refs");
+  private void copyRefsOneByOne(@NotNull File targetDotGit, @NotNull File mirrorDir) {
+    File srcDir = new File(mirrorDir, "refs");
     File dstDir = new File(targetDotGit, "refs");
     List<String> files = new ArrayList<String>();
     FileUtil.listFilesRecursively(srcDir, "", false, Integer.MAX_VALUE, null, files);
@@ -140,8 +143,39 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
     }
   }
 
-  private void copyPackedRefs(@NotNull File targetDotGit) throws VcsException, IOException {
+  private void copyPackedRefs(@NotNull File targetDotGit, @NotNull File mirrorDir) throws VcsException, IOException {
     //packed-refs were prepared during mirror update
-    FileUtil.copy(new File(myRoot.getRepositoryDir(), "packed-refs"), new File(targetDotGit, "packed-refs"));
+    FileUtil.copy(new File(mirrorDir, "packed-refs"), new File(targetDotGit, "packed-refs"));
+  }
+
+  @Override
+  protected void updateSubmodules(@NotNull final File repositoryDir) throws VcsException, IOException, ConfigInvalidException {
+    if (!myPluginConfig.isUseLocalMirrorsForSubmodules(myRoot)) {
+      super.updateSubmodules(repositoryDir);
+      return;
+    }
+
+    for (AggregatedSubmodule aggregatedSubmodule : getSubmodules(repositoryDir)) {
+      final File mirrorRepositoryDir = myMirrorManager.getMirrorDir(aggregatedSubmodule.getUrl());
+
+      updateSubmoduleMirror(aggregatedSubmodule, mirrorRepositoryDir);
+
+      for (Submodule s : aggregatedSubmodule.getSubmodules()) {
+        final File submoduleDir = new File(repositoryDir, s.getPath());
+        final File submoduleGitDir = new File(submoduleDir, ".git");
+
+        final GitFacade gitFacade = myGitFactory.create(submoduleDir);
+        if (!submoduleGitDir.exists())  {
+          submoduleGitDir.mkdirs();
+          gitFacade.init().call();
+        }
+
+        setUseRemoteSubmoduleOrigin(submoduleGitDir, aggregatedSubmodule.getUrl());
+        setupRepository(submoduleGitDir, mirrorRepositoryDir);
+        removeRefLocks(submoduleGitDir);
+
+        checkout(gitFacade).setForce(true).setBranch(s.getRevision()).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+      }
+    }
   }
 }

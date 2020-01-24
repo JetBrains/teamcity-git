@@ -321,7 +321,7 @@ public class UpdaterImpl implements Updater {
   }
 
   @NotNull
-  private CheckoutCommand checkout(final GitFacade git) {
+  protected CheckoutCommand checkout(final GitFacade git) {
     CheckoutCommand result = git.checkout()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
