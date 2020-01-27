@@ -364,13 +364,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
     final Collection<AggregatedSubmodule> aggregatedSubmodules = getSubmodules(repositoryDir);
 
     for (AggregatedSubmodule submodule : aggregatedSubmodules) {
-      final File mirrorDir = myMirrorManager.getMirrorDir(submodule.getUrl());
-
-      updateSubmoduleMirror(submodule, mirrorDir);
-
+      final String mirrorUrl = getLocalMirrorUrl(updateSubmoduleMirror(submodule));
       for (String name : submodule.getNames()) {
         // Change the submodule url so that `git submodule update` will clone/fetch from the local mirror directory
-        setUseLocalSubmoduleMirror(repositoryDir, name, getLocalMirrorUrl(mirrorDir));
+        setUseLocalSubmoduleMirror(repositoryDir, name, mirrorUrl);
       }
     }
 
@@ -388,14 +385,24 @@ public class UpdaterWithMirror extends UpdaterImpl {
     }
   }
 
-  protected void updateSubmoduleMirror(final AggregatedSubmodule submodule, final File mirrorRepositoryDir) throws VcsException {
-    if (!hasRevisions(mirrorRepositoryDir, submodule.getRevisions()))
+  @NotNull
+  protected File updateSubmoduleMirror(@NotNull final AggregatedSubmodule submodule) throws VcsException {
+    File mirrorRepositoryDir = getSubmoduleMirror(submodule);
+    if (!hasRevisions(mirrorRepositoryDir, submodule.getRevisions())) {
       updateLocalMirror(true,
                         mirrorRepositoryDir,
                         new URIishHelperImpl().createAuthURI(myRoot.getAuthSettings(), submodule.getUrl()),
                         "refs/heads/*",
                         submodule.getRevisions());
+      mirrorRepositoryDir = getSubmoduleMirror(submodule); // submodule mirrorRepositoryDir can change if couldn't remove it after unsuccessful fetch
+    }
     myGitFactory.create(mirrorRepositoryDir).packRefs().call();
+    return mirrorRepositoryDir;
+  }
+
+  @NotNull
+  protected File getSubmoduleMirror(@NotNull final AggregatedSubmodule submodule) {
+    return myMirrorManager.getMirrorDir(submodule.getUrl());
   }
 
   @NotNull
