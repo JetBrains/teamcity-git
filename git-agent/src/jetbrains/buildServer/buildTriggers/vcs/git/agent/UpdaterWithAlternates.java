@@ -156,9 +156,7 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
     }
 
     for (AggregatedSubmodule aggregatedSubmodule : getSubmodules(repositoryDir)) {
-      final File mirrorRepositoryDir = myMirrorManager.getMirrorDir(aggregatedSubmodule.getUrl());
-
-      updateSubmoduleMirror(aggregatedSubmodule, mirrorRepositoryDir);
+      final File mirrorRepositoryDir = updateSubmoduleMirror(aggregatedSubmodule);
 
       for (Submodule s : aggregatedSubmodule.getSubmodules()) {
         final File submoduleDir = new File(repositoryDir, s.getPath());
