@@ -40,7 +40,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String USE_NATIVE_SSH = "teamcity.git.use.native.ssh";
   public static final String USE_GIT_SSH_COMMAND = "teamcity.git.useGitSshCommand";
   public static final String USE_MIRRORS = "teamcity.git.use.local.mirrors";
-  public static final String USE_MIRRORS_FOR_SUBMODULES = "teamcity.git.useMirrorsForSubmodules";
+  public static final String USE_MIRRORS_FOR_SUBMODULES = "teamcity.internal.git.agent.submodules.useMirrors";
   public static final String USE_ALTERNATES = "teamcity.git.useAlternates";
   public static final String USE_SHALLOW_CLONE = "teamcity.git.use.shallow.clone";
   public static final String TEAMCITY_DONT_DELETE_TEMP_FILES = "teamcity.dont.delete.temp.files";
@@ -124,7 +124,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
   @Override
   public boolean isUseLocalMirrorsForSubmodules(@NotNull final GitVcsRoot root) {
-    return Boolean.parseBoolean(myBuild.getSharedConfigParameters().get(USE_MIRRORS_FOR_SUBMODULES));
+    return Boolean.parseBoolean(myBuild.getSharedConfigParameters().get(USE_MIRRORS_FOR_SUBMODULES)) ||
+           Boolean.parseBoolean(myBuild.getSharedConfigParameters().get("teamcity.git.useMirrorsForSubmodules"));
   }
 
   public boolean isUseAlternates(@NotNull GitVcsRoot root) {
