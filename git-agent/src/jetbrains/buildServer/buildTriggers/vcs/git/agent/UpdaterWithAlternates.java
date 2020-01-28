@@ -31,6 +31,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class UpdaterWithAlternates extends UpdaterWithMirror {
 
@@ -48,8 +49,9 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
                                @NotNull String version,
                                @NotNull File targetDir,
                                @NotNull CheckoutRules rules,
-                               @NotNull CheckoutMode mode) throws VcsException {
-    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode);
+                               @NotNull CheckoutMode mode,
+                               @NotNull SubmoduleManager submoduleManager) throws VcsException {
+    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode, submoduleManager);
     myGitDir = new File(myTargetDirectory, ".git");
   }
 
@@ -155,7 +157,10 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
       return;
     }
 
-    for (AggregatedSubmodule aggregatedSubmodule : getSubmodules(repositoryDir)) {
+    final Map<String, AggregatedSubmodule> submodules = getSubmodules(repositoryDir);
+    persistSubmodules(repositoryDir, submodules.keySet());
+
+    for (AggregatedSubmodule aggregatedSubmodule : submodules.values()) {
       final File mirrorRepositoryDir = updateSubmoduleMirror(aggregatedSubmodule);
 
       for (Submodule s : aggregatedSubmodule.getSubmodules()) {

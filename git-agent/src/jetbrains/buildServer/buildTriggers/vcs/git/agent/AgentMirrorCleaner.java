@@ -40,9 +40,11 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
 
   private final static Logger LOG = Logger.getInstance(AgentMirrorCleaner.class.getName());
   private final MirrorManager myMirrorManager;
+  private final SubmoduleManager mySubmoduleManager;
 
-  public AgentMirrorCleaner(@NotNull MirrorManager mirrorManager) {
+  public AgentMirrorCleaner(@NotNull MirrorManager mirrorManager, @NotNull SubmoduleManager submoduleManager) {
     myMirrorManager = mirrorManager;
+    mySubmoduleManager = submoduleManager;
   }
 
   @NotNull
@@ -85,12 +87,19 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
         GitVcsRoot gitRoot = new GitVcsRoot(myMirrorManager, root, new URIishHelperImpl());
         String repositoryUrl = gitRoot.getRepositoryFetchURL().toString();
         LOG.debug("Repository " + repositoryUrl + " is used in the build, its mirror won't be cleaned");
-        repositories.add(gitRoot.getRepositoryFetchURL().toString());
+        addRepositoryWithSubmodules(repositories, gitRoot.getRepositoryFetchURL().toString());
       } catch (VcsException e) {
         LOG.warn("Error while creating git root " + root.getName() + ". If the root has a mirror on agent, the mirror might be cleaned", e);
       }
     }
     return repositories;
+  }
+
+  private void addRepositoryWithSubmodules(@NotNull Set<String> result, @NotNull String repository) {
+    result.add(repository);
+    for (String s : mySubmoduleManager.getSubmodules(repository)) {
+      addRepositoryWithSubmodules(result, s);
+    }
   }
 
   private boolean isCleanupEnabled(@NotNull File gitDir) {

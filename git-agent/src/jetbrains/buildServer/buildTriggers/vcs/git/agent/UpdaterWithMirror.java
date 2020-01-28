@@ -42,6 +42,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
+import java.util.regex.Matcher;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
 
@@ -62,8 +63,9 @@ public class UpdaterWithMirror extends UpdaterImpl {
                            @NotNull String version,
                            @NotNull File targetDir,
                            @NotNull CheckoutRules rules,
-                           @NotNull CheckoutMode mode) throws VcsException {
-    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode);
+                           @NotNull CheckoutMode mode,
+                           @NotNull SubmoduleManager submoduleManager) throws VcsException {
+    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode, submoduleManager);
   }
 
   @Override
@@ -361,9 +363,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
       return;
     }
 
-    final Collection<AggregatedSubmodule> aggregatedSubmodules = getSubmodules(repositoryDir);
+    final Map<String, AggregatedSubmodule> aggregatedSubmodules = getSubmodules(repositoryDir);
+    persistSubmodules(repositoryDir, aggregatedSubmodules.keySet());
 
-    for (AggregatedSubmodule submodule : aggregatedSubmodules) {
+    for (AggregatedSubmodule submodule : aggregatedSubmodules.values()) {
       final String mirrorUrl = getLocalMirrorUrl(updateSubmoduleMirror(submodule));
       for (String name : submodule.getNames()) {
         // Change the submodule url so that `git submodule update` will clone/fetch from the local mirror directory
@@ -373,7 +376,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
     super.updateSubmodules(repositoryDir);
 
-    for (AggregatedSubmodule submodule : aggregatedSubmodules) {
+    for (AggregatedSubmodule submodule : aggregatedSubmodules.values()) {
       for (String name : submodule.getNames()) {
         final File submoduleGitDir = new File(repositoryDir.toString() + File.separator + "modules" + File.separator + name);
         if (submoduleGitDir.exists()) {
@@ -382,6 +385,19 @@ public class UpdaterWithMirror extends UpdaterImpl {
           setUseRemoteSubmoduleOrigin(submoduleGitDir, submodule.getUrl());
         }
       }
+    }
+  }
+
+  protected void persistSubmodules(@NotNull final File repositoryDir, @NotNull Set<String> submoduleURLs) {
+    mySubmoduleManager.persistSubmodules(getRemoteUrl(repositoryDir), submoduleURLs);
+  }
+
+  private String getRemoteUrl(@NotNull File repositoryDir) {
+    try {
+      return myGitFactory.create(repositoryDir).getConfig().setPropertyName("remote.origin.url").call();
+    } catch (VcsException e) {
+      LOG.debug("Failed to read remote.origin.url property", e);
+      return "";
     }
   }
 
@@ -406,13 +422,13 @@ public class UpdaterWithMirror extends UpdaterImpl {
   }
 
   @NotNull
-  protected Collection<AggregatedSubmodule> getSubmodules(@NotNull File repositoryDir) throws IOException, VcsException, ConfigInvalidException {
+  protected Map<String, AggregatedSubmodule> getSubmodules(@NotNull File repositoryDir) throws IOException, VcsException, ConfigInvalidException {
     final GitFacade git = myGitFactory.create(repositoryDir);
     final String revision = git.revParse().setRef("HEAD").call();
-    if (StringUtil.isEmpty(revision)) return Collections.emptyList();
+    if (StringUtil.isEmpty(revision)) return Collections.emptyMap();
 
     final Config gitModules = readGitModules(new File(repositoryDir, ".gitmodules"));
-    if (gitModules == null) return Collections.emptyList();
+    if (gitModules == null) return Collections.emptyMap();
 
     Repository r = null;
     try {
@@ -455,11 +471,11 @@ public class UpdaterWithMirror extends UpdaterImpl {
           aggregatedSubmodule = new AggregatedSubmodule(url);
         }
 
-        aggregatedSubmodule.addSubmodule(new Submodule(submoduleName, submodulePath, submoduleRevision));
+        aggregatedSubmodule.addSubmodule(new Submodule(submoduleName, submodulePath.replaceAll("/", Matcher.quoteReplacement(File.separator)), submoduleRevision));
         aggregatedSubmodules.put(url, aggregatedSubmodule);
         }
 
-      return aggregatedSubmodules.values();
+      return aggregatedSubmodules;
     } finally {
       if (r != null) {
         r.close();
