@@ -394,8 +394,9 @@ public class UpdaterImpl implements Updater {
       return;
     }
 
-    Repository r = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
+    Repository r = null;
     try {
+      r = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
       StoredConfig gitConfig = r.getConfig();
 
       Set<String> submodules = gitModules.getSubsections("submodule");
@@ -438,15 +439,24 @@ public class UpdaterImpl implements Updater {
       }
       gitConfig.save();
     } finally {
-      r.close();
+      if (r != null) {
+        r.close();
+      }
     }
   }
 
   private void updateOriginUrl(@NotNull File repoDir, @NotNull String url) throws IOException {
-    Repository r = new RepositoryBuilder().setBare().setGitDir(repoDir).build();
-    StoredConfig config = r.getConfig();
-    config.setString("remote", "origin", "url", url);
-    config.save();
+    Repository r = null;
+    try {
+      r = new RepositoryBuilder().setBare().setGitDir(repoDir).build();
+      StoredConfig config = r.getConfig();
+      config.setString("remote", "origin", "url", url);
+      config.save();
+    } catch (IOException e) {
+      if (r != null) {
+        r.close();
+      }
+    }
   }
 
 

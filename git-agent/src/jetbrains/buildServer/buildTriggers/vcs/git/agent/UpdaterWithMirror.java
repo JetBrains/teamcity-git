@@ -414,48 +414,57 @@ public class UpdaterWithMirror extends UpdaterImpl {
     final Config gitModules = readGitModules(new File(repositoryDir, ".gitmodules"));
     if (gitModules == null) return Collections.emptyList();
 
-    final StoredConfig gitConfig = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build().getConfig();
-    final Set<String> submodules = gitModules.getSubsections("submodule");
-    final Map<String, AggregatedSubmodule> aggregatedSubmodules = new HashMap<String, AggregatedSubmodule>();
+    Repository r = null;
+    try {
+      r = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
 
-    for (String submoduleName : submodules) {
-      String url = gitConfig.getString("submodule", submoduleName, "url");
-      if (url == null) {
-        Loggers.VCS.info(".git/config doesn't contain an url for submodule '" + submoduleName + "', use url from .gitmodules");
-        url = gitModules.getString("submodule", submoduleName, "url");
+      final StoredConfig gitConfig = r.getConfig();
+      final Set<String> submodules = gitModules.getSubsections("submodule");
+      final Map<String, AggregatedSubmodule> aggregatedSubmodules = new HashMap<String, AggregatedSubmodule>();
+
+      for (String submoduleName : submodules) {
+        String url = gitConfig.getString("submodule", submoduleName, "url");
+        if (url == null) {
+          Loggers.VCS.info(".git/config doesn't contain an url for submodule '" + submoduleName + "', use url from .gitmodules");
+          url = gitModules.getString("submodule", submoduleName, "url");
+        }
+
+        if (StringUtil.isEmpty(url)) { // shouldn't happen unless .gitmodules is malformed & missing a url
+          Loggers.VCS.warn("Could not determine submodule url for '" + submoduleName + "'");
+          continue;
+        }
+
+        final String submodulePath = gitModules.getString("submodule", submoduleName, "path");
+        if (StringUtil.isEmpty(submodulePath)) { // // shouldn't happen unless .gitmodules is malformed & missing a path
+          Loggers.VCS.warn("Could not determine submodule path for '" + submoduleName + "'");
+          continue;
+        }
+
+        final String submoduleRevision = getSubmoduleRevision(git, revision, submodulePath);
+        if (StringUtil.isEmpty(submoduleRevision)) { // submodule path specified in .gitmodules may not actually exist
+          Loggers.VCS.warn("Could not determine submodule commit for '" + submoduleName + "', at path '" + submodulePath + "'");
+          continue;
+        }
+
+        // Build a map of submodule url -> (names, paths, commits)
+        // The same submodule url can be checked out to multiple paths & at different commits, but we only need one local mirror.
+        AggregatedSubmodule aggregatedSubmodule;
+        if (aggregatedSubmodules.containsKey(url)) {
+          aggregatedSubmodule = aggregatedSubmodules.get(url);
+        } else {
+          aggregatedSubmodule = new AggregatedSubmodule(url);
+        }
+
+        aggregatedSubmodule.addSubmodule(new Submodule(submoduleName, submodulePath, submoduleRevision));
+        aggregatedSubmodules.put(url, aggregatedSubmodule);
+        }
+
+      return aggregatedSubmodules.values();
+    } finally {
+      if (r != null) {
+        r.close();
       }
-
-      if (StringUtil.isEmpty(url)) { // shouldn't happen unless .gitmodules is malformed & missing a url
-        Loggers.VCS.warn("Could not determine submodule url for '" + submoduleName + "'");
-        continue;
-      }
-
-      final String submodulePath = gitModules.getString("submodule", submoduleName, "path");
-      if (StringUtil.isEmpty(submodulePath)) { // // shouldn't happen unless .gitmodules is malformed & missing a path
-        Loggers.VCS.warn("Could not determine submodule path for '" + submoduleName + "'");
-        continue;
-      }
-
-      final String submoduleRevision = getSubmoduleRevision(git, revision, submodulePath);
-      if (StringUtil.isEmpty(submoduleRevision)) { // submodule path specified in .gitmodules may not actually exist
-        Loggers.VCS.warn("Could not determine submodule commit for '" + submoduleName + "', at path '" + submodulePath + "'");
-        continue;
-      }
-
-      // Build a map of submodule url -> (names, paths, commits)
-      // The same submodule url can be checked out to multiple paths & at different commits, but we only need one local mirror.
-      AggregatedSubmodule aggregatedSubmodule;
-      if (aggregatedSubmodules.containsKey(url)) {
-        aggregatedSubmodule = aggregatedSubmodules.get(url);
-      } else {
-        aggregatedSubmodule = new AggregatedSubmodule(url);
-      }
-
-      aggregatedSubmodule.addSubmodule(new Submodule(submoduleName, submodulePath, submoduleRevision));
-      aggregatedSubmodules.put(url, aggregatedSubmodule);
     }
-
-    return aggregatedSubmodules.values();
   }
 
   private String getSubmoduleRevision(@NotNull GitFacade git, @NotNull String revision, @NotNull String path) throws VcsException {

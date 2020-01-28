@@ -41,8 +41,9 @@ public class RemoteRepositoryUrlInvestigatorImpl implements RemoteRepositoryUrlI
   @Override
   @Nullable
   public String getRemoteRepositoryUrl(@NotNull final File repositoryDir) {
+    Repository r = null;
     try {
-      Repository r = new RepositoryBuilder().setBare().setGitDir(repositoryDir).build();
+      r = new RepositoryBuilder().setBare().setGitDir(repositoryDir).build();
       StoredConfig config = r.getConfig();
       String teamcityRemote = config.getString("teamcity", null, "remote");
       if (teamcityRemote != null)
@@ -51,6 +52,10 @@ public class RemoteRepositoryUrlInvestigatorImpl implements RemoteRepositoryUrlI
     } catch (Exception e) {
       LOG.warn("Error while trying to get remote repository url at " + repositoryDir.getAbsolutePath(), e);
       return null;
+    } finally {
+      if (r != null) {
+        r.close();
+      }
     }
   }
 }
