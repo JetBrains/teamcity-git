@@ -427,7 +427,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     final String revision = git.revParse().setRef("HEAD").call();
     if (StringUtil.isEmpty(revision)) return Collections.emptyMap();
 
-    final Config gitModules = readGitModules(new File(repositoryDir, ".gitmodules"));
+    final Config gitModules = readGitModules(repositoryDir);
     if (gitModules == null) return Collections.emptyMap();
 
     Repository r = null;

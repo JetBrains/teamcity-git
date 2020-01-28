@@ -344,11 +344,9 @@ public class UpdaterImpl implements Updater {
   }
 
   private void checkoutSubmodules(@NotNull final File repositoryDir) throws VcsException {
-    File dotGitModules = new File(repositoryDir, ".gitmodules");
     try {
-      Config gitModules = readGitModules(dotGitModules);
-      if (gitModules == null)
-        return;
+      final Config gitModules = readGitModules(repositoryDir);
+      if (gitModules == null) return;
 
       myLogger.message("Checkout submodules in " + repositoryDir);
       GitFacade git = myGitFactory.create(repositoryDir);
@@ -408,7 +406,7 @@ public class UpdaterImpl implements Updater {
                          + ", skip updating credentials");
         return;
       }
-      File modulesDir = new File(r.getDirectory(), Constants.MODULES);
+      File modulesDir = getModulesDir(r.getDirectory());
       for (String submoduleName : submodules) {
         //The 'git submodule sync' command executed before resolves relative submodule urls
         //from .gitmodules and writes them into .git/config. We should use resolved urls in
@@ -448,6 +446,11 @@ public class UpdaterImpl implements Updater {
     }
   }
 
+  @NotNull
+  private File getModulesDir(final File repoDir) {
+    return new File(repoDir, Constants.MODULES);
+  }
+
   private void updateOriginUrl(@NotNull File repoDir, @NotNull String url) throws IOException {
     Repository r = null;
     try {
@@ -464,13 +467,19 @@ public class UpdaterImpl implements Updater {
 
 
   @Nullable
-  protected Config readGitModules(@NotNull File dotGitModules) throws IOException, ConfigInvalidException {
-    if (!dotGitModules.exists())
-      return null;
-    String content = FileUtil.readText(dotGitModules);
-    Config config = new Config();
-    config.fromText(content);
-    return config;
+  protected Config readGitModules(@NotNull File repoDir) throws VcsException {
+    final File dotGitModules = new File(repoDir, ".gitmodules");
+    if (!dotGitModules.exists()) return null;
+
+    try {
+      final String content = FileUtil.readText(dotGitModules);
+      final Config config = new Config();
+      config.fromText(content);
+      return config;
+    } catch (Exception e) {
+      Loggers.VCS.error("Error while reading " + dotGitModules.getAbsolutePath() + ": " + e.getMessage());
+      throw new VcsException("Error while reading " + dotGitModules.getAbsolutePath(), e);
+    }
   }
 
 
@@ -518,17 +527,8 @@ public class UpdaterImpl implements Updater {
 
 
   private void cleanSubmodules(@NotNull File repositoryDir) throws VcsException {
-    File dotGitModules = new File(repositoryDir, ".gitmodules");
-    Config gitModules;
-    try {
-      gitModules = readGitModules(dotGitModules);
-    } catch (Exception e) {
-      Loggers.VCS.error("Error while reading " + dotGitModules.getAbsolutePath() + ": " + e.getMessage());
-      throw new VcsException("Error while reading " + dotGitModules.getAbsolutePath(), e);
-    }
-
-    if (gitModules == null)
-      return;
+    final Config gitModules = readGitModules(repositoryDir);
+    if (gitModules == null) return;
 
     for (String submodulePath : getSubmodulePaths(gitModules)) {
       File submoduleDir = new File(repositoryDir, submodulePath);
