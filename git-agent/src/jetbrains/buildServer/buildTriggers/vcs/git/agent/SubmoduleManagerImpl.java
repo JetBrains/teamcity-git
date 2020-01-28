@@ -50,7 +50,7 @@ public class SubmoduleManagerImpl implements SubmoduleManager {
 
   @NotNull
   private File getSubmoduleFile(@NotNull final String repositoryUrl) {
-    return new File(myMirrorManager.getMirrorDir(repositoryUrl), "submodules");
+    return new File(myMirrorManager.getMirrorDir(repositoryUrl), "teamcity.submodules");
   }
 
   @NotNull
