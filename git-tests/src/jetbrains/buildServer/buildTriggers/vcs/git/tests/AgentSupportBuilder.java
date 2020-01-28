@@ -78,7 +78,7 @@ class AgentSupportBuilder {
     myGitAgentSSHService =
       new GitAgentSSHService(myAgent, myAgentConfiguration, new MockGitPluginDescriptor(), mySshKeyProvider, buildTracker);
     return new GitAgentVcsSupport(myFS, new MockDirectoryCleaner(), myGitAgentSSHService,
-                                  myPluginConfigFactory, myMirrorManager, myGitMetaFactory);
+                                  myPluginConfigFactory, myMirrorManager, new SubmoduleManagerImpl(myMirrorManager), myGitMetaFactory);
   }
 
 

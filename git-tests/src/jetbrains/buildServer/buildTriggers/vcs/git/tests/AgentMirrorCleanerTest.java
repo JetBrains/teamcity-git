@@ -22,6 +22,7 @@ import jetbrains.buildServer.agent.DirectoryCleanersProviderContext;
 import jetbrains.buildServer.agent.DirectoryCleanersRegistry;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentMirrorCleaner;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.SubmoduleManagerImpl;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsRootEntry;
@@ -34,6 +35,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -46,11 +48,13 @@ public class AgentMirrorCleanerTest {
   private Mockery myContext = new Mockery();
   private MirrorManager myMirrorManager;
   private AgentMirrorCleaner myAgentMirrorCleaner;
+  private SubmoduleManagerImpl mySubmoduleManager;
 
   @BeforeMethod
   public void setUp() {
     myMirrorManager = myContext.mock(MirrorManager.class);
-    myAgentMirrorCleaner = new AgentMirrorCleaner(myMirrorManager);
+    mySubmoduleManager = new SubmoduleManagerImpl(myMirrorManager);
+    myAgentMirrorCleaner = new AgentMirrorCleaner(myMirrorManager, mySubmoduleManager);
   }
 
 
@@ -58,18 +62,26 @@ public class AgentMirrorCleanerTest {
     TempFiles tmpFiles = new TempFiles();
     try {
       final DirectoryCleanersRegistry registry = myContext.mock(DirectoryCleanersRegistry.class);
+      final File r1mirror = tmpFiles.createTempDir();
+      final File r2mirror = tmpFiles.createTempDir();
       final File r3mirror = tmpFiles.createTempDir();
       final File r4mirror = tmpFiles.createTempDir();
       final Date r3lastAccess = Dates.makeDate(2012, 10, 29);
       final Date r4lastAccess = Dates.makeDate(2012, 10, 27);
       List<String> repositoriesInBuild = asList("git://some.org/r1", "git://some.org/r2");
       myContext.checking(new Expectations() {{
-        one(myMirrorManager).getMappings(); will(returnValue(map("git://some.org/r1", tmpFiles.createTempDir(),
-                                                                 "git://some.org/r2", tmpFiles.createTempDir(),
-                                                                 "git://some.org/r3", r3mirror,
-                                                                 "git://some.org/r4", r4mirror)));
+        one(myMirrorManager).getMappings();
+        will(returnValue(map("git://some.org/r1", r1mirror,
+                             "git://some.org/r2", r2mirror,
+                             "git://some.org/r3", r3mirror,
+                             "git://some.org/r4", r4mirror)));
         one(myMirrorManager).getLastUsedTime(r3mirror); will(returnValue(r3lastAccess.getTime()));
         one(myMirrorManager).getLastUsedTime(r4mirror); will(returnValue(r4lastAccess.getTime()));
+
+        one(myMirrorManager).getMirrorDir("git://some.org/r1"); will(returnValue(r1mirror));
+        one(myMirrorManager).getMirrorDir("git://some.org/r2"); will(returnValue(r2mirror));
+        one(myMirrorManager).getMirrorDir("git://some.org/r3"); will(returnValue(r3mirror));
+        one(myMirrorManager).getMirrorDir("git://some.org/r4"); will(returnValue(r4mirror));
 
         one(registry).addCleaner(r3mirror, r3lastAccess);
         one(registry).addCleaner(r4mirror, r4lastAccess);
@@ -80,6 +92,42 @@ public class AgentMirrorCleanerTest {
     }
   }
 
+  public void should_resolve_submodules() throws IOException {
+    TempFiles tmpFiles = new TempFiles();
+    try {
+      final DirectoryCleanersRegistry registry = myContext.mock(DirectoryCleanersRegistry.class);
+      final File r1mirror = tmpFiles.createTempDir();
+      final File r2mirror = tmpFiles.createTempDir();
+      final File r3mirror = tmpFiles.createTempDir();
+      final File r4mirror = tmpFiles.createTempDir();
+      final Date r1lastAccess = Dates.makeDate(2012, 10, 26);
+      final Date r2lastAccess = Dates.makeDate(2012, 10, 28);
+      final Date r3lastAccess = Dates.makeDate(2012, 10, 29);
+      final Date r4lastAccess = Dates.makeDate(2012, 10, 27);
+      List<String> repositoriesInBuild = Collections.singletonList("git://some.org/r1");
+      myContext.checking(new Expectations() {{
+        one(myMirrorManager).getMappings();
+        will(returnValue(map("git://some.org/r1", r1mirror,
+                             "git://some.org/r2", r2mirror,
+                             "git://some.org/r3", r3mirror,
+                             "git://some.org/r4", r4mirror)));
+        one(myMirrorManager).getLastUsedTime(r1mirror); will(returnValue(r1lastAccess.getTime()));
+        one(myMirrorManager).getLastUsedTime(r2mirror); will(returnValue(r2lastAccess.getTime()));
+        one(myMirrorManager).getLastUsedTime(r3mirror); will(returnValue(r3lastAccess.getTime()));
+        one(myMirrorManager).getLastUsedTime(r4mirror); will(returnValue(r4lastAccess.getTime()));
+
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r1"); will(returnValue(r1mirror));
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r2"); will(returnValue(r2mirror));
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r3"); will(returnValue(r3mirror));
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r4"); will(returnValue(r4mirror));
+      }});
+      mySubmoduleManager.persistSubmodules("git://some.org/r1", asList("git://some.org/r2", "git://some.org/r3"));
+      mySubmoduleManager.persistSubmodules("git://some.org/r2", Collections.singletonList("git://some.org/r4"));
+      myAgentMirrorCleaner.registerDirectoryCleaners(createCleanerContext(repositoriesInBuild), registry);
+    } finally {
+      tmpFiles.cleanup();
+    }
+  }
 
   private DirectoryCleanersProviderContext createCleanerContext(@NotNull final List<String> repositoriesInBuild) {
     final DirectoryCleanersProviderContext context = myContext.mock(DirectoryCleanersProviderContext.class);

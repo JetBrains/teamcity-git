@@ -46,6 +46,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private final GitAgentSSHService mySshService;
   private final PluginConfigFactory myConfigFactory;
   private final MirrorManager myMirrorManager;
+  private final SubmoduleManager mySubmoduleManager;
   private final GitMetaFactory myGitMetaFactory;
 
   //The canCheckout() method should check that roots are not checked out in the same dir (TW-49786).
@@ -62,12 +63,14 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull GitAgentSSHService sshService,
                             @NotNull PluginConfigFactory configFactory,
                             @NotNull MirrorManager mirrorManager,
+                            final SubmoduleManager submoduleManager,
                             @NotNull GitMetaFactory gitMetaFactory) {
     myFS = fs;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
     myConfigFactory = configFactory;
     myMirrorManager = mirrorManager;
+    mySubmoduleManager = submoduleManager;
     myGitMetaFactory = gitMetaFactory;
   }
 
@@ -101,11 +104,11 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     Updater updater;
     AgentGitVcsRoot gitRoot = new AgentGitVcsRoot(myMirrorManager, targetDir, root);
     if (config.isUseAlternates(gitRoot)) {
-      updater = new UpdaterWithAlternates(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode);
+      updater = new UpdaterWithAlternates(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager);
     } else if (config.isUseLocalMirrors(gitRoot)) {
-      updater = new UpdaterWithMirror(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode);
+      updater = new UpdaterWithMirror(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager);
     } else {
-      updater = new UpdaterImpl(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode);
+      updater = new UpdaterImpl(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager);
     }
     updater.update();
   }

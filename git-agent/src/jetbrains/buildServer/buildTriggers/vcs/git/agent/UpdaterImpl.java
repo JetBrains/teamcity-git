@@ -85,6 +85,7 @@ public class UpdaterImpl implements Updater {
   private final CheckoutRules myRules;
   private final CheckoutMode myCheckoutMode;
   protected final MirrorManager myMirrorManager;
+  protected final SubmoduleManager mySubmoduleManager;
   //remote repository refs, stored in field in order to not run 'git ls-remote' command twice
   private Refs myRemoteRefs;
 
@@ -98,7 +99,8 @@ public class UpdaterImpl implements Updater {
                      @NotNull String version,
                      @NotNull File targetDir,
                      @NotNull CheckoutRules rules,
-                     @NotNull CheckoutMode checkoutMode) throws VcsException {
+                     @NotNull CheckoutMode checkoutMode,
+                     final SubmoduleManager submoduleManager) throws VcsException {
     myFS = fs;
     myPluginConfig = pluginConfig;
     myDirectoryCleaner = directoryCleaner;
@@ -107,6 +109,7 @@ public class UpdaterImpl implements Updater {
     myLogger = build.getBuildLogger();
     myRevision = GitUtils.versionRevision(version);
     myTargetDirectory = targetDir;
+    mySubmoduleManager = submoduleManager;
     myRoot = new AgentGitVcsRoot(mirrorManager, myTargetDirectory, root);
     myFullBranchName = getBranch();
     myRules = rules;
@@ -582,16 +585,6 @@ public class UpdaterImpl implements Updater {
 
   protected void disableAlternates() {
     FileUtil.delete(new File(myTargetDirectory, ".git" + File.separator + "objects" + File.separator + "info" + File.separator + "alternates"));
-  }
-
-
-  private String getRemoteUrl() {
-    try {
-      return myGitFactory.create(myTargetDirectory).getConfig().setPropertyName("remote.origin.url").call();
-    } catch (VcsException e) {
-      LOG.debug("Failed to read property", e);
-      return "";
-    }
   }
 
 
