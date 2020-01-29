@@ -458,7 +458,7 @@ public class UpdaterImpl implements Updater {
       StoredConfig config = r.getConfig();
       config.setString("remote", "origin", "url", url);
       config.save();
-    } catch (IOException e) {
+    } finally {
       if (r != null) {
         r.close();
       }
