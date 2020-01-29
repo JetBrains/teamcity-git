@@ -45,17 +45,20 @@ import static jetbrains.buildServer.util.Util.map;
 
 @Test
 public class AgentMirrorCleanerTest {
-  private Mockery myContext = new Mockery();
+  private Mockery myContext;
   private MirrorManager myMirrorManager;
   private AgentMirrorCleaner myAgentMirrorCleaner;
   private SubmoduleManagerImpl mySubmoduleManager;
 
   @BeforeMethod
   public void setUp() {
+    myContext = new Mockery();
     myMirrorManager = myContext.mock(MirrorManager.class);
     mySubmoduleManager = new SubmoduleManagerImpl(myMirrorManager);
     myAgentMirrorCleaner = new AgentMirrorCleaner(myMirrorManager, mySubmoduleManager);
   }
+
+
 
 
   public void should_register_mirrors_not_used_in_current_build() throws IOException {
