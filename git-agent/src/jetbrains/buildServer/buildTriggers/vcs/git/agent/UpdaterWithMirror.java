@@ -404,16 +404,22 @@ public class UpdaterWithMirror extends UpdaterImpl {
   @NotNull
   protected File updateSubmoduleMirror(@NotNull final AggregatedSubmodule submodule) throws VcsException {
     File mirrorRepositoryDir = getSubmoduleMirror(submodule);
-    if (!hasRevisions(mirrorRepositoryDir, submodule.getRevisions())) {
-      updateLocalMirror(true,
-                        mirrorRepositoryDir,
-                        new URIishHelperImpl().createAuthURI(myRoot.getAuthSettings(), submodule.getUrl()),
-                        "refs/heads/*",
-                        submodule.getRevisions());
-      mirrorRepositoryDir = getSubmoduleMirror(submodule); // submodule mirrorRepositoryDir can change if couldn't remove it after unsuccessful fetch
+    final String message = "Update git mirror (" + mirrorRepositoryDir + ") for " + submodule.getNamesString();
+    myLogger.activityStarted(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
+    try {
+      if (!hasRevisions(mirrorRepositoryDir, submodule.getRevisions())) {
+        updateLocalMirror(true,
+                          mirrorRepositoryDir,
+                          new URIishHelperImpl().createAuthURI(myRoot.getAuthSettings(), submodule.getUrl()),
+                          "refs/heads/*",
+                          submodule.getRevisions());
+        mirrorRepositoryDir = getSubmoduleMirror(submodule); // submodule mirrorRepositoryDir can change if couldn't remove it after unsuccessful fetch
+      }
+      myGitFactory.create(mirrorRepositoryDir).packRefs().call();
+      return mirrorRepositoryDir;
+    } finally {
+      myLogger.activityFinished(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
     }
-    myGitFactory.create(mirrorRepositoryDir).packRefs().call();
-    return mirrorRepositoryDir;
   }
 
   @NotNull
@@ -560,6 +566,11 @@ public class UpdaterWithMirror extends UpdaterImpl {
           return s.getRevision();
         }
       }).toArray(new String[0]);
+    }
+
+    @NotNull
+    public String getNamesString() {
+      return StringUtil.pluralize("submodule", getNames().length) + " " + StringUtil.join(", ", getNames());
     }
   }
 
