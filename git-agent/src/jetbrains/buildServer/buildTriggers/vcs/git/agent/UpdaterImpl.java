@@ -485,13 +485,8 @@ public class UpdaterImpl implements Updater {
 
   private boolean isRequireAuth(@NotNull String url) {
     try {
-      URIish uri = new URIish(url);
-      String scheme = uri.getScheme();
-      if (scheme == null || "git".equals(scheme)) //no auth for anonymous protocol and for local repositories
-        return false;
-      String user = uri.getUser();
-      //respect a user specified in config
-      return user == null;
+      final URIish result = new URIish(url);
+      return result.getUser() == null && URIishHelperImpl.requiresCredentials(result);
     } catch (URISyntaxException e) {
       return false;
     }
