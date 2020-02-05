@@ -92,9 +92,7 @@ public class URIishHelperImpl implements URIishHelper {
   }
 
   public static boolean requiresCredentials(URIish result) {
-    String scheme = result.getScheme();
-    return result.getHost() != null ||
-           scheme != null && !scheme.equals("git");
+    if (result.getHost() == null) return false;
+    return !"git".equals(result.getScheme());
   }
-
 }
