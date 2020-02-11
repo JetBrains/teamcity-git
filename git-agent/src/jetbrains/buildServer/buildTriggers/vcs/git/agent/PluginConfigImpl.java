@@ -124,8 +124,11 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
   @Override
   public boolean isUseLocalMirrorsForSubmodules(@NotNull final GitVcsRoot root) {
-    return Boolean.parseBoolean(myBuild.getSharedConfigParameters().get(USE_MIRRORS_FOR_SUBMODULES)) ||
-           Boolean.parseBoolean(myBuild.getSharedConfigParameters().get("teamcity.git.useMirrorsForSubmodules"));
+    String param = myBuild.getSharedConfigParameters().get(USE_MIRRORS_FOR_SUBMODULES);
+    if (StringUtil.isEmpty(param)) {
+      param = myBuild.getSharedConfigParameters().get("teamcity.git.useMirrorsForSubmodules");
+    }
+    return StringUtil.isEmpty(param) || Boolean.parseBoolean(param);
   }
 
   public boolean isUseAlternates(@NotNull GitVcsRoot root) {
