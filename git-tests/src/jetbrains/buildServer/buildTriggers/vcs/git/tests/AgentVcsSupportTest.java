@@ -347,23 +347,25 @@ public class AgentVcsSupportTest {
     assertTrue(new File(myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
   }
 
-  @DataProvider(name = "threeBoolean")
-  public Object[][] threeBoolean() {
-    return new Object[][] {
-      {false, false, false},
-      {true, false, false},
-      {false, true, false},
-      {false, false, true},
-      {true, true, false},
-      {false, true, true},
-      {true, false, true},
-      {true, true, true}
-    };
+  @DataProvider(name = "fourBoolean")
+  public Object[][] fourBoolean() {
+    final Object[][] result = new Object[16][4];
+    for (int i = 0; i < 16; i++) {
+      String bin = Integer.toBinaryString(i);
+      while (bin.length() < 4) bin = "0" + bin;
+      char[] chars = bin.toCharArray();
+      Object[] row = new Object[4];
+      for (int j = 0; j < chars.length; j++) {
+        row[j] = chars[j] == '0';
+      }
+      result[i] = row;
+    }
+    return result;
   }
 
-  @Test(dataProvider = "threeBoolean")
-  public void testSubSubmodulesCheckout(boolean recursiveSubmoduleCheckout, boolean useMirrorsForSubmodules, boolean useAlternates) throws Exception {
-    doTestSubSubmoduleCheckout(recursiveSubmoduleCheckout, useMirrorsForSubmodules, useAlternates);
+  @Test(dataProvider = "fourBoolean")
+  public void testSubSubmodulesCheckout(boolean recursiveSubmoduleCheckout, boolean useMirrors, boolean useMirrorsForSubmodules, boolean useAlternates) throws Exception {
+    doTestSubSubmoduleCheckout(recursiveSubmoduleCheckout, useMirrors, useMirrorsForSubmodules, useAlternates);
   }
 
   @TestFor(issues = "TW-27043")
@@ -1388,7 +1390,7 @@ public class AgentVcsSupportTest {
   }
 
 
-  private void doTestSubSubmoduleCheckout(boolean recursiveSubmoduleCheckout, boolean useMirrorsForSubmodules, boolean useAlternates) throws Exception {
+  private void doTestSubSubmoduleCheckout(boolean recursiveSubmoduleCheckout, boolean useMirrors, boolean useMirrorsForSubmodules, boolean useAlternates) throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "sub-submodule");
     if (recursiveSubmoduleCheckout) {
       myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
@@ -1399,6 +1401,7 @@ public class AgentVcsSupportTest {
     final AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
       put(PluginConfigImpl.USE_MIRRORS_FOR_SUBMODULES, useMirrorsForSubmodules ? "true" : "false");
       put(PluginConfigImpl.USE_ALTERNATES, useAlternates ? "true" : "false");
+      put(PluginConfigImpl.USE_MIRRORS, useMirrors ? "true" : "false");
     }});
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION, myCheckoutDir, build, false);
