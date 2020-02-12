@@ -378,7 +378,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
     for (AggregatedSubmodule submodule : aggregatedSubmodules.values()) {
       for (String name : submodule.getNames()) {
-        final File submoduleGitDir = new File(repositoryDir.toString() + File.separator + "modules" + File.separator + name);
+        final File submoduleGitDir = new File(repositoryDir, ".git" + File.separator + "modules" + File.separator + name);
         if (submoduleGitDir.exists()) {
           // Fix the submodule's origin url - it will be equal to a local mirror directory since it was cloned/fetched from there
           // However, this breaks relative submodules which need to be relative to their origin url, not the mirror directory
