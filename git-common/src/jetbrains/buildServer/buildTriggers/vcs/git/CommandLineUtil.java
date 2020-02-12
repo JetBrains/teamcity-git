@@ -50,7 +50,7 @@ public final class CommandLineUtil {
       String stderr = res.getStderr();
       String stdout = res.getStdout();
       final String message = "'" + cmdName + "' command failed" + details + "." +
-                             (exception != null ? "\nexception: " + exception.getMessage() : "") +
+                             (exception != null ? "\nexception: " + exception.getClass().getName() + ": " + exception.getMessage() : "") +
                              (includeStdErr && !StringUtil.isEmpty(stderr) ? "\nstderr: " + stderr.trim() : "") +
                              (includeStdOut && !StringUtil.isEmpty(stdout) ? "\nstdout: " + stdout.trim() : "") +
                              (exitCode != 0 ? "\nexit code: " + exitCode : "");
