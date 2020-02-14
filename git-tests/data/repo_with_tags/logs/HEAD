@@ -1,0 +1,14 @@
+0000000000000000000000000000000000000000 2f30386658549d6510223b94eef744794a337db6 Pavel Sher <pavel.sher@jetbrains.com> 1581690900 +0100	commit (initial): readme
+2f30386658549d6510223b94eef744794a337db6 bb291486f56a58408aa52cd580b39a144511414b Pavel Sher <pavel.sher@jetbrains.com> 1581690958 +0100	commit: file1.txt
+bb291486f56a58408aa52cd580b39a144511414b 8b25cbabacb5a5e63164032df2da7debecb85d0e Pavel Sher <pavel.sher@jetbrains.com> 1581690975 +0100	commit: file2.txt
+8b25cbabacb5a5e63164032df2da7debecb85d0e 0243cec4890c82972daa95afa9268d09c697a846 Pavel Sher <pavel.sher@jetbrains.com> 1581690991 +0100	commit: file3.txt
+0243cec4890c82972daa95afa9268d09c697a846 1d053aefa2dbda1d51d814634544a8096785abef Pavel Sher <pavel.sher@jetbrains.com> 1581691010 +0100	commit: file4.txt
+1d053aefa2dbda1d51d814634544a8096785abef 1d053aefa2dbda1d51d814634544a8096785abef Pavel Sher <pavel.sher@jetbrains.com> 1581694667 +0100	checkout: moving from master to release1.0
+1d053aefa2dbda1d51d814634544a8096785abef c069df1896cc63f0b1ad747434385558a8049307 Pavel Sher <pavel.sher@jetbrains.com> 1581694685 +0100	commit: file5.txt
+c069df1896cc63f0b1ad747434385558a8049307 1d053aefa2dbda1d51d814634544a8096785abef Pavel Sher <pavel.sher@jetbrains.com> 1581694720 +0100	checkout: moving from release1.0 to master
+1d053aefa2dbda1d51d814634544a8096785abef 1d053aefa2dbda1d51d814634544a8096785abef Pavel Sher <pavel.sher@jetbrains.com> 1581694727 +0100	checkout: moving from master to release2.0
+1d053aefa2dbda1d51d814634544a8096785abef 9deb49b1c95e9eae1f783f249d9fa26547eac7ad Pavel Sher <pavel.sher@jetbrains.com> 1581694746 +0100	commit: file6.txt
+9deb49b1c95e9eae1f783f249d9fa26547eac7ad 1d053aefa2dbda1d51d814634544a8096785abef Pavel Sher <pavel.sher@jetbrains.com> 1581694772 +0100	checkout: moving from release2.0 to master
+1d053aefa2dbda1d51d814634544a8096785abef 1d053aefa2dbda1d51d814634544a8096785abef Pavel Sher <pavel.sher@jetbrains.com> 1581694777 +0100	checkout: moving from master to release3.0
+1d053aefa2dbda1d51d814634544a8096785abef 74577c15655ab221af62663d8977a2d083aca952 Pavel Sher <pavel.sher@jetbrains.com> 1581694794 +0100	commit: file7.txt
+74577c15655ab221af62663d8977a2d083aca952 1d053aefa2dbda1d51d814634544a8096785abef Pavel Sher <pavel.sher@jetbrains.com> 1581694823 +0100	checkout: moving from release3.0 to master

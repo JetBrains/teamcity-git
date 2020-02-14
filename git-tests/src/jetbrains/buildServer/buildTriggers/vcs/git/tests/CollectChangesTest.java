@@ -29,12 +29,15 @@ import org.apache.log4j.Level;
 import org.assertj.core.data.MapEntry;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeResult;
+import org.eclipse.jgit.errors.InvalidObjectIdException;
+import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.merge.MergeStrategy;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
@@ -44,6 +47,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -68,7 +72,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   private TestLogger myLogger;
 
   public CollectChangesTest() {
-    super("repo.git", "TW-43643-1", "TW-43643-2");
+    super("repo.git", "TW-43643-1", "TW-43643-2", "repo_with_tags");
   }
 
 
@@ -410,6 +414,52 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     assertEquals(fetchCounter.getFetchCount(), 1);
   }
 
+  @Test(enabled = false)
+  @TestFor(issues = "TW-64494")
+  public void fetch_should_not_retrieve_all_tags_if_we_decided_to_fetch_all_specs() throws Exception {
+    myConfig.setSeparateProcessForFetch(false);
+
+    final File fetchUrl = getRemoteRepositoryDir("repo_with_tags");
+    VcsRoot root = vcsRoot().withFetchUrl(fetchUrl)
+      .withBranch("master")
+      .withReportTags(false)
+      .build();
+
+    GitVcsSupport git = gitSupport().withPluginConfig(myConfig).build();
+    RepositoryStateData curState = git.getCurrentState(root); // also fetches repository
+
+    URIish uri = new URIish(fetchUrl.getCanonicalPath());
+
+    File dir = git.getRepositoryManager().getMirrorDir(uri.toString());
+    then(dir).isDirectory();
+
+    checkCommitNotFetched(git, uri, "74577c15655ab221af62663d8977a2d083aca952");
+
+    Map<String, String> branches = new HashMap<>(curState.getBranchRevisions());
+    branches.put("refs/heads/unknown.branch", "xxx"); //unknown branch that points to some non existing commit
+    RepositoryStateData newState = createVersionState("refs/heads/master", branches);
+
+    try {
+      git.getCollectChangesPolicy().collectChanges(root, curState, newState, CheckoutRules.DEFAULT);
+    } catch (VcsException e) {
+      // this is ok, since our revision for unknown.branch is fake
+    }
+
+    checkCommitNotFetched(git, uri, "74577c15655ab221af62663d8977a2d083aca952");
+  }
+
+  private void checkCommitNotFetched(final GitVcsSupport git, final URIish uri, String sha) throws Exception {
+    try (Repository repo = git.getRepositoryManager().openRepository(uri)) {
+      try (RevWalk walk = new RevWalk(repo)) {
+        try {
+          RevCommit commit = walk.parseCommit(ObjectId.fromString(sha));
+          then(commit).isNull(); // we did not ask for tags, so there should not be this commit in our local clone
+        } catch (MissingObjectException e) {
+          // this is expected
+        }
+      }
+    }
+  }
 
   @DataProvider(name = "separateProcess,newConnectionForPrune")
   public static Object[][] createData() {
