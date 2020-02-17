@@ -131,9 +131,9 @@ public class CommandUtil {
           .runCommandSecure(cli, cli.getCommandLineString(), input, new ProcessTimeoutCallback(timeoutSeconds), stdoutBuffer, stderrBuffer);
         cli.logFinish(cmdStr);
         CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
-        String out = res.getStdout().trim();
+        String out = res.getStdout();
         Loggers.VCS.debug(out);
-        if (!isEmpty(out) || !cli.isRepeatOnEmptyOutput() || attemptsLeft <= 0)
+        if (StringUtil.isNotEmpty(out) || !cli.isRepeatOnEmptyOutput() || attemptsLeft <= 0)
           return res;
         Loggers.VCS.warn("Get an unexpected empty output, will repeat command, attempts left: " + attemptsLeft);
         attemptsLeft--;
