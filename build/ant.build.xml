@@ -25,7 +25,7 @@
     <!-- update all references in teamcity-plugin.xml files -->
     <replace dir="${home}" summary="true">
       <include name="**/teamcity-plugin.xml"/>
-      <replacefilter token="@version@" value="${plugin.version}"/>
+      <replacefilter token="@Plugin_Version@" value="${plugin.version}"/>
     </replace>
   </target>
 

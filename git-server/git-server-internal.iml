@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module relativePaths="true" type="JAVA_MODULE" version="4">
+  <component name="FacetManager">
+    <facet type="web" name="git-web">
+      <configuration>
+        <webroots>
+          <root url="file://$MODULE_DIR$/resources/buildServerResources" relative="/plugins/jetbrains.git" />
+        </webroots>
+      </configuration>
+    </facet>
+    <facet type="Spring" name="Spring">
+      <configuration>
+        <fileset id="fileset" name="Spring Application Context" removed="false">
+          <file>file://$MODULE_DIR$/src/META-INF/build-server-plugin-git.xml</file>
+        </fileset>
+      </configuration>
+    </facet>
+  </component>
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/resources" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="git-common-internal" exported="" />
+    <orderEntry type="library" name="git-jsch" level="project" />
+    <orderEntry type="library" name="git-quartz" level="project" />
+    <orderEntry type="library" name="git-egit-github" level="project" />
+    <orderEntry type="library" name="git-httpclient" level="project" />
+    <orderEntry type="library" exported="" name="git-jgit-server" level="project" />
+    <orderEntry type="library" name="git-javaEWAH" level="project" />
+    <orderEntry type="module" module-name="server" exported="" />
+    <orderEntry type="module" module-name="patches-impl" exported="" />
+    <orderEntry type="module" module-name="usage-statistics-util" exported="" />
+  </component>
+</module>

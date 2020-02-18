@@ -4,7 +4,7 @@
   <info>
     <name>jetbrains.git</name>
     <display-name>VCS support: Git</display-name>
-    <version>@version@</version>
+    <version>@Plugin_Version@</version>
     <description></description>
     <vendor>
       <name>JetBrains, s.r.o.</name>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module relativePaths="true" type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="true" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="git-test-libs" level="project" />
+    <orderEntry type="module" module-name="git-server-internal" />
+    <orderEntry type="module" module-name="git-agent-internal" />
+    <orderEntry type="library" name="git-jsch" level="project" />
+    <orderEntry type="module" module-name="git-server-tc-internal" />
+    <orderEntry type="library" name="git-quartz" level="project" />
+    <orderEntry type="library" name="git-httpclient" level="project" />
+    <orderEntry type="library" name="git-javaEWAH" level="project" />
+    <orderEntry type="library" name="git-jgit-server" level="project" />
+    <orderEntry type="module" module-name="test-api" />
+    <orderEntry type="module" module-name="patches-tests" />
+  </component>
+</module>
