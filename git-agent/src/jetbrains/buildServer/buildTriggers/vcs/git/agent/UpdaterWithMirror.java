@@ -18,6 +18,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
+import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.CommonURIish;
@@ -37,12 +42,6 @@ import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.regex.Matcher;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
 
@@ -377,8 +376,8 @@ public class UpdaterWithMirror extends UpdaterImpl {
     super.updateSubmodules(repositoryDir);
 
     for (AggregatedSubmodule submodule : aggregatedSubmodules.values()) {
-      for (String name : submodule.getNames()) {
-        final File submoduleGitDir = new File(repositoryDir, ".git" + File.separator + "modules" + File.separator + name);
+      for (Submodule s : submodule.getSubmodules()) {
+        final File submoduleGitDir = GitUtils.getGitDir(new File(repositoryDir, s.getPath()));
         if (submoduleGitDir.exists()) {
           // Fix the submodule's origin url - it will be equal to a local mirror directory since it was cloned/fetched from there
           // However, this breaks relative submodules which need to be relative to their origin url, not the mirror directory
