@@ -18,6 +18,18 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.StreamUtil;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.TestNGUtil;
@@ -51,19 +63,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileReader;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
@@ -1377,6 +1376,13 @@ public class AgentVcsSupportTest {
 //
 //    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "a540b3cab44a513b5b420582701dca2e8805d772", myCheckoutDir, build, false);
 //  }
+
+
+  @Test
+  public void switch_to_submodule_mirror() throws Exception {
+    doTestSubSubmoduleCheckout(true, true, false, false);
+    doTestSubSubmoduleCheckout(true, true, true, true);
+  }
 
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
     myVcsRootId++;
