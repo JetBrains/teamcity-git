@@ -81,7 +81,7 @@ public class GitExternalChangeViewerExtension implements ExternalChangeViewerExt
       final VcsHostingRepo finalVcsHostingRepo = vcsHostingRepo;
       return new HashMap<String, String>() {{
         put(PropertyType.CHANGE_SET_TYPE, finalVcsHostingRepo.repositoryUrl() + "/commit/${changeSetId}");
-        put(PropertyType.LINK_TEXT, "Open in Visual Studio Team Services");
+        put(PropertyType.LINK_TEXT, "Open in Azure DevOps Services");
         put(PropertyType.LINK_ICON_CLASS, "tc-icon_tfs");
       }};
     }
