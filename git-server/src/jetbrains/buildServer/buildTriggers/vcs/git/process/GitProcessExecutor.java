@@ -19,14 +19,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git.process;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.Ref;
+import java.io.ByteArrayOutputStream;
 import jetbrains.buildServer.CommandLineExecutor;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
-import org.eclipse.jgit.internal.JGitText;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.ByteArrayOutputStream;
 
 import static jetbrains.buildServer.SimpleCommandLineProcessRunner.getThreadNameCommandLine;
 import static jetbrains.buildServer.util.NamedThreadFactory.executeWithNewThreadName;
@@ -116,7 +114,8 @@ public class GitProcessExecutor {
     }
 
     public boolean isOutOfMemoryError() {
-      return myExecResult.getStderr().contains("java.lang.OutOfMemoryError") || myExecResult.getStderr().contains(JGitText.get().largeObjectOutOfMemory);
+      return myExecResult.getStderr().contains("java.lang.OutOfMemoryError")
+             || myExecResult.getStderr().contains("Out of memory loading"); //JGitText.get().largeObjectOutOfMemory
     }
 
     public boolean isTimeout() {
