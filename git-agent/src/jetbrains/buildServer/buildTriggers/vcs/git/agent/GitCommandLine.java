@@ -20,6 +20,13 @@ import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.KeyPair;
+import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.charset.UnsupportedCharsetException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import jetbrains.buildServer.agent.BuildInterruptReason;
@@ -35,14 +42,6 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.*;
-import java.nio.charset.Charset;
-import java.nio.charset.UnsupportedCharsetException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class GitCommandLine extends GeneralCommandLine {
 
@@ -124,20 +123,23 @@ public class GitCommandLine extends GeneralCommandLine {
         if (!myGitVersion.isLessThan(UpdaterImpl.MIN_GIT_SSH_COMMAND) && authSettings.getAuthMethod() == AuthenticationMethod.TEAMCITY_SSH_KEY && myUseGitSshCommand) {
           configureGitSshCommand(authSettings);
         }
-        return CommandUtil.runCommand(this, settings.getTimeout());
+        return runCommand(settings.getTimeout());
       } else {
         SshHandler h = new SshHandler(mySsh, mySshKeyManager, authSettings, this, myTmpDir, myCtx);
         try {
-          return CommandUtil.runCommand(this, settings.getTimeout());
+          return runCommand(settings.getTimeout());
         } finally {
           h.unregister();
         }
       }
     } else {
-      return CommandUtil.runCommand(this, settings.getTimeout());
+      return runCommand(settings.getTimeout());
     }
   }
 
+  private ExecResult runCommand(int timeoutSeconds) throws VcsException {
+    return CommandUtil.runCommand(this, timeoutSeconds, new byte[0]); // workaround to make sure process input stream is closed straight away
+  }
 
   private void configureGitSshCommand(@NotNull AuthSettings authSettings) throws VcsException {
     //Git has 2 environment variables related to ssh: GIT_SSH and GIT_SSH_COMMAND.
