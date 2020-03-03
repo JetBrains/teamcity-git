@@ -82,6 +82,8 @@ public interface AgentPluginConfig extends PluginConfig {
 
   int getLsRemoteTimeoutSeconds();
 
+  int getSubmoduleUpdateTimeoutSeconds();
+
   /**
    * Defines how progress output from git commands is written into build log
    */

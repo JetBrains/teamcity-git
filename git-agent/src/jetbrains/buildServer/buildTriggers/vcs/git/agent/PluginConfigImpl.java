@@ -16,6 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import java.io.File;
+import java.util.Map;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
@@ -25,9 +27,6 @@ import jetbrains.buildServer.util.StringUtil;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.Map;
 
 /**
  * @author dmitry.neverov
@@ -58,6 +57,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   private static final String USE_DEFAULT_CHARSET = "teamcity.git.useDefaultCharset";
   private static final String GIT_OUTPUT_CHARSET = "teamcity.git.outputCharset";
   private static final String LS_REMOTE_TIMEOUT_SECONDS = "teamcity.git.lsRemoteTimeoutSeconds";
+  private static final String SUBMODULE_UPDATE_TIMEOUT_SECONDS = "teamcity.internal.git.agent.submodules.update.timeout.seconds";
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
@@ -313,6 +313,11 @@ public class PluginConfigImpl implements AgentPluginConfig {
     } else {
       return defaultTimeoutSeconds;
     }
+  }
+
+  @Override
+  public int getSubmoduleUpdateTimeoutSeconds() {
+    return parseTimeout(myBuild.getSharedConfigParameters().get(SUBMODULE_UPDATE_TIMEOUT_SECONDS), CommandUtil.DEFAULT_COMMAND_TIMEOUT_SEC);
   }
 
   private int parseTimeout(String valueFromBuild) {
