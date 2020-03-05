@@ -50,11 +50,12 @@ public final class CommandLineUtil {
       String stderr = res.getStderr();
       String stdout = res.getStdout();
       final String message = "'" + cmdName + "' command failed" + details + "." +
-                             (exception != null ? "\nexception: " + exception.getClass().getName() + ": " + exception.getMessage() : "") +
+                             (exception != null ? "\nexception: " + exception.toString() : "") +
                              (includeStdErr && !StringUtil.isEmpty(stderr) ? "\nstderr: " + stderr.trim() : "") +
                              (includeStdOut && !StringUtil.isEmpty(stdout) ? "\nstdout: " + stdout.trim() : "") +
+                             (res.getElapsedTime() != -1 ? "\nelapsed time: " + TimePrinter.createMillisecondsFormatter().formatTime(res.getElapsedTime()) : "") +
                              (exitCode != 0 ? "\nexit code: " + exitCode : "");
-      return new VcsException(message);
+      return exception == null ? new VcsException(message) : new VcsException(message, exception);
     } else {
       return null;
     }
