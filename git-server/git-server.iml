@@ -30,5 +30,6 @@
     <orderEntry type="library" name="slf4j-api-1.7.5" level="project" />
     <orderEntry type="library" name="JavaEWAH" level="project" />
     <orderEntry type="library" name="jgit-server" level="project" />
+    <orderEntry type="library" name="TeamCity server" level="project" />
   </component>
 </module>
