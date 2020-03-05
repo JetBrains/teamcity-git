@@ -18,8 +18,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
 import jetbrains.buildServer.parameters.ReferencesResolverUtil;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.serverSide.impl.personal.PersonalPatchUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.eclipse.jgit.lib.Constants;
@@ -33,10 +37,6 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static java.util.Collections.singleton;
@@ -134,7 +134,8 @@ public class GitMapFullPath {
 
 
   private boolean urlsMatch(@NotNull GitVcsRoot root, @NotNull FullPath fullPath) {
-    String url = removeBranch(fullPath.getRepositoryUrl());
+    final String url = removeBranch(fullPath.getRepositoryUrl());
+    if (url.isEmpty() && PersonalPatchUtil.isApplyChangeWhenVCSUnknown()) return true;
 
     final URIish uri;
     try {
