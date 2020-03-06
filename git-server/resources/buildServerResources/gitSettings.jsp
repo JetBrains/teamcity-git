@@ -14,11 +14,11 @@
   ~ limitations under the License.
   --%>
 
+<%@ page import="java.io.File" %>
 <%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.Constants" %>
 <%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl" %>
 <%@ page import="jetbrains.buildServer.serverSide.TeamCityProperties" %>
 <%@ page import="jetbrains.buildServer.util.StringUtil" %>
-<%@ page import="java.io.File" %>
 <%@include file="/include.jsp" %>
 <%@ taglib prefix="props" tagdir="/WEB-INF/tags/props" %>
 <%@ taglib prefix="admin" tagdir="/WEB-INF/tags/admin" %>
@@ -139,8 +139,7 @@
             <props:option value="PRIVATE_KEY_FILE">Custom Private Key</props:option>
           </optgroup>
         </props:selectProperty>
-        <div id="defaultPrivateKeyNote" class="smallNote auth defaultKey" style="margin: 0">Uses mapping specified in the file
-          ${userHome} if that file exists.
+        <div id="defaultPrivateKeyNote" class="smallNote auth defaultKey" style="margin: 0">Uses mapping specified in the default location on the server or the agent if that file exists (server&apos;s file location is &quot;<c:out value="${userHome}"/>&quot;).  <%-- This exposes user under whom the server runs, so absolute path should probbaly only be present for sys admins --%>
         </div>
         <div id="authMethodCompatNote" class="smallNote" style="margin: 0; display: none;"></div>
       </td>
