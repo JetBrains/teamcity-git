@@ -54,7 +54,6 @@ public class PluginConfigBuilder {
   private ServerPaths myPaths;
   private File myDotBuildServerDir;
   private Map<String, String> myFetcherProperties = new HashMap<String, String>();
-  private boolean myUsePerBranchFetch;
   private int myGetConnectionRetryAttempts = -1;
   private long myConnectionRetryIntervalMillis = -1;
   private Integer myStreamFileThreshold = null;
@@ -275,10 +274,6 @@ public class PluginConfigBuilder {
         return myFetcherProperties;
       }
 
-      public boolean usePerBranchFetch() {
-        return myUsePerBranchFetch;
-      }
-
       public int getHttpsSoLinger() {
         return 0;
       }
@@ -477,11 +472,6 @@ public class PluginConfigBuilder {
 
   public PluginConfigBuilder withFetcherProperties(@NotNull String... props) {
     myFetcherProperties.putAll(map(props));
-    return this;
-  }
-
-  public PluginConfigBuilder withPerBranchFetch(boolean usePerBranchFetch) {
-    myUsePerBranchFetch = usePerBranchFetch;
     return this;
   }
 

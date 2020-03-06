@@ -122,9 +122,6 @@ public interface ServerPluginConfig extends PluginConfig {
   @NotNull
   Map<String, String> getFetcherProperties();
 
-  //Seems like fetch per branch is never required, will remove it if a single fetch works fine
-  boolean usePerBranchFetch();
-
   int getHttpsSoLinger();
 
   int getListFilesTTLSeconds();

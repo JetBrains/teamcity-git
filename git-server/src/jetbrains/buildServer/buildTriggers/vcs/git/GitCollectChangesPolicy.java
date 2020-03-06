@@ -118,17 +118,10 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                              final boolean failOnFirstError,
                                              @NotNull final RepositoryStateData... states) throws Exception {
     boolean isFirst = failOnFirstError;
-    if (myConfig.usePerBranchFetch()) {
-      for (RepositoryStateData state : states) {
-        ensureRepositoryStateLoadedOneFetchPerBranch(context, state, isFirst);
-        isFirst = false;
-      }
-    } else {
-      FetchAllRefs fetch = new FetchAllRefs(context.getProgress(), repo, context.getGitRoot(), states);
-      for (RepositoryStateData state : states) {
-        ensureRepositoryStateLoaded(context, repo, state, fetch, isFirst);
-        isFirst = false;
-      }
+    FetchAllRefs fetch = new FetchAllRefs(context.getProgress(), repo, context.getGitRoot(), states);
+    for (RepositoryStateData state : states) {
+      ensureRepositoryStateLoaded(context, repo, state, fetch, isFirst);
+      isFirst = false;
     }
   }
 

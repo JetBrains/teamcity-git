@@ -29,7 +29,6 @@ import org.apache.log4j.Level;
 import org.assertj.core.data.MapEntry;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeResult;
-import org.eclipse.jgit.errors.InvalidObjectIdException;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.RefUpdate;
@@ -47,7 +46,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -351,37 +349,6 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     git.getCollectChangesPolicy().collectChanges(root, s2, s1, CheckoutRules.DEFAULT);
     assertEquals(fetchCounter.getFetchCount(), 1);
   }
-
-
-  @Test
-  //this test should be removed if a single fetch works fine
-  public void should_be_able_to_do_fetch_per_branch() throws Exception {
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo)
-      .withBranch("master")
-      .withReportTags(true)
-      .build();
-
-    //setup fetcher with counter
-    ServerPluginConfig config = myConfig.withPerBranchFetch(true).build();
-    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager);
-    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
-    GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withFetchCommand(fetchCounter).build();
-
-    RepositoryStateData state = git.getCurrentState(root);
-    RepositoryStateData s1 = createVersionState("refs/heads/master", map("refs/heads/master", state.getBranchRevisions().get("refs/heads/master")));//has a single branch
-    RepositoryStateData s2 = createVersionState("refs/heads/master", state.getBranchRevisions());//has many branches
-
-    git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
-    then(fetchCounter.getFetchCount()).isGreaterThan(1);
-
-    FileUtil.delete(config.getCachesDir());
-    fetchCounter.resetFetchCounter();
-
-    git.getCollectChangesPolicy().collectChanges(root, s2, s1, CheckoutRules.DEFAULT);
-    then(fetchCounter.getFetchCount()).isGreaterThan(1);
-  }
-
 
   @Test
   @TestFor(issues = "http://youtrack.jetbrains.com/issue/TW-29798#comment=27-537697")
