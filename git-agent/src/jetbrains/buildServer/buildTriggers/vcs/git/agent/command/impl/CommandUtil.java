@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
+import java.io.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
@@ -24,8 +25,6 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -133,7 +132,7 @@ public class CommandUtil {
         CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
         String out = res.getStdout();
         Loggers.VCS.debug(out);
-        if (StringUtil.isNotEmpty(out) || !cli.isRepeatOnEmptyOutput() || attemptsLeft <= 0)
+        if (!StringUtil.isEmptyOrSpaces(out) || !cli.isRepeatOnEmptyOutput() || attemptsLeft <= 0)
           return res;
         Loggers.VCS.warn("Get an unexpected empty output, will repeat command, attempts left: " + attemptsLeft);
         attemptsLeft--;
