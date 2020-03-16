@@ -17,6 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.IOException;
+import java.util.*;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.internal.storage.pack.PackWriter;
@@ -28,9 +30,6 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.IOException;
-import java.util.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static java.util.Arrays.asList;
@@ -90,6 +89,7 @@ public class GitLabelingSupport implements LabelingSupport {
         Ref tagRef = git.tag().setTagger(PersonIdentFactory.getTagger(gitRoot, r))
           .setName(label)
           .setObjectId(commit)
+          .setForceUpdate(true)
           .call();
         if (tagRef.getObjectId() == null || resolve(r, tagRef) == null) {
           LOG.warn("Tag's " + tagRef.getName() + " objectId " + (tagRef.getObjectId() != null ? tagRef.getObjectId().name() + " " : "") + "cannot be resolved");
