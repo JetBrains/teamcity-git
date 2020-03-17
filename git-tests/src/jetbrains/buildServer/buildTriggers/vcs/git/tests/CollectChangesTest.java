@@ -16,6 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TestLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
@@ -41,11 +45,6 @@ import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
@@ -505,6 +504,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   }
 
 
+  @Test(enabled = false)
   @TestFor(issues = "TW-43643")
   public void should_fetch_all_refs_when_commit_not_found() throws Exception {
     File repo = getRemoteRepositoryDir("TW-43643-1");

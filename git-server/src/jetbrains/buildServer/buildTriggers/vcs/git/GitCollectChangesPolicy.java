@@ -148,7 +148,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                            @NotNull Repository db,
                                            @NotNull RepositoryStateData state,
                                            @NotNull FetchAllRefs fetch,
-                                           boolean throwErrors) throws Exception {
+                                           boolean isMandatoryState) throws Exception {
     GitVcsRoot root = context.getGitRoot();
     for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
       String ref = entry.getKey();
@@ -162,7 +162,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       if (myCommitLoader.findCommit(db, revision) != null)
         continue;
 
-      if (!fetch.allRefsFetched())
+      if (isMandatoryState && !fetch.allRefsFetched())
         fetch.fetchAllRefs();
 
       try {
@@ -170,7 +170,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       } catch (IncorrectObjectTypeException e) {
         LOG.warn("Ref " + ref + " points to a non-commit " + revision);
       } catch (Exception e) {
-        if (throwErrors) {
+        if (isMandatoryState) {
           VcsException error = new VcsException("Cannot find revision " + revision + " in branch " + ref + " in VCS root " + LogUtil.describe(root), e);
           error.setRecoverable(myConfig.treatMissingBranchTipAsRecoverableError());
           throw error;
@@ -277,7 +277,22 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       myInvoked = true;
       myAllRefsFetched = true;
       FetchSettings settings = new FetchSettings(myRoot.getAuthSettings(), myProgress);
-      myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL().get(), Collections.singleton(new RefSpec("refs/*:refs/*").setForceUpdate(true)), settings);
+      myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL().get(), calculateAllRefSpecsForFetch(), settings);
+    }
+
+    @NotNull
+    private Collection<RefSpec> calculateAllRefSpecsForFetch() throws VcsException {
+      List<RefSpec> specs = new ArrayList<RefSpec>();
+      for (String ref : getRemoteRefs().keySet()) {
+        if (ref.startsWith("refs/")) {
+          specs.add(getRefSpec(ref));
+        }
+      }
+      return specs;
+    }
+
+    private RefSpec getRefSpec(final String ref) {
+      return new RefSpec(ref + ":" + ref).setForceUpdate(true);
     }
 
     boolean isInvoked() {
@@ -292,16 +307,21 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       List<RefSpec> specs = new ArrayList<RefSpec>();
       Map<String, Ref> remoteRepositoryRefs;
       try {
-        remoteRepositoryRefs = myVcs.getRemoteRefs(myRoot.getOriginalRoot());
+        remoteRepositoryRefs = getRemoteRefs();
       } catch (Exception e) {
         //when failed to get state of the remote repository try to collect changes in all refs we have
         remoteRepositoryRefs = null;
       }
       for (String ref : myAllRefNames) {
         if (remoteRepositoryRefs != null && remoteRepositoryRefs.containsKey(ref))
-          specs.add(new RefSpec(ref + ":" + ref).setForceUpdate(true));
+          specs.add(getRefSpec(ref));
       }
       return specs;
+    }
+
+    @NotNull
+    private Map<String, Ref> getRemoteRefs() throws VcsException {
+      return myVcs.getRemoteRefs(myRoot.getOriginalRoot());
     }
 
     private Set<String> getAllRefNames(@NotNull RepositoryStateData... states) {
