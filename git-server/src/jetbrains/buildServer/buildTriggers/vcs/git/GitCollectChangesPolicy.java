@@ -17,6 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.IOException;
+import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
@@ -30,9 +32,6 @@ import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.RefSpec;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.IOException;
-import java.util.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -169,26 +168,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
           throw error;
         } else {
           LOG.warn("Cannot find revision " + revision + " in branch " + ref + " in VCS root " + LogUtil.describe(root));
-        }
-      }
-    }
-  }
-
-  private void ensureRepositoryStateLoadedOneFetchPerBranch(@NotNull OperationContext context, @NotNull RepositoryStateData state, boolean throwErrors) throws Exception {
-    GitVcsRoot root = context.getGitRoot();
-    for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
-      String branch = entry.getKey();
-      String revision = entry.getValue();
-      GitVcsRoot branchRoot = root.getRootForBranch(branch);
-      try {
-        myCommitLoader.loadCommit(context, branchRoot, GitUtils.versionRevision(revision));
-      } catch (Exception e) {
-        if (throwErrors) {
-          VcsException error = new VcsException("Cannot find revision " + revision + " in branch " + branch + " in VCS root " + LogUtil.describe(root), e);
-          error.setRecoverable(myConfig.treatMissingBranchTipAsRecoverableError());
-          throw error;
-        } else {
-          LOG.warn("Cannot find revision " + revision + " in branch " + branch + " of root " + LogUtil.describe(context.getGitRoot()));
         }
       }
     }
