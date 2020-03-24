@@ -48,6 +48,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
@@ -70,7 +72,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   private TestLogger myLogger;
 
   public CollectChangesTest() {
-    super("repo.git", "TW-43643-1", "TW-43643-2", "repo_with_tags");
+    super("repo.git", "TW-43643-1", "TW-43643-2", "repo_with_tags", "TW-64455-no_second_fetch_if_from_revision_missing_1", "TW-64455-no_second_fetch_if_from_revision_missing_2");
   }
 
 
@@ -371,14 +373,18 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     branches.put("refs/heads/unknown.branch", branches.get(state.getDefaultBranchName()));//unknown branch that points to a commit that exists in remote repo
     RepositoryStateData s2 = createVersionState("refs/heads/master", branches);//has many branches, some of them don't exist in remote repository
 
-    git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
+    git.getCollectChangesPolicy().collectChanges(root, s2, s1, CheckoutRules.DEFAULT); // no failure if 'fromState' contains non-existing branch
     assertEquals(fetchCounter.getFetchCount(), 1);
 
     FileUtil.delete(config.getCachesDir());
     fetchCounter.resetFetchCounter();
 
-    git.getCollectChangesPolicy().collectChanges(root, s2, s1, CheckoutRules.DEFAULT);
-    assertEquals(fetchCounter.getFetchCount(), 1);
+    try {
+      git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
+      fail("Changes collection was expected to fail because 'toState' contains non-existing branch");
+    } catch (VcsException e) {
+      //expected
+    }
   }
 
   @Test(enabled = false)
@@ -523,6 +529,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
 
   @TestFor(issues = "TW-43643")
+  @Test(enabled = false)
   public void should_fetch_all_refs_when_commit_not_found() throws Exception {
     File repo = getRemoteRepositoryDir("TW-43643-1");
 
@@ -650,6 +657,74 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
   }
 
+  @TestFor(issues = "TW-64455")
+  public void test_no_second_fetch_if_from_revision_missing() throws Exception {
+    final ServerPluginConfig config = myConfig.build();
+    final VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
+    final String[] fetchExpected = {"refs/heads/b1;refs/heads/b3;refs/heads/b4;refs/heads/master", "refs/heads/master", "refs/heads/b1;refs/heads/b3;refs/heads/b4"};
+    final FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager) {
+      final AtomicInteger fetchHappened = new AtomicInteger(0);
+      @Override
+      public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull FetchSettings settings) throws IOException, VcsException {
+        final String refSpecStr = refspecs.stream().map(RefSpec::getSource).sorted(Comparator.naturalOrder()).collect(Collectors.joining(";"));
+        if (!fetchExpected[fetchHappened.getAndIncrement()].equals(refSpecStr)) {
+          fail("Unexpected fetch happened: " + refSpecStr);
+        }
+        super.fetch(db, fetchURI, refspecs, settings);
+      }
+    };
+    final GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withFetchCommand(fetchCommand).build();
+    final File repo = getRemoteRepositoryDir("TW-64455-no_second_fetch_if_from_revision_missing_1");
+    final VcsRoot root = vcsRoot().withFetchUrl(repo).build();
+
+    //clone repository on server
+    final RepositoryStateData versionState = createVersionState("refs/heads/master",
+                                                                map("refs/heads/master",
+                                                                    "3fe70d1959d56bf478a7ee01f2b5e57bf12e10df",
+                                                                    "refs/heads/b1",
+                                                                    "7afe31b738eb97b69c9b0ca033548d5a3eabe597",
+                                                                    "refs/heads/b3",
+                                                                    "27a2e7b1004f3a69fad996f7fd18a14f9a4c4eec",
+                                                                    "refs/heads/b4",
+                                                                    "65f49c6f9c0970a893ec8e7645a35d8b7d1d7b36"));
+    git.getCollectChangesPolicy().collectChanges(root,
+                                                 createVersionState("refs/heads/master",
+                                                                    map("refs/heads/master",
+                                                                        "3fe70d1959d56bf478a7ee01f2b5e57bf12e10df",
+                                                                        "refs/heads/b1", null,
+                                                                        "refs/heads/b3", null,
+                                                                        "refs/heads/b4", null)),
+                                                 versionState,
+                                                 CheckoutRules.DEFAULT);
+
+    //update remote repository:
+    File updatedRepo = getRemoteRepositoryDir("TW-64455-no_second_fetch_if_from_revision_missing_2");
+    FileUtil.delete(repo);
+    repo.mkdirs();
+    FileUtil.copyDir(updatedRepo, repo);
+
+    //delete clone on server
+    MirrorManagerImpl mirrors = new MirrorManagerImpl(myConfig.build(), new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
+    File cloneOnServer = mirrors.getMirrorDir(repo.getCanonicalPath());
+    FileUtil.delete(cloneOnServer);
+
+    //collect changes in master to clone the repository
+    VcsRoot rootMaster = vcsRoot().withFetchUrl(repo).withBranch("master").build();
+    git.getCollectChangesPolicy().collectChanges(rootMaster,
+                                                   createVersionState("refs/heads/master", "3fe70d1959d56bf478a7ee01f2b5e57bf12e10df"),
+                                                   createVersionState("refs/heads/master", "db31739d5d13aef2785189fe4f79b823b5dc6ab6"),
+                                                   CheckoutRules.DEFAULT);
+
+    //collect changes
+    git.getCollectChangesPolicy().collectChanges(root, versionState,
+                                                 createVersionState("refs/heads/master",
+                                                                    map("refs/heads/master",
+                                                                        "db31739d5d13aef2785189fe4f79b823b5dc6ab6",
+                                                                        "refs/heads/b1", "95ff8476374914c77c658f876dd1548b93d88d58",
+                                                                        "refs/heads/b3", "6821229bee5b5cf5030e938caa1cb703a0edbc86",
+                                                                        "refs/heads/b4", null)),
+                                                 CheckoutRules.DEFAULT);
+  }
 
   public void report_per_parent_changed_files() throws Exception {
     // 4 f1=2, f2=2, f3=2
