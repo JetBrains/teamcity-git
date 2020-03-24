@@ -17,21 +17,20 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.IOException;
-import java.util.*;
+import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
 import jetbrains.buildServer.vcs.*;
-import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.transport.RefSpec;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.IOException;
+import java.util.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -80,7 +79,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         Repository r = context.getRepository();
         ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
         revWalk.sort(RevSort.TOPO);
-        ensureRepositoryStateLoadedFor(context, r, true, toState, fromState);
+        ensureRepositoryStateLoadedFor(context, fromState, toState);
         markStart(r, revWalk, toState);
         markUninteresting(r, revWalk, fromState, toState);
         while (revWalk.next() != null) {
@@ -113,15 +112,20 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   }
 
   public void ensureRepositoryStateLoadedFor(@NotNull final OperationContext context,
-                                             @NotNull final Repository repo,
-                                             final boolean failOnFirstError,
-                                             @NotNull final RepositoryStateData... states) throws Exception {
-    boolean isFirst = failOnFirstError;
-    FetchAllRefs fetch = new FetchAllRefs(context.getProgress(), repo, context.getGitRoot(), states);
-    for (RepositoryStateData state : states) {
-      ensureRepositoryStateLoaded(context, repo, state, fetch, isFirst);
-      isFirst = false;
-    }
+                                             @NotNull final RepositoryStateData state,
+                                             boolean throwErrors) throws Exception {
+    new FetchContext(context)
+      .withRevisions(state.getBranchRevisions(), throwErrors)
+      .fetchIfNoCommitsOrFail();
+  }
+
+  public void ensureRepositoryStateLoadedFor(@NotNull final OperationContext context,
+                                             @NotNull final RepositoryStateData fromState,
+                                             @NotNull final RepositoryStateData toState) throws Exception {
+    new FetchContext(context)
+      .withToRevisions(toState.getBranchRevisions())
+      .withFromRevisions(fromState.getBranchRevisions())
+      .fetchIfNoCommitsOrFail();
   }
 
   @NotNull
@@ -129,47 +133,10 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                           @NotNull final GitVcsRoot root) throws VcsException {
     try {
       final RepositoryStateData currentState = myVcs.getCurrentState(root);
-      new FetchAllRefs(context.getProgress(), context.getRepository(), context.getGitRoot(), currentState).fetchTrackedRefs();
+      new FetchContext(context).withFromRevisions(currentState.getBranchRevisions()).fetchIfNoCommitsOrFail();
       return currentState;
     } catch (Exception e) {
       throw new VcsException(e.getMessage(), e);
-    }
-  }
-
-  private void ensureRepositoryStateLoaded(@NotNull OperationContext context,
-                                           @NotNull Repository db,
-                                           @NotNull RepositoryStateData state,
-                                           @NotNull FetchAllRefs fetch,
-                                           boolean throwErrors) throws Exception {
-    GitVcsRoot root = context.getGitRoot();
-    for (Map.Entry<String, String> entry : state.getBranchRevisions().entrySet()) {
-      String ref = entry.getKey();
-      String revision = GitUtils.versionRevision(entry.getValue());
-      if (myCommitLoader.findCommit(db, revision) != null)
-        continue;
-
-      if (!fetch.isInvoked())
-        fetch.fetchTrackedRefsIfNoCommit(revision);
-
-      if (myCommitLoader.findCommit(db, revision) != null)
-        continue;
-
-      if (!fetch.allRefsFetched())
-        fetch.fetchAllRefs();
-
-      try {
-        myCommitLoader.getCommit(db, ObjectId.fromString(revision));
-      } catch (IncorrectObjectTypeException e) {
-        LOG.warn("Ref " + ref + " points to a non-commit " + revision);
-      } catch (Exception e) {
-        if (throwErrors) {
-          VcsException error = new VcsException("Cannot find revision " + revision + " in branch " + ref + " in VCS root " + LogUtil.describe(root), e);
-          error.setRecoverable(myConfig.treatMissingBranchTipAsRecoverableError());
-          throw error;
-        } else {
-          LOG.warn("Cannot find revision " + revision + " in branch " + ref + " in VCS root " + LogUtil.describe(root));
-        }
-      }
     }
   }
 
@@ -216,75 +183,88 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     }
   }
 
-  private class FetchAllRefs {
-    private final GitProgress myProgress;
-    private final Repository myDb;
-    private final GitVcsRoot myRoot;
-    private final Set<String> myAllRefNames;
-    private boolean myInvoked = false;
-    private boolean myAllRefsFetched = false;
+  private class FetchContext {
+    @NotNull private final OperationContext myContext;
+    @NotNull private final FetchSettings myFetchSettings;
+    @NotNull private  final Set<String> myRemoteRefs;
 
-    private FetchAllRefs(@NotNull GitProgress progress,
-                         @NotNull Repository db,
-                         @NotNull GitVcsRoot root,
-                         @NotNull RepositoryStateData... states) {
-      myProgress = progress;
-      myDb = db;
-      myRoot = root;
-      myAllRefNames = getAllRefNames(states);
+    @NotNull private final Collection<CommitLoader.RefCommit> myRevisions = new ArrayList<>();
+
+    public FetchContext(@NotNull final OperationContext context) throws VcsException {
+      myContext = context;
+      myFetchSettings = new FetchSettings(context.getGitRoot().getAuthSettings(), context.getProgress());
+      myRemoteRefs = myVcs.getRemoteRefs(context.getRoot()).keySet();
     }
 
-    void fetchTrackedRefs() throws IOException, VcsException {
-      myInvoked = true;
-      FetchSettings settings = new FetchSettings(myRoot.getAuthSettings(), myProgress);
-      myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL().get(), calculateRefSpecsForFetch(), settings);
+    @NotNull
+    FetchContext withRevisions(@NotNull Map<String, String> revisions, boolean tips) throws VcsException {
+      myRevisions.addAll(filterRemoteExistingAndExpand(revisions, tips));
+      return this;
     }
 
-    void fetchTrackedRefsIfNoCommit(@NotNull String sha) throws IOException, VcsException {
-      FetchSettings settings = new FetchSettings(myRoot.getAuthSettings(), myProgress);
-      myInvoked = myCommitLoader.fetchIfNoCommit(myDb, myRoot.getRepositoryFetchURL().get(), calculateRefSpecsForFetch(), settings, sha);
+    @NotNull
+    FetchContext withFromRevisions(@NotNull Map<String, String> revisions) throws VcsException {
+      return withRevisions(revisions, false);
     }
 
-    void fetchAllRefs() throws IOException, VcsException {
-      myInvoked = true;
-      myAllRefsFetched = true;
-      FetchSettings settings = new FetchSettings(myRoot.getAuthSettings(), myProgress);
-      myCommitLoader.fetch(myDb, myRoot.getRepositoryFetchURL().get(), Collections.singleton(new RefSpec("refs/*:refs/*").setForceUpdate(true)), settings);
+    @NotNull
+    FetchContext withToRevisions(@NotNull Map<String, String> revisions) throws VcsException {
+      return withRevisions(revisions, true);
     }
 
-    boolean isInvoked() {
-      return myInvoked;
-    }
+    @NotNull
+    private Collection<CommitLoader.RefCommit> filterRemoteExistingAndExpand(@NotNull Map<String, String> revisions, boolean tips) throws VcsException {
+      final Collection<CommitLoader.RefCommit> existing = new ArrayList<>();
+      final Set<String> missing = new HashSet<>();
 
-    boolean allRefsFetched() {
-      return myAllRefsFetched;
-    }
+      for (Map.Entry<String, String> e : revisions.entrySet()) {
+        final String ref = e.getKey();
+        if (isEmpty(ref)) continue;
 
-    private Collection<RefSpec> calculateRefSpecsForFetch() {
-      List<RefSpec> specs = new ArrayList<RefSpec>();
-      Map<String, Ref> remoteRepositoryRefs;
-      try {
-        remoteRepositoryRefs = myVcs.getRemoteRefs(myRoot.getOriginalRoot());
-      } catch (Exception e) {
-        //when failed to get state of the remote repository try to collect changes in all refs we have
-        remoteRepositoryRefs = null;
-      }
-      for (String ref : myAllRefNames) {
-        if (remoteRepositoryRefs != null && remoteRepositoryRefs.containsKey(ref))
-          specs.add(new RefSpec(ref + ":" + ref).setForceUpdate(true));
-      }
-      return specs;
-    }
+        final String expandedRef = GitUtils.expandRef(ref);
+        if (myRemoteRefs.contains(expandedRef)) {
+          existing.add(new CommitLoader.RefCommit() {
+            @NotNull
+            @Override
+            public String getRef() {
+              return expandedRef;
+            }
 
-    private Set<String> getAllRefNames(@NotNull RepositoryStateData... states) {
-      Set<String> refs = new HashSet<String>();
-      for (RepositoryStateData state : states) {
-        for (String ref : state.getBranchRevisions().keySet()) {
-          if (!isEmpty(ref))
-            refs.add(GitUtils.expandRef(ref));
+            @NotNull
+            @Override
+            public String getCommit() {
+              return e.getValue();
+            }
+
+            @Override
+            public boolean isRefTip() {
+              return tips;
+            }
+          });
+        } else {
+          missing.add(ref);
         }
       }
-      return refs;
+
+      final int remotelyMissingRefsNum = missing.size();
+      if (remotelyMissingRefsNum > 0) {
+        final String message = StringUtil.pluralize("Ref", remotelyMissingRefsNum) + " " +
+                               String.join(", ", missing) +
+                               (remotelyMissingRefsNum == 1 ? " is" : " are") +
+                               " no longer present in the remote repository for VCS root " + LogUtil.describe(myContext.getGitRoot());
+
+        if (tips) {
+          final VcsException exception = new VcsException(message);
+          exception.setRecoverable(myConfig.treatMissingBranchTipAsRecoverableError());
+          throw exception;
+        }
+        LOG.debug(message);
+      }
+      return existing;
+    }
+
+    void fetchIfNoCommitsOrFail() throws VcsException, IOException {
+      myCommitLoader.loadCommits(myContext, myContext.getGitRoot().getRepositoryFetchURL().get(), myRevisions, myRemoteRefs, myFetchSettings);
     }
   }
 }

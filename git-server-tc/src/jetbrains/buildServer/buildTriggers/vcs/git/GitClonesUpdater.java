@@ -22,7 +22,6 @@ import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.ThreadUtil;
 import jetbrains.buildServer.util.executors.ExecutorsFactory;
 import jetbrains.buildServer.vcs.*;
-import org.eclipse.jgit.lib.Repository;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashSet;
@@ -87,9 +86,8 @@ public class GitClonesUpdater {
         ReadOnlyRestrictor.doReadOnlyCommandLine(() -> {
           GitVcsRoot gitRoot = context.getGitRoot();
           myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-            Repository repo = context.getRepository();
             try {
-              myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, repo, true, state);
+              myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, state, true);
             } catch (Exception e1) {
               throw new VcsException(e1);
             }

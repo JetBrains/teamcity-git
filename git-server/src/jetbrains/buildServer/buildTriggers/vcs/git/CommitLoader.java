@@ -27,6 +27,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Set;
 
 /**
  * Encapsulates logic for loading, fetching and finding commits in repository
@@ -44,18 +45,26 @@ public interface CommitLoader {
                     @NotNull FetchSettings settings) throws IOException, VcsException;
 
   /**
-   * performs fetch only if specified sha is not in repository already
-   * @return true if fetch was performed and false otherwise
+   * Performs fetch only if any of the specified revisions is not in the mirror.
+   * First fetches only corresponding branches and, only if there are still any tip revisions missing,
+   * fetches all branches advertised by the remote.
+   * @throws VcsException if unable to find any of the tip revisions after fetching twice
    */
-  boolean fetchIfNoCommit(@NotNull Repository db,
-                       @NotNull URIish fetchURI,
-                       @NotNull Collection<RefSpec> refspecs,
-                       @NotNull FetchSettings settings,
-                       @NotNull String sha) throws IOException, VcsException;
+  void loadCommits(@NotNull OperationContext context,
+                   @NotNull URIish fetchURI,
+                   @NotNull Collection<RefCommit> revisions,
+                   @NotNull Set<String> remoteRefs,
+                   @NotNull FetchSettings settings) throws IOException, VcsException;
 
   @NotNull
   RevCommit getCommit(@NotNull Repository repository, @NotNull ObjectId commitId) throws IOException;
 
   @Nullable
   RevCommit findCommit(@NotNull Repository r, @NotNull String sha);
+
+  interface RefCommit {
+    @NotNull String getRef();
+    @NotNull String getCommit();
+    boolean isRefTip();
+  }
 }

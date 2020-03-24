@@ -17,8 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.IOException;
-import java.util.*;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.internal.storage.pack.PackWriter;
@@ -30,6 +28,9 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.IOException;
+import java.util.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static java.util.Arrays.asList;
@@ -74,7 +75,7 @@ public class GitLabelingSupport implements LabelingSupport {
         if (!myConfig.analyzeTagsInPackHeuristics())
           currentState = excludeTags(currentState);
         try {
-          myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, context.getRepository(), false, currentState);
+          myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, currentState, false);
         } catch (Exception e) {
           LOG.debug("Error while updating repository " + gitRoot.debugInfo(), e);
         }

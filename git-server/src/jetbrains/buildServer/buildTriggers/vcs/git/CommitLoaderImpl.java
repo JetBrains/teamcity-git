@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -30,10 +31,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
@@ -103,49 +103,109 @@ public class CommitLoaderImpl implements CommitLoader {
         // if wait time was significant, report it in progress
         settings.getProgress().reportProgress("Waited for exclusive lock in cloned directory, wait time: " + waitTime + "ms");
       }
-      Map<String, Ref> oldRefs = new HashMap<>(db.getAllRefs());
       PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + waitTime + "ms");
-      myFetchCommand.fetch(db, fetchURI, refspecs, settings);
-      Map<String, Ref> newRefs = new HashMap<>(db.getAllRefs());
-      myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
+      doFetch(db, fetchURI, refspecs, settings);
     } finally {
       lock.unlock();
     }
   }
 
-  public boolean fetchIfNoCommit(@NotNull Repository db,
-                              @NotNull URIish fetchURI,
-                              @NotNull Collection<RefSpec> refspecs,
-                              @NotNull FetchSettings settings,
-                              @NotNull String sha) throws IOException, VcsException {
-    File repositoryDir = db.getDirectory();
+  private void doFetch(@NotNull final Repository db,
+                       @NotNull final URIish fetchURI,
+                       @NotNull final Collection<RefSpec> refspecs,
+                       @NotNull final FetchSettings settings) throws IOException, VcsException {
+    Map<String, Ref> oldRefs = new HashMap<>(db.getAllRefs());
+    myFetchCommand.fetch(db, fetchURI, refspecs, settings);
+    Map<String, Ref> newRefs = new HashMap<>(db.getAllRefs());
+    myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
+  }
+
+  public void loadCommits(@NotNull OperationContext context,
+                             @NotNull URIish fetchURI,
+                             @NotNull Collection<RefCommit> revisions,
+                             @NotNull Set<String> remoteRefs,
+                             @NotNull FetchSettings settings) throws IOException, VcsException {
+    if (revisions.isEmpty()) return;
+
+    final Repository db = context.getRepository();
+    final File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
-    final long start = System.currentTimeMillis();
 
-    if (findCommit(db, sha) != null) return false;
+    try (RevWalk walk = new RevWalk(db)) {
+      revisions = findLocallyMissingRevisions(context, walk, revisions, false);
+      if (revisions.isEmpty()) return;
 
-    ReentrantLock lock = myRepositoryManager.getWriteLock(repositoryDir);
-    lock.lock();
-    try {
-      final long finish = System.currentTimeMillis();
-      final long waitTime = finish - start;
-      if (waitTime > 20000) {
-        // if wait time was significant, report it in progress
-        settings.getProgress().reportProgress("Waited for exclusive lock in cloned directory, wait time: " + waitTime + "ms");
+      final long start = System.currentTimeMillis();
+      ReentrantLock lock = myRepositoryManager.getWriteLock(repositoryDir);
+      lock.lock();
+      try {
+        final long finish = System.currentTimeMillis();
+        final long waitTime = finish - start;
+        if (waitTime > 20000) {
+          // if wait time was significant, report it in progress
+          settings.getProgress().reportProgress("Waited for exclusive lock in cloned directory, wait time: " + waitTime + "ms");
+        }
+        PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + waitTime + "ms");
+
+        revisions = findLocallyMissingRevisions(context, walk, revisions, false);
+        if (revisions.isEmpty()) return;
+
+        doFetch(db, fetchURI, getRefSpecsForRevisions(revisions), settings);
+
+        revisions = findLocallyMissingRevisions(context, walk, revisions, false);
+        if (revisions.isEmpty() || revisions.stream().noneMatch(RefCommit::isRefTip)) return;
+
+        doFetch(db, fetchURI, getRefSpecsForRemoteBranches(remoteRefs), settings);
+
+        findLocallyMissingRevisions(context, walk, revisions, true);
+      } finally {
+        lock.unlock();
       }
-      PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + waitTime + "ms");
+    }
+  }
 
-      if (findCommit(db, sha) != null) return false;
+  @NotNull
+  private Collection<RefCommit> findLocallyMissingRevisions(@NotNull OperationContext context,
+                                                            @NotNull RevWalk walk,
+                                                            @NotNull Collection<RefCommit> revisions,
+                                                            boolean throwErrors) throws VcsException {
+    final Set<RefCommit> locallyMissingRevisions = new HashSet<>();
 
-      Map<String, Ref> oldRefs = new HashMap<>(db.getAllRefs());
-      myFetchCommand.fetch(db, fetchURI, refspecs, settings);
-      Map<String, Ref> newRefs = new HashMap<>(db.getAllRefs());
-      myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
-    } finally {
-      lock.unlock();
+    for (RefCommit r : revisions) {
+      final String ref = GitUtils.expandRef(r.getRef());
+      final String rev = r.getCommit();
+      final String revNumber = GitUtils.versionRevision(rev);
+      try {
+        walk.parseCommit(ObjectId.fromString(revNumber));
+      } catch (IncorrectObjectTypeException e) {
+        LOG.warn("Ref " + ref + " points to a non-commit " + revNumber + " for VCS Root " + LogUtil.describe(context.getRoot()));
+      } catch (Exception e) {
+        if (throwErrors && r.isRefTip()) {
+          final VcsException error = new VcsException("Cannot find revision " + revNumber + " for ref " + ref + " in VCS root " + LogUtil.describe(context.getRoot()) + " mirror", e);
+          error.setRecoverable(context.getPluginConfig().treatMissingBranchTipAsRecoverableError());
+          throw error;
+        } else {
+          locallyMissingRevisions.add(r);
+        }
+      }
     }
 
-    return true;
+    if (!locallyMissingRevisions.isEmpty()) {
+      LOG.debug("Revisions missing in the local repository: " +
+                locallyMissingRevisions.stream().map(e -> e.getRef() + ": " + e.getCommit()).collect(Collectors.joining(", ")));
+    }
+
+    return locallyMissingRevisions;
+  }
+
+  @NotNull
+  private Collection<RefSpec> getRefSpecsForRevisions(@NotNull Collection<RefCommit> revisions) {
+    return revisions.stream().map(r -> new RefSpec(r.getRef() + ":" + r.getRef()).setForceUpdate(true)).collect(Collectors.toSet());
+  }
+
+  @NotNull
+  private Collection<RefSpec> getRefSpecsForRemoteBranches(@NotNull Collection<String> refs) {
+    return refs.stream().filter(r -> r.startsWith("refs/")).map(r -> new RefSpec(r + ":" + r).setForceUpdate(true)).collect(Collectors.toList());
   }
 
   @NotNull
