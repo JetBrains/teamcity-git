@@ -123,6 +123,7 @@ public class Fetcher {
       Repository repository = new RepositoryBuilder().setBare().setGitDir(repositoryDir).build();
       workaroundRacyGit();
       tn = transportFactory.createTransport(repository, new URIish(fetchUrl), auth);
+      GitServerUtil.removeRefLocks(repositoryDir);
       try {
         pruneRemovedBranches(config, repository, transportFactory, tn, new URIish(fetchUrl), auth);
       } catch (Exception e) {

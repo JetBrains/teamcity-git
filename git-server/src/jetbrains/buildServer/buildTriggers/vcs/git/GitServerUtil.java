@@ -338,6 +338,20 @@ public class GitServerUtil {
     }
   }
 
+  static void removeRefLocks(@NotNull File dotGit) {
+    final File refs = new File(dotGit, "refs");
+    if (!refs.isDirectory()) return;
+
+    final Set<File> deleted = FileUtil.delete(refs, f -> f.isFile() && f.getName().endsWith(".lock"), 3);
+    for (File f : deleted) {
+      LOG.info("Removed lock file " + f.getAbsolutePath());
+    }
+
+    final File packedRefsLock = new File(dotGit, "packed-refs.lock");
+    if (packedRefsLock.isFile() && FileUtil.delete(packedRefsLock)) {
+      LOG.info("Removed lock file " + packedRefsLock.getAbsolutePath());
+    }
+  }
 
   static void pruneRemovedBranches(@NotNull ServerPluginConfig config,
                                    @NotNull TransportFactory transportFactory,
