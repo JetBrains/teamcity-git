@@ -17,6 +17,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.lib.ObjectId;
@@ -28,12 +33,6 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
@@ -155,7 +154,7 @@ public class CommitLoaderImpl implements CommitLoader {
         revisions = findLocallyMissingRevisions(context, walk, revisions, false);
         if (revisions.isEmpty()) return;
 
-        final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
+        final boolean fetchAllRefsDisabled = true; // !context.getPluginConfig().fetchAllRefsEnabled(); // TODO: fix it properly
         if (revisions.stream().noneMatch(RefCommit::isRefTip) && fetchAllRefsDisabled) return;
 
         doFetch(db, fetchURI, fetchAllRefsDisabled ? getRefSpecsForRemoteBranches(remoteRefs) : getAllRefSpec(), settings);
