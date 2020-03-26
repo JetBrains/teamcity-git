@@ -352,6 +352,7 @@ public class FetchCommandImpl implements FetchCommand {
     final long fetchStart = System.currentTimeMillis();
     final Transport tn = myTransportFactory.createTransport(db, uri, settings.getAuthSettings());
     try {
+      GitServerUtil.removeRefLocks(db.getDirectory());
       pruneRemovedBranches(db, tn, uri, settings.getAuthSettings());
       GitServerUtil
         .fetchAndCheckResults(db, uri, settings.getAuthSettings(), myTransportFactory, tn, settings.createProgressMonitor(), refSpecs,

@@ -19,13 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
-import java.io.*;
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
-import java.nio.charset.UnsupportedCharsetException;
-import java.text.MessageFormat;
-import java.util.*;
-import java.util.stream.Collectors;
 import jetbrains.buildServer.serverSide.FileWatchingPropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
@@ -49,6 +42,14 @@ import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sun.awt.OSInfo;
+
+import java.io.*;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
+import java.nio.charset.UnsupportedCharsetException;
+import java.text.MessageFormat;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -337,6 +338,20 @@ public class GitServerUtil {
     }
   }
 
+  static void removeRefLocks(@NotNull File dotGit) {
+    final File refs = new File(dotGit, "refs");
+    if (!refs.isDirectory()) return;
+
+    final Set<File> deleted = FileUtil.delete(refs, f -> f.isFile() && f.getName().endsWith(".lock"), 3);
+    for (File f : deleted) {
+      LOG.info("Removed lock file " + f.getAbsolutePath());
+    }
+
+    final File packedRefsLock = new File(dotGit, "packed-refs.lock");
+    if (packedRefsLock.isFile() && FileUtil.delete(packedRefsLock)) {
+      LOG.info("Removed lock file " + packedRefsLock.getAbsolutePath());
+    }
+  }
 
   static void pruneRemovedBranches(@NotNull ServerPluginConfig config,
                                    @NotNull TransportFactory transportFactory,
