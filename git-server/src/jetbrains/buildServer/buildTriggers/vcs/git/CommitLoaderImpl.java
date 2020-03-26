@@ -121,10 +121,10 @@ public class CommitLoaderImpl implements CommitLoader {
   }
 
   public void loadCommits(@NotNull OperationContext context,
-                             @NotNull URIish fetchURI,
-                             @NotNull Collection<RefCommit> revisions,
-                             @NotNull Set<String> remoteRefs,
-                             @NotNull FetchSettings settings) throws IOException, VcsException {
+                          @NotNull URIish fetchURI,
+                          @NotNull Collection<RefCommit> revisions,
+                          @NotNull Set<String> remoteRefs,
+                          @NotNull FetchSettings settings) throws IOException, VcsException {
     if (revisions.isEmpty()) return;
 
     final Repository db = context.getRepository();
@@ -153,10 +153,12 @@ public class CommitLoaderImpl implements CommitLoader {
         doFetch(db, fetchURI, getRefSpecsForRevisions(revisions), settings);
 
         revisions = findLocallyMissingRevisions(context, walk, revisions, false);
-        if (revisions.isEmpty() || revisions.stream().noneMatch(RefCommit::isRefTip)) return;
+        if (revisions.isEmpty()) return;
 
-        doFetch(db, fetchURI, getRefSpecsForRemoteBranches(remoteRefs), settings);
+        final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
+        if (revisions.stream().noneMatch(RefCommit::isRefTip) && fetchAllRefsDisabled) return;
 
+        doFetch(db, fetchURI, fetchAllRefsDisabled ? getRefSpecsForRemoteBranches(remoteRefs) : getAllRefSpec(), settings);
         findLocallyMissingRevisions(context, walk, revisions, true);
       } finally {
         lock.unlock();
@@ -205,7 +207,13 @@ public class CommitLoaderImpl implements CommitLoader {
 
   @NotNull
   private Collection<RefSpec> getRefSpecsForRemoteBranches(@NotNull Collection<String> refs) {
-    return refs.stream().filter(r -> r.startsWith("refs/")).map(r -> new RefSpec(r + ":" + r).setForceUpdate(true)).collect(Collectors.toList());
+    return refs.stream().filter(r -> r.startsWith("refs/")).map(r -> new RefSpec(r + ":" + r).setForceUpdate(true))
+      .collect(Collectors.toList());
+  }
+
+  @NotNull
+  private Set<RefSpec> getAllRefSpec() {
+    return Collections.singleton(new RefSpec("refs/*:refs/*").setForceUpdate(true));
   }
 
   @NotNull
@@ -218,7 +226,9 @@ public class CommitLoaderImpl implements CommitLoader {
       walk.close();
       final long finish = System.currentTimeMillis();
       if (PERFORMANCE_LOG.isDebugEnabled()) {
-        PERFORMANCE_LOG.debug("[RevWalk.parseCommit] repository=" + repository.getDirectory().getAbsolutePath() + ", commit=" + commitId.name() + ", took: " + (finish - start) + "ms");
+        PERFORMANCE_LOG.debug(
+          "[RevWalk.parseCommit] repository=" + repository.getDirectory().getAbsolutePath() + ", commit=" + commitId.name() + ", took: " +
+          (finish - start) + "ms");
       }
     }
   }
