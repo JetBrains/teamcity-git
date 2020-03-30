@@ -47,12 +47,13 @@ public class LsTreeCommandImpl extends BaseCommandImpl implements LsTreeCommand 
    * Expecting line to be formatted like '<mode> SPACE <type> SPACE <object> TAB <file>'
    */
   private LsTreeResult parseLsTreeOutput(String line) throws VcsException {
-    String[] splitLine = line.split("\\s+");
-
-    if (splitLine.length != 4) {
-      throw new VcsException("Cannot parse ls-tree output: '" + line + "', expected format '<mode> SPACE <type> SPACE <object> TAB <file>'");
+    final int tabIndex = line.indexOf("\t");
+    if (tabIndex > 0) {
+      String[] splitLine = line.substring(0, tabIndex).split(" ");
+      if (splitLine.length == 3) {
+        return new LsTreeResult(splitLine[0], splitLine[1], splitLine[2], line.substring(tabIndex));
+      }
     }
-
-    return new LsTreeResult(splitLine[0], splitLine[1], splitLine[2], splitLine[3]);
+    throw new VcsException("Cannot parse ls-tree output: '" + line + "', expected format '<mode> SPACE <type> SPACE <object> TAB <file>'");
   }
 }
