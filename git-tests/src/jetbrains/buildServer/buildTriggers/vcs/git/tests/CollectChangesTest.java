@@ -529,7 +529,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
 
   @TestFor(issues = "TW-43643")
-  @Test(enabled = false)
+  @Test
   public void should_fetch_all_refs_when_commit_not_found() throws Exception {
     File repo = getRemoteRepositoryDir("TW-43643-1");
 
@@ -566,7 +566,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     //and report changes:
     VcsRoot rootBranch2 = vcsRoot().withFetchUrl(repo).withBranch("branch2").build();
     RepositoryStateData s5 = RepositoryStateData.createVersionState("refs/heads/branch2", "bc979d0e5bc0e6030a9db27c75004e6eb8cdb961");
-    List<ModificationData> changes = git().getCollectChangesPolicy().collectChanges(rootBranch1, s2, rootBranch2, s5, CheckoutRules.DEFAULT);
+    List<ModificationData> changes = gitSupport().withPluginConfig(myConfig.setFetchAllRefsEnabled(true)).build().getCollectChangesPolicy().collectChanges(rootBranch1, s2, rootBranch2, s5, CheckoutRules.DEFAULT);
     then(changes).extracting("version").containsExactly("bc979d0e5bc0e6030a9db27c75004e6eb8cdb961");
   }
 

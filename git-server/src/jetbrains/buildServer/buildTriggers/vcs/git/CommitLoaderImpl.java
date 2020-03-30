@@ -17,11 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.lib.ObjectId;
@@ -33,6 +29,12 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
@@ -113,6 +115,8 @@ public class CommitLoaderImpl implements CommitLoader {
                        @NotNull final URIish fetchURI,
                        @NotNull final Collection<RefSpec> refspecs,
                        @NotNull final FetchSettings settings) throws IOException, VcsException {
+    if (refspecs.isEmpty()) return;
+
     Map<String, Ref> oldRefs = new HashMap<>(db.getAllRefs());
     myFetchCommand.fetch(db, fetchURI, refspecs, settings);
     Map<String, Ref> newRefs = new HashMap<>(db.getAllRefs());
@@ -149,12 +153,12 @@ public class CommitLoaderImpl implements CommitLoader {
         revisions = findLocallyMissingRevisions(context, walk, revisions, false);
         if (revisions.isEmpty()) return;
 
-        doFetch(db, fetchURI, getRefSpecsForRevisions(revisions), settings);
+        doFetch(db, fetchURI, getRefSpecsForRevisions(context, revisions, remoteRefs), settings);
 
         revisions = findLocallyMissingRevisions(context, walk, revisions, false);
         if (revisions.isEmpty()) return;
 
-        final boolean fetchAllRefsDisabled = true; // !context.getPluginConfig().fetchAllRefsEnabled(); // TODO: fix it properly
+        final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
         if (revisions.stream().noneMatch(RefCommit::isRefTip) && fetchAllRefsDisabled) return;
 
         doFetch(db, fetchURI, fetchAllRefsDisabled ? getRefSpecsForRemoteBranches(remoteRefs) : getAllRefSpec(), settings);
@@ -170,7 +174,7 @@ public class CommitLoaderImpl implements CommitLoader {
                                                             @NotNull RevWalk walk,
                                                             @NotNull Collection<RefCommit> revisions,
                                                             boolean throwErrors) throws VcsException {
-    final Set<RefCommit> locallyMissingRevisions = new HashSet<>();
+    final Set<RefCommit> locallyMissing = new HashSet<>();
 
     for (RefCommit r : revisions) {
       final String ref = GitUtils.expandRef(r.getRef());
@@ -179,29 +183,67 @@ public class CommitLoaderImpl implements CommitLoader {
       try {
         walk.parseCommit(ObjectId.fromString(revNumber));
       } catch (IncorrectObjectTypeException e) {
-        LOG.warn("Ref " + ref + " points to a non-commit " + revNumber + " for VCS Root " + LogUtil.describe(context.getRoot()));
+        LOG.warn("Ref " + ref + " points to a non-commit " + revNumber + " for " + context.getGitRoot().debugInfo());
       } catch (Exception e) {
-        if (throwErrors && r.isRefTip()) {
-          final VcsException error = new VcsException("Cannot find revision " + revNumber + " for ref " + ref + " in VCS root " + LogUtil.describe(context.getRoot()) + " mirror", e);
-          error.setRecoverable(context.getPluginConfig().treatMissingBranchTipAsRecoverableError());
-          throw error;
-        } else {
-          locallyMissingRevisions.add(r);
-        }
+        locallyMissing.add(r);
       }
     }
 
-    if (!locallyMissingRevisions.isEmpty()) {
-      LOG.debug("Revisions missing in the local repository: " +
-                locallyMissingRevisions.stream().map(e -> e.getRef() + ": " + e.getCommit()).collect(Collectors.joining(", ")));
+    if (locallyMissing.isEmpty()) {
+      return locallyMissing;
     }
 
-    return locallyMissingRevisions;
+
+    LOG.debug("Revisions missing in the local repository: " +
+              locallyMissing.stream().map(e -> e.getRef() + ": " + e.getCommit()).collect(Collectors.joining(", ")) + " for " +
+              context.getGitRoot().debugInfo());
+
+    if (throwErrors) {
+      final Set<String> missingTips =
+        locallyMissing.stream().filter(RefCommit::isRefTip).map(e -> e.getRef() + ": " + e.getCommit()).collect(Collectors.toSet());
+
+      if (missingTips.size() > 0) {
+        final VcsException error = new VcsException("Revisions missing in the local repository: " + StringUtil.join(missingTips, ", "));
+        error.setRecoverable(context.getPluginConfig().treatMissingBranchTipAsRecoverableError());
+        throw error;
+      }
+    }
+    return locallyMissing;
   }
 
+  private static final String REF_MISSING_FORMAT = "Ref %s is no longer present in the remote repository";
+  private static final String REFS_MISSING_FORMAT = "Refs %s are no longer present in the remote repository";
+
   @NotNull
-  private Collection<RefSpec> getRefSpecsForRevisions(@NotNull Collection<RefCommit> revisions) {
-    return revisions.stream().map(r -> new RefSpec(r.getRef() + ":" + r.getRef()).setForceUpdate(true)).collect(Collectors.toSet());
+  private Collection<RefSpec> getRefSpecsForRevisions(@NotNull OperationContext context, @NotNull Collection<RefCommit> revisions, @NotNull Collection<String> remoteRefs) throws VcsException {
+    final Set<RefSpec> result = new HashSet<>();
+    final Set<String> missingTips = new HashSet<>();
+
+    for (RefCommit r : revisions) {
+      final String ref = r.getRef();
+      final boolean existsRemotely = remoteRefs.contains(ref);
+      if (existsRemotely) {
+        result.add(new RefSpec(ref + ":" + ref).setForceUpdate(true));
+        continue;
+      }
+      if (r.isRefTip()) {
+        missingTips.add(ref);
+      } else {
+        LOG.debug(String.format(REF_MISSING_FORMAT, ref) + " for " + context.getGitRoot().debugInfo());
+      }
+    }
+
+    final int remotelyMissingRefsNum = missingTips.size();
+    if (remotelyMissingRefsNum > 0) {
+      final String message = remotelyMissingRefsNum == 1 ?
+                             String.format(REF_MISSING_FORMAT, missingTips.iterator().next()) :
+                             String.format(REFS_MISSING_FORMAT, StringUtil.join(", ", missingTips));
+
+      final VcsException exception = new VcsException(message);
+      exception.setRecoverable(context.getPluginConfig().treatMissingBranchTipAsRecoverableError());
+      throw exception;
+    }
+    return result;
   }
 
   @NotNull

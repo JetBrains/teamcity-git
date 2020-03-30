@@ -172,4 +172,6 @@ public interface ServerPluginConfig extends PluginConfig {
 
   @NotNull
   List<String> getRecoverableFetchErrorMessages();
+
+  boolean fetchAllRefsEnabled();
 }

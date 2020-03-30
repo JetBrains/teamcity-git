@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.util.text.StringUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.Constants;
@@ -31,6 +30,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -197,70 +197,41 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     }
 
     @NotNull
-    FetchContext withRevisions(@NotNull Map<String, String> revisions, boolean tips) throws VcsException {
-      myRevisions.addAll(filterRemoteExistingAndExpand(revisions, tips));
+    FetchContext withRevisions(@NotNull Map<String, String> revisions, boolean tips) {
+      myRevisions.addAll(expandRefs(revisions, tips));
       return this;
     }
 
     @NotNull
-    FetchContext withFromRevisions(@NotNull Map<String, String> revisions) throws VcsException {
+    FetchContext withFromRevisions(@NotNull Map<String, String> revisions) {
       return withRevisions(revisions, false);
     }
 
     @NotNull
-    FetchContext withToRevisions(@NotNull Map<String, String> revisions) throws VcsException {
+    FetchContext withToRevisions(@NotNull Map<String, String> revisions) {
       return withRevisions(revisions, true);
     }
 
     @NotNull
-    private Collection<CommitLoader.RefCommit> filterRemoteExistingAndExpand(@NotNull Map<String, String> revisions, boolean tips) throws VcsException {
-      final Collection<CommitLoader.RefCommit> existing = new ArrayList<>();
-      final Set<String> missing = new HashSet<>();
-
-      for (Map.Entry<String, String> e : revisions.entrySet()) {
-        final String ref = e.getKey();
-        if (isEmpty(ref)) continue;
-
-        final String expandedRef = GitUtils.expandRef(ref);
-        if (myRemoteRefs.contains(expandedRef)) {
-          existing.add(new CommitLoader.RefCommit() {
-            @NotNull
-            @Override
-            public String getRef() {
-              return expandedRef;
-            }
-
-            @NotNull
-            @Override
-            public String getCommit() {
-              return e.getValue();
-            }
-
-            @Override
-            public boolean isRefTip() {
-              return tips;
-            }
-          });
-        } else {
-          missing.add(ref);
+    private Collection<CommitLoader.RefCommit> expandRefs(@NotNull Map<String, String> revisions, boolean tips) {
+      return revisions.entrySet().stream().filter(e -> !isEmpty(e.getKey())).map(e ->  new CommitLoader.RefCommit() {
+        @NotNull
+        @Override
+        public String getRef() {
+          return GitUtils.expandRef(e.getKey());
         }
-      }
 
-      final int remotelyMissingRefsNum = missing.size();
-      if (remotelyMissingRefsNum > 0) {
-        final String message = StringUtil.pluralize("Ref", remotelyMissingRefsNum) + " " +
-                               String.join(", ", missing) +
-                               (remotelyMissingRefsNum == 1 ? " is" : " are") +
-                               " no longer present in the remote repository for VCS root " + LogUtil.describe(myContext.getGitRoot());
-
-        if (tips) {
-          final VcsException exception = new VcsException(message);
-          exception.setRecoverable(myConfig.treatMissingBranchTipAsRecoverableError());
-          throw exception;
+        @NotNull
+        @Override
+        public String getCommit() {
+          return e.getValue();
         }
-        LOG.debug(message);
-      }
-      return existing;
+
+        @Override
+        public boolean isRefTip() {
+          return tips;
+        }
+      }).collect(Collectors.toList());
     }
 
     void fetchIfNoCommitsOrFail() throws VcsException, IOException {

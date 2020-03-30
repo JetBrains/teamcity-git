@@ -624,4 +624,9 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public float getFetchProcessMemoryMultiplyFactor() {
     return TeamCityProperties.getFloat("teamcity.git.fetch.process.max.memory.multiply.factor", FETCH_PROCESS_MAX_MEMORY_MULT_FACTOR_DEFAULT);
   }
+
+  @Override
+  public boolean fetchAllRefsEnabled() {
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.fetch.all.refs.enabled");
+  }
 }

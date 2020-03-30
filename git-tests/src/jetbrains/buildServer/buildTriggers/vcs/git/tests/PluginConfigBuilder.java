@@ -71,6 +71,7 @@ public class PluginConfigBuilder {
   private Integer myMergeRetryAttempts;
   private Boolean myRunInPlaceGc;
   private Boolean myReportPerParentChangedFiles;
+  private boolean myFetchAllRefsEnabled;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -395,6 +396,11 @@ public class PluginConfigBuilder {
       public boolean shouldSetSubmoduleUserInAbsoluteUrls() {
         return myDelegate.shouldSetSubmoduleUserInAbsoluteUrls();
       }
+
+      @Override
+      public boolean fetchAllRefsEnabled() {
+        return myFetchAllRefsEnabled;
+      }
     };
   }
 
@@ -575,6 +581,11 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setReportPerParentChangedFiles(boolean report) {
     myReportPerParentChangedFiles = report;
+    return this;
+  }
+
+  PluginConfigBuilder setFetchAllRefsEnabled(final boolean fetchAllRefsEnabled) {
+    myFetchAllRefsEnabled = fetchAllRefsEnabled;
     return this;
   }
 }
