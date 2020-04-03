@@ -19,6 +19,15 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessExecutor;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessStuckMonitor;
@@ -33,21 +42,12 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
-import org.eclipse.jgit.internal.storage.file.LockFile;
-import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.*;
 
 /**
 * @author dmitry.neverov
@@ -85,67 +85,13 @@ public class FetchCommandImpl implements FetchCommand {
                     @NotNull URIish fetchURI,
                     @NotNull Collection<RefSpec> refspecs,
                     @NotNull FetchSettings settings) throws IOException, VcsException {
-    unlockRefs(db);
+    GitServerUtil.removeRefLocks(db.getDirectory());
     if (myConfig.isSeparateProcessForFetch()) {
       fetchInSeparateProcess(db, fetchURI, refspecs, settings);
     } else {
       fetchInSameProcess(db, fetchURI, refspecs, settings);
     }
   }
-
-
-  private void unlockRefs(@NotNull Repository db) throws VcsException{
-    try {
-      for (Ref ref : findLockedRefs(db)) {
-        unlockRef(db, ref);
-      }
-    } catch (Exception e) {
-      throw new VcsException(e);
-    }
-  }
-
-
-  @NotNull
-  private List<Ref> findLockedRefs(@NotNull Repository db) {
-    File refsDir = new File(db.getDirectory(), org.eclipse.jgit.lib.Constants.R_REFS);
-    List<String> lockFiles = new ArrayList<>();
-    //listFilesRecursively always uses / as a separator, we get valid ref names on all OSes
-    FileUtil.listFilesRecursively(refsDir, "refs/", false, Integer.MAX_VALUE, f -> f.isDirectory() || f.isFile() && f.getName().endsWith(".lock"), lockFiles);
-    Map<String, Ref> allRefs = db.getAllRefs();
-    List<Ref> result = new ArrayList<>();
-    for (String lock : lockFiles) {
-      String refName = lock.substring(0, lock.length() - ".lock".length());
-      Ref ref = allRefs.get(refName);
-      if (ref != null)
-        result.add(ref);
-    }
-    return result;
-  }
-
-
-  private void unlockRef(Repository db, Ref ref) throws IOException, InterruptedException {
-    File refFile = new File(db.getDirectory(), ref.getName());
-    File refLockFile = new File(db.getDirectory(), ref.getName() + ".lock");
-    LockFile lock = new LockFile(refFile);
-    try {
-      if (!lock.lock()) {
-        LOG.warn("Cannot lock the ref " + ref.getName() + ", will wait and try again");
-        Thread.sleep(5000);
-        if (lock.lock()) {
-          LOG.warn("Successfully lock the ref " + ref.getName());
-        } else {
-          if (FileUtil.delete(refLockFile)) {
-            LOG.warn("Remove ref lock " + refLockFile.getAbsolutePath());
-          } else {
-            LOG.warn("Cannot remove ref lock " + refLockFile.getAbsolutePath() + ", fetch will probably fail. Please remove lock manually.");
-          }
-        }
-      }
-    } finally {
-      lock.unlock();
-    }
-  }
-
 
   private void fetchInSeparateProcess(@NotNull Repository repository,
                                       @NotNull URIish uri,
@@ -352,7 +298,6 @@ public class FetchCommandImpl implements FetchCommand {
     final long fetchStart = System.currentTimeMillis();
     final Transport tn = myTransportFactory.createTransport(db, uri, settings.getAuthSettings());
     try {
-      GitServerUtil.removeRefLocks(db.getDirectory());
       pruneRemovedBranches(db, tn, uri, settings.getAuthSettings());
       GitServerUtil
         .fetchAndCheckResults(db, uri, settings.getAuthSettings(), myTransportFactory, tn, settings.createProgressMonitor(), refSpecs,
