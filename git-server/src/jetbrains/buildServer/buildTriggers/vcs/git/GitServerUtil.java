@@ -342,10 +342,13 @@ public class GitServerUtil {
     final File refs = new File(dotGit, "refs");
     if (!refs.isDirectory()) return;
 
-    // the filter matches locks for all loose refs as well as packed-refs.lock
-    final Set<File> deleted = FileUtil.delete(refs, f -> f.isFile() && f.getName().endsWith(".lock"), 3);
-    for (File f : deleted) {
-      LOG.info("Removed lock file " + f.getAbsolutePath());
+    Collection<File> lockFiles = FileUtil.findFiles(f -> f.isDirectory() || f.isFile() && f.getName().endsWith(".lock"), refs);
+    for (File lock: lockFiles) {
+      if (FileUtil.delete(lock)) {
+        LOG.info("Removed the lock file: " + lock.getAbsolutePath());
+      } else if (lock.exists()) {
+        LOG.info("Could not remove the lock file: " + lock.getAbsolutePath());
+      }
     }
   }
 
