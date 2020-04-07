@@ -18,18 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.StreamUtil;
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileReader;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.TestNGUtil;
@@ -63,6 +51,19 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
@@ -1363,7 +1364,32 @@ public class AgentVcsSupportTest {
     then(idxInMirror).doesNotExist();
   }
 
-//  @TestFor(issues = "TW-63886")
+  @Test
+  @TestFor(issues = "TW-65321")
+  public void username_for_submodule_ssh() {
+    VcsRootImpl root = vcsRoot()
+      .withAgentGitPath(getGitPath())
+      .withFetchUrl(GitUtils.toURL(dataFile("TW-65321")))
+      .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_DEFAULT)
+      .withUsername("XXX")
+      .withSubmodulePolicy(SubmodulesCheckoutPolicy.CHECKOUT)
+      .build();
+    try {
+      myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "75fbd02686508f1b8e053fd44e3ac158ba717dcf", myCheckoutDir, createRunningBuild(true), false);
+    } catch (VcsException e) {
+      // submodule user YYY from .gitmodules must be preserved
+      then(e).hasMessageContaining("YYY@github.com");
+    }
+  }
+
+//  @NotNull
+//  private File parameterPrinterScript() throws IOException {
+//    final File script = myTempFiles.createTempFile(SystemInfo.isWindows ? "echo %*" : "echo $@");
+//    FileUtil.setExectuableAttribute(script.getPath(), true);
+//    return script;
+//  }
+
+  //  @TestFor(issues = "TW-63886")
 //  public void test_ssh_SendEnv() throws Exception {
 //    VcsRoot root = vcsRoot().withFetchUrl("ssh://root@localhost:8888/repo.git")
 //      .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_DEFAULT)
