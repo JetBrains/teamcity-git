@@ -67,6 +67,7 @@ public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
       case NON_IGNORED_ONLY:
         break;
     }
+    cmd.withMaxOutputSize(8 * 1024 * 1024);
     try {
       ExecResult r = CommandUtil.runCommand(cmd);
       CommandUtil.failIfNotEmptyStdErr(cmd, r);

@@ -20,13 +20,6 @@ import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.KeyPair;
-import java.io.*;
-import java.nio.charset.Charset;
-import java.nio.charset.UnsupportedCharsetException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import jetbrains.buildServer.agent.BuildInterruptReason;
@@ -43,6 +36,14 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.charset.UnsupportedCharsetException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public class GitCommandLine extends GeneralCommandLine {
 
   private final GitAgentSSHService mySsh;
@@ -55,6 +56,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private final Context myCtx;
   private File myWorkingDirectory;
   private boolean myRepeatOnEmptyOutput = false;
+  @Nullable private Integer myMaxOutputSize;
   private VcsRootSshKeyManager mySshKeyManager;
   private boolean myHasProgress = false;
   private boolean myUseGitSshCommand = true;
@@ -239,6 +241,16 @@ public class GitCommandLine extends GeneralCommandLine {
 
   public boolean isRepeatOnEmptyOutput() {
     return myRepeatOnEmptyOutput;
+  }
+
+  public GitCommandLine withMaxOutputSize(int maxOutputSize) {
+    myMaxOutputSize = maxOutputSize;
+    return this;
+  }
+
+  @Nullable
+  public Integer getMaxOutputSize() {
+    return myMaxOutputSize;
   }
 
   public void setSshKeyManager(VcsRootSshKeyManager sshKeyManager) {

@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
-import java.io.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
@@ -25,6 +24,8 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -127,7 +128,7 @@ public class CommandUtil {
         ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
         ByteArrayOutputStream stderrBuffer = cli.createStderrBuffer();
         ExecResult res = SimpleCommandLineProcessRunner
-          .runCommandSecure(cli, cli.getCommandLineString(), input, new ProcessTimeoutCallback(timeoutSeconds), stdoutBuffer, stderrBuffer);
+          .runCommandSecure(cli, cli.getCommandLineString(), input, new ProcessTimeoutCallback(timeoutSeconds, cli.getMaxOutputSize()), stdoutBuffer, stderrBuffer);
         cli.logFinish(cmdStr);
         CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
         String out = res.getStdout();
