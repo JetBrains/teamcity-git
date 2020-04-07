@@ -39,4 +39,6 @@ public interface URIishHelper {
   CommonURIish createAuthURI(@NotNull final AuthSettings authSettings, @NotNull final CommonURIish uri);
 
   CommonURIish createAuthURI(@NotNull final AuthSettings authSettings, @NotNull final CommonURIish uri, final boolean fixErrors);
+
+  CommonURIish createURI(@Nullable final String uri) throws VcsException;
 }

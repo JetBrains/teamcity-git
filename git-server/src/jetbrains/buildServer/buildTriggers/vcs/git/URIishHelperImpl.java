@@ -53,15 +53,18 @@ public class URIishHelperImpl implements URIishHelper {
 
   @Override
   public CommonURIish createAuthURI(@NotNull final AuthSettings authSettings, @Nullable final String uri, final boolean fixErrors) throws VcsException {
-    CommonURIish result;
+    return createAuthURI(authSettings, createURI(uri), fixErrors);
+  }
+
+  @NotNull
+  public CommonURIish createURI(@Nullable String uri) throws VcsException {
     try {
-      result = new CommonURIishImpl(new URIish(uri));
+      return new CommonURIishImpl(new URIish(uri));
     } catch (Exception e) {
       if (uri != null && ReferencesResolverUtil.containsReference(uri))
         throw new VcsException("Unresolved parameter in url: " + uri, e);
       throw new VcsException("Invalid URI: " + uri, e);
     }
-    return createAuthURI(authSettings, result, fixErrors);
   }
 
   @Override
@@ -87,12 +90,12 @@ public class URIishHelperImpl implements URIishHelper {
     return new CommonURIishImpl(result);
   }
 
-  private boolean isAnonymousProtocol(@NotNull URIish uriish) {
+  private static boolean isAnonymousProtocol(@NotNull URIish uriish) {
     return "git".equals(uriish.getScheme());
   }
 
   public static boolean requiresCredentials(URIish result) {
     if (result.getHost() == null) return false;
-    return !"git".equals(result.getScheme());
+    return !isAnonymousProtocol(result);
   }
 }

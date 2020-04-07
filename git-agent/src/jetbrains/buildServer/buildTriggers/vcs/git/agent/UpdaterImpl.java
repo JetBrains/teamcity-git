@@ -17,12 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.Trinity;
-import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.regex.Matcher;
 import jetbrains.buildServer.BuildProblemData;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
@@ -47,6 +41,13 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
@@ -390,7 +391,7 @@ public class UpdaterImpl implements Updater {
     AuthSettings auth = myRoot.getAuthSettings();
     final String userName = auth.getUserName();
     if (userName == null) {
-      Loggers.VCS.info("Username is not specified in the main VCS root settings, skip updating credentials");
+      Loggers.VCS.info("Username is not specified in the main VCS root settings, skip updating submodule credentials");
       return;
     }
 

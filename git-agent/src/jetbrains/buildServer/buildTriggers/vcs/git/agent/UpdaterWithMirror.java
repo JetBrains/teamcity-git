@@ -18,11 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.regex.Matcher;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.CommonURIish;
@@ -42,6 +37,12 @@ import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
 
@@ -409,7 +410,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       if (!hasRevisions(mirrorRepositoryDir, submodule.getRevisions())) {
         updateLocalMirror(true,
                           mirrorRepositoryDir,
-                          new URIishHelperImpl().createAuthURI(myRoot.getAuthSettings(), submodule.getUrl()),
+                          new URIishHelperImpl().createURI(submodule.getUrl()),
                           "refs/heads/*",
                           submodule.getRevisions());
         mirrorRepositoryDir = getSubmoduleMirror(submodule); // submodule mirrorRepositoryDir can change if couldn't remove it after unsuccessful fetch
@@ -478,7 +479,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
         aggregatedSubmodule.addSubmodule(new Submodule(submoduleName, submodulePath.replaceAll("/", Matcher.quoteReplacement(File.separator)), submoduleRevision));
         aggregatedSubmodules.put(url, aggregatedSubmodule);
-        }
+      }
 
       return aggregatedSubmodules;
     } finally {
