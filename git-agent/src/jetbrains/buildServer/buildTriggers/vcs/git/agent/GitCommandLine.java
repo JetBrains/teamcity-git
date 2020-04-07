@@ -56,6 +56,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private final Context myCtx;
   private File myWorkingDirectory;
   private boolean myRepeatOnEmptyOutput = false;
+  @Nullable private Integer myMaxOutputSize;
   private VcsRootSshKeyManager mySshKeyManager;
   private boolean myHasProgress = false;
   private boolean myUseGitSshCommand = true;
@@ -237,6 +238,16 @@ public class GitCommandLine extends GeneralCommandLine {
 
   public boolean isRepeatOnEmptyOutput() {
     return myRepeatOnEmptyOutput;
+  }
+
+  public GitCommandLine withMaxOutputSize(int maxOutputSize) {
+    myMaxOutputSize = maxOutputSize;
+    return this;
+  }
+
+  @Nullable
+  public Integer getMaxOutputSize() {
+    return myMaxOutputSize;
   }
 
   public void setSshKeyManager(VcsRootSshKeyManager sshKeyManager) {
