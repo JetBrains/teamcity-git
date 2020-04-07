@@ -16,6 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.util.EventDispatcher;
@@ -24,11 +28,6 @@ import jetbrains.buildServer.util.executors.ExecutorsFactory;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.Repository;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 
 public class GitClonesUpdater {
   private final ConcurrentHashMap<VcsRoot, RepositoryStateData> myScheduledForUpdate = new ConcurrentHashMap<>();
@@ -85,14 +84,16 @@ public class GitClonesUpdater {
       OperationContext context = myVcs.createContext(root, "updating local clone");
       try {
         ReadOnlyRestrictor.doReadOnlyCommandLine(() -> {
-          GitVcsRoot gitRoot = context.getGitRoot();
-          myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-            Repository repo = context.getRepository();
-            try {
-              myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, repo, true, state);
-            } catch (Exception e1) {
-              throw new VcsException(e1);
-            }
+          ReadOnlyRestrictor.doReadOnlyNetworkOperation(() -> {
+            GitVcsRoot gitRoot = context.getGitRoot();
+            myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+              Repository repo = context.getRepository();
+              try {
+                myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, repo, true, state);
+              } catch (Exception e1) {
+                throw new VcsException(e1);
+              }
+            });
           });
         });
       } catch (VcsException e1) {
