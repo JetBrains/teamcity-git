@@ -1364,7 +1364,32 @@ public class AgentVcsSupportTest {
     then(idxInMirror).doesNotExist();
   }
 
-//  @TestFor(issues = "TW-63886")
+  @Test
+  @TestFor(issues = "TW-65321")
+  public void username_for_submodule_ssh() {
+    VcsRootImpl root = vcsRoot()
+      .withAgentGitPath(getGitPath())
+      .withFetchUrl(GitUtils.toURL(dataFile("TW-65321")))
+      .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_DEFAULT)
+      .withUsername("XXX")
+      .withSubmodulePolicy(SubmodulesCheckoutPolicy.CHECKOUT)
+      .build();
+    try {
+      myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "75fbd02686508f1b8e053fd44e3ac158ba717dcf", myCheckoutDir, createRunningBuild(true), false);
+    } catch (VcsException e) {
+      // submodule user YYY from .gitmodules must be preserved
+      then(e).hasMessageContaining("YYY@github.com");
+    }
+  }
+
+//  @NotNull
+//  private File parameterPrinterScript() throws IOException {
+//    final File script = myTempFiles.createTempFile(SystemInfo.isWindows ? "echo %*" : "echo $@");
+//    FileUtil.setExectuableAttribute(script.getPath(), true);
+//    return script;
+//  }
+
+  //  @TestFor(issues = "TW-63886")
 //  public void test_ssh_SendEnv() throws Exception {
 //    VcsRoot root = vcsRoot().withFetchUrl("ssh://root@localhost:8888/repo.git")
 //      .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_DEFAULT)
