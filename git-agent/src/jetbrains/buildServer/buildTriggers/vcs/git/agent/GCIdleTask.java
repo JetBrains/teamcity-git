@@ -93,12 +93,13 @@ public class GCIdleTask implements AgentIdleTasks.Task {
     long t0 = System.currentTimeMillis();
     try {
       myGcThread.set(Thread.currentThread());
-      Loggers.VCS.debug("Start git gc");
+      Loggers.VCS.info("Start git gc while agent is idle");
       runGc(interruptState);
-    } catch (Exception e) {
-      Loggers.VCS.debug("Finished git gc in " + (System.currentTimeMillis() - t0) + "ms");
+    } catch (Throwable e) {
+      Loggers.VCS.warnAndDebugDetails("Exception while running idle git gc" + e.getMessage(), e);
     } finally {
       myGcThread.set(null);
+      Loggers.VCS.info("Finished idle git gc in " + (System.currentTimeMillis() - t0) + "ms");
     }
   }
 
@@ -116,16 +117,16 @@ public class GCIdleTask implements AgentIdleTasks.Task {
         continue;
       long t0 = System.currentTimeMillis();
       String path = mirror.getAbsolutePath();
-      Loggers.VCS.debug("Run git gc in " + path);
+      Loggers.VCS.info("Run git gc in " + path);
       Disposable name = NamedThreadFactory.patchThreadName("Run git gc in " + path);
       try {
         new NativeGitFacade("git", GitProgressLogger.NO_OP, mirror).gc().call();
         myGcTimestamp.put(mirror.getName(), System.nanoTime());
-      } catch (Exception e) {
-        Loggers.VCS.warnAndDebugDetails("Error while running git gc in " + path, e);
+      } catch (Throwable e) {
+        Loggers.VCS.warnAndDebugDetails("Exception while running git gc in " + path, e);
       } finally {
         name.dispose();
-        Loggers.VCS.debug("Finished git gc in " + path + " in " + (System.currentTimeMillis() - t0) + "ms");
+        Loggers.VCS.info("Finished git gc in " + path + " in " + (System.currentTimeMillis() - t0) + "ms");
       }
     }
   }
@@ -157,7 +158,7 @@ public class GCIdleTask implements AgentIdleTasks.Task {
 
 
   private boolean isEnabled() {
-    return "true".equals(myAgentConfig.getConfigurationParameters().get("teamcity.git.idleGcEnabled"));
+    return !"false".equals(myAgentConfig.getConfigurationParameters().get("teamcity.git.idleGcEnabled"));
   }
 
 
@@ -170,7 +171,7 @@ public class GCIdleTask implements AgentIdleTasks.Task {
 
 
   private long getDelaySinceLastBuildMinutes() {
-    return getLongParameter("teamcity.git.idleGcDelayMinutes", 30);
+    return getLongParameter("teamcity.git.idleGcDelayMinutes", 0);
   }
 
 
