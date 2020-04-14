@@ -17,6 +17,13 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.jcraft.jsch.JSchException;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.TempFiles;
@@ -30,6 +37,7 @@ import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
@@ -55,14 +63,6 @@ import org.jmock.Mockery;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
@@ -872,6 +872,37 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertFalse(v2.equals(v1));//local repository is updated
 
     support.collectChanges(root, v1, v2, CheckoutRules.DEFAULT);
+  }
+
+  // test recover from .git/packed-refs.lock when updating several refs
+  @Test
+  @TestFor(issues = "TW-64281")
+  public void should_update_refs_when_packed_refs_locked() throws Exception {
+    setInternalProperty(Constants.CUSTOM_CLONE_PATH_ENABLED, "true");
+    GitVcsSupport git = getSupport();
+
+    final File repo = new File(myTmpDir, "TW-64281");
+    FileUtil.copyDir(dataFile("TW-64281-1"), repo);
+    final VcsRootImpl root = getRoot("master", false, repo);
+    final File customRootDir = new File(myTmpDir, "custom-dir");
+    root.addProperty(Constants.PATH, customRootDir.getAbsolutePath());
+
+    final RepositoryStateData s =
+      createVersionState("refs/heads/master", CollectionsUtil.asMap("refs/heads/master", "650e7fb0b9c655c3e0468a8c01c446fdeba08823", "refs/heads/br", "f3d37d0d8db3d2f78fdf58294ec57965bcbdab02"));
+    git.getCollectChangesPolicy().collectChanges(root,
+                                                     createVersionState("refs/heads/master", CollectionsUtil.asMap("refs/heads/master", null, "refs/heads/branch", null)),
+                                                     s,
+                                                     CheckoutRules.DEFAULT);
+
+    File packedRefsLockFile = new File(customRootDir, "packed-refs.lock");
+    FileUtil.writeFileAndReportErrors(packedRefsLockFile, "branch");
+    assertTrue(packedRefsLockFile.exists());
+
+    FileUtil.copyDir(dataFile("TW-64281-2"), repo); // copy new repo that contains new commits - this will cause fetch during collecting changes
+    git.getCollectChangesPolicy().collectChanges(root,
+                                                     s,
+                                                     createVersionState("refs/heads/master", CollectionsUtil.asMap("refs/heads/master", "edad18e2ee4380197a7746355d5ad79ae4a71e2a", "refs/heads/br", "7361e8beff17c08095a418615030065c9262123a")),
+                                                     CheckoutRules.DEFAULT);
   }
 
 

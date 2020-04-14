@@ -338,16 +338,25 @@ public class GitServerUtil {
   }
 
   static void removeRefLocks(@NotNull File dotGit) {
+    final File packedRefsLock = new File(dotGit, "packed-refs.lock");
+    if (packedRefsLock.isFile()) {
+      removeLock(packedRefsLock);
+    }
+
     final File refs = new File(dotGit, "refs");
     if (!refs.isDirectory()) return;
 
-    Collection<File> lockFiles = FileUtil.findFiles(f -> f.isDirectory() || f.isFile() && f.getName().endsWith(".lock"), refs);
+    final Collection<File> lockFiles = FileUtil.findFiles(f -> f.isFile() && f.getName().endsWith(".lock"), refs);
     for (File lock: lockFiles) {
-      if (FileUtil.delete(lock)) {
-        LOG.info("Removed the lock file: " + lock.getAbsolutePath());
-      } else if (lock.exists()) {
-        LOG.info("Could not remove the lock file: " + lock.getAbsolutePath());
-      }
+      removeLock(lock);
+    }
+  }
+
+  private static void removeLock(@NotNull File lock) {
+    if (FileUtil.delete(lock)) {
+      LOG.info("Removed the lock file: " + lock.getAbsolutePath());
+    } else if (lock.exists()) {
+      LOG.info("Could not remove the lock file: " + lock.getAbsolutePath());
     }
   }
 
