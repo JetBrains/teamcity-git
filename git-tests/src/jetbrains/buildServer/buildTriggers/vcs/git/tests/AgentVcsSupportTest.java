@@ -71,6 +71,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.data
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVersionProvider.getGitPath;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder.runningBuild;
+import static jetbrains.buildServer.util.FileUtil.getTempDirectory;
 import static jetbrains.buildServer.util.FileUtil.writeFileAndReportErrors;
 import static jetbrains.buildServer.util.Util.map;
 import static org.assertj.core.api.BDDAssertions.then;
@@ -1402,6 +1403,42 @@ public class AgentVcsSupportTest {
 //
 //    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "a540b3cab44a513b5b420582701dca2e8805d772", myCheckoutDir, build, false);
 //  }
+
+
+  @TestFor(issues = "TW-63901")
+  @Test
+  public void not_fetch_submodules() throws Exception {
+    final File repo = new File(getTempDirectory(), "TW-63901");
+    FileUtil.delete(repo);
+    FileUtil.copyDir(dataFile("TW-63901-1"), repo);
+
+    final File submoduleRepo = new File(getTempDirectory(), "TW-63901-submodule");
+    FileUtil.delete(submoduleRepo);
+    FileUtil.copyDir(dataFile("TW-63901-submodule"), submoduleRepo);
+
+    final VcsRootImpl root = createRoot(repo, "master");
+    root.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+
+    final AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.USE_MIRRORS,"false");
+      put(PluginConfigImpl.USE_MIRRORS_FOR_SUBMODULES, "false");
+    }});
+
+    myVcsSupport.updateSources(root, new CheckoutRules(""), "78fcadbf51f44cf78fce816be5e3943e4bb5f95c", myCheckoutDir, build, false);
+    assertTrue(new File(myCheckoutDir, ".gitmodules").isFile());
+    assertTrue(new File(myCheckoutDir, "TW-63901-submodule/f.txt").isFile());
+
+    // patch config to fetch submodules during fetch
+    final StoredConfig config = new RepositoryBuilder().setWorkTree(myCheckoutDir).build().getConfig();
+    config.setBoolean("fetch", null, "recursesubmodules", true);
+    config.save();
+
+    root.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.IGNORE.name());
+    FileUtil.delete(repo);
+    // new repo references submodule commit, which doesn't exist
+    FileUtil.copyDir(dataFile("TW-63901-2"), repo);
+    myVcsSupport.updateSources(root, new CheckoutRules(""), "565f5f32581cd1dba1305c5f5651270c33f40323", myCheckoutDir, build, false);
+  }
 
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
     myVcsRootId++;

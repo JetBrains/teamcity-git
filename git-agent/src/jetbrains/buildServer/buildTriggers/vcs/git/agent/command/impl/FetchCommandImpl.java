@@ -104,6 +104,7 @@ public class FetchCommandImpl extends BaseCommandImpl implements FetchCommand {
       cmd.addParameter("--depth=" + myDepth);
     if (!myFetchTags)
       cmd.addParameter("--no-tags");
+    cmd.addParameter("--no-recurse-submodules"); // we process submodules separately
     cmd.addParameter("origin");
     cmd.addParameter(myRefspec);
     cmd.setHasProgress(true);
