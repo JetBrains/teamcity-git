@@ -1376,10 +1376,10 @@ public class AgentVcsSupportTest {
       .withSubmodulePolicy(SubmodulesCheckoutPolicy.CHECKOUT)
       .build();
     try {
-      myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "a112acb147d4c342ed5a2f44c5f79d8019bf8a56", myCheckoutDir, createRunningBuild(true), false);
+      myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "75fbd02686508f1b8e053fd44e3ac158ba717dcf", myCheckoutDir, createRunningBuild(true), false);
     } catch (VcsException e) {
       // submodule user YYY from .gitmodules must be preserved
-      then(e).hasMessageContaining("YYY@mygithosting.com");
+      then(e).hasMessageContaining("YYY@github.com");
     }
   }
 
