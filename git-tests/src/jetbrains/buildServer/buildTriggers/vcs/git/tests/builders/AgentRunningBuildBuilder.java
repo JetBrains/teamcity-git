@@ -123,11 +123,6 @@ public class AgentRunningBuildBuilder {
       }
 
       @NotNull
-      public BuildParametersMap getMandatoryBuildParameters() {
-        throw new UnsupportedOperationException();
-      }
-
-      @NotNull
       public File getCheckoutDirectory() {
         throw new UnsupportedOperationException();
       }
@@ -143,21 +138,6 @@ public class AgentRunningBuildBuilder {
       }
 
       public boolean getFailBuildOnExitCode() {
-        throw new UnsupportedOperationException();
-      }
-
-      @NotNull
-      public ResolvedParameters getResolvedParameters() {
-        throw new UnsupportedOperationException();
-      }
-
-      @NotNull
-      public String getRunType() {
-        throw new UnsupportedOperationException();
-      }
-
-      @NotNull
-      public UnresolvedParameters getUnresolvedParameters() {
         throw new UnsupportedOperationException();
       }
 
