@@ -112,6 +112,11 @@ public class AgentRunningBuildBuilder {
 
       }
 
+      @Override
+      public Map<String, String> getServerParameters() {
+        return Collections.emptyMap();
+      }
+
       @NotNull
       public BuildProgressLogger getBuildLogger() {
         return myBuildLogger != null ? myBuildLogger : new NullBuildProgressLogger();
