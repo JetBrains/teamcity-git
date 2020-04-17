@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.Errors;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
@@ -104,7 +105,9 @@ public class FetchCommandImpl extends BaseCommandImpl implements FetchCommand {
       cmd.addParameter("--depth=" + myDepth);
     if (!myFetchTags)
       cmd.addParameter("--no-tags");
-    cmd.addParameter("--no-recurse-submodules"); // we process submodules separately
+    if (cmd.getGitVersion().isGreaterThan(new GitVersion(1, 7, 3))) {
+      cmd.addParameter("--recurse-submodules=no"); // we process submodules separately
+    }
     cmd.addParameter("origin");
     cmd.addParameter(myRefspec);
     cmd.setHasProgress(true);
