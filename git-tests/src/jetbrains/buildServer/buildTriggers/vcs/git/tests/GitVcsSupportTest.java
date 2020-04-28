@@ -16,14 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import com.intellij.util.io.ZipUtil;
 import com.jcraft.jsch.JSchException;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.TempFiles;
@@ -40,6 +34,7 @@ import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
+import jetbrains.buildServer.util.WaitFor;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
@@ -60,9 +55,18 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
+import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
@@ -746,6 +750,48 @@ public class GitVcsSupportTest extends PatchTestCase {
     }
   }
 
+  @Test
+  @TestFor(issues = "TW-65641")
+  public void disable_auto_gc() throws Exception {
+    myConfigBuilder.setSeparateProcessForFetch(false);
+
+    final File repo = createTempDir();
+    ZipUtil.extract(new File(getTestDataPath(), "TW-65641-1.zip"), repo, null);
+
+    final GitVcsSupport support = getSupport();
+    final VcsRootImpl root = getRoot("master", false, repo);
+    final OperationContext context = support.createContext(root, "fetch");
+    final GitVcsRoot gitRoot = context.getGitRoot();
+    final File mirror = gitRoot.getRepositoryDir();
+    ZipUtil.extract(new File(getTestDataPath(), "TW-65641.zip"), mirror, null);
+
+    // make sure old pack files won't be kept
+    context.getRepository().getConfig().setString("gc", null, "prunepackexpire", "now");
+
+    final File gitObjects = new File(mirror + "/objects");
+    Assert.assertTrue(gitObjects.isDirectory());
+
+    final HashSet<String> before = listObjectsRecursively(mirror);
+
+    support.collectChanges(root, "2faa6375bf6139923245a625a47bef046e5e6550", "ba04d81036c5953d17469f532e520fc1ecbcd3f1", CheckoutRules.DEFAULT);
+
+    Thread.sleep(5000); // enough time for auto gc to start
+    new WaitFor() {
+      @Override
+      protected boolean condition() {
+        return !new File(mirror, "gc.log.lock").isFile();
+      }
+    };
+
+    final HashSet<String> after = listObjectsRecursively(mirror);
+    Assert.assertTrue(after.containsAll(before));
+    after.removeAll(before);
+  }
+
+  @NotNull
+  private HashSet<String> listObjectsRecursively(final File mirror) {
+    return FileUtil.listFilesRecursively(new File(mirror, "objects"), "", false, Integer.MAX_VALUE, null, new HashSet<>());
+  }
 
   @Test
   public void fetch_process_should_have_necessary_options_from_internal_properties() throws Exception {
