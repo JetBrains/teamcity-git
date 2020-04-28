@@ -19,13 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
-import java.io.*;
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
-import java.nio.charset.UnsupportedCharsetException;
-import java.text.MessageFormat;
-import java.util.*;
-import java.util.stream.Collectors;
 import jetbrains.buildServer.serverSide.FileWatchingPropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
@@ -38,6 +31,7 @@ import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.internal.JGitText;
+import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.internal.storage.file.MemoryMappedPackIndex;
 import org.eclipse.jgit.internal.storage.file.PackIndex;
 import org.eclipse.jgit.lib.*;
@@ -49,6 +43,14 @@ import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sun.awt.OSInfo;
+
+import java.io.*;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
+import java.nio.charset.UnsupportedCharsetException;
+import java.text.MessageFormat;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -92,7 +94,7 @@ public class GitServerUtil {
     }
     try {
       ensureRepositoryIsValid(dir);
-      Repository r = new RepositoryBuilder().setBare().setGitDir(dir).build();
+      Repository r = getRepositoryWithDisabledAutoGc(dir);
       String remoteUrl = remote.toString();
       if (remoteUrl.contains("\n") || remoteUrl.contains("\r"))
         throw new VcsException("Newline in url '" + remoteUrl + "'");
@@ -111,12 +113,31 @@ public class GitServerUtil {
           config.save();
         }
       }
-      return r;
+      return disableReceiveAutoGC(r);
     } catch (Exception ex) {
       if (ex instanceof NullPointerException)
         LOG.warn("The repository at directory '" + dir + "' cannot be opened or created", ex);
       throw new VcsException("The repository at directory '" + dir + "' cannot be opened or created, reason: " + ex.toString(), ex);
     }
+  }
+
+  @NotNull
+  private static Repository getRepositoryWithDisabledAutoGc(@NotNull final File dir) throws IOException {
+    return new FileRepository(new RepositoryBuilder().setBare().setGitDir(dir).setup()) {
+      @Override
+      public void autoGC(final ProgressMonitor monitor) {
+        // NOP - disable jgit auto gc
+      }
+    };
+  }
+
+  // disables auto gc performed after receive-pack command for native git
+  @NotNull
+  private static Repository disableReceiveAutoGC(@NotNull Repository r) throws IOException {
+    final StoredConfig config = r.getConfig();
+    config.setBoolean("receive", null, "autogc", false);
+    config.save();
+    return r;
   }
 
   @NotNull
