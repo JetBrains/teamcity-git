@@ -18,7 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
-import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
 import jetbrains.buildServer.vcs.VcsException;
@@ -28,6 +27,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jetbrains.annotations.NotNull;
@@ -244,7 +244,6 @@ class ModificationDataRevWalk extends RevWalk {
           final String brokenSubmodulePath = filter.getSubmodulePathForChildPath(path);
           final RevCommit commitWithFix = commitsWithFix.get(brokenSubmodulePath);
           if (commitWithFix != null) {
-            subWalk(path, commitWithFix);
             return;
           }
         }
@@ -260,9 +259,7 @@ class ModificationDataRevWalk extends RevWalk {
           myContext.addTree(myGitRoot, tw2, myRepository, commit, true);
           myContext.addTree(myGitRoot, tw2, myRepository, commitWithFix, true);
           while (tw2.next()) {
-            if (tw2.getPathString().equals(path)) {
-              addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
-            }
+            addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
           }
         } finally {
           tw2.close();
