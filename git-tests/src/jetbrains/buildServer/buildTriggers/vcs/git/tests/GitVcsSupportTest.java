@@ -390,6 +390,16 @@ public class GitVcsSupportTest extends PatchTestCase {
     support.collectChanges(root, fromCommit, lastCommit, CheckoutRules.DEFAULT);
   }
 
+  @Test
+  public void testBrokenAndFixedSubmoduleWithChangesInBetween() throws Exception {
+    GitVcsSupport support = getSupport();
+    VcsRoot root = getRoot("wrong-submodule", true);
+    String fromCommit = "16636fae3d715338f4c45ef3c2962cfaae090411";
+    String lastCommit = "9cae9cd1e9ada0df6893c937bfc41c35df548b64";
+    final List<ModificationData> changes = support.collectChanges(root, fromCommit, lastCommit, CheckoutRules.DEFAULT);
+    assertEquals(1, changes.stream().flatMap(md -> md.getChanges().stream()).filter(c -> "readme.txt".equals(c.getFileName())).count());
+  }
+
 
   @Test
   public void should_not_traverse_history_deeper_than_specified_limit() throws Exception {

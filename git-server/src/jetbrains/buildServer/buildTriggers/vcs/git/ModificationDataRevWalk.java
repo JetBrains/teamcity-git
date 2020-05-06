@@ -259,7 +259,9 @@ class ModificationDataRevWalk extends RevWalk {
           myContext.addTree(myGitRoot, tw2, myRepository, commit, true);
           myContext.addTree(myGitRoot, tw2, myRepository, commitWithFix, true);
           while (tw2.next()) {
-            addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
+            if (tw2.getPathString().startsWith(path + "/")) {
+              addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
+            }
           }
         } finally {
           tw2.close();
