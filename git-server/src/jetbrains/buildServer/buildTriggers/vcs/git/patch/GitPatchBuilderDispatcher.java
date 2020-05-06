@@ -18,6 +18,14 @@ package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessExecutor;
@@ -32,14 +40,6 @@ import jetbrains.buildServer.vcs.VcsUtil;
 import jetbrains.buildServer.vcs.patches.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.HashMap;
-import java.util.Map;
 
 
 public final class GitPatchBuilderDispatcher {
@@ -193,6 +193,7 @@ public final class GitPatchBuilderDispatcher {
                      myConfig.getPatchBuilderClassName(),
                      myGitRoot.getRepositoryFetchURL().toString());
     cmd.setPassParentEnvs(myConfig.passEnvToChildProcess());
+    cmd.setEnvParams(Collections.singletonMap("JDK_JAVA_OPTIONS", null)); // TW-64719
     return cmd;
   }
 

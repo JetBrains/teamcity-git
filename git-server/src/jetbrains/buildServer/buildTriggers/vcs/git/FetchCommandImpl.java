@@ -24,10 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessExecutor;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessStuckMonitor;
@@ -278,6 +275,7 @@ public class FetchCommandImpl implements FetchCommand {
     cl.setExePath(myConfig.getFetchProcessJavaPath());
     cl.addParameters(myConfig.getOptionsForSeparateProcess());
     cl.setPassParentEnvs(myConfig.passEnvToChildProcess());
+    cl.setEnvParams(Collections.singletonMap("JDK_JAVA_OPTIONS", null)); // TW-64719
 
     cl.addParameters("-Xmx" + xmx + "M",
                      "-cp", myConfig.getFetchClasspath(),
