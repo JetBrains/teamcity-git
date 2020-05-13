@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.vcs.VcsException;
@@ -38,7 +37,7 @@ public final class PluginConfigFactoryImpl implements PluginConfigFactory {
 
   public AgentPluginConfig createConfig(AgentRunningBuild build, VcsRoot root) throws VcsException {
     GitExec gitExec = myGitDetector.getGitPathAndVersion(root, myAgentConfig, build);
-    return new PluginConfigImpl(myAgentConfig, build, gitExec);
+    return new PluginConfigImpl(myAgentConfig, build, root, gitExec);
   }
 
 }

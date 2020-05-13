@@ -16,6 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Vector;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentPluginConfig;
@@ -33,12 +38,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.git4idea.ssh.GitSSHHandler;
 import org.jetbrains.git4idea.ssh.GitSSHService;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Vector;
 
 /**
  * SSH handler implementation
@@ -119,7 +118,7 @@ public class SshHandler implements GitSSHService.Handler {
     myHandlerNo = ssh.registerHandler(this);
     cmd.addEnvParam(GitSSHHandler.SSH_HANDLER_ENV, Integer.toString(myHandlerNo));
 
-    final String sendEnv = ctx.getSshRequestToken();
+    final String sendEnv = ctx.getConfig().getSshRequestToken();
     if (StringUtil.isNotEmpty(sendEnv)) {
       cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_REQUEST_TOKEN, sendEnv);
     }

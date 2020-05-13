@@ -36,8 +36,4 @@ public interface Context {
   AgentPluginConfig getConfig();
 
   boolean isDebugSsh();
-
-  @Nullable
-  String getSshRequestToken();
-
 }

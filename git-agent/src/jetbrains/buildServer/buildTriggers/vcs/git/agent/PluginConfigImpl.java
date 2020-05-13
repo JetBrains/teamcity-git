@@ -24,6 +24,7 @@ import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -58,16 +59,21 @@ public class PluginConfigImpl implements AgentPluginConfig {
   private static final String GIT_OUTPUT_CHARSET = "teamcity.git.outputCharset";
   private static final String LS_REMOTE_TIMEOUT_SECONDS = "teamcity.git.lsRemoteTimeoutSeconds";
   private static final String SUBMODULE_UPDATE_TIMEOUT_SECONDS = "teamcity.internal.git.agent.submodules.update.timeout.seconds";
+  public static final String SSH_SEND_ENV_REQUEST_TOKEN = "sshSendEnvRequestToken";
+  public static final String SSH_SEND_ENV_REQUEST_TOKEN_PARAM = "teamcity.internal.git." + SSH_SEND_ENV_REQUEST_TOKEN;
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
+  private final VcsRoot myVcsRoot;
   private final GitExec myGitExec;
 
   public PluginConfigImpl(@NotNull BuildAgentConfiguration agentConfig,
                           @NotNull AgentRunningBuild build,
+                          @NotNull VcsRoot vcsRoot,
                           @NotNull GitExec gitExec) {
     myAgentConfig = agentConfig;
     myBuild = build;
+    myVcsRoot = vcsRoot;
     myGitExec = gitExec;
   }
 
@@ -318,6 +324,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
   @Override
   public int getSubmoduleUpdateTimeoutSeconds() {
     return parseTimeout(myBuild.getSharedConfigParameters().get(SUBMODULE_UPDATE_TIMEOUT_SECONDS), CommandUtil.DEFAULT_COMMAND_TIMEOUT_SEC);
+  }
+
+  @Nullable
+  @Override
+  public String getSshRequestToken() {
+    return myVcsRoot.getProperty(SSH_SEND_ENV_REQUEST_TOKEN, myBuild.getSharedConfigParameters().get(SSH_SEND_ENV_REQUEST_TOKEN_PARAM));
   }
 
   private int parseTimeout(String valueFromBuild) {

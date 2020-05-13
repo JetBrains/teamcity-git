@@ -26,7 +26,6 @@ import org.jetbrains.annotations.Nullable;
 public class BuildContext implements Context {
 
   public static final String TEAMCITY_GIT_SSH_DEBUG = "teamcity.git.sshDebug";
-  public static final String TEAMCITY_GIT_SSH_REQUEST_TOKEN = "teamcity.internal.git.sshSendEnvRequestToken";
 
   private final AgentRunningBuild myBuild;
   private final AgentPluginConfig myConfig;
@@ -74,11 +73,5 @@ public class BuildContext implements Context {
   @Override
   public AgentPluginConfig getConfig() {
     return myConfig;
-  }
-
-  @Nullable
-  @Override
-  public String getSshRequestToken() {
-    return myBuild.getSharedConfigParameters().get(TEAMCITY_GIT_SSH_REQUEST_TOKEN);
   }
 }

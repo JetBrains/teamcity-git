@@ -84,6 +84,9 @@ public interface AgentPluginConfig extends PluginConfig {
 
   int getSubmoduleUpdateTimeoutSeconds();
 
+  @Nullable
+  public String getSshRequestToken();
+
   /**
    * Defines how progress output from git commands is written into build log
    */

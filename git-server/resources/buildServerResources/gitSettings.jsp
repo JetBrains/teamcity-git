@@ -264,6 +264,8 @@
         </div>
       </td>
     </tr>
+    <%-- workaround for TW-65850--%>
+    <props:hiddenProperty name="sshSendEnvRequestToken"/>
   </l:settingsGroup>
 </table>
 <script type="text/javascript">
