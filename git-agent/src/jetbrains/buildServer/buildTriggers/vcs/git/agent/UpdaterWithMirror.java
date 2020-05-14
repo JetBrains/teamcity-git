@@ -238,7 +238,16 @@ public class UpdaterWithMirror extends UpdaterImpl {
       return true;
     } catch (IOException e) {
       return false;
+    } catch (IllegalArgumentException e) {
+      if (isCorruptedConfig(e)) return false;
+      throw e;
     }
+  }
+
+  // TW-57878
+  private static boolean isCorruptedConfig(@NotNull final IllegalArgumentException e) {
+    final String m = e.getMessage();
+    return StringUtil.isNotEmpty(m) && m.contains("Repository config file") && m.contains("Cannot read file");
   }
 
   @Override
