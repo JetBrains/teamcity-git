@@ -393,6 +393,28 @@ public class AgentVcsSupportTest {
     assertFalse(untrackedFileSubSubmodule.exists());
   }
 
+  @TestFor(issues = "TW-66105")
+  public void clean_files_with_checkout_rules() throws Exception {
+    myRoot.addProperty(Constants.BRANCH_NAME, "TW-66105");
+    myRoot.addProperty(Constants.AGENT_CLEAN_FILES_POLICY, AgentCleanFilesPolicy.ALL_UNTRACKED.name());
+    myRoot.addProperty(Constants.AGENT_CLEAN_POLICY, AgentCleanPolicy.ALWAYS.name());
+
+    final File f1 = new File(myCheckoutDir, "f1");
+    FileUtil.writeFile(f1, "Hey f1", "UTF-8");
+    final File d1 = new File(myCheckoutDir, "d1");
+    FileUtil.createDir(d1);
+    final File f2 = new File(d1, "f2");
+    FileUtil.writeFile(f2, "Hey f2", "UTF-8");
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules("Folder1"), "7574b5358ac09d61ec5cb792d4462230de1d00c2", myCheckoutDir, myBuild, false);
+
+    assertTrue(f1.isFile());
+    assertTrue(d1.isDirectory());
+    assertTrue(f2.isFile());
+    assertTrue(new File(myCheckoutDir, "Folder1").isDirectory());
+    assertFalse(new File(myCheckoutDir, "F1").isDirectory());
+    assertFalse(new File(myCheckoutDir, "Folder2").isDirectory());
+  }
 
   @DataProvider(name = "ignoredLongFileNames")
   public Object[][] ignoredLongFileNames() {

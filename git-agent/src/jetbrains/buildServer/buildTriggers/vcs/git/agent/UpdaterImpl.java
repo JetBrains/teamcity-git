@@ -513,13 +513,25 @@ public class UpdaterImpl implements Updater {
     if (myRoot.getCleanPolicy() == AgentCleanPolicy.ALWAYS ||
         branchChanged && myRoot.getCleanPolicy() == AgentCleanPolicy.ON_BRANCH_CHANGE) {
       myLogger.message("Cleaning " + myRoot.getName() + " in " + myTargetDirectory + " the file set " + myRoot.getCleanFilesPolicy());
-      myGitFactory.create(myTargetDirectory).clean().setCleanPolicy(myRoot.getCleanFilesPolicy()).call();
+      prepareCleanCommand().call();
 
       if (myRoot.isCheckoutSubmodules())
         cleanSubmodules(myTargetDirectory);
     }
   }
 
+  @NotNull
+  private CleanCommand prepareCleanCommand() {
+    final CleanCommand cmd = myGitFactory.create(myTargetDirectory).clean().setCleanPolicy(myRoot.getCleanFilesPolicy());
+    if (myPluginConfig.isCleanCommandShouldRespectCheckoutRules()) {
+      for (IncludeRule rule : myRules.getRootIncludeRules()) {
+        if (StringUtil.isNotEmpty(rule.getTo())) {
+          cmd.addPath(rule.getTo());
+        }
+      }
+    }
+    return cmd;
+  }
 
   private void cleanSubmodules(@NotNull File repositoryDir) throws VcsException {
     final Config gitModules = readGitModules(repositoryDir);

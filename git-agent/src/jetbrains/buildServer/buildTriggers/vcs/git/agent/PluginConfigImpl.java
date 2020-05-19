@@ -16,8 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import java.io.File;
-import java.util.Map;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
@@ -28,6 +26,9 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.util.Map;
 
 /**
  * @author dmitry.neverov
@@ -61,6 +62,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   private static final String SUBMODULE_UPDATE_TIMEOUT_SECONDS = "teamcity.internal.git.agent.submodules.update.timeout.seconds";
   public static final String SSH_SEND_ENV_REQUEST_TOKEN = "sshSendEnvRequestToken";
   public static final String SSH_SEND_ENV_REQUEST_TOKEN_PARAM = "teamcity.internal.git." + SSH_SEND_ENV_REQUEST_TOKEN;
+  public static final String CLEAN_INSIDE_CHECKOUT_RULES= "teamcity.internal.git.cleanInsideCheckoutRules";
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
@@ -330,6 +332,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
   @Override
   public String getSshRequestToken() {
     return myVcsRoot.getProperty(SSH_SEND_ENV_REQUEST_TOKEN, myBuild.getSharedConfigParameters().get(SSH_SEND_ENV_REQUEST_TOKEN_PARAM));
+  }
+
+  @Override
+  public boolean isCleanCommandShouldRespectCheckoutRules() {
+    final String p = myBuild.getSharedConfigParameters().get(CLEAN_INSIDE_CHECKOUT_RULES);
+    return p == null || Boolean.parseBoolean(p);
   }
 
   private int parseTimeout(String valueFromBuild) {

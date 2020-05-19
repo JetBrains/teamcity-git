@@ -43,6 +43,7 @@ import java.util.Set;
 public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
 
   private AgentCleanFilesPolicy myCleanPolicy = AgentCleanFilesPolicy.ALL_UNTRACKED;
+  private final List<String> myPaths = new ArrayList<>();
 
   public CleanCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -51,6 +52,13 @@ public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
   @NotNull
   public CleanCommand setCleanPolicy(@NotNull AgentCleanFilesPolicy policy) {
     myCleanPolicy = policy;
+    return this;
+  }
+
+  @NotNull
+  @Override
+  public CleanCommand addPath(@NotNull final String path) {
+    myPaths.add(path);
     return this;
   }
 
@@ -66,6 +74,9 @@ public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
         break;
       case NON_IGNORED_ONLY:
         break;
+    }
+    for (String path : myPaths) {
+      cmd.addParameter(path);
     }
     cmd.withMaxOutputSize(8 * 1024 * 1024);
     try {
