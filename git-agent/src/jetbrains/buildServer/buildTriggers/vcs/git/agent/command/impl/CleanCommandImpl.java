@@ -17,6 +17,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.openapi.util.SystemInfo;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
@@ -34,16 +39,10 @@ import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-
 public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
 
   private AgentCleanFilesPolicy myCleanPolicy = AgentCleanFilesPolicy.ALL_UNTRACKED;
-  private final List<String> myPaths = new ArrayList<>();
+  private final List<String> myPaths = new ArrayList<String>();
 
   public CleanCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
