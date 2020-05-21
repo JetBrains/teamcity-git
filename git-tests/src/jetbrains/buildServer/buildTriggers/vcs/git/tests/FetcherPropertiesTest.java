@@ -58,7 +58,7 @@ public class FetcherPropertiesTest {
 
   private void initTeamCityProperties(final File fetcherProps) {
     new TeamCityProperties() {{
-      setModel(new FileWatchingPropertiesModel(fetcherProps));
+      setModel(FileWatchingPropertiesModel.fromProperties(fetcherProps));
     }};
   }
 }

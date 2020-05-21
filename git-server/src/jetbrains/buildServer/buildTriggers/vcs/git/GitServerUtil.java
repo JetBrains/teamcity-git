@@ -467,7 +467,7 @@ public class GitServerUtil {
 
   public static void configureInternalProperties(@NotNull final File internalProperties) {
     new TeamCityProperties() {{
-      setModel(new FileWatchingPropertiesModel(internalProperties));
+      setModel(FileWatchingPropertiesModel.fromProperties(internalProperties));
     }};
   }
 

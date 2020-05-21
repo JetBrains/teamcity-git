@@ -82,8 +82,7 @@ public class GitClonesUpdater {
 
       OperationContext context = myVcs.createContext(root, "updating local clone");
       try {
-        ReadOnlyRestrictor.doReadOnlyCommandLine(() -> {
-          ReadOnlyRestrictor.doReadOnlyNetworkOperation(() -> {
+        IOGuard.allowNetworkAndCommandLine(() -> {
             GitVcsRoot gitRoot = context.getGitRoot();
             myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
               try {
@@ -93,7 +92,6 @@ public class GitClonesUpdater {
               }
             });
           });
-        });
       } catch (VcsException e1) {
         Loggers.VCS.warnAndDebugDetails("Could not update local clone for: " + LogUtil.describe(root), e1);
       } finally {
