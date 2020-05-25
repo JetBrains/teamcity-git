@@ -135,8 +135,10 @@ public class GitServerUtil {
   @NotNull
   private static Repository disableReceiveAutoGC(@NotNull Repository r) throws IOException {
     final StoredConfig config = r.getConfig();
-    config.setBoolean("receive", null, "autogc", false);
-    config.save();
+    if (config.getBoolean("receive", null, "autogc", true)) {
+      config.setBoolean("receive", null, "autogc", false);
+      config.save();
+    }
     return r;
   }
 
