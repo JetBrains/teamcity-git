@@ -17,15 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.openapi.util.SystemInfo;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommandUtil;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.Predicate;
@@ -39,10 +36,16 @@ import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
 public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
 
   private AgentCleanFilesPolicy myCleanPolicy = AgentCleanFilesPolicy.ALL_UNTRACKED;
-  private final List<String> myPaths = new ArrayList<String>();
+  private final List<String> myExcludes = new ArrayList<String>();
 
   public CleanCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -56,8 +59,8 @@ public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
 
   @NotNull
   @Override
-  public CleanCommand addPath(@NotNull final String path) {
-    myPaths.add(path);
+  public CleanCommand addExclude(@NotNull final String path) {
+    myExcludes.add(path);
     return this;
   }
 
@@ -74,9 +77,7 @@ public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
       case NON_IGNORED_ONLY:
         break;
     }
-    for (String path : myPaths) {
-      cmd.addParameter(path);
-    }
+    addExcludes(cmd);
     cmd.withMaxOutputSize(8 * 1024 * 1024);
     try {
       ExecResult r = CommandUtil.runCommand(cmd);
@@ -89,6 +90,19 @@ public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
       if (workingDir == null)
         throw e;
       handleLongFileNames(workingDir, e);
+    }
+  }
+
+  private void addExcludes(@NotNull GitCommandLine cmd) {
+    if (myExcludes.isEmpty()) return;
+    final GitVersion version = cmd.getGitVersion();
+    if (CleanCommandUtil.isCleanCommandSupportsExclude(version)) {
+      for (String path : myExcludes) {
+        cmd.addParameter("--exclude=" + path);
+      }
+    } else {
+      // not expected to happen at runtime: see jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport.canCheckout
+      Loggers.VCS.warn("git version " + version + " doesn't support -e option, excludes will be ignored");
     }
   }
 

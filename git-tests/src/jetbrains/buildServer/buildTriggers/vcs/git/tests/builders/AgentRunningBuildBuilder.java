@@ -44,6 +44,7 @@ public class AgentRunningBuildBuilder {
   private List<VcsRootEntry> myRootEntries = null;
   private BuildProgressLogger myBuildLogger = null;
   private BuildAgentConfiguration myConfiguration;
+  private File myCheckoutDir;
 
   public static AgentRunningBuildBuilder runningBuild() {
     return new AgentRunningBuildBuilder();
@@ -99,6 +100,11 @@ public class AgentRunningBuildBuilder {
     return this;
   }
 
+  public AgentRunningBuildBuilder withCheckoutDir(@NotNull final File checkoutDir) {
+    myCheckoutDir = checkoutDir;
+    return this;
+  }
+
 
   public AgentRunningBuild build() {
     return new AgentRunningBuild() {
@@ -124,7 +130,8 @@ public class AgentRunningBuildBuilder {
 
       @NotNull
       public File getCheckoutDirectory() {
-        throw new UnsupportedOperationException();
+        if (myCheckoutDir == null) throw new UnsupportedOperationException();
+        return myCheckoutDir;
       }
 
       @NotNull
@@ -283,9 +290,7 @@ public class AgentRunningBuildBuilder {
 
       @NotNull
       public List<VcsRootEntry> getVcsRootEntries() {
-        if (myRootEntries == null)
-          throw new UnsupportedOperationException();
-        return myRootEntries;
+        return myRootEntries == null ? Collections.emptyList() : myRootEntries;
       }
 
       public String getBuildCurrentVersion(final VcsRoot vcsRoot) {

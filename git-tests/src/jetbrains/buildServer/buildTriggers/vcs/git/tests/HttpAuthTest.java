@@ -101,6 +101,8 @@ public class HttpAuthTest extends BaseRemoteRepositoryTest {
       .sharedEnvVariable(Constants.TEAMCITY_AGENT_GIT_PATH, git.getPath())
       .sharedConfigParams(PluginConfigImpl.USE_ALTERNATES, "true")
       .withAgentConfiguration(myAgentConfiguration)
+      .withCheckoutDir(buildDir)
+      .addRoot(root)
       .build();
 
     //run first build to initialize mirror:
@@ -148,6 +150,8 @@ public class HttpAuthTest extends BaseRemoteRepositoryTest {
     AgentRunningBuild build = runningBuild()
       .sharedEnvVariable(Constants.TEAMCITY_AGENT_GIT_PATH, git.getPath())
       .withAgentConfiguration(myAgentConfiguration)
+      .addRoot(root)
+      .withCheckoutDir(buildDir)
       .build();
 
     Checkout checkout = new Checkout(root, "add81050184d3c818560bdd8839f50024c188586", buildDir, build);

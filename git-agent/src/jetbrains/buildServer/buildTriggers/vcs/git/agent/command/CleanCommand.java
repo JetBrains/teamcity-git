@@ -26,7 +26,7 @@ public interface CleanCommand extends BaseCommand {
   CleanCommand setCleanPolicy(@NotNull AgentCleanFilesPolicy policy);
 
   @NotNull
-  CleanCommand addPath(@NotNull String path);
+  CleanCommand addExclude(@NotNull String path);
 
   void call() throws VcsException;
 

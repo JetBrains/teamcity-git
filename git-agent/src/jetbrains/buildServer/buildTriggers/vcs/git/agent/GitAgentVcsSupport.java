@@ -26,6 +26,7 @@ import jetbrains.buildServer.agent.vcs.UpdatePolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommandUtil;
 import jetbrains.buildServer.vcs.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -113,7 +114,6 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     updater.update();
   }
 
-
   @NotNull
   private Map<String, String> getGitCommandEnv(@NotNull AgentPluginConfig config, @NotNull AgentRunningBuild build) {
     if (config.isRunGitWithBuildEnv()) {
@@ -150,30 +150,40 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       return AgentCheckoutAbility.canNotCheckout(e.getMessage());
     }
 
-    List<VcsRootEntry> gitEntries = getGitRootEntries(build);
-    if (gitEntries.size() > 1) {
-      for (VcsRootEntry entry : gitEntries) {
+    final List<VcsRootEntry> rootEntries = build.getVcsRootEntries();
+    if (rootEntries.size() > 1) {
+      for (VcsRootEntry entry : rootEntries) {
         VcsRoot otherRoot = entry.getVcsRoot();
         if (vcsRoot.equals(otherRoot))
           continue;
 
-        AgentPluginConfig otherConfig;
-        try {
-          otherConfig = getAndCacheConfig(build, otherRoot);
-        } catch (VcsException e) {
-          continue;//appropriate reason will be returned during otherRoot check
-        }
-        Pair<CheckoutMode, String> otherPathAndMode = getTargetPathAndMode(entry.getCheckoutRules());
-        if (otherPathAndMode.first == CheckoutMode.SPARSE_CHECKOUT && !canUseSparseCheckout(otherConfig)) {
-          continue;//appropriate reason will be returned during otherRoot check
-        }
-        String entryPath = otherPathAndMode.second;
-        if (targetDir.equals(entryPath))
+        if (isGitVcsRoot(entry)) {
+          AgentPluginConfig otherConfig;
+          try {
+            otherConfig = getAndCacheConfig(build, otherRoot);
+          } catch (VcsException e) {
+            continue;//appropriate reason will be returned during otherRoot check
+          }
+          Pair<CheckoutMode, String> otherPathAndMode = getTargetPathAndMode(entry.getCheckoutRules());
+          if (otherPathAndMode.first == CheckoutMode.SPARSE_CHECKOUT && !canUseSparseCheckout(otherConfig)) {
+            continue;//appropriate reason will be returned during otherRoot check
+          }
+          String entryPath = otherPathAndMode.second;
+          if (targetDir.equals(entryPath))
+            return AgentCheckoutAbility.canNotCheckout("Cannot checkout VCS root '" + vcsRoot.getName() + "' into the same directory as VCS root '" + otherRoot.getName() + "'");
+
+        } else if (CleanCommandUtil.isCleanEnabled(vcsRoot) && CleanCommandUtil.isClashingTargetPath(targetDir, entry, config.getGitVersion())) {
+          // in this case git clean command may remove files which belong to the other root
           return AgentCheckoutAbility.canNotCheckout("Cannot checkout VCS root '" + vcsRoot.getName() + "' into the same directory as VCS root '" + otherRoot.getName() + "'");
+        }
       }
     }
 
     return AgentCheckoutAbility.canCheckout();
+  }
+
+  private boolean isGitVcsRoot(@NotNull VcsRootEntry entry) {
+    return Constants.VCS_NAME.equals(entry.getVcsRoot().getVcsName());
   }
 
 
@@ -185,17 +195,6 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       return true;
     IncludeRule rule = includeRules.get(0);
     return !"".equals(rule.getFrom()); //rule of form +:.=>dir doesn't require sparse checkout ('.' is transformed into empty string)
-  }
-
-
-  @NotNull
-  private List<VcsRootEntry> getGitRootEntries(@NotNull AgentRunningBuild build) {
-    List<VcsRootEntry> result = new ArrayList<VcsRootEntry>();
-    for (VcsRootEntry entry : build.getVcsRootEntries()) {
-      if (Constants.VCS_NAME.equals(entry.getVcsRoot().getVcsName()))
-        result.add(entry);
-    }
-    return result;
   }
 
 

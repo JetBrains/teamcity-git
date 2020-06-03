@@ -21,9 +21,9 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -182,6 +182,7 @@ public class HttpUrlWithUsernameTest extends BaseRemoteRepositoryTest {
       .sharedEnvVariable(Constants.TEAMCITY_AGENT_GIT_PATH, myGitPath)
       .sharedConfigParams(configParams)
       .withAgentConfiguration(myAgentConfiguration)
+      .withCheckoutDir(myBuildDir)
       .build();
   }
 

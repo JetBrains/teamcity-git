@@ -63,6 +63,7 @@ public class UpdaterImpl implements Updater {
   public final static GitVersion BROKEN_SPARSE_CHECKOUT = new GitVersion(2, 7, 0);
   public final static GitVersion MIN_GIT_SSH_COMMAND = new GitVersion(2, 3, 0);//GIT_SSH_COMMAND was introduced in git 2.3.0
   public final static GitVersion GIT_UPDATE_REFS_STDIN = new GitVersion(1, 8, 5); // update-refs with '--stdin' support
+  public final static GitVersion GIT_CLEAN_LEARNED_EXCLUDE = new GitVersion(1, 7, 3); // clean first learned -e <pattern> and --exclude=<pattern> in 1.7.3
   /**
    * Git version supporting an empty credential helper - the only way to disable system/global/local cred helper
    */
@@ -513,24 +514,44 @@ public class UpdaterImpl implements Updater {
     if (myRoot.getCleanPolicy() == AgentCleanPolicy.ALWAYS ||
         branchChanged && myRoot.getCleanPolicy() == AgentCleanPolicy.ON_BRANCH_CHANGE) {
       myLogger.message("Cleaning " + myRoot.getName() + " in " + myTargetDirectory + " the file set " + myRoot.getCleanFilesPolicy());
-      prepareCleanCommand().call();
-
+      cleanCommand().call();
       if (myRoot.isCheckoutSubmodules())
         cleanSubmodules(myTargetDirectory);
     }
   }
 
   @NotNull
-  private CleanCommand prepareCleanCommand() {
+  private CleanCommand cleanCommand() {
     final CleanCommand cmd = myGitFactory.create(myTargetDirectory).clean().setCleanPolicy(myRoot.getCleanFilesPolicy());
-    if (myPluginConfig.isCleanCommandShouldRespectCheckoutRules()) {
-      for (IncludeRule rule : myRules.getRootIncludeRules()) {
-        if (StringUtil.isNotEmpty(rule.getTo())) {
-          cmd.addPath(rule.getTo());
+    if (CleanCommandUtil.isCleanEnabled(myRoot.getOriginalRoot()) && myPluginConfig.isCleanCommandShouldRespectCheckoutRules()) {
+      final String targetPath = getTargetPath(myTargetDirectory, myBuild.getCheckoutDirectory());
+
+      for (VcsRootEntry otherRoot : myBuild.getVcsRootEntries()) {
+        if (myRoot.getId() == otherRoot.getVcsRoot().getId()) continue;
+
+        final Collection<String> sharedPaths = CleanCommandUtil.getSharedPaths(otherRoot, targetPath);
+        for (String path : sharedPaths) {
+          if (sharedPaths.size() == 1 && targetPath.equals(path)) {
+            // not expected to happen at runtime: see jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport.canCheckout
+            LOG.warn("Two VCS roots are not expected to be checked out into the same folder: performing git clean for " + myRoot.getName() +
+                     " may remove files checked out for " + otherRoot.getVcsRoot().getName() +
+                     ". Please configure checkout using Checkout rules.");
+            break;
+          }
+          cmd.addExclude(path);
         }
       }
     }
     return cmd;
+  }
+
+  @NotNull
+  private static String getTargetPath(@NotNull File targetDir, @NotNull File checkoutDirectory) {
+    String path = FileUtil.getRelativePath(checkoutDirectory, targetDir);
+    if (path == null) {
+      path = targetDir.getAbsolutePath();
+    }
+    return ".".equals(path) ? "" : path.replace("\\", "/");
   }
 
   private void cleanSubmodules(@NotNull File repositoryDir) throws VcsException {

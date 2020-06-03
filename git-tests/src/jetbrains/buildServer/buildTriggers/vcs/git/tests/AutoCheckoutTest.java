@@ -23,11 +23,13 @@ import jetbrains.buildServer.agent.vcs.AgentCheckoutAbility;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -36,10 +38,10 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.agent.UpdaterImpl.GIT_CLEAN_LEARNED_EXCLUDE;
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.UpdaterImpl.GIT_WITH_SPARSE_CHECKOUT;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVersionProvider.getGitPath;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder.runningBuild;
 import static org.assertj.core.api.BDDAssertions.then;
 
 @SuppressWarnings("ALL")
@@ -149,6 +151,34 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.UNKNOWN_REASON_TYPE);
     then(canCheckout.getCanNotCheckoutReason().getDetails()).contains(
       "TeamCity doesn't support authentication method 'Private Key' with agent checkout. Please use different authentication method.");
+  }
+
+  public void should_check_shared_paths_not_clashing() throws Exception {
+    myVcsSupport =  vcsSupportWithFakeGitOfVersion(GIT_CLEAN_LEARNED_EXCLUDE);
+
+    final VcsRoot vcsRoot = vcsRoot()
+      .withFetchUrl("/some/path")
+      .withAgentGitPath(getGitPath())
+      .build();
+
+    {
+      final AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true")
+        .addRoot(vcsRoot)
+        .addRootEntry(new VcsRootImpl(2, "svn"), "some/path=>.")
+        .build();
+
+      AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, CheckoutRules.DEFAULT, build);
+      then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Cannot checkout VCS root", "into the same directory as VCS root");
+    }
+    {
+      final AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true")
+        .addRoot(vcsRoot)
+        .addRootEntry(new VcsRootImpl(2, "svn"), ".=>some/path")
+        .build();
+
+      AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, new CheckoutRules(".=>some/path"), build);
+      then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Cannot checkout VCS root", "into the same directory as VCS root");
+    }
   }
 
   @DataProvider
@@ -343,5 +373,10 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     public String toString() {
       return "rules1: '" + myCheckoutRules1 + "', rules2: '" + myCheckoutRules2 + "'";
     }
+  }
+
+  @NotNull
+  public AgentRunningBuildBuilder runningBuild() {
+    return new AgentRunningBuildBuilder().withCheckoutDir(myCheckoutDir);
   }
 }

@@ -29,17 +29,17 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefBatchCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.assertj.core.api.Assertions;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -57,10 +57,7 @@ import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -70,7 +67,6 @@ import static com.intellij.openapi.util.io.FileUtil.delete;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVersionProvider.getGitPath;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder.runningBuild;
 import static jetbrains.buildServer.util.FileUtil.getTempDirectory;
 import static jetbrains.buildServer.util.FileUtil.writeFileAndReportErrors;
 import static jetbrains.buildServer.util.Util.map;
@@ -395,25 +391,135 @@ public class AgentVcsSupportTest {
 
   @TestFor(issues = "TW-66105")
   public void clean_files_with_checkout_rules() throws Exception {
+    final List<String> excludes = collectExcludes();
+    final AgentRunningBuild build = runningBuild()
+      .withAgentConfiguration(myBuilder.getAgentConfiguration())
+      .addRootEntry(vcsRoot().withId(2).withFetchUrl("/some/path").build(), ".=>d1")
+      .addRootEntry(vcsRoot().withId(3).withFetchUrl("/some/path").build(), ".=>d2/d3")
+      .addRootEntry(vcsRoot().withId(4).withFetchUrl("/some/path").build(), ".=>d4")
+      .addRootEntry(vcsRoot().withId(5).withFetchUrl("/some/path").build(), ".=>d4/d5")
+      .addRootEntry(vcsRoot().withId(6).withFetchUrl("/some/path").build(), ".=>d6\nsome/dir=>d6/another/dir")
+      .addRootEntry(vcsRoot().withId(7).withFetchUrl("/some/path").build(), ".=>" + myTempFiles.createTempDir().getAbsolutePath())
+      .addRootEntry(vcsRoot().withId(8).withFetchUrl("/some/path").build(), ".=>path with space/d7")
+      .build();
+
+    final List<File> toPreserve = Arrays.asList(
+      createFile("d1/f"),
+      createFile("d1/some/dir/f"),
+      createFile("d2/d3/f"),
+      createFile("d2/d3/some/dir/f"),
+      createFile("d4/f"),
+      createFile("d4/some/dir/f"),
+      createFile("d4/d5/f"),
+      createFile("d4/d5/some/dir/f"),
+      createFile("d6/f"),
+      createFile("d6/some/dir/f"),
+      createFile("d6/another/dir/f"),
+      createFile("d6/another/dir/some/dir/f"),
+      createFile("path with space/d7/f"),
+      createFile("path with space/d7/some/dir/f")
+    );
+
+    final List<File> toClean = Arrays.asList(
+      createFile("d2/f"),
+      createFile("d2/some/dir/f"),
+      createFile("d8/f"),
+      createFile("d8/some/dir/f"),
+      createFile("path with space/f"),
+      createFile("path with space/some/dir/f")
+    );
+
+    toPreserve.forEach(f -> assertTrue(f.isFile()));
+    toClean.forEach(f -> assertTrue(f.isFile()));
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "7574b5358ac09d61ec5cb792d4462230de1d00c2", myCheckoutDir, build, false);
+    Assertions.assertThat(excludes).containsExactly("d1", "d2/d3", "d4", "d4/d5", "d6", "path with space/d7");
+
+    toPreserve.forEach(f -> assertTrue(f.isFile()));
+    toClean.forEach(f -> assertFalse(f.exists()));
+
+    assertTrue(new File(myCheckoutDir, "Folder1").isDirectory());
+    assertTrue(new File(myCheckoutDir, "Folder2").isDirectory());
+  }
+
+  @TestFor(issues = "TW-66105")
+  public void clean_files_with_checkout_rules_target_path() throws Exception {
+    final List<String> excludes = collectExcludes();
+    final AgentRunningBuild build = runningBuild()
+      .withAgentConfiguration(myBuilder.getAgentConfiguration())
+      .addRootEntry(vcsRoot().withId(2).withFetchUrl("/some/path").build(), ".=>target/path/d1")
+      .addRootEntry(vcsRoot().withId(3).withFetchUrl("/some/path").build(), ".=>target/path/d2/d3")
+      .addRootEntry(vcsRoot().withId(4).withFetchUrl("/some/path").build(), ".=>target/path/d4")
+      .addRootEntry(vcsRoot().withId(5).withFetchUrl("/some/path").build(), ".=>target/path/d4/d5")
+      .addRootEntry(vcsRoot().withId(6).withFetchUrl("/some/path").build(), ".=>target/path/d6\nsome/dir=>target/path/d6/another/dir")
+      .addRootEntry(vcsRoot().withId(7).withFetchUrl("/some/path").build(), ".=>" + myTempFiles.createTempDir().getAbsolutePath())
+      .addRootEntry(vcsRoot().withId(8).withFetchUrl("/some/path").build(), ".=>target/path/path with space/d7")
+      .build();
+
+    final List<File> toPreserve = Arrays.asList(
+      createFile("target/path/d1/f"),
+      createFile("target/path/d1/some/dir/f"),
+      createFile("target/path/d2/d3/f"),
+      createFile("target/path/d2/d3/some/dir/f"),
+      createFile("target/path/d4/f"),
+      createFile("target/path/d4/some/dir/f"),
+      createFile("target/path/d4/d5/f"),
+      createFile("target/path/d4/d5/some/dir/f"),
+      createFile("target/path/d6/f"),
+      createFile("target/path/d6/some/dir/f"),
+      createFile("target/path/d6/another/dir/f"),
+      createFile("target/path/d6/another/dir/some/dir/f"),
+      createFile("target/path/path with space/d7/f"),
+      createFile("target/path/path with space/d7/some/dir/f"),
+      createFile("another/path/f")
+    );
+
+    final List<File> toClean = Arrays.asList(
+      createFile("target/path/d2/f"),
+      createFile("target/path/d2/some/dir/f"),
+      createFile("target/path/d8/f"),
+      createFile("target/path/d8/some/dir/f"),
+      createFile("target/path/path with space/f"),
+      createFile("target/path/path with space/some/dir/f")
+    );
+
+    toPreserve.forEach(f -> assertTrue(f.isFile()));
+    toClean.forEach(f -> assertTrue(f.isFile()));
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(".=>target/path"), "7574b5358ac09d61ec5cb792d4462230de1d00c2", myCheckoutDir, build, false);
+    Assertions.assertThat(excludes).containsExactly("d1", "d2/d3", "d4", "d4/d5", "d6", "path with space/d7");
+
+    toPreserve.forEach(f -> assertTrue(f.isFile()));
+    toClean.forEach(f -> assertFalse(f.exists()));
+
+    assertTrue(new File(myCheckoutDir, "target/path/Folder1").isDirectory());
+    assertTrue(new File(myCheckoutDir, "target/path/Folder2").isDirectory());
+  }
+
+  @NotNull
+  private File createFile(@NotNull String path) {
+    final File f = new File(myCheckoutDir, path);
+    FileUtil.createParentDirs(f);
+    FileUtil.writeFile(f, "239");
+    return f;
+  }
+
+  @NotNull
+  private List<String> collectExcludes() throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "TW-66105");
     myRoot.addProperty(Constants.AGENT_CLEAN_FILES_POLICY, AgentCleanFilesPolicy.ALL_UNTRACKED.name());
     myRoot.addProperty(Constants.AGENT_CLEAN_POLICY, AgentCleanPolicy.ALWAYS.name());
 
-    final File f1 = new File(myCheckoutDir, "f1");
-    FileUtil.writeFile(f1, "Hey f1", "UTF-8");
-    final File d1 = new File(myCheckoutDir, "d1");
-    FileUtil.createDir(d1);
-    final File f2 = new File(d1, "f2");
-    FileUtil.writeFile(f2, "Hey f2", "UTF-8");
-
-    myVcsSupport.updateSources(myRoot, new CheckoutRules("Folder1"), "7574b5358ac09d61ec5cb792d4462230de1d00c2", myCheckoutDir, myBuild, false);
-
-    assertTrue(f1.isFile());
-    assertTrue(d1.isDirectory());
-    assertTrue(f2.isFile());
-    assertTrue(new File(myCheckoutDir, "Folder1").isDirectory());
-    assertFalse(new File(myCheckoutDir, "F1").isDirectory());
-    assertFalse(new File(myCheckoutDir, "Folder2").isDirectory());
+    final List<String> excludes = new ArrayList<>();
+    final LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
+    loggingFactory.addCallback(CleanCommand.class.getName() + ".addExclude", (method, args) -> {
+      assertEquals(1, args.length);
+      assertTrue(args[0] instanceof String);
+      excludes.add((String) args[0]);
+      return null;
+    });
+    myVcsSupport = myBuilder.setGitMetaFactory(loggingFactory).build();
+    return excludes;
   }
 
   @DataProvider(name = "ignoredLongFileNames")
@@ -1539,5 +1645,10 @@ public class AgentVcsSupportTest {
       cmd.addParameters("push", "origin", "master");
       CommandUtil.runCommand(cmd);
     }
+  }
+
+  @NotNull
+  public AgentRunningBuildBuilder runningBuild() {
+    return new AgentRunningBuildBuilder().withCheckoutDir(myCheckoutDir);
   }
 }

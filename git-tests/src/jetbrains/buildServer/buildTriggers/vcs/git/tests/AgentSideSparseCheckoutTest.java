@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.Predicate;
 import jetbrains.buildServer.util.TestFor;
@@ -36,7 +37,6 @@ import java.util.List;
 import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVersionProvider.getGitPath;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
-import static jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder.runningBuild;
 import static org.assertj.core.api.BDDAssertions.then;
 
 @Test
@@ -193,5 +193,10 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
     };
     FileUtil.listFilesRecursively(dir, "", false, Integer.MAX_VALUE, excludeDotGit, result);
     return result;
+  }
+
+  @NotNull
+  public AgentRunningBuildBuilder runningBuild() {
+    return AgentRunningBuildBuilder.runningBuild().addRoot(myRoot).withCheckoutDir(myCheckoutDir);
   }
 }

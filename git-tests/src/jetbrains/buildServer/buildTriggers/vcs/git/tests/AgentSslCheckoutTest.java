@@ -89,7 +89,7 @@ public class AgentSslCheckoutTest extends BaseRemoteRepositoryTest {
     if (writeCert) {
       writeCertificate();
     }
-    final AgentRunningBuildBuilder runningBuild = runningBuild();
+    final AgentRunningBuildBuilder runningBuild = runningBuild().addRoot(myRoot).withCheckoutDir(myCheckoutDir);
     if (useMirrors) {
       runningBuild.sharedConfigParams(USE_MIRRORS, "true");
     }
