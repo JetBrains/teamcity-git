@@ -38,6 +38,6 @@ public interface LsRemoteCommand extends BaseCommand {
   LsRemoteCommand setTimeout(int timeoutSeconds);
 
   @NotNull
-  public List<Ref> call() throws VcsException;
+  List<Ref> call() throws VcsException;
 
 }
