@@ -88,7 +88,7 @@ public interface Constants {
 
   public static final String AGENT_GIT_PATH = "agentGitPath";
   public static final String TEAMCITY_AGENT_GIT_PATH = "TEAMCITY_GIT_PATH";
-  public static final String TEAMCITY_AGENT_GIT_PATH_FULL_NAME = "env.TEAMCITY_GIT_PATH";
+  public static final String TEAMCITY_AGENT_GIT_VERSION = "TEAMCITY_GIT_VERSION";
   /**
    * Path to bare repository dir, used in communication with Fetcher
    */

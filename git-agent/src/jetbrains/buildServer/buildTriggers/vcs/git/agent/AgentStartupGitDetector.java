@@ -59,7 +59,8 @@ public class AgentStartupGitDetector extends AgentLifeCycleAdapter {
     }
     for (String path : getCandidatePaths()) {
       try {
-        GitVersion version = new NativeGitFacade(path, GitProgressLogger.NO_OP).version().call();
+        final GitVersion version = new NativeGitFacade(path, GitProgressLogger.NO_OP).version().call();
+        agent.getConfiguration().addEnvironmentVariable(Constants.TEAMCITY_AGENT_GIT_VERSION, version.toString());
         if (version.isSupported()) {
           LOG.info("Detect git at " + path);
           setPathToGit(agent, path);

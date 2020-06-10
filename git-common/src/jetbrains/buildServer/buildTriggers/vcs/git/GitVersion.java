@@ -41,6 +41,10 @@ public final class GitVersion implements Comparable<GitVersion> {
    * The minimal supported version
    */
   public static final GitVersion MIN = new GitVersion(1, 6, 4, 0);
+  /**
+   * Will become MIN in the next release
+   */
+  public static final GitVersion DEPRECATED = new GitVersion(2, 10, 0, 0);
 
   private final int myMajor;
   private final int myMinor;
@@ -133,6 +137,11 @@ public final class GitVersion implements Comparable<GitVersion> {
   public String toString() {
     //noinspection ConcatenationWithEmptyString
     return "" + myMajor + "." + myMinor + "." + myRevision + "." + myPatchLevel;
+  }
+
+  // see FORMAT_4
+  public static GitVersion fromString(@NotNull String version) {
+    return parse("git version " + version);
   }
 
 
