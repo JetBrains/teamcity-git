@@ -16,12 +16,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.File;
+import java.io.IOException;
 import jetbrains.buildServer.agent.AgentCanNotCheckoutReason;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.vcs.AgentCheckoutAbility;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
 import jetbrains.buildServer.util.FileUtil;
@@ -34,9 +37,6 @@ import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.IOException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.UpdaterImpl.GIT_CLEAN_LEARNED_EXCLUDE;
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.UpdaterImpl.GIT_WITH_SPARSE_CHECKOUT;

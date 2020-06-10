@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent;
-
-import org.jetbrains.annotations.NonNls;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.TestOnly;
+package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import java.text.MessageFormat;
 import java.text.ParseException;
 import java.util.Locale;
+import org.jetbrains.annotations.NonNls;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.TestOnly;
 
 /**
  * The version of the git. Note that the version number ignores build and commit hash.

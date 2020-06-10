@@ -16,7 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 

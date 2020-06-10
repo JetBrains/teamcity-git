@@ -19,8 +19,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -28,10 +32,6 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 

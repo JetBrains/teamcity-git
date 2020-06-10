@@ -17,15 +17,18 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests.command;
 
 import com.intellij.openapi.util.io.FileUtil;
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitProgressLogger;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.NoBuildContext;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.FetchCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
@@ -36,10 +39,6 @@ import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
 
 import static org.testng.AssertJUnit.fail;
 

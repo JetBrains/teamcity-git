@@ -16,19 +16,19 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import java.io.File;
+import java.util.Map;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.Map;
 
 /**
  * @author dmitry.neverov

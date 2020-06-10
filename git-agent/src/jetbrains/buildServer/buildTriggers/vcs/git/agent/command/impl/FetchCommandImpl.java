@@ -16,17 +16,16 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
+import java.io.File;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.Errors;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
 

@@ -17,7 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.sun.net.httpserver.HttpsServer;
+import java.io.File;
+import java.net.URL;
+import java.util.Collections;
+import java.util.Optional;
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.GetConfigCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SetConfigCommand;
@@ -29,11 +34,6 @@ import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.jmock.lib.legacy.ClassImposteriser;
 import org.testng.annotations.*;
-
-import java.io.File;
-import java.net.URL;
-import java.util.Collections;
-import java.util.Optional;
 
 import static org.testng.Assert.*;
 

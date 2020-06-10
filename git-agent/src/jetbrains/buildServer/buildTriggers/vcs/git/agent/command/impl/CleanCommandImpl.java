@@ -17,10 +17,15 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.openapi.util.SystemInfo;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommandUtil;
 import jetbrains.buildServer.log.Loggers;
@@ -35,12 +40,6 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 
 public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
 

@@ -17,15 +17,14 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.text.StringUtil;
+import java.lang.reflect.Method;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitProgressLogger;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.NativeGitFacade;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.DataProvider;
-
-import java.lang.reflect.Method;
 
 public class GitVersionProvider {
 

@@ -17,17 +17,17 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.SystemInfo;
+import java.io.File;
+import java.util.regex.Pattern;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.regex.Pattern;
 
 /**
  * @author dmitry.neverov

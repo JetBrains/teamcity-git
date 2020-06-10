@@ -16,17 +16,16 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
+import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitVersion;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.UpdaterImpl;
 import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.*;
 
 public class CleanCommandUtil {
 
