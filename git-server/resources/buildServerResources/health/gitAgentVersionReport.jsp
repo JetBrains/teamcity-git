@@ -17,7 +17,7 @@
   </c:otherwise>
 </c:choose>
 
-<bs:helpLink file="Git" anchor="Gitexecutableontheagent">Update Java used by the <bs:plural txt="agent" val="${gitVersionAgentCount}"/></bs:helpLink>.
+<bs:helpLink file="Git" anchor="Gitexecutableontheagent">Update git executable on <bs:plural txt="agent" val="${gitVersionAgentCount}"/></bs:helpLink>.
 
 <bs:agentsGroupedByPool agentsGroupedByPools="${gitVersionAgents}"
                         inplaceMode="${showMode == inplaceMode}"
