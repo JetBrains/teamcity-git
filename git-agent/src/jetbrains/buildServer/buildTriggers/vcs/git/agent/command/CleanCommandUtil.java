@@ -51,14 +51,10 @@ public class CleanCommandUtil {
   }
 
   public static boolean isClashingTargetPath(@NotNull String targetPath, @NotNull VcsRootEntry otherRoot, @NotNull GitVersion gitVersion) {
-    final List<IncludeRule> includeRules = otherRoot.getCheckoutRules().getRootIncludeRules();
-    if (includeRules.isEmpty()) return targetPath.isEmpty();
-
     final boolean cleanCommandSupportsExclude = isCleanCommandSupportsExclude(gitVersion);
-
-    for (IncludeRule rule : includeRules) {
+    for (IncludeRule rule : otherRoot.getCheckoutRules().getRootIncludeRules()) {
       if (targetPath.equals(rule.getTo())) return true;
-      if (!cleanCommandSupportsExclude && targetPath.startsWith(rule.getTo())) return true;
+      if (rule.getTo().startsWith(targetPath + "/") || targetPath.isEmpty() && !rule.isAbsolutePathTo()) return !cleanCommandSupportsExclude;
     }
     return false;
   }
@@ -67,12 +63,7 @@ public class CleanCommandUtil {
   public static Collection<String> getSharedPaths(@NotNull VcsRootEntry otherRoot, @NotNull String targetPath) {
     final SortedSet<String> clashingPaths = new TreeSet<>();
 
-    final List<IncludeRule> includeRules = otherRoot.getCheckoutRules().getRootIncludeRules();
-    if (includeRules.isEmpty() && targetPath.isEmpty()) {
-      return Collections.singletonList(targetPath);
-    }
-
-    for (IncludeRule rule : includeRules) {
+    for (IncludeRule rule : otherRoot.getCheckoutRules().getRootIncludeRules()) {
       final String to = rule.getTo();
       if (targetPath.equals(to)) return Collections.singletonList(targetPath);
 

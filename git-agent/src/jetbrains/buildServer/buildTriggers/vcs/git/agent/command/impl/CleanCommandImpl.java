@@ -24,10 +24,8 @@ import java.util.List;
 import java.util.Set;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommandUtil;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.Predicate;
@@ -94,14 +92,8 @@ public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
 
   private void addExcludes(@NotNull GitCommandLine cmd) {
     if (myExcludes.isEmpty()) return;
-    final GitVersion version = cmd.getGitVersion();
-    if (CleanCommandUtil.isCleanCommandSupportsExclude(version)) {
-      for (String path : myExcludes) {
-        cmd.addParameter("--exclude=" + path);
-      }
-    } else {
-      // not expected to happen at runtime: see jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport.canCheckout
-      Loggers.VCS.warn("git version " + version + " doesn't support -e option, excludes will be ignored");
+    for (String path : myExcludes) {
+      cmd.addParameter("--exclude=" + path);
     }
   }
 
