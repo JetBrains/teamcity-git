@@ -10,19 +10,18 @@
 
 <c:choose>
   <c:when test="${gitVersionUnsupported}">
-    Unsupported git executable version (less than ${GitVersion.MIN}) is installed on ${gitVersionAgentCount} build <bs:plural txt="agent" val="${gitVersionAgentCount}"/>.
+    ${gitVersionAgentCount} build <bs:plural txt="agent" val="${gitVersionAgentCount}"/> running unsupported git version prior to ${GitVersion.MIN}, agent-side checkout can't be performed.
   </c:when>
   <c:otherwise>
-    Old git executable version (less than ${GitVersion.DEPRECATED}) is installed on ${gitVersionAgentCount} build <bs:plural txt="agent" val="${gitVersionAgentCount}"/>.
+    ${gitVersionAgentCount} build <bs:plural txt="agent" val="${gitVersionAgentCount}"/> running git version prior to ${GitVersion.DEPRECATED}, which will be no longer supported starting from the next release.
   </c:otherwise>
 </c:choose>
-
 <bs:helpLink file="Git" anchor="Gitexecutableontheagent">Update git executable on <bs:plural txt="agent" val="${gitVersionAgentCount}"/></bs:helpLink>.
 
 <bs:agentsGroupedByPool agentsGroupedByPools="${gitVersionAgents}"
                         inplaceMode="${showMode == inplaceMode}"
                         hasSeveralPools="${healthStatusItem.additionalData['hasSeveralPools']}">
   <jsp:attribute name="agentListHeader">
-    <bs:plural txt="Agent" val="${gitVersionAgentCount}"/> running old git executable:
+    <bs:plural txt="Agent" val="${gitVersionAgentCount}"/> running ${gitVersionUnsupported ? "unsupported" : "deprecated"} git executable:
   </jsp:attribute>
 </bs:agentsGroupedByPool>
