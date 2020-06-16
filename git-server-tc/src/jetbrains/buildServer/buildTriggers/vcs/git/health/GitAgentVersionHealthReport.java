@@ -1,10 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.health;
 
 import com.intellij.openapi.diagnostic.Logger;
-import java.util.*;
-import java.util.function.Supplier;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.serverSide.BuildAgentEx;
@@ -19,6 +15,11 @@ import jetbrains.buildServer.serverSide.healthStatus.*;
 import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.*;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.groupingBy;
 
@@ -50,7 +51,7 @@ public class GitAgentVersionHealthReport extends HealthStatusReport {
                                              "Some agents are running unsupported git versions prior to " + GitVersion.MIN + ", agent-side checkout can't be performed",
                                              helpUrl);
     myDeprecatedCategory = new ItemCategory(DEPRECATED_CATEGORY, "Deprecated git executable version on agent", ItemSeverity.WARN,
-                                            "Some agents are running git versions prior to " + myDeprecatedVersion + ", which will be no longer supported starting from the next release",
+                                            "Some agents are running git versions prior to " + myDeprecatedVersion + ", which will be no longer supported starting from the next major release",
                                             helpUrl);
 
   }
@@ -64,7 +65,7 @@ public class GitAgentVersionHealthReport extends HealthStatusReport {
   @NotNull
   @Override
   public String getDisplayName() {
-    return "Report agents running older git versions, which are either unsupported or will no longer be supported from the next release";
+    return "Report agents running older git versions, which are either unsupported or will no longer be supported from the next major release";
   }
 
   @NotNull
