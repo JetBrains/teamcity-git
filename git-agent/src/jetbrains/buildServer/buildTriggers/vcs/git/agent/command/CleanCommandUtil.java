@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
@@ -26,6 +25,8 @@ import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.*;
 
 public class CleanCommandUtil {
 
@@ -54,7 +55,7 @@ public class CleanCommandUtil {
     final boolean cleanCommandSupportsExclude = isCleanCommandSupportsExclude(gitVersion);
     for (IncludeRule rule : otherRoot.getCheckoutRules().getRootIncludeRules()) {
       if (targetPath.equals(rule.getTo())) return true;
-      if (rule.getTo().startsWith(targetPath + "/") || targetPath.isEmpty() && !rule.isAbsolutePathTo()) return !cleanCommandSupportsExclude;
+      if (rule.getTo().startsWith(targetPath + "/") || targetPath.isEmpty()) return !cleanCommandSupportsExclude;
     }
     return false;
   }
@@ -67,7 +68,7 @@ public class CleanCommandUtil {
       final String to = rule.getTo();
       if (targetPath.equals(to)) return Collections.singletonList(targetPath);
 
-      if (targetPath.isEmpty() && !rule.isAbsolutePathTo()) {
+      if (targetPath.isEmpty()) {
         clashingPaths.add(to);
       } else if (to.startsWith(targetPath + "/")) {
         clashingPaths.add(to.substring(targetPath.length() + 1));

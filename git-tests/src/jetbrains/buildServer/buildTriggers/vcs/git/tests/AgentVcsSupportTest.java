@@ -399,7 +399,7 @@ public class AgentVcsSupportTest {
       .addRootEntry(vcsRoot().withId(4).withFetchUrl("/some/path").build(), ".=>d4")
       .addRootEntry(vcsRoot().withId(5).withFetchUrl("/some/path").build(), ".=>d4/d5")
       .addRootEntry(vcsRoot().withId(6).withFetchUrl("/some/path").build(), ".=>d6\nsome/dir=>d6/another/dir")
-      .addRootEntry(vcsRoot().withId(7).withFetchUrl("/some/path").build(), ".=>" + myTempFiles.createTempDir().getAbsolutePath())
+//      .addRootEntry(vcsRoot().withId(7).withFetchUrl("/some/path").build(), ".=>" + myTempFiles.createTempDir().getAbsolutePath())
       .addRootEntry(vcsRoot().withId(8).withFetchUrl("/some/path").build(), ".=>path with space/d7")
       .build();
 
@@ -452,7 +452,7 @@ public class AgentVcsSupportTest {
       .addRootEntry(vcsRoot().withId(4).withFetchUrl("/some/path").build(), ".=>target/path/d4")
       .addRootEntry(vcsRoot().withId(5).withFetchUrl("/some/path").build(), ".=>target/path/d4/d5")
       .addRootEntry(vcsRoot().withId(6).withFetchUrl("/some/path").build(), ".=>target/path/d6\nsome/dir=>target/path/d6/another/dir")
-      .addRootEntry(vcsRoot().withId(7).withFetchUrl("/some/path").build(), ".=>" + myTempFiles.createTempDir().getAbsolutePath())
+//      .addRootEntry(vcsRoot().withId(7).withFetchUrl("/some/path").build(), ".=>" + myTempFiles.createTempDir().getAbsolutePath())
       .addRootEntry(vcsRoot().withId(8).withFetchUrl("/some/path").build(), ".=>target/path/path with space/d7")
       .build();
 
