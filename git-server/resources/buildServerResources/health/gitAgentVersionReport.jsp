@@ -13,7 +13,7 @@
     ${gitVersionAgentCount} build <bs:plural txt="agent" val="${gitVersionAgentCount}"/> running unsupported git version prior to ${GitVersion.MIN}, agent-side checkout can't be performed.
   </c:when>
   <c:otherwise>
-    ${gitVersionAgentCount} build <bs:plural txt="agent" val="${gitVersionAgentCount}"/> running git version prior to ${GitVersion.DEPRECATED}, which will be no longer supported starting from the next major release.
+    ${gitVersionAgentCount} build <bs:plural txt="agent" val="${gitVersionAgentCount}"/> running git version prior to ${GitVersion.DEPRECATED}, which will be no longer supported starting from the next major TeamCity release.
   </c:otherwise>
 </c:choose>
 <bs:helpLink file="Git" anchor="Gitexecutableontheagent">Update git executable on <bs:plural txt="agent" val="${gitVersionAgentCount}"/></bs:helpLink>.
