@@ -16,10 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.serverSide.executors.ExecutorServices;
-import org.jetbrains.annotations.NotNull;
-import org.quartz.CronExpression;
-
 import java.util.Date;
 import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
@@ -27,6 +23,9 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
+import jetbrains.buildServer.serverSide.executors.ExecutorServices;
+import org.jetbrains.annotations.NotNull;
+import org.quartz.CronExpression;
 
 public class CleanupRunner {
 
@@ -34,7 +33,7 @@ public class CleanupRunner {
   private final ScheduledExecutorService myExecutor;
   private final Cleanup myCleanup;
   private final AtomicReference<String> myCron = new AtomicReference<>();
-  private final AtomicReference<ScheduledFuture<?>> myCleanupFeature = new AtomicReference<>();
+  private final AtomicReference<ScheduledFuture<?>> myCleanupFuture = new AtomicReference<>();
   //lock is used to have only one scheduled clean-up task
   private final ReentrantLock myLock = new ReentrantLock();
 
@@ -60,7 +59,7 @@ public class CleanupRunner {
       if (Objects.equals(myCron.get(), cronStr))
         return;
 
-      ScheduledFuture<?> feature = myCleanupFeature.get();
+      ScheduledFuture<?> feature = myCleanupFuture.get();
       if (feature != null) {
         feature.cancel(false);
       }
@@ -68,7 +67,7 @@ public class CleanupRunner {
       if (cron != null) {
         schedule(cron);
       } else {
-        myCleanupFeature.set(null);
+        myCleanupFuture.set(null);
         myCron.set(null);
       }
     } finally {
@@ -94,7 +93,7 @@ public class CleanupRunner {
         //reset future & cron to avoid ABA problem in updateSchedule(): cron is A,
         //updateSchedule() remembers it, cron becomes B, runCleanup() doesn't schedule,
         //cron is changed back to A, updateSchedule() also doesn't schedule
-        myCleanupFeature.set(null);
+        myCleanupFuture.set(null);
         myCron.set(null);
       }
     } finally {
@@ -107,7 +106,7 @@ public class CleanupRunner {
     Date now = new Date();
     Date next = cron.getNextValidTimeAfter(now);
     ScheduledFuture<?> future = myExecutor.schedule(this::runCleanup, next.getTime() - now.getTime(), TimeUnit.MILLISECONDS);
-    myCleanupFeature.set(future);
+    myCleanupFuture.set(future);
     myCron.set(cron.getCronExpression());
   }
 }
