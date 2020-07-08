@@ -18,10 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
@@ -89,8 +86,9 @@ class ModificationDataRevWalk extends RevWalk {
     final String commitId = myCurrentCommit.getId().name();
     String message = GitServerUtil.getFullMessage(myCurrentCommit);
     final PersonIdent authorIdent = GitServerUtil.getAuthorIdent(myCurrentCommit);
+    final Date authorDate = authorIdent.getWhen();
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Collecting changes in commit " + commitId + ":" + message + " (" + authorIdent.getWhen() + ") for " + myGitRoot.debugInfo());
+      LOG.debug("Collecting changes in commit " + commitId + ":" + message + " (" + authorDate + ") for " + myGitRoot.debugInfo());
     }
 
     final String parentVersion = getFirstParentVersion(myCurrentCommit);
@@ -98,11 +96,12 @@ class ModificationDataRevWalk extends RevWalk {
     builder.collectCommitChanges();
     final List<VcsChange> changes = builder.getChanges();
 
+    final String author = GitServerUtil.getUser(myGitRoot, authorIdent);
     final ModificationData result = new ModificationData(
-      authorIdent.getWhen(),
+      authorDate,
       changes,
       message,
-      GitServerUtil.getUser(myGitRoot, authorIdent),
+      author,
       myGitRoot.getOriginalRoot(),
       commitId,
       commitId);
@@ -111,7 +110,15 @@ class ModificationDataRevWalk extends RevWalk {
     if (!attributes.isEmpty())
       result.setAttributes(attributes);
 
-    result.setAttribute("teamcity.commit.time", Integer.toString(myCurrentCommit.getCommitTime()));
+    final PersonIdent commiterIdent = GitServerUtil.getCommiterIdent(myCurrentCommit);
+    final String commiter = GitServerUtil.getUser(myGitRoot, commiterIdent);
+    final Date commitDate = commiterIdent.getWhen();
+    if (!Objects.equals(authorDate, commitDate)) {
+      result.setAttribute("teamcity.commit.time", Long.toString(commitDate.getTime()));
+    }
+    if (!Objects.equals(author, commiter)) {
+      result.setAttribute("teamcity.commit.user", commiter);
+    }
 
     if (myCurrentCommit.getParentCount() > 0) {
       for (RevCommit parent : myCurrentCommit.getParents()) {

@@ -19,6 +19,13 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
+import java.io.*;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
+import java.nio.charset.UnsupportedCharsetException;
+import java.text.MessageFormat;
+import java.util.*;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.serverSide.FileWatchingPropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
@@ -43,14 +50,6 @@ import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sun.awt.OSInfo;
-
-import java.io.*;
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
-import java.nio.charset.UnsupportedCharsetException;
-import java.text.MessageFormat;
-import java.util.*;
-import java.util.stream.Collectors;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -642,12 +641,23 @@ public class GitServerUtil {
   }
 
 
+  @NotNull
   public static PersonIdent getAuthorIdent(@NotNull RevCommit commit) {
     try {
       return commit.getAuthorIdent();
     } catch (UnsupportedCharsetException e) {
       LOG.warn("Cannot parse the " + commit.name() + " commit author due to unknown commit encoding '" + e.getCharsetName() + "'");
       return new PersonIdent("Cannot parse author", "Cannot parse author");
+    }
+  }
+
+  @NotNull
+  public static PersonIdent getCommiterIdent(@NotNull RevCommit commit) {
+    try {
+      return commit.getCommitterIdent();
+    } catch (UnsupportedCharsetException e) {
+      LOG.warn("Cannot parse the " + commit.name() + " commiter due to unknown commit encoding '" + e.getCharsetName() + "'");
+      return new PersonIdent("Cannot parse commiter", "Cannot parse commiter");
     }
   }
 
