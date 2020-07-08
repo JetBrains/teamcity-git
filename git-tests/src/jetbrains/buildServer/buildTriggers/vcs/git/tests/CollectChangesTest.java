@@ -16,6 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TestLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
@@ -43,13 +49,6 @@ import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
@@ -782,15 +781,19 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     RepositoryStateData s4 = RepositoryStateData.createVersionState("refs/heads/master", map("refs/heads/master", c4));
 
     ModificationData m2 = vcs.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT).get(0);
-    then(m2.getAttributes()).isEmpty();
+    then(getChangedFileAttributes(m2)).isEmpty();
 
     ModificationData m3 = vcs.getCollectChangesPolicy().collectChanges(root, s1, s3, CheckoutRules.DEFAULT).get(0);
-    then(m3.getAttributes()).isEmpty();
+    then(getChangedFileAttributes(m3)).isEmpty();
 
     ModificationData m4 = vcs.getCollectChangesPolicy().collectChanges(root, s23, s4, CheckoutRules.DEFAULT).get(0);
-    then(m4.getAttributes()).containsOnly(
+    then(getChangedFileAttributes(m4)).containsOnly(
       MapEntry.entry("teamcity.transient.changedFiles." + c2.name(), "f3\ndir1/dir2/\n./f2"),
       MapEntry.entry("teamcity.transient.changedFiles." + c3.name(), "dir1/dir2/dir3/\n./f1"));
+  }
+
+  private Map<String, String> getChangedFileAttributes(@NotNull ModificationData m) {
+    return m.getAttributes().entrySet().stream().filter(e -> e.getKey().startsWith("teamcity.transient.changedFiles.")).collect(Collectors.toMap(e -> e.getKey(), e -> e .getValue()));
   }
 
   @TestFor(issues = "TW-59696")

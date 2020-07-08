@@ -17,6 +17,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
@@ -32,12 +37,6 @@ import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * @author dmitry.neverov
@@ -111,6 +110,8 @@ class ModificationDataRevWalk extends RevWalk {
     Map<String, String> attributes = builder.getAttributes();
     if (!attributes.isEmpty())
       result.setAttributes(attributes);
+
+    result.setAttribute("teamcity.commit.time", Integer.toString(myCurrentCommit.getCommitTime()));
 
     if (myCurrentCommit.getParentCount() > 0) {
       for (RevCommit parent : myCurrentCommit.getParents()) {
