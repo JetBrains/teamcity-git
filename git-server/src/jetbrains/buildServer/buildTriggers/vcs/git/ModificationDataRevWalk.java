@@ -17,8 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.IOException;
-import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
@@ -34,6 +32,9 @@ import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.IOException;
+import java.util.*;
 
 /**
  * @author dmitry.neverov
@@ -110,7 +111,7 @@ class ModificationDataRevWalk extends RevWalk {
     if (!attributes.isEmpty())
       result.setAttributes(attributes);
 
-    final PersonIdent commiterIdent = GitServerUtil.getCommiterIdent(myCurrentCommit);
+    final PersonIdent commiterIdent = GitServerUtil.getCommitterIdent(myCurrentCommit);
     final String commiter = GitServerUtil.getUser(myGitRoot, commiterIdent);
     final Date commitDate = commiterIdent.getWhen();
     if (!Objects.equals(authorDate, commitDate)) {
