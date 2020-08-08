@@ -113,7 +113,7 @@ public class GitServerUtil {
           config.save();
         }
       }
-      return disableReceiveAutoGC(r);
+      return r;
     } catch (Exception ex) {
       if (ex instanceof NullPointerException)
         LOG.warn("The repository at directory '" + dir + "' cannot be opened or created", ex);
@@ -129,17 +129,6 @@ public class GitServerUtil {
         // NOP - disable jgit auto gc
       }
     };
-  }
-
-  // disables auto gc performed after receive-pack command for native git
-  @NotNull
-  private static Repository disableReceiveAutoGC(@NotNull Repository r) throws IOException {
-    final StoredConfig config = r.getConfig();
-    if (config.getBoolean("receive", null, "autogc", true)) {
-      config.setBoolean("receive", null, "autogc", false);
-      config.save();
-    }
-    return r;
   }
 
   @NotNull
