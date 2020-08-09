@@ -201,8 +201,8 @@ public class MirrorManagerImpl implements MirrorManager {
     }
   }
 
-
-  private boolean isInvalidDirName(@NotNull final String dirName) {
+  @Override
+  public boolean isInvalidDirName(@NotNull final String dirName) {
     synchronized (myLock) {
       return myInvalidDirNames.contains(dirName);
     }

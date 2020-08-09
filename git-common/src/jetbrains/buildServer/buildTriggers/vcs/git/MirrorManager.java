@@ -69,4 +69,11 @@ public interface MirrorManager {
    */
   @Nullable
   String getUrl(@NotNull String cloneDirName);
+
+  /**
+   * Checks is the provided mirror was marked as invalid
+   * @param dirName folder to check
+   * @return see above
+   */
+  boolean isInvalidDirName(@NotNull String dirName);
 }
