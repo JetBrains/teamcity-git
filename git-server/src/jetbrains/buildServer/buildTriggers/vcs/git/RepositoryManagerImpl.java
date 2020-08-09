@@ -163,7 +163,7 @@ public final class RepositoryManagerImpl implements RepositoryManager {
     if (existingRemote == null) {
       myRepositoryCache.release(result);
       invalidate(dir);
-      return GitServerUtil.getRepository(dir, fetchUrl);
+      return createRepository(dir, canonicalURI);
     }
     if (!canonicalURI.toString().equals(existingRemote)) {
       myRepositoryCache.release(result);
