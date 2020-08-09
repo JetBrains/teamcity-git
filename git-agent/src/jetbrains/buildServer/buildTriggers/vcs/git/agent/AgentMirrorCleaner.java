@@ -23,6 +23,7 @@ import jetbrains.buildServer.agent.DirectoryCleanersRegistry;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootEntry;
@@ -31,10 +32,7 @@ import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class AgentMirrorCleaner implements DirectoryCleanersProvider {
 
@@ -54,19 +52,30 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
 
   public void registerDirectoryCleaners(@NotNull DirectoryCleanersProviderContext context,
                                         @NotNull DirectoryCleanersRegistry registry) {
-    Set<String> repositoriesUsedInBuild = getRunningBuildRepositories(context);
-    final Map<String, File> mappings = myMirrorManager.getMappings();
-    for (Map.Entry<String, File> entry : mappings.entrySet()) {
-      String repository = entry.getKey();
-      File mirror = entry.getValue();
+    final Set<String> repositoriesUsedInBuild = getRunningBuildRepositories(context);
+    final Set<File> mirrors = new HashSet<File>(myMirrorManager.getMappings().values());
+
+    for (File mirror : listFiles(myMirrorManager.getBaseMirrorsDir())) {
+      if (!mirror.isDirectory()) {
+        LOG.debug("Skipping non-mirror file: " + mirror.getAbsolutePath());
+        continue;
+      }
+
+      final String name = mirror.getName();
+      if (myMirrorManager.isInvalidDirName(name)) {
+        deleteEverywhere(mirrors, mirror);
+        LOG.info("Found invalid mirror directory: " + mirror.getAbsolutePath() + ", removed it straight away");
+        continue;
+      }
+
+      final String repository = myMirrorManager.getUrl(mirror.getName());
+      if (repository == null) {
+        deleteEverywhere(mirrors, mirror);
+        LOG.info("Found unused mirror directory: " + mirror.getAbsolutePath() + ", removed it straight away");
+        continue;
+      }
+
       if (!repositoriesUsedInBuild.contains(repository)) {
-
-        if (!mirror.isDirectory()) {
-          myMirrorManager.removeMirrorDir(mirror);
-          LOG.debug("Found non existing mirror directory: " + mirror.getAbsolutePath() + ", removed it from the list of mirrors");
-          continue;
-        }
-
         if (isCleanupEnabled(mirror)) {
           LOG.debug("Register cleaner for mirror " + mirror.getAbsolutePath());
           registry.addCleaner(mirror, new Date(myMirrorManager.getLastUsedTime(mirror)));
@@ -74,7 +83,27 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
           LOG.debug("Clean-up is disabled in " + repository + " (" + mirror.getName() + ")");
         }
       }
+      mirrors.remove(mirror);
     }
+
+    for (File mirror : mirrors) {
+      myMirrorManager.removeMirrorDir(mirror);
+      LOG.debug("Found non existing mirror directory: " + mirror.getAbsolutePath() + ", removed it from the list of mirrors");
+    }
+  }
+
+  private void deleteEverywhere(final Set<File> mirrors, final File mirror) {
+    if (mirrors.contains(mirror)) {
+      myMirrorManager.removeMirrorDir(mirror);
+      mirrors.remove(mirror);
+    }
+    FileUtil.delete(mirror); // make sure mirror is deleted
+  }
+
+  @NotNull
+  private Collection<File> listFiles(@NotNull File dir) {
+    final File[] files = dir.listFiles();
+    return files == null || files.length == 0 ? Collections.<File>emptyList() : Arrays.asList(files);
   }
 
   private Set<String> getRunningBuildRepositories(@NotNull DirectoryCleanersProviderContext context) {

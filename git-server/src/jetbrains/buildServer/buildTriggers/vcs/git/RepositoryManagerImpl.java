@@ -302,4 +302,9 @@ public final class RepositoryManagerImpl implements RepositoryManager {
 //      .setPort(uri.getPort())
 //      .setPath(uri.getPath());
   }
+
+  @Override
+  public boolean isInvalidDirName(@NotNull final String dirName) {
+    return myMirrorManager.isInvalidDirName(dirName);
+  }
 }

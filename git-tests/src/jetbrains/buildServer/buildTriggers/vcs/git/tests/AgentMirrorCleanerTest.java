@@ -24,11 +24,13 @@ import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentMirrorCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.SubmoduleManagerImpl;
 import jetbrains.buildServer.util.Dates;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.jetbrains.annotations.NotNull;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
+import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -58,17 +60,15 @@ public class AgentMirrorCleanerTest {
     myAgentMirrorCleaner = new AgentMirrorCleaner(myMirrorManager, mySubmoduleManager);
   }
 
-
-
-
   public void should_register_mirrors_not_used_in_current_build() throws IOException {
     TempFiles tmpFiles = new TempFiles();
     try {
       final DirectoryCleanersRegistry registry = myContext.mock(DirectoryCleanersRegistry.class);
-      final File r1mirror = tmpFiles.createTempDir();
-      final File r2mirror = tmpFiles.createTempDir();
-      final File r3mirror = tmpFiles.createTempDir();
-      final File r4mirror = tmpFiles.createTempDir();
+      final File baseMirrorsDir = tmpFiles.createTempDir();
+      final File r1mirror = createMirror(baseMirrorsDir);
+      final File r2mirror = createMirror(baseMirrorsDir);
+      final File r3mirror = createMirror(baseMirrorsDir);
+      final File r4mirror = createMirror(baseMirrorsDir);
       final Date r3lastAccess = Dates.makeDate(2012, 10, 29);
       final Date r4lastAccess = Dates.makeDate(2012, 10, 27);
       List<String> repositoriesInBuild = asList("git://some.org/r1", "git://some.org/r2");
@@ -78,6 +78,18 @@ public class AgentMirrorCleanerTest {
                              "git://some.org/r2", r2mirror,
                              "git://some.org/r3", r3mirror,
                              "git://some.org/r4", r4mirror)));
+        one(myMirrorManager).getBaseMirrorsDir(); will(returnValue(baseMirrorsDir));
+
+        one(myMirrorManager).isInvalidDirName(r1mirror.getName()); will(returnValue(false));
+        one(myMirrorManager).isInvalidDirName(r2mirror.getName()); will(returnValue(false));
+        one(myMirrorManager).isInvalidDirName(r3mirror.getName()); will(returnValue(false));
+        one(myMirrorManager).isInvalidDirName(r4mirror.getName()); will(returnValue(false));
+
+        one(myMirrorManager).getUrl(r1mirror.getName()); will(returnValue("git://some.org/r1"));
+        one(myMirrorManager).getUrl(r2mirror.getName()); will(returnValue("git://some.org/r2"));
+        one(myMirrorManager).getUrl(r3mirror.getName()); will(returnValue("git://some.org/r3"));
+        one(myMirrorManager).getUrl(r4mirror.getName()); will(returnValue("git://some.org/r4"));
+
         one(myMirrorManager).getLastUsedTime(r3mirror); will(returnValue(r3lastAccess.getTime()));
         one(myMirrorManager).getLastUsedTime(r4mirror); will(returnValue(r4lastAccess.getTime()));
 
@@ -99,10 +111,11 @@ public class AgentMirrorCleanerTest {
     TempFiles tmpFiles = new TempFiles();
     try {
       final DirectoryCleanersRegistry registry = myContext.mock(DirectoryCleanersRegistry.class);
-      final File r1mirror = tmpFiles.createTempDir();
-      final File r2mirror = tmpFiles.createTempDir();
-      final File r3mirror = tmpFiles.createTempDir();
-      final File r4mirror = tmpFiles.createTempDir();
+      final File baseMirrorsDir = tmpFiles.createTempDir();
+      final File r1mirror = createMirror(baseMirrorsDir);
+      final File r2mirror = createMirror(baseMirrorsDir);
+      final File r3mirror = createMirror(baseMirrorsDir);
+      final File r4mirror = createMirror(baseMirrorsDir);
       final Date r1lastAccess = Dates.makeDate(2012, 10, 26);
       final Date r2lastAccess = Dates.makeDate(2012, 10, 28);
       final Date r3lastAccess = Dates.makeDate(2012, 10, 29);
@@ -114,6 +127,18 @@ public class AgentMirrorCleanerTest {
                              "git://some.org/r2", r2mirror,
                              "git://some.org/r3", r3mirror,
                              "git://some.org/r4", r4mirror)));
+        one(myMirrorManager).getBaseMirrorsDir(); will(returnValue(baseMirrorsDir));
+
+        one(myMirrorManager).isInvalidDirName(r1mirror.getName()); will(returnValue(false));
+        one(myMirrorManager).isInvalidDirName(r2mirror.getName()); will(returnValue(false));
+        one(myMirrorManager).isInvalidDirName(r3mirror.getName()); will(returnValue(false));
+        one(myMirrorManager).isInvalidDirName(r4mirror.getName()); will(returnValue(false));
+
+        one(myMirrorManager).getUrl(r1mirror.getName()); will(returnValue("git://some.org/r1"));
+        one(myMirrorManager).getUrl(r2mirror.getName()); will(returnValue("git://some.org/r2"));
+        one(myMirrorManager).getUrl(r3mirror.getName()); will(returnValue("git://some.org/r3"));
+        one(myMirrorManager).getUrl(r4mirror.getName()); will(returnValue("git://some.org/r4"));
+
         one(myMirrorManager).getLastUsedTime(r1mirror); will(returnValue(r1lastAccess.getTime()));
         one(myMirrorManager).getLastUsedTime(r2mirror); will(returnValue(r2lastAccess.getTime()));
         one(myMirrorManager).getLastUsedTime(r3mirror); will(returnValue(r3lastAccess.getTime()));
@@ -126,6 +151,26 @@ public class AgentMirrorCleanerTest {
       }});
       mySubmoduleManager.persistSubmodules("git://some.org/r1", asList("git://some.org/r2", "git://some.org/r3"));
       mySubmoduleManager.persistSubmodules("git://some.org/r2", Collections.singletonList("git://some.org/r4"));
+      myAgentMirrorCleaner.registerDirectoryCleaners(createCleanerContext(repositoriesInBuild), registry);
+    } finally {
+      tmpFiles.cleanup();
+    }
+  }
+
+  public void should_delete_invalid_mirror() throws IOException{
+    final TempFiles tmpFiles = new TempFiles();
+    try {
+      final DirectoryCleanersRegistry registry = myContext.mock(DirectoryCleanersRegistry.class);
+      final File baseMirrorsDir = tmpFiles.createTempDir();
+      final File invalidMirror = createMirror(baseMirrorsDir);
+      Assert.assertTrue(invalidMirror.isDirectory());
+      List<String> repositoriesInBuild = Collections.singletonList("git://some.org/r1");
+      myContext.checking(new Expectations() {{
+        one(myMirrorManager).getMappings(); will(returnValue(map("git://some.org/r1", invalidMirror)));
+        one(myMirrorManager).getBaseMirrorsDir(); will(returnValue(baseMirrorsDir));
+        one(myMirrorManager).isInvalidDirName(invalidMirror.getName()); will(returnValue(true));
+        one(myMirrorManager).getMirrorDir("git://some.org/r1"); will(returnValue(invalidMirror));
+        one(myMirrorManager).removeMirrorDir(invalidMirror);}});
       myAgentMirrorCleaner.registerDirectoryCleaners(createCleanerContext(repositoriesInBuild), registry);
     } finally {
       tmpFiles.cleanup();
@@ -151,4 +196,8 @@ public class AgentMirrorCleanerTest {
     return entries;
   }
 
+  @NotNull
+  private File createMirror(final File baseMirrorsDir) throws IOException {
+    return FileUtil.createTempDirectory("mirror", "", baseMirrorsDir);
+  }
 }
