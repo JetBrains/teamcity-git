@@ -84,11 +84,12 @@ final class AutoCloseRepositoryCache {
    * is closed and removed from the cache. Does nothing if repository is not
    * present found in the cache.
    * @param db repository to release
+   * @param forceRelease if set, repository will be released even if openCounter is not 0
    */
-  synchronized void release(@NotNull Repository db) {
+  synchronized void release(@NotNull Repository db, final boolean forceRelease) {
     RepositoryCache.FileKey key = RepositoryCache.FileKey.exact(db.getDirectory(), FS.DETECTED);
     CachedRepository cachedRepository = myRepositories.get(key);
-    if (cachedRepository != null && cachedRepository.getRepository() == db && cachedRepository.dec() == 0) {
+    if (cachedRepository != null && cachedRepository.getRepository() == db && (forceRelease || cachedRepository.dec() == 0)) {
       myRepositories.remove(key);
       db.close();
     }
