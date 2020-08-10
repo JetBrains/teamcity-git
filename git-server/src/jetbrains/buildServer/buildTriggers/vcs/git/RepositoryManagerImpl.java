@@ -161,19 +161,19 @@ public final class RepositoryManagerImpl implements RepositoryManager {
       return createRepository(dir, canonicalURI);
     String existingRemote = result.getConfig().getString("teamcity", null, "remote");
     if (existingRemote == null) {
-      myRepositoryCache.release(result);
+      myRepositoryCache.release(result, true);
       invalidate(dir);
       return createRepository(dir, canonicalURI);
     }
     if (!canonicalURI.toString().equals(existingRemote)) {
-      myRepositoryCache.release(result);
+      myRepositoryCache.release(result, true);
       throw getWrongUrlError(dir, existingRemote, fetchUrl);
     }
     return result;
   }
 
   public void closeRepository(@NotNull Repository repository) {
-    myRepositoryCache.release(repository);
+    myRepositoryCache.release(repository, false);
   }
 
   @NotNull
