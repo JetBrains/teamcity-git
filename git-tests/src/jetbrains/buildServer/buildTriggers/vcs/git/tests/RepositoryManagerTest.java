@@ -127,6 +127,7 @@ public class RepositoryManagerTest {
     URIish url = new URIish("git://some.org/repo.git");
     Repository r = repositoryManager.openRepository(customDir, url);
     r.getConfig().unset("teamcity", null, "remote");
+//  TODO: shall we r.getConfig().save();
     Repository r2 = repositoryManager.openRepository(customDir, url);
     then(r2.getConfig().getString("teamcity", null, "remote")).isEqualTo(url.toString());
   }
