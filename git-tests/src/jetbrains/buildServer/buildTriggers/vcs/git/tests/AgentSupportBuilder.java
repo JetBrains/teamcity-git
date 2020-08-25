@@ -22,6 +22,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder;
+import jetbrains.buildServer.util.EventDispatcher;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -78,7 +79,8 @@ class AgentSupportBuilder {
     myGitAgentSSHService =
       new GitAgentSSHService(myAgent, myAgentConfiguration, new MockGitPluginDescriptor(), mySshKeyProvider, buildTracker);
     return new GitAgentVcsSupport(myFS, new MockDirectoryCleaner(), myGitAgentSSHService,
-                                  myPluginConfigFactory, myMirrorManager, new SubmoduleManagerImpl(myMirrorManager), myGitMetaFactory);
+                                  myPluginConfigFactory, myMirrorManager, new SubmoduleManagerImpl(myMirrorManager), myGitMetaFactory,
+                                  EventDispatcher.create(AgentLifeCycleListener.class));
   }
 
 
