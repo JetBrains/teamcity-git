@@ -17,6 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.Pair;
+import jetbrains.buildServer.agent.AgentLifeCycleAdapter;
+import jetbrains.buildServer.agent.AgentLifeCycleListener;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.agent.vcs.AgentCheckoutAbility;
@@ -27,6 +29,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommandUtil;
+import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.vcs.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -54,7 +57,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   //To do that we need to create AgentPluginConfig for each VCS root which involves 'git version'
   //command execution. Since we don't have a dedicated API for checking several roots, every root
   //is checked with all other roots. In order to avoid running n^2 'git version' commands configs
-  //are cached for the build. Cache is reset when we get a new build.
+  //are cached for the build. Cache is reset when we get a new build or on preparationFinished event.
   private final AtomicLong myConfigsCacheBuildId = new AtomicLong(-1); //buildId for which configs are cached
   private final ConcurrentMap<VcsRoot, AgentPluginConfig> myConfigsCache = new ConcurrentHashMap<VcsRoot, AgentPluginConfig>();//cached config per root
   private final ConcurrentMap<VcsRoot, VcsException> myConfigErrorsCache = new ConcurrentHashMap<VcsRoot, VcsException>();//cached error thrown during config creation per root
@@ -65,7 +68,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull PluginConfigFactory configFactory,
                             @NotNull MirrorManager mirrorManager,
                             final SubmoduleManager submoduleManager,
-                            @NotNull GitMetaFactory gitMetaFactory) {
+                            @NotNull GitMetaFactory gitMetaFactory,
+                            @NotNull EventDispatcher<AgentLifeCycleListener> agentEventDispatcher) {
     myFS = fs;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
@@ -73,6 +77,13 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     myMirrorManager = mirrorManager;
     mySubmoduleManager = submoduleManager;
     myGitMetaFactory = gitMetaFactory;
+
+    agentEventDispatcher.addListener(new AgentLifeCycleAdapter() {
+      @Override
+      public void preparationFinished(@NotNull final AgentRunningBuild runningBuild) {
+        clearPluginConfigCache();
+      }
+    });
   }
 
 
@@ -119,7 +130,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     if (config.isRunGitWithBuildEnv()) {
       return build.getBuildParameters().getEnvironmentVariables();
     } else {
-      return new HashMap<String, String>(0);
+      return new HashMap<>(0);
     }
   }
 
@@ -241,8 +252,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     //reset cache if we get a new build
     if (build.getBuildId() != myConfigsCacheBuildId.get()) {
       myConfigsCacheBuildId.set(build.getBuildId());
-      myConfigsCache.clear();
-      myConfigErrorsCache.clear();
+      clearPluginConfigCache();
     }
 
     AgentPluginConfig result = myConfigsCache.get(root);
@@ -259,6 +269,11 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       myConfigsCache.put(root, result);
     }
     return result;
+  }
+
+  private void clearPluginConfigCache() {
+    myConfigsCache.clear();
+    myConfigErrorsCache.clear();
   }
 
 
