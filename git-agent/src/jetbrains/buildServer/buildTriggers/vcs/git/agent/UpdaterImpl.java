@@ -531,7 +531,7 @@ public class UpdaterImpl implements Updater {
         final Collection<String> sharedPaths = CleanCommandUtil.getSharedPaths(otherRoot, targetPath);
         if (canExcludeSharedPaths(sharedPaths, targetPath, otherRoot)) {
           for (String path : sharedPaths) {
-            cmd.addExclude(path);
+            cmd.addExclude("/" + path); // slash addresses only first-level paths, see TW-67483
           }
         }
       }

@@ -18,6 +18,15 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.StreamUtil;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.TestNGUtil;
@@ -51,16 +60,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileReader;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
@@ -433,7 +432,7 @@ public class AgentVcsSupportTest {
     toClean.forEach(f -> assertTrue(f.isFile()));
 
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "7574b5358ac09d61ec5cb792d4462230de1d00c2", myCheckoutDir, build, false);
-    Assertions.assertThat(excludes).containsExactly("d1", "d2/d3", "d4", "d4/d5", "d6", "path with space/d7");
+    Assertions.assertThat(excludes).containsExactly("/d1", "/d2/d3", "/d4", "/d4/d5", "/d6", "/path with space/d7");
 
     toPreserve.forEach(f -> assertTrue(f.isFile()));
     toClean.forEach(f -> assertFalse(f.exists()));
@@ -487,7 +486,7 @@ public class AgentVcsSupportTest {
     toClean.forEach(f -> assertTrue(f.isFile()));
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(".=>target/path"), "7574b5358ac09d61ec5cb792d4462230de1d00c2", myCheckoutDir, build, false);
-    Assertions.assertThat(excludes).containsExactly("d1", "d2/d3", "d4", "d4/d5", "d6", "path with space/d7");
+    Assertions.assertThat(excludes).containsExactly("/d1", "/d2/d3", "/d4", "/d4/d5", "/d6", "/path with space/d7");
 
     toPreserve.forEach(f -> assertTrue(f.isFile()));
     toClean.forEach(f -> assertFalse(f.exists()));
