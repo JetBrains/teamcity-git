@@ -522,7 +522,7 @@ public class UpdaterImpl implements Updater {
   @NotNull
   private CleanCommand cleanCommand() {
     final CleanCommand cmd = myGitFactory.create(myTargetDirectory).clean().setCleanPolicy(myRoot.getCleanFilesPolicy());
-    if (CleanCommandUtil.isCleanEnabled(myRoot.getOriginalRoot()) && myPluginConfig.isCleanCommandShouldRespectCheckoutRules()) {
+    if (CleanCommandUtil.isCleanEnabled(myRoot.getOriginalRoot()) && myPluginConfig.isCleanCommandRespectsOtherRoots()) {
       final String targetPath = getTargetPath(myTargetDirectory, myBuild.getCheckoutDirectory());
 
       for (VcsRootEntry otherRoot : myBuild.getVcsRootEntries()) {
