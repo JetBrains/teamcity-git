@@ -17,6 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.Trinity;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 import jetbrains.buildServer.BuildProblemData;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
@@ -41,13 +47,6 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
@@ -555,7 +554,7 @@ public class UpdaterImpl implements Updater {
     myLogger
       .warning("git version " + myPluginConfig.getGitVersion() + " doesn't support --exclude option for clean command: performing git clean for " + myRoot.getName() +
                " may remove files checked out for " + otherRoot.getVcsRoot().getName() +
-               ". Please either update git executable to a version prior to " + GitVersion.DEPRECATED + " or configure checkout to separate folders using Checkout rules.");
+               ". Please either update git executable to a version above " + GitVersion.DEPRECATED + " or configure checkout to separate folders using Checkout rules.");
     return false;
   }
 
