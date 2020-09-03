@@ -62,7 +62,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   private static final String SUBMODULE_UPDATE_TIMEOUT_SECONDS = "teamcity.internal.git.agent.submodules.update.timeout.seconds";
   public static final String SSH_SEND_ENV_REQUEST_TOKEN = "sshSendEnvRequestToken";
   public static final String SSH_SEND_ENV_REQUEST_TOKEN_PARAM = "teamcity.internal.git." + SSH_SEND_ENV_REQUEST_TOKEN;
-  public static final String CLEAN_INSIDE_CHECKOUT_RULES= "teamcity.internal.git.cleanInsideCheckoutRules";
+  public static final String CLEAN_RESPECTS_OTHER_ROOTS = "teamcity.internal.git.cleanRespectsOtherRoots";
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
@@ -335,8 +335,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
   }
 
   @Override
-  public boolean isCleanCommandShouldRespectCheckoutRules() {
-    final String p = myBuild.getSharedConfigParameters().get(CLEAN_INSIDE_CHECKOUT_RULES);
+  public boolean isCleanCommandRespectsOtherRoots() {
+    final String p = myBuild.getSharedConfigParameters().get(CLEAN_RESPECTS_OTHER_ROOTS);
     return p == null || Boolean.parseBoolean(p);
   }
 

@@ -88,7 +88,7 @@ public interface AgentPluginConfig extends PluginConfig {
   @Nullable
   String getSshRequestToken();
 
-  boolean isCleanCommandShouldRespectCheckoutRules();
+  boolean isCleanCommandRespectsOtherRoots();
 
   /**
    * Defines how progress output from git commands is written into build log
