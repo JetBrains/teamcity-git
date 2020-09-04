@@ -425,7 +425,9 @@ public class AgentVcsSupportTest {
       createFile("d8/f"),
       createFile("d8/some/dir/f"),
       createFile("path with space/f"),
-      createFile("path with space/some/dir/f")
+      createFile("path with space/some/dir/f"),
+      createFile("some/dir/d1/f"),
+      createFile("some/dir/d4")
     );
 
     toPreserve.forEach(f -> assertTrue(f.isFile()));
@@ -434,8 +436,8 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "7574b5358ac09d61ec5cb792d4462230de1d00c2", myCheckoutDir, build, false);
     Assertions.assertThat(excludes).containsExactly("/d1", "/d2/d3", "/d4", "/d4/d5", "/d6", "/path with space/d7");
 
-    toPreserve.forEach(f -> assertTrue(f.isFile()));
-    toClean.forEach(f -> assertFalse(f.exists()));
+    toPreserve.forEach(f -> assertTrue(f + " must be preserved", f.isFile()));
+    toClean.forEach(f -> assertFalse(f + " must be removed", f.exists()));
 
     assertTrue(new File(myCheckoutDir, "Folder1").isDirectory());
     assertTrue(new File(myCheckoutDir, "Folder2").isDirectory());
@@ -479,7 +481,9 @@ public class AgentVcsSupportTest {
       createFile("target/path/d8/f"),
       createFile("target/path/d8/some/dir/f"),
       createFile("target/path/path with space/f"),
-      createFile("target/path/path with space/some/dir/f")
+      createFile("target/path/path with space/some/dir/f"),
+      createFile("target/path/some/dir/d1/f"),
+      createFile("target/path/some/dir/d4")
     );
 
     toPreserve.forEach(f -> assertTrue(f.isFile()));
@@ -488,8 +492,8 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, new CheckoutRules(".=>target/path"), "7574b5358ac09d61ec5cb792d4462230de1d00c2", myCheckoutDir, build, false);
     Assertions.assertThat(excludes).containsExactly("/d1", "/d2/d3", "/d4", "/d4/d5", "/d6", "/path with space/d7");
 
-    toPreserve.forEach(f -> assertTrue(f.isFile()));
-    toClean.forEach(f -> assertFalse(f.exists()));
+    toPreserve.forEach(f -> assertTrue(f + " must be preserved", f.isFile()));
+    toClean.forEach(f -> assertFalse(f + " must be removed", f.exists()));
 
     assertTrue(new File(myCheckoutDir, "target/path/Folder1").isDirectory());
     assertTrue(new File(myCheckoutDir, "target/path/Folder2").isDirectory());
