@@ -19,6 +19,10 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import com.jcraft.jsch.JSchException;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
@@ -40,14 +44,8 @@ import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
-
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
-import static jetbrains.buildServer.util.CollectionsUtil.retainMatched;
 import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
 
@@ -554,7 +552,9 @@ public class GitVcsSupport extends ServerVcsSupport
     if (message == null)
       return false;
     if (message.contains("Connection timed out") ||
-        message.contains("Connection time out")) {
+        message.contains("Connection time out") ||
+        message.contains("Short read of block")) //TW-55869
+    {
       return true;
     }
     Throwable cause = e.getCause();
