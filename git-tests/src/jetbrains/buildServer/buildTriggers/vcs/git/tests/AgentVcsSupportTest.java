@@ -18,15 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.StreamUtil;
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileReader;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.TestNGUtil;
@@ -60,6 +51,16 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
@@ -610,6 +611,22 @@ public class AgentVcsSupportTest {
     File gitConfigFile = new File(myCheckoutDir, ".git" + File.separator + "config");
     String config = FileUtil.loadTextAndClose(new FileReader(gitConfigFile));
     assertFalse(config, config.contains("insteadOf"));
+  }
+
+  @TestFor(issues = "TW-67736")
+  public void delete_url_insteadOf_from_config_when_switching_from_mirrors_to_alternates() throws Exception {
+    final GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
+    {
+      final AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, "true"));
+      myVcsSupport.updateSources(root.getOriginalRoot(), new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+    }
+    final File gitConfigFile = new File(myCheckoutDir, ".git" + File.separator + "config");
+    then(FileUtil.loadTextAndClose(new FileReader(gitConfigFile))).contains("insteadOf");
+    {
+      final AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_ALTERNATES, "true"));
+      myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+    }
+    then(FileUtil.loadTextAndClose(new FileReader(gitConfigFile))).doesNotContain("insteadOf");
   }
 
 

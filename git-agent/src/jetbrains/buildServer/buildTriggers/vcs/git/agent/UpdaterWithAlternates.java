@@ -16,11 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
@@ -32,6 +27,12 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class UpdaterWithAlternates extends UpdaterWithMirror {
 
@@ -58,6 +59,7 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
 
   @Override
   protected void setupExistingRepository() throws VcsException {
+    removeUrlSections();
     setupRepository(myGitDir, myRoot.getRepositoryDir());
   }
 
