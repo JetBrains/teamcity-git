@@ -78,12 +78,8 @@ public class AuthSettings {
     if (myAuthMethod == AuthenticationMethod.ANONYMOUS) {
       return null;
     }
-    String username = myUrIishHelper.getUserNameFromUrl(properties.get(Constants.FETCH_URL));
     String explicitUsername = properties.get(Constants.USERNAME);
-    if (explicitUsername != null) {
-      username = explicitUsername;
-    }
-    return username;
+    return explicitUsername != null ? explicitUsername : myUrIishHelper.getUserNameFromUrl(properties.get(Constants.FETCH_URL));
   }
 
   public AuthenticationMethod getAuthMethod() {
