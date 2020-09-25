@@ -40,7 +40,6 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.FetchConnection;
 import org.eclipse.jgit.transport.Transport;
-import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -572,14 +571,26 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   public Collection<VcsClientMapping> getClientMapping(final @NotNull VcsRoot root, final @NotNull IncludeRule rule) throws VcsException {
-    final OperationContext context = createContext(root, "client-mapping");
-    try {
-      GitVcsRoot gitRoot = context.getGitRoot();
-      URIish uri = gitRoot.getRepositoryFetchURL().get();
-      return Collections.singletonList(new VcsClientMapping(String.format("|%s|%s", uri.toString(), rule.getFrom()), rule.getTo()));
-    } finally {
-      context.close();
-    }
+
+    // Using more verbose code as constructor of GitVcsRoot in CPU-hungry, see TW-67881
+    final URIishHelperImpl urIishHelper = new URIishHelperImpl();
+
+    final AuthSettings auth = createAuthSettings(root, urIishHelper);
+    final CommonURIish uri = urIishHelper.createAuthURI(auth, root.getProperty(Constants.FETCH_URL));
+
+    return Collections.singletonList(new VcsClientMapping(String.format("|%s|%s", uri.toString(), rule.getFrom()), rule.getTo()));
+  }
+
+  private AuthSettings createAuthSettings(@NotNull VcsRoot root, URIishHelperImpl urIishHelper) {
+    // Avoiding root.getProperties() call as it wraps properties to TreeMap with sorting.
+    Map<String, String> authProps = new HashMap<>();
+    authProps.put(Constants.AUTH_METHOD, root.getProperty(Constants.AUTH_METHOD));
+    authProps.put(Constants.PASSPHRASE, root.getProperty(Constants.PASSPHRASE));
+    authProps.put(Constants.USERNAME, root.getProperty(Constants.USERNAME));
+    authProps.put(Constants.PASSWORD, root.getProperty(Constants.PASSWORD));
+    authProps.put(Constants.PRIVATE_KEY_PATH, root.getProperty(Constants.PRIVATE_KEY_PATH));
+    authProps.put(Constants.FETCH_URL, root.getProperty(Constants.FETCH_URL));
+    return new AuthSettings(authProps, urIishHelper);
   }
 
   @Override
