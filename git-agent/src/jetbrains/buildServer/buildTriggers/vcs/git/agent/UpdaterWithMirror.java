@@ -18,12 +18,18 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
+import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.CommonURIish;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsTreeResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CheckoutCanceledException;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.log.Loggers;
@@ -37,12 +43,6 @@ import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.regex.Matcher;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
 
@@ -187,9 +187,8 @@ public class UpdaterWithMirror extends UpdaterImpl {
         } catch (GitExecTimeout e) {
           throw e;
         } catch (VcsException e) {
-          if (!repeatFetchAttempt) throw e;
-          // Throw exception after latest attempt
-          if (i == retryTimeouts.length) throw e;
+          if (!repeatFetchAttempt || i == retryTimeouts.length || isInterrupted(e)) throw e;
+
           int wait = retryTimeouts[i];
           LOG.warnAndDebugDetails("Failed to fetch mirror, will retry after " + wait + " seconds.", e);
           try {
@@ -217,10 +216,18 @@ public class UpdaterWithMirror extends UpdaterImpl {
     }
   }
 
+  private boolean isInterrupted(@NotNull VcsException ve) {
+    Throwable e = ve;
+    do {
+      if (e instanceof CheckoutCanceledException || e instanceof InterruptedException) return true;
+      e = e.getCause();
+    } while (Objects.nonNull(e));
+    return false;
+  }
 
   private boolean shouldFetchFromScratch(@NotNull VcsException e) {
-    if (e instanceof GitExecTimeout)
-      return false;
+    if (e instanceof GitExecTimeout || isInterrupted(e)) return false;
+
     String msg = e.getMessage().toLowerCase();
     return !msg.contains("couldn't find remote ref") &&
            !msg.contains("could not read from remote repository");
