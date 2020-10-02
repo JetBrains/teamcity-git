@@ -67,7 +67,7 @@ public class CleanerTest extends BaseTestCase {
 
   @Test(dataProvider = "true,false")
   public void test_clean(Boolean useJgitGC) throws VcsException, InterruptedException {
-    myConfigBuilder.setMirrorExpirationTimeoutMillis(8000);
+    myConfigBuilder.setMirrorExpirationTimeoutMillis(Long.MAX_VALUE);
     if (useJgitGC) {
       myConfigBuilder.setRunJGitGC(true);
       myConfigBuilder.setRunNativeGC(false);
