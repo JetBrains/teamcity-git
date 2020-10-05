@@ -66,7 +66,8 @@ public class CleanerTest extends BaseTestCase {
 
   @Test(dataProvider = "true,false")
   public void test_clean(Boolean useJgitGC) throws VcsException, InterruptedException {
-    myConfigBuilder.setMirrorExpirationTimeoutMillis(8000);
+    final int mirrorExpirationTimeoutMillis = 8000;
+    myConfigBuilder.setMirrorExpirationTimeoutMillis(mirrorExpirationTimeoutMillis);
     if (useJgitGC) {
       myConfigBuilder.setRunJGitGC(true);
       myConfigBuilder.setRunNativeGC(false);
@@ -86,6 +87,10 @@ public class CleanerTest extends BaseTestCase {
 
     mySupport.getCurrentState(root);//it will create dir in cache directory
     File repositoryDir = getRepositoryDir(root);
+
+    final File timestamp = new File(repositoryDir, "timestamp");
+    assertTrue(timestamp.isFile());
+    assertTrue(System.currentTimeMillis() - mySupport.getRepositoryManager().getLastUsedTime(repositoryDir) < mirrorExpirationTimeoutMillis);
 
     myCleanup.run();
 
