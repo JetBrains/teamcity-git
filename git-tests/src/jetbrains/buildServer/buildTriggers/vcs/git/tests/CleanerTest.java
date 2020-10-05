@@ -16,6 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
@@ -30,11 +34,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static org.assertj.core.api.BDDAssertions.then;
@@ -67,7 +66,7 @@ public class CleanerTest extends BaseTestCase {
 
   @Test(dataProvider = "true,false")
   public void test_clean(Boolean useJgitGC) throws VcsException, InterruptedException {
-    myConfigBuilder.setMirrorExpirationTimeoutMillis(Long.MAX_VALUE);
+    myConfigBuilder.setMirrorExpirationTimeoutMillis(8000);
     if (useJgitGC) {
       myConfigBuilder.setRunJGitGC(true);
       myConfigBuilder.setRunNativeGC(false);
