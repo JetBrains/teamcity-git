@@ -40,6 +40,7 @@ import org.eclipse.jgit.storage.file.FileBasedConfig;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.util.FS;
+import org.eclipse.jgit.util.SystemReader;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sun.awt.OSInfo;
@@ -79,22 +80,27 @@ public class GitServerUtil {
     }
   }
 
-  /**
-   * Ensures that a bare repository exists at the specified path.
-   * If it does not, the directory is attempted to be created.
-   *
-   * @param dir    the path to the directory to init
-   * @param remote the remote URL
-   * @return a connection to repository
-   * @throws VcsException if the there is a problem with accessing VCS
-   */
   public static Repository getRepository(@NotNull final File dir, @NotNull final URIish remote) throws VcsException {
+    return getRepository(dir, remote, null);
+  }
+
+    /**
+     * Ensures that a bare repository exists at the specified path.
+     * If it does not, the directory is attempted to be created.
+     *
+     * @param dir    the path to the directory to init
+     * @param remote the remote URL
+     * @param customConfig custom config to override configs from the machine
+     * @return a connection to repository
+     * @throws VcsException if the there is a problem with accessing VCS
+     */
+  public static Repository getRepository(@NotNull final File dir, @NotNull final URIish remote, @Nullable final Config customConfig) throws VcsException {
     if (dir.exists() && !dir.isDirectory()) {
       throw new VcsException("The specified path is not a directory: " + dir);
     }
     try {
       ensureRepositoryIsValid(dir);
-      Repository r = getRepositoryWithDisabledAutoGc(dir);
+      Repository r = getRepositoryWithDisabledAutoGc(dir, customConfig);
       String remoteUrl = remote.toString();
       if (remoteUrl.contains("\n") || remoteUrl.contains("\r"))
         throw new VcsException("Newline in url '" + remoteUrl + "'");
@@ -122,7 +128,10 @@ public class GitServerUtil {
   }
 
   @NotNull
-  private static Repository getRepositoryWithDisabledAutoGc(@NotNull final File dir) throws IOException {
+  private static Repository getRepositoryWithDisabledAutoGc(@NotNull final File dir, @Nullable Config customConfig) throws IOException {
+    if (customConfig != null) {
+      SystemReader.setInstance(new TeamCitySystemReader(SystemReader.getInstance(), customConfig));
+    }
     return new FileRepository(new RepositoryBuilder().setBare().setGitDir(dir).setup()) {
       @Override
       public void autoGC(final ProgressMonitor monitor) {

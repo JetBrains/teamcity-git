@@ -18,11 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.regex.Matcher;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.CommonURIish;
@@ -43,6 +38,12 @@ import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
 
@@ -497,12 +498,32 @@ public class UpdaterWithMirror extends UpdaterImpl {
         aggregatedSubmodules.put(url, aggregatedSubmodule);
       }
 
-      return aggregatedSubmodules;
+      return applyInsteadOfReplacements(aggregatedSubmodules);
+
     } finally {
       if (r != null) {
         r.close();
       }
     }
+  }
+
+  @NotNull
+  private Map<String, AggregatedSubmodule> applyInsteadOfReplacements(@NotNull Map<String, AggregatedSubmodule> aggregatedSubmodules) {
+    final Map<String, String> replacements = myPluginConfig.getSubmoduleUrlInsteadOf();
+    if (replacements.size() > 0) {
+      for (Map.Entry<String, AggregatedSubmodule> e : aggregatedSubmodules.entrySet()) {
+        String url = e.getKey();
+        final String replacement = replaceUri(url, myPluginConfig.getSubmoduleUrlInsteadOf());
+        if (!url.equals(replacement)) {
+          final AggregatedSubmodule aggregatedSubmodule = e.getValue();
+          aggregatedSubmodules.put(replacement, aggregatedSubmodule);
+          aggregatedSubmodules.remove(url);
+
+          myBuild.getBuildLogger().debug("Replaced url " + url + " with " + replacement + " for " + aggregatedSubmodule.getNamesString());
+        }
+      }
+    }
+    return aggregatedSubmodules;
   }
 
   private String getSubmoduleRevision(@NotNull GitFacade git, @NotNull String revision, @NotNull String path) throws VcsException {
@@ -536,6 +557,26 @@ public class UpdaterWithMirror extends UpdaterImpl {
       }
     }
     return true;
+  }
+
+  //  borrowed from org.eclipse.jgit.transport.RemoteConfig
+  private String replaceUri(@NotNull String uri, @NotNull Map<String, String> replacements) {
+    if (replacements.isEmpty()) return uri;
+
+    Map.Entry<String, String> match = null;
+    for (Map.Entry<String, String> replacement : replacements.entrySet()) {
+      // Ignore current entry if not longer than previous match
+      if (match != null
+          && match.getKey().length() > replacement.getKey().length())
+        continue;
+      if (!uri.startsWith(replacement.getKey()))
+        continue;
+      match = replacement;
+    }
+    if (match != null)
+      return match.getValue() + uri.substring(match.getKey().length());
+    else
+      return uri;
   }
 
   private boolean isRootRepositoryDir(@NotNull File dir) {

@@ -17,9 +17,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.List;
@@ -38,7 +40,7 @@ public interface RepositoryManager extends MirrorManager {
   Repository openRepository(@NotNull URIish fetchUrl) throws VcsException;
 
   @NotNull
-  Repository openRepository(@NotNull File dir, @NotNull URIish fetchUrl) throws VcsException;
+  Repository openRepository(@NotNull File dir, @NotNull URIish fetchUrl, @Nullable Config customConfig) throws VcsException;
 
   void closeRepository(@NotNull Repository repository);
 

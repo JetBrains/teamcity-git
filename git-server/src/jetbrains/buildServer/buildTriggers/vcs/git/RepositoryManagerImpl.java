@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryCache;
 import org.eclipse.jgit.transport.URIish;
@@ -147,12 +148,12 @@ public final class RepositoryManagerImpl implements RepositoryManager {
   public Repository openRepository(@NotNull final URIish fetchUrl) throws VcsException {
     final URIish canonicalURI = getCanonicalURI(fetchUrl);
     final File dir = getMirrorDir(canonicalURI.toString());
-    return openRepository(dir, canonicalURI);
+    return openRepository(dir, canonicalURI, null);
   }
 
 
   @NotNull
-  public Repository openRepository(@NotNull final File dir, @NotNull final URIish fetchUrl) throws VcsException {
+  public Repository openRepository(@NotNull final File dir, @NotNull final URIish fetchUrl, @Nullable Config customConfig) throws VcsException {
     final URIish canonicalURI = getCanonicalURI(fetchUrl);
     if (isDefaultMirrorDir(dir))
       updateLastUsedTime(dir);
