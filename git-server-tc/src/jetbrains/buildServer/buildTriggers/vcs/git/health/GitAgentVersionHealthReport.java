@@ -46,7 +46,7 @@ public class GitAgentVersionHealthReport extends HealthStatusReport {
     myAgentPoolManager = agentPoolManager;
     myDeprecatedVersion = getDeprecatedVersion();
 
-    final String helpUrl = webLinks.getHelp("Git", "Gitexecutableontheagent");
+    final String helpUrl = webLinks.getHelp("Git", "agentGitPath");
     myUnsupportedCategory = new ItemCategory(UNSUPPORTED_CATEGORY,  "Unsupported git executable version on agent", ItemSeverity.WARN,
                                              "Some agents are running unsupported git versions prior to " + GitVersion.MIN + ", agent-side checkout can't be performed",
                                              helpUrl);
