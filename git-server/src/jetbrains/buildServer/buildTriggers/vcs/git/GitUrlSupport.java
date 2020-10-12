@@ -29,6 +29,7 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.egit.github.core.Repository;
 import org.eclipse.egit.github.core.client.GitHubClient;
+import org.eclipse.egit.github.core.client.RequestException;
 import org.eclipse.egit.github.core.service.RepositoryService;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
@@ -175,7 +176,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     return uri;
   }
 
-  private void refineGithubSettings(@NotNull VcsHostingRepo ghRepo, @NotNull Map<String, String> props) {
+  private void refineGithubSettings(@NotNull VcsHostingRepo ghRepo, @NotNull Map<String, String> props) throws VcsException {
     GitHubClient client = new GitHubClient();
     AuthSettings auth = new AuthSettings(props, new URIishHelperImpl());
     if (auth.getAuthMethod() == AuthenticationMethod.PASSWORD && auth.getUserName() != null && auth.getPassword() != null) {
@@ -184,6 +185,10 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     try {
       Repository r = new RepositoryService(client).getRepository(ghRepo.owner(), ghRepo.repoName());
       props.put(Constants.BRANCH_NAME, GitUtils.expandRef(r.getMasterBranch()));
+    } catch (RequestException r) {
+      if (r.getStatus() == 401 && auth.getAuthMethod() == AuthenticationMethod.PASSWORD) {
+        throw new VcsAuthenticationException("Incorrect username or password"); // seems credentials are incorrect
+      }
     } catch (IOException e) {
       //ignore, cannot refine settings
     }
