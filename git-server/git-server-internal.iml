@@ -26,7 +26,7 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="git-common-internal" exported="" />
     <orderEntry type="library" name="git-jsch" level="project" />
-    <orderEntry type="library" name="git-quartz" level="project" />
+    <orderEntry type="library" name="quartz-2.3.2" level="project" />
     <orderEntry type="library" name="git-egit-github" level="project" />
     <orderEntry type="library" name="git-httpclient" level="project" />
     <orderEntry type="library" exported="" name="git-jgit-server" level="project" />

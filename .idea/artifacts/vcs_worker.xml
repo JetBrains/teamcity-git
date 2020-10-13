@@ -12,7 +12,7 @@
       <element id="directory" name="lib">
         <element id="library" level="project" name="jgit" />
         <element id="library" level="project" name="jsch" />
-        <element id="library" level="project" name="quartz-1.6.0" />
+        <element id="library" level="project" name="quartz-2.3.2" />
         <element id="artifact" artifact-name="git-common.jar" />
         <element id="artifact" artifact-name="git-server.jar" />
         <element id="library" level="project" name="org.eclipse.egit.github.core-2.4.0-SNAPSHOT" />

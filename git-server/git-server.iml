@@ -23,7 +23,7 @@
     <orderEntry type="module" module-name="git-common" />
     <orderEntry type="library" name="jsch" level="project" />
     <orderEntry type="library" name="TeamCity Vcs Api" level="project" />
-    <orderEntry type="library" name="quartz-1.6.0" level="project" />
+    <orderEntry type="library" name="quartz-2.3.2" level="project" />
     <orderEntry type="library" name="org.eclipse.egit.github.core-2.4.0-SNAPSHOT" level="project" />
     <orderEntry type="library" name="httpclient" level="project" />
     <orderEntry type="library" name="TeamCity patches" level="project" />
