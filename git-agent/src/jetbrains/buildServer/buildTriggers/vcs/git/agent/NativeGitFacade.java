@@ -20,6 +20,8 @@ import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import jetbrains.buildServer.ExecResult;
@@ -53,6 +55,7 @@ public class NativeGitFacade implements GitFacade {
   private final Context myCtx;
   private VcsRootSshKeyManager mySshKeyManager;
   private boolean myUseGitSshCommand = true;
+  private final Collection<String> myCustomConfig;
 
   public NativeGitFacade(@NotNull GitAgentSSHService ssh,
                          @NotNull String gitPath,
@@ -63,6 +66,7 @@ public class NativeGitFacade implements GitFacade {
                          @NotNull GitProgressLogger logger,
                          @NotNull GitExec gitExec,
                          @NotNull Map<String, String> env,
+                         @NotNull Collection<String> customConfig,
                          @NotNull Context ctx) {
     mySsh = ssh;
     myTmpDir = tmpDir;
@@ -74,6 +78,7 @@ public class NativeGitFacade implements GitFacade {
     myLogger = logger;
     myGitExec = gitExec;
     myEnv = env;
+    myCustomConfig = customConfig;
     myCtx = ctx;
   }
 
@@ -95,6 +100,7 @@ public class NativeGitFacade implements GitFacade {
     myLogger = logger;
     myGitExec = null;
     myEnv = new HashMap<String, String>(0);
+    myCustomConfig = Collections.emptyList();
     myCtx = new NoBuildContext();
   }
 
@@ -274,7 +280,7 @@ public class NativeGitFacade implements GitFacade {
 
   @NotNull
   private GitCommandLine createCommandLine() {
-    GitCommandLine cmd = new GitCommandLine(mySsh, myScriptGen, myTmpDir, myDeleteTempFiles, myLogger, myGitVersion, myEnv, myCtx);
+    GitCommandLine cmd = new GitCommandLine(mySsh, myScriptGen, myTmpDir, myDeleteTempFiles, myLogger, myGitVersion, myEnv, myCustomConfig, myCtx);
     cmd.setExePath(myGitPath);
     cmd.setWorkingDirectory(myRepositoryDir);
     cmd.setSshKeyManager(mySshKeyManager);

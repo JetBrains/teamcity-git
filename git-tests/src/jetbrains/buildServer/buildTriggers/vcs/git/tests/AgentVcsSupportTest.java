@@ -325,6 +325,20 @@ public class AgentVcsSupportTest {
     testSubmodulesCheckout(true, true);
   }
 
+  @Test
+  public void testSubmodulesCheckoutWithCustomConfig() throws Throwable {
+    final AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.CUSTOM_GIT_CONFIG, FileUtil.readText(dataFile("custom_config_example")));
+    }});
+
+    myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
+    myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.SUBMODULE_ADDED_VERSION, myCheckoutDir, build, false);
+
+    assertTrue(new File(myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
+  }
+
   /**
    * Test checkout submodules on agent. Machine that runs this test should have git installed.
    */
@@ -1705,6 +1719,7 @@ public class AgentVcsSupportTest {
                                               GitProgressLogger.NO_OP,
                                               GitVersion.MIN,
                                               new HashMap<String, String>(),
+                                              Collections.emptyList(),
                                               new NoBuildContext());
       cmd.setExePath(gitPath);
       cmd.setWorkingDirectory(new File(workDirectory));

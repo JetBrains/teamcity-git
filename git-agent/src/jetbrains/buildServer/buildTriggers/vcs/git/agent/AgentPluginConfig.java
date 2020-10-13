@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import java.util.Collection;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
@@ -89,6 +90,9 @@ public interface AgentPluginConfig extends PluginConfig {
   String getSshRequestToken();
 
   boolean isCleanCommandRespectsOtherRoots();
+
+  @NotNull
+  Collection<String> getCustomConfig();
 
   /**
    * Defines how progress output from git commands is written into build log

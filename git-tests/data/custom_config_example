@@ -1,0 +1,50 @@
+alias.addremove=!git r && git add . --all
+alias.aliases=!git config --list | grep 'alias\.' | sed 's/alias\.\([^=]*\)=\(.*\)/\1\   => \2/' | sort
+alias.all=add . --all
+alias.amend=!git log -n 1 --pretty=tformat:%s%n%n%b | git commit -F - --amend
+alias.br=branch -av
+alias.brname=!git branch | grep ^* | awk '{ print $2 }'
+alias.brdel=branch -D
+alias.ci=commit
+alias.changes=!f() { git log --pretty=format:'* %s' $1..$2; }; f
+alias.churn=!git log --all -M -C --name-only --format='format:' $@ | sort | grep -v '^$' | uniq -c | sort | awk 'BEGIN {print count,file} {print $1 , $2}'
+alias.co=checkout
+alias.details=log -n1 -p --format=fuller
+alias.export=archive -o latest.tar.gz -9 --prefix=latest/
+alias.unstage=reset HEAD --
+alias.g=!git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
+alias.in=pull --dry-run
+alias.l=!f() { git log $* | grep '^commit ' | cut -f 2 -d ' '; }; f
+alias.out=log --branches --not --remotes
+alias.r=!git ls-files -z --deleted | xargs -0 git rm
+alias.root=rev-parse --show-toplevel
+alias.st=status
+alias.subup=submodule update --init
+alias.tags=tag -l
+alias.this=!git init && git add . && git commit -m "Initial commit."
+alias.trim=!git reflog expire --expire=now --all && git gc --prune=now
+credential.helper=osxkeychain
+color.ui=true
+color.branch.current=yellow reverse
+color.branch.local=yellow
+color.branch.remote=green
+color.diff.meta=yellow bold
+color.diff.frag=magenta bold
+color.diff.old=red bold
+color.diff.new=green bold
+color.status.added=yellow
+color.status.changed=green
+color.status.untracked=red
+core.autocrlf=input
+core.compression=9
+core.excludesfile=~/.gitignore_global
+core.filemode=false
+diff.mnemonicprefix=true
+merge.log=true
+merge.ff=false
+push.default=simple
+url.https://bitbucket.org/.insteadof=bb:
+url.https://github.com/.insteadof=gh:
+url.https://gist.github.com/.insteadof=gist:
+user.name=Michael Wales
+user.email=webmaster@michaelwales.com

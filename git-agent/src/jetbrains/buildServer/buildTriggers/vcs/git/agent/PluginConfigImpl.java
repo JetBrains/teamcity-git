@@ -17,10 +17,15 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
+import java.util.regex.Pattern;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
@@ -63,11 +68,15 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String SSH_SEND_ENV_REQUEST_TOKEN = "sshSendEnvRequestToken";
   public static final String SSH_SEND_ENV_REQUEST_TOKEN_PARAM = "teamcity.internal.git." + SSH_SEND_ENV_REQUEST_TOKEN;
   public static final String CLEAN_RESPECTS_OTHER_ROOTS = "teamcity.internal.git.cleanRespectsOtherRoots";
+  public static final String CUSTOM_GIT_CONFIG = "teamcity.internal.git.customConfig";
+  
+  private static final Pattern NEW_LINE = Pattern.compile("(\r\n|\r|\n)");
 
   private final BuildAgentConfiguration myAgentConfig;
   private final AgentRunningBuild myBuild;
   private final VcsRoot myVcsRoot;
   private final GitExec myGitExec;
+  private final Collection<String> myCustomConfig;
 
   public PluginConfigImpl(@NotNull BuildAgentConfiguration agentConfig,
                           @NotNull AgentRunningBuild build,
@@ -77,6 +86,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
     myBuild = build;
     myVcsRoot = vcsRoot;
     myGitExec = gitExec;
+    myCustomConfig = parseCustomConfig();
   }
 
 
@@ -338,6 +348,21 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public boolean isCleanCommandRespectsOtherRoots() {
     final String p = myBuild.getSharedConfigParameters().get(CLEAN_RESPECTS_OTHER_ROOTS);
     return p == null || Boolean.parseBoolean(p);
+  }
+
+  @NotNull
+  @Override
+  public Collection<String> getCustomConfig() {
+    return myCustomConfig;
+  }
+
+  @NotNull
+  private Collection<String> parseCustomConfig() {
+    String customConfig = myBuild.getSharedConfigParameters().get(CUSTOM_GIT_CONFIG);
+    if (customConfig == null) {
+      customConfig = myVcsRoot.getProperty(Constants.CUSTOM_GIT_CONFIG);
+    }
+    return StringUtil.isEmptyOrSpaces(customConfig) ? Collections.emptyList() : Arrays.asList(NEW_LINE.split(customConfig));
   }
 
   private int parseTimeout(String valueFromBuild) {
