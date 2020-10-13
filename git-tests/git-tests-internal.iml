@@ -12,7 +12,7 @@
     <orderEntry type="module" module-name="git-agent-internal" />
     <orderEntry type="library" name="git-jsch" level="project" />
     <orderEntry type="module" module-name="git-server-tc-internal" />
-    <orderEntry type="library" name="quartz-2.3.2" level="project" />
+    <orderEntry type="library" name="Quartz-2.3.2" level="project" />
     <orderEntry type="library" name="git-httpclient" level="project" />
     <orderEntry type="library" name="git-javaEWAH" level="project" />
     <orderEntry type="library" name="git-jgit-server" level="project" />
