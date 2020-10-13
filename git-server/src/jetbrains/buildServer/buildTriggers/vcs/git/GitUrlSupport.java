@@ -188,8 +188,12 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
       props.put(Constants.BRANCH_NAME, GitUtils.expandRef(r.getMasterBranch()));
     } catch (RequestException r) {
       Loggers.VCS.warnAndDebugDetails("Failed to request details for the GitHub repository: " + ghRepo.repositoryUrl(), r);
-      if (r.getStatus() == 401 && auth.getAuthMethod() == AuthenticationMethod.PASSWORD) {
-        throw new VcsAuthenticationException("Incorrect username or password"); // seems credentials are incorrect
+      if (auth.getAuthMethod() == AuthenticationMethod.PASSWORD) {
+        if (r.getStatus() == 401) {
+          throw new VcsAuthenticationException("Incorrect username or password"); // seems credentials are incorrect
+        }
+
+        throw new VcsAuthenticationException(r.getMessage()); // some limits exceeded?
       }
     } catch (IOException e) {
       Loggers.VCS.warnAndDebugDetails("Failed to request details for the GitHub repository: " + ghRepo.repositoryUrl(), e);
