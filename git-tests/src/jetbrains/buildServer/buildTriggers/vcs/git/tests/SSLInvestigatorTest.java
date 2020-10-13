@@ -17,10 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.sun.net.httpserver.HttpsServer;
-import java.io.File;
-import java.net.URL;
-import java.util.Collections;
-import java.util.Optional;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
@@ -34,6 +30,11 @@ import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.jmock.lib.legacy.ClassImposteriser;
 import org.testng.annotations.*;
+
+import java.io.File;
+import java.net.URL;
+import java.util.Collections;
+import java.util.Optional;
 
 import static org.testng.Assert.*;
 
@@ -189,6 +190,8 @@ public class SSLInvestigatorTest {
       will(returnValue(false));
       atLeast(1).of(pluginConfig).getGitExec();
       will(returnValue(myMockery.mock(GitExec.class)));
+      atLeast(1).of(pluginConfig).getCustomConfig();
+      will(returnValue(Collections.emptyList()));
     }});
     final GitProgressLogger logger = myMockery.mock(GitProgressLogger.class);
     return myLoggingFactory.createFactory(ssh, pluginConfig, logger, myTempFiles.createTempDir(), Collections.emptyMap(), context);
