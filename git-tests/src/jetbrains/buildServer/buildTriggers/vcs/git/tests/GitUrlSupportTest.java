@@ -25,18 +25,19 @@ import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.ssh.ServerSshKeyManager;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
-import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jmock.Mock;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -81,7 +82,13 @@ public class GitUrlSupportTest extends BaseTestCase {
       if (myTestConnectionMocked != null && myTestConnectionMocked) return null;
       return myGitVcsSupport.testConnection(vcsRoot);
     }).build();
-    myUrlSupport = new GitUrlSupport(myGitVcsSupport);
+    myUrlSupport = new GitUrlSupport(myGitVcsSupport) {
+      @NotNull
+      @Override
+      protected VcsRoot createDummyRoot(@NotNull final Map<String, String> props, @Nullable final SProject curProject) {
+        return new VcsRootImpl(-1, Constants.VCS_NAME, props);
+      }
+    };
     myUrlSupport.setProjectManager(pm);
     myUrlSupport.setExtensionsProvider((ExtensionsProvider)epMock.proxy());
   }
@@ -102,6 +109,7 @@ public class GitUrlSupportTest extends BaseTestCase {
                                       "scm:git:ssh://github.com/path_to_repository",
                                       "scm:git:file://localhost/path_to_repository",
                                       "scm:git:ssh://github.com/nd/regex.git/pom.xml");
+    myTestConnectionMocked = true;
 
     for (String url : urls) {
       MavenVcsUrl vcsUrl = new MavenVcsUrl(url);
@@ -187,8 +195,8 @@ public class GitUrlSupportTest extends BaseTestCase {
     myTestKeys.add(new TeamCitySshKey("key1", new byte[0], true));
     myTestKeys.add(new TeamCitySshKey("key2", new byte[0], false));
 
-    Mock vcsRoot = mock(SVcsRoot.class);
-    myProjectMock.expects(once()).method("createDummyVcsRoot").with(eq(Constants.VCS_NAME), mapContaining(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME, "key2")).will(returnValue(vcsRoot.proxy()));
+//    Mock vcsRoot = mock(SVcsRoot.class);
+//    myProjectMock.expects(once()).method("createDummyVcsRoot").with(eq(Constants.VCS_NAME), mapContaining(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME, "key2")).will(returnValue(vcsRoot.proxy()));
     myTestConnectionMocked = true;
 
     GitVcsRoot root = toGitRoot(url);
@@ -219,15 +227,26 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   @Test
   public void should_not_use_private_key_for_local_repository() throws VcsException {
-    VcsUrl url = new VcsUrl("/home/user/repository.git");
-    GitVcsRoot root = toGitRoot(url);
+    final File localRepo = GitTestUtil.dataFile("repo.git");
+    assertTrue(localRepo.exists());
+
+    GitVcsRoot root = toGitRoot(new VcsUrl(GitUtils.toURL(localRepo)));
     assertEquals(AuthenticationMethod.ANONYMOUS.name(), root.getProperty(Constants.AUTH_METHOD));
   }
 
+  @Test
+  public void repo_no_master_branch() throws VcsException {
+    final File localRepo = GitTestUtil.dataFile("repo_without_master.git");
+    assertTrue(localRepo.exists());
+
+    GitVcsRoot root = toGitRoot(new VcsUrl(GitUtils.toURL(localRepo)));
+    assertEquals("refs/heads/default", root.getProperty(Constants.BRANCH_NAME));
+  }
 
   @Test
   public void should_use_username_from_url() throws Exception {
     VcsUrl url = new VcsUrl("scm:git:http://teamcity@acme.com/repository.git");
+    myTestConnectionMocked = true;
     GitVcsRoot root = toGitRoot(url);
     assertEquals("teamcity", root.getProperty(Constants.USERNAME));
   }

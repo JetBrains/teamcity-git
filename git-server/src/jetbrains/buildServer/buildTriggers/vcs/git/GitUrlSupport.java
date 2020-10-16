@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.ExtensionsProvider;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.ProjectManager;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.ssh.ServerSshKeyManager;
@@ -30,6 +31,8 @@ import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.egit.github.core.Repository;
 import org.eclipse.egit.github.core.client.GitHubClient;
 import org.eclipse.egit.github.core.service.RepositoryService;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -39,11 +42,18 @@ import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * @author dmitry.neverov
  */
 public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, GitServerExtension {
+
+  private static final String REMOTE_HEAD_NOT_FOUND = "Cannot determine remote HEAD";
+  private static final String MULTIPLE_REMOTE_HEAD = "Multiple remote HEAD branches";
+
+  private static final String[] POSSIBLE_DEFAULT_BRANCHES = {"main", "default", "development", "develop", "primary", "trunk"};
 
   private final GitVcsSupport myGitSupport;
   private volatile ExtensionsProvider myExtensionsProvider;
@@ -64,6 +74,17 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
   // have to do it this way because Upsource loads Git plugin and it does not have ExtensionsProvider bean
   public void setExtensionsProvider(@NotNull final ExtensionsProvider extensionsProvider) {
     myExtensionsProvider = extensionsProvider;
+  }
+
+  private static boolean isBranchRelatedError(@NotNull VcsException e) {
+    if (isDefaultBranchNotFound(e)) return true;
+    final String message = e.getMessage();
+    return StringUtil.isNotEmpty(message) &&
+           (message.equals(REMOTE_HEAD_NOT_FOUND) || message.equals(GitVcsSupport.GIT_REPOSITORY_HAS_NO_BRANCHES) || message.equals(MULTIPLE_REMOTE_HEAD));
+  }
+
+  private static boolean isDefaultBranchNotFound(@NotNull VcsException e) {
+    return e.getMessage().contains(GitVcsSupport.DEFAULT_BRANCH_REVISION_NOT_FOUND);
   }
 
   @Nullable
@@ -95,43 +116,34 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
 
     int numSshKeysTried = 0;
 
-    final TestConnectionSupport testConnectionSupport = myGitSupport.getTestConnectionSupport();
-    assert testConnectionSupport != null;
+    final SProject curProject = myProjectManager == null ? null : myProjectManager.findProjectById(operationContext.getCurrentProjectId());
 
-    if (AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString().equals(props.get(Constants.AUTH_METHOD)) && fetchUrl.endsWith(".git") && myProjectManager != null) {
+    if (AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString().equals(props.get(Constants.AUTH_METHOD)) && fetchUrl.endsWith(".git") && curProject != null) {
       // SSH access, before using the default private key which may not be accessible on the agent,
       // let's iterate over all SSH keys of the current project, maybe we'll find a working one
-      SProject curProject = myProjectManager.findProjectById(operationContext.getCurrentProjectId());
       ServerSshKeyManager serverSshKeyManager = getSshKeyManager();
-      if (curProject != null && serverSshKeyManager != null) {
+      if (serverSshKeyManager != null) {
         for (TeamCitySshKey key: serverSshKeyManager.getKeys(curProject)) {
           if (key.isEncrypted()) continue; // don't know password, so can't use it
-          String keyName = key.getName();
 
           Map<String, String> propsCopy = new HashMap<>(props);
           propsCopy.put(Constants.AUTH_METHOD, AuthenticationMethod.TEAMCITY_SSH_KEY.toString());
-          propsCopy.put(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME, keyName);
-
-          SVcsRoot dummyVcsRoot = curProject.createDummyVcsRoot(Constants.VCS_NAME, propsCopy);
+          propsCopy.put(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME, key.getName());
 
           try {
             numSshKeysTried++;
-            testConnectionSupport.testConnection(dummyVcsRoot);
-            return propsCopy;
+            return testConnection(propsCopy, curProject);
           } catch (VcsException e) {
-            if (GitVcsSupport.GIT_REPOSITORY_HAS_NO_BRANCHES.equals(e.getMessage()))
-              throw e;
+            if (isBranchRelatedError(e)) throw e;
           }
         }
       }
 
       // could not find any valid keys, proceed with default SSH key
       try {
-        testConnectionSupport.testConnection(new VcsRootImpl(-1, Constants.VCS_NAME, props));
-        return props;
+        return testConnection(props, curProject);
       } catch (VcsException e) {
-        if (GitVcsSupport.GIT_REPOSITORY_HAS_NO_BRANCHES.equals(e.getMessage()))
-          throw e;
+        if (isBranchRelatedError(e)) throw e;
 
         String message = "Could not connect to the Git repository by SSH protocol.";
         if (numSshKeysTried > 0) {
@@ -141,26 +153,92 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
           message += " Could not find an SSH key in the current project which would work with this Git repository.";
         }
 
-        throw new VcsException(message + " Error message: " + e.getMessage());
+        throw new VcsException(message + " Error message: " + e.getMessage(), e);
       }
     }
 
-    if ("git".equals(scmName) || "git".equals(uri.getScheme()) || fetchUrl.endsWith(".git")) //git protocol, or git scm provider
-      return props;
+    final boolean defaultBranchKnown = props.get(Constants.BRANCH_NAME) != null;
+    if (defaultBranchKnown) {
+      //git protocol, or git scm provider
+      if ("git".equals(scmName) || "git".equals(uri.getScheme()) || fetchUrl.endsWith(".git")) return props;
+    }
 
+    // need to guess default branch or
     // not SSH or URL does not end with .git, still try to connect just for the case
     try {
-      testConnectionSupport.testConnection(new VcsRootImpl(-1, Constants.VCS_NAME, props));
+      return testConnection(props, curProject);
+    } catch (VcsException e) {
+      if (isBranchRelatedError(e) || GitServerUtil.isAuthError(e)) throw e;
+
+      // probably not git
+      Loggers.VCS.infoAndDebugDetails("Failed to recognize " + url.getUrl() + " as a git repository", e);
+      return null;
+    }
+  }
+
+  @NotNull
+  private Map<String, String> testConnection(@NotNull Map<String, String> props, @Nullable SProject curProject) throws VcsException {
+    final TestConnectionSupport testConnectionSupport = myGitSupport.getTestConnectionSupport();
+    assert testConnectionSupport != null;
+
+    final VcsRoot vcsRoot = createDummyRoot(props, curProject);
+    try {
+      testConnectionSupport.testConnection(vcsRoot);
+      props.putIfAbsent(Constants.BRANCH_NAME, "refs/heads/master");
       return props;
     } catch (VcsException e) {
-      if (GitVcsSupport.GIT_REPOSITORY_HAS_NO_BRANCHES.equals(e.getMessage()))
-        throw e;
-
-      if (GitServerUtil.isAuthError(e)) {
-        throw e;
+      // in case default branch is unknown and "master" branch not advertised by the remote - try to guess default branch
+      if (props.get(Constants.BRANCH_NAME) == null && isDefaultBranchNotFound(e)) {
+        props.put(Constants.BRANCH_NAME, guessDefaultBranch(vcsRoot));
+        return props;
       }
+      throw e;
+    }
+  }
 
-      return null; // probably not git
+  // protected for tests
+  @NotNull
+  protected VcsRoot createDummyRoot(@NotNull Map<String, String> props, @Nullable SProject curProject) {
+    return curProject == null ? new VcsRootImpl(-1, Constants.VCS_NAME, props) : curProject.createDummyVcsRoot(Constants.VCS_NAME, props);
+  }
+
+  // see git remote.c guess_remote_head method for details
+  @NotNull
+  private String guessDefaultBranch(@NotNull VcsRoot vcsRoot) throws VcsException{
+    final Collection<Ref> remoteRefs = getRemoteRefs(vcsRoot);
+
+    final Ref head = remoteRefs.stream().filter(r -> "HEAD".equals(r.getName())).findFirst().orElse(null);
+
+    if (head == null) throw new VcsException(REMOTE_HEAD_NOT_FOUND);
+    if (head.isSymbolic()) return head.getTarget().getName();
+
+    final ObjectId headObjectId = head.getObjectId();
+    if (headObjectId == null) throw new VcsException(REMOTE_HEAD_NOT_FOUND);
+
+    final Set<String> candidates = remoteRefs.stream()
+                                             .filter(r -> r.getName().startsWith("refs/heads/") && headObjectId.equals(r.getObjectId()))
+                                             .map(r -> r.getName())
+                                             .collect(Collectors.toSet());
+    if (candidates.isEmpty()) throw new VcsException(REMOTE_HEAD_NOT_FOUND);
+    if (candidates.size() == 1) return candidates.iterator().next();
+
+    for (String b : POSSIBLE_DEFAULT_BRANCHES) {
+      if (candidates.contains(b)) return b;
+    }
+
+    throw new VcsException(MULTIPLE_REMOTE_HEAD);
+  }
+
+  private Collection<Ref> getRemoteRefs(@NotNull VcsRoot vcsRoot) throws VcsException {
+    final OperationContext context = myGitSupport.createContext(vcsRoot, "get remote refs to detect default branch");
+    try {
+      return myGitSupport.getRepositoryManager().runWithDisabledRemove(context.getGitRoot().getRepositoryDir(), () -> {
+        return myGitSupport.getRemoteRefs(context.getRoot()).values();
+      });
+    } catch (Exception e) {
+      throw context.wrapException(e);
+    } finally {
+      context.close();
     }
   }
 
