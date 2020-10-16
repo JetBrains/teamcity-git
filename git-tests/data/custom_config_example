@@ -21,7 +21,7 @@ alias.root=rev-parse --show-toplevel
 alias.st=status
 alias.subup=submodule update --init
 alias.tags=tag -l
-alias.this=!git init && git add . && git commit -m "Initial commit."
+alias.this=!git init && git add . && git commit -m \"Initial commit.\"
 alias.trim=!git reflog expire --expire=now --all && git gc --prune=now
 credential.helper=osxkeychain
 color.ui=true

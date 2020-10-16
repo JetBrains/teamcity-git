@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.TestNGUtil;
@@ -77,6 +78,8 @@ import static org.testng.AssertJUnit.*;
  */
 @Test
 public class AgentVcsSupportTest {
+
+  private static final Pattern NEW_LINE = Pattern.compile("(\r\n|\r|\n)");
 
   private TempFiles myTempFiles;
   private File myMainRepo;
@@ -323,6 +326,29 @@ public class AgentVcsSupportTest {
   @Test
   public void testSubmodulesCheckoutWithMirrorsWithAlternates() throws Exception {
     testSubmodulesCheckout(true, true);
+  }
+
+  @DataProvider(name = "custom_config_per_line")
+  public Object[][] custom_config_per_line() throws Throwable {
+    ArrayList<Object[]> res = new ArrayList<>();
+    for (String line : NEW_LINE.split(FileUtil.readText(dataFile("custom_config_example")))) {
+      res.add(new Object[]{line});
+    }
+    return res.toArray(new Object[][]{});
+  }
+
+  @Test(dataProvider = "custom_config_per_line")
+  public void testSubmodulesCheckoutWithCustomConfigPerLine(@NotNull String line) throws Throwable {
+    final AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.CUSTOM_GIT_CONFIG, line);
+    }});
+
+    myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
+    myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.SUBMODULE_ADDED_VERSION, myCheckoutDir, build, false);
+
+    assertTrue(new File(myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
   }
 
   @Test
@@ -1561,9 +1587,9 @@ public class AgentVcsSupportTest {
     //create orphaned idx files
     File mirror = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(myMainRepo));
     File idxInMirror = new File(new File(new File(mirror, "objects"), "pack"), "whatever.idx");
-    FileUtil.writeFileAndReportErrors(idxInMirror, "whatever");
+    writeFileAndReportErrors(idxInMirror, "whatever");
     File idxInCheckoutDir = new File(new File(new File(mirror, "objects"), "pack"), "whatever.idx");
-    FileUtil.writeFileAndReportErrors(idxInCheckoutDir, "whatever");
+    writeFileAndReportErrors(idxInCheckoutDir, "whatever");
 
     //checkout again
     myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, createRunningBuild(true), false);
@@ -1624,11 +1650,11 @@ public class AgentVcsSupportTest {
   public void not_fetch_submodules() throws Exception {
     final File repo = new File(getTempDirectory(), "TW-63901");
     FileUtil.delete(repo);
-    FileUtil.copyDir(dataFile("TW-63901-1"), repo);
+    copyDir(dataFile("TW-63901-1"), repo);
 
     final File submoduleRepo = new File(getTempDirectory(), "TW-63901-submodule");
     FileUtil.delete(submoduleRepo);
-    FileUtil.copyDir(dataFile("TW-63901-submodule"), submoduleRepo);
+    copyDir(dataFile("TW-63901-submodule"), submoduleRepo);
 
     final VcsRootImpl root = createRoot(repo, "master");
     root.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
@@ -1650,7 +1676,7 @@ public class AgentVcsSupportTest {
     root.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.IGNORE.name());
     FileUtil.delete(repo);
     // new repo references submodule commit, which doesn't exist
-    FileUtil.copyDir(dataFile("TW-63901-2"), repo);
+    copyDir(dataFile("TW-63901-2"), repo);
     myVcsSupport.updateSources(root, new CheckoutRules(""), "565f5f32581cd1dba1305c5f5651270c33f40323", myCheckoutDir, build, false);
   }
 
@@ -1711,7 +1737,7 @@ public class AgentVcsSupportTest {
 
   private class PushCommand {
     void run(String gitPath, String workDirectory) throws Exception {
-      File tmpDir = new File(FileUtil.getTempDirectory());
+      File tmpDir = new File(getTempDirectory());
       GitCommandLine cmd = new GitCommandLine(null, SystemInfo.isUnix ? new UnixScriptGen(tmpDir, new EscapeEchoArgumentUnix())
                                                                       : new WinScriptGen(tmpDir, new EscapeEchoArgumentWin()),
                                               tmpDir,
