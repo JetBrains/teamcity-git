@@ -58,6 +58,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private static final Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
   static final String GIT_REPOSITORY_HAS_NO_BRANCHES = "Git repository has no branches";
+  static final String DEFAULT_BRANCH_REVISION_NOT_FOUND = "Cannot find revision of the default branch";
 
   private ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
@@ -187,7 +188,7 @@ public class GitVcsSupport extends ServerVcsSupport
         if (branchRevisions.isEmpty()) {
           throw new VcsException(GIT_REPOSITORY_HAS_NO_BRANCHES);
         } else {
-          throw new VcsException("Cannot find revision of the default branch '" + refInRoot + "' of vcs root '" + gitRoot.getName() + "'");
+          throw new VcsException(DEFAULT_BRANCH_REVISION_NOT_FOUND + " '" + refInRoot + "' of vcs root '" + gitRoot.getName() + "'");
         }
       }
       return RepositoryStateData.createVersionState(fullRef, branchRevisions);
@@ -282,7 +283,7 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public Map<String, String> getDefaultVcsProperties() {
     final HashMap<String, String> map = new HashMap<String, String>();
-    map.put(Constants.BRANCH_NAME, "refs/heads/master");
+    //map.put(Constants.BRANCH_NAME, "refs/heads/master");
     map.put(Constants.IGNORE_KNOWN_HOSTS, "true");
     map.put(Constants.AUTH_METHOD, AuthenticationMethod.ANONYMOUS.name());
     map.put(Constants.USERNAME_STYLE, GitVcsRoot.UserNameStyle.USERID.name());
