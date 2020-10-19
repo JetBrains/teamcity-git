@@ -185,6 +185,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     final VcsRoot vcsRoot = createDummyRoot(props, curProject);
     try {
       testConnectionSupport.testConnection(vcsRoot);
+      props.putIfAbsent(Constants.BRANCH_NAME, "refs/heads/master");
       return props;
     } catch (VcsException e) {
       // in case default branch is unknown and "master" branch not advertised by the remote - try to guess default branch
