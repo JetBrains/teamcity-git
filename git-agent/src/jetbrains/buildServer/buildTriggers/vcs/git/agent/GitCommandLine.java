@@ -20,10 +20,6 @@ import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.KeyPair;
-import java.io.*;
-import java.nio.charset.Charset;
-import java.nio.charset.UnsupportedCharsetException;
-import java.util.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import jetbrains.buildServer.agent.BuildInterruptReason;
@@ -40,6 +36,11 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.charset.UnsupportedCharsetException;
+import java.util.*;
 
 public class GitCommandLine extends GeneralCommandLine {
 
@@ -258,7 +259,13 @@ public class GitCommandLine extends GeneralCommandLine {
   }
 
   public void setSshKeyManager(VcsRootSshKeyManager sshKeyManager) {
-    mySshKeyManager = sshKeyManager;
+    mySshKeyManager = root -> {
+      final TeamCitySshKey key = sshKeyManager.getKey(root);
+      if (key == null) {
+        myLogger.warning("Failed to retrieve uploaded ssh key from server, agent default ssh key will be used");
+      }
+      return key;
+    };
   }
 
   public void setUseGitSshCommand(boolean useGitSshCommand) {

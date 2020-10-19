@@ -24,6 +24,8 @@ public interface GitProgressLogger {
 
   void message(@NotNull String message);
 
+  void warning(@NotNull String message);
+
   void progressMessage(@NotNull String message);
 
   void closeBlock(@NotNull String name);
@@ -32,6 +34,8 @@ public interface GitProgressLogger {
     public void openBlock(@NotNull final String name) {
     }
     public void message(@NotNull final String message) {
+    }
+    public void warning(@NotNull final String message) {
     }
     public void progressMessage(@NotNull final String message) {
     }

@@ -54,6 +54,12 @@ public class GitBuildProgressLogger implements GitProgressLogger {
   }
 
   @Override
+  public void warning(@NotNull final String message) {
+    myBlockMessageCount.incrementAndGet();
+    myLogger.warning(message);
+  }
+
+  @Override
   public void progressMessage(@NotNull String message) {
     myBlockMessageCount.incrementAndGet();
     switch (myProgressMode) {
