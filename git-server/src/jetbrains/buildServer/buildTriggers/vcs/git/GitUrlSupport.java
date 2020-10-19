@@ -16,13 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import jetbrains.buildServer.ExtensionsProvider;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.ProjectManager;
@@ -44,6 +37,14 @@ import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * @author dmitry.neverov
@@ -195,8 +196,9 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     }
   }
 
+  // protected for tests
   @NotNull
-  private VcsRoot createDummyRoot(@NotNull Map<String, String> props, @Nullable SProject curProject) {
+  protected VcsRoot createDummyRoot(@NotNull Map<String, String> props, @Nullable SProject curProject) {
     return curProject == null ? new VcsRootImpl(-1, Constants.VCS_NAME, props) : curProject.createDummyVcsRoot(Constants.VCS_NAME, props);
   }
 
