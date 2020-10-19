@@ -85,6 +85,7 @@ public class CleanerTest extends BaseTestCase {
     final VcsRoot root = GitTestUtil.getVcsRoot();
     mySupport.collectChanges(root, "70dbcf426232f7a33c7e5ebdfbfb26fc8c467a46", "a894d7d58ffde625019a9ecf8267f5f1d1e5c341", CheckoutRules.DEFAULT);
 
+    setInternalProperty("teamcity.git.accessTimeUpdateRateMinutes", "0"); // make sure repo timestamp will be updated
     mySupport.getCurrentState(root);//it will create dir in cache directory
     File repositoryDir = getRepositoryDir(root);
 
