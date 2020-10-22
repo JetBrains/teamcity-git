@@ -17,7 +17,13 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.vcs.RevisionNotFoundException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.lib.ObjectId;
@@ -29,12 +35,6 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
@@ -82,7 +82,7 @@ public class CommitLoaderImpl implements CommitLoader {
       try {
         return getCommit(db, commitId);
       } catch (IOException e1) {
-        throw new VcsException("Cannot find commit " + commitSHA + " in repository " + root.debugInfo());
+        throw new RevisionNotFoundException("Cannot find commit " + commitSHA + " in repository " + root.debugInfo());
       }
     }
   }

@@ -28,9 +28,7 @@ import org.testng.annotations.Test;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
-import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
-import static org.testng.AssertJUnit.fail;
+import static org.testng.AssertJUnit.*;
 
 @Test
 public class ContentProviderTest extends BaseRemoteRepositoryTest {
@@ -164,6 +162,22 @@ public class ContentProviderTest extends BaseRemoteRepositoryTest {
       fail("should fail");
     } catch (VcsException e) {
       assertTrue(e.getMessage().contains("Invalid version 'invalidSHA'"));
+    }
+  }
+
+  public void should_throw_specific_exception_when_revision_does_not_exist() throws VcsException {
+    GitVcsSupport git = createGit();
+    VcsRoot root = vcsRoot()
+      .withFetchUrl(getRemoteRepositoryUrl("repo.git"))
+      .withBranch("master")
+      .build();
+    VcsModification m = new MockVcsModification("9b9fbfbb43e7edfad018b482e15e7f93cca4e69f"); // some non existing revision
+    VcsChangeInfo change = new VcsChange(VcsChangeInfo.Type.CHANGED, "readme.txt", "readme.txt", m.getVersion(), m.getVersion());
+    try {
+      git.getContentProvider().getContent(m, change, VcsChangeInfo.ContentType.AFTER_CHANGE, root);
+      fail("should fail");
+    } catch (RevisionNotFoundException e) {
+      assertTrue(e.getMessage().contains("Cannot find commit " + m.getVersion()));
     }
   }
 
