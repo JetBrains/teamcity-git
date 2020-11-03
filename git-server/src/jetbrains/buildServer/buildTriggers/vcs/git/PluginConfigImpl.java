@@ -629,4 +629,9 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public boolean fetchAllRefsEnabled() {
     return TeamCityProperties.getBooleanOrTrue("teamcity.git.fetch.all.refs.enabled");
   }
+
+  @Override
+  public long repositoryWriteLockTimeout() {
+    return TeamCityProperties.getLong("teamcity.git.repositoryWriteLockTimeoutSeconds", 0);
+  }
 }

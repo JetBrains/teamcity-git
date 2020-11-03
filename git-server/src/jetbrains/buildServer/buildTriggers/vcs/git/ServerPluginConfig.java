@@ -174,4 +174,6 @@ public interface ServerPluginConfig extends PluginConfig {
   List<String> getRecoverableFetchErrorMessages();
 
   boolean fetchAllRefsEnabled();
+
+  long repositoryWriteLockTimeout();
 }

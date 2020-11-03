@@ -401,6 +401,11 @@ public class PluginConfigBuilder {
       public boolean fetchAllRefsEnabled() {
         return myFetchAllRefsEnabled;
       }
+
+      @Override
+      public long repositoryWriteLockTimeout() {
+        return 0;
+      }
     };
   }
 

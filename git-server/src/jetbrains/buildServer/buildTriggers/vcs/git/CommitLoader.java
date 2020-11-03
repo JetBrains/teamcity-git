@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsOperationRejectedException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -49,6 +50,7 @@ public interface CommitLoader {
    * First fetches only corresponding branches and, only if there are still any tip revisions missing,
    * fetches all branches advertised by the remote.
    * @throws VcsException if unable to find any of the tip revisions after fetching twice
+   * @throws VcsOperationRejectedException if unable to perform the operation straight away (retry later possible)
    */
   void loadCommits(@NotNull OperationContext context,
                    @NotNull URIish fetchURI,

@@ -17,14 +17,10 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.RevisionNotFoundException;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsOperationRejectedException;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
@@ -35,6 +31,13 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
@@ -139,8 +142,7 @@ public class CommitLoaderImpl implements CommitLoader {
       if (revisions.isEmpty()) return;
 
       final long start = System.currentTimeMillis();
-      ReentrantLock lock = myRepositoryManager.getWriteLock(repositoryDir);
-      lock.lock();
+      final ReentrantLock lock = acquireWriteLock(repositoryDir, context.getPluginConfig().repositoryWriteLockTimeout());
       try {
         final long finish = System.currentTimeMillis();
         final long waitTime = finish - start;
@@ -167,6 +169,24 @@ public class CommitLoaderImpl implements CommitLoader {
         lock.unlock();
       }
     }
+  }
+
+  @NotNull
+  private ReentrantLock acquireWriteLock(@NotNull File repo, long timeout) throws VcsException {
+    final ReentrantLock lock = myRepositoryManager.getWriteLock(repo);
+    if (timeout > 0) {
+      try {
+        if (lock.tryLock(timeout, TimeUnit.SECONDS)) {
+          return lock;
+        }
+        throw new VcsOperationRejectedException("Write lock timeout: failed to acquire lock in " + timeout + StringUtil.pluralize(" second") + ". Please try later.");
+      } catch (InterruptedException e) {
+        throw new VcsException("Commit loader operation interrupted", e);
+      }
+    } else {
+      lock.lock();
+    }
+    return lock;
   }
 
   @NotNull
