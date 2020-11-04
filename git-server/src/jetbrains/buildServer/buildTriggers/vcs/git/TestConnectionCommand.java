@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.*;
@@ -57,30 +58,34 @@ public class TestConnectionCommand {
 
   public String testConnection(@NotNull OperationContext context) throws Exception {
     return JSchLoggers.evaluateWithLoggingLevel(Level.DEBUG, () -> {
-      GitVcsRoot root = context.getGitRoot();
-      File repositoryTempDir = null;
-      try {
-        repositoryTempDir = FileUtil.createTempDirectory("git-testcon", "");
-        root.setCustomRepositoryDir(repositoryTempDir);
-        Repository r = context.getRepository();
+
+      return IOGuard.allowNetworkCall(() -> {
+        GitVcsRoot root = context.getGitRoot();
+        File repositoryTempDir = null;
         try {
-          if (LOG.isDebugEnabled())
-            LOG.debug("Opening connection for " + root.debugInfo());
-          validateBranchSpec(root);
-          checkFetchConnection(root);
-          checkPushConnection(root, r);
-          return null;
-        } catch (NotSupportedException nse) {
-          throw friendlyNotSupportedException(root, nse);
-        } catch (TransportException te) {
-          throw friendlyTransportException(te, root);
+          repositoryTempDir = FileUtil.createTempDirectory("git-testcon", "");
+          root.setCustomRepositoryDir(repositoryTempDir);
+          Repository r = context.getRepository();
+          try {
+            if (LOG.isDebugEnabled())
+              LOG.debug("Opening connection for " + root.debugInfo());
+            validateBranchSpec(root);
+            checkFetchConnection(root);
+            checkPushConnection(root, r);
+            return null;
+          } catch (NotSupportedException nse) {
+            throw friendlyNotSupportedException(root, nse);
+          } catch (TransportException te) {
+            throw friendlyTransportException(te, root);
+          }
+        } finally {
+          if (repositoryTempDir != null) {
+            myRepositoryManager.cleanLocksFor(repositoryTempDir);
+            FileUtil.delete(repositoryTempDir);
+          }
         }
-      } finally {
-        if (repositoryTempDir != null) {
-          myRepositoryManager.cleanLocksFor(repositoryTempDir);
-          FileUtil.delete(repositoryTempDir);
-        }
-      }
+      });
+
     });
   }
 

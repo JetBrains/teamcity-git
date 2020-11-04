@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.ExtensionsProvider;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.ProjectManager;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.ssh.ServerSshKeyManager;
@@ -261,7 +262,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
       client.setCredentials(auth.getUserName(), auth.getPassword());
     }
     try {
-      Repository r = new RepositoryService(client).getRepository(ghRepo.owner(), ghRepo.repoName());
+      Repository r = IOGuard.allowNetworkCall(() -> new RepositoryService(client).getRepository(ghRepo.owner(), ghRepo.repoName()));
       props.put(Constants.BRANCH_NAME, GitUtils.expandRef(r.getMasterBranch()));
     } catch (RequestException r) {
       Loggers.VCS.warnAndDebugDetails("Failed to request details for the GitHub repository: " + ghRepo.repositoryUrl(), r);
