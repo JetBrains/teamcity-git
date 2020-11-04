@@ -32,10 +32,7 @@ import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
-import jetbrains.buildServer.vcs.AbstractPatchBuilder;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsPersonalSupport;
-import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.LowLevelPatchBuilder;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import org.apache.commons.codec.Decoder;
@@ -262,6 +259,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
       Element.class,
       Layout.class,
       VcsException.class,
+      VcsOperationRejectedException.class,
       BasicConfigurator.class,
       HttpClientConnectionFactory.class,
       HttpClient.class,
