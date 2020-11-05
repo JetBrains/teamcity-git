@@ -25,6 +25,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
+import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -512,39 +513,41 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   private Map<String, Ref> getRemoteRefs(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws Exception {
-    long retryInterval = myConfig.getConnectionRetryIntervalMillis();
-    int attemptsLeft = myConfig.getConnectionRetryAttempts();
-    int timeout = myConfig.getRepositoryStateTimeoutSeconds();
-    while (true) {
-      final long start = System.currentTimeMillis();
-      Transport transport = null;
-      FetchConnection connection = null;
-      try {
-        transport = myTransportFactory.createTransport(db, gitRoot.getRepositoryFetchURL().get(), gitRoot.getAuthSettings(), timeout);
-        connection = transport.openFetch();
-        return connection.getRefsMap();
-      } catch (NotSupportedException nse) {
-        throw friendlyNotSupportedException(gitRoot, nse);
-      } catch (TransportException te) {
-        attemptsLeft--;
-        if (isRecoverable(te) && attemptsLeft > 0) {
-          LOG.warn("List remote refs failed: " + te.getMessage() + ", " + attemptsLeft + " attempt(s) left");
-        } else {
-          throw friendlyTransportException(te, gitRoot);
+    return IOGuard.allowNetworkCall(() -> {
+      long retryInterval = myConfig.getConnectionRetryIntervalMillis();
+      int attemptsLeft = myConfig.getConnectionRetryAttempts();
+      int timeout = myConfig.getRepositoryStateTimeoutSeconds();
+      while (true) {
+        final long start = System.currentTimeMillis();
+        Transport transport = null;
+        FetchConnection connection = null;
+        try {
+          transport = myTransportFactory.createTransport(db, gitRoot.getRepositoryFetchURL().get(), gitRoot.getAuthSettings(), timeout);
+          connection = transport.openFetch();
+          return connection.getRefsMap();
+        } catch (NotSupportedException nse) {
+          throw friendlyNotSupportedException(gitRoot, nse);
+        } catch (TransportException te) {
+          attemptsLeft--;
+          if (isRecoverable(te) && attemptsLeft > 0) {
+            LOG.warn("List remote refs failed: " + te.getMessage() + ", " + attemptsLeft + " attempt(s) left");
+          } else {
+            throw friendlyTransportException(te, gitRoot);
+          }
+        } catch (WrongPassphraseException e) {
+          throw new VcsException(e.getMessage(), e);
+        } finally {
+          if (connection != null)
+            connection.close();
+          if (transport != null)
+            transport.close();
+          final long finish = System.currentTimeMillis();
+          PERFORMANCE_LOG.debug("[getRemoteRefs] repository: " + LogUtil.describe(gitRoot) + ", took " + (finish - start) + "ms");
         }
-      } catch (WrongPassphraseException e) {
-        throw new VcsException(e.getMessage(), e);
-      } finally {
-        if (connection != null)
-          connection.close();
-        if (transport != null)
-          transport.close();
-        final long finish = System.currentTimeMillis();
-        PERFORMANCE_LOG.debug("[getRemoteRefs] repository: " + LogUtil.describe(gitRoot) + ", took " + (finish - start) + "ms");
+        Thread.sleep(retryInterval);
+        retryInterval *= 2;
       }
-      Thread.sleep(retryInterval);
-      retryInterval *= 2;
-    }
+    });
   }
 
   private boolean isRecoverable(@NotNull TransportException e) {

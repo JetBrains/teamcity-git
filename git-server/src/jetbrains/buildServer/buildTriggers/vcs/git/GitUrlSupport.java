@@ -219,7 +219,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
 
     final Set<String> candidates = remoteRefs.stream()
                                              .filter(r -> r.getName().startsWith("refs/heads/") && headObjectId.equals(r.getObjectId()))
-                                             .map(r -> r.getName())
+                                             .map(Ref::getName)
                                              .collect(Collectors.toSet());
     if (candidates.isEmpty()) throw new VcsException(REMOTE_HEAD_NOT_FOUND);
     if (candidates.size() == 1) return candidates.iterator().next();
@@ -234,9 +234,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
   private Collection<Ref> getRemoteRefs(@NotNull VcsRoot vcsRoot) throws VcsException {
     final OperationContext context = myGitSupport.createContext(vcsRoot, "get remote refs to detect default branch");
     try {
-      return myGitSupport.getRepositoryManager().runWithDisabledRemove(context.getGitRoot().getRepositoryDir(), () -> {
-        return myGitSupport.getRemoteRefs(context.getRoot()).values();
-      });
+      return myGitSupport.getRepositoryManager().runWithDisabledRemove(context.getGitRoot().getRepositoryDir(), () -> myGitSupport.getRemoteRefs(context.getRoot()).values());
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
