@@ -59,7 +59,7 @@ public class TestConnectionCommand {
   public String testConnection(@NotNull OperationContext context) throws Exception {
     return JSchLoggers.evaluateWithLoggingLevel(Level.DEBUG, () -> {
 
-      return IOGuard.allowNetworkCall(() -> {
+      return IOGuard.allowNetworkAndCommandLine(() -> {
         GitVcsRoot root = context.getGitRoot();
         File repositoryTempDir = null;
         try {
