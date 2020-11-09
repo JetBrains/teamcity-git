@@ -16,12 +16,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import java.util.Collection;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Collection;
 
 /**
  * @author dmitry.neverov
@@ -93,6 +94,8 @@ public interface AgentPluginConfig extends PluginConfig {
 
   @NotNull
   Collection<String> getCustomConfig();
+
+  int getRemoteOperationAttempts();
 
   /**
    * Defines how progress output from git commands is written into build log

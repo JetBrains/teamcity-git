@@ -16,12 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import java.io.File;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.regex.Pattern;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
@@ -34,6 +28,13 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * @author dmitry.neverov
@@ -69,7 +70,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String SSH_SEND_ENV_REQUEST_TOKEN_PARAM = "teamcity.internal.git." + SSH_SEND_ENV_REQUEST_TOKEN;
   public static final String CLEAN_RESPECTS_OTHER_ROOTS = "teamcity.internal.git.cleanRespectsOtherRoots";
   public static final String CUSTOM_GIT_CONFIG = "teamcity.internal.git.customConfig";
-  
+  public static final String REMOTE_OPERATION_ATTEMPTS = "teamcity.internal.git.remoteOperationAttempts";
+
   private static final Pattern NEW_LINE = Pattern.compile("(\r\n|\r|\n)");
 
   private final BuildAgentConfiguration myAgentConfig;
@@ -354,6 +356,19 @@ public class PluginConfigImpl implements AgentPluginConfig {
   @Override
   public Collection<String> getCustomConfig() {
     return myCustomConfig;
+  }
+
+  @Override
+  public int getRemoteOperationAttempts() {
+    final String param = myBuild.getSharedConfigParameters().get(REMOTE_OPERATION_ATTEMPTS);
+    if (StringUtil.isNotEmpty(param)) {
+      try {
+        return Integer.parseInt(param);
+      } catch (NumberFormatException e) {
+        // return below
+      }
+    }
+    return 5;
   }
 
   @NotNull
