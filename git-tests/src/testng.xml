@@ -52,6 +52,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SubmoduleUrlResolverTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ProcessXmxProviderTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RepositoryXmxStorageTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RetryTest"/>
     </classes>
   </test>
 </suite>
