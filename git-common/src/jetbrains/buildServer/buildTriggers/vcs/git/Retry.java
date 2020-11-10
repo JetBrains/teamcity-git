@@ -18,7 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.util.StringUtil;
-import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,21 +38,25 @@ public abstract class Retry {
   private static final float BACKOFF_JITTER = 0.1f;
 
   public interface Retryable<V> {
-    boolean requiresRetry(@NotNull VcsException e);
-    @Nullable V call() throws VcsException;
+    boolean requiresRetry(@NotNull Exception e);
+    @Nullable V call() throws Exception;
     @NotNull Logger getLogger();
   }
 
-  public static <V> V retry(@NotNull Retryable<V> operation) throws VcsException {
+  public static <V> V retry(@NotNull Retryable<V> operation) throws Exception {
     return retry(operation, DEFAULT_MAX_ATTEMPTS);
   }
 
-  public static <V> V retry(@NotNull Retryable<V> operation, int attempts) throws VcsException {
-    long effectiveDelay = INITIAL_DELAY_MS;
+  public static <V> V retry(@NotNull Retryable<V> operation, int attempts) throws Exception {
+    return retry(operation, INITIAL_DELAY_MS, attempts);
+  }
+
+  public static <V> V retry(@NotNull Retryable<V> operation, long initialDelay, int attempts) throws Exception {
+    long effectiveDelay = initialDelay;
     for (int i = 1; i <= attempts; ++i) {
       try {
         return operation.call();
-      } catch (VcsException e) {
+      } catch (Exception e) {
         if (!operation.requiresRetry(e)) {
           throw e;
         }
@@ -66,11 +69,7 @@ public abstract class Retry {
         }
         if (effectiveDelay > 0) {
           operation.getLogger().infoAndDebugDetails("Exception occurred, will repeat operation in " + effectiveDelay + "ms", e);
-          try {
-            Thread.sleep(effectiveDelay);
-          } catch (InterruptedException ie) {
-            throw new VcsException("Operation was interrupted", ie);
-          }
+          Thread.sleep(effectiveDelay);
         }
       }
     }

@@ -80,33 +80,38 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
 
   @NotNull
   public List<Ref> call() throws VcsException {
-    return Retry.retry(new Retry.Retryable<List<Ref>>() {
-      @Override
-      public boolean requiresRetry(@NotNull final VcsException e) {
-        return CommandUtil.isRetryable(e);
-      }
+    try {
+      return Retry.retry(new Retry.Retryable<List<Ref>>() {
+        @Override
+        public boolean requiresRetry(@NotNull final Exception e) {
+          return e instanceof VcsException && CommandUtil.isRetryable((VcsException)e);
+        }
 
-      @Override
-      public List<Ref> call() throws VcsException {
-        GitCommandLine cmd = getCmd();
-        cmd.addParameter("ls-remote");
-        if (myShowTags)
-          cmd.addParameter("--tags");
-        cmd.addParameter("origin");
+        @Override
+        public List<Ref> call() throws VcsException {
+          GitCommandLine cmd = getCmd();
+          cmd.addParameter("ls-remote");
+          if (myShowTags)
+            cmd.addParameter("--tags");
+          cmd.addParameter("origin");
 
-        final ExecResult result = cmd.run(with()
-                                            .timeout(myTimeoutSeconds)
-                                            .authSettings(myAuthSettings)
-                                            .useNativeSsh(myUseNativeSsh));
-        return parse(result.getStdout());
-      }
+          final ExecResult result = cmd.run(with()
+                                              .timeout(myTimeoutSeconds)
+                                              .authSettings(myAuthSettings)
+                                              .useNativeSsh(myUseNativeSsh));
+          return parse(result.getStdout());
+        }
 
-      @NotNull
-      @Override
-      public Logger getLogger() {
-        return Loggers.VCS;
-      }
-    }, myRetryAttempts);
+        @NotNull
+        @Override
+        public Logger getLogger() {
+          return Loggers.VCS;
+        }
+      }, myRetryAttempts);
+    } catch (Exception t) {
+      if (t instanceof VcsException) throw (VcsException)t;
+      throw new VcsException(t);
+    }
   }
 
   private List<Ref> parse(@NotNull final String str) {

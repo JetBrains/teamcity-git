@@ -794,25 +794,30 @@ public class UpdaterImpl implements Updater {
     if (shallowClone)
       result.setDepth(1);
 
-    Retry.retry(new Retry.Retryable<Void>() {
-      @Override
-      public boolean requiresRetry(@NotNull final VcsException throwable) {
-        return CommandUtil.isRetryable(throwable);
-      }
+    try {
+      Retry.retry(new Retry.Retryable<Void>() {
+        @Override
+        public boolean requiresRetry(@NotNull final Exception e) {
+          return e instanceof VcsException && CommandUtil.isRetryable((VcsException)e);
+        }
 
-      @Nullable
-      @Override
-      public Void call() throws VcsException {
-        result.call();
-        return null;
-      }
+        @Nullable
+        @Override
+        public Void call() throws VcsException {
+          result.call();
+          return null;
+        }
 
-      @NotNull
-      @Override
-      public com.intellij.openapi.diagnostic.Logger getLogger() {
-        return Loggers.VCS;
-      }
-    }, myPluginConfig.getRemoteOperationAttempts());
+        @NotNull
+        @Override
+        public com.intellij.openapi.diagnostic.Logger getLogger() {
+          return Loggers.VCS;
+        }
+      }, myPluginConfig.getRemoteOperationAttempts());
+    } catch (Exception t) {
+      if (t instanceof VcsException) throw (VcsException)t;
+      throw new VcsException(t);
+    }
   }
 
   protected void removeRefLocks(@NotNull File dotGit) {
