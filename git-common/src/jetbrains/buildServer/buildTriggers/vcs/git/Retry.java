@@ -74,7 +74,7 @@ public abstract class Retry {
         }
       }
     }
-    throw new IllegalStateException("At least one retry attempt expected");
+    throw new IllegalArgumentException("At least one retry attempt expected");
   }
 
   @SuppressWarnings("unchecked")
