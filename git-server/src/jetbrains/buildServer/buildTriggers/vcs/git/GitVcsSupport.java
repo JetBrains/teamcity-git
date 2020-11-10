@@ -19,12 +19,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import com.jcraft.jsch.JSchException;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -43,6 +40,11 @@ import org.eclipse.jgit.transport.FetchConnection;
 import org.eclipse.jgit.transport.Transport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
@@ -514,38 +516,39 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   private Map<String, Ref> getRemoteRefs(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws Exception {
     return IOGuard.allowNetworkCall(() -> {
-      long retryInterval = myConfig.getConnectionRetryIntervalMillis();
-      int attemptsLeft = myConfig.getConnectionRetryAttempts();
-      int timeout = myConfig.getRepositoryStateTimeoutSeconds();
-      while (true) {
-        final long start = System.currentTimeMillis();
-        Transport transport = null;
-        FetchConnection connection = null;
-        try {
-          transport = myTransportFactory.createTransport(db, gitRoot.getRepositoryFetchURL().get(), gitRoot.getAuthSettings(), timeout);
-          connection = transport.openFetch();
-          return connection.getRefsMap();
-        } catch (NotSupportedException nse) {
-          throw friendlyNotSupportedException(gitRoot, nse);
-        } catch (TransportException te) {
-          attemptsLeft--;
-          if (isRecoverable(te) && attemptsLeft > 0) {
-            LOG.warn("List remote refs failed: " + te.getMessage() + ", " + attemptsLeft + " attempt(s) left");
-          } else {
-            throw friendlyTransportException(te, gitRoot);
+      try {
+        return Retry.retry(new Retry.Retryable<Map<String, Ref>>() {
+          @Override
+          public boolean requiresRetry(@NotNull final Exception e) {
+            return e instanceof TransportException && isRecoverable((TransportException)e);
           }
-        } catch (WrongPassphraseException e) {
-          throw new VcsException(e.getMessage(), e);
-        } finally {
-          if (connection != null)
-            connection.close();
-          if (transport != null)
-            transport.close();
-          final long finish = System.currentTimeMillis();
-          PERFORMANCE_LOG.debug("[getRemoteRefs] repository: " + LogUtil.describe(gitRoot) + ", took " + (finish - start) + "ms");
-        }
-        Thread.sleep(retryInterval);
-        retryInterval *= 2;
+
+          @Nullable
+          @Override
+          public Map<String, Ref> call() throws Exception {
+            final long start = System.currentTimeMillis();
+            try (
+              final Transport transport = myTransportFactory.createTransport(db, gitRoot.getRepositoryFetchURL().get(), gitRoot.getAuthSettings(), myConfig.getRepositoryStateTimeoutSeconds());
+              final FetchConnection connection = transport.openFetch()) {
+              return connection.getRefsMap();
+            } catch (NotSupportedException nse) {
+              throw friendlyNotSupportedException(gitRoot, nse);
+            } catch (WrongPassphraseException e) {
+              throw new VcsException(e.getMessage(), e);
+            } finally {
+              final long finish = System.currentTimeMillis();
+              PERFORMANCE_LOG.debug("[getRemoteRefs] repository: " + LogUtil.describe(gitRoot) + ", took " + (finish - start) + "ms");
+            }
+          }
+
+          @NotNull
+          @Override
+          public Logger getLogger() {
+            return Loggers.VCS;
+          }
+        }, myConfig.getConnectionRetryIntervalMillis(), myConfig.getConnectionRetryAttempts());
+      } catch (TransportException t) {
+        throw friendlyTransportException(t, gitRoot);
       }
     });
   }
