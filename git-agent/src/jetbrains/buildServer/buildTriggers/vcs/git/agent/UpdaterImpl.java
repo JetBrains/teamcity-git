@@ -762,12 +762,12 @@ public class UpdaterImpl implements Updater {
     int timeout = getTimeout(silent);
 
     try {
-      getFetch(repositoryDir, refspec, shallowClone, silent, timeout).call();
+      callFetch(repositoryDir, refspec, shallowClone, silent, timeout);
     } catch (GitIndexCorruptedException e) {
       File gitIndex = e.getGitIndex();
       myLogger.message("Git index '" + gitIndex.getAbsolutePath() + "' is corrupted, remove it and repeat git fetch");
       FileUtil.delete(gitIndex);
-      getFetch(repositoryDir, refspec, shallowClone, silent, timeout).call();
+      callFetch(repositoryDir, refspec, shallowClone, silent, timeout);
     } catch (GitExecTimeout e) {
       if (!silent) {
         myLogger.error("No output from git during " + timeout + " seconds. Try increasing idle timeout by setting parameter '"
@@ -778,9 +778,8 @@ public class UpdaterImpl implements Updater {
     }
   }
 
-  @NotNull
-  private FetchCommand getFetch(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout) {
-    FetchCommand result = myGitFactory.create(repositoryDir).fetch()
+  private void callFetch(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout) throws VcsException {
+    final FetchCommand result = myGitFactory.create(repositoryDir).fetch()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
       .setTimeout(timeout)
@@ -795,7 +794,25 @@ public class UpdaterImpl implements Updater {
     if (shallowClone)
       result.setDepth(1);
 
-    return result;
+    Retry.retry(new Retry.Retryable<Void>() {
+      @Override
+      public boolean requiresRetry(@NotNull final VcsException throwable) {
+        return CommandUtil.isRetryable(throwable);
+      }
+
+      @Nullable
+      @Override
+      public Void call() throws VcsException {
+        result.call();
+        return null;
+      }
+
+      @NotNull
+      @Override
+      public com.intellij.openapi.diagnostic.Logger getLogger() {
+        return Loggers.VCS;
+      }
+    }, myPluginConfig.getRemoteOperationAttempts());
   }
 
   protected void removeRefLocks(@NotNull File dotGit) {

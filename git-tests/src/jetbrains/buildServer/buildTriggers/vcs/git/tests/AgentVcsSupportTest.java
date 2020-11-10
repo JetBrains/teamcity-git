@@ -18,16 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.StreamUtil;
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileReader;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.TestNGUtil;
@@ -61,6 +51,17 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
@@ -874,7 +875,7 @@ public class AgentVcsSupportTest {
     VcsRootImpl root2 = vcsRoot().withAgentGitPath(getGitPath()).withBranch("refs/heads/personal").withFetchUrl(GitUtils.toURL(remoteRepo)).build();
     AgentRunningBuild build = runningBuild()
       .useLocalMirrors(true)
-      .sharedConfigParams("teamcity.git.fetchMirrorRetryTimeouts", "")
+      .sharedConfigParams("teamcity.internal.git.remoteOperationAttempts", "1")
       .withAgentConfiguration(myBuilder.getAgentConfiguration())
       .build();
     myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
@@ -921,13 +922,14 @@ public class AgentVcsSupportTest {
     AgentRunningBuild build = runningBuild()
       .useLocalMirrors(true)
       .withAgentConfiguration(myBuilder.getAgentConfiguration())
-      .sharedConfigParams("teamcity.git.fetchMirrorRetryTimeouts", "0,0")
+      .sharedConfigParams("teamcity.internal.git.remoteOperationAttempts", "3")
       .build();
     myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
     File mirrorAfterBuild = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));
     then(mirrorAfterBuild).isEqualTo(mirror);//repository was not remapped to another dir
   }
 
+  @Test(enabled = false)
   @TestFor(issues = "TW-56415")
   public void should_not_retry_fetch_mirror_for_exec_timeout() throws Exception {
     MockFS fs = new MockFS();

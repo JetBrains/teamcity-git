@@ -18,18 +18,13 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.regex.Matcher;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.CommonURIish;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsTreeResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CheckoutCanceledException;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.log.Loggers;
@@ -43,6 +38,12 @@ import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
 
@@ -78,7 +79,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     String message = "Update git mirror (" + myRoot.getRepositoryDir() + ")";
     myLogger.activityStarted(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
     try {
-      updateLocalMirror(true, myRoot.getRepositoryDir(), myRoot.getRepositoryFetchURL(), myFullBranchName, myRevision);
+      updateLocalMirror(myRoot.getRepositoryDir(), myRoot.getRepositoryFetchURL(), myFullBranchName, myRevision);
       //prepare refs for copying into working dir repository
       myGitFactory.create(myRoot.getRepositoryDir()).packRefs().call();
     } finally {
@@ -86,11 +87,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
     }
   }
 
-  protected void updateLocalMirror(boolean repeatFetchAttempt,
-                                 File bareRepositoryDir,
-                                 CommonURIish fetchUrl,
-                                 String branchname,
-                                 String... revisions) throws VcsException {
+  protected void updateLocalMirror(File bareRepositoryDir,
+                                   CommonURIish fetchUrl,
+                                   String branchname,
+                                   String... revisions) throws VcsException {
     String mirrorDescription = (isRootRepositoryDir(bareRepositoryDir) ? "" : "submodule ") + "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
     LOG.info("Update " + mirrorDescription);
     if (isValidGitRepo(bareRepositoryDir)) {
@@ -145,19 +145,19 @@ public class UpdaterWithMirror extends UpdaterImpl {
         String msg = getForcedHeadsFetchMessage();
         LOG.info(msg);
         myLogger.message(msg);
-        fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, sslInvestigator, revisions);
+        fetchMirror(bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, sslInvestigator, revisions);
         if (!branchname.startsWith("refs/heads/") && !hasRevisions(bareRepositoryDir, revisions))
-          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, sslInvestigator, revisions);
+          fetchMirror(bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, sslInvestigator, revisions);
         break;
       case BEFORE_BUILD_BRANCH:
-        fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, sslInvestigator, revisions);
+        fetchMirror(bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, sslInvestigator, revisions);
         if (!branchname.startsWith("refs/heads/") && !hasRevisions(bareRepositoryDir, revisions))
-          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, sslInvestigator, revisions);
+          fetchMirror(bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, sslInvestigator, revisions);
         break;
       case AFTER_BUILD_BRANCH:
-        fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, sslInvestigator, revisions);
+        fetchMirror(bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, sslInvestigator, revisions);
         if (!hasRevisions(bareRepositoryDir, revisions)) {
-          fetchMirror(repeatFetchAttempt, bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, sslInvestigator, revisions);
+          fetchMirror(bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, sslInvestigator, revisions);
         }
         break;
       default:
@@ -170,8 +170,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
   }
 
 
-  private void fetchMirror(boolean repeatFetchAttempt,
-                           @NotNull File repositoryDir,
+  private void fetchMirror(@NotNull File repositoryDir,
                            @NotNull CommonURIish fetchUrl,
                            @NotNull String refspec,
                            @NotNull String branchname,
@@ -179,29 +178,12 @@ public class UpdaterWithMirror extends UpdaterImpl {
                            @NotNull String... revisions) throws VcsException {
     removeRefLocks(repositoryDir);
     try {
-      final int[] retryTimeouts = getRetryTimeouts();
-      for (int i = 0; i <= retryTimeouts.length; i++) {
-        try {
-          fetch(repositoryDir, refspec, false);
-          break;
-        } catch (GitExecTimeout e) {
-          throw e;
-        } catch (VcsException e) {
-          if (!repeatFetchAttempt || i == retryTimeouts.length || isInterrupted(e)) throw e;
-
-          int wait = retryTimeouts[i];
-          LOG.warnAndDebugDetails("Failed to fetch mirror, will retry after " + wait + " seconds.", e);
-          try {
-            Thread.sleep(wait * 1000);
-          } catch (InterruptedException e1) {
-            throw new VcsException("Failed to fetch mirror", e1);
-          }
-        }
-      }
+      fetch(repositoryDir, refspec, false);
     } catch (VcsException e) {
-      if (myPluginConfig.isFailOnCleanCheckout() || !repeatFetchAttempt || !shouldFetchFromScratch(e))
+      if (myPluginConfig.isFailOnCleanCheckout() || !shouldFetchFromScratch(e)) {
         throw e;
-      LOG.warnAndDebugDetails("Failed to fetch mirror", e);
+      }
+      LOG.warnAndDebugDetails("Failed to fetch mirror, will try removing it and cloning from scratch", e);
       if (cleanDir(repositoryDir)) {
         GitFacade git = myGitFactory.create(repositoryDir);
         git.init().setBare(true).call();
@@ -211,22 +193,13 @@ public class UpdaterWithMirror extends UpdaterImpl {
       } else {
         LOG.info("Failed to delete repository " + repositoryDir + " after failed checkout, clone repository in another directory");
         myMirrorManager.invalidate(repositoryDir);
-        updateLocalMirror(false, myMirrorManager.getMirrorDir(fetchUrl.toString()), fetchUrl, branchname, revisions);
+        updateLocalMirror(myMirrorManager.getMirrorDir(fetchUrl.toString()), fetchUrl, branchname, revisions);
       }
     }
   }
 
-  private boolean isInterrupted(@NotNull VcsException ve) {
-    Throwable e = ve;
-    do {
-      if (e instanceof CheckoutCanceledException || e instanceof InterruptedException) return true;
-      e = e.getCause();
-    } while (Objects.nonNull(e));
-    return false;
-  }
-
   private boolean shouldFetchFromScratch(@NotNull VcsException e) {
-    if (e instanceof GitExecTimeout || isInterrupted(e)) return false;
+    if (e instanceof GitExecTimeout || CommandUtil.isCanceledError(e)) return false;
 
     String msg = e.getMessage().toLowerCase();
     return !msg.contains("couldn't find remote ref") &&
@@ -355,23 +328,6 @@ public class UpdaterWithMirror extends UpdaterImpl {
     return branchName;
   }
 
-  private int[] getRetryTimeouts() {
-    String value = myBuild.getSharedConfigParameters().get("teamcity.git.fetchMirrorRetryTimeouts");
-    if (value == null) return new int[]{5, 10, 15, 30}; // total 60 seconds
-
-    List<String> split = StringUtil.split(value, true, ',');
-    int[] result = new int[split.size()];
-    for (int i = 0; i < result.length; i++) {
-      int parsed = 1;
-      try {
-        parsed = Integer.parseInt(split.get(i));
-      } catch (NumberFormatException ignored) {
-      }
-      result[i] = parsed;
-    }
-    return result;
-  }
-
   @Override
   protected void updateSubmodules(@NotNull final File repositoryDir) throws VcsException, ConfigInvalidException, IOException {
     if (!myPluginConfig.isUseLocalMirrorsForSubmodules(myRoot)) {
@@ -424,8 +380,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     myLogger.activityStarted(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
     try {
       if (!hasRevisions(mirrorRepositoryDir, submodule.getRevisions())) {
-        updateLocalMirror(true,
-                          mirrorRepositoryDir,
+        updateLocalMirror(mirrorRepositoryDir,
                           new URIishHelperImpl().createURI(submodule.getUrl()),
                           "refs/heads/*",
                           submodule.getRevisions());
