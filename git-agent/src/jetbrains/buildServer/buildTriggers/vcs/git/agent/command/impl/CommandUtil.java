@@ -20,6 +20,7 @@ import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
@@ -157,6 +158,20 @@ public class CommandUtil {
   }
 
   public static boolean isCanceledError(@NotNull VcsException e) {
-    return e instanceof CheckoutCanceledException || e.getCause() instanceof InterruptedException;
+    Throwable t = e;
+    do {
+      if (t instanceof CheckoutCanceledException || t instanceof InterruptedException) return true;
+      t = t.getCause();
+    } while (t != null);
+    return false;
+  }
+
+  public static boolean isRetryable(@NotNull VcsException e) {
+    if (CommandUtil.isCanceledError(e)) return false;
+    if (e instanceof GitIndexCorruptedException) return false;
+
+    String msg = e.getMessage().toLowerCase();
+    return !msg.contains("couldn't find remote ref") &&
+           !msg.contains("could not read from remote repository");
   }
 }

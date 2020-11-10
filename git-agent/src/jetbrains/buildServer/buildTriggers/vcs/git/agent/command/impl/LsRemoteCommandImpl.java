@@ -16,8 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
+import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.Retry;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
 import jetbrains.buildServer.log.Loggers;
@@ -37,7 +39,7 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
   private boolean myShowTags = false;
   private AuthSettings myAuthSettings;
   private boolean myUseNativeSsh = false;
-  private int myAttemptsLimit = 3;
+  private int myRetryAttempts = 1;
   private int myTimeoutSeconds;
 
   public LsRemoteCommandImpl(@NotNull GitCommandLine cmd) {
@@ -70,29 +72,41 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
   }
 
   @NotNull
-  public List<Ref> call() throws VcsException {
-    GitCommandLine cmd = getCmd();
-    cmd.addParameter("ls-remote");
-    if (myShowTags)
-      cmd.addParameter("--tags");
-    cmd.addParameter("origin");
+  @Override
+  public LsRemoteCommand setRetryAttempts(int num) {
+    myRetryAttempts = num;
+    return this;
+  }
 
-    int attempt = 0;
-    while (true) {
-      try {
-        ExecResult result = cmd.run(with()
-                                      .timeout(myTimeoutSeconds)
-                                      .authSettings(myAuthSettings)
-                                      .useNativeSsh(myUseNativeSsh));
-        return parse(result.getStdout());
-      } catch (VcsException e) {
-        attempt++;
-        Loggers.VCS.warnAndDebugDetails("Error while listing remote repository refs", e);
-        if (attempt >= myAttemptsLimit || CommandUtil.isTimeoutError(e) || CommandUtil.isCanceledError(e))
-          throw e;
-        Loggers.VCS.warn("Will repeat command, attempts left: " + (myAttemptsLimit - attempt));
+  @NotNull
+  public List<Ref> call() throws VcsException {
+    return Retry.retry(new Retry.Retryable<List<Ref>>() {
+      @Override
+      public boolean requiresRetry(@NotNull final VcsException e) {
+        return CommandUtil.isRetryable(e);
       }
-    }
+
+      @Override
+      public List<Ref> call() throws VcsException {
+        GitCommandLine cmd = getCmd();
+        cmd.addParameter("ls-remote");
+        if (myShowTags)
+          cmd.addParameter("--tags");
+        cmd.addParameter("origin");
+
+        final ExecResult result = cmd.run(with()
+                                            .timeout(myTimeoutSeconds)
+                                            .authSettings(myAuthSettings)
+                                            .useNativeSsh(myUseNativeSsh));
+        return parse(result.getStdout());
+      }
+
+      @NotNull
+      @Override
+      public Logger getLogger() {
+        return Loggers.VCS;
+      }
+    }, myRetryAttempts);
   }
 
   private List<Ref> parse(@NotNull final String str) {

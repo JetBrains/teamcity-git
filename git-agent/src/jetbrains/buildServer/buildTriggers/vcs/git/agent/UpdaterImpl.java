@@ -17,12 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.Trinity;
-import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.regex.Matcher;
 import jetbrains.buildServer.BuildProblemData;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
@@ -47,6 +41,13 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
@@ -1046,6 +1047,7 @@ public class UpdaterImpl implements Updater {
     myRemoteRefs = new Refs(git.lsRemote().setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
       .setTimeout(myPluginConfig.getLsRemoteTimeoutSeconds())
+      .setRetryAttempts(myPluginConfig.getRemoteOperationAttempts())
       .call());
     return myRemoteRefs;
   }
