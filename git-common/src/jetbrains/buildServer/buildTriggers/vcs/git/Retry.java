@@ -67,8 +67,8 @@ public abstract class Retry {
         if (i > 1) {
           effectiveDelay = backOff(effectiveDelay);
         }
+        operation.getLogger().infoAndDebugDetails("Exception occurred, will repeat operation in " + effectiveDelay + "ms", e);
         if (effectiveDelay > 0) {
-          operation.getLogger().infoAndDebugDetails("Exception occurred, will repeat operation in " + effectiveDelay + "ms", e);
           Thread.sleep(effectiveDelay);
         }
       }
