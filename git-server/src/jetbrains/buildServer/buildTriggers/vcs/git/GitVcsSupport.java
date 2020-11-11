@@ -18,7 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
-import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
 import jetbrains.buildServer.log.Loggers;
@@ -520,7 +519,7 @@ public class GitVcsSupport extends ServerVcsSupport
         return Retry.retry(new Retry.Retryable<Map<String, Ref>>() {
           @Override
           public boolean requiresRetry(@NotNull final Exception e) {
-            return e instanceof TransportException && isRecoverable((TransportException)e);
+            return e instanceof TransportException && GitServerUtil.isRecoverable((TransportException)e);
           }
 
           @Nullable
@@ -551,29 +550,6 @@ public class GitVcsSupport extends ServerVcsSupport
         throw friendlyTransportException(t, gitRoot);
       }
     });
-  }
-
-  private boolean isRecoverable(@NotNull TransportException e) {
-    String message = e.getMessage();
-    if (message == null)
-      return false;
-    if (message.contains("Connection timed out") ||
-        message.contains("Connection time out") ||
-        message.contains("Short read of block")) //TW-55869
-    {
-      return true;
-    }
-    Throwable cause = e.getCause();
-    if (cause instanceof JSchException) {
-      return message.contains("Session.connect: java.net.SocketException: Connection reset") ||
-             message.contains("Session.connect: java.net.SocketException: Software caused connection abort") ||
-             message.contains("Session.connect: java.net.SocketTimeoutException: Read timed out") ||
-             message.contains("connection is closed by foreign host") ||
-             message.contains("timeout: socket is not established") ||
-             message.contains("java.net.UnknownHostException:") || //TW-31027
-             message.contains("com.jcraft.jsch.JSchException: verify: false"); //TW-31175
-    }
-    return false;
   }
 
 

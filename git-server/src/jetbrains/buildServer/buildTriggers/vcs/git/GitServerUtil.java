@@ -63,7 +63,7 @@ public class GitServerUtil {
   public static final long MB = 1024 * KB;
   public static final long GB = 1024 * MB;
 
-  private static Logger LOG = Logger.getInstance(GitServerUtil.class.getName());
+  private static final Logger LOG = Logger.getInstance(GitServerUtil.class.getName());
 
   /**
    * Amount of characters displayed for in the display version of revision number
@@ -379,22 +379,47 @@ public class GitServerUtil {
                                    @NotNull TransportFactory transportFactory,
                                    @NotNull Repository db,
                                    @NotNull URIish uri,
-                                   @NotNull AuthSettings authSettings) throws NotSupportedException, TransportException, VcsException {
-    try (Transport tn = transportFactory.createTransport(db, uri, authSettings, config.getRepositoryStateTimeoutSeconds());
-         FetchConnection conn = tn.openFetch()) {
-      Map<String, Ref> remoteRefMap = conn.getRefsMap();
-      for (Map.Entry<String, Ref> e : db.getAllRefs().entrySet()) {
-        if (!remoteRefMap.containsKey(e.getKey())) {
-          try {
-            RefUpdate refUpdate = db.getRefDatabase().newUpdate(e.getKey(), false);
-            refUpdate.setForceUpdate(true);
-            refUpdate.delete();
-          } catch (Exception ex) {
-            LOG.info("Failed to prune removed ref " + e.getKey(), ex);
-          }
-        }
+                                   @NotNull AuthSettings authSettings) throws Exception {
+    final Map<String, Ref> remoteRefMap = getRemoteRefs(config, transportFactory, db, uri, authSettings);
+    for (Map.Entry<String, Ref> e : db.getAllRefs().entrySet()) {
+      if (remoteRefMap.containsKey(e.getKey())) continue;
+      try {
+        RefUpdate refUpdate = db.getRefDatabase().newUpdate(e.getKey(), false);
+        refUpdate.setForceUpdate(true);
+        refUpdate.delete();
+      } catch (Exception ex) {
+        LOG.info("Failed to prune removed ref " + e.getKey(), ex);
       }
     }
+  }
+
+  @NotNull
+  private static Map<String, Ref> getRemoteRefs(@NotNull ServerPluginConfig config,
+                                                @NotNull TransportFactory transportFactory,
+                                                @NotNull Repository db,
+                                                @NotNull URIish uri,
+                                                @NotNull AuthSettings authSettings) throws Exception {
+    return Retry.retry(new Retry.Retryable<Map<String, Ref>>() {
+      @Override
+      public boolean requiresRetry(@NotNull final Exception e) {
+        return e instanceof TransportException && isRecoverable((TransportException)e);
+      }
+
+      @Nullable
+      @Override
+      public Map<String, Ref> call() throws Exception {
+        try (Transport tn = transportFactory.createTransport(db, uri, authSettings, config.getRepositoryStateTimeoutSeconds());
+             FetchConnection conn = tn.openFetch()) {
+          return conn.getRefsMap();
+        }
+      }
+
+      @NotNull
+      @Override
+      public Logger getLogger() {
+        return LOG;
+      }
+    });
   }
 
   public static boolean isCloned(@NotNull Repository db) throws IOException {
@@ -625,5 +650,28 @@ public class GitServerUtil {
 
   public static boolean isTag(@NotNull String fullRefName) {
     return fullRefName.startsWith(org.eclipse.jgit.lib.Constants.R_TAGS);
+  }
+
+  public static boolean isRecoverable(@NotNull TransportException e) {
+    String message = e.getMessage();
+    if (message == null)
+      return false;
+    if (message.contains("Connection timed out") ||
+        message.contains("Connection time out") ||
+        message.contains("Short read of block")) //TW-55869
+    {
+      return true;
+    }
+    Throwable cause = e.getCause();
+    if (cause instanceof JSchException) {
+      return message.contains("Session.connect: java.net.SocketException: Connection reset") ||
+             message.contains("Session.connect: java.net.SocketException: Software caused connection abort") ||
+             message.contains("Session.connect: java.net.SocketTimeoutException: Read timed out") ||
+             message.contains("connection is closed by foreign host") ||
+             message.contains("timeout: socket is not established") ||
+             message.contains("java.net.UnknownHostException:") || //TW-31027
+             message.contains("com.jcraft.jsch.JSchException: verify: false"); //TW-31175
+    }
+    return false;
   }
 }
