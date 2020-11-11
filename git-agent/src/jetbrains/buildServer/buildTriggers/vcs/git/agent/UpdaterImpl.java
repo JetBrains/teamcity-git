@@ -762,12 +762,12 @@ public class UpdaterImpl implements Updater {
     int timeout = getTimeout(silent);
 
     try {
-      callFetch(repositoryDir, refspec, shallowClone, silent, timeout);
+      callFetchWithRetry(repositoryDir, refspec, shallowClone, silent, timeout);
     } catch (GitIndexCorruptedException e) {
       File gitIndex = e.getGitIndex();
       myLogger.message("Git index '" + gitIndex.getAbsolutePath() + "' is corrupted, remove it and repeat git fetch");
       FileUtil.delete(gitIndex);
-      callFetch(repositoryDir, refspec, shallowClone, silent, timeout);
+      callFetchWithRetry(repositoryDir, refspec, shallowClone, silent, timeout);
     } catch (GitExecTimeout e) {
       if (!silent) {
         myLogger.error("No output from git during " + timeout + " seconds. Try increasing idle timeout by setting parameter '"
@@ -778,22 +778,7 @@ public class UpdaterImpl implements Updater {
     }
   }
 
-  private void callFetch(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout) throws VcsException {
-    final FetchCommand result = myGitFactory.create(repositoryDir).fetch()
-      .setAuthSettings(myRoot.getAuthSettings())
-      .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
-      .setTimeout(timeout)
-      .setRefspec(refspec)
-      .setFetchTags(myPluginConfig.isFetchTags());
-
-    if (silent)
-      result.setQuite(true);
-    else
-      result.setShowProgress(true);
-
-    if (shallowClone)
-      result.setDepth(1);
-
+  private void callFetchWithRetry(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout) throws VcsException {
     try {
       Retry.retry(new Retry.Retryable<Void>() {
         @Override
@@ -804,6 +789,21 @@ public class UpdaterImpl implements Updater {
         @Nullable
         @Override
         public Void call() throws VcsException {
+          final FetchCommand result = myGitFactory.create(repositoryDir).fetch()
+            .setAuthSettings(myRoot.getAuthSettings())
+            .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
+            .setTimeout(timeout)
+            .setRefspec(refspec)
+            .setFetchTags(myPluginConfig.isFetchTags());
+
+          if (silent)
+            result.setQuite(true);
+          else
+            result.setShowProgress(true);
+
+          if (shallowClone)
+            result.setDepth(1);
+
           result.call();
           return null;
         }
