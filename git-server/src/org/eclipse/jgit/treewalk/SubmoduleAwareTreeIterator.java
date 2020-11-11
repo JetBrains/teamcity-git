@@ -252,14 +252,9 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   private RevCommit getSubmoduleCommit(@NotNull String path, @NotNull ObjectId entryObjectId) throws CorruptObjectException, VcsException, URISyntaxException {
     try {
       return mySubmoduleResolver.getSubmoduleCommit(myUrl, path, entryObjectId);
-    } catch (VcsAuthenticationException e) {
+    } catch (VcsAuthenticationException | TransportException e) {
       //in case of VcsAuthenticationException throw CorruptObjectException without object id,
       //because problem is related to whole repository, not to concrete object
-      final SubmoduleFetchException ex = new SubmoduleFetchException(myUrl, path, getPathFromRoot(path));
-      ex.initCause(e);
-      throw ex;
-    } catch (TransportException e) {
-      //this problem is also related to whole repository
       final SubmoduleFetchException ex = new SubmoduleFetchException(myUrl, path, getPathFromRoot(path));
       ex.initCause(e);
       throw ex;
