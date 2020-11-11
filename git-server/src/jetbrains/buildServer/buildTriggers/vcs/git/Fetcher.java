@@ -125,7 +125,7 @@ public class Fetcher {
 
     workaroundRacyGit();
     pruneRemovedBranches(config, repository, transportFactory, new URIish(fetchUrl), auth, debug);
-    logFetchResults(GitServerUtil.fetchAndCheckResults(repository, new URIish(fetchUrl), auth, transportFactory, progressMonitor, parseRefspecs(refspecs), config.ignoreMissingRemoteRef()));
+    logFetchResults(GitServerUtil.fetchAndCheckResults(config, repository, new URIish(fetchUrl), auth, transportFactory, progressMonitor, parseRefspecs(refspecs), config.ignoreMissingRemoteRef()));
   }
 
   private static void pruneRemovedBranches(@NotNull ServerPluginConfig config,

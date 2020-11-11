@@ -298,7 +298,7 @@ public class FetchCommandImpl implements FetchCommand {
     final long fetchStart = System.currentTimeMillis();
     try {
       pruneRemovedBranches(db, uri, settings.getAuthSettings());
-      fetchAndCheckResults(db, uri, settings.getAuthSettings(), myTransportFactory, settings.createProgressMonitor(), refSpecs, myConfig.ignoreMissingRemoteRef());
+      fetchAndCheckResults(myConfig, db, uri, settings.getAuthSettings(), myTransportFactory, settings.createProgressMonitor(), refSpecs, myConfig.ignoreMissingRemoteRef());
     } catch (OutOfMemoryError oom) {
       LOG.warn("There is not enough memory for git fetch, try to run fetch in a separate process.");
       clean(db);

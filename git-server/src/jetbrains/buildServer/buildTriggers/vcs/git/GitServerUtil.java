@@ -535,7 +535,8 @@ public class GitServerUtil {
 
 
   @NotNull
-  public static FetchResult fetchAndCheckResults(@NotNull Repository r,
+  public static FetchResult fetchAndCheckResults(@NotNull ServerPluginConfig config,
+                                                 @NotNull Repository r,
                                                  @NotNull URIish url,
                                                  @NotNull AuthSettings authSettings,
                                                  @NotNull TransportFactory transportFactory,
@@ -543,46 +544,79 @@ public class GitServerUtil {
                                                  @NotNull Collection<RefSpec> refSpecs,
                                                  boolean ignoreMissingRemoteRef) throws VcsException, IOException {
     final Set<String> refNames = r.getRefDatabase().getRefsByPrefix(RefDatabase.ALL).stream().map(Ref::getName).collect(Collectors.toSet());
-    FetchResult result = fetch(r, url, authSettings, transportFactory, progress, refSpecs, ignoreMissingRemoteRef);
+    FetchResult result = fetch(config, r, url, authSettings, transportFactory, progress, refSpecs, ignoreMissingRemoteRef);
     checkFetchSuccessful(r, result, refNames);
     return result;
   }
 
 
   @NotNull
-  public static FetchResult fetch(@NotNull Repository r,
+  public static FetchResult fetch(@NotNull ServerPluginConfig config,
+                                  @NotNull Repository r,
                                   @NotNull URIish url,
                                   @NotNull AuthSettings authSettings,
                                   @NotNull TransportFactory transportFactory,
                                   @NotNull ProgressMonitor progress,
                                   @NotNull Collection<RefSpec> refSpecs,
                                   boolean ignoreMissingRemoteRef) throws NotSupportedException, TransportException, VcsException {
-    try (Transport transport = transportFactory.createTransport(r, url, authSettings)) {
-      return transport.fetch(progress, refSpecs);
+    try {
+      return fetchWithRetry(config, r, url, authSettings, transportFactory, progress, refSpecs);
     } catch (TransportException e) {
-      Throwable cause = e.getCause();
-      if (cause instanceof JSchException && "channel is not opened.".equals(cause.getMessage())) {
-        try (Transport tn = transportFactory.createTransport(r, url, authSettings)) {
-          return tn.fetch(progress, refSpecs);
-        }
-      }
-      if ("http".equals(url.getScheme()) && url.getHost().contains("github.com") && e.getMessage() != null && e.getMessage().contains("301")) {
-        /* github returns 301 status code in case we use http protocol */
-        throw new TransportException("Please use https protocol in VCS root instead of http.", e);
-      } else {
-        if (ignoreMissingRemoteRef) {
-          String missingRef = getMissingRemoteRef(e);
-          if (missingRef != null) {
-            //exclude spec causing the error
-            List<RefSpec> updatedSpecs =
-              refSpecs.stream().filter(spec -> !spec.getSource().equals(missingRef)).collect(Collectors.toList());
-            if (updatedSpecs.size() == refSpecs.size())
-              throw e;
-            return fetch(r, url, authSettings, transportFactory, progress, updatedSpecs, ignoreMissingRemoteRef);
+      if (ignoreMissingRemoteRef) {
+        String missingRef = getMissingRemoteRef(e);
+        if (missingRef != null) {
+          //exclude spec causing the error
+          LOG.infoAndDebugDetails("The remote is missing " + missingRef + " ref, will remove it from the refspec and repeat fetch", e);
+          List<RefSpec> updatedSpecs = refSpecs.stream().filter(spec -> !spec.getSource().equals(missingRef)).collect(Collectors.toList());
+          if (updatedSpecs.size() < refSpecs.size()) {
+            return fetchWithRetry(config, r, url, authSettings, transportFactory, progress, updatedSpecs);
           }
         }
-        throw e;
       }
+      throw e;
+    }
+  }
+
+
+  @NotNull
+  private static FetchResult fetchWithRetry(final @NotNull ServerPluginConfig config,
+                                            final @NotNull Repository r,
+                                            final @NotNull URIish url,
+                                            final @NotNull AuthSettings authSettings,
+                                            final @NotNull TransportFactory transportFactory,
+                                            final @NotNull ProgressMonitor progress,
+                                            final @NotNull Collection<RefSpec> refSpecs) throws TransportException, NotSupportedException, VcsException {
+    try {
+      return Retry.retry(new Retry.Retryable<FetchResult>() {
+        @Override
+        public boolean requiresRetry(@NotNull final Exception e) {
+          return e instanceof TransportException && isRecoverable((TransportException)e);
+        }
+
+        @Nullable
+        @Override
+        public FetchResult call() throws Exception {
+          try (Transport transport = transportFactory.createTransport(r, url, authSettings)) {
+            return transport.fetch(progress, refSpecs);
+          } catch (TransportException e) {
+            if ("http".equals(url.getScheme()) && url.getHost().contains("github.com") && e.getMessage() != null && e.getMessage().contains("301")) {
+              /* github returns 301 status code in case we use http protocol */
+              throw new VcsException("Please use https protocol in VCS root instead of http.", e);
+            }
+            throw e;
+          }
+        }
+
+        @NotNull
+        @Override
+        public Logger getLogger() {
+          return LOG;
+        }
+      }, config.getConnectionRetryIntervalMillis(), config.getConnectionRetryAttempts());
+    } catch (TransportException | NotSupportedException | VcsException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new VcsException(e);
     }
   }
 
@@ -670,7 +704,8 @@ public class GitServerUtil {
              message.contains("connection is closed by foreign host") ||
              message.contains("timeout: socket is not established") ||
              message.contains("java.net.UnknownHostException:") || //TW-31027
-             message.contains("com.jcraft.jsch.JSchException: verify: false"); //TW-31175
+             message.contains("com.jcraft.jsch.JSchException: verify: false") || //TW-31175
+             message.contains("channel is not opened."); //TW-46052
     }
     return false;
   }
