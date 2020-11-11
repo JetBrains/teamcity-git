@@ -17,6 +17,23 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.Pair;
+import jetbrains.buildServer.util.DiagnosticUtil;
+import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsUtil;
+import org.eclipse.jgit.lib.ProgressMonitor;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.transport.FetchResult;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.TrackingRefUpdate;
+import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
+
+import javax.management.Notification;
+import javax.management.NotificationEmitter;
+import javax.management.NotificationListener;
+import javax.management.openmbean.CompositeData;
 import java.io.*;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
@@ -28,19 +45,6 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import javax.management.Notification;
-import javax.management.NotificationEmitter;
-import javax.management.NotificationListener;
-import javax.management.openmbean.CompositeData;
-import jetbrains.buildServer.util.DiagnosticUtil;
-import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsUtil;
-import org.eclipse.jgit.lib.ProgressMonitor;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.RepositoryBuilder;
-import org.eclipse.jgit.transport.*;
-import org.jetbrains.annotations.NotNull;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.MB;
 
@@ -73,7 +77,7 @@ public class Fetcher {
       gcListener = new GcListener(gcDumpFilePath);
       gcListener.startListen();
       exec.scheduleAtFixedRate(new Monitoring(threadDumpFilePath, gitOutput), 10, 10, TimeUnit.SECONDS);
-      fetch(new File(repositoryPath), properties, progress);
+      fetch(new File(repositoryPath), properties, progress, debug);
 
       if (System.currentTimeMillis() - start <= new PluginConfigImpl().getMonitoringFileThresholdMillis()) {
         FileUtil.delete(new File(threadDumpFilePath));
@@ -105,7 +109,8 @@ public class Fetcher {
    */
   private static void fetch(@NotNull File repositoryDir,
                             @NotNull Map<String, String> vcsRootProperties,
-                            @NotNull ProgressMonitor progressMonitor) throws IOException, VcsException, URISyntaxException {
+                            @NotNull ProgressMonitor progressMonitor,
+                            boolean debug) throws IOException, VcsException, URISyntaxException {
     final String fetchUrl = vcsRootProperties.get(Constants.FETCH_URL);
     final String refspecs = vcsRootProperties.get(Constants.REFSPEC);
     final String trustedCertificatesDir = vcsRootProperties.get(Constants.GIT_TRUST_STORE_PROVIDER);
@@ -115,34 +120,28 @@ public class Fetcher {
     GitServerUtil.setupMemoryMappedIndexReading();
     GitServerUtil.configureStreamFileThreshold(Integer.MAX_VALUE);
 
-    TransportFactory transportFactory = new TransportFactoryImpl(config, new EmptyVcsRootSshKeyManager(),
-                                                                 new GitTrustStoreProviderStatic(trustedCertificatesDir));
-    Transport tn = null;
-    try {
-      Repository repository = new RepositoryBuilder().setBare().setGitDir(repositoryDir).build();
-      workaroundRacyGit();
-      tn = transportFactory.createTransport(repository, new URIish(fetchUrl), auth);
-      try {
-        pruneRemovedBranches(config, repository, transportFactory, tn, new URIish(fetchUrl), auth);
-      } catch (Exception e) {
-        System.err.println("Error while pruning removed branches: " + e.getMessage());
-        e.printStackTrace(System.err);
-      }
-      logFetchResults(GitServerUtil.fetchAndCheckResults(repository, new URIish(fetchUrl), auth, transportFactory, tn, progressMonitor,
-                                                         parseRefspecs(refspecs), config.ignoreMissingRemoteRef()));
-    } finally {
-      if (tn != null)
-        tn.close();
-    }
+    TransportFactory transportFactory = new TransportFactoryImpl(config, new EmptyVcsRootSshKeyManager(), new GitTrustStoreProviderStatic(trustedCertificatesDir));
+    Repository repository = new RepositoryBuilder().setBare().setGitDir(repositoryDir).build();
+
+    workaroundRacyGit();
+    pruneRemovedBranches(config, repository, transportFactory, new URIish(fetchUrl), auth, debug);
+    logFetchResults(GitServerUtil.fetchAndCheckResults(repository, new URIish(fetchUrl), auth, transportFactory, progressMonitor, parseRefspecs(refspecs), config.ignoreMissingRemoteRef()));
   }
 
   private static void pruneRemovedBranches(@NotNull ServerPluginConfig config,
                                            @NotNull Repository db,
                                            @NotNull TransportFactory transportFactory,
-                                           @NotNull Transport tn,
                                            @NotNull URIish uri,
-                                           @NotNull AuthSettings authSettings) throws IOException, VcsException {
-    GitServerUtil.pruneRemovedBranches(config, transportFactory, tn, db, uri, authSettings);
+                                           @NotNull AuthSettings authSettings,
+                                           boolean debug) {
+    try {
+      GitServerUtil.pruneRemovedBranches(config, transportFactory, db, uri, authSettings);
+    } catch (Exception e) {
+      System.err.println("Error while pruning removed branches in " + db + ": " + e.getMessage());
+      if (debug) {
+        e.printStackTrace(System.err);
+      }
+    }
   }
 
   private static void logFetchResults(@NotNull FetchResult result) {

@@ -19,12 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessExecutor;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessStuckMonitor;
@@ -41,10 +35,18 @@ import jetbrains.buildServer.vcs.VcsUtil;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
-import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.*;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.fetchAndCheckResults;
 
 /**
 * @author dmitry.neverov
@@ -294,28 +296,24 @@ public class FetchCommandImpl implements FetchCommand {
       LOG.debug("Fetch in server process: " + debugInfo);
     }
     final long fetchStart = System.currentTimeMillis();
-    final Transport tn = myTransportFactory.createTransport(db, uri, settings.getAuthSettings());
     try {
-      pruneRemovedBranches(db, tn, uri, settings.getAuthSettings());
-      GitServerUtil
-        .fetchAndCheckResults(db, uri, settings.getAuthSettings(), myTransportFactory, tn, settings.createProgressMonitor(), refSpecs,
-                              myConfig.ignoreMissingRemoteRef());
+      pruneRemovedBranches(db, uri, settings.getAuthSettings());
+      fetchAndCheckResults(db, uri, settings.getAuthSettings(), myTransportFactory, settings.createProgressMonitor(), refSpecs, myConfig.ignoreMissingRemoteRef());
     } catch (OutOfMemoryError oom) {
       LOG.warn("There is not enough memory for git fetch, try to run fetch in a separate process.");
       clean(db);
     } finally {
       clean(db);
-      tn.close();
       final long fetchTime = System.currentTimeMillis() - fetchStart;
       LOG.info("Git fetch finished for: " + uri + " in directory: " + db.getDirectory() + ", took " + fetchTime + "ms");
     }
   }
 
-  private void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn, @NotNull URIish uri, @NotNull AuthSettings authSettings) throws IOException, VcsException {
+  private void pruneRemovedBranches(@NotNull Repository db, @NotNull URIish uri, @NotNull AuthSettings authSettings) throws IOException, VcsException {
     try {
-      GitServerUtil.pruneRemovedBranches(myConfig, myTransportFactory, tn, db, uri, authSettings);
+      GitServerUtil.pruneRemovedBranches(myConfig, myTransportFactory, db, uri, authSettings);
     } catch (Exception e) {
-      LOG.error("Error while pruning removed branches", e);
+      LOG.error("Error while pruning removed branches in " + db, e);
     }
   }
 

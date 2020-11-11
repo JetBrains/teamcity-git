@@ -372,33 +372,16 @@ public class GitServerUtil {
     }
   }
 
-  static void pruneRemovedBranches(@NotNull ServerPluginConfig config,
-                                   @NotNull TransportFactory transportFactory,
-                                   @NotNull Transport tn,
-                                   @NotNull Repository db,
-                                   @NotNull URIish uri,
-                                   @NotNull AuthSettings authSettings) throws IOException, VcsException {
-    if (config.createNewConnectionForPrune()) {
-      Transport transport = null;
-      try {
-        transport = transportFactory.createTransport(db, uri, authSettings, config.getRepositoryStateTimeoutSeconds());
-        pruneRemovedBranches(db, transport);
-      } finally {
-        if (transport != null)
-          transport.close();
-      }
-    } else {
-      pruneRemovedBranches(db, tn);
-    }
-  }
-
   /**
    * Removes branches of a bare repository which are not present in a remote repository
    */
-  private static void pruneRemovedBranches(@NotNull Repository db, @NotNull Transport tn) {
-    FetchConnection conn = null;
-    try {
-      conn = tn.openFetch();
+  static void pruneRemovedBranches(@NotNull ServerPluginConfig config,
+                                   @NotNull TransportFactory transportFactory,
+                                   @NotNull Repository db,
+                                   @NotNull URIish uri,
+                                   @NotNull AuthSettings authSettings) throws NotSupportedException, TransportException, VcsException {
+    try (Transport tn = transportFactory.createTransport(db, uri, authSettings, config.getRepositoryStateTimeoutSeconds());
+         FetchConnection conn = tn.openFetch()) {
       Map<String, Ref> remoteRefMap = conn.getRefsMap();
       for (Map.Entry<String, Ref> e : db.getAllRefs().entrySet()) {
         if (!remoteRefMap.containsKey(e.getKey())) {
@@ -408,30 +391,20 @@ public class GitServerUtil {
             refUpdate.delete();
           } catch (Exception ex) {
             LOG.info("Failed to prune removed ref " + e.getKey(), ex);
-            break;
           }
         }
       }
-    } catch (IOException e) {
-      LOG.info("Failed to list remote refs, continue without pruning removed refs: " + e.toString(), e); //todo: add repo or directory where this occurs
-    } finally {
-      if (conn != null)
-        conn.close();
     }
   }
 
-
-  public static boolean isCloned(@NotNull Repository db) throws VcsException, IOException {
+  public static boolean isCloned(@NotNull Repository db) throws IOException {
     if (!db.getObjectDatabase().exists())
       return false;
-    ObjectReader reader = db.getObjectDatabase().newReader();
-    try {
+    try (ObjectReader reader = db.getObjectDatabase().newReader()) {
       for (Ref ref : db.getRefDatabase().getRefs(RefDatabase.ALL).values()) {
         if (reader.has(ref.getObjectId()))
           return true;
       }
-    } finally {
-      reader.close();
     }
     return false;
   }
@@ -541,13 +514,12 @@ public class GitServerUtil {
                                                  @NotNull URIish url,
                                                  @NotNull AuthSettings authSettings,
                                                  @NotNull TransportFactory transportFactory,
-                                                 @NotNull Transport transport,
                                                  @NotNull ProgressMonitor progress,
                                                  @NotNull Collection<RefSpec> refSpecs,
                                                  boolean ignoreMissingRemoteRef) throws VcsException, IOException {
     final Set<String> refNames = r.getRefDatabase().getRefsByPrefix(RefDatabase.ALL).stream().map(Ref::getName).collect(Collectors.toSet());
-    FetchResult result = GitServerUtil.fetch(r, url, authSettings, transportFactory, transport, progress, refSpecs, ignoreMissingRemoteRef);
-    GitServerUtil.checkFetchSuccessful(r, result, refNames);
+    FetchResult result = fetch(r, url, authSettings, transportFactory, progress, refSpecs, ignoreMissingRemoteRef);
+    checkFetchSuccessful(r, result, refNames);
     return result;
   }
 
@@ -557,18 +529,19 @@ public class GitServerUtil {
                                   @NotNull URIish url,
                                   @NotNull AuthSettings authSettings,
                                   @NotNull TransportFactory transportFactory,
-                                  @NotNull Transport transport,
                                   @NotNull ProgressMonitor progress,
                                   @NotNull Collection<RefSpec> refSpecs,
                                   boolean ignoreMissingRemoteRef) throws NotSupportedException, TransportException, VcsException {
-    try {
+    try (Transport transport = transportFactory.createTransport(r, url, authSettings)) {
       return transport.fetch(progress, refSpecs);
     } catch (TransportException e) {
       Throwable cause = e.getCause();
       if (cause instanceof JSchException && "channel is not opened.".equals(cause.getMessage())) {
-        return runWithNewTransport(r, url, authSettings, transportFactory, tn -> tn.fetch(progress, refSpecs));
-      } if ("http".equals(url.getScheme()) && url.getHost().contains("github.com") &&
-            e.getMessage() != null && e.getMessage().contains("301")) {
+        try (Transport tn = transportFactory.createTransport(r, url, authSettings)) {
+          return tn.fetch(progress, refSpecs);
+        }
+      }
+      if ("http".equals(url.getScheme()) && url.getHost().contains("github.com") && e.getMessage() != null && e.getMessage().contains("301")) {
         /* github returns 301 status code in case we use http protocol */
         throw new TransportException("Please use https protocol in VCS root instead of http.", e);
       } else {
@@ -576,36 +549,15 @@ public class GitServerUtil {
           String missingRef = getMissingRemoteRef(e);
           if (missingRef != null) {
             //exclude spec causing the error
-            List<RefSpec> updatedSpecs = refSpecs.stream().filter(spec -> !spec.getSource().equals(missingRef)).collect(Collectors.toList());
+            List<RefSpec> updatedSpecs =
+              refSpecs.stream().filter(spec -> !spec.getSource().equals(missingRef)).collect(Collectors.toList());
             if (updatedSpecs.size() == refSpecs.size())
               throw e;
-            return runWithNewTransport(r, url, authSettings, transportFactory, tn ->
-              fetch(r, url, authSettings, transportFactory, tn, progress, updatedSpecs, ignoreMissingRemoteRef));
+            return fetch(r, url, authSettings, transportFactory, progress, updatedSpecs, ignoreMissingRemoteRef);
           }
         }
         throw e;
       }
-    }
-  }
-
-
-  private interface FetchAction {
-    @NotNull
-    FetchResult run(@NotNull Transport t) throws NotSupportedException, VcsException, TransportException;
-  }
-
-  private static FetchResult runWithNewTransport(@NotNull Repository r,
-                                                 @NotNull URIish url,
-                                                 @NotNull AuthSettings authSettings,
-                                                 @NotNull TransportFactory transportFactory,
-                                                 @NotNull FetchAction action) throws NotSupportedException, VcsException, TransportException {
-    Transport tn = null;
-    try {
-      tn = transportFactory.createTransport(r, url, authSettings);
-      return action.run(tn);
-    } finally {
-      if (tn != null)
-        tn.close();
     }
   }
 
