@@ -147,8 +147,6 @@ public interface ServerPluginConfig extends PluginConfig {
 
   boolean logRemoteRefs();
 
-  boolean createNewConnectionForPrune();
-
   long getAccessTimeUpdateRateMinutes();
 
   boolean ignoreMissingRemoteRef();

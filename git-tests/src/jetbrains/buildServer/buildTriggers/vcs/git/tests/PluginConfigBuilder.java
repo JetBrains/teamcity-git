@@ -329,13 +329,6 @@ public class PluginConfigBuilder {
       }
 
       @Override
-      public boolean createNewConnectionForPrune() {
-        if (myNewConnectionForPrune != null)
-          return myNewConnectionForPrune;
-        return myDelegate.createNewConnectionForPrune();
-      }
-
-      @Override
       public long getAccessTimeUpdateRateMinutes() {
         return myDelegate.getAccessTimeUpdateRateMinutes();
       }
