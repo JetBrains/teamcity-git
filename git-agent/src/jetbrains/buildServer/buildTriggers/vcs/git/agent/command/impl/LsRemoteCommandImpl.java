@@ -84,7 +84,7 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
       return Retry.retry(new Retry.Retryable<List<Ref>>() {
         @Override
         public boolean requiresRetry(@NotNull final Exception e) {
-          return e instanceof VcsException && CommandUtil.isRetryable((VcsException)e);
+          return e instanceof VcsException && CommandUtil.isRecoverable((VcsException)e);
         }
 
         @Override

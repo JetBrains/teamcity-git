@@ -166,7 +166,7 @@ public class CommandUtil {
     return false;
   }
 
-  public static boolean isRetryable(@NotNull VcsException e) {
+  public static boolean isRecoverable(@NotNull VcsException e) {
     if (CommandUtil.isCanceledError(e)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
 
