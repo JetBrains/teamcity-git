@@ -402,7 +402,7 @@ public class GitServerUtil {
     return Retry.retry(new Retry.Retryable<Map<String, Ref>>() {
       @Override
       public boolean requiresRetry(@NotNull final Exception e) {
-        return e instanceof TransportException && isRecoverable((TransportException)e);
+        return isRecoverable(e);
       }
 
       @Nullable
@@ -590,7 +590,7 @@ public class GitServerUtil {
       return Retry.retry(new Retry.Retryable<FetchResult>() {
         @Override
         public boolean requiresRetry(@NotNull final Exception e) {
-          return e instanceof TransportException && isRecoverable((TransportException)e);
+          return isRecoverable(e);
         }
 
         @Nullable
@@ -686,13 +686,16 @@ public class GitServerUtil {
     return fullRefName.startsWith(org.eclipse.jgit.lib.Constants.R_TAGS);
   }
 
-  public static boolean isRecoverable(@NotNull TransportException e) {
+  public static boolean isRecoverable(@NotNull Exception e) {
+    if (!(e instanceof TransportException)) return false;
+
     String message = e.getMessage();
     if (message == null)
       return false;
     if (message.contains("Connection timed out") ||
         message.contains("Connection time out") ||
-        message.contains("Short read of block")) //TW-55869
+        message.contains("Short read of block") || //TW-55869
+        message.contains("Read timed out after")) //TW-68453
     {
       return true;
     }

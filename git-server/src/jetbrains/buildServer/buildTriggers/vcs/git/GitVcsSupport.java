@@ -519,7 +519,7 @@ public class GitVcsSupport extends ServerVcsSupport
         return Retry.retry(new Retry.Retryable<Map<String, Ref>>() {
           @Override
           public boolean requiresRetry(@NotNull final Exception e) {
-            return e instanceof TransportException && GitServerUtil.isRecoverable((TransportException)e);
+            return GitServerUtil.isRecoverable(e);
           }
 
           @Nullable
