@@ -170,8 +170,10 @@ public class CommandUtil {
     if (CommandUtil.isCanceledError(e)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
 
-    String msg = e.getMessage().toLowerCase();
-    return !msg.contains("couldn't find remote ref") &&
-           !msg.contains("could not read from remote repository");
+    final String msg = e.getMessage().toLowerCase();
+    return !(msg.contains("couldn't find remote ref") ||
+             msg.contains("no remote repository specified") ||
+             msg.contains("no such remote") ||
+             msg.contains("access denied"));
   }
 }
