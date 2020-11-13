@@ -80,6 +80,12 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
 
   @NotNull
   public List<Ref> call() throws VcsException {
+    GitCommandLine cmd = getCmd();
+    cmd.addParameter("ls-remote");
+    if (myShowTags)
+      cmd.addParameter("--tags");
+    cmd.addParameter("origin");
+
     try {
       return Retry.retry(new Retry.Retryable<List<Ref>>() {
         @Override
@@ -89,12 +95,6 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
 
         @Override
         public List<Ref> call() throws VcsException {
-          GitCommandLine cmd = getCmd();
-          cmd.addParameter("ls-remote");
-          if (myShowTags)
-            cmd.addParameter("--tags");
-          cmd.addParameter("origin");
-
           final ExecResult result = cmd.run(with()
                                               .timeout(myTimeoutSeconds)
                                               .authSettings(myAuthSettings)
