@@ -34,5 +34,6 @@
     <orderEntry type="module" module-name="server" exported="" />
     <orderEntry type="module" module-name="patches-impl" exported="" />
     <orderEntry type="module" module-name="usage-statistics-util" exported="" />
+    <orderEntry type="module" module-name="web-openapi" />
   </component>
 </module>

@@ -1,6 +1,7 @@
 <%@include file="/include-internal.jsp" %>
 <%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.GitVersion" %>
 <%@ page import="jetbrains.buildServer.web.openapi.healthStatus.HealthStatusItemDisplayMode" %>
+<%@ page import="jetbrains.buildServer.web.util.WebUtil" %>
 <c:set var="inplaceMode" value="<%=HealthStatusItemDisplayMode.IN_PLACE%>"/>
 <jsp:useBean id="showMode" type="jetbrains.buildServer.web.openapi.healthStatus.HealthStatusItemDisplayMode" scope="request"/>
 <jsp:useBean id="healthStatusItem" type="jetbrains.buildServer.serverSide.healthStatus.HealthStatusItem" scope="request"/>
@@ -18,8 +19,10 @@
 </c:choose>
 <bs:helpLink file="Git" anchor="agentGitPath">Update git executable on <bs:plural txt="agent" val="${gitVersionAgentCount}"/></bs:helpLink>.
 
+<c:set var="useSakuraHeader" value="<%= WebUtil.useSakuraHeader() %>" />
+
 <bs:agentsGroupedByPool agentsGroupedByPools="${gitVersionAgents}"
-                        inplaceMode="${showMode == inplaceMode}"
+                        inplaceMode="${showMode == inplaceMode && !useSakuraHeader}"
                         hasSeveralPools="${healthStatusItem.additionalData['hasSeveralPools']}">
   <jsp:attribute name="agentListHeader">
     <bs:plural txt="Agent" val="${gitVersionAgentCount}"/> running ${gitVersionUnsupported ? "unsupported" : "deprecated"} git executable:
