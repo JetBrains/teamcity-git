@@ -90,6 +90,7 @@ public class GitGcErrorsHealthPage extends HealthStatusItemPageExtension {
         if (key instanceof File && value instanceof String) {
           try {
             String url = myMirrorManager.getUrl(((File)key).getName());
+            url = "asdasd";
             if (url != null) {
               sortedErrors.put(url, Pair.create(errorMessageSanitizer.sanitize(((File)key).getCanonicalPath()), (String) value));
             }

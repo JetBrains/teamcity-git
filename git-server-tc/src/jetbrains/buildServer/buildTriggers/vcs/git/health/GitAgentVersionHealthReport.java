@@ -12,6 +12,8 @@ import jetbrains.buildServer.serverSide.agentPools.AgentPoolManager;
 import jetbrains.buildServer.serverSide.agentPools.AgentPoolUtil;
 import jetbrains.buildServer.serverSide.agentTypes.SAgentType;
 import jetbrains.buildServer.serverSide.healthStatus.*;
+import jetbrains.buildServer.serverSide.impl.BuildAgentManagerImpl;
+import jetbrains.buildServer.serverSide.impl.auth.SecuredBuildAgentManager;
 import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -109,6 +111,8 @@ public class GitAgentVersionHealthReport extends HealthStatusReport {
         deprecated.add(a);
       }
     }
+    unsupported.addAll(myAgentManager.getRegisteredAgents());
+    deprecated.addAll(myAgentManager.getRegisteredAgents());
     if (!unsupported.isEmpty()) {
       final Map<String, Object> model = new HashMap<>();
       model.put("gitVersionUnsupported", true);

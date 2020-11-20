@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.health;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.Cleanup;
 import jetbrains.buildServer.serverSide.healthStatus.*;
+import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
