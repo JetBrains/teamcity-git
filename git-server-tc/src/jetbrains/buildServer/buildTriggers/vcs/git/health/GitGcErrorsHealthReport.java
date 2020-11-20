@@ -65,7 +65,6 @@ public class GitGcErrorsHealthReport extends HealthStatusReport {
   @Override
   public void report(@NotNull HealthStatusScope scope, @NotNull HealthStatusItemConsumer resultConsumer) {
     Map<File, String> errors = myGcErrors.getErrors();
-    errors.put(new File(""), "Errororerer");
     if (!errors.isEmpty()) {
       Map<String, Object> data = new HashMap<>();
       data.put(ERRORS_KEY, errors);
