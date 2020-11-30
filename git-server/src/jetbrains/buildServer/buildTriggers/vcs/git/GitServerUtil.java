@@ -708,7 +708,8 @@ public class GitServerUtil {
              message.contains("timeout: socket is not established") ||
              message.contains("java.net.UnknownHostException:") || //TW-31027
              message.contains("com.jcraft.jsch.JSchException: verify: false") || //TW-31175
-             message.contains("channel is not opened."); //TW-46052
+             message.contains("channel is not opened.") || //TW-46052
+             message.contains("Connection refused"); // TW-68453
     }
     return false;
   }
