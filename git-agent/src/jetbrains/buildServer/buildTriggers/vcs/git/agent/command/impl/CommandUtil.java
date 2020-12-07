@@ -166,6 +166,16 @@ public class CommandUtil {
     return false;
   }
 
+  public static boolean isNoSuchFileOrDirError(@NotNull VcsException e) {
+    Throwable t = e;
+    do {
+      final String msg = t.getMessage();
+      if (msg != null && msg.contains("No such file or directory")) return true;
+      t = t.getCause();
+    } while (t != null);
+    return false;
+  }
+
   public static boolean isRecoverable(@NotNull VcsException e) {
     if (CommandUtil.isCanceledError(e)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
