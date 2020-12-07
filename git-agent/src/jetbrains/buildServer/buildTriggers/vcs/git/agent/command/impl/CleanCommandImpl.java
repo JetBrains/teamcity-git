@@ -82,15 +82,22 @@ public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
       CommandUtil.failIfNotEmptyStdErr(cmd, r);
     } catch (VcsException e) {
       Loggers.VCS.warnAndDebugDetails("Failed to clean files", e);
-      if (!SystemInfo.isWindows || CommandUtil.isCanceledError(e))
+      if (!SystemInfo.isWindows || CommandUtil.isCanceledError(e)) {
         throw e;
+      }
+
       if (CommandUtil.isNoSuchFileOrDirError(e)) {
         throw new VcsException("Some files may be locked: " + e.getMessage(), e);
       }
-      File workingDir = cmd.getWorkingDirectory();
-      if (workingDir == null)
+
+      final File workingDir = cmd.getWorkingDirectory();
+      if (workingDir == null) {
         throw e;
-      handleLongFileNames(workingDir, e);
+      }
+
+      if (CommandUtil.isFileNameTooLongError(e)) {
+        handleLongFileNames(workingDir, e);
+      }
     }
   }
 

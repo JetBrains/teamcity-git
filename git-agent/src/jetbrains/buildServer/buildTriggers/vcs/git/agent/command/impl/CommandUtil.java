@@ -167,10 +167,18 @@ public class CommandUtil {
   }
 
   public static boolean isNoSuchFileOrDirError(@NotNull VcsException e) {
+    return isMessageContains(e, "No such file or directory");
+  }
+
+  public static boolean isFileNameTooLongError(@NotNull VcsException e) {
+    return isMessageContains(e, "Filename too long");
+  }
+
+  public static boolean isMessageContains(@NotNull VcsException e, @NotNull String text) {
     Throwable t = e;
     do {
       final String msg = t.getMessage();
-      if (msg != null && msg.contains("No such file or directory")) return true;
+      if (msg != null && msg.contains(text)) return true;
       t = t.getCause();
     } while (t != null);
     return false;

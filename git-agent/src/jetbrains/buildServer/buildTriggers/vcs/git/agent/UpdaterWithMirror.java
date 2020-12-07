@@ -108,6 +108,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       git.init().setBare(true).call();
       configureRemoteUrl(bareRepositoryDir, fetchUrl);
       sslInvestigator.setCertificateOptions(git);
+      enableLongPaths(git);
       newMirror = true;
       fetchRequired = true;
     } else {
