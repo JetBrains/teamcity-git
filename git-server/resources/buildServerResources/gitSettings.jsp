@@ -14,11 +14,11 @@
   ~ limitations under the License.
   --%>
 
-<%@ page import="java.io.File" %>
 <%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.Constants" %>
 <%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl" %>
 <%@ page import="jetbrains.buildServer.serverSide.TeamCityProperties" %>
 <%@ page import="jetbrains.buildServer.util.StringUtil" %>
+<%@ page import="java.io.File" %>
 <%@include file="/include.jsp" %>
 <%@ taglib prefix="props" tagdir="/WEB-INF/tags/props" %>
 <%@ taglib prefix="admin" tagdir="/WEB-INF/tags/admin" %>
@@ -130,7 +130,7 @@
       <td>
         <props:selectProperty name="authMethod" onchange="gitSelectAuthentication(true)" enableFilter="true" className="mediumField">
           <props:option value="ANONYMOUS">Anonymous</props:option>
-          <props:option value="PASSWORD">Password</props:option>
+          <props:option value="PASSWORD">Password / access token</props:option>
           <optgroup label="Private Key">
             <c:if test="${teamcitySshKeysEnabled}">
               <props:option value="TEAMCITY_SSH_KEY">Uploaded Key</props:option>
@@ -153,7 +153,7 @@
       </td>
     </tr>
     <tr id="gitPasswordRow" class="auth password">
-      <th><label for="secure:password">Password:</label></th>
+      <th><label for="secure:password">Password / access token:</label></th>
       <td><props:passwordProperty name="secure:password" className="longField"/></td>
     </tr>
     <tr id="gitPrivateKeyRow" class="auth customKey">
