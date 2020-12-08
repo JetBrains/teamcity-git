@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.Trinity;
 import jetbrains.buildServer.BuildProblemData;
 import jetbrains.buildServer.agent.AgentRunningBuild;
@@ -923,25 +922,9 @@ public class UpdaterImpl implements Updater {
     if (pushUrl != null && !pushUrl.equals(fetchUrl.toString())) {
       gitFacade.setConfig().setPropertyName("remote.origin.pushurl").setValue(pushUrl).call();
     }
-    enableLongPaths(gitFacade);
     setupNewRepository();
     configureSparseCheckout();
   }
-
-  protected void enableLongPaths(@NotNull GitFacade gitFacade) {
-    if (SystemInfo.isWindows) {
-      // some git clients on Windows require core.longpaths=true to process file paths longer than 260 chars
-      try {
-        final SetConfigCommand setConfig = gitFacade.setConfig();
-        setConfig.setPropertyName("core.longpaths");
-        setConfig.setValue("true");
-        setConfig.call();
-      } catch (VcsException e) {
-        Loggers.VCS.warnAndDebugDetails("Failed to enable long paths", e);
-      }
-    }
-  }
-
 
   void configureRemoteUrl(@NotNull File gitDir, CommonURIish remoteUrl) throws VcsException {
     RemoteRepositoryConfigurator cfg = new RemoteRepositoryConfigurator();
