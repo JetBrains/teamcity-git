@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
@@ -157,7 +158,7 @@ public class CommandUtil {
     return msg != null && msg.contains("exception: jetbrains.buildServer.ProcessTimeoutException");
   }
 
-  public static boolean isCanceledError(@NotNull VcsException e) {
+  public static boolean isCanceledError(@NotNull Exception e) {
     Throwable t = e;
     do {
       if (t instanceof CheckoutCanceledException || t instanceof InterruptedException) return true;
@@ -184,7 +185,10 @@ public class CommandUtil {
     return false;
   }
 
-  public static boolean isRecoverable(@NotNull VcsException e) {
+  public static boolean isRecoverable(@NotNull Exception e) {
+    if (e instanceof ProcessTimeoutException) return true;
+    if (!(e instanceof VcsException)) return false;
+
     if (CommandUtil.isCanceledError(e)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
 

@@ -783,7 +783,7 @@ public class UpdaterImpl implements Updater {
       Retry.retry(new Retry.Retryable<Void>() {
         @Override
         public boolean requiresRetry(@NotNull final Exception e) {
-          return e instanceof VcsException && CommandUtil.isRecoverable((VcsException)e);
+          return CommandUtil.isRecoverable(e);
         }
 
         @Nullable
