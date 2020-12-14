@@ -40,7 +40,10 @@ import org.jetbrains.annotations.Nullable;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class GitCommandLine extends GeneralCommandLine {
 
@@ -58,7 +61,6 @@ public class GitCommandLine extends GeneralCommandLine {
   private VcsRootSshKeyManager mySshKeyManager;
   private boolean myHasProgress = false;
   private boolean myUseGitSshCommand = true;
-  private final Collection<String> myCustomConfig;
 
   public GitCommandLine(@Nullable GitAgentSSHService ssh,
                         @NotNull ScriptGen scriptGen,
@@ -67,7 +69,6 @@ public class GitCommandLine extends GeneralCommandLine {
                         @NotNull GitProgressLogger logger,
                         @NotNull GitVersion gitVersion,
                         @NotNull Map<String, String> env,
-                        @NotNull Collection<String> customConfig,
                         @NotNull Context ctx) {
     mySsh = ssh;
     myScriptGen = scriptGen;
@@ -76,7 +77,6 @@ public class GitCommandLine extends GeneralCommandLine {
     myLogger = logger;
     myGitVersion = gitVersion;
     myCtx = ctx;
-    myCustomConfig = customConfig;
     setPassParentEnvs(true);
     setEnvParams(env);
   }
@@ -98,10 +98,6 @@ public class GitCommandLine extends GeneralCommandLine {
       //https://public-inbox.org/git/CAC+L6n0YeX_n_AysCLtBWkA+jPHwg7HmOWq2PLj75byxOZE=qQ@mail.gmail.com/
       getParametersList().addAt(0, "-c");
       getParametersList().addAt(1, "credential.helper=");
-    }
-    for (String config : myCustomConfig) {
-      getParametersList().addAt(0, "-c");
-      getParametersList().addAt(1, config);
     }
     if (authSettings != null) {
       if (mySsh == null)

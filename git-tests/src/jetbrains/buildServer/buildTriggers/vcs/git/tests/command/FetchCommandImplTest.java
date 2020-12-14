@@ -17,10 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests.command;
 
 import com.intellij.openapi.util.io.FileUtil;
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
@@ -40,6 +36,10 @@ import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
 
 import static org.testng.AssertJUnit.fail;
 
@@ -70,7 +70,7 @@ public class FetchCommandImplTest {
     };
 
     File tmpDir = new File(FileUtil.getTempDirectory());
-    GitCommandLine failedCmd = new GitCommandLine(null, fakeGen, tmpDir, false, GitProgressLogger.NO_OP, GitVersion.MIN, new HashMap<String, String>(0), Collections.emptyList(), new NoBuildContext()) {
+    GitCommandLine failedCmd = new GitCommandLine(null, fakeGen, tmpDir, false, GitProgressLogger.NO_OP, GitVersion.MIN, new HashMap<String, String>(0), new NoBuildContext()) {
       @Override
       public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
         throw new VcsException("fatal: index file smaller than expected");

@@ -1747,7 +1747,6 @@ public class AgentVcsSupportTest {
                                               GitProgressLogger.NO_OP,
                                               GitVersion.MIN,
                                               new HashMap<String, String>(),
-                                              Collections.emptyList(),
                                               new NoBuildContext());
       cmd.setExePath(gitPath);
       cmd.setWorkingDirectory(new File(workDirectory));
