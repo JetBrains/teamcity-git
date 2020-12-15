@@ -21,6 +21,7 @@ import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
@@ -154,11 +155,10 @@ public class CommandUtil {
 
 
   public static boolean isTimeoutError(@NotNull VcsException e) {
-    String msg = e.getMessage();
-    return msg != null && msg.contains("exception: jetbrains.buildServer.ProcessTimeoutException");
+    return isMessageContains(e, "exception: jetbrains.buildServer.ProcessTimeoutException");
   }
 
-  public static boolean isCanceledError(@NotNull Exception e) {
+  public static boolean isCanceledError(@NotNull VcsException e) {
     Throwable t = e;
     do {
       if (t instanceof CheckoutCanceledException || t instanceof InterruptedException) return true;
@@ -186,13 +186,15 @@ public class CommandUtil {
   }
 
   public static boolean isRecoverable(@NotNull Exception e) {
-    if (e instanceof ProcessTimeoutException) return true;
+    if (e instanceof ProcessTimeoutException || e instanceof GitExecTimeout) return true;
     if (!(e instanceof VcsException)) return false;
 
-    if (CommandUtil.isCanceledError(e)) return false;
+    final VcsException ve = (VcsException)e;
+    if (isTimeoutError(ve)) return true;
+    if (isCanceledError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
 
-    final String msg = e.getMessage().toLowerCase();
+    final String msg = ve.getMessage().toLowerCase();
     return !(msg.contains("couldn't find remote ref") ||
              msg.contains("no remote repository specified") ||
              msg.contains("no such remote") ||
