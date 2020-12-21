@@ -17,11 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
@@ -37,6 +32,12 @@ import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author dmitry.neverov
@@ -155,7 +156,7 @@ class ModificationDataRevWalk extends RevWalk {
     private final Map<String, String> myAttributes = new HashMap<>();
     private final String repositoryDebugInfo = myGitRoot.debugInfo();
     private final IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(myGitRoot);
-    private final Map<String, RevCommit> commitsWithFix = new HashMap<String, RevCommit>();
+    private final Map<String, String> commitsWithFix = new HashMap<String, String>();
 
     /**
      * @param commit current commit
@@ -234,7 +235,7 @@ class ModificationDataRevWalk extends RevWalk {
 
         if (filter.isBrokenSubmoduleEntry(path)) {
           final RevCommit commitWithFix = getPreviousCommitWithFixedSubmodule(commit, path);
-          commitsWithFix.put(path, commitWithFix);
+          commitsWithFix.put(path, commitWithFix == null ? null : commitWithFix.getId().name());
           if (commitWithFix != null) {
             subWalk(path, commitWithFix);
             return;
@@ -243,7 +244,7 @@ class ModificationDataRevWalk extends RevWalk {
 
         if (filter.isChildOfBrokenSubmoduleEntry(path)) {
           final String brokenSubmodulePath = filter.getSubmodulePathForChildPath(path);
-          final RevCommit commitWithFix = commitsWithFix.get(brokenSubmodulePath);
+          final String commitWithFix = commitsWithFix.get(brokenSubmodulePath);
           if (commitWithFix != null) {
             return;
           }
