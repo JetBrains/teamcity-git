@@ -198,6 +198,7 @@ public class CommandUtil {
     return !(msg.contains("couldn't find remote ref") ||
              msg.contains("no remote repository specified") ||
              msg.contains("no such remote") ||
-             msg.contains("access denied"));
+             msg.contains("access denied") ||
+             msg.contains("could not read from remote repository"));
   }
 }
