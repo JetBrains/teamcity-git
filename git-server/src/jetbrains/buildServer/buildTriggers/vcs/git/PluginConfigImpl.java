@@ -464,7 +464,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   public int getConnectionRetryAttempts() {
-    return TeamCityProperties.getInteger("teamcity.git.connectionRetryAttempts", 5);
+    return TeamCityProperties.getInteger("teamcity.git.connectionRetryAttempts", 1);
   }
 
   public boolean ignoreFetchedCommits() {
