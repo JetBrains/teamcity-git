@@ -18,11 +18,14 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.UpdaterImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.InitCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 public class InitCommandImpl extends BaseCommandImpl implements InitCommand {
+
+  public static final String INITIAL_BRANCH = "main";
 
   private boolean myBare = false;
 
@@ -43,6 +46,10 @@ public class InitCommandImpl extends BaseCommandImpl implements InitCommand {
     cmd.addParameter("init");
     if (myBare)
       cmd.addParameter("--bare");
+    if (!cmd.getGitVersion().isLessThan(UpdaterImpl.GIT_INIT_STDERR_DEFAULT_BRANCH_HINT)) {
+      // TW-69468
+      cmd.addParameter("--initial-branch=" + INITIAL_BRANCH);
+    }
     ExecResult r = CommandUtil.runCommand(cmd);
     CommandUtil.failIfNotEmptyStdErr(cmd, r);
   }
