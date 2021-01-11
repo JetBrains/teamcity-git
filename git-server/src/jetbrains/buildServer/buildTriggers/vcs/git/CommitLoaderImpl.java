@@ -17,11 +17,18 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.RevisionNotFoundException;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsOperationRejectedException;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
+import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -31,13 +38,6 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
@@ -137,37 +137,35 @@ public class CommitLoaderImpl implements CommitLoader {
     final File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
 
-    try (RevWalk walk = new RevWalk(db)) {
-      revisions = findLocallyMissingRevisions(context, walk, revisions, false);
+    revisions = findLocallyMissingRevisions(context, db, revisions, false);
+    if (revisions.isEmpty()) return;
+
+    final long start = System.currentTimeMillis();
+    final ReentrantLock lock = acquireWriteLock(repositoryDir, context.getPluginConfig().repositoryWriteLockTimeout());
+    try {
+      final long finish = System.currentTimeMillis();
+      final long waitTime = finish - start;
+      if (waitTime > 20000) {
+        // if wait time was significant, report it in progress
+        settings.getProgress().reportProgress("Waited for exclusive lock in cloned directory, wait time: " + waitTime + "ms");
+      }
+      PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + waitTime + "ms");
+
+      revisions = findLocallyMissingRevisions(context, db, revisions, false);
       if (revisions.isEmpty()) return;
 
-      final long start = System.currentTimeMillis();
-      final ReentrantLock lock = acquireWriteLock(repositoryDir, context.getPluginConfig().repositoryWriteLockTimeout());
-      try {
-        final long finish = System.currentTimeMillis();
-        final long waitTime = finish - start;
-        if (waitTime > 20000) {
-          // if wait time was significant, report it in progress
-          settings.getProgress().reportProgress("Waited for exclusive lock in cloned directory, wait time: " + waitTime + "ms");
-        }
-        PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + waitTime + "ms");
+      doFetch(db, fetchURI, getRefSpecsForRevisions(context, revisions, remoteRefs), settings);
 
-        revisions = findLocallyMissingRevisions(context, walk, revisions, false);
-        if (revisions.isEmpty()) return;
+      revisions = findLocallyMissingRevisions(context, db, revisions, false);
+      if (revisions.isEmpty()) return;
 
-        doFetch(db, fetchURI, getRefSpecsForRevisions(context, revisions, remoteRefs), settings);
+      final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
+      if (revisions.stream().noneMatch(RefCommit::isRefTip) && fetchAllRefsDisabled) return;
 
-        revisions = findLocallyMissingRevisions(context, walk, revisions, false);
-        if (revisions.isEmpty()) return;
-
-        final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
-        if (revisions.stream().noneMatch(RefCommit::isRefTip) && fetchAllRefsDisabled) return;
-
-        doFetch(db, fetchURI, fetchAllRefsDisabled ? getRefSpecsForRemoteBranches(remoteRefs) : getAllRefSpec(), settings);
-        findLocallyMissingRevisions(context, walk, revisions, true);
-      } finally {
-        lock.unlock();
-      }
+      doFetch(db, fetchURI, fetchAllRefsDisabled ? getRefSpecsForRemoteBranches(remoteRefs) : getAllRefSpec(), settings);
+      findLocallyMissingRevisions(context, db, revisions, true);
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -191,44 +189,49 @@ public class CommitLoaderImpl implements CommitLoader {
 
   @NotNull
   private Collection<RefCommit> findLocallyMissingRevisions(@NotNull OperationContext context,
-                                                            @NotNull RevWalk walk,
+                                                            @NotNull Repository db,
                                                             @NotNull Collection<RefCommit> revisions,
                                                             boolean throwErrors) throws VcsException {
     final Set<RefCommit> locallyMissing = new HashSet<>();
 
-    for (RefCommit r : revisions) {
-      final String ref = GitUtils.expandRef(r.getRef());
-      final String rev = r.getCommit();
-      final String revNumber = GitUtils.versionRevision(rev);
-      try {
-        walk.parseCommit(ObjectId.fromString(revNumber));
-      } catch (IncorrectObjectTypeException e) {
-        LOG.warn("Ref " + ref + " points to a non-commit " + revNumber + " for " + context.getGitRoot().debugInfo());
-      } catch (Exception e) {
-        locallyMissing.add(r);
+    try (RevWalk walk = new RevWalk(db)) {
+      for (RefCommit r : revisions) {
+        final String ref = GitUtils.expandRef(r.getRef());
+        final String rev = r.getCommit();
+        final String revNumber = GitUtils.versionRevision(rev);
+        try {
+          walk.parseCommit(ObjectId.fromString(revNumber));
+        } catch (IncorrectObjectTypeException e) {
+          LOG.warn("Ref " + ref + " points to a non-commit " + revNumber + " for " + context.getGitRoot().debugInfo());
+        } catch (MissingObjectException e) {
+          locallyMissing.add(r);
+        } catch (Exception e) {
+          LOG.warnAndDebugDetails("Unexpected exception while trying to parse commit " + revNumber,  e);
+          locallyMissing.add(r);
+        }
       }
-    }
 
-    if (locallyMissing.isEmpty()) {
+      if (locallyMissing.isEmpty()) {
+        return locallyMissing;
+      }
+
+
+      LOG.debug("Revisions missing in the local repository: " +
+                locallyMissing.stream().map(e -> e.getRef() + ": " + e.getCommit()).collect(Collectors.joining(", ")) + " for " +
+                context.getGitRoot().debugInfo());
+
+      if (throwErrors) {
+        final Set<String> missingTips =
+          locallyMissing.stream().filter(RefCommit::isRefTip).map(e -> e.getRef() + ": " + e.getCommit()).collect(Collectors.toSet());
+
+        if (missingTips.size() > 0) {
+          final VcsException error = new VcsException("Revisions missing in the local repository: " + StringUtil.join(missingTips, ", "));
+          error.setRecoverable(context.getPluginConfig().treatMissingBranchTipAsRecoverableError());
+          throw error;
+        }
+      }
       return locallyMissing;
     }
-
-
-    LOG.debug("Revisions missing in the local repository: " +
-              locallyMissing.stream().map(e -> e.getRef() + ": " + e.getCommit()).collect(Collectors.joining(", ")) + " for " +
-              context.getGitRoot().debugInfo());
-
-    if (throwErrors) {
-      final Set<String> missingTips =
-        locallyMissing.stream().filter(RefCommit::isRefTip).map(e -> e.getRef() + ": " + e.getCommit()).collect(Collectors.toSet());
-
-      if (missingTips.size() > 0) {
-        final VcsException error = new VcsException("Revisions missing in the local repository: " + StringUtil.join(missingTips, ", "));
-        error.setRecoverable(context.getPluginConfig().treatMissingBranchTipAsRecoverableError());
-        throw error;
-      }
-    }
-    return locallyMissing;
   }
 
   private static final String REF_MISSING_FORMAT = "Ref %s is no longer present in the remote repository";
