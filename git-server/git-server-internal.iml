@@ -6,6 +6,7 @@
         <webroots>
           <root url="file://$MODULE_DIR$/resources/buildServerResources" relative="/plugins/jetbrains.git" />
         </webroots>
+        <sourceRoots />
       </configuration>
     </facet>
     <facet type="Spring" name="Spring">
