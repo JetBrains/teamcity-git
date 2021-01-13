@@ -17,12 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.Trinity;
-import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.regex.Matcher;
 import jetbrains.buildServer.BuildProblemData;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
@@ -47,6 +41,13 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
@@ -530,34 +531,57 @@ public class UpdaterImpl implements Updater {
       for (VcsRootEntry otherRoot : myBuild.getVcsRootEntries()) {
         if (myRoot.getId() == otherRoot.getVcsRoot().getId()) continue;
 
-        final Collection<String> sharedPaths = CleanCommandUtil.getSharedPaths(otherRoot, targetPath);
-        if (canExcludeSharedPaths(sharedPaths, targetPath, otherRoot)) {
-          for (String path : sharedPaths) {
-            cmd.addExclude("/" + path); // slash addresses only first-level paths, see TW-67483
-          }
+        for (String path : getPathsToExclude(otherRoot, targetPath)) {
+          cmd.addExclude("/" + path); // slash addresses only first-level paths, see TW-67483
         }
       }
     }
     return cmd;
   }
 
-  private boolean canExcludeSharedPaths(@NotNull Collection<String> sharedPaths, @NotNull String targetPath, @NotNull VcsRootEntry otherRoot) {
-    if (sharedPaths.isEmpty()) return false;
-    if (sharedPaths.size() == 1 && targetPath.equals(sharedPaths.iterator().next())) {
-      myLogger
-        .warning("Two VCS roots are not expected to be checked out into the same folder: performing git clean for " + myRoot.getName() +
-                 " may remove files checked out for " + otherRoot.getVcsRoot().getName() +
-                 ". Please configure checkout to separate folders using Checkout rules.");
-      return false;
+  @NotNull
+  public Collection<String> getPathsToExclude(@NotNull VcsRootEntry otherRoot, @NotNull String targetPath) {
+    final SortedSet<String> clashingPaths = new TreeSet<>(); // we need an ordered tree here
+
+    for (IncludeRule rule : otherRoot.getCheckoutRules().getRootIncludeRules()) {
+      final String to = rule.getTo();
+      if (targetPath.equals(to)) {
+        myLogger
+          .warning("Two VCS roots shouldn't be checked out into the same folder: performing git clean for " + myRoot.getName() +
+                   " will remove files checked out for " + otherRoot.getVcsRoot().getName() +
+                   " and vice versa. Please configure checkout to separate folders using Checkout rules.");
+        return Collections.emptyList();
+      }
+
+      if (targetPath.isEmpty()) {
+        clashingPaths.add(to);
+      } else if (to.isEmpty() || targetPath.startsWith(to + "/")) {
+        // case when this root is "inside" the other root - we can't fix this using exclude, only report
+        // (TBD: another option is not to run clean at all)
+        myLogger
+          .warning("Two VCS roots shouldn't be checked out into the same folder: performing git clean for " + myRoot.getName() +
+                   " may remove files checked out for " + otherRoot.getVcsRoot().getName() +
+                   ". Please configure checkout to separate folders using Checkout rules.");
+      } else if (to.startsWith(targetPath + "/")) {
+        clashingPaths.add(to.substring(targetPath.length() + 1));
+      }
     }
-    if (CleanCommandUtil.isCleanCommandSupportsExclude(myPluginConfig.getGitVersion())) {
-      return true;
+
+    final List<String> result = new ArrayList<>();
+    clashingPaths.forEach(path -> {
+      // here we preserve more common paths
+      if (result.isEmpty() || !path.startsWith(result.get(result.size() - 1) + "/")) result.add(path);
+    });
+
+    if (result.isEmpty() || CleanCommandUtil.isCleanCommandSupportsExclude(myPluginConfig.getGitVersion())) {
+      return result;
     }
+
     myLogger
       .warning("git version " + myPluginConfig.getGitVersion() + " doesn't support --exclude option for clean command: performing git clean for " + myRoot.getName() +
-               " may remove files checked out for " + otherRoot.getVcsRoot().getName() +
-               ". Please either update git executable to a version above " + GitVersion.DEPRECATED + " or configure checkout to separate folders using Checkout rules.");
-    return false;
+               " will remove files checked out for " + otherRoot.getVcsRoot().getName() +
+               " and vice versa. Please either update git executable to a version above " + GitVersion.DEPRECATED + " or configure checkout to separate folders using Checkout rules.");
+    return Collections.emptyList();
   }
 
   @NotNull

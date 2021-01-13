@@ -26,8 +26,6 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
-
 public class CleanCommandUtil {
 
   @NotNull
@@ -52,33 +50,10 @@ public class CleanCommandUtil {
   }
 
   public static boolean isClashingTargetPath(@NotNull String targetPath, @NotNull VcsRootEntry otherRoot, @NotNull GitVersion gitVersion) {
-    final boolean cleanCommandSupportsExclude = isCleanCommandSupportsExclude(gitVersion);
     for (IncludeRule rule : otherRoot.getCheckoutRules().getRootIncludeRules()) {
       if (targetPath.equals(rule.getTo())) return true;
-      if (rule.getTo().startsWith(targetPath + "/") || targetPath.isEmpty()) return !cleanCommandSupportsExclude;
+      if (rule.getTo().startsWith(targetPath + "/") || targetPath.isEmpty()) return !isCleanCommandSupportsExclude(gitVersion);
     }
     return false;
-  }
-
-  @NotNull
-  public static Collection<String> getSharedPaths(@NotNull VcsRootEntry otherRoot, @NotNull String targetPath) {
-    final SortedSet<String> clashingPaths = new TreeSet<>();
-
-    for (IncludeRule rule : otherRoot.getCheckoutRules().getRootIncludeRules()) {
-      final String to = rule.getTo();
-      if (targetPath.equals(to)) return Collections.singletonList(targetPath);
-
-      if (targetPath.isEmpty()) {
-        clashingPaths.add(to);
-      } else if (to.startsWith(targetPath + "/")) {
-        clashingPaths.add(to.substring(targetPath.length() + 1));
-      }
-    }
-
-    final List<String> result = new ArrayList<>();
-    clashingPaths.forEach(path -> {
-      if (result.isEmpty() || !path.startsWith(result.get(result.size() - 1) + "/")) result.add(path);
-    });
-    return result;
   }
 }
