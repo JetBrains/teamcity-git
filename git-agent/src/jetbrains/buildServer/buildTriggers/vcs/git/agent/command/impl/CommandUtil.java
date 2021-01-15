@@ -195,6 +195,8 @@ public class CommandUtil {
     if (e instanceof GitIndexCorruptedException) return false;
 
     final String msg = ve.getMessage().toLowerCase();
+    if (msg.contains("connection refused")) return true;
+
     return !(msg.contains("couldn't find remote ref") ||
              msg.contains("no remote repository specified") ||
              msg.contains("no such remote") ||
