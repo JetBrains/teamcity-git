@@ -16,6 +16,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.ExtensionsProvider;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.ProjectManager;
@@ -36,14 +43,6 @@ import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * @author dmitry.neverov
@@ -168,7 +167,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     try {
       return testConnection(props, curProject);
     } catch (VcsException e) {
-      if (isBranchRelatedError(e) || GitServerUtil.isAuthError(e)) throw e;
+      if (isBranchRelatedError(e) || GitServerUtil.isAuthError(e) || fetchUrl.toLowerCase().contains("git")) throw e;
 
       // probably not git
       Loggers.VCS.infoAndDebugDetails("Failed to recognize " + url.getUrl() + " as a git repository", e);
