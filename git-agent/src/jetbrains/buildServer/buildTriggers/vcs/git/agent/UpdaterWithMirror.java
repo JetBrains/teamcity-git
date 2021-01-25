@@ -25,7 +25,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsTreeResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.CollectionsUtil;
@@ -180,7 +179,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     try {
       fetch(repositoryDir, refspec, false);
     } catch (VcsException e) {
-      if (myPluginConfig.isFailOnCleanCheckout() || !shouldFetchFromScratch(e)) {
+      if (myPluginConfig.isFailOnCleanCheckout() || !CommandUtil.shouldFetchFromScratch(e)) {
         throw e;
       }
       LOG.warnAndDebugDetails("Failed to fetch mirror, will try removing it and cloning from scratch", e);
@@ -197,15 +196,6 @@ public class UpdaterWithMirror extends UpdaterImpl {
       }
     }
   }
-
-  private boolean shouldFetchFromScratch(@NotNull VcsException e) {
-    if (e instanceof GitExecTimeout || CommandUtil.isCanceledError(e)) return false;
-
-    String msg = e.getMessage().toLowerCase();
-    return !msg.contains("couldn't find remote ref") &&
-           !msg.contains("could not read from remote repository");
-  }
-
 
   private boolean cleanDir(final @NotNull File repositoryDir) {
     return myFS.delete(repositoryDir) && myFS.mkdirs(repositoryDir);

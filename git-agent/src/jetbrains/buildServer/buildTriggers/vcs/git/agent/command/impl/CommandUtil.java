@@ -159,12 +159,7 @@ public class CommandUtil {
   }
 
   public static boolean isCanceledError(@NotNull VcsException e) {
-    Throwable t = e;
-    do {
-      if (t instanceof CheckoutCanceledException || t instanceof InterruptedException) return true;
-      t = t.getCause();
-    } while (t != null);
-    return false;
+    return e instanceof CheckoutCanceledException || e.getCause() instanceof InterruptedException;
   }
 
   public static boolean isNoSuchFileOrDirError(@NotNull VcsException e) {
@@ -176,13 +171,12 @@ public class CommandUtil {
   }
 
   public static boolean isMessageContains(@NotNull VcsException e, @NotNull String text) {
-    Throwable t = e;
-    do {
-      final String msg = t.getMessage();
-      if (msg != null && msg.contains(text)) return true;
-      t = t.getCause();
-    } while (t != null);
-    return false;
+    final String msg = e.getMessage();
+    return msg != null && StringUtil.containsIgnoreCase(msg, text);
+  }
+
+  private static boolean isConnectionRefused(@NotNull VcsException e) {
+    return isMessageContains(e, "Connection refused");
   }
 
   public static boolean isRecoverable(@NotNull Exception e) {
@@ -190,17 +184,26 @@ public class CommandUtil {
     if (!(e instanceof VcsException)) return false;
 
     final VcsException ve = (VcsException)e;
-    if (isTimeoutError(ve)) return true;
+    if (isTimeoutError(ve) || isConnectionRefused(ve)) return true;
     if (isCanceledError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
 
-    final String msg = ve.getMessage().toLowerCase();
-    if (msg.contains("connection refused")) return true;
+    return !isRemoteAccessError(ve);
+  }
 
-    return !(msg.contains("couldn't find remote ref") ||
-             msg.contains("no remote repository specified") ||
-             msg.contains("no such remote") ||
-             msg.contains("access denied") ||
-             msg.contains("could not read from remote repository"));
+  @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+  private static boolean isRemoteAccessError(@NotNull VcsException e) {
+    final String msg = e.getMessage().toLowerCase();
+    return msg.contains("couldn't find remote ref") ||
+           msg.contains("no remote repository specified") ||
+           msg.contains("no such remote") ||
+           msg.contains("access denied") ||
+           msg.contains("could not read from remote repository") ||
+           msg.contains("server does not allow request for unadvertised object");
+  }
+
+  public static boolean shouldFetchFromScratch(@NotNull VcsException e) {
+    if (e instanceof GitExecTimeout || CommandUtil.isCanceledError(e)) return false;
+    return !isRemoteAccessError(e);
   }
 }
