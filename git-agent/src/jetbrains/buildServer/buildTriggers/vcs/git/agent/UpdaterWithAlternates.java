@@ -69,11 +69,6 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
   }
 
 
-  @Override
-  protected void ensureCommitLoaded(boolean fetchRequired) throws VcsException {
-    super.fetchFromOriginalRepository(fetchRequired);
-  }
-
   private void setupRepository(@NotNull File gitDir, @NotNull File mirrorDir) throws VcsException {
     setupAlternates(gitDir, mirrorDir);
     setupLfsStorage(gitDir, mirrorDir);
