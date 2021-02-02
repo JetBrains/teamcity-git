@@ -273,28 +273,6 @@ public class UpdaterWithMirror extends UpdaterImpl {
     }
   }
 
-  private String createTmpBranch(@NotNull File repositoryDir, @NotNull String branchStartingPoint) throws VcsException {
-    String tmpBranchName = getUnusedBranchName(repositoryDir);
-    myGitFactory.create(repositoryDir)
-      .createBranch()
-      .setName(tmpBranchName)
-      .setStartPoint(branchStartingPoint)
-      .call();
-    return tmpBranchName;
-  }
-
-  private String getUnusedBranchName(@NotNull File repositoryDir) {
-    final String tmpBranchName = "tmp_branch_for_build";
-    String branchName = tmpBranchName;
-    Map<String, Ref> existingRefs = myGitFactory.create(repositoryDir).showRef().call().getValidRefs();
-    int i = 0;
-    while (existingRefs.containsKey("refs/heads/" + branchName)) {
-      branchName = tmpBranchName + i;
-      i++;
-    }
-    return branchName;
-  }
-
   @Override
   protected void updateSubmodules(@NotNull final File repositoryDir) throws VcsException, ConfigInvalidException, IOException {
     if (!myPluginConfig.isUseLocalMirrorsForSubmodules(myRoot)) {
