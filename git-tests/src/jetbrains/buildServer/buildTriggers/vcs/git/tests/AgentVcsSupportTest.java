@@ -1727,7 +1727,7 @@ public class AgentVcsSupportTest {
 
 
   private AgentRunningBuild createRunningBuild(boolean useLocalMirrors) {
-    return runningBuild().useLocalMirrors(useLocalMirrors).withAgentConfiguration(myBuilder.getAgentConfiguration()).sharedConfigParams(PluginConfigImpl.USE_SHALLOW_CLONE, "true").build();
+    return runningBuild().useLocalMirrors(useLocalMirrors).withAgentConfiguration(myBuilder.getAgentConfiguration()).build();
   }
 
 
