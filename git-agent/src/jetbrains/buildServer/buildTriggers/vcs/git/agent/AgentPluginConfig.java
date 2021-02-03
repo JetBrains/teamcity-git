@@ -46,6 +46,9 @@ public interface AgentPluginConfig extends PluginConfig {
   @NotNull
   FetchHeadsMode getFetchHeadsMode();
 
+  @Nullable
+  String getFetchAllHeadsModeStr();
+
   boolean isUseMainRepoUserForSubmodules();
 
   @NotNull

@@ -244,9 +244,10 @@ public class NativeGitFacade implements GitFacade {
   }
 
   @NotNull
-  public Branches listBranches() throws VcsException {
+  public Branches listBranches(boolean all) throws VcsException {
     GitCommandLine cmd = createCommandLine();
     cmd.addParameter("branch");
+    if (all) cmd.addParameter("-a");
     ExecResult r = CommandUtil.runCommand(cmd);
     CommandUtil.failIfNotEmptyStdErr(cmd, r);
     return parseBranches(r.getStdout());
