@@ -8,6 +8,9 @@ public interface RevParseCommand extends BaseCommand {
     @NotNull
     RevParseCommand setRef(String ref);
 
+    @NotNull
+    RevParseCommand setParams(String... params);
+
     @Nullable
     String call() throws VcsException;
 }
