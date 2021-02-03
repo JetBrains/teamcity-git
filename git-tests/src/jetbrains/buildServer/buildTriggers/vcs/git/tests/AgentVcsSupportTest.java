@@ -1727,12 +1727,12 @@ public class AgentVcsSupportTest {
 
 
   private AgentRunningBuild createRunningBuild(boolean useLocalMirrors) {
-    return runningBuild().useLocalMirrors(useLocalMirrors).withAgentConfiguration(myBuilder.getAgentConfiguration()).build();
+    return runningBuild().useLocalMirrors(useLocalMirrors).withAgentConfiguration(myBuilder.getAgentConfiguration()).sharedConfigParams(PluginConfigImpl.REMOTE_OPERATION_ATTEMPTS, "1").build();
   }
 
 
   private AgentRunningBuild createRunningBuild(final Map<String, String> sharedConfigParameters) {
-    return runningBuild().sharedConfigParams(sharedConfigParameters).withAgentConfiguration(myBuilder.getAgentConfiguration()).build();
+    return runningBuild().sharedConfigParams(sharedConfigParameters).withAgentConfiguration(myBuilder.getAgentConfiguration()).sharedConfigParams(PluginConfigImpl.REMOTE_OPERATION_ATTEMPTS, "1").build();
   }
 
 
