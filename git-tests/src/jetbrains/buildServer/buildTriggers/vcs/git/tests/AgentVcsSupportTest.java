@@ -1272,7 +1272,12 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
     System.out.println("First sources update took " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + "ms");
 
+    assertTagExists("refs/tags/x1");
+    assertTagExists("refs/tags/x2500");
+    assertTagExists("refs/tags/x5000");
+
     start = System.nanoTime();
+
     for (int i = 1; i <= 5000; i++) {
       removeTag(myMainRepo, "refs/tags/x" + i);
     }
@@ -1722,7 +1727,7 @@ public class AgentVcsSupportTest {
 
 
   private AgentRunningBuild createRunningBuild(boolean useLocalMirrors) {
-    return runningBuild().useLocalMirrors(useLocalMirrors).withAgentConfiguration(myBuilder.getAgentConfiguration()).build();
+    return runningBuild().useLocalMirrors(useLocalMirrors).withAgentConfiguration(myBuilder.getAgentConfiguration()).sharedConfigParams(PluginConfigImpl.USE_SHALLOW_CLONE, "true").build();
   }
 
 
