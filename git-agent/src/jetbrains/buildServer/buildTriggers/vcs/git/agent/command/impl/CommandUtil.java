@@ -21,6 +21,7 @@ import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.ShallowUpdater;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.log.Loggers;
@@ -199,7 +200,7 @@ public class CommandUtil {
            msg.contains("no such remote") ||
            msg.contains("access denied") ||
            msg.contains("could not read from remote repository") ||
-           msg.contains("server does not allow request for unadvertised object");
+           msg.contains(ShallowUpdater.REQUEST_UNADVERTISED_OBJECT_NOT_ALLOWED);
   }
 
   public static boolean shouldFetchFromScratch(@NotNull VcsException e) {

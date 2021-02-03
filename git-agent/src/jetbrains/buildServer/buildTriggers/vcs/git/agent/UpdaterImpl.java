@@ -72,6 +72,7 @@ public class UpdaterImpl implements Updater {
   public final static GitVersion EMPTY_CRED_HELPER = new GitVersion(2, 9, 0);
   /** Git version supporting [credential] section in config (the first version including a6fc9fd3f4b42cd97b5262026e18bd451c28ee3c) */
   public final static GitVersion CREDENTIALS_SECTION_VERSION = new GitVersion(1, 7, 10);
+  public final static GitVersion REV_PARSE_LEARNED_SHALLOW_CLONE = new GitVersion(2, 15, 0);
 
   private static final int SILENT_TIMEOUT = 24 * 60 * 60; //24 hours
 
@@ -182,11 +183,15 @@ public class UpdaterImpl implements Updater {
 
 
   private void initGitRepository() throws VcsException {
-    if (!new File(myTargetDirectory, ".git").exists()) {
+    final File gitDir = new File(myTargetDirectory, ".git");
+    if (!gitDir.exists()) {
       initDirectory(false);
+    } else if (!myPluginConfig.isUseShallowClone() && isShallowRepository(myTargetDirectory)) {
+      // settings changed: this repo is shallow, recreate it to avoid performance problems
+      initDirectory(true);
     } else {
       try {
-        configureRemoteUrl(new File(myTargetDirectory, ".git"), myRoot.getRepositoryFetchURL());
+        configureRemoteUrl(gitDir, myRoot.getRepositoryFetchURL());
         setupExistingRepository();
         configureSparseCheckout();
       } catch (Exception e) {
@@ -195,13 +200,24 @@ public class UpdaterImpl implements Updater {
       }
     }
     getSSLInvestigator(myRoot.getRepositoryFetchURL()).setCertificateOptions(myGitFactory.create(myTargetDirectory));
-    removeOrphanedIdxFiles(new File(myTargetDirectory, ".git"));
+    removeOrphanedIdxFiles(gitDir);
   }
 
   @NotNull
   protected SSLInvestigator getSSLInvestigator(@NotNull CommonURIish remoteUrl) {
     return new SSLInvestigator(remoteUrl.<URIish>get(), myBuild.getAgentTempDirectory().getPath(),
                                myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath());
+  }
+
+  private boolean isShallowRepository(@NotNull File repo) {
+    if (!myPluginConfig.getGitVersion().isLessThan(REV_PARSE_LEARNED_SHALLOW_CLONE)) {
+      try {
+        return "true".equals(myGitFactory.create(repo).revParse().setParams("--is-shallow-repository").call());
+      } catch (VcsException e) {
+        LOG.warn("Exception while running git rev-parse --is-shallow-repository", e);
+      }
+    }
+    return new File(repo, "shallow").exists();
   }
 
   protected void setupNewRepository() throws VcsException {
@@ -221,7 +237,7 @@ public class UpdaterImpl implements Updater {
     removeIndexLock();
     if (GitUtilsAgent.isRegularBranch(myFullBranchName)) {
       String branchName = GitUtilsAgent.getShortBranchName(myFullBranchName);
-      Branches branches = git.listBranches();
+      Branches branches = git.listBranches(false);
       if (branches.isCurrentBranch(branchName)) {
         removeIndexLock();
         runAndFixIndexErrors(git, new VcsCommand() {
@@ -253,30 +269,15 @@ public class UpdaterImpl implements Updater {
         }
       }
     } else if (GitUtilsAgent.isTag(myFullBranchName)) {
-      final String shortName = myFullBranchName.substring("refs/tags/".length());
-      runAndFixIndexErrors(git, new VcsCommand() {
-        @Override
-        public void call() throws VcsException {
-          checkout(git).setForce(true).setBranch(shortName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
-        }
-      });
       Ref tag = getRef(myTargetDirectory, myFullBranchName);
-      if (tag != null && !tag.getObjectId().name().equals(myRevision)) {
-        runAndFixIndexErrors(git, new VcsCommand() {
-          @Override
-          public void call() throws VcsException {
-            checkout(git).setBranch(myRevision).setForce(true).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
-          }
-        });
+      if (tag == null || !tag.getObjectId().name().equals(myRevision)) {
+        runAndFixIndexErrors(git, () -> forceCheckout(git, myRevision));
+      } else {
+        runAndFixIndexErrors(git, () -> forceCheckout(git, myFullBranchName.substring("refs/tags/".length())));
       }
       branchChanged = true;
     } else {
-      runAndFixIndexErrors(git, new VcsCommand() {
-        @Override
-        public void call() throws VcsException {
-          checkout(git).setForce(true).setBranch(myRevision).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
-        }
-      });
+      runAndFixIndexErrors(git, () -> forceCheckout(git, myRevision));
       branchChanged = true;
     }
 
@@ -286,6 +287,9 @@ public class UpdaterImpl implements Updater {
     }
   }
 
+  private void forceCheckout(@NotNull GitFacade git, @NotNull String what) throws VcsException {
+    checkout(git).setBranch(what).setForce(true).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+  }
 
   private void runAndFixIndexErrors(@NotNull GitFacade git, @NotNull VcsCommand cmd) throws VcsException {
     try {
@@ -754,7 +758,7 @@ public class UpdaterImpl implements Updater {
   }
 
   protected String getForcedHeadsFetchMessage() {
-    return "Forced fetch of all heads (" + PluginConfigImpl.FETCH_ALL_HEADS + "=" + myBuild.getSharedConfigParameters().get(PluginConfigImpl.FETCH_ALL_HEADS) + ")";
+    return "Forced fetch of all heads (" + PluginConfigImpl.FETCH_ALL_HEADS + "=" + myPluginConfig.getFetchAllHeadsModeStr() + ")";
   }
 
 
@@ -762,7 +766,7 @@ public class UpdaterImpl implements Updater {
     fetch(myTargetDirectory, getRefspecForFetch(), false);
   }
 
-  private String getRefspecForFetch() {
+  protected String getRefspecForFetch() {
     return "+" + myFullBranchName + ":" + GitUtils.createRemoteRef(myFullBranchName);
   }
 
@@ -1086,7 +1090,7 @@ public class UpdaterImpl implements Updater {
   }
 
   @NotNull
-  private Refs getRemoteRefs(@NotNull File workingDir) throws VcsException {
+  protected Refs getRemoteRefs(@NotNull File workingDir) throws VcsException {
     if (myRemoteRefs != null && myTargetDirectory.equals(workingDir))
       return myRemoteRefs;
     GitFacade git = myGitFactory.create(workingDir);

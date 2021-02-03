@@ -115,7 +115,9 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     File targetDir = targetDirAndMode.second;
     Updater updater;
     AgentGitVcsRoot gitRoot = new AgentGitVcsRoot(myMirrorManager, targetDir, root);
-    if (config.isUseAlternates(gitRoot)) {
+    if (config.isUseShallowClone()) {
+      updater = new ShallowUpdater(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager);
+    } else if (config.isUseAlternates(gitRoot)) {
       updater = new UpdaterWithAlternates(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager);
     } else if (config.isUseLocalMirrors(gitRoot)) {
       updater = new UpdaterWithMirror(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager);

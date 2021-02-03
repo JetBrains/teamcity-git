@@ -102,7 +102,7 @@ public interface GitFacade {
   RepackCommand repack();
 
   @NotNull
-  Branches listBranches() throws VcsException;
+  Branches listBranches(boolean all) throws VcsException;
 
   @NotNull
   SetUpstreamCommand setUpstream(@NotNull String localBranch, @NotNull String upstreamBranch) throws VcsException;

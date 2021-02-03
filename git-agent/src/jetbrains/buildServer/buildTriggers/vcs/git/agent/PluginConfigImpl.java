@@ -33,7 +33,6 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -49,7 +48,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String USE_MIRRORS = "teamcity.git.use.local.mirrors";
   public static final String USE_MIRRORS_FOR_SUBMODULES = "teamcity.internal.git.agent.submodules.useMirrors";
   public static final String USE_ALTERNATES = "teamcity.git.useAlternates";
-  public static final String USE_SHALLOW_CLONE = "teamcity.git.use.shallow.clone";
+  public static final String USE_SHALLOW_CLONE = "teamcity.git.shallowClone";
+  public static final String USE_SHALLOW_CLONE_INTERNAL = "teamcity.internal.git.agent.shallowClone";
   public static final String TEAMCITY_DONT_DELETE_TEMP_FILES = "teamcity.dont.delete.temp.files";
   public static final String USE_MAIN_REPO_USER_FOR_SUBMODULES = "teamcity.git.useMainRepoUserForSubmodules";
   public static final String VCS_ROOT_MIRRORS_STRATEGY = "teamcity.git.mirrorStrategy";
@@ -193,13 +193,11 @@ public class PluginConfigImpl implements AgentPluginConfig {
   }
 
   public boolean isUseShallowClone() {
-    String valueFromBuildConfiguration = myBuild.getSharedConfigParameters().get(USE_SHALLOW_CLONE);
+    String valueFromBuildConfiguration = myBuild.getSharedConfigParameters().get(USE_SHALLOW_CLONE_INTERNAL);
     if (valueFromBuildConfiguration != null) {
       return "true".equals(valueFromBuildConfiguration);
-    } else {
-      String valueFromAgentConfig = myAgentConfig.getConfigurationParameters().get(USE_SHALLOW_CLONE);
-      return "true".equals(valueFromAgentConfig);
     }
+    return "true".equals(myAgentConfig.getConfigurationParameters().get(USE_SHALLOW_CLONE));
   }
 
 
@@ -212,8 +210,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   @NotNull
   @Override
   public FetchHeadsMode getFetchHeadsMode() {
-    Map<String, String> params = myBuild.getSharedConfigParameters();
-    String fetchAllHeads = params.get(FETCH_ALL_HEADS);
+    final String fetchAllHeads = getFetchAllHeadsModeStr();
     if (StringUtil.isEmpty(fetchAllHeads) || "false".equals(fetchAllHeads) || "afterBuildBranch".equals(fetchAllHeads))
       return FetchHeadsMode.AFTER_BUILD_BRANCH;
 
@@ -225,6 +222,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
     LOG.warn("Unsupported value of the " + FETCH_ALL_HEADS + " parameter: '" + fetchAllHeads + "', treat it as false");
     return FetchHeadsMode.AFTER_BUILD_BRANCH;
+  }
+
+  @Nullable
+  @Override
+  public String getFetchAllHeadsModeStr() {
+    return myBuild.getSharedConfigParameters().get(FETCH_ALL_HEADS);
   }
 
   public boolean isUseMainRepoUserForSubmodules() {
@@ -368,7 +371,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
         // return below
       }
     }
-    return 5;
+    return 3;
   }
 
   @NotNull

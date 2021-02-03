@@ -34,6 +34,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -1685,6 +1686,173 @@ public class AgentVcsSupportTest {
     // new repo references submodule commit, which doesn't exist
     copyDir(dataFile("TW-63901-2"), repo);
     myVcsSupport.updateSources(root, new CheckoutRules(""), "565f5f32581cd1dba1305c5f5651270c33f40323", myCheckoutDir, build, false);
+  }
+
+  @Test
+  public void shallow_fetch() throws Exception {
+    final File remote = dataFile("repo_for_shallow_fetch.git");
+
+    final LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
+    loggingFactory.addCallback(FetchCommand.class.getName() + ".setRefspec", new GitCommandProxyCallback() {
+      @Override
+      public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
+        if (args.length == 1 && "+fd1eb9776b5fad5cc433586f7933811c6853917d:refs/remotes/origin/main".equals(args[0])) return null;
+        fail("Unexpected fetch refspec " + Arrays.toString(args));
+        return null;
+      }
+    });
+    loggingFactory.addCallback(FetchCommand.class.getName() + ".setDepth", new GitCommandProxyCallback() {
+      @Override
+      public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
+        if (args.length == 1 && Integer.valueOf(1).equals(args[0])) return null;
+        fail("Unexpected fetch depth " + Arrays.toString(args));
+        return null;
+      }
+    });
+    myVcsSupport = myBuilder.setGitMetaFactory(loggingFactory).setFS(new MockFS()).build();
+
+    final AgentRunningBuild build = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.USE_SHALLOW_CLONE_INTERNAL, "true"));
+    myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "fd1eb9776b5fad5cc433586f7933811c6853917d", myCheckoutDir, build, false);
+
+    assertEquals(1, loggingFactory.getNumberOfCalls(FetchCommand.class));
+
+    final Repository checkout = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    assertEquals("main", checkout.getBranch());
+
+    final Ref main = checkout.getRefDatabase().findRef("main");
+    assertNotNull(main);
+    assertEquals("fd1eb9776b5fad5cc433586f7933811c6853917d", main.getObjectId().getName());
+
+    assertNotNull(checkout.getRefDatabase().findRef("refs/remotes/origin/main"));
+    assertNotNull(checkout.getRefDatabase().findRef("refs/tags/tag1"));
+    assertNull(checkout.getRefDatabase().findRef("refs/tags/tag2"));
+
+    assertFalse(checkout.getObjectDatabase().has(ObjectId.fromString("a1d6299597f8d6f6d8316577c46cc8fffd657d5e")));
+  }
+
+  @Test
+  public void shallow_fetch_with_older_revision() throws Exception {
+    final File remote = dataFile("repo_for_shallow_fetch.git");
+
+    final LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
+    loggingFactory.addCallback(FetchCommand.class.getName() + ".setRefspec", new GitCommandProxyCallback() {
+      @Override
+      public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
+        if (args.length == 1 && "+a1d6299597f8d6f6d8316577c46cc8fffd657d5e:refs/remotes/origin/main".equals(args[0])) return null;
+        fail("Unexpected fetch refspec " + Arrays.toString(args));
+        return null;
+      }
+    });
+    loggingFactory.addCallback(FetchCommand.class.getName() + ".setDepth", new GitCommandProxyCallback() {
+      @Override
+      public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
+        if (args.length == 1 && Integer.valueOf(1).equals(args[0])) return null;
+        fail("Unexpected fetch depth " + Arrays.toString(args));
+        return null;
+      }
+    });
+    myVcsSupport = myBuilder.setGitMetaFactory(loggingFactory).setFS(new MockFS()).build();
+
+    final AgentRunningBuild build = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.USE_SHALLOW_CLONE_INTERNAL, "true"));
+    myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "a1d6299597f8d6f6d8316577c46cc8fffd657d5e", myCheckoutDir, build, false);
+
+    assertEquals(1, loggingFactory.getNumberOfCalls(FetchCommand.class));
+
+    final Repository checkout = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    assertEquals("main", checkout.getBranch());
+
+    final Ref main = checkout.getRefDatabase().findRef("main");
+    assertNotNull(main);
+    assertEquals("a1d6299597f8d6f6d8316577c46cc8fffd657d5e", main.getObjectId().getName());
+
+    assertNotNull(checkout.getRefDatabase().findRef("refs/remotes/origin/main"));
+    assertNull(checkout.getRefDatabase().findRef("refs/tags/tag1"));
+    assertNotNull(checkout.getRefDatabase().findRef("refs/tags/tag2"));
+
+    assertFalse(checkout.getObjectDatabase().has(ObjectId.fromString("fd1eb9776b5fad5cc433586f7933811c6853917d")));
+  }
+
+  @Test
+  public void shallow_fetch_tag() throws Exception {
+    final File remote = dataFile("repo_for_shallow_fetch.git");
+
+    final LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
+    loggingFactory.addCallback(FetchCommand.class.getName() + ".setRefspec", new GitCommandProxyCallback() {
+      @Override
+      public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
+        if (args.length == 1 && "+refs/tags/tag1:refs/tags/tag1".equals(args[0])) return null;
+        fail("Unexpected fetch refspec " + Arrays.toString(args));
+        return null;
+      }
+    });
+    loggingFactory.addCallback(FetchCommand.class.getName() + ".setDepth", new GitCommandProxyCallback() {
+      @Override
+      public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
+        if (args.length == 1 && Integer.valueOf(1).equals(args[0])) return null;
+        fail("Unexpected fetch depth " + Arrays.toString(args));
+        return null;
+      }
+    });
+    myVcsSupport = myBuilder.setGitMetaFactory(loggingFactory).setFS(new MockFS()).build();
+
+    final AgentRunningBuild build = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.USE_SHALLOW_CLONE_INTERNAL, "true"));
+    myVcsSupport.updateSources(createRoot(remote, "refs/tags/tag1"), new CheckoutRules(""), "fd1eb9776b5fad5cc433586f7933811c6853917d", myCheckoutDir, build, false);
+
+    assertEquals(1, loggingFactory.getNumberOfCalls(FetchCommand.class));
+
+    final Repository checkout = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    final Ref main = checkout.getRefDatabase().findRef("refs/tags/tag1");
+    assertNotNull(main);
+    assertEquals("fd1eb9776b5fad5cc433586f7933811c6853917d", main.getObjectId().getName());
+    assertNull(checkout.getRefDatabase().findRef("refs/tags/tag2"));
+
+    assertFalse(checkout.getObjectDatabase().has(ObjectId.fromString("a1d6299597f8d6f6d8316577c46cc8fffd657d5e")));
+  }
+
+  @Test
+  public void shallow_fetch_tag_with_older_revision() throws Exception {
+    final File remote = dataFile("repo_for_shallow_fetch.git");
+
+    final LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
+    loggingFactory.addCallback(FetchCommand.class.getName() + ".setRefspec", new GitCommandProxyCallback() {
+      @Override
+      public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
+        if (args.length == 1 && "a1d6299597f8d6f6d8316577c46cc8fffd657d5e".equals(args[0])) return null;
+        fail("Unexpected fetch refspec " + Arrays.toString(args));
+        return null;
+      }
+    });
+    loggingFactory.addCallback(FetchCommand.class.getName() + ".setDepth", new GitCommandProxyCallback() {
+      @Override
+      public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
+        if (args.length == 1 && Integer.valueOf(1).equals(args[0])) return null;
+        fail("Unexpected fetch depth " + Arrays.toString(args));
+        return null;
+      }
+    });
+    myVcsSupport = myBuilder.setGitMetaFactory(loggingFactory).setFS(new MockFS()).build();
+
+    final AgentRunningBuild build = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.USE_SHALLOW_CLONE_INTERNAL, "true"));
+    myVcsSupport.updateSources(createRoot(remote, "refs/tags/tag1"), new CheckoutRules(""), "a1d6299597f8d6f6d8316577c46cc8fffd657d5e", myCheckoutDir, build, false);
+
+    assertEquals(1, loggingFactory.getNumberOfCalls(FetchCommand.class));
+
+    final Repository checkout = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
+    assertEquals("a1d6299597f8d6f6d8316577c46cc8fffd657d5e", checkout.getBranch());
+
+    assertFalse(checkout.getObjectDatabase().has(ObjectId.fromString("fd1eb9776b5fad5cc433586f7933811c6853917d")));
+  }
+
+  @Test
+  public void repo_recreated_when_shallow_fetch_disabled() throws Exception {
+    final File remote = dataFile("repo_for_shallow_fetch.git");
+
+    final AgentRunningBuild build = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.USE_SHALLOW_CLONE_INTERNAL, "true"));
+    myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "64195c330d99c467a142f682bc23d4de3a68551d", myCheckoutDir, build, false);
+    assertTrue(new File(myCheckoutDir, ".git/shallow").exists());
+
+    myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "fd1eb9776b5fad5cc433586f7933811c6853917d", myCheckoutDir, createRunningBuild(true), false);
+    assertFalse(new File(myCheckoutDir, ".git/shallow").isDirectory());
   }
 
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
