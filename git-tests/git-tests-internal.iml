@@ -18,5 +18,8 @@
     <orderEntry type="library" name="git-jgit-server" level="project" />
     <orderEntry type="module" module-name="test-api" />
     <orderEntry type="module" module-name="patches-tests" />
+    <orderEntry type="module" module-name="common-test-core" />
+    <orderEntry type="module" module-name="server-test-core" />
+    <orderEntry type="module" module-name="server-metrics" />
   </component>
 </module>

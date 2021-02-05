@@ -53,6 +53,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ProcessXmxProviderTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RepositoryXmxStorageTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RetryTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitHubPasswordAuthRootRegistryImplTest"/>
     </classes>
   </test>
 </suite>

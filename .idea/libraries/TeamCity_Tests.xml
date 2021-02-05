@@ -2,8 +2,10 @@
   <library name="TeamCity Tests">
     <CLASSES>
       <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/patches-impl.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/server-metrics.jar!/" />
       <root url="jar://$TeamCityDistribution$/devPackage/tests/patches-test.jar!/" />
       <root url="jar://$TeamCityDistribution$/devPackage/tests/tests-support.jar!/" />
+      <root url="jar://$TeamCityDistribution$/devPackage/tests/tests-integration.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
