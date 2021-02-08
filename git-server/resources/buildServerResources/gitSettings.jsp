@@ -53,14 +53,14 @@
       <th><label for="url">Fetch URL: <l:star/></label></th>
       <td><props:textProperty name="url" className="longField"/>
         <jsp:include page="/admin/repositoryControls.html?projectId=${parentProject.externalId}&vcsType=git"/>
-        <div class="smallNote" style="margin: 0;">It is used for fetching data from the repository.</div>
+        <div class="smallNote" style="margin: 0;">Used for fetching data from the repository.</div>
         <div id="fetchUrlCompatNote" class="smallNote error" style="margin: 0; display: none;"></div>
         <span class="error" id="error_url"></span></td>
     </tr>
     <tr class="advancedSetting">
       <th><label for="push_url">Push URL:</label></th>
       <td><props:textProperty name="push_url" className="longField"/>
-        <div class="smallNote" style="margin: 0;">It is used for pushing tags to the remote repository.
+        <div class="smallNote" style="margin: 0;">Used for pushing tags to the remote repository.
           If blank, the fetch url is used.
         </div>
         <div id="pushUrlCompatNote" class="smallNote error" style="margin: 0; display: none;"></div>
