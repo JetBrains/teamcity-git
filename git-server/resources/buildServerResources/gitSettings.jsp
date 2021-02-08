@@ -14,11 +14,11 @@
   ~ limitations under the License.
   --%>
 
+<%@ page import="java.io.File" %>
 <%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.Constants" %>
 <%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl" %>
 <%@ page import="jetbrains.buildServer.serverSide.TeamCityProperties" %>
 <%@ page import="jetbrains.buildServer.util.StringUtil" %>
-<%@ page import="java.io.File" %>
 <%@include file="/include.jsp" %>
 <%@ taglib prefix="props" tagdir="/WEB-INF/tags/props" %>
 <%@ taglib prefix="admin" tagdir="/WEB-INF/tags/admin" %>
@@ -57,7 +57,7 @@
         <div id="fetchUrlCompatNote" class="smallNote error" style="margin: 0; display: none;"></div>
         <span class="error" id="error_url"></span></td>
     </tr>
-    <tr>
+    <tr class="advancedSetting">
       <th><label for="push_url">Push URL:</label></th>
       <td><props:textProperty name="push_url" className="longField"/>
         <div class="smallNote" style="margin: 0;">It is used for pushing tags to the remote repository.
@@ -75,7 +75,7 @@
         <span class="error" id="error_branch"></span>
       </td>
     </tr>
-    <bs:branchSpecTableRow/>
+    <bs:branchSpecTableRow advancedSetting="${false}"/>
     <tr class="advancedSetting">
       <th><label for="reportTagRevisions">Use tags as branches:</label></th>
       <td>
