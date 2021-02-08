@@ -8,6 +8,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.LogUtil;
 import jetbrains.buildServer.serverSide.IOGuard;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.healthStatus.*;
 import jetbrains.buildServer.util.HTTPRequestBuilder;
 import jetbrains.buildServer.util.StringUtil;
@@ -52,13 +53,19 @@ public class GitHubPasswordAuthHealthReport extends HealthStatusReport {
     return Collections.singleton(CATEGORY);
   }
 
+  private static boolean isEnabled() {
+    return TeamCityProperties.getBoolean("teamcity.git." + REPORT_TYPE);
+  }
+
   @Override
   public boolean canReportItemsFor(@NotNull HealthStatusScope scope) {
-    return scope.isItemWithSeverityAccepted(ItemSeverity.WARN) && scope.getVcsRoots().stream().anyMatch(GitHubPasswordAuthHealthReport::isGitRoot);
+    return isEnabled() && scope.isItemWithSeverityAccepted(ItemSeverity.WARN) && scope.getVcsRoots().stream().anyMatch(GitHubPasswordAuthHealthReport::isGitRoot);
   }
 
   @Override
   public void report(@NotNull HealthStatusScope scope, @NotNull HealthStatusItemConsumer resultConsumer) {
+    if (!isEnabled()) return;
+
     final Map<String, List<String>> tokens = new HashMap<>();
     for (SVcsRoot root : scope.getVcsRoots()) {
       if (!isGitRoot(root)) continue;
