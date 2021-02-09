@@ -205,7 +205,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
       } catch (Exception e) {
         if (mySubmodulesPolicy.isIgnoreSubmodulesErrors()) {
           if (myLogSubmoduleErrors)
-            LOG.warn("Ignore submodule error: \"" + e.getMessage() + "\". It seems to be fixed in one of the later commits.");
+            LOG.warn("Ignore submodule error for SHA " + ObjectId.toString(myWrappedIterator.getEntryObjectId()) + ": \"" + e.getMessage() + "\". It seems to be fixed in one of the later commits.");
           mySubmoduleCommit = null;
           myIsOnSubmodule = false;
           mySubmoduleError = true;
