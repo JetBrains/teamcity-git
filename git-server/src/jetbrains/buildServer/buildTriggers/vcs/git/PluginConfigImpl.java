@@ -22,6 +22,12 @@ import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.*;
 import com.jcraft.jzlib.JZlib;
 import gnu.trove.TObjectHashingStrategy;
+import java.io.File;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
+import java.text.ParseException;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchProcess;
 import jetbrains.buildServer.messages.serviceMessages.ServiceMessage;
@@ -48,13 +54,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.quartz.CronExpression;
 
-import java.io.File;
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
-import java.text.ParseException;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static com.intellij.openapi.util.text.StringUtil.isEmptyOrSpaces;
 import static java.util.Arrays.asList;
@@ -80,6 +79,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private static final String GET_REPOSITORY_STATE_TIMEOUT_SECONDS = "teamcity.git.repositoryStateTimeoutSeconds";
   public static final String TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY = "teamcity.git.fetch.process.max.memory";
   public static final String TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY_LIMIT = "teamcity.git.fetch.process.max.memory.limit";
+  public static final String CONNECTION_RETRY_INTERVAL_SECONDS = "teamcity.git.connectionRetryIntervalSeconds";
+  public static final String CONNECTION_RETRY_ATTEMPTS = "teamcity.git.connectionRetryAttempts";
 
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
@@ -97,7 +98,9 @@ public class PluginConfigImpl implements ServerPluginConfig {
                                                            Constants.AMAZON_HOSTS,
                                                            MONITORING_FILE_THRESHOLD_SECONDS,
                                                            GET_REPOSITORY_STATE_TIMEOUT_SECONDS,
-                                                           IGNORE_MISSING_REMOTE_REF);
+                                                           IGNORE_MISSING_REMOTE_REF,
+                                                           CONNECTION_RETRY_INTERVAL_SECONDS,
+                                                           CONNECTION_RETRY_ATTEMPTS);
 
   public PluginConfigImpl() {
     myCachesDir = null;
@@ -460,11 +463,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   public long getConnectionRetryIntervalMillis() {
-    return TeamCityProperties.getInteger("teamcity.git.connectionRetryIntervalSeconds", 4) * 1000L;
+    return TeamCityProperties.getInteger(CONNECTION_RETRY_INTERVAL_SECONDS, 4) * 1000L;
   }
 
   public int getConnectionRetryAttempts() {
-    return TeamCityProperties.getInteger("teamcity.git.connectionRetryAttempts", 1);
+    return TeamCityProperties.getInteger(CONNECTION_RETRY_ATTEMPTS, 1);
   }
 
   public boolean ignoreFetchedCommits() {
