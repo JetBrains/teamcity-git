@@ -6,7 +6,7 @@
   <th><label for="branch">Default branch:<l:star/></label></th>
   <td>
     <props:textProperty name="branch" className="longField"/>
-    <div class="smallNote" style="margin: 0">The main branch to be monitored</div>
+    <div class="smallNote" style="margin: 0">The main branch or tag to be monitored</div>
     <span class="error" id="error_branch"></span>
   </td>
 </tr>
