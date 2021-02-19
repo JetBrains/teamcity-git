@@ -17,6 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.Trinity;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 import jetbrains.buildServer.BuildProblemData;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
@@ -41,13 +47,6 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
@@ -132,10 +131,22 @@ public class UpdaterImpl implements Updater {
 
   public void update() throws VcsException {
     logInfo("Git version: " + myPluginConfig.getGitVersion());
+    logGitConfig();
     logSshOptions(myPluginConfig.getGitVersion());
     checkAuthMethodIsSupported();
     doUpdate();
     checkNoDiffWithUpperLimitRevision();
+  }
+
+  private void logGitConfig() {
+    if (!myPluginConfig.isDebugSsh()) return;
+    final String config;
+    try {
+      config = myGitFactory.create(myTargetDirectory).listConfig().call();
+    } catch (VcsException e) {
+      return;
+    }
+    logDebug(config);
   }
 
   private void logSshOptions(@NotNull GitVersion gitVersion) {
@@ -160,6 +171,11 @@ public class UpdaterImpl implements Updater {
   private void logWarn(@NotNull String msg) {
     myLogger.warning(msg);
     Loggers.VCS.warn(msg);
+  }
+
+  private void logDebug(@NotNull String msg) {
+    myLogger.debug(msg);
+    Loggers.VCS.debug(msg);
   }
 
   protected void doUpdate() throws VcsException {

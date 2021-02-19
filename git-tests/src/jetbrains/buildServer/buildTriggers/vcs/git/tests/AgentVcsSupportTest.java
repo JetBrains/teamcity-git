@@ -18,11 +18,24 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.StreamUtil;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.TestNGUtil;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
+import jetbrains.buildServer.agent.BuildProgressLogger;
+import jetbrains.buildServer.agent.NullBuildProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
@@ -52,17 +65,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileReader;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
@@ -1855,6 +1857,20 @@ public class AgentVcsSupportTest {
     assertFalse(new File(myCheckoutDir, ".git/shallow").isDirectory());
   }
 
+  @Test public void testDumpConfig() throws Exception {
+    final File remote = dataFile("repo_for_shallow_fetch.git");
+
+    final StringBuilder log = new StringBuilder();
+    final AgentRunningBuild build = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.TEAMCITY_GIT_SSH_DEBUG, "true"), new NullBuildProgressLogger() {
+      @Override
+      public void message(String message) {
+        log.append(message);
+      }
+    });
+    myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "64195c330d99c467a142f682bc23d4de3a68551d", myCheckoutDir, build, false);
+    BaseTestCase.assertContains(log.toString(), "git config --list");
+  }
+
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
     myVcsRootId++;
     return new VcsRootImpl(myVcsRootId, new HashMap<String, String>() {{
@@ -1900,7 +1916,11 @@ public class AgentVcsSupportTest {
 
 
   private AgentRunningBuild createRunningBuild(final Map<String, String> sharedConfigParameters) {
-    return runningBuild().sharedConfigParams(sharedConfigParameters).withAgentConfiguration(myBuilder.getAgentConfiguration()).sharedConfigParams(PluginConfigImpl.REMOTE_OPERATION_ATTEMPTS, "1").build();
+    return createRunningBuild(sharedConfigParameters, null);
+  }
+
+  private AgentRunningBuild createRunningBuild(final Map<String, String> sharedConfigParameters, @Nullable BuildProgressLogger logger) {
+    return runningBuild(logger).sharedConfigParams(sharedConfigParameters).withAgentConfiguration(myBuilder.getAgentConfiguration()).sharedConfigParams(PluginConfigImpl.REMOTE_OPERATION_ATTEMPTS, "1").build();
   }
 
 
@@ -1930,6 +1950,11 @@ public class AgentVcsSupportTest {
 
   @NotNull
   public AgentRunningBuildBuilder runningBuild() {
-    return new AgentRunningBuildBuilder().withCheckoutDir(myCheckoutDir);
+    return runningBuild(null);
+  }
+
+  @NotNull
+  public AgentRunningBuildBuilder runningBuild(@Nullable BuildProgressLogger logger) {
+    return new AgentRunningBuildBuilder().withCheckoutDir(myCheckoutDir).withBuildLogger(logger);
   }
 }

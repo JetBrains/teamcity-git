@@ -16,11 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import java.io.File;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
 
 /**
  * @author dmitry.neverov
@@ -62,6 +61,9 @@ public interface GitFacade {
 
   @NotNull
   SetConfigCommand setConfig();
+
+  @NotNull
+  ListConfigCommand listConfig();
 
   @NotNull
   FetchCommand fetch();
