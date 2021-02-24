@@ -1,5 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import jetbrains.buildServer.controllers.admin.projects.setupFromUrl.SetupObjectFromResourceBean;
 import jetbrains.buildServer.controllers.admin.projects.setupFromUrl.SetupObjectFromResourcePageExtension;
@@ -33,5 +34,15 @@ public class GitCustomizeVcsRootExtension extends SimplePageExtension implements
 
   protected SetupObjectFromResourceBean getSetupObjectFromResourceBean(final HttpServletRequest request) {
     return (SetupObjectFromResourceBean)request.getAttribute(SetupObjectFromResourcePageExtension.SETUP_OBJECT_FROM_RESOURCE_BEAN_KEY);
+  }
+
+  @Override
+  public void fillModel(@NotNull Map<String, Object> model, @NotNull HttpServletRequest request) {
+    super.fillModel(model, request);
+
+    final SetupObjectFromResourceBean projectSetupBean = getSetupObjectFromResourceBean(request);
+    if (projectSetupBean != null) {
+      projectSetupBean.getDiscoveredResource().getParameters().put(Constants.BRANCH_SPEC, "refs/heads/*");
+    }
   }
 }
