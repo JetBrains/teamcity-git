@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
+import jetbrains.buildServer.buildTriggers.vcs.git.AgentCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
@@ -72,6 +73,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String CUSTOM_GIT_CONFIG = "teamcity.internal.git.customConfig";
   public static final String REMOTE_OPERATION_ATTEMPTS = "teamcity.internal.git.remoteOperationAttempts";
   public static final String TEAMCITY_GIT_SSH_DEBUG = "teamcity.git.sshDebug";
+
+  public static final String AGENT_TERMINATE_AFTER_BUILD = "teamcity.cloud.agent.terminate.after.build";
 
   private static final Pattern NEW_LINE = Pattern.compile("(\r\n|\r|\n)");
 
@@ -126,21 +129,25 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return !"false".equals(value);
   }
 
-  public boolean isUseLocalMirrors(@NotNull GitVcsRoot root) {
-    String buildSetting = myBuild.getSharedConfigParameters().get(USE_MIRRORS);
-    if (!StringUtil.isEmpty(buildSetting)) {
-      LOG.info("Use the '" + USE_MIRRORS + "' option specified in the build");
-      return Boolean.parseBoolean(buildSetting);
+  public boolean isUseLocalMirrors(@NotNull AgentCheckoutPolicy rootSetting) {
+    final String buildSetting = myBuild.getSharedConfigParameters().get(USE_MIRRORS);
+    if (StringUtil.isNotEmpty(buildSetting)) {
+      final boolean enabled = Boolean.parseBoolean(buildSetting);
+      myBuild.getBuildLogger().message("Mirrors without alternates " + (enabled ? "enabled" : "disabled") + " via " + USE_MIRRORS + " build configuration parameter");
+      return enabled;
     }
 
-    Boolean rootSetting = root.isUseAgentMirrors();
-    String mirrorStrategy = getMirrorStrategy();
-    if (rootSetting != null && rootSetting && VCS_ROOT_MIRRORS_STRATEGY_MIRRORS_ONLY.equals(mirrorStrategy)) {
-      LOG.info("Use the mirrors option specified in the VCS root");
+    final String mirrorStrategy = getMirrorStrategy();
+    if (AgentCheckoutPolicy.USE_MIRRORS == rootSetting && VCS_ROOT_MIRRORS_STRATEGY_MIRRORS_ONLY.equals(mirrorStrategy)) {
+      myBuild.getBuildLogger().message("Mirrors without alternates enabled via " + VCS_ROOT_MIRRORS_STRATEGY + " build configuration parameter");
       return true;
     }
-
     return false;
+  }
+
+  @Override
+  public boolean isUseLocalMirrors(@NotNull GitVcsRoot root) {
+    return isUseLocalMirrors(root.getAgentCheckoutPolicy());
   }
 
   @Override
@@ -152,23 +159,29 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return StringUtil.isEmpty(param) || Boolean.parseBoolean(param);
   }
 
+  @Override
   public boolean isUseAlternates(@NotNull GitVcsRoot root) {
-    String buildSetting = myBuild.getSharedConfigParameters().get(USE_ALTERNATES);
-    if (!StringUtil.isEmpty(buildSetting)) {
-      LOG.info("Use the '" + USE_ALTERNATES + "' option specified in the build");
-      return Boolean.parseBoolean(buildSetting);
-    }
-
-    Boolean rootSetting = root.isUseAgentMirrors();
-    String mirrorStrategy = getMirrorStrategy();
-    if (rootSetting != null && rootSetting && VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES.equals(mirrorStrategy)) {
-      LOG.info("Use the mirrors option specified in the VCS root");
-      return true;
-    }
-
-    return false;
+    return isUseAlternates(root.getAgentCheckoutPolicy());
   }
 
+  public boolean isUseAlternates(@NotNull AgentCheckoutPolicy rootSetting) {
+    final String buildSetting = myBuild.getSharedConfigParameters().get(USE_ALTERNATES);
+    if (StringUtil.isNotEmpty(buildSetting)) {
+      final boolean enabled = Boolean.parseBoolean(buildSetting);
+      myBuild.getBuildLogger().message("Mirrors with alternates " + (enabled ? "enabled" : "disabled") + " via " + USE_ALTERNATES + " build configuration parameter");
+      return enabled;
+    }
+
+    final String mirrorStrategy = getMirrorStrategy();
+    if (AgentCheckoutPolicy.USE_MIRRORS == rootSetting || AgentCheckoutPolicy.AUTO == rootSetting && !isAgentTerminatedAfterBuild()) {
+      if (StringUtil.isEmpty(mirrorStrategy) || VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES.equals(mirrorStrategy)) {
+        myBuild.getBuildLogger().debug(AgentCheckoutPolicy.USE_MIRRORS == rootSetting ? "Mirrors enabled via VCS root settings" : "Mirrors automatically enabled");
+        return true;
+      }
+      myBuild.getBuildLogger().message("Mirrors with alternates disabled via " + VCS_ROOT_MIRRORS_STRATEGY + " build configuration parameter");
+    }
+    return false;
+  }
 
   public boolean isUseSparseCheckout() {
     String buildSetting = myBuild.getSharedConfigParameters().get(USE_SPARSE_CHECKOUT);
@@ -185,22 +198,42 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return Boolean.parseBoolean(buildSetting);
   }
 
-  @NotNull
+  @Nullable
   private String getMirrorStrategy() {
-    String strategy = myBuild.getSharedConfigParameters().get(VCS_ROOT_MIRRORS_STRATEGY);
-    if (!StringUtil.isEmpty(strategy))
-      return strategy;
-    return VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES;
+    return myBuild.getSharedConfigParameters().get(VCS_ROOT_MIRRORS_STRATEGY);
   }
 
-  public boolean isUseShallowClone() {
-    String valueFromBuildConfiguration = myBuild.getSharedConfigParameters().get(USE_SHALLOW_CLONE_INTERNAL);
-    if (valueFromBuildConfiguration != null) {
-      return "true".equals(valueFromBuildConfiguration);
+  public boolean isUseShallowClone(@NotNull GitVcsRoot root) {
+    return isUseShallowClone(root.getAgentCheckoutPolicy());
+  }
+
+  public boolean isUseShallowClone(@NotNull AgentCheckoutPolicy rootSetting) {
+    final String buildSetting = myBuild.getSharedConfigParameters().get(USE_SHALLOW_CLONE_INTERNAL);
+    if (StringUtil.isNotEmpty(buildSetting)) {
+      final boolean enabled = Boolean.parseBoolean(buildSetting);
+      myBuild.getBuildLogger().message("Shallow clone " + (enabled ? "enforced" : "disabled") + " via " + USE_SHALLOW_CLONE_INTERNAL + " build configuration parameter");
+      return enabled;
     }
-    return "true".equals(myAgentConfig.getConfigurationParameters().get(USE_SHALLOW_CLONE));
+    final String agentSetting = myAgentConfig.getConfigurationParameters().get(USE_SHALLOW_CLONE);
+    if (StringUtil.isNotEmpty(agentSetting)) {
+      final boolean enabled = Boolean.parseBoolean(agentSetting);
+      myBuild.getBuildLogger().message("Shallow clone " + (enabled ? "enforced" : "disabled") + " via " + USE_SHALLOW_CLONE + " agent configuration property");
+      return enabled;
+    }
+    if (AgentCheckoutPolicy.SHALLOW_CLONE == rootSetting) {
+      myBuild.getBuildLogger().debug("Shallow clone enforced via VCS root settings");
+      return true;
+    }
+    if (AgentCheckoutPolicy.AUTO == rootSetting && isAgentTerminatedAfterBuild()) {
+        myBuild.getBuildLogger().message("Shallow clone automatically enabled because agent will terminate after the build");
+        return true;
+    }
+    return false;
   }
 
+  private boolean isAgentTerminatedAfterBuild() {
+    return "true".equals(myAgentConfig.getConfigurationParameters().get(AGENT_TERMINATE_AFTER_BUILD));
+  }
 
   public boolean isDeleteTempFiles() {
     boolean doNotDelete = Boolean.parseBoolean(myBuild.getSharedConfigParameters().get(TEAMCITY_DONT_DELETE_TEMP_FILES));

@@ -17,14 +17,13 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.text.StringUtil;
+import java.io.File;
+import java.util.Map;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.Map;
 
 /**
  * Git Vcs Settings
@@ -48,7 +47,7 @@ public class GitVcsRoot {
   private final boolean myIgnoreMissingDefaultBranch;
   private final boolean myIncludeCommitInfoSubmodules;
   private File myCustomRepositoryDir;
-  private final Boolean myUseAgentMirrors;
+  private final AgentCheckoutPolicy myCheckoutPolicy;
   private final boolean myIncludeContentHashes;
   private final URIishHelper myURIishHelper;
 
@@ -82,7 +81,7 @@ public class GitVcsRoot {
     myReportTags = Boolean.valueOf(getProperty(Constants.REPORT_TAG_REVISIONS, "false"));
     myIgnoreMissingDefaultBranch = Boolean.valueOf(getProperty(Constants.IGNORE_MISSING_DEFAULT_BRANCH, "false"));
     myIncludeCommitInfoSubmodules = Boolean.valueOf(getProperty(Constants.INCLUDE_COMMIT_INFO_SUBMODULES, "false"));
-    myUseAgentMirrors = readAgentMirrors();
+    myCheckoutPolicy = readCheckoutPolicy();
   }
 
   public GitVcsRoot getRootForBranch(@NotNull String branch) throws VcsException {
@@ -94,9 +93,9 @@ public class GitVcsRoot {
     return myBranchSpec;
   }
 
-  @Nullable
-  public Boolean isUseAgentMirrors() {
-    return myUseAgentMirrors;
+  @NotNull
+  public AgentCheckoutPolicy getAgentCheckoutPolicy() {
+    return myCheckoutPolicy;
   }
 
   @Nullable
@@ -107,12 +106,12 @@ public class GitVcsRoot {
     return path == null ? null : new File(path);
   }
 
-  @Nullable
-  private Boolean readAgentMirrors() {
+  @NotNull
+  private AgentCheckoutPolicy readCheckoutPolicy() {
     String useAgentMirrors = getProperty(Constants.USE_AGENT_MIRRORS);
-    if (useAgentMirrors == null)
-      return null;
-    return Boolean.parseBoolean(useAgentMirrors);
+    if (useAgentMirrors == null || "false".equalsIgnoreCase(useAgentMirrors)) return AgentCheckoutPolicy.NO_MIRRORS;
+    if ("true".equalsIgnoreCase(useAgentMirrors)) return AgentCheckoutPolicy.USE_MIRRORS;
+    return Enum.valueOf(AgentCheckoutPolicy.class, useAgentMirrors);
   }
 
   private UserNameStyle readUserNameStyle() {

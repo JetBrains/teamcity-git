@@ -232,6 +232,26 @@
       </td>
     </tr>
     <tr class="advancedSetting">
+      <th><label for="useAlternates">Checkout policy:</label></th>
+      <td>
+        <c:set var="useAlternatesProp" value="${vcsPropertiesBean.propertiesBean.properties['useAlternates']}"/>
+        <c:set var="useAlternates" value="${useAlternatesProp == null ? null : fn:toUpperCase(useAlternatesProp)}"/>
+
+        <props:selectProperty name="useAlternates" enableFilter="true" className="mediumField" onchange="updateCheckoutTypeNote()">
+          <props:option id="autoCheckoutType" value="AUTO"  selected="${'AUTO' eq useAlternates}">Auto</props:option>
+          <props:option id="useMirrorsCheckoutType" value="USE_MIRRORS" selected="${'TRUE' eq useAlternates || 'USE_MIRRORS' eq useAlternates}">Use mirrors</props:option>
+          <c:if test="${useAlternates eq null || 'FALSE' eq useAlternates || 'NO_MIRRORS' eq useAlternates}">
+            <props:option id="noMirrorsCheckoutType" value="NO_MIRRORS" selected="true">Do not use mirrors</props:option>
+          </c:if>
+          <props:option id="shallowCloneCheckoutType" value="SHALLOW_CLONE" selected="${'SHALLOW_CLONE' eq useAlternates}">Shallow clone</props:option>
+        </props:selectProperty>
+        <div id="autoNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Depending on the expected agent life cycle either use mirrors (for regular long-living agents) or shallow clone (for short-living agents).</div>
+        <div id="useMirrorsNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Cache remote repository on the agent machine under system/caches/git folder in order to speed up following checkouts. Cache is reused between all builds using the same fetch URL.</div>
+        <div id="noMirrorsNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Do not cache repos on the agent machine, directly fetch build branch to the checkout directory.</div>
+        <div id="shallowCloneNote" class="smallNote checkoutTypeNote"  style="margin: 0; display: none;">Do not cache repos on the agent machine, directly fetch single build revision to the checkout directory without any history. This approach is expected to be the fasted way to get build revision from scratch.</div>
+      </td>
+    </tr>
+    <tr class="advancedSetting">
       <th><label for="agentCleanPolicy">Clean policy:</label></th>
       <td><props:selectProperty name="agentCleanPolicy" enableFilter="true" className="mediumField">
         <props:option value="ON_BRANCH_CHANGE">On Branch Change</props:option>
@@ -252,16 +272,6 @@
       </props:selectProperty>
         <div class="smallNote" style="margin: 0">This option specifies which files will be removed when "git
           clean" command is run on agent.
-        </div>
-      </td>
-    </tr>
-    <tr class="advancedSetting">
-      <th><label for="useAlternates">Use mirrors:</label></th>
-      <td>
-        <props:checkboxProperty name="useAlternates"/>
-        <div class="smallNote" style="margin: 0" >
-          When this option is enabled, TeamCity creates a separate clone of the repository on each agent
-          and uses it in the checkout directory via git alternates.
         </div>
       </td>
     </tr>
@@ -456,6 +466,14 @@
     }
   };
 
+  updateCheckoutTypeNote = function() {
+    $j('.checkoutTypeNote').hide();
+
+    var selectedId = $j('#useAlternates option:selected').attr('id');
+    var noteId = selectedId.replace('CheckoutType', 'Note');
+    $j('#' + noteId).show();
+  };
+
   illustrateUsernameStyle();
 
   $j("#usernameStyle").change(illustrateUsernameStyle);
@@ -478,5 +496,6 @@
     } else {
       $j('.listRepositoriesControls').hide();
     }
+    updateCheckoutTypeNote();
   });
 </script>

@@ -62,6 +62,7 @@ public class AgentConfigPluginTest {
     myMockery.checking(new Expectations() {{
       allowing(myBuild).getSharedConfigParameters();
       will(returnValue(myBuildSharedConfigParameters));
+      allowing(myBuild).getBuildLogger();
       allowing(myAgentConfig).getCacheDirectory("git"); will(returnValue(new File("")));
     }});
 

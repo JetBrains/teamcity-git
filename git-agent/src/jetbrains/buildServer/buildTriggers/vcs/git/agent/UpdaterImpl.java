@@ -202,7 +202,7 @@ public class UpdaterImpl implements Updater {
     final File gitDir = new File(myTargetDirectory, ".git");
     if (!gitDir.exists()) {
       initDirectory(false);
-    } else if (!myPluginConfig.isUseShallowClone() && isShallowRepository(myTargetDirectory)) {
+    } else if (!myPluginConfig.isUseShallowClone(myRoot) && isShallowRepository(myTargetDirectory)) {
       // settings changed: this repo is shallow, recreate it to avoid performance problems
       initDirectory(true);
     } else {

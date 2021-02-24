@@ -38,7 +38,7 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isUseAlternates(@NotNull GitVcsRoot root);
 
-  boolean isUseShallowClone();
+  boolean isUseShallowClone(@NotNull GitVcsRoot root);
 
   boolean isDeleteTempFiles();
 
