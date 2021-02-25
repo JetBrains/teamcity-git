@@ -232,12 +232,12 @@
       </td>
     </tr>
     <tr class="advancedSetting">
-      <th><label for="checkoutPolicy">Checkout policy:</label></th>
+      <th><label for="useAlternates">Checkout policy:</label></th>
       <td>
         <c:set var="checkoutPolicyProp" value="${vcsPropertiesBean.propertiesBean.properties['useAlternates']}"/>
         <c:set var="checkoutPolicy" value="${checkoutPolicyProp == null ? null : fn:toUpperCase(checkoutPolicyProp)}"/>
 
-        <props:selectProperty name="checkoutPolicy" enableFilter="true" className="mediumField" onchange="updateCheckoutTypeNote()">
+        <props:selectProperty name="useAlternates" enableFilter="true" className="mediumField" onchange="updateCheckoutTypeNote()">
           <props:option id="autoCheckoutType" value="AUTO"  selected="${'AUTO' eq checkoutPolicy}">Auto</props:option>
           <props:option id="useMirrorsCheckoutType" value="USE_MIRRORS" selected="${'TRUE' eq checkoutPolicy || 'USE_MIRRORS' eq checkoutPolicy}">Use mirrors</props:option>
           <props:option id="noMirrorsCheckoutType" value="NO_MIRRORS" selected="${checkoutPolicy eq null || 'FALSE' eq checkoutPolicy || 'NO_MIRRORS' eq checkoutPolicy}">Do not use mirrors</props:option>
@@ -467,7 +467,7 @@
   updateCheckoutTypeNote = function() {
     $j('.checkoutTypeNote').hide();
 
-    var selectedId = $j('#checkoutPolicy option:selected').attr('id');
+    var selectedId = $j('#useAlternates option:selected').attr('id');
     var noteId = selectedId.replace('CheckoutType', 'Note');
     $j('#' + noteId).show();
   };
