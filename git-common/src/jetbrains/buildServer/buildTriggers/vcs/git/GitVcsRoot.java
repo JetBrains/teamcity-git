@@ -19,6 +19,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.util.text.StringUtil;
 import java.io.File;
 import java.util.Map;
+import jetbrains.buildServer.log.LogUtil;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -111,7 +113,13 @@ public class GitVcsRoot {
     String useAgentMirrors = getProperty(Constants.USE_AGENT_MIRRORS);
     if (useAgentMirrors == null || "false".equalsIgnoreCase(useAgentMirrors)) return AgentCheckoutPolicy.NO_MIRRORS;
     if ("true".equalsIgnoreCase(useAgentMirrors)) return AgentCheckoutPolicy.USE_MIRRORS;
-    return Enum.valueOf(AgentCheckoutPolicy.class, useAgentMirrors);
+    try {
+      return Enum.valueOf(AgentCheckoutPolicy.class, useAgentMirrors);
+    } catch (IllegalArgumentException e) {
+      final AgentCheckoutPolicy fallback = AgentCheckoutPolicy.NO_MIRRORS;
+      Loggers.VCS.warn(Constants.USE_AGENT_MIRRORS + " property has unexpected value for " + LogUtil.describe(myDelegate) + ", will use " + fallback);
+      return fallback;
+    }
   }
 
   private UserNameStyle readUserNameStyle() {
