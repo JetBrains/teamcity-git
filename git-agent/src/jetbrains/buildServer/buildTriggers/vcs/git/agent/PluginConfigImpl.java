@@ -225,7 +225,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
       return true;
     }
     if (AgentCheckoutPolicy.AUTO == rootSetting && isAgentTerminatedAfterBuild()) {
-        myBuild.getBuildLogger().message("Shallow clone automatically enabled because agent will terminate after the build");
+      myBuild.getBuildLogger().message("Shallow clone automatically enabled on short-lived agent");
         return true;
     }
     return false;
