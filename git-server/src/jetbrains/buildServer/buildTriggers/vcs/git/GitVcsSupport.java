@@ -290,7 +290,7 @@ public class GitVcsSupport extends ServerVcsSupport
     map.put(Constants.AGENT_CLEAN_POLICY, AgentCleanPolicy.ON_BRANCH_CHANGE.name());
     map.put(Constants.AGENT_CLEAN_FILES_POLICY, AgentCleanFilesPolicy.ALL_UNTRACKED.name());
     map.put(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
-    map.put(Constants.USE_AGENT_MIRRORS, AgentCheckoutPolicy.USE_MIRRORS.name());
+    map.put(Constants.CHECKOUT_POLICY, AgentCheckoutPolicy.USE_MIRRORS.name());
     return map;
   }
 

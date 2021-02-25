@@ -110,14 +110,14 @@ public class GitVcsRoot {
 
   @NotNull
   private AgentCheckoutPolicy readCheckoutPolicy() {
-    String useAgentMirrors = getProperty(Constants.USE_AGENT_MIRRORS);
+    String useAgentMirrors = getProperty(Constants.CHECKOUT_POLICY);
     if (useAgentMirrors == null || "false".equalsIgnoreCase(useAgentMirrors)) return AgentCheckoutPolicy.NO_MIRRORS;
     if ("true".equalsIgnoreCase(useAgentMirrors)) return AgentCheckoutPolicy.USE_MIRRORS;
     try {
       return Enum.valueOf(AgentCheckoutPolicy.class, useAgentMirrors);
     } catch (IllegalArgumentException e) {
       final AgentCheckoutPolicy fallback = AgentCheckoutPolicy.NO_MIRRORS;
-      Loggers.VCS.warn(Constants.USE_AGENT_MIRRORS + " property has unexpected value for " + LogUtil.describe(myDelegate) + ", will use " + fallback);
+      Loggers.VCS.warn(Constants.CHECKOUT_POLICY + " property has unexpected value for " + LogUtil.describe(myDelegate) + ", will use " + fallback);
       return fallback;
     }
   }

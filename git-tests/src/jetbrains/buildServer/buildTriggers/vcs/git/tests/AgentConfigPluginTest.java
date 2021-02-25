@@ -119,7 +119,7 @@ public class AgentConfigPluginTest {
 
 
   public void when_mirrors_are_enabled_in_vcs_root_alternates_should_be_used() throws Exception {
-    GitVcsRoot root = gitVcsRoot(Constants.USE_AGENT_MIRRORS, "true");
+    GitVcsRoot root = gitVcsRoot(Constants.CHECKOUT_POLICY, "true");
     PluginConfigImpl config = getPluginConfig(root);
     assertTrue(config.isUseAlternates(root));
   }
@@ -127,7 +127,7 @@ public class AgentConfigPluginTest {
 
   public void when_mirrors_are_enabled_in_vcs_root_mirrors_without_alternates_can_be_used() throws Exception {
     myBuildSharedConfigParameters.put(PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY , PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY_MIRRORS_ONLY);
-    GitVcsRoot root = gitVcsRoot(Constants.USE_AGENT_MIRRORS, "true");
+    GitVcsRoot root = gitVcsRoot(Constants.CHECKOUT_POLICY, "true");
     PluginConfigImpl config = getPluginConfig(root);
     assertFalse(config.isUseAlternates(root));
     assertTrue(config.isUseLocalMirrors(root));
@@ -136,7 +136,7 @@ public class AgentConfigPluginTest {
 
   public void build_mirror_settings_take_precedence_over_root__alternates() throws Exception {
     myBuildSharedConfigParameters.put(PluginConfigImpl.USE_ALTERNATES, "true");
-    GitVcsRoot root = gitVcsRoot(Constants.USE_AGENT_MIRRORS, "false");
+    GitVcsRoot root = gitVcsRoot(Constants.CHECKOUT_POLICY, "false");
     PluginConfigImpl config = getPluginConfig(root);
     assertTrue(config.isUseAlternates(root));
   }
@@ -144,7 +144,7 @@ public class AgentConfigPluginTest {
 
   public void build_mirror_settings_take_precedence_over_root__mirrors() throws Exception {
     myBuildSharedConfigParameters.put(PluginConfigImpl.USE_MIRRORS, "true");
-    GitVcsRoot root = gitVcsRoot(Constants.USE_AGENT_MIRRORS, "false");
+    GitVcsRoot root = gitVcsRoot(Constants.CHECKOUT_POLICY, "false");
     PluginConfigImpl config = getPluginConfig(root);
     assertTrue(config.isUseLocalMirrors(root));
   }

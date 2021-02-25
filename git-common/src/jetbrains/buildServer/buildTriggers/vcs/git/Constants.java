@@ -129,7 +129,7 @@ public interface Constants {
   String PATCHER_CACHES_DIR = "patcher.cachesDir";
   String PATCHER_PATCH_FILE = "patcher.patchFile";
   String PATCHER_UPLOADED_KEY = "patcher.uploadedKey";
-  String USE_AGENT_MIRRORS = "useAlternates";
+  String CHECKOUT_POLICY = "useAlternates";
   String CUSTOM_GIT_CONFIG = "customGitConfig";
 
   String SHOW_CUSTOM_CLONE_PATH = "teamcity.git.showCustomClonePath";

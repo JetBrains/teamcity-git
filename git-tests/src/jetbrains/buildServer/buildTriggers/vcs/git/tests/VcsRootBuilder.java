@@ -16,14 +16,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.File;
+import java.io.IOException;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.io.IOException;
 
 /**
  * @author dmitry.neverov
@@ -64,7 +63,7 @@ public class VcsRootBuilder {
     result.addProperty(Constants.USERNAME_FOR_TAGS, myUsernameForTags);
     result.addProperty(Constants.BRANCH_SPEC, myBranchSpec);
     if (myUseMirrors != null)
-      result.addProperty(Constants.USE_AGENT_MIRRORS, String.valueOf(myUseMirrors));
+      result.addProperty(Constants.CHECKOUT_POLICY, String.valueOf(myUseMirrors));
     if (myUsername != null)
       result.addProperty(Constants.USERNAME, myUsername);
     if (myPassword != null)
