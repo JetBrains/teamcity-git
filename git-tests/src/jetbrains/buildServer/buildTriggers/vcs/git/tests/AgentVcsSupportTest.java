@@ -18,16 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.StreamUtil;
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileReader;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
@@ -65,6 +55,17 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
@@ -1868,7 +1869,12 @@ public class AgentVcsSupportTest {
       }
     });
     myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "64195c330d99c467a142f682bc23d4de3a68551d", myCheckoutDir, build, false);
-    BaseTestCase.assertContains(log.toString(), "git config --list");
+    final String result = log.toString();
+    if (SystemInfo.isWindows) {
+      assertTrue(result, result.contains("git config --list") || result.contains("git.exe config --list"));
+    } else {
+      BaseTestCase.assertContains(result, "git config --list");
+    }
   }
 
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
