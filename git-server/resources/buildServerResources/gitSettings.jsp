@@ -232,23 +232,21 @@
       </td>
     </tr>
     <tr class="advancedSetting">
-      <th><label for="useAlternates">Checkout policy:</label></th>
+      <th><label for="checkoutPolicy">Checkout policy:</label></th>
       <td>
-        <c:set var="useAlternatesProp" value="${vcsPropertiesBean.propertiesBean.properties['useAlternates']}"/>
-        <c:set var="useAlternates" value="${useAlternatesProp == null ? null : fn:toUpperCase(useAlternatesProp)}"/>
+        <c:set var="checkoutPolicyProp" value="${vcsPropertiesBean.propertiesBean.properties['useAlternates']}"/>
+        <c:set var="checkoutPolicy" value="${checkoutPolicyProp == null ? null : fn:toUpperCase(checkoutPolicyProp)}"/>
 
-        <props:selectProperty name="useAlternates" enableFilter="true" className="mediumField" onchange="updateCheckoutTypeNote()">
-          <props:option id="autoCheckoutType" value="AUTO"  selected="${'AUTO' eq useAlternates}">Auto</props:option>
-          <props:option id="useMirrorsCheckoutType" value="USE_MIRRORS" selected="${'TRUE' eq useAlternates || 'USE_MIRRORS' eq useAlternates}">Use mirrors</props:option>
-          <c:if test="${useAlternates eq null || 'FALSE' eq useAlternates || 'NO_MIRRORS' eq useAlternates}">
-            <props:option id="noMirrorsCheckoutType" value="NO_MIRRORS" selected="true">Do not use mirrors</props:option>
-          </c:if>
-          <props:option id="shallowCloneCheckoutType" value="SHALLOW_CLONE" selected="${'SHALLOW_CLONE' eq useAlternates}">Shallow clone</props:option>
+        <props:selectProperty name="checkoutPolicy" enableFilter="true" className="mediumField" onchange="updateCheckoutTypeNote()">
+          <props:option id="autoCheckoutType" value="AUTO"  selected="${'AUTO' eq checkoutPolicy}">Auto</props:option>
+          <props:option id="useMirrorsCheckoutType" value="USE_MIRRORS" selected="${'TRUE' eq checkoutPolicy || 'USE_MIRRORS' eq checkoutPolicy}">Use mirrors</props:option>
+          <props:option id="noMirrorsCheckoutType" value="NO_MIRRORS" selected="${checkoutPolicy eq null || 'FALSE' eq checkoutPolicy || 'NO_MIRRORS' eq checkoutPolicy}">Do not use mirrors</props:option>
+          <props:option id="shallowCloneCheckoutType" value="SHALLOW_CLONE" selected="${'SHALLOW_CLONE' eq checkoutPolicy}">Shallow clone</props:option>
         </props:selectProperty>
-        <div id="autoNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Depending on the expected agent life cycle either use mirrors (for regular long-living agents) or shallow clone (for short-living agents).</div>
-        <div id="useMirrorsNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Cache remote repository on the agent machine under system/caches/git folder in order to speed up following checkouts. Cache is reused between all builds using the same fetch URL.</div>
-        <div id="noMirrorsNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Do not cache repos on the agent machine, directly fetch build branch to the checkout directory.</div>
-        <div id="shallowCloneNote" class="smallNote checkoutTypeNote"  style="margin: 0; display: none;">Do not cache repos on the agent machine, directly fetch single build revision to the checkout directory without any history. This approach is expected to be the fasted way to get build revision from scratch.</div>
+        <div id="autoNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Uses shallow clone for short-lived agents and mirrors for regular long-lived agents.</div>
+        <div id="useMirrorsNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Creates repository mirror on the agent machine and shares it between different builds with the same fetch URL. Most optimal approach for large repositories and long-lived agents.</div>
+        <div id="noMirrorsNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Performs checkout right into the checkout directory without creating a mirror. Less optimal in terms of disk usage then mirrors.</div>
+        <div id="shallowCloneNote" class="smallNote checkoutTypeNote"  style="margin: 0; display: none;">Uses git shallow clone to checkout build revision (--depth 1). Ideal for short-lived agents.</div>
       </td>
     </tr>
     <tr class="advancedSetting">
@@ -469,7 +467,7 @@
   updateCheckoutTypeNote = function() {
     $j('.checkoutTypeNote').hide();
 
-    var selectedId = $j('#useAlternates option:selected').attr('id');
+    var selectedId = $j('#checkoutPolicy option:selected').attr('id');
     var noteId = selectedId.replace('CheckoutType', 'Note');
     $j('#' + noteId).show();
   };

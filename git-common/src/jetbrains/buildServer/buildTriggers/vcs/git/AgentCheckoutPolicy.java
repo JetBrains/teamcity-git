@@ -5,8 +5,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
  */
 public enum AgentCheckoutPolicy {
   /**
-   * Cache remote repository on the agent machine under system/caches/git folder in order to speed up following checkouts.
-   * Cache is reused between all builds using the same fetch URL.
+   * Creates repository mirror on the agent machine and shares it between different builds with the same fetch URL. Most optimal approach for large repositories and long-lived agents.
    */
   USE_MIRRORS,
 
@@ -16,18 +15,17 @@ public enum AgentCheckoutPolicy {
   USE_MIRRORS_WITHOUT_ALTERNATES,
 
   /**
-   * Hidden policy for backward compatibilty: do not cache repos on the agent machine, directly fetch build branch (or all branches according to build configuration) to the checkout directory.
+   * Performs checkout right into the checkout directory without creating a mirror. Less optimal in terms of disk usage then mirrors.
    */
   NO_MIRRORS,
 
   /**
-   * Do not cache repos on the agent machine, directly fetch single build revision to the checkout directory with depth=1.
-   * This approach is expected to be the fasted way to get build revision from scratch.
+   * Uses git shallow clone to checkout build revision (--depth 1). Ideal for short-lived agents.
    */
   SHALLOW_CLONE,
 
   /**
-   * Default option: depending on the expected agent life cycle either use mirrors (for regular long-living agents) or shallow clone (for short-living agents).
+   * Uses shallow clone for short-lived agents and mirrors for regular long-lived agents.
    */
   AUTO
 }
