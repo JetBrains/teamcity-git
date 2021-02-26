@@ -118,7 +118,7 @@ public class GitVcsRoot {
       return Enum.valueOf(AgentCheckoutPolicy.class, useAgentMirrors);
     } catch (IllegalArgumentException e) {
       final AgentCheckoutPolicy fallback = AgentCheckoutPolicy.NO_MIRRORS;
-      Loggers.VCS.warn(Constants.CHECKOUT_POLICY + " property has unexpected value for " + LogUtil.describe(myDelegate) + ", will use " + fallback);
+      Loggers.VCS.warn(Constants.CHECKOUT_POLICY + " property has unexpected value \"" + useAgentMirrors + "\" for " + LogUtil.describe(myDelegate) + ", will use " + fallback);
       return fallback;
     }
   }
