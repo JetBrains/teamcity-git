@@ -17,8 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.text.StringUtil;
-import java.io.File;
-import java.util.Map;
 import jetbrains.buildServer.log.LogUtil;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -26,6 +24,9 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.util.Map;
 
 /**
  * Git Vcs Settings
@@ -111,7 +112,7 @@ public class GitVcsRoot {
   @NotNull
   private AgentCheckoutPolicy readCheckoutPolicy() {
     String useAgentMirrors = getProperty(Constants.CHECKOUT_POLICY);
-    if (useAgentMirrors == null || "false".equalsIgnoreCase(useAgentMirrors)) return AgentCheckoutPolicy.NO_MIRRORS;
+    if (StringUtil.isEmpty(useAgentMirrors) || "false".equalsIgnoreCase(useAgentMirrors)) return AgentCheckoutPolicy.NO_MIRRORS;
     if ("true".equalsIgnoreCase(useAgentMirrors)) return AgentCheckoutPolicy.USE_MIRRORS;
     try {
       return Enum.valueOf(AgentCheckoutPolicy.class, useAgentMirrors);
