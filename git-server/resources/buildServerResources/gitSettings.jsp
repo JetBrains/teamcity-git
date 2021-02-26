@@ -245,7 +245,7 @@
         </props:selectProperty>
         <div id="autoNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Uses shallow clone for short-lived agents and mirrors for regular long-lived agents.</div>
         <div id="useMirrorsNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Creates repository mirror on the agent machine and shares it between different builds with the same fetch URL. Most optimal approach for large repositories and long-lived agents.</div>
-        <div id="noMirrorsNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Performs checkout right into the checkout directory without creating a mirror. Less optimal in terms of disk usage then mirrors.</div>
+        <div id="noMirrorsNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Performs checkout right into the checkout directory without creating a mirror. Less optimal in terms of disk usage than mirrors.</div>
         <div id="shallowCloneNote" class="smallNote checkoutTypeNote"  style="margin: 0; display: none;">Uses git shallow clone to checkout build revision (--depth 1). Ideal for short-lived agents.</div>
       </td>
     </tr>
