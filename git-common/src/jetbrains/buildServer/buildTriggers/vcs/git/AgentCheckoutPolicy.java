@@ -15,7 +15,7 @@ public enum AgentCheckoutPolicy {
   USE_MIRRORS_WITHOUT_ALTERNATES,
 
   /**
-   * Performs checkout right into the checkout directory without creating a mirror. Less optimal in terms of disk usage then mirrors.
+   * Performs checkout right into the checkout directory without creating a mirror. Less optimal in terms of disk usage than mirrors.
    */
   NO_MIRRORS,
 
