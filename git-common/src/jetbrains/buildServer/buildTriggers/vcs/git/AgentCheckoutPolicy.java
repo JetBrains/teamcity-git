@@ -10,7 +10,7 @@ public enum AgentCheckoutPolicy {
   USE_MIRRORS,
 
   /**
-   * Hidden policy for backward compatibilty: same as USE_MIRRORS, but without referencing mirror objects folder via alternates
+   * Hidden policy for backward compatibility: same as USE_MIRRORS, but without referencing mirror objects folder via alternates
    */
   USE_MIRRORS_WITHOUT_ALTERNATES,
 
