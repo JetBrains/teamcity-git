@@ -71,7 +71,7 @@
         @see AgentCleanFilesPolicy
       </description>
     </param>
-    <param name="useAlternates" dslName="useMirrors" type="boolean" trueValue="true" falseValue="">
+    <param name="useAlternates" dslName="useMirrors" deprecated="true" type="boolean" trueValue="true" falseValue="">
       <deprecated>
         Use checkoutPolicy parameter instead
       </deprecated>
