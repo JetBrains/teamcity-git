@@ -6,6 +6,7 @@
       <root url="jar://$TeamCityDistribution$/devPackage/tests/patches-test.jar!/" />
       <root url="jar://$TeamCityDistribution$/devPackage/tests/tests-support.jar!/" />
       <root url="jar://$TeamCityDistribution$/devPackage/tests/tests-integration.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/db.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
