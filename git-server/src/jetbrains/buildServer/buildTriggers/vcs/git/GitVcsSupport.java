@@ -18,10 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
 import jetbrains.buildServer.log.Loggers;
@@ -43,6 +39,11 @@ import org.eclipse.jgit.transport.FetchConnection;
 import org.eclipse.jgit.transport.Transport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
@@ -283,6 +284,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public Map<String, String> getDefaultVcsProperties() {
+    // AVOID CHANGING DEFAULT VALUES - IT CAUSES ISSUES WITH COMMIT HISTORY
     final HashMap<String, String> map = new HashMap<String, String>();
     map.put(Constants.IGNORE_KNOWN_HOSTS, "true");
     map.put(Constants.AUTH_METHOD, AuthenticationMethod.ANONYMOUS.name());

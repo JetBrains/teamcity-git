@@ -20,6 +20,7 @@ import com.intellij.util.io.ZipUtil;
 import com.jcraft.jsch.JSchException;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExtensionHolder;
+import jetbrains.buildServer.TeamCityAsserts;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
@@ -1155,6 +1156,20 @@ public class GitVcsSupportTest extends PatchTestCase {
     assertEquals("5711cbfe566b6c92e331f95d4b236483f4532eed", state.getBranchRevisions().get("refs/tags/v0.7"));
     assertEquals("465ad9f630e451b9f2b782ffb09804c6a98c4bb9", state.getBranchRevisions().get("refs/tags/v1.0"));
   }
+
+  @TestFor(issues = "TW-70366")
+  @Test
+  public void defaults_should_not_change() {
+    TeamCityAsserts.assertMap(getSupport().getDefaultVcsProperties(),
+                              "ignoreKnownHosts", "true",
+                              "authMethod", "ANONYMOUS",
+                              "usernameStyle", "USERID",
+                              "agentCleanPolicy", "ON_BRANCH_CHANGE",
+                              "agentCleanFilesPolicy", "ALL_UNTRACKED",
+                              "submoduleCheckout", "CHECKOUT",
+                              "useAlternates", "true");
+  }
+
 
 
   private File createBranchLockFile(File repositoryDir, String branch) throws IOException {
