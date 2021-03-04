@@ -16,11 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import java.io.File;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.regex.Pattern;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
@@ -35,6 +30,12 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.regex.Pattern;
 
 /**
  * @author dmitry.neverov
@@ -73,8 +74,6 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String CUSTOM_GIT_CONFIG = "teamcity.internal.git.customConfig";
   public static final String REMOTE_OPERATION_ATTEMPTS = "teamcity.internal.git.remoteOperationAttempts";
   public static final String TEAMCITY_GIT_SSH_DEBUG = "teamcity.git.sshDebug";
-
-  public static final String AGENT_TERMINATE_AFTER_BUILD = "teamcity.cloud.agent.terminate.after.build";
 
   private static final Pattern NEW_LINE = Pattern.compile("(\r\n|\r|\n)");
 
@@ -232,7 +231,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   }
 
   private boolean isAgentTerminatedAfterBuild() {
-    return "true".equals(myAgentConfig.getConfigurationParameters().get(AGENT_TERMINATE_AFTER_BUILD));
+    return "true".equals(myAgentConfig.getConfigurationParameters().get(AgentMiscConstants.IS_EPHEMERAL_AGENT_PROP));
   }
 
   public boolean isDeleteTempFiles() {
