@@ -16,6 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import java.io.File;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.regex.Pattern;
+import jetbrains.buildServer.agent.AgentMiscConstants;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
@@ -30,12 +36,6 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.regex.Pattern;
 
 /**
  * @author dmitry.neverov

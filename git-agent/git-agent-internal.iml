@@ -23,5 +23,6 @@
     <orderEntry type="library" name="git-commons-codec" level="project" />
     <orderEntry type="module" module-name="agent" exported="" />
     <orderEntry type="library" name="xmlrpc-2.0" level="project" />
+    <orderEntry type="module" module-name="common-impl" />
   </component>
 </module>
