@@ -16,6 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.util.*;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExtensionsProvider;
 import jetbrains.buildServer.TempFiles;
@@ -36,11 +40,6 @@ import org.jmock.Mock;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.util.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 
@@ -206,7 +205,7 @@ public class GitUrlSupportTest extends BaseTestCase {
     assertEquals("git", root.getAuthSettings().toMap().get(Constants.USERNAME));
   }
 
-  @Test
+  @Test(enabled = false) // the test is disabled because GitHub now allows accessing a public repository even if provided credentials are invalid
   public void http_protocol_with_invalid_credentials() throws Exception {
     VcsUrl url = new VcsUrl("https://github.com/JetBrains/kotlin.git", new Credentials("user1", "pwd1"));
     try {
