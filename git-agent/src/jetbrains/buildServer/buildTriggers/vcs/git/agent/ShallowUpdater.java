@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 
+import java.io.File;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
@@ -26,8 +27,6 @@ import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
 
 public class ShallowUpdater extends UpdaterImpl {
 
@@ -53,7 +52,7 @@ public class ShallowUpdater extends UpdaterImpl {
     final FetchHeadsMode fetchHeadsMode = myPluginConfig.getFetchHeadsMode();
     if (fetchHeadsMode == FetchHeadsMode.AFTER_BUILD_BRANCH) {
       if (hasRevision(myTargetDirectory, myRevision)) {
-        myLogger.debug("Revision" + myRevision + " is present in the local repository, skip fetch");
+        myLogger.debug("Revision " + myRevision + " is present in the local repository, skip fetch");
         return;
       }
 
