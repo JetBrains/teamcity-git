@@ -61,6 +61,7 @@ import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1875,6 +1876,26 @@ public class AgentVcsSupportTest {
     } else {
       BaseTestCase.assertContains(result, "git config --list");
     }
+  }
+
+  @TestFor(issues = "TW-70493")
+  @Test
+  public void switch_from_alternates_to_shallow_clone() throws Exception {
+    final File remote = dataFile("repo_for_shallow_fetch.git");
+    final File testFile = new File(myCheckoutDir, "test_file");
+    final File shallowMarker = new File(myCheckoutDir, ".git/shallow");
+
+    final AgentRunningBuild build1 = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.USE_ALTERNATES, "true"));
+    myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "64195c330d99c467a142f682bc23d4de3a68551d", myCheckoutDir, build1, false);
+    assertFalse(shallowMarker.exists());
+
+    FileUtil.writeFile(testFile, "test text", StandardCharsets.UTF_8);
+    assertTrue(testFile.isFile());
+
+    final AgentRunningBuild build2 = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.USE_SHALLOW_CLONE_INTERNAL, "true"));
+    myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "fd1eb9776b5fad5cc433586f7933811c6853917d", myCheckoutDir, build2, false);
+    assertTrue(shallowMarker.exists());
+    assertFalse(testFile.exists());
   }
 
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
