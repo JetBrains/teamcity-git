@@ -184,20 +184,22 @@ public class UpdaterImpl implements Updater {
 
   private void initGitRepository() throws VcsException {
     final File gitDir = new File(myTargetDirectory, ".git");
-    if (!gitDir.exists()) {
-      initDirectory(false);
-    } else if (!myPluginConfig.isUseShallowClone() && isShallowRepository(myTargetDirectory)) {
-      // settings changed: this repo is shallow, recreate it to avoid performance problems
-      initDirectory(true);
-    } else {
-      try {
-        configureRemoteUrl(gitDir, myRoot.getRepositoryFetchURL());
-        setupExistingRepository();
-        configureSparseCheckout();
-      } catch (Exception e) {
-        LOG.warn("Do clean checkout due to errors while configure use of local mirrors", e);
+    if (gitDir.exists()) {
+      if (myPluginConfig.isUseShallowClone() ^ isShallowRepository(gitDir)) {
+        // settings changed: recreate repo in checkout dir
         initDirectory(true);
+      } else {
+        try {
+          configureRemoteUrl(gitDir, myRoot.getRepositoryFetchURL());
+          setupExistingRepository();
+          configureSparseCheckout();
+        } catch (Exception e) {
+          LOG.warn("Do clean checkout due to errors while configure use of local mirrors", e);
+          initDirectory(true);
+        }
       }
+    } else {
+      initDirectory(false);
     }
     getSSLInvestigator(myRoot.getRepositoryFetchURL()).setCertificateOptions(myGitFactory.create(myTargetDirectory));
     removeOrphanedIdxFiles(gitDir);
