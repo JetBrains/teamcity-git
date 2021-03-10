@@ -228,15 +228,15 @@ public class UpdaterImpl implements Updater {
                                myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath());
   }
 
-  private boolean isShallowRepository(@NotNull File repo) {
+  private boolean isShallowRepository(@NotNull File gitDir) {
     if (!myPluginConfig.getGitVersion().isLessThan(REV_PARSE_LEARNED_SHALLOW_CLONE)) {
       try {
-        return "true".equals(myGitFactory.create(repo).revParse().setParams("--is-shallow-repository").call());
+        return "true".equals(myGitFactory.create(gitDir).revParse().setParams("--is-shallow-repository").call());
       } catch (VcsException e) {
         LOG.warn("Exception while running git rev-parse --is-shallow-repository", e);
       }
     }
-    return new File(repo, "shallow").exists();
+    return new File(gitDir, "shallow").exists();
   }
 
   protected void setupNewRepository() throws VcsException {

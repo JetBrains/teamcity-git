@@ -28,7 +28,6 @@ import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.NullBuildProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
@@ -1850,13 +1849,14 @@ public class AgentVcsSupportTest {
   @Test
   public void repo_recreated_when_shallow_fetch_disabled() throws Exception {
     final File remote = dataFile("repo_for_shallow_fetch.git");
+    final File shallowMarker = new File(myCheckoutDir, ".git/shallow");
 
     final AgentRunningBuild build = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.USE_SHALLOW_CLONE_INTERNAL, "true"));
     myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "64195c330d99c467a142f682bc23d4de3a68551d", myCheckoutDir, build, false);
-    assertTrue(new File(myCheckoutDir, ".git/shallow").exists());
+    assertTrue(shallowMarker.isFile());
 
     myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "fd1eb9776b5fad5cc433586f7933811c6853917d", myCheckoutDir, createRunningBuild(true), false);
-    assertFalse(new File(myCheckoutDir, ".git/shallow").isDirectory());
+    assertFalse(shallowMarker.exists());
   }
 
   @Test public void testDumpConfig() throws Exception {
@@ -1894,7 +1894,7 @@ public class AgentVcsSupportTest {
 
     final AgentRunningBuild build2 = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.USE_SHALLOW_CLONE_INTERNAL, "true"));
     myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "fd1eb9776b5fad5cc433586f7933811c6853917d", myCheckoutDir, build2, false);
-    assertTrue(shallowMarker.exists());
+    assertTrue(shallowMarker.isFile());
     assertFalse(testFile.exists());
   }
 
