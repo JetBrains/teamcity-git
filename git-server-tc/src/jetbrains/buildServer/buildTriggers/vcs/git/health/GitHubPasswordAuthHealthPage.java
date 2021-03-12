@@ -45,9 +45,7 @@ public class GitHubPasswordAuthHealthPage extends HealthStatusItemPageExtension 
     if (vcsRoot == null) return;
 
     final String passwordProperty = vcsRoot.getProperty(Constants.PASSWORD);
-    if (StringUtil.isNotEmpty(passwordProperty) && ReferencesResolverUtil.containsReference(passwordProperty)) {
-      model.put("isPasswordContainsReference", true);
-    }
+    model.put("isPasswordContainsReference", StringUtil.isNotEmpty(passwordProperty) && ReferencesResolverUtil.containsReference(passwordProperty));
   }
 
   @Nullable
