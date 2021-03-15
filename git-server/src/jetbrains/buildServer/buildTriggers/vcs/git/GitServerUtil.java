@@ -101,7 +101,7 @@ public class GitServerUtil {
         r.create(true);
         final StoredConfig config = r.getConfig();
         config.setString("teamcity", null, "remote", remoteUrl);
-        config.save();
+        addTrustFolderStatConfigOption(config).save();
       } else {
         final StoredConfig config = r.getConfig();
         final String existingRemote = config.getString("teamcity", null, "remote");
@@ -109,7 +109,7 @@ public class GitServerUtil {
           throw getWrongUrlError(dir, existingRemote, remote);
         } else if (existingRemote == null) {
           config.setString("teamcity", null, "remote", remoteUrl);
-          config.save();
+          addTrustFolderStatConfigOption(config).save();
         }
       }
       return r;
@@ -118,6 +118,18 @@ public class GitServerUtil {
         LOG.warn("The repository at directory '" + dir + "' cannot be opened or created", ex);
       throw new VcsException("The repository at directory '" + dir + "' cannot be opened or created, reason: " + ex.toString(), ex);
     }
+  }
+
+  @NotNull
+  private static StoredConfig addTrustFolderStatConfigOption(@NotNull StoredConfig config) {
+    // For performance reasons by default jgit assumes that folder or file contents didn't change if
+    // it's last modification and size remain the same as saved in snapshot
+    // (this heuristic is applied for objects/pack folder and refs/packed-refs file).
+    // This may cause issues on some systems with bigger time granularity.
+    if (!TeamCityProperties.getBooleanOrTrue("teamcity.git.jgit.trustfolderstat")) {
+      config.setString(ConfigConstants.CONFIG_CORE_SECTION, null, ConfigConstants.CONFIG_KEY_TRUSTFOLDERSTAT, "false");
+    }
+    return config;
   }
 
   @NotNull
