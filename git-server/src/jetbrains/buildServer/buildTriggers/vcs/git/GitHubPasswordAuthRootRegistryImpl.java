@@ -67,7 +67,7 @@ public class GitHubPasswordAuthRootRegistryImpl implements GitHubPasswordAuthRoo
     multiNodesEvents.subscribe(GITHUB_COM_PASSWORD_AUTH_USAGE_ADD, e -> {
       final Long rootId = e.getLongArg1();
       if (rootId == null) {
-        LOG.warn(GITHUB_COM_PASSWORD_AUTH_USAGE_ADD + " multinode event with unexpected null argument recieved: " + e);
+        LOG.warn(GITHUB_COM_PASSWORD_AUTH_USAGE_ADD + " multi-node event with unexpected null argument received: " + e);
         return;
       }
       addVcsRoot(rootId, false);
@@ -75,7 +75,7 @@ public class GitHubPasswordAuthRootRegistryImpl implements GitHubPasswordAuthRoo
     multiNodesEvents.subscribe(GITHUB_COM_PASSWORD_AUTH_USAGE_REMOVE, e -> {
       final Long rootId = e.getLongArg1();
       if (rootId == null) {
-        LOG.warn(GITHUB_COM_PASSWORD_AUTH_USAGE_REMOVE + " multinode event with unexpected null argument recieved: " + e);
+        LOG.warn(GITHUB_COM_PASSWORD_AUTH_USAGE_REMOVE + " multi-node event with unexpected null argument received: " + e);
         return;
       }
       removeVcsRoot(rootId, false);
