@@ -134,10 +134,10 @@ public class GitHubPasswordAuthRootRegistryImpl implements GitHubPasswordAuthRoo
           removeVcsRoot(rootId, true);
         }
       } else {
-        removeVcsRoot(rootId, true);
+        removeVcsRoot(rootId, null);
       }
     } else {
-      addVcsRoot(rootId, true);
+      addVcsRoot(rootId, null);
     }
   }
 
@@ -146,16 +146,16 @@ public class GitHubPasswordAuthRootRegistryImpl implements GitHubPasswordAuthRoo
     return myGitHubRootsWithPasswordAuth.containsKey(id);
   }
 
-  private void addVcsRoot(long id, boolean sendMultinodeEvent) {
+  private void addVcsRoot(long id, @Nullable Boolean sendMultinodeEvent) {
     final Long prev = myGitHubRootsWithPasswordAuth.put(id, myTimeService.now());
-    if (prev == null && sendMultinodeEvent) {
+    if (Boolean.TRUE.equals(sendMultinodeEvent) || prev == null && sendMultinodeEvent == null) {
       myMultiNodesEvents.publish(GITHUB_COM_PASSWORD_AUTH_USAGE_ADD, id);
     }
   }
 
-  private void removeVcsRoot(long id, boolean sendMultinodeEvent) {
+  private void removeVcsRoot(long id, @Nullable Boolean sendMultinodeEvent) {
     final Long prev = myGitHubRootsWithPasswordAuth.remove(id);
-    if (prev != null && sendMultinodeEvent) {
+    if (Boolean.TRUE.equals(sendMultinodeEvent) || prev != null && sendMultinodeEvent == null) {
       myMultiNodesEvents.publish(GITHUB_COM_PASSWORD_AUTH_USAGE_REMOVE, id);
     }
   }
