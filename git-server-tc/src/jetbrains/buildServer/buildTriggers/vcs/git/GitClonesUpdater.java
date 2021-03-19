@@ -16,31 +16,41 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.*;
+import jetbrains.buildServer.util.Disposable;
 import jetbrains.buildServer.util.EventDispatcher;
+import jetbrains.buildServer.util.NamedThreadFactory;
 import jetbrains.buildServer.util.ThreadUtil;
 import jetbrains.buildServer.util.executors.ExecutorsFactory;
 import jetbrains.buildServer.vcs.*;
+import org.eclipse.jgit.revwalk.DepthWalk;
+import org.eclipse.jgit.transport.RefSpec;
 import org.jetbrains.annotations.NotNull;
 
 public class GitClonesUpdater {
   private final ConcurrentHashMap<VcsRoot, RepositoryStateData> myScheduledForUpdate = new ConcurrentHashMap<>();
   private final GitVcsSupport myVcs;
   private final RepositoryManager myRepositoryManager;
+  private final CommitLoader myCommitLoader;
   private volatile ExecutorService myExecutor;
 
   public GitClonesUpdater(@NotNull EventDispatcher<RepositoryStateListener> eventDispatcher,
                           @NotNull EventDispatcher<BuildServerListener> serverEventDispatcher,
                           @NotNull ServerResponsibility serverResponsibility,
                           @NotNull GitVcsSupport gitVcsSupport,
-                          @NotNull RepositoryManager repositoryManager) {
+                          @NotNull RepositoryManager repositoryManager,
+                          @NotNull CommitLoader commitLoader) {
     myVcs = gitVcsSupport;
     myRepositoryManager = repositoryManager;
+    myCommitLoader = commitLoader;
 
     eventDispatcher.addListener(new RepositoryStateListenerAdapter() {
       @Override
@@ -83,20 +93,45 @@ public class GitClonesUpdater {
       OperationContext context = myVcs.createContext(root, "updating local clone");
       try {
         IOGuard.allowNetworkAndCommandLine(() -> {
-            GitVcsRoot gitRoot = context.getGitRoot();
+          GitVcsRoot gitRoot = context.getGitRoot();
+          Disposable threadName = NamedThreadFactory.patchThreadName("Updating local clone directory: " + gitRoot.getRepositoryDir() + " (" + gitRoot.getRepositoryFetchURL().toString() + ")");
+          try {
             myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
               try {
-                myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, state, true);
-              } catch (Exception e1) {
+                List<RefSpec> refspecs = getRefSpecs(state);
+                runFetch(context, gitRoot, refspecs);
+              } catch (Throwable e1) {
+                if (e1 instanceof VcsException) throw (VcsException)e1;
                 throw new VcsException(e1);
               }
             });
-          });
+          } finally {
+            threadName.dispose();
+          }
+        });
       } catch (VcsException e1) {
         Loggers.VCS.warnAndDebugDetails("Could not update local clone for: " + LogUtil.describe(root), e1);
       } finally {
         context.close();
       }
     }
+  }
+
+  private void runFetch(@NotNull OperationContext context, @NotNull GitVcsRoot gitRoot, @NotNull List<RefSpec> refspecs) throws IOException, VcsException {
+    Disposable n = NamedThreadFactory.patchThreadName("Performing fetch for: " + refspecs.size() + " ref specs");
+    try {
+      myCommitLoader.fetch(context.getRepository(), gitRoot.getRepositoryFetchURL().get(), refspecs, new FetchSettings(gitRoot.getAuthSettings()));
+    } finally {
+      n.dispose();
+    }
+  }
+
+  @NotNull
+  private List<RefSpec> getRefSpecs(@NotNull RepositoryStateData state) {
+    List<RefSpec> refspecs = new ArrayList<>();
+    for (String branch: state.getBranchRevisions().keySet()) {
+      refspecs.add(new RefSpec().setSource(GitUtils.expandRef(branch)).setDestination(GitUtils.expandRef(branch)).setForceUpdate(true));
+    }
+    return refspecs;
   }
 }
