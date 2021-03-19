@@ -7,7 +7,7 @@ public interface GitHubPasswordAuthRootRegistryFactory {
   static final String REPORT_TYPE = "gitHubPasswordAuthHealthReport";
 
   static boolean isEnabled() {
-    return TeamCityProperties.getBoolean("teamcity.git." + REPORT_TYPE + ".enabled");
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git." + REPORT_TYPE + ".enabled");
   }
 
   @NotNull GitHubPasswordAuthRootRegistry createRegistry();
