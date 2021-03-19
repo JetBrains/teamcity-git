@@ -1,16 +1,11 @@
 <component name="libraryTable">
   <library name="jgit-server">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/lib/server/bcpkix-jdk15on-1.61.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/server/bcpg-jdk15on-1.61.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/server/bcprov-jdk15on-1.61.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/server/org.eclipse.jgit-5.4.2.201908231537-r.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/server/org.eclipse.jgit.http.apache-5.4.2.201908231537-r.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/server/bcpkix-jdk15on-1.65.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/server/bcpg-jdk15on-1.65.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/server/bcprov-jdk15on-1.65.jar!/" />
     </CLASSES>
     <JAVADOC />
-    <SOURCES>
-      <root url="jar://$PROJECT_DIR$/lib/server/src/org.eclipse.jgit-5.4.2.201908231537-r-sources.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/server/src/org.eclipse.jgit.http.apache-5.4.2.201908231537-r-sources.jar!/" />
-    </SOURCES>
+    <SOURCES />
   </library>
 </component>
