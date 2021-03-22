@@ -31,7 +31,6 @@ import jetbrains.buildServer.util.NamedThreadFactory;
 import jetbrains.buildServer.util.ThreadUtil;
 import jetbrains.buildServer.util.executors.ExecutorsFactory;
 import jetbrains.buildServer.vcs.*;
-import org.eclipse.jgit.revwalk.DepthWalk;
 import org.eclipse.jgit.transport.RefSpec;
 import org.jetbrains.annotations.NotNull;
 
@@ -100,17 +99,17 @@ public class GitClonesUpdater {
               try {
                 List<RefSpec> refspecs = getRefSpecs(state);
                 runFetch(context, gitRoot, refspecs);
-              } catch (Throwable e1) {
-                if (e1 instanceof VcsException) throw (VcsException)e1;
-                throw new VcsException(e1);
+              } catch (Throwable e) {
+                if (e instanceof VcsException) throw (VcsException)e;
+                throw new VcsException(e);
               }
             });
           } finally {
             threadName.dispose();
           }
         });
-      } catch (VcsException e1) {
-        Loggers.VCS.warnAndDebugDetails("Could not update local clone for: " + LogUtil.describe(root), e1);
+      } catch (VcsException e) {
+        Loggers.VCS.warnAndDebugDetails("Could not update local clone for: " + LogUtil.describe(root), e);
       } finally {
         context.close();
       }
@@ -130,7 +129,8 @@ public class GitClonesUpdater {
   private List<RefSpec> getRefSpecs(@NotNull RepositoryStateData state) {
     List<RefSpec> refspecs = new ArrayList<>();
     for (String branch: state.getBranchRevisions().keySet()) {
-      refspecs.add(new RefSpec().setSource(GitUtils.expandRef(branch)).setDestination(GitUtils.expandRef(branch)).setForceUpdate(true));
+      final String expandedRef = GitUtils.expandRef(branch);
+      refspecs.add(new RefSpec().setSource(expandedRef).setDestination(expandedRef).setForceUpdate(true));
     }
     return refspecs;
   }
