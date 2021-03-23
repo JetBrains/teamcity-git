@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.locks.ReentrantLock;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.util.Disposable;
@@ -96,12 +97,17 @@ public class GitClonesUpdater {
           Disposable threadName = NamedThreadFactory.patchThreadName("Updating local clone directory: " + gitRoot.getRepositoryDir() + " (" + gitRoot.getRepositoryFetchURL().toString() + ")");
           try {
             myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+              ReentrantLock writeLock = myRepositoryManager.getWriteLock(context.getRepository().getDirectory());
+              if (!writeLock.tryLock()) return; // do nothing because another process already took a write lock and it's not that important for us to perform this fetch
+
               try {
                 List<RefSpec> refspecs = getRefSpecs(state);
                 runFetch(context, gitRoot, refspecs);
               } catch (Throwable e) {
                 if (e instanceof VcsException) throw (VcsException)e;
                 throw new VcsException(e);
+              } finally {
+                writeLock.unlock();
               }
             });
           } finally {
@@ -117,7 +123,7 @@ public class GitClonesUpdater {
   }
 
   private void runFetch(@NotNull OperationContext context, @NotNull GitVcsRoot gitRoot, @NotNull List<RefSpec> refspecs) throws IOException, VcsException {
-    Disposable n = NamedThreadFactory.patchThreadName("Performing fetch for: " + refspecs.size() + " ref specs");
+    Disposable n = NamedThreadFactory.patchThreadName("Performing fetch for " + refspecs.size() + " ref specs");
     try {
       myCommitLoader.fetch(context.getRepository(), gitRoot.getRepositoryFetchURL().get(), refspecs, new FetchSettings(gitRoot.getAuthSettings()));
     } finally {
