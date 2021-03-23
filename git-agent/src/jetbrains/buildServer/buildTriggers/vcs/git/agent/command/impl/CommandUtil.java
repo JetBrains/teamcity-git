@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
+import java.io.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
@@ -28,8 +29,6 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.*;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -114,7 +113,7 @@ public class CommandUtil {
 
   public static ExecResult runCommand(@NotNull GitCommandLine cli, int timeoutSeconds, final String... errorsLogLevel)
     throws VcsException {
-    return runCommand(cli, timeoutSeconds, null, errorsLogLevel);
+    return runCommand(cli, timeoutSeconds, new byte[0], errorsLogLevel);
   }
 
   public static ExecResult runCommand(@NotNull GitCommandLine cli, int timeoutSeconds, byte[] input, final String... errorsLogLevel)
