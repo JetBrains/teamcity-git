@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.ExtensionsProvider;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.parameters.ReferencesResolverUtil;
 import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.ProjectManager;
 import jetbrains.buildServer.serverSide.SProject;
@@ -255,8 +256,13 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
   private void refineGithubSettings(@NotNull VcsHostingRepo ghRepo, @NotNull Map<String, String> props) throws VcsException {
     GitHubClient client = new GitHubClient();
     AuthSettings auth = new AuthSettings(props, new URIishHelperImpl());
-    if (auth.getAuthMethod() == AuthenticationMethod.PASSWORD && auth.getUserName() != null && auth.getPassword() != null) {
-      client.setCredentials(auth.getUserName(), auth.getPassword());
+    final String password = auth.getPassword();
+    if (auth.getAuthMethod() == AuthenticationMethod.PASSWORD && StringUtil.isNotEmpty(password)) {
+      if (ReferencesResolverUtil.containsReference(password) || password.length() != 40) return; // we can only proceed with PAT, password auth is no longer supported by github API
+
+      if (auth.getUserName() != null) {
+        client.setCredentials(auth.getUserName(), password);
+      }
     }
     try {
       Repository r = IOGuard.allowNetworkCall(() -> new RepositoryService(client).getRepository(ghRepo.owner(), ghRepo.repoName()));
