@@ -146,6 +146,11 @@ public class GitHubPasswordAuthRootRegistryImplTest extends BaseTestCase {
       }
 
       @Override
+      public void unsubscribe(@NotNull String eventName) {
+
+      }
+
+      @Override
       public void ensureEventsProcessed() {
         throw new UnsupportedOperationException();
       }
