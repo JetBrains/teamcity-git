@@ -121,7 +121,7 @@ public class GitServerUtil {
   }
 
   @NotNull
-  private static Repository getRepositoryWithDisabledAutoGc(@NotNull final File dir) throws IOException {
+  public static Repository getRepositoryWithDisabledAutoGc(@NotNull final File dir) throws IOException {
     return new FileRepository(new RepositoryBuilder().setBare().setGitDir(dir).setup()) {
       @Override
       public void autoGC(final ProgressMonitor monitor) {

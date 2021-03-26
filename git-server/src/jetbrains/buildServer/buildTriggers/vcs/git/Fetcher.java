@@ -121,7 +121,7 @@ public class Fetcher {
     GitServerUtil.configureStreamFileThreshold(Integer.MAX_VALUE);
 
     TransportFactory transportFactory = new TransportFactoryImpl(config, new EmptyVcsRootSshKeyManager(), new GitTrustStoreProviderStatic(trustedCertificatesDir));
-    Repository repository = new RepositoryBuilder().setBare().setGitDir(repositoryDir).build();
+    Repository repository = GitServerUtil.getRepositoryWithDisabledAutoGc(repositoryDir);
 
     workaroundRacyGit();
     pruneRemovedBranches(config, repository, transportFactory, new URIish(fetchUrl), auth, debug);
