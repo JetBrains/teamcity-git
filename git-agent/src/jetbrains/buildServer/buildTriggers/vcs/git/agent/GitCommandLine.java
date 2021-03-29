@@ -147,7 +147,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private void configureGitSshCommand(@NotNull AuthSettings authSettings) throws VcsException {
     //Git has 2 environment variables related to ssh: GIT_SSH and GIT_SSH_COMMAND.
     //We use GIT_SSH_COMMAND because git resolves the executable specified in it,
-    //i.e. it finds the 'ssh' executable which is not in the PATH on windows be default.
+    //i.e. it finds the 'ssh' executable which is not in the PATH on windows by default.
 
     //We specify the following command:
     //
