@@ -48,6 +48,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Layout;
 import org.eclipse.jgit.lib.ProgressMonitor;
+import org.eclipse.jgit.transport.JschConfigSessionFactory;
 import org.eclipse.jgit.transport.http.apache.HttpClientConnectionFactory;
 import org.jdom.Element;
 import org.jetbrains.annotations.NotNull;
@@ -270,7 +271,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
       ServiceMessage.class,
       org.slf4j.Logger.class,
       org.slf4j.impl.StaticLoggerBinder.class,
-      EWAHCompressedBitmap.class
+      EWAHCompressedBitmap.class,
+      JschConfigSessionFactory.class
     ));
     Collections.addAll(result, GitVcsSupport.class.getInterfaces());
     return result;

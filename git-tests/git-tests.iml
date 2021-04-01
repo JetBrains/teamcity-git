@@ -25,6 +25,7 @@
     <orderEntry type="library" name="quartz-2.3.2" level="project" />
     <orderEntry type="library" name="httpclient" level="project" />
     <orderEntry type="library" name="JavaEWAH" level="project" />
+    <orderEntry type="library" name="jgit" level="project" />
     <orderEntry type="library" name="jgit-server" level="project" />
     <orderEntry type="library" name="TeamCity common" level="project" />
   </component>
