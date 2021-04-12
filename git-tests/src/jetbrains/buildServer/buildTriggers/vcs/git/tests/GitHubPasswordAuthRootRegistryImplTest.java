@@ -115,6 +115,15 @@ public class GitHubPasswordAuthRootRegistryImplTest extends BaseTestCase {
     assertTrue(registry.containsVcsRoot(1));
     BaseTestCase.assertMap(registry.getRegistry(), 1L, timeService.myTime);
     BaseTestCase.assertMap(events, "gitHubPasswordAuthUsageAdd", 1L);
+
+    events.clear();
+    timeService.inc();
+    vcsProperties.put(Constants.PASSWORD, "gho_oPan0zUSMxvI7NoWDBjjBP965641HX2NHNbu"); // see TW-71026
+    timeService.inc(350, TimeUnit.SECONDS);
+    registry.update(new VcsRootImpl(1, vcsProperties));
+    assertFalse(registry.containsVcsRoot(1));
+    assertTrue(registry.getRegistry().isEmpty());
+    BaseTestCase.assertMap(events, "gitHubPasswordAuthUsageRemove", 1L);
   }
 
   @NotNull
