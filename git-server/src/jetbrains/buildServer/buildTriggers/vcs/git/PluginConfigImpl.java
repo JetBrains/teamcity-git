@@ -82,6 +82,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public static final String TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY_LIMIT = "teamcity.git.fetch.process.max.memory.limit";
   public static final String CONNECTION_RETRY_INTERVAL_SECONDS = "teamcity.git.connectionRetryIntervalSeconds";
   public static final String CONNECTION_RETRY_ATTEMPTS = "teamcity.git.connectionRetryAttempts";
+  public static final String TEAMCITY_GIT_FETCH_REFRESH_OBJECT_DATABASE = "teamcity.git.fetch.refreshObjectDatabase";
 
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
@@ -101,7 +102,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
                                                            GET_REPOSITORY_STATE_TIMEOUT_SECONDS,
                                                            IGNORE_MISSING_REMOTE_REF,
                                                            CONNECTION_RETRY_INTERVAL_SECONDS,
-                                                           CONNECTION_RETRY_ATTEMPTS);
+                                                           CONNECTION_RETRY_ATTEMPTS,
+                                                           TEAMCITY_GIT_FETCH_REFRESH_OBJECT_DATABASE);
 
   public PluginConfigImpl() {
     myCachesDir = null;

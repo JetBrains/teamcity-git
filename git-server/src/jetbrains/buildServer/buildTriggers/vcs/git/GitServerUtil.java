@@ -557,6 +557,9 @@ public class GitServerUtil {
     final Set<String> refNames = r.getRefDatabase().getRefsByPrefix(RefDatabase.ALL).stream().map(Ref::getName).collect(Collectors.toSet());
     FetchResult result = fetch(config, r, url, authSettings, transportFactory, progress, refSpecs, ignoreMissingRemoteRef);
     checkFetchSuccessful(r, result, refNames);
+    if (!result.getTrackingRefUpdates().isEmpty() && TeamCityProperties.getBooleanOrTrue("teamcity.server.git.fetch.refreshObjectDatabase")) {
+      r.getObjectDatabase().refresh();
+    }
     return result;
   }
 
