@@ -84,13 +84,14 @@ public class GitHubPasswordAuthRootRegistryImpl implements GitHubPasswordAuthRoo
 
   private static boolean isHexString(@NotNull String s) {
     for (char c : s.toCharArray()) {
-      if (!isHexDigit(c)) return false;
+      if (!isWordChar(c)) return false;
     }
     return true;
   }
 
-  private static boolean isHexDigit(char ch) {
-    return Character.isDigit(ch) || (Character.toUpperCase(ch) >= 'A' && Character.toUpperCase(ch) <= 'F');
+  private static boolean isWordChar(char ch) {
+    if (ch == '_') return true;
+    return Character.isDigit(ch) || (Character.toUpperCase(ch) >= 'A' && Character.toUpperCase(ch) <= 'Z');
   }
 
   private static boolean isGitHubPasswordRoot(@NotNull VcsRoot root) {
