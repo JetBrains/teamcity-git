@@ -18,6 +18,17 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.StreamUtil;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileReader;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
@@ -55,18 +66,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileReader;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
@@ -764,21 +763,12 @@ public class AgentVcsSupportTest {
   }
 
 
-  @TestFor(issues = "TW-29291")
-  public void shallow_clone_should_check_if_auxiliary_branch_already_exists() throws Exception {
-    AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
-      put(PluginConfigImpl.USE_MIRRORS, "true");
-      put(PluginConfigImpl.USE_SHALLOW_CLONE, "true");
-    }});
-    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build, true);
-
-    //manually create a branch tmp_branch_for_build with, it seems like it wasn't removed due to errors in previous checkouts
-    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
-    File mirror = myBuilder.getMirrorManager().getMirrorDir(root.getRepositoryFetchURL().toString());
-    File emptyBranchFile = new File(mirror, "refs" + File.separator + "heads" + File.separator + "tmp_branch_for_build");
-    FileUtil.writeToFile(emptyBranchFile, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653\n".getBytes());
-
-    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build, true);
+  @DataProvider(name = "shallow_clone_param_name")
+  public static Object[][] createData() {
+    return new Object[][] {
+      new Object[] { PluginConfigImpl.USE_SHALLOW_CLONE },
+      new Object[] { PluginConfigImpl.USE_SHALLOW_CLONE_FROM_MIRROR_TO_CHECKOUT_DIR}
+    };
   }
 
 
@@ -1477,22 +1467,49 @@ public class AgentVcsSupportTest {
     assertEquals("personal", r.getBranch());
   }
 
-
-  @Test
-  public void test_shallow_clone() throws Exception {
+  @TestFor(issues = "TW-29291")
+  @Test(dataProvider = "shallow_clone_param_name")
+  public void shallow_clone_should_check_if_auxiliary_branch_already_exists(String shallowCloneParamName) throws Exception {
     AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
       put(PluginConfigImpl.USE_MIRRORS, "true");
-      put(PluginConfigImpl.USE_SHALLOW_CLONE, "true");
+      put(shallowCloneParamName, "true");
+    }});
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build, true);
+
+    //manually create a branch tmp_branch_for_build with, it seems like it wasn't removed due to errors in previous checkouts
+    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
+    File mirror = myBuilder.getMirrorManager().getMirrorDir(root.getRepositoryFetchURL().toString());
+    File emptyBranchFile = new File(mirror, "refs" + File.separator + "heads" + File.separator + "tmp_branch_for_build");
+    FileUtil.writeToFile(emptyBranchFile, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653\n".getBytes());
+
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build, true);
+  }
+
+  @Test(dataProvider = "shallow_clone_param_name")
+  public void test_shallow_clone(String shallowCloneParamName) throws Exception {
+    AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.USE_MIRRORS, "true");
+      put(shallowCloneParamName, "true");
     }});
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
   }
 
-
-  @TestFor(issues = "TW-27677")
-  public void shallow_clone_in_non_master_branch() throws Exception {
+  @TestFor(issues = "TW-71077")
+  public void test_shallow_clone_to_checkout_dir() throws Exception {
     AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
       put(PluginConfigImpl.USE_MIRRORS, "true");
-      put(PluginConfigImpl.USE_SHALLOW_CLONE, "true");
+      put(PluginConfigImpl.USE_SHALLOW_CLONE_FROM_MIRROR_TO_CHECKOUT_DIR, "true");
+    }});
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+    assertTrue(new File(myCheckoutDir, ".git/shallow").exists());
+  }
+
+  @TestFor(issues = "TW-27677")
+  @Test(dataProvider = "shallow_clone_param_name")
+  public void shallow_clone_in_non_master_branch(String shallowCloneParamName) throws Exception {
+    AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.USE_MIRRORS, "true");
+      put(shallowCloneParamName, "true");
       put(GitUtils.getGitRootBranchParamName(myRoot), "refs/heads/version-test");//build on non-master branch
     }});
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build, false);
@@ -1984,5 +2001,16 @@ public class AgentVcsSupportTest {
   @NotNull
   public AgentRunningBuildBuilder runningBuild(@Nullable BuildProgressLogger logger) {
     return new AgentRunningBuildBuilder().withCheckoutDir(myCheckoutDir).withBuildLogger(logger);
+  }
+
+  @TestFor(issues = "TW-37122")
+  @Test(dataProvider = "shallow_clone_param_name")
+  public void shallow_clone_on_tag(String shallowCloneParamName) throws Exception {
+    myRoot.addProperty(Constants.BRANCH_NAME, "refs/tags/v1.0");
+    AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.USE_MIRRORS, "true");
+      put(shallowCloneParamName, "true");
+    }});
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
   }
 }

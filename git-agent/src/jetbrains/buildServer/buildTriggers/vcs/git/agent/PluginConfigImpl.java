@@ -51,6 +51,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String USE_MIRRORS_FOR_SUBMODULES = "teamcity.internal.git.agent.submodules.useMirrors";
   public static final String USE_ALTERNATES = "teamcity.git.useAlternates";
   public static final String USE_SHALLOW_CLONE = "teamcity.git.shallowClone";
+  /** @deprecated preserved for backward compatibility, see TW-71077 */
+  public static final String USE_SHALLOW_CLONE_FROM_MIRROR_TO_CHECKOUT_DIR = "teamcity.git.use.shallow.clone";
   public static final String USE_SHALLOW_CLONE_INTERNAL = "teamcity.internal.git.agent.shallowClone";
   public static final String TEAMCITY_DONT_DELETE_TEMP_FILES = "teamcity.dont.delete.temp.files";
   public static final String USE_MAIN_REPO_USER_FOR_SUBMODULES = "teamcity.git.useMainRepoUserForSubmodules";
@@ -232,6 +234,16 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
   private boolean isAgentTerminatedAfterBuild() {
     return "true".equals(myAgentConfig.getConfigurationParameters().get(AgentMiscConstants.IS_EPHEMERAL_AGENT_PROP));
+  }
+
+  @Override
+  public boolean isUseShallowCloneFromMirrorToCheckoutDir() {
+    final String valueFromBuildConfiguration = myBuild.getSharedConfigParameters().get(USE_SHALLOW_CLONE_FROM_MIRROR_TO_CHECKOUT_DIR);
+    if (valueFromBuildConfiguration != null) {
+      return "true".equals(valueFromBuildConfiguration);
+    } else {
+      return "true".equals(myAgentConfig.getConfigurationParameters().get(USE_SHALLOW_CLONE_FROM_MIRROR_TO_CHECKOUT_DIR));
+    }
   }
 
   public boolean isDeleteTempFiles() {

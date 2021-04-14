@@ -18,6 +18,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
+import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.CommonURIish;
@@ -37,12 +42,6 @@ import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.regex.Matcher;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
 
@@ -233,6 +232,29 @@ public class UpdaterWithMirror extends UpdaterImpl {
     disableAlternates();
   }
 
+  @Override
+  protected void ensureCommitLoaded(boolean fetchRequired) throws VcsException {
+    if (myPluginConfig.isUseShallowCloneFromMirrorToCheckoutDir()) {
+      File mirrorRepositoryDir = myRoot.getRepositoryDir();
+      if (GitUtilsAgent.isTag(myFullBranchName)) {
+        //handle tags specially: if we fetch a temporary branch which points to a commit
+        //tags points to, git fetches both branch and tag, tries to make a local
+        //branch to track both of them and fails.
+        String refspec = "+" + myFullBranchName + ":" + myFullBranchName;
+        fetch(myTargetDirectory, refspec, true);
+      } else {
+        String tmpBranchName = createTmpBranch(mirrorRepositoryDir, myRevision);
+        String tmpBranchRef = "refs/heads/" + tmpBranchName;
+        String refspec = "+" + tmpBranchRef + ":" + GitUtils.createRemoteRef(myFullBranchName);
+        fetch(myTargetDirectory, refspec, true);
+        myGitFactory.create(mirrorRepositoryDir).deleteBranch().setName(tmpBranchName).call();
+      }
+    } else {
+      super.ensureCommitLoaded(fetchRequired);
+    }
+  }
+
+
   @NotNull
   private String readRemoteUrl() throws VcsException {
     Repository repository = null;
@@ -271,6 +293,28 @@ public class UpdaterWithMirror extends UpdaterImpl {
     } catch (URISyntaxException e) {
       throw new VcsException("Cannot create uri for local mirror " + repositoryDir.getAbsolutePath(), e);
     }
+  }
+
+  private String createTmpBranch(@NotNull File repositoryDir, @NotNull String branchStartingPoint) throws VcsException {
+    String tmpBranchName = getUnusedBranchName(repositoryDir);
+    myGitFactory.create(repositoryDir)
+      .createBranch()
+      .setName(tmpBranchName)
+      .setStartPoint(branchStartingPoint)
+      .call();
+    return tmpBranchName;
+  }
+
+  private String getUnusedBranchName(@NotNull File repositoryDir) {
+    final String tmpBranchName = "tmp_branch_for_build";
+    String branchName = tmpBranchName;
+    Map<String, Ref> existingRefs = myGitFactory.create(repositoryDir).showRef().call().getValidRefs();
+    int i = 0;
+    while (existingRefs.containsKey("refs/heads/" + branchName)) {
+      branchName = tmpBranchName + i;
+      i++;
+    }
+    return branchName;
   }
 
   @Override

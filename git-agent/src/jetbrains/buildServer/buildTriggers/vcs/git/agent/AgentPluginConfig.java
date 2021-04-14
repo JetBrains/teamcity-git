@@ -40,6 +40,9 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isUseShallowClone(@NotNull GitVcsRoot root);
 
+  /** @deprecated we preserve it for backward compatibility with "teamcity.git.use.shallow.clone" param in case of non-default configuration */
+  boolean isUseShallowCloneFromMirrorToCheckoutDir();
+
   boolean isDeleteTempFiles();
 
   @NotNull
