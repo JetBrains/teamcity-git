@@ -16,6 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import java.io.File;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.regex.Pattern;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
@@ -28,12 +33,6 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.regex.Pattern;
 
 /**
  * @author dmitry.neverov
@@ -49,6 +48,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String USE_MIRRORS_FOR_SUBMODULES = "teamcity.internal.git.agent.submodules.useMirrors";
   public static final String USE_ALTERNATES = "teamcity.git.useAlternates";
   public static final String USE_SHALLOW_CLONE = "teamcity.git.shallowClone";
+  /** @deprecated preserved for backward compatibility, see TW-71077 */
+  public static final String USE_SHALLOW_CLONE_FROM_MIRROR_TO_CHECKOUT_DIR = "teamcity.git.use.shallow.clone";
   public static final String USE_SHALLOW_CLONE_INTERNAL = "teamcity.internal.git.agent.shallowClone";
   public static final String TEAMCITY_DONT_DELETE_TEMP_FILES = "teamcity.dont.delete.temp.files";
   public static final String USE_MAIN_REPO_USER_FOR_SUBMODULES = "teamcity.git.useMainRepoUserForSubmodules";
@@ -200,6 +201,15 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return "true".equals(myAgentConfig.getConfigurationParameters().get(USE_SHALLOW_CLONE));
   }
 
+  @Override
+  public boolean isUseShallowCloneFromMirrorToCheckoutDir() {
+    final String valueFromBuildConfiguration = myBuild.getSharedConfigParameters().get(USE_SHALLOW_CLONE_FROM_MIRROR_TO_CHECKOUT_DIR);
+    if (valueFromBuildConfiguration != null) {
+      return "true".equals(valueFromBuildConfiguration);
+    } else {
+      return "true".equals(myAgentConfig.getConfigurationParameters().get(USE_SHALLOW_CLONE_FROM_MIRROR_TO_CHECKOUT_DIR));
+    }
+  }
 
   public boolean isDeleteTempFiles() {
     boolean doNotDelete = Boolean.parseBoolean(myBuild.getSharedConfigParameters().get(TEAMCITY_DONT_DELETE_TEMP_FILES));

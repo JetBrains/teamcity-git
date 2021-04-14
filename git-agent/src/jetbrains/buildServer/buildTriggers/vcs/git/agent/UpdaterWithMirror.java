@@ -18,6 +18,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
+import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.CommonURIish;
@@ -38,12 +43,6 @@ import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.regex.Matcher;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
 
@@ -245,7 +244,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
   @Override
   protected void ensureCommitLoaded(boolean fetchRequired) throws VcsException {
-    if (myPluginConfig.isUseShallowClone()) {
+    if (myPluginConfig.isUseShallowCloneFromMirrorToCheckoutDir()) {
       File mirrorRepositoryDir = myRoot.getRepositoryDir();
       if (GitUtilsAgent.isTag(myFullBranchName)) {
         //handle tags specially: if we fetch a temporary branch which points to a commit
