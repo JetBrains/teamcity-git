@@ -766,7 +766,7 @@ public class AgentVcsSupportTest {
   @DataProvider(name = "shallow_clone_param_name")
   public static Object[][] createData() {
     return new Object[][] {
-      new Object[] { PluginConfigImpl.USE_SHALLOW_CLONE },
+      new Object[] { PluginConfigImpl.USE_SHALLOW_CLONE_INTERNAL },
       new Object[] { PluginConfigImpl.USE_SHALLOW_CLONE_FROM_MIRROR_TO_CHECKOUT_DIR}
     };
   }
@@ -1913,6 +1913,27 @@ public class AgentVcsSupportTest {
     final AgentRunningBuild build2 = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.USE_SHALLOW_CLONE_INTERNAL, "true"));
     myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "fd1eb9776b5fad5cc433586f7933811c6853917d", myCheckoutDir, build2, false);
     assertTrue(shallowMarker.isFile());
+    assertFalse(testFile.exists());
+  }
+
+  @Test
+  @TestFor(issues = "TW-71077")
+  public void switch_from_alternates_to_shallow_clone_from_mirror() throws Exception {
+    final File remote = dataFile("repo_for_shallow_fetch.git");
+    final File testFile = new File(myCheckoutDir, "test_file");
+    final File shallowMarker = new File(myCheckoutDir, ".git/shallow");
+
+    final AgentRunningBuild build1 = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.USE_ALTERNATES, "true"));
+    myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "64195c330d99c467a142f682bc23d4de3a68551d", myCheckoutDir, build1, false);
+    assertFalse(shallowMarker.exists());
+
+    FileUtil.writeFile(testFile, "test text", StandardCharsets.UTF_8);
+    assertTrue(testFile.isFile());
+
+    final AgentRunningBuild build2 = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.USE_SHALLOW_CLONE_FROM_MIRROR_TO_CHECKOUT_DIR, "true",
+                                                                              PluginConfigImpl.USE_MIRRORS, "true"));
+    myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "fd1eb9776b5fad5cc433586f7933811c6853917d", myCheckoutDir, build2, false);
+    assertTrue(shallowMarker.exists());
     assertFalse(testFile.exists());
   }
 
