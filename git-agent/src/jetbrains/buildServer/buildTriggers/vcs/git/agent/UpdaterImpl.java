@@ -17,6 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.Trinity;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.regex.Matcher;
 import jetbrains.buildServer.BuildProblemData;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
@@ -41,13 +47,6 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.regex.Matcher;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
@@ -185,7 +184,7 @@ public class UpdaterImpl implements Updater {
   private void initGitRepository() throws VcsException {
     final File gitDir = new File(myTargetDirectory, ".git");
     if (gitDir.exists()) {
-      if (myPluginConfig.isUseShallowClone() ^ isShallowRepository(gitDir)) {
+      if ((myPluginConfig.isUseShallowClone() || myPluginConfig.isUseShallowCloneFromMirrorToCheckoutDir()) ^ isShallowRepository(gitDir)) {
         // settings changed: recreate repo in checkout dir
         initDirectory(true);
       } else {
