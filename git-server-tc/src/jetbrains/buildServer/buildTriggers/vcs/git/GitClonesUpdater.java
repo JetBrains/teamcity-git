@@ -40,6 +40,7 @@ public class GitClonesUpdater {
   private final GitVcsSupport myVcs;
   private final RepositoryManager myRepositoryManager;
   private final CommitLoader myCommitLoader;
+  private final ServerResponsibility myServerResponsibility;
   private volatile ExecutorService myExecutor;
 
   public GitClonesUpdater(@NotNull EventDispatcher<RepositoryStateListener> eventDispatcher,
@@ -51,6 +52,7 @@ public class GitClonesUpdater {
     myVcs = gitVcsSupport;
     myRepositoryManager = repositoryManager;
     myCommitLoader = commitLoader;
+    myServerResponsibility = serverResponsibility;
 
     eventDispatcher.addListener(new RepositoryStateListenerAdapter() {
       @Override
@@ -89,6 +91,10 @@ public class GitClonesUpdater {
     for (VcsRoot root: vcsRoots) {
       RepositoryStateData state = myScheduledForUpdate.remove(root);
       if (state == null) continue;
+      if (myServerResponsibility.canCheckForChanges()) {
+        // do nothing as this node now has responsibility to collect changes and will update repositories during the checking for changes process
+        continue;
+      }
 
       OperationContext context = myVcs.createContext(root, "updating local clone");
       try {
