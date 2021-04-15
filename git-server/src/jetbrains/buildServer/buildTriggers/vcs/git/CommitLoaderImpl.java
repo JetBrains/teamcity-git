@@ -49,13 +49,15 @@ public class CommitLoaderImpl implements CommitLoader {
   private final RepositoryManager myRepositoryManager;
   private final FetchCommand myFetchCommand;
   private final GitMapFullPath myMapFullPath;
+  private final ServerPluginConfig myPluginConfig;
 
   public CommitLoaderImpl(@NotNull RepositoryManager repositoryManager,
                           @NotNull FetchCommand fetchCommand,
-                          @NotNull GitMapFullPath mapFullPath) {
+                          @NotNull GitMapFullPath mapFullPath, ServerPluginConfig pluginConfig) {
     myRepositoryManager = repositoryManager;
     myFetchCommand = fetchCommand;
     myMapFullPath = mapFullPath;
+    myPluginConfig = pluginConfig;
     myMapFullPath.setCommitLoader(this);
   }
 
@@ -122,6 +124,9 @@ public class CommitLoaderImpl implements CommitLoader {
 
     Map<String, Ref> oldRefs = new HashMap<>(db.getAllRefs());
     myFetchCommand.fetch(db, fetchURI, refspecs, settings);
+    if (myPluginConfig.refreshObjectDatabaseAfterFetch()) {
+      db.getObjectDatabase().refresh();
+    }
     Map<String, Ref> newRefs = new HashMap<>(db.getAllRefs());
     myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
   }

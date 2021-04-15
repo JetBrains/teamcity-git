@@ -16,6 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
+import java.io.*;
+import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleFetchException;
 import jetbrains.buildServer.serverSide.CachePaths;
@@ -28,9 +30,6 @@ import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.*;
-import java.util.Map;
 
 public class GitPatchProcess {
 
@@ -50,7 +49,7 @@ public class GitPatchProcess {
     TransportFactory transportFactory = new TransportFactoryImpl(config, sshKeyManager, settings.getGitTrustStoreProvider());
     FetcherProperties fetcherProperties = new FetcherProperties(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, fetcherProperties, sshKeyManager, settings.getGitTrustStoreProvider());
-    CommitLoader commitLoader = new CommitLoaderImpl(repositoryManager, fetchCommand, mapFullPath);
+    CommitLoader commitLoader = new CommitLoaderImpl(repositoryManager, fetchCommand, mapFullPath, config);
 
     OperationContext context = new OperationContext(commitLoader, repositoryManager, settings.getRoot(), "build patch", GitProgress.NO_OP, config);
     OutputStream fos = new BufferedOutputStream(new FileOutputStream(settings.getPatchFile()));

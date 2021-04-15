@@ -17,6 +17,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.jcraft.jsch.Proxy;
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
@@ -24,12 +29,6 @@ import jetbrains.buildServer.serverSide.ServerPaths;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.quartz.CronExpression;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import static jetbrains.buildServer.util.Util.map;
 
@@ -398,6 +397,11 @@ public class PluginConfigBuilder {
       @Override
       public long repositoryWriteLockTimeout() {
         return 0;
+      }
+
+      @Override
+      public boolean refreshObjectDatabaseAfterFetch() {
+        return true;
       }
     };
   }
