@@ -21,7 +21,8 @@
 
 <c:set var="useSakuraHeader" value="<%= WebUtil.useSakuraHeader() %>" />
 
-<bs:agentsGroupedByPool agentsGroupedByPools="${gitVersionAgents}"
+<bs:agentsGroupedByPool containerId="gitAgentVersion"
+                        agentsGroupedByPools="${gitVersionAgents}"
                         inplaceMode="${showMode == inplaceMode && !useSakuraHeader}"
                         hasSeveralPools="${healthStatusItem.additionalData['hasSeveralPools']}">
   <jsp:attribute name="agentListHeader">
