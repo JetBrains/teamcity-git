@@ -68,6 +68,10 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
     setupRepository(myGitDir, myRoot.getRepositoryDir());
   }
 
+  @Override
+  protected void ensureCommitLoaded(boolean fetchRequired) throws VcsException {
+    super.fetchFromOriginalRepository(fetchRequired);
+  }
 
   private void setupRepository(@NotNull File gitDir, @NotNull File mirrorDir) throws VcsException {
     setupAlternates(gitDir, mirrorDir);
