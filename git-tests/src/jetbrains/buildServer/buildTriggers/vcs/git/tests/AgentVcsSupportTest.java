@@ -1504,6 +1504,17 @@ public class AgentVcsSupportTest {
     assertTrue(new File(myCheckoutDir, ".git/shallow").exists());
   }
 
+  @Test
+  public void shallow_clone_to_checkout_dir_with_alternates() throws Exception {
+    AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.USE_ALTERNATES, "true");
+      put(PluginConfigImpl.USE_SHALLOW_CLONE_FROM_MIRROR_TO_CHECKOUT_DIR, "true");
+    }});
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
+    assertFalse(new File(myCheckoutDir, ".git/shallow").exists());
+    assertTrue(new File(myCheckoutDir, ".git/objects/info/alternates").isFile());
+  }
+
   @TestFor(issues = "TW-27677")
   @Test(dataProvider = "shallow_clone_param_name")
   public void shallow_clone_in_non_master_branch(String shallowCloneParamName) throws Exception {
