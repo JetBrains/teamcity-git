@@ -179,12 +179,16 @@ public class CommandUtil {
     return isMessageContains(e, "Connection refused");
   }
 
+  private static boolean isConnectionReset(@NotNull VcsException e) {
+    return isMessageContains(e, "Connection reset");
+  }
+
   public static boolean isRecoverable(@NotNull Exception e) {
     if (e instanceof ProcessTimeoutException || e instanceof GitExecTimeout) return true;
     if (!(e instanceof VcsException)) return false;
 
     final VcsException ve = (VcsException)e;
-    if (isTimeoutError(ve) || isConnectionRefused(ve)) return true;
+    if (isTimeoutError(ve) || isConnectionRefused(ve) || isConnectionReset(ve)) return true;
     if (isCanceledError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
 
