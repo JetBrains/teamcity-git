@@ -190,12 +190,12 @@
           Uses shallow clone for short-lived agents and mirrors for regular long-lived agents.
         </description>
       </option>
-      <option name="USE_MIRRORS" value="true">
+      <option name="USE_MIRRORS">
         <description>
           Creates repository mirror on the agent machine and shares it between different builds with the same fetch URL. Most optimal approach for large repositories and long-lived agents.
         </description>
       </option>
-      <option name="NO_MIRRORS" value="">
+      <option name="NO_MIRRORS">
         <description>
           Performs checkout right into the checkout directory without creating a mirror. Less optimal in terms of disk usage than mirrors.
         </description>
