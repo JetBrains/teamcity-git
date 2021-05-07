@@ -18,6 +18,13 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.util.io.ZipUtil;
 import com.jcraft.jsch.JSchException;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.TeamCityAsserts;
@@ -60,14 +67,6 @@ import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
@@ -1167,7 +1166,7 @@ public class GitVcsSupportTest extends PatchTestCase {
                               "agentCleanPolicy", "ON_BRANCH_CHANGE",
                               "agentCleanFilesPolicy", "ALL_UNTRACKED",
                               "submoduleCheckout", "CHECKOUT",
-                              "useAlternates", "true");
+                              "useAlternates", "AUTO");
   }
 
 
