@@ -18,10 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
 import jetbrains.buildServer.log.Loggers;
@@ -43,6 +39,11 @@ import org.eclipse.jgit.transport.FetchConnection;
 import org.eclipse.jgit.transport.Transport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
@@ -291,7 +292,7 @@ public class GitVcsSupport extends ServerVcsSupport
     map.put(Constants.AGENT_CLEAN_POLICY, AgentCleanPolicy.ON_BRANCH_CHANGE.name());
     map.put(Constants.AGENT_CLEAN_FILES_POLICY, AgentCleanFilesPolicy.ALL_UNTRACKED.name());
     map.put(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
-    map.put(Constants.CHECKOUT_POLICY, AgentCheckoutPolicy.AUTO.name());
+    map.put(Constants.CHECKOUT_POLICY, "true");
     return map;
   }
 

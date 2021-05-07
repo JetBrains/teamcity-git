@@ -14,11 +14,11 @@
   ~ limitations under the License.
   --%>
 
-<%@ page import="java.io.File" %>
 <%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.Constants" %>
 <%@ page import="jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl" %>
 <%@ page import="jetbrains.buildServer.serverSide.TeamCityProperties" %>
 <%@ page import="jetbrains.buildServer.util.StringUtil" %>
+<%@ page import="java.io.File" %>
 <%@include file="/include.jsp" %>
 <%@ taglib prefix="props" tagdir="/WEB-INF/tags/props" %>
 <%@ taglib prefix="admin" tagdir="/WEB-INF/tags/admin" %>
@@ -239,8 +239,8 @@
 
         <props:selectProperty name="useAlternates" enableFilter="true" className="mediumField" onchange="updateCheckoutTypeNote()">
           <props:option id="autoCheckoutType" value="AUTO"  selected="${'AUTO' eq checkoutPolicy}">Auto</props:option>
-          <props:option id="useMirrorsCheckoutType" value="USE_MIRRORS" selected="${'TRUE' eq checkoutPolicy || 'USE_MIRRORS' eq checkoutPolicy}">Use mirrors</props:option>
-          <props:option id="noMirrorsCheckoutType" value="NO_MIRRORS" selected="${empty checkoutPolicy || 'FALSE' eq checkoutPolicy || 'NO_MIRRORS' eq checkoutPolicy}">Do not use mirrors</props:option>
+          <props:option id="useMirrorsCheckoutType" value="true" selected="${'TRUE' eq checkoutPolicy || 'USE_MIRRORS' eq checkoutPolicy}">Use mirrors</props:option>
+          <props:option id="noMirrorsCheckoutType" value="" selected="${empty checkoutPolicy || 'FALSE' eq checkoutPolicy || 'NO_MIRRORS' eq checkoutPolicy}">Do not use mirrors</props:option>
           <props:option id="shallowCloneCheckoutType" value="SHALLOW_CLONE" selected="${'SHALLOW_CLONE' eq checkoutPolicy}">Shallow clone</props:option>
         </props:selectProperty>
         <div id="autoNote" class="smallNote checkoutTypeNote" style="margin: 0; display: none;">Uses shallow clone for short-lived agents and mirrors for regular long-lived agents.</div>
