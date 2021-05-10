@@ -16,6 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests.builders;
 
+import java.io.File;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.BuildAgentSystemInfo;
 import jetbrains.buildServer.agent.BuildParametersMap;
@@ -23,14 +27,11 @@ import jetbrains.buildServer.parameters.ValueResolver;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
-
 public class BuildAgentConfigurationBuilder {
 
   private final File myAgentTempDir;
   private final File myAgentCacheDir;
+  private final Map<String, String> myAgentConfig = new HashMap<>(1);
 
   public BuildAgentConfigurationBuilder(@NotNull File agentTempDir, @NotNull File agentCacheDir) {
     myAgentTempDir = agentTempDir;
@@ -65,7 +66,7 @@ public class BuildAgentConfigurationBuilder {
 
       @NotNull
       public Map<String, String> getConfigurationParameters() {
-        return new HashMap<String, String>();
+        return Collections.unmodifiableMap(myAgentConfig);
       }
 
       public String getName() {
@@ -176,7 +177,7 @@ public class BuildAgentConfigurationBuilder {
       }
 
       public void addConfigurationParameter(@NotNull final String key, @NotNull final String value) {
-        throw new UnsupportedOperationException();
+        myAgentConfig.put(key, value);
       }
 
       @NotNull
@@ -191,7 +192,7 @@ public class BuildAgentConfigurationBuilder {
 
       @Override
       public boolean removeConfigurationParameter(@NotNull final String key) {
-        return false;
+        return myAgentConfig.remove(key) != null;
       }
     };
   }
