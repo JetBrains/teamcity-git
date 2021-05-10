@@ -33,10 +33,7 @@ import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.TestNGUtil;
-import jetbrains.buildServer.agent.AgentRunningBuild;
-import jetbrains.buildServer.agent.AgentRuntimeProperties;
-import jetbrains.buildServer.agent.BuildProgressLogger;
-import jetbrains.buildServer.agent.NullBuildProgressLogger;
+import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
@@ -1537,6 +1534,39 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
   }
 
+  @Test
+  public void short_lived_agent_auto_clone() throws Exception {
+    myBuild.getAgentConfiguration().addConfigurationParameter(AgentMiscConstants.IS_EPHEMERAL_AGENT_PROP, "true");
+
+    final File remote = dataFile("repo_for_shallow_fetch.git");
+    final File shallowMarker = new File(myCheckoutDir, ".git/shallow");
+
+    final VcsRootImpl root = createRoot(remote, "refs/heads/main");
+    root.addProperty(Constants.CHECKOUT_POLICY, AgentCheckoutPolicy.AUTO.name());
+    myVcsSupport.updateSources(root, new CheckoutRules(""), "64195c330d99c467a142f682bc23d4de3a68551d", myCheckoutDir, myBuild, false);
+    assertTrue(shallowMarker.exists());
+  }
+
+  @TestFor(issues = "TW-71416")
+  public void short_lived_agent_auto_clone_existing_mirror() throws Exception {
+    final File remote = dataFile("repo_for_shallow_fetch.git");
+    final VcsRootImpl root1 = createRoot(remote, "refs/heads/main");
+    root1.addProperty(Constants.CHECKOUT_POLICY, AgentCheckoutPolicy.USE_MIRRORS.name());
+    myVcsSupport.updateSources(root1, new CheckoutRules(""), "64195c330d99c467a142f682bc23d4de3a68551d", myTempFiles.createTempDir(), myBuild, false);
+
+    final File mirror = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remote));
+    assertFalse(FileUtil.isEmptyDir(mirror)); // mirror initialized
+
+    myBuild.getAgentConfiguration().addConfigurationParameter(AgentMiscConstants.IS_EPHEMERAL_AGENT_PROP, "true");
+
+    final File testFile = new File(myCheckoutDir, "test_file");
+    final File shallowMarker = new File(myCheckoutDir, ".git/shallow");
+
+    final VcsRootImpl root2 = createRoot(remote, "refs/heads/main");
+    root2.addProperty(Constants.CHECKOUT_POLICY, AgentCheckoutPolicy.AUTO.name());
+    myVcsSupport.updateSources(root2, new CheckoutRules(""), "64195c330d99c467a142f682bc23d4de3a68551d", myCheckoutDir, myBuild, false);
+    assertFalse(shallowMarker.exists());
+  }
 
   @TestFor(issues = "TW-20165")
   public void push_with_local_mirrors_should_go_to_original_repository() throws Exception {
