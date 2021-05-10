@@ -31,6 +31,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.log4j.Logger;
@@ -162,10 +163,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
   @Override
   public boolean isUseAlternates(@NotNull GitVcsRoot root) {
-    return isUseAlternates(root.getAgentCheckoutPolicy());
-  }
-
-  public boolean isUseAlternates(@NotNull AgentCheckoutPolicy rootSetting) {
+    final AgentCheckoutPolicy rootSetting = root.getAgentCheckoutPolicy();
     final String buildSetting = myBuild.getSharedConfigParameters().get(USE_ALTERNATES);
     if (StringUtil.isNotEmpty(buildSetting)) {
       final boolean enabled = Boolean.parseBoolean(buildSetting);
@@ -173,8 +171,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
       return enabled;
     }
 
-    final String mirrorStrategy = getMirrorStrategy();
-    if (AgentCheckoutPolicy.USE_MIRRORS == rootSetting || AgentCheckoutPolicy.AUTO == rootSetting && !isAgentTerminatedAfterBuild()) {
+    if (AgentCheckoutPolicy.USE_MIRRORS == rootSetting || AgentCheckoutPolicy.AUTO == rootSetting && !isShortLivedAgentWithoutMirror(root.getRepositoryDir())) {
+      final String mirrorStrategy = getMirrorStrategy();
       if (StringUtil.isEmpty(mirrorStrategy) || VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES.equals(mirrorStrategy)) {
         myBuild.getBuildLogger().debug(AgentCheckoutPolicy.USE_MIRRORS == rootSetting ? "Mirrors enabled via VCS root settings" : "Mirrors automatically enabled");
         return true;
@@ -205,10 +203,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   }
 
   public boolean isUseShallowClone(@NotNull GitVcsRoot root) {
-    return isUseShallowClone(root.getAgentCheckoutPolicy());
-  }
-
-  public boolean isUseShallowClone(@NotNull AgentCheckoutPolicy rootSetting) {
+    final AgentCheckoutPolicy rootSetting = root.getAgentCheckoutPolicy();
     final String buildSetting = myBuild.getSharedConfigParameters().get(USE_SHALLOW_CLONE_INTERNAL);
     if (StringUtil.isNotEmpty(buildSetting)) {
       final boolean enabled = Boolean.parseBoolean(buildSetting);
@@ -225,15 +220,20 @@ public class PluginConfigImpl implements AgentPluginConfig {
       myBuild.getBuildLogger().debug("Shallow clone enforced via VCS root settings");
       return true;
     }
-    if (AgentCheckoutPolicy.AUTO == rootSetting && isAgentTerminatedAfterBuild()) {
-      myBuild.getBuildLogger().message("Shallow clone automatically enabled on short-lived agent");
-        return true;
+    // if there is a mirror available on a short-lived agent, there is no need to run shallow clone
+    if (AgentCheckoutPolicy.AUTO == rootSetting && isShortLivedAgentWithoutMirror(root.getRepositoryDir())) {
+      myBuild.getBuildLogger().message("Shallow clone automatically enabled on a short-lived agent");
+      return true;
     }
     return false;
   }
 
   private boolean isAgentTerminatedAfterBuild() {
     return "true".equals(myAgentConfig.getConfigurationParameters().get(AgentMiscConstants.IS_EPHEMERAL_AGENT_PROP));
+  }
+
+  private boolean isShortLivedAgentWithoutMirror(@NotNull File mirror) {
+    return isAgentTerminatedAfterBuild() && FileUtil.isEmptyDir(mirror);
   }
 
   @Override
