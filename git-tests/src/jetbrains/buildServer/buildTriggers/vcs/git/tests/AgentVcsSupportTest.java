@@ -1931,7 +1931,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(createRoot(remote, "refs/heads/main"), new CheckoutRules(""), "64195c330d99c467a142f682bc23d4de3a68551d", myCheckoutDir, build, false);
     final String result = log.toString();
     if (SystemInfo.isWindows) {
-      assertTrue(result, result.contains("git config --list") || result.contains("git.exe config --list"));
+      assertTrue(result, result.contains("git config --list") || result.contains("git.exe config --list") || result.contains("git.exe\" config --list"));
     } else {
       BaseTestCase.assertContains(result, "git config --list");
     }
