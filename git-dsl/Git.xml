@@ -73,7 +73,7 @@
     </param>
     <param name="useAlternates" dslName="useMirrors" deprecated="true" type="boolean" trueValue="true" falseValue="">
       <deprecated>
-        Use checkoutPolicy parameter instead
+        Use checkoutPolicy parameter instead. Corresponding values are NO_MIRRORS for false and USE_MIRRORS for true (default value, can be ommitted).
       </deprecated>
       <description>
         When this option is enabled, TeamCity creates a separate clone of the repository on each agent
