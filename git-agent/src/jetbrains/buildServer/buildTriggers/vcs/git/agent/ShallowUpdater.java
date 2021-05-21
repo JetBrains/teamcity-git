@@ -18,14 +18,17 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 
 import java.io.File;
+import java.io.IOException;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleUpdateCommand;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.jetbrains.annotations.NotNull;
 
 public class ShallowUpdater extends UpdaterImpl {
@@ -84,6 +87,18 @@ public class ShallowUpdater extends UpdaterImpl {
     super.ensureCommitLoaded(fetchRequired);
   }
 
+  @Override
+  protected void updateSubmodules(@NotNull final File repositoryDir) throws VcsException, ConfigInvalidException, IOException {
+    GitFacade git = myGitFactory.create(repositoryDir);
+    SubmoduleUpdateCommand submoduleUpdate = git.submoduleUpdate()
+                                                .setAuthSettings(myRoot.getAuthSettings())
+                                                .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
+                                                .setTimeout(myPluginConfig.getSubmoduleUpdateTimeoutSeconds())
+                                                .setForce(isForceUpdateSupported())
+                                                .setDepth(1);
+    configureLFS(submoduleUpdate);
+    submoduleUpdate.call();
+  }
   @NotNull
   private String getRefSpecForRevision() {
     if (GitUtilsAgent.isTag(myFullBranchName)) {

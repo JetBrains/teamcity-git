@@ -30,6 +30,7 @@ public class SubmoduleUpdateCommandImpl extends BaseCommandImpl implements Submo
   private AuthSettings myAuthSettings;
   private int myTimeout;
   private boolean myForce;
+  private Integer myDepth;
 
   public SubmoduleUpdateCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -59,14 +60,24 @@ public class SubmoduleUpdateCommandImpl extends BaseCommandImpl implements Submo
     return this;
   }
 
+  @NotNull
+  @Override
+  public SubmoduleUpdateCommand setDepth(final int depth) {
+    myDepth = depth;
+    return this;
+  }
+
   public void call() throws VcsException {
     GitCommandLine cmd = getCmd();
     cmd.addParameter("submodule");
     cmd.addParameter("update");
     if (myForce)
       cmd.addParameter("--force");
+    if (myDepth != null) {
+      cmd.addParameter("--depth=" + myDepth);
+    }
     cmd.run(with().timeout(myTimeout)
-              .authSettings(myAuthSettings)
-              .useNativeSsh(myUseNativeSsh));
+                  .authSettings(myAuthSettings)
+                  .useNativeSsh(myUseNativeSsh));
   }
 }

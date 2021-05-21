@@ -34,5 +34,8 @@ public interface SubmoduleUpdateCommand extends BaseCommand {
   @NotNull
   SubmoduleUpdateCommand setForce(boolean force);
 
+  @NotNull
+  SubmoduleUpdateCommand setDepth(int depth);
+
   void call() throws VcsException;
 }

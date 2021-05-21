@@ -330,6 +330,19 @@ public class AgentVcsSupportTest {
     testSubmodulesCheckout(true, true);
   }
 
+  @TestFor(issues = "TW-70025")
+  public void testSubmodulesShallowClone() throws Exception {
+    final AgentRunningBuild build = createRunningBuild(Collections.singletonMap(PluginConfigImpl.USE_SHALLOW_CLONE_INTERNAL, "true"));
+
+    myRoot.addProperty(Constants.BRANCH_NAME, "patch-tests");
+    myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.SUBMODULE_ADDED_VERSION, myCheckoutDir, build, false);
+
+    assertTrue(new File(myCheckoutDir, "submodule" + File.separator + "file.txt").exists());
+    assertTrue(new File(myCheckoutDir, ".git/modules/submodule/shallow").isFile());
+  }
+
   @DataProvider(name = "custom_config_per_line")
   public Object[][] custom_config_per_line() throws Throwable {
     ArrayList<Object[]> res = new ArrayList<>();

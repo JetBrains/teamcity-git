@@ -401,7 +401,7 @@ public class UpdaterImpl implements Updater {
   }
 
 
-  private boolean isForceUpdateSupported() {
+  protected boolean isForceUpdateSupported() {
     return !GIT_WITH_FORCE_SUBMODULE_UPDATE.isGreaterThan(myPluginConfig.getGitVersion());
   }
 
@@ -1134,7 +1134,7 @@ public class UpdaterImpl implements Updater {
   }
 
 
-  private void configureLFS(@NotNull BaseCommand command) {
+  protected void configureLFS(@NotNull BaseCommand command) {
     if (!myPluginConfig.isProvideCredHelper())
       return;
     Trinity<String, String, String> lfsAuth = getLfsAuth();
