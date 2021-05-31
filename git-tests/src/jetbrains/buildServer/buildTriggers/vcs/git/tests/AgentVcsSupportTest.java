@@ -343,6 +343,19 @@ public class AgentVcsSupportTest {
     assertTrue(new File(myCheckoutDir, ".git/modules/submodule/shallow").isFile());
   }
 
+
+  @TestFor(issues = "TW-71691")
+  public void testRespectSubmoduleBranch() throws Exception {
+    myRoot.addProperty(Constants.BRANCH_NAME, "TW-71691");
+    myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "058ad5872851a5e8c6b8a665d4e058b21fed27df", myCheckoutDir, myBuild, false);
+
+    final File file = new File(myCheckoutDir, "submodule" + File.separator + "f.txt");
+    assertTrue(file.exists());
+    assertEquals("TW-71691", FileUtil.readText(file, "UTF-8").trim());
+  }
+
   @DataProvider(name = "custom_config_per_line")
   public Object[][] custom_config_per_line() throws Throwable {
     ArrayList<Object[]> res = new ArrayList<>();
