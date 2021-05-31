@@ -278,7 +278,7 @@ public class AgentCommitLoaderFactory {
     protected abstract void beforeFetch() throws VcsException;
 
     private boolean isSingleBranchFetchRequired(@NotNull String branch) {
-      return branch.startsWith("refs/heads");
+      return !branch.startsWith("refs/heads");
     }
 
     @Nullable
