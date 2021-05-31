@@ -424,6 +424,11 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return Loggers.VCS.isDebugEnabled() || Boolean.parseBoolean(myBuild.getSharedConfigParameters().get(TEAMCITY_GIT_SSH_DEBUG));
   }
 
+  @Override
+  public boolean isNoFetchRequiredIfRevisionInRepo() {
+    return Boolean.parseBoolean(myBuild.getSharedConfigParameters().get("teamcity.git.noFetchIfRevisionInRepo"));
+  }
+
   @NotNull
   private Collection<String> parseCustomConfig() {
     String customConfig = myBuild.getSharedConfigParameters().get(CUSTOM_GIT_CONFIG);

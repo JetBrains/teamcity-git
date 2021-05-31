@@ -195,6 +195,8 @@ public class AgentCommitLoaderFactory {
         return true;
       }
       if (hasRevision(sha)) {
+        if (myPluginConfig.isNoFetchRequiredIfRevisionInRepo()) return false;
+
         final ObjectId remoteRefObject = remoteRef.getObjectId();
         if (remoteRefObject == null) {
           message("'git fetch' required: commit '" + sha + "' is in the local repository clone, but '" + remoteRefName + "' points to no commit.");
