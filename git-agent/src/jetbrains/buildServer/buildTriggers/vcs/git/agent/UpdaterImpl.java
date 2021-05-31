@@ -18,7 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.Trinity;
 import java.io.File;
-import java.io.FileFilter;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -32,7 +31,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.RefImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitOutdatedIndexException;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
@@ -72,8 +70,6 @@ public class UpdaterImpl implements Updater {
   /** Git version supporting [credential] section in config (the first version including a6fc9fd3f4b42cd97b5262026e18bd451c28ee3c) */
   public final static GitVersion CREDENTIALS_SECTION_VERSION = new GitVersion(1, 7, 10);
   public final static GitVersion REV_PARSE_LEARNED_SHALLOW_CLONE = new GitVersion(2, 15, 0);
-
-  private static final int SILENT_TIMEOUT = 24 * 60 * 60; //24 hours
 
   protected final FS myFS;
   private final SmartDirectoryCleaner myDirectoryCleaner;
@@ -184,7 +180,6 @@ public class UpdaterImpl implements Updater {
     try {
       logStartUpdating();
       initGitRepository();
-      removeRefLocks(new File(myTargetDirectory, ".git"));
       doFetch();
       updateSources();
     } finally {
@@ -709,201 +704,20 @@ public class UpdaterImpl implements Updater {
 
 
   protected void fetchFromOriginalRepository(boolean fetchRequired) throws VcsException {
-    Ref remoteRef;
-    FetchHeadsMode fetchHeadsMode = myPluginConfig.getFetchHeadsMode();
-    switch (fetchHeadsMode) {
-      case ALWAYS:
-        String msg = getForcedHeadsFetchMessage();
-        LOG.info(msg);
-        myLogger.message(msg);
-
-        fetchAllBranches();
-        if (!myFullBranchName.startsWith("refs/heads/")) {
-          remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
-          if (fetchRequired || remoteRef == null || !myRevision.equals(remoteRef.getObjectId().name()) || !hasRevision(myTargetDirectory, myRevision))
-            fetchDefaultBranch();
-        }
-        break;
-      case BEFORE_BUILD_BRANCH:
-        remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
-        if (isNotNeedFetch(fetchRequired, remoteRef)) {
-          return;
-        }
-        fetchAllBranches();
-        if (!myFullBranchName.startsWith("refs/heads/")) {
-          remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
-          if (fetchRequired || remoteRef == null || !myRevision.equals(remoteRef.getObjectId().name()) || !hasRevision(myTargetDirectory, myRevision))
-            fetchDefaultBranch();
-        }
-        break;
-      case AFTER_BUILD_BRANCH:
-        remoteRef = getRef(myTargetDirectory, GitUtils.createRemoteRef(myFullBranchName));
-        if (isNotNeedFetch(fetchRequired, remoteRef)) {
-          return;
-        }
-        fetchDefaultBranch();
-        if (hasRevision(myTargetDirectory, myRevision))
-          return;
-        myLogger.message("Commit still not found after fetching main branch. Fetching more branches.");
-        fetchAllBranches();
-        break;
-      default:
-        throw new VcsException("Unknown FetchHeadsMode: " + fetchHeadsMode);
-    }
-
-    if (hasRevision(myTargetDirectory, myRevision))
-      return;
-
-    String msg = "Cannot find commit " + myRevision + " in the " + myRoot.getRepositoryFetchURL().toASCIIString() + " repository, " +
-                 "possible reason: " + myFullBranchName + " branch was updated and the commit selected for the build is not reachable anymore";
-    throw new RevisionNotFoundException(msg);
+    throwNoCommitFoundIfNecessary(getCommitLoader(myTargetDirectory).loadCommitInBranch(myRevision, myFullBranchName, fetchRequired));
   }
 
-  private boolean isNotNeedFetch(boolean fetchRequired, Ref remoteRef) {
-    if (fetchRequired) {
-      myLogger.message("Local clone state requires 'git fetch'...");
-    } else if (hasRevision(myTargetDirectory, myRevision)) {
-      if (remoteRef != null && myRevision.equals(remoteRef.getObjectId().name())) {
-        return true;
-      } else {
-        final String ref = remoteRef != null ? remoteRef.getObjectId().name() : "'null'";
-        myLogger.debug("Commit '" + myRevision + "' is in server's local repository clone. Remote ref name is " + ref);
-      }
-    } else {
-      myLogger.message("Commit '" + myRevision + "' is not found in server's local repository clone. Running 'git fetch'...");
-    }
-    return false;
-  }
+  protected void throwNoCommitFoundIfNecessary(boolean commitFound) throws RevisionNotFoundException {
+    if (!commitFound) {
+      throw new RevisionNotFoundException("Cannot find commit " + myRevision + " in the " + myRoot.getRepositoryFetchURL().toASCIIString() + " repository, " +
+                                          "possible reason: " + myFullBranchName + " branch was updated and the commit selected for the build is not reachable anymore");
 
-  protected String getForcedHeadsFetchMessage() {
-    return "Forced fetch of all heads (" + PluginConfigImpl.FETCH_ALL_HEADS + "=" + myPluginConfig.getFetchAllHeadsModeStr() + ")";
-  }
-
-
-  private void fetchDefaultBranch() throws VcsException {
-    fetch(myTargetDirectory, getRefspecForFetch(), false);
-  }
-
-  protected String getRefspecForFetch() {
-    return "+" + myFullBranchName + ":" + GitUtils.createRemoteRef(myFullBranchName);
-  }
-
-  private void fetchAllBranches() throws VcsException {
-    fetch(myTargetDirectory, "+refs/heads/*:refs/remotes/origin/*", false);
-  }
-
-  protected boolean hasRevision(@NotNull File repositoryDir, @NotNull String revision) {
-    return getRevision(repositoryDir, revision) != null;
-  }
-
-  private String getRevision(@NotNull File repositoryDir, @NotNull String revision) {
-    return myGitFactory.create(repositoryDir).log()
-      .setCommitsNumber(1)
-      .setPrettyFormat("%H%x20%s")
-      .setStartPoint(revision)
-      .call();
-  }
-
-  protected void fetch(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone) throws VcsException {
-    boolean silent = isSilentFetch();
-    int timeout = getTimeout(silent);
-
-    try {
-      callFetchWithRetry(repositoryDir, refspec, shallowClone, silent, timeout);
-    } catch (GitIndexCorruptedException e) {
-      File gitIndex = e.getGitIndex();
-      myLogger.message("Git index '" + gitIndex.getAbsolutePath() + "' is corrupted, remove it and repeat git fetch");
-      FileUtil.delete(gitIndex);
-      callFetchWithRetry(repositoryDir, refspec, shallowClone, silent, timeout);
-    } catch (GitExecTimeout e) {
-      if (!silent) {
-        myLogger.error("No output from git during " + timeout + " seconds. Try increasing idle timeout by setting parameter '"
-                       + PluginConfigImpl.IDLE_TIMEOUT +
-                       "' either in build or in agent configuration.");
-      }
-      throw e;
     }
   }
-
-  private void callFetchWithRetry(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout) throws VcsException {
-    try {
-      Retry.retry(new Retry.Retryable<Void>() {
-        @Override
-        public boolean requiresRetry(@NotNull final Exception e) {
-          return CommandUtil.isRecoverable(e);
-        }
-
-        @Nullable
-        @Override
-        public Void call() throws VcsException {
-          final FetchCommand result = myGitFactory.create(repositoryDir).fetch()
-            .setAuthSettings(myRoot.getAuthSettings())
-            .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
-            .setTimeout(timeout)
-            .setRefspec(refspec)
-            .setFetchTags(myPluginConfig.isFetchTags());
-
-          if (silent)
-            result.setQuite(true);
-          else
-            result.setShowProgress(true);
-
-          if (shallowClone)
-            result.setDepth(1);
-
-          result.call();
-          return null;
-        }
-
-        @NotNull
-        @Override
-        public com.intellij.openapi.diagnostic.Logger getLogger() {
-          return Loggers.VCS;
-        }
-      }, myPluginConfig.getRemoteOperationAttempts());
-    } catch (Exception t) {
-      if (t instanceof VcsException) throw (VcsException)t;
-      throw new VcsException(t);
-    }
-  }
-
-  protected void removeRefLocks(@NotNull File dotGit) {
-    File refs = new File(dotGit, "refs");
-    if (!refs.isDirectory())
-      return;
-    Collection<File> locks = FileUtil.findFiles(new FileFilter() {
-      public boolean accept(File f) {
-        return f.isFile() && f.getName().endsWith(".lock");
-      }
-    }, refs);
-    for (File lock : locks) {
-      LOG.info("Remove a lock file " + lock.getAbsolutePath());
-      FileUtil.delete(lock);
-    }
-    File packedRefsLock = new File(dotGit, "packed-refs.lock");
-    if (packedRefsLock.isFile()) {
-      LOG.info("Remove a lock file " + packedRefsLock.getAbsolutePath());
-      FileUtil.delete(packedRefsLock);
-    }
-  }
-
-  private boolean isSilentFetch() {
-    GitVersion version = myPluginConfig.getGitVersion();
-    return version.isLessThan(GIT_WITH_PROGRESS_VERSION);
-  }
-
-  private int getTimeout(boolean silentFetch) {
-    if (silentFetch)
-      return SILENT_TIMEOUT;
-    else
-      return myPluginConfig.getIdleTimeoutSeconds();
-  }
-
 
   private void checkAuthMethodIsSupported() throws VcsException {
     checkAuthMethodIsSupported(myRoot, myPluginConfig);
   }
-
 
   static void checkAuthMethodIsSupported(@NotNull GitVcsRoot root, @NotNull AgentPluginConfig config) throws VcsException {
     if ("git".equals(root.getRepositoryFetchURL().getScheme()))
@@ -1282,15 +1096,12 @@ public class UpdaterImpl implements Updater {
   }
 
   private boolean ensureCommitLoaded(@NotNull String commit) {
-    if (hasRevision(myTargetDirectory, commit))
-      return true;
     try {
-      fetchAllBranches();
+      return getCommitLoader(myTargetDirectory).loadCommit(commit);
     } catch (VcsException e) {
       LOG.warn("Error while fetching commit " + commit, e);
       return false;
     }
-    return hasRevision(myTargetDirectory, commit);
   }
 
   @NotNull
@@ -1348,5 +1159,10 @@ public class UpdaterImpl implements Updater {
       }
     }
     return vcsRootExtId;
+  }
+
+  @NotNull
+  protected AgentCommitLoader getCommitLoader(@NotNull File repo) {
+    return AgentCommitLoaderFactory.getCommitLoader(myRoot, repo, myGitFactory, myPluginConfig, myLogger);
   }
 }

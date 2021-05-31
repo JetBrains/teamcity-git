@@ -39,7 +39,10 @@ import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.errors.ConfigInvalidException;
-import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.lib.Config;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
@@ -98,101 +101,45 @@ public class UpdaterWithMirror extends UpdaterImpl {
     }
     final GitFacade git = myGitFactory.create(bareRepositoryDir);
     final SSLInvestigator sslInvestigator = getSSLInvestigator(fetchUrl);
-    boolean newMirror = false;
-    boolean fetchRequired = false;
+    boolean fetchRequired;
     if (!bareRepositoryDir.exists()) {
       LOG.info("Init " + mirrorDescription);
       bareRepositoryDir.mkdirs();
       git.init().setBare(true).call();
       configureRemoteUrl(bareRepositoryDir, fetchUrl);
       sslInvestigator.setCertificateOptions(git);
-      newMirror = true;
       fetchRequired = true;
     } else {
       configureRemoteUrl(bareRepositoryDir, fetchUrl);
       sslInvestigator.setCertificateOptions(git);
-      boolean outdatedRefsFound = removeOutdatedRefs(bareRepositoryDir);
-      if (outdatedRefsFound) {
-        fetchRequired = true;
-      } else {
-        for (String revision : revisions) {
-          LOG.debug("Trying to find revision " + revision + " in " + mirrorDescription);
-          Ref ref = getRef(bareRepositoryDir, GitUtils.createRemoteRef(branchname));
-          if (ref != null && revision.equals(ref.getObjectId().name())) {
-            LOG.debug("No fetch required for revision '" + revision + "' in " + mirrorDescription);
-          } else {
-            LOG.info("Fetch required for revision '" + revision + "' in " + mirrorDescription);
-            fetchRequired = true;
-          }
-        }
-      }
-    }
-    FetchHeadsMode fetchHeadsMode = myPluginConfig.getFetchHeadsMode();
-    Ref ref = getRef(bareRepositoryDir, branchname);
-    if (ref == null)
-      fetchRequired = true;
-    if (!fetchRequired && fetchHeadsMode != FetchHeadsMode.ALWAYS)
-      return;
-    if (!newMirror && optimizeMirrorBeforeFetch()) {
-      git.gc().call();
-      git.repack().call();
+      fetchRequired = removeOutdatedRefs(bareRepositoryDir);
     }
 
-    switch (fetchHeadsMode) {
-      case ALWAYS:
-        String msg = getForcedHeadsFetchMessage();
-        LOG.info(msg);
-        myLogger.message(msg);
-        fetchMirror(bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, sslInvestigator, revisions);
-        if (!branchname.startsWith("refs/heads/") && !hasRevisions(bareRepositoryDir, revisions))
-          fetchMirror(bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, sslInvestigator, revisions);
-        break;
-      case BEFORE_BUILD_BRANCH:
-        fetchMirror(bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, sslInvestigator, revisions);
-        if (!branchname.startsWith("refs/heads/") && !hasRevisions(bareRepositoryDir, revisions))
-          fetchMirror(bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, sslInvestigator, revisions);
-        break;
-      case AFTER_BUILD_BRANCH:
-        fetchMirror(bareRepositoryDir, fetchUrl, "+" + branchname + ":" + GitUtils.expandRef(branchname), branchname, sslInvestigator, revisions);
-        if (!hasRevisions(bareRepositoryDir, revisions)) {
-          fetchMirror(bareRepositoryDir, fetchUrl, "+refs/heads/*:refs/heads/*", branchname, sslInvestigator, revisions);
-        }
-        break;
-      default:
-        throw new VcsException("Unknown FetchHeadsMode: " + fetchHeadsMode);
-    }
-  }
-
-  private boolean optimizeMirrorBeforeFetch() {
-    return "true".equals(myBuild.getSharedConfigParameters().get("teamcity.git.optimizeMirrorBeforeFetch"));
-  }
-
-
-  private void fetchMirror(@NotNull File repositoryDir,
-                           @NotNull CommonURIish fetchUrl,
-                           @NotNull String refspec,
-                           @NotNull String branchname,
-                           @NotNull SSLInvestigator sslInvestigator,
-                           @NotNull String... revisions) throws VcsException {
-    removeRefLocks(repositoryDir);
+    final AgentCommitLoader commitLoader =
+      AgentCommitLoaderFactory.getCommitLoaderForMirror(myRoot, myBuild, bareRepositoryDir, myGitFactory, myPluginConfig, myLogger);
     try {
-      fetch(repositoryDir, refspec, false);
+      loadCommits(branchname, fetchRequired, commitLoader, revisions);
     } catch (VcsException e) {
       if (myPluginConfig.isFailOnCleanCheckout() || !CommandUtil.shouldFetchFromScratch(e)) {
         throw e;
       }
       LOG.warnAndDebugDetails("Failed to fetch mirror, will try removing it and cloning from scratch", e);
-      if (cleanDir(repositoryDir)) {
-        GitFacade git = myGitFactory.create(repositoryDir);
+      if (cleanDir(bareRepositoryDir)) {
         git.init().setBare(true).call();
-        configureRemoteUrl(repositoryDir, fetchUrl);
+        configureRemoteUrl(bareRepositoryDir, fetchUrl);
         sslInvestigator.setCertificateOptions(git);
-        fetch(repositoryDir, refspec, false);
+        loadCommits(branchname, true, commitLoader, revisions);
       } else {
-        LOG.info("Failed to delete repository " + repositoryDir + " after failed checkout, clone repository in another directory");
-        myMirrorManager.invalidate(repositoryDir);
+        LOG.info("Failed to delete repository " + bareRepositoryDir + " after failed checkout, clone repository in another directory");
+        myMirrorManager.invalidate(bareRepositoryDir);
         updateLocalMirror(myMirrorManager.getMirrorDir(fetchUrl.toString()), fetchUrl, branchname, revisions);
       }
+    }
+  }
+
+  private void loadCommits(String branchname, boolean fetchRequired, AgentCommitLoader commitLoader, String[] revisions) throws VcsException {
+    for (String revision : revisions) {
+      commitLoader.loadCommitInBranch(revision, branchname, fetchRequired);
     }
   }
 
@@ -235,20 +182,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
   @Override
   protected void ensureCommitLoaded(boolean fetchRequired) throws VcsException {
     if (myPluginConfig.isUseShallowCloneFromMirrorToCheckoutDir()) {
-      File mirrorRepositoryDir = myRoot.getRepositoryDir();
-      if (GitUtilsAgent.isTag(myFullBranchName)) {
-        //handle tags specially: if we fetch a temporary branch which points to a commit
-        //tags points to, git fetches both branch and tag, tries to make a local
-        //branch to track both of them and fails.
-        String refspec = "+" + myFullBranchName + ":" + myFullBranchName;
-        fetch(myTargetDirectory, refspec, true);
-      } else {
-        String tmpBranchName = createTmpBranch(mirrorRepositoryDir, myRevision);
-        String tmpBranchRef = "refs/heads/" + tmpBranchName;
-        String refspec = "+" + tmpBranchRef + ":" + GitUtils.createRemoteRef(myFullBranchName);
-        fetch(myTargetDirectory, refspec, true);
-        myGitFactory.create(mirrorRepositoryDir).deleteBranch().setName(tmpBranchName).call();
-      }
+      getCommitLoader(myTargetDirectory).loadShallowBranch(myRevision, myFullBranchName);
     } else {
       super.ensureCommitLoaded(fetchRequired);
     }
@@ -293,28 +227,6 @@ public class UpdaterWithMirror extends UpdaterImpl {
     } catch (URISyntaxException e) {
       throw new VcsException("Cannot create uri for local mirror " + repositoryDir.getAbsolutePath(), e);
     }
-  }
-
-  private String createTmpBranch(@NotNull File repositoryDir, @NotNull String branchStartingPoint) throws VcsException {
-    String tmpBranchName = getUnusedBranchName(repositoryDir);
-    myGitFactory.create(repositoryDir)
-      .createBranch()
-      .setName(tmpBranchName)
-      .setStartPoint(branchStartingPoint)
-      .call();
-    return tmpBranchName;
-  }
-
-  private String getUnusedBranchName(@NotNull File repositoryDir) {
-    final String tmpBranchName = "tmp_branch_for_build";
-    String branchName = tmpBranchName;
-    Map<String, Ref> existingRefs = myGitFactory.create(repositoryDir).showRef().call().getValidRefs();
-    int i = 0;
-    while (existingRefs.containsKey("refs/heads/" + branchName)) {
-      branchName = tmpBranchName + i;
-      i++;
-    }
-    return branchName;
   }
 
   @Override
@@ -368,13 +280,11 @@ public class UpdaterWithMirror extends UpdaterImpl {
     final String message = "Update git mirror (" + mirrorRepositoryDir + ") for " + submodule.getNamesString();
     myLogger.activityStarted(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
     try {
-      if (!hasRevisions(mirrorRepositoryDir, submodule.getRevisions())) {
-        updateLocalMirror(mirrorRepositoryDir,
-                          new URIishHelperImpl().createURI(submodule.getUrl()),
-                          "refs/heads/*",
-                          submodule.getRevisions());
-        mirrorRepositoryDir = getSubmoduleMirror(submodule); // submodule mirrorRepositoryDir can change if couldn't remove it after unsuccessful fetch
-      }
+      updateLocalMirror(mirrorRepositoryDir,
+                        new URIishHelperImpl().createURI(submodule.getUrl()),
+                        "refs/heads/*",
+                        submodule.getRevisions());
+      mirrorRepositoryDir = getSubmoduleMirror(submodule); // submodule mirrorRepositoryDir can change if couldn't remove it after unsuccessful fetch
       myGitFactory.create(mirrorRepositoryDir).packRefs().call();
       return mirrorRepositoryDir;
     } finally {
@@ -471,15 +381,6 @@ public class UpdaterWithMirror extends UpdaterImpl {
       .setPropertyName("remote.origin.url")
       .setValue(originUrl)
       .call();
-  }
-
-  protected boolean hasRevisions(@NotNull File repositoryDir, String... revisions) {
-    for (String revision : revisions) {
-      if (!hasRevision(repositoryDir, revision)) {
-        return false;
-      }
-    }
-    return true;
   }
 
   private boolean isRootRepositoryDir(@NotNull File dir) {

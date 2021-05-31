@@ -18,18 +18,20 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.SystemInfo;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Comparator;
-import java.util.List;
 
 /**
  * Commands that allows working with git repositories
@@ -227,5 +229,27 @@ public class GitUtils {
       return originalSshClientVersion;
     //rfc4253-4.2
     return SSH_V2 + "-" + teamcityVersion.replace(' ', '-') + originalSshClientVersion.substring(SSH_V2.length());
+  }
+
+  public static void removeRefLocks(@NotNull File dotGit) {
+    final File refs = new File(dotGit, "refs");
+    if (!refs.isDirectory()) {
+      return;
+    }
+    final Collection<File> locks = FileUtil.findFiles(new FileFilter() {
+      public boolean accept(File f) {
+        return f.isFile() && f.getName().endsWith(".lock");
+      }
+    }, refs);
+    locks.forEach(lock -> {
+      Loggers.VCS.info("Removing a ref lock file " + lock.getAbsolutePath());
+      FileUtil.delete(lock);
+
+    });
+    final File packedRefsLock = new File(dotGit, "packed-refs.lock");
+    if (packedRefsLock.isFile()) {
+      Loggers.VCS.info("Removing packed refs lock file " + packedRefsLock.getAbsolutePath());
+      FileUtil.delete(packedRefsLock);
+    }
   }
 }
