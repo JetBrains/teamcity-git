@@ -182,7 +182,7 @@ public class CommitLoaderImpl implements CommitLoader {
         if (lock.tryLock(timeout, TimeUnit.SECONDS)) {
           return lock;
         }
-        throw new VcsOperationRejectedException("Write lock timeout: failed to acquire lock in " + timeout + StringUtil.pluralize(" second") + ". Please try later.");
+        throw new VcsOperationRejectedException("Write lock timeout: failed to acquire lock in " + timeout + StringUtil.pluralize(" second") + " for the Git clone directory: " + repo.getAbsolutePath());
       } catch (InterruptedException e) {
         throw new VcsException("Commit loader operation interrupted", e);
       }
