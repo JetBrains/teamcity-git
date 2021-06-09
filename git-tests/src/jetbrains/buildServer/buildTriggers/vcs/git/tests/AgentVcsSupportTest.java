@@ -361,7 +361,7 @@ public class AgentVcsSupportTest {
     myRoot.addProperty(Constants.BRANCH_NAME, "TW-65043");
     myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
 
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "dcfbd76e0159eb890acb2b61b56de96457cef92b", myCheckoutDir, myBuild, false);
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "4be4cc77ac427ecabf6ca53a76e33f6e186db6f2", myCheckoutDir, myBuild, false);
 
     final File file = new File(myCheckoutDir, "submodule" + File.separator + "file.txt");
     assertTrue(file.exists());
@@ -374,7 +374,7 @@ public class AgentVcsSupportTest {
     myRoot.addProperty(Constants.BRANCH_NAME, "TW-65043");
     myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
 
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "dcfbd76e0159eb890acb2b61b56de96457cef92b", myCheckoutDir, build, false);
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "4be4cc77ac427ecabf6ca53a76e33f6e186db6f2", myCheckoutDir, build, false);
 
     final File file = new File(myCheckoutDir, "submodule" + File.separator + "file.txt");
     assertTrue(file.exists());
@@ -386,7 +386,7 @@ public class AgentVcsSupportTest {
     myRoot.addProperty(Constants.BRANCH_NAME, "TW-65043");
     myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
 
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "dcfbd76e0159eb890acb2b61b56de96457cef92b", myCheckoutDir, build, false);
+  myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "4be4cc77ac427ecabf6ca53a76e33f6e186db6f2", myCheckoutDir, build, false);
 
     final File file = new File(myCheckoutDir, "submodule" + File.separator + "file.txt");
     assertTrue(file.exists());
