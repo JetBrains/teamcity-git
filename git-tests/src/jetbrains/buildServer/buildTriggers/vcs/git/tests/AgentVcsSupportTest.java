@@ -356,6 +356,43 @@ public class AgentVcsSupportTest {
     assertEquals("TW-71691", FileUtil.readText(file, "UTF-8").trim());
   }
 
+  @TestFor(issues = "TW-65043")
+  public void testSubmmoduleCommitReferencedByTag_mirrors() throws Exception {
+    myRoot.addProperty(Constants.BRANCH_NAME, "TW-65043");
+    myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "dcfbd76e0159eb890acb2b61b56de96457cef92b", myCheckoutDir, myBuild, false);
+
+    final File file = new File(myCheckoutDir, "submodule" + File.separator + "file.txt");
+    assertTrue(file.exists());
+    assertEquals("TW-65043", FileUtil.readText(file, "UTF-8").trim());
+  }
+
+  @TestFor(issues = "TW-65043")
+  public void testSubmmoduleCommitReferencedByTag_alternates() throws Exception {
+    final AgentRunningBuild build = createRunningBuild(CollectionsUtil.asMap(PluginConfigImpl.USE_ALTERNATES, "true"));
+    myRoot.addProperty(Constants.BRANCH_NAME, "TW-65043");
+    myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "dcfbd76e0159eb890acb2b61b56de96457cef92b", myCheckoutDir, build, false);
+
+    final File file = new File(myCheckoutDir, "submodule" + File.separator + "file.txt");
+    assertTrue(file.exists());
+    assertEquals("TW-65043", FileUtil.readText(file, "UTF-8").trim());
+  }
+
+  public void testSubmmoduleCommitReferencedByTag_no_mirrors() throws Exception {
+    final AgentRunningBuild build = createRunningBuild(false);
+    myRoot.addProperty(Constants.BRANCH_NAME, "TW-65043");
+    myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "dcfbd76e0159eb890acb2b61b56de96457cef92b", myCheckoutDir, build, false);
+
+    final File file = new File(myCheckoutDir, "submodule" + File.separator + "file.txt");
+    assertTrue(file.exists());
+    assertEquals("TW-65043", FileUtil.readText(file, "UTF-8").trim());
+  }
+
   @DataProvider(name = "custom_config_per_line")
   public Object[][] custom_config_per_line() throws Throwable {
     ArrayList<Object[]> res = new ArrayList<>();

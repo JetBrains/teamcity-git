@@ -45,13 +45,14 @@ public class AgentCommitLoaderFactory {
   /** Git version which supports --progress option in the fetch command */
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
 
-  @NotNull public static AgentCommitLoader getCommitLoaderForMirror(@NotNull GitVcsRoot root,
+  @NotNull private static AgentCommitLoader getCommitLoaderForMirror(@NotNull GitVcsRoot root,
                                                                     @NotNull AgentRunningBuild build,
                                                                     @NotNull File targetDirectory,
                                                                     @NotNull GitFactory gitFactory,
                                                                     @NotNull AgentPluginConfig pluginConfig,
+                                                                    @NotNull String maxRefSpec,
                                                                     @NotNull BuildProgressLogger logger) {
-    return new AbstractAgentCommitLoader(root, targetDirectory, gitFactory, pluginConfig, "+refs/heads/*:refs/heads/*", logger) {
+    return new AbstractAgentCommitLoader(root, targetDirectory, gitFactory, pluginConfig, maxRefSpec, logger) {
       @NotNull
       @Override
       protected String getRemoteRefName(@NotNull String branch) {
@@ -102,6 +103,27 @@ public class AgentCommitLoaderFactory {
 
       }
     };
+  }
+
+  @NotNull public static AgentCommitLoader getCommitLoaderForMirror(@NotNull GitVcsRoot root,
+                                                                    @NotNull AgentRunningBuild build,
+                                                                    @NotNull File targetDirectory,
+                                                                    @NotNull GitFactory gitFactory,
+                                                                    @NotNull AgentPluginConfig pluginConfig,
+                                                                    @NotNull BuildProgressLogger logger) {
+    return getCommitLoaderForMirror(root, build, targetDirectory, gitFactory, pluginConfig, "+refs/heads/*:refs/heads/*", logger);
+  }
+
+
+  @NotNull
+  public static AgentCommitLoader getCommitLoaderForSubmodule(@NotNull GitVcsRoot root,
+                                                              @NotNull AgentRunningBuild build,
+                                                              @NotNull File targetDirectory,
+                                                              @NotNull GitFactory gitFactory,
+                                                              @NotNull AgentPluginConfig pluginConfig,
+                                                              @NotNull BuildProgressLogger logger) {
+
+    return getCommitLoaderForMirror(root, build, targetDirectory, gitFactory, pluginConfig, "+refs/*:refs/*", logger);
   }
 
   private static abstract class AbstractAgentCommitLoader implements AgentCommitLoader {

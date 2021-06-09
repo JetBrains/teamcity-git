@@ -95,7 +95,8 @@ public class UpdaterWithMirror extends UpdaterImpl {
   protected void updateLocalMirror(File bareRepositoryDir,
                                    CommonURIish fetchUrl,
                                    Ref... revisions) throws VcsException {
-    String mirrorDescription = (isRootRepositoryDir(bareRepositoryDir) ? "" : "submodule ") + "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
+    final boolean isSubmodule = !isRootRepositoryDir(bareRepositoryDir);
+    String mirrorDescription = (isSubmodule ? "submodule" : " ") + "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
     LOG.info("Update " + mirrorDescription);
     if (isValidGitRepo(bareRepositoryDir)) {
       removeOrphanedIdxFiles(bareRepositoryDir);
@@ -119,6 +120,8 @@ public class UpdaterWithMirror extends UpdaterImpl {
     }
 
     final AgentCommitLoader commitLoader =
+      isSubmodule ?
+      AgentCommitLoaderFactory.getCommitLoaderForSubmodule(myRoot, myBuild, bareRepositoryDir, myGitFactory, myPluginConfig, myLogger) :
       AgentCommitLoaderFactory.getCommitLoaderForMirror(myRoot, myBuild, bareRepositoryDir, myGitFactory, myPluginConfig, myLogger);
     try {
       loadCommits(fetchRequired, commitLoader, revisions);
