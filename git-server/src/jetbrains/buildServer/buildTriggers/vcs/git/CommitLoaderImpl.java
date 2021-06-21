@@ -159,19 +159,35 @@ public class CommitLoaderImpl implements CommitLoader {
       revisions = findLocallyMissingRevisions(context, db, revisions, false);
       if (revisions.isEmpty()) return;
 
-      doFetch(db, fetchURI, getRefSpecsForRevisions(context, revisions, remoteRefs), settings);
+      final Set<String> filteredRemoteRefs = getFilteredRemoteRefs(context, remoteRefs); // unlike remoteRefs, which includes all remote refs, doesn't include tags if not enabled
+      final boolean fetchRemoteRefs = shouldFetchRemoteRefs(context, revisions, filteredRemoteRefs);
+      final Collection<RefSpec> refSpecs = fetchRemoteRefs ? getRefSpecForRemoteRefs(filteredRemoteRefs) : getRefSpecForCurrentState(context, revisions, remoteRefs);
+      doFetch(db, fetchURI, refSpecs, settings);
 
       revisions = findLocallyMissingRevisions(context, db, revisions, false);
       if (revisions.isEmpty()) return;
 
       final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
-      if (revisions.stream().noneMatch(RefCommit::isRefTip) && fetchAllRefsDisabled) return;
+      if (fetchAllRefsDisabled && revisions.stream().noneMatch(RefCommit::isRefTip)) return;
 
-      doFetch(db, fetchURI, fetchAllRefsDisabled ? getRefSpecsForRemoteBranches(remoteRefs) : getAllRefSpec(), settings);
+      if (!fetchAllRefsDisabled || !fetchRemoteRefs) {
+        doFetch(db, fetchURI, fetchAllRefsDisabled ? getRefSpecForRemoteRefs(filteredRemoteRefs) : getAllRefSpec(), settings);
+      }
       findLocallyMissingRevisions(context, db, revisions, true);
     } finally {
       lock.unlock();
     }
+  }
+
+  private boolean shouldFetchRemoteRefs(@NotNull OperationContext context, @NotNull Collection<RefCommit> revisions, @NotNull Set<String> filteredRemoteRefs) {
+    final float factor = context.getPluginConfig().fetchRemoteBranchesFactor();
+    if (factor == 0) return false;
+
+    final int currentStateNum = revisions.stream().map(r -> r.getRef()).collect(Collectors.toSet()).size();
+    if (currentStateNum == 1) return false;
+
+    final int remoteNum = filteredRemoteRefs.size();
+    return remoteNum > currentStateNum && (float)currentStateNum / remoteNum >= factor;
   }
 
   @NotNull
@@ -243,7 +259,7 @@ public class CommitLoaderImpl implements CommitLoader {
   private static final String REFS_MISSING_FORMAT = "Refs %s are no longer present in the remote repository";
 
   @NotNull
-  private Collection<RefSpec> getRefSpecsForRevisions(@NotNull OperationContext context, @NotNull Collection<RefCommit> revisions, @NotNull Collection<String> remoteRefs) throws VcsException {
+  private Collection<RefSpec> getRefSpecForCurrentState(@NotNull OperationContext context, @NotNull Collection<RefCommit> revisions, @NotNull Collection<String> remoteRefs) throws VcsException {
     final Set<RefSpec> result = new HashSet<>();
     final Set<String> missingTips = new HashSet<>();
 
@@ -275,9 +291,18 @@ public class CommitLoaderImpl implements CommitLoader {
   }
 
   @NotNull
-  private Collection<RefSpec> getRefSpecsForRemoteBranches(@NotNull Collection<String> refs) {
-    return refs.stream().filter(r -> r.startsWith("refs/")).map(r -> new RefSpec(r + ":" + r).setForceUpdate(true))
-      .collect(Collectors.toList());
+  private Collection<RefSpec> getRefSpecForRemoteRefs(@NotNull Collection<String> refs) {
+    return refs.stream().map(r -> new RefSpec(r + ":" + r).setForceUpdate(true)).collect(Collectors.toList());
+  }
+
+  @NotNull
+  private Set<String> getFilteredRemoteRefs(@NotNull OperationContext context, @NotNull Set<String> refs) throws VcsException {
+    final GitVcsRoot gitRoot = context.getGitRoot();
+    final boolean reportTags = gitRoot.isReportTags();
+    if (reportTags) return refs;
+
+    final String defaultBranch = GitUtils.expandRef(gitRoot.getRef());
+    return refs.stream().filter(r -> !GitServerUtil.isTag(r) || defaultBranch.equals(r)).collect(Collectors.toSet());
   }
 
   @NotNull

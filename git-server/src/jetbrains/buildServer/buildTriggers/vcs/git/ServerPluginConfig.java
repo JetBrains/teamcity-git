@@ -175,4 +175,6 @@ public interface ServerPluginConfig extends PluginConfig {
   long repositoryWriteLockTimeout();
 
   boolean refreshObjectDatabaseAfterFetch();
+
+  float fetchRemoteBranchesFactor();
 }

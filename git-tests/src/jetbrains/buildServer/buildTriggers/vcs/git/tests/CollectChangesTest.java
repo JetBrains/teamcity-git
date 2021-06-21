@@ -57,7 +57,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.data
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static jetbrains.buildServer.util.Util.map;
 import static jetbrains.buildServer.vcs.RepositoryStateData.createVersionState;
-import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.*;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.testng.AssertJUnit.fail;
@@ -839,6 +839,54 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     then(merge.getAttributes()).containsOnly(
       MapEntry.entry("teamcity.transient.changedFiles." + c2.name(), "dir1/\n./f1"),
       MapEntry.entry("teamcity.transient.changedFiles." + c3.name(), "dir1/\n./f1"));
+  }
+
+  @Test
+  @TestFor(issues = "TW-71924")
+  public void fetch_remote_refs_factor() throws Exception {
+    myConfig.setFetchRemoteBranchesFactor(0.01f);
+
+    ServerPluginConfig config = myConfig.build();
+    GitVcsSupport vcs = gitSupport().withPluginConfig(config).build();
+
+    File repo = copyRepository(myTempFiles, dataFile("repo.git"), "repo.git");
+    VcsRoot root = vcsRoot().withFetchUrl(repo).build();
+
+    final RepositoryStateData from = createVersionState("refs/heads/master",
+                                                        map("refs/heads/master", "5711cbfe566b6c92e331f95d4b236483f4532eed",
+                                                            "refs/heads/TW-66105", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"));
+    final RepositoryStateData to = createVersionState("refs/heads/master",
+                                                      map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9",
+                                                          "refs/heads/TW-66105", "7574b5358ac09d61ec5cb792d4462230de1d00c2"));
+    vcs.getCollectChangesPolicy().collectChanges(root, from, to, CheckoutRules.DEFAULT).get(0);
+
+    final RepositoryManager repositoryManager = vcs.getRepositoryManager();
+    final String fetchUrl = repo.getCanonicalPath();
+
+    assertNotNull(vcs.getCommitLoader().findCommit(repositoryManager.openRepository(new URIish(fetchUrl)), "b96aa6a603a178bcf34ac0aff54c004104381f41"));
+  }
+
+  @Test
+  @TestFor(issues = "TW-71924")
+  public void fetch_remote_refs_factor_ignored_if_single_branch_in_state() throws Exception {
+    myConfig.setFetchRemoteBranchesFactor(0.01f);
+
+    ServerPluginConfig config = myConfig.build();
+    GitVcsSupport vcs = gitSupport().withPluginConfig(config).build();
+
+    File repo = copyRepository(myTempFiles, dataFile("repo.git"), "repo.git");
+    VcsRoot root = vcsRoot().withFetchUrl(repo).build();
+
+    final RepositoryStateData from = createVersionState("refs/heads/master",
+                                                        map("refs/heads/master", "5711cbfe566b6c92e331f95d4b236483f4532eed"));
+    final RepositoryStateData to = createVersionState("refs/heads/master",
+                                                      map("refs/heads/master", "465ad9f630e451b9f2b782ffb09804c6a98c4bb9"));
+    vcs.getCollectChangesPolicy().collectChanges(root, from, to, CheckoutRules.DEFAULT).get(0);
+
+    final RepositoryManager repositoryManager = vcs.getRepositoryManager();
+    final String fetchUrl = repo.getCanonicalPath();
+
+    assertNull(vcs.getCommitLoader().findCommit(repositoryManager.openRepository(new URIish(fetchUrl)), "b96aa6a603a178bcf34ac0aff54c004104381f41"));
   }
 
   private GitVcsSupport git() {

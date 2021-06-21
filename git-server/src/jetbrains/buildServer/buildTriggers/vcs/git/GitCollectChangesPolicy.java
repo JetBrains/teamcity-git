@@ -17,6 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.Constants;
@@ -27,10 +30,6 @@ import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -186,14 +185,14 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   private class FetchContext {
     @NotNull private final OperationContext myContext;
     @NotNull private final FetchSettings myFetchSettings;
-    @NotNull private  final Set<String> myRemoteRefs;
+    @NotNull private final Set<String> myRemoteRefs;
 
     @NotNull private final Collection<CommitLoader.RefCommit> myRevisions = new ArrayList<>();
 
     public FetchContext(@NotNull final OperationContext context) throws VcsException {
       myContext = context;
       myFetchSettings = new FetchSettings(context.getGitRoot().getAuthSettings(), context.getProgress());
-      myRemoteRefs = myVcs.getRemoteRefs(context.getRoot()).keySet();
+      myRemoteRefs = myVcs.getRemoteRefs(context.getRoot()).keySet().stream().filter(r -> r.startsWith("refs/")).collect(Collectors.toSet());
     }
 
     @NotNull

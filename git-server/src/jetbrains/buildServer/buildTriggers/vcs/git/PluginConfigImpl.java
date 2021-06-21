@@ -87,6 +87,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private final static int GB = 1024 * 1024 * 1024;//bytes
 
   public static final float FETCH_PROCESS_MAX_MEMORY_MULT_FACTOR_DEFAULT = 1.4f;
+  public static final String FETCH_REMOTE_BRANCHES_FACTOR = "teamcity.server.git.fetchRemoteBranchesFactor";
 
   private final File myCachesDir;
   private final Set<String> myFetcherPropertyNames = setOf(TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS,
@@ -634,5 +635,14 @@ public class PluginConfigImpl implements ServerPluginConfig {
   @Override
   public boolean refreshObjectDatabaseAfterFetch() {
     return TeamCityProperties.getBooleanOrTrue("teamcity.server.git.fetch.refreshObjectDatabase");
+  }
+
+  @Override
+  public float fetchRemoteBranchesFactor() {
+    final float factor = TeamCityProperties.getFloat(FETCH_REMOTE_BRANCHES_FACTOR, 0);
+    if (factor > 1) {
+      LOG.warn(String.format("Unexpected \"%s\" value \"%s\": the value should be a float number from 0 to 1, where 0 means the feature is disabled", FETCH_REMOTE_BRANCHES_FACTOR, factor));
+    }
+    return factor;
   }
 }

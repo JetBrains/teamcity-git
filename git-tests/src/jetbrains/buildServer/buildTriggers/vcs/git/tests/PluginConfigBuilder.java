@@ -71,6 +71,7 @@ public class PluginConfigBuilder {
   private Boolean myRunInPlaceGc;
   private Boolean myReportPerParentChangedFiles;
   private boolean myFetchAllRefsEnabled;
+  private float myFetchRemoteBranchesFactor;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -403,6 +404,11 @@ public class PluginConfigBuilder {
       public boolean refreshObjectDatabaseAfterFetch() {
         return true;
       }
+
+      @Override
+      public float fetchRemoteBranchesFactor() {
+        return myFetchRemoteBranchesFactor;
+      }
     };
   }
 
@@ -588,6 +594,11 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setFetchAllRefsEnabled(final boolean fetchAllRefsEnabled) {
     myFetchAllRefsEnabled = fetchAllRefsEnabled;
+    return this;
+  }
+
+  PluginConfigBuilder setFetchRemoteBranchesFactor(float factor) {
+    myFetchRemoteBranchesFactor = factor;
     return this;
   }
 }
