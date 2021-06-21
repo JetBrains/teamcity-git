@@ -2138,4 +2138,18 @@ public class AgentVcsSupportTest {
     }});
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
   }
+
+  @TestFor(issues = "TW-71933")
+  public void no_master_in_submodule() throws Exception {
+    myRoot.addProperty(Constants.BRANCH_NAME, "refs/heads/TW-71933");
+    myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+
+    copyRepository(dataFile("submodule_no_master.git"), new File(myMainRepo.getParentFile(), "submodule_no_master.git"));
+
+    AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.USE_MIRRORS, "true");
+    }});
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "f618f42b6e1a076217475224abab174c4f4f7ac3", myCheckoutDir, build, false);
+    assertTrue(new File(myCheckoutDir, "submodule_no_master/f.txt").isFile());
+  }
 }
