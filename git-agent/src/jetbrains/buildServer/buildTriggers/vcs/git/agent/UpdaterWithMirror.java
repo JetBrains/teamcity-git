@@ -76,7 +76,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
   }
 
   @NotNull
-  private static Ref asRef(@NotNull String branch, @NotNull String sha) {
+  private static Ref asRef(@Nullable String branch, @NotNull String sha) {
     return new RefImpl(branch, sha);
   }
 
@@ -298,7 +298,12 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
   private void loadCommits(boolean fetchRequired, AgentCommitLoader commitLoader, Ref[] revisions) throws VcsException {
     for (Ref ref : revisions) {
-      commitLoader.loadCommitInBranch(ref.getObjectId().getName(), ref.getName(), fetchRequired);
+      final String sha = ref.getObjectId().getName();
+      if (ref.getName() == null) {
+        commitLoader.loadCommit(sha);
+      } else {
+        commitLoader.loadCommitInBranch(sha, ref.getName(), fetchRequired);
+      }
     }
   }
 
@@ -430,8 +435,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       return CollectionsUtil.convertCollection(mySubmodules, new Converter<Ref, Submodule>() {
         @Override
         public Ref createFrom(@NotNull final Submodule s) {
-          final String branch = s.getBranch();
-          return asRef(branch == null ? "refs/heads/master" : branch, s.getRevision());
+          return asRef(s.getBranch(), s.getRevision());
         }
       }).toArray(new Ref[0]);
     }
