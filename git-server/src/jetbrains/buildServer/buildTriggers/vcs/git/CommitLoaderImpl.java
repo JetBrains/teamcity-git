@@ -170,8 +170,10 @@ public class CommitLoaderImpl implements CommitLoader {
       final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
       if (fetchAllRefsDisabled && revisions.stream().noneMatch(RefCommit::isRefTip)) return;
 
-      if (!fetchAllRefsDisabled || !fetchRemoteRefs) {
-        doFetch(db, fetchURI, fetchAllRefsDisabled ? getRefSpecForRemoteRefs(filteredRemoteRefs) : getAllRefSpec(), settings);
+      if (fetchAllRefsDisabled && !fetchRemoteRefs) {
+        doFetch(db, fetchURI, getRefSpecForRemoteRefs(filteredRemoteRefs), settings);
+      } else if (!fetchAllRefsDisabled) {
+        doFetch(db, fetchURI, getAllRefSpec(), settings);
       }
       findLocallyMissingRevisions(context, db, revisions, true);
     } finally {
@@ -187,7 +189,7 @@ public class CommitLoaderImpl implements CommitLoader {
     if (currentStateNum == 1) return false;
 
     final int remoteNum = filteredRemoteRefs.size();
-    return remoteNum > currentStateNum && (float)currentStateNum / remoteNum >= factor;
+    return remoteNum < currentStateNum && (float)currentStateNum / remoteNum >= factor;
   }
 
   @NotNull
