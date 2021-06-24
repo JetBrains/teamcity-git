@@ -142,8 +142,8 @@ public class CommitLoaderImpl implements CommitLoader {
     final File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
 
-    revisions = findLocallyMissingRevisions(context, db, revisions, false);
-    if (revisions.isEmpty()) return;
+    Collection<RefCommit> missingRevisions = findLocallyMissingRevisions(context, db, revisions, false);
+    if (missingRevisions.isEmpty()) return;
 
     final long start = System.currentTimeMillis();
     final ReentrantLock lock = acquireWriteLock(repositoryDir, context.getPluginConfig().repositoryWriteLockTimeout());
@@ -156,26 +156,26 @@ public class CommitLoaderImpl implements CommitLoader {
       }
       PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + waitTime + "ms");
 
-      revisions = findLocallyMissingRevisions(context, db, revisions, false);
-      if (revisions.isEmpty()) return;
+      missingRevisions = findLocallyMissingRevisions(context, db, missingRevisions, false);
+      if (missingRevisions.isEmpty()) return;
 
       final Set<String> filteredRemoteRefs = getFilteredRemoteRefs(context, remoteRefs); // unlike remoteRefs, which includes all remote refs, doesn't include tags if not enabled
       final boolean fetchRemoteRefs = shouldFetchRemoteRefs(context, revisions, filteredRemoteRefs);
-      final Collection<RefSpec> refSpecs = fetchRemoteRefs ? getRefSpecForRemoteRefs(filteredRemoteRefs) : getRefSpecForCurrentState(context, revisions, remoteRefs);
+      final Collection<RefSpec> refSpecs = fetchRemoteRefs ? getRefSpecForRemoteRefs(filteredRemoteRefs) : getRefSpecForCurrentState(context, missingRevisions, remoteRefs);
       doFetch(db, fetchURI, refSpecs, settings);
 
-      revisions = findLocallyMissingRevisions(context, db, revisions, false);
-      if (revisions.isEmpty()) return;
+      missingRevisions = findLocallyMissingRevisions(context, db, missingRevisions, false);
+      if (missingRevisions.isEmpty()) return;
 
       final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
-      if (fetchAllRefsDisabled && revisions.stream().noneMatch(RefCommit::isRefTip)) return;
+      if (fetchAllRefsDisabled && missingRevisions.stream().noneMatch(RefCommit::isRefTip)) return;
 
       if (fetchAllRefsDisabled && !fetchRemoteRefs) {
         doFetch(db, fetchURI, getRefSpecForRemoteRefs(filteredRemoteRefs), settings);
       } else if (!fetchAllRefsDisabled) {
         doFetch(db, fetchURI, getAllRefSpec(), settings);
       }
-      findLocallyMissingRevisions(context, db, revisions, true);
+      findLocallyMissingRevisions(context, db, missingRevisions, true);
     } finally {
       lock.unlock();
     }
