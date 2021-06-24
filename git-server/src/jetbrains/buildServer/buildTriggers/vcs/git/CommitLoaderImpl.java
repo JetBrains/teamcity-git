@@ -185,7 +185,7 @@ public class CommitLoaderImpl implements CommitLoader {
     final float factor = context.getPluginConfig().fetchRemoteBranchesFactor();
     if (factor == 0) return false;
 
-    final int currentStateNum = revisions.stream().map(r -> r.getRef()).collect(Collectors.toSet()).size();
+    final int currentStateNum = revisions.stream().map(RefCommit::getRef).collect(Collectors.toSet()).size();
     if (currentStateNum == 1) return false;
 
     final int remoteNum = filteredRemoteRefs.size();
