@@ -189,7 +189,7 @@ public class CommitLoaderImpl implements CommitLoader {
     if (currentStateNum == 1) return false;
 
     final int remoteNum = filteredRemoteRefs.size();
-    return remoteNum < currentStateNum && (float)currentStateNum / remoteNum >= factor;
+    return remoteNum < currentStateNum || (float)currentStateNum / remoteNum >= factor;
   }
 
   @NotNull
