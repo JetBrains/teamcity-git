@@ -193,35 +193,29 @@ public class MapFullPathTest {
 
 
   public void bulk() throws Exception {
-    System.setProperty("teamcity.git.checkSuitable.analyzeCheckoutRules", "true");
+    //clone repository for myRoot and root3
+    RepositoryStateData state0 = RepositoryStateData.createSingleVersionState("a7274ca8e024d98c7d59874f19f21d26ee31d41d");
+    RepositoryStateData state1 = myGit.getCurrentState(myRoot);
+    myGit.getCollectChangesPolicy().collectChanges(myRoot, state0, state1, CheckoutRules.DEFAULT);
 
-    try {
-      //clone repository for myRoot and root3
-      RepositoryStateData state0 = RepositoryStateData.createSingleVersionState("a7274ca8e024d98c7d59874f19f21d26ee31d41d");
-      RepositoryStateData state1 = myGit.getCurrentState(myRoot);
-      myGit.getCollectChangesPolicy().collectChanges(myRoot, state0, state1, CheckoutRules.DEFAULT);
+    VcsRoot root3 = vcsRoot().withId(3).withFetchUrl(myRemoteRepositoryDir.getAbsolutePath()).build();//tracks same repo as myRoot1
+    VcsRoot root4 = vcsRoot().withId(4).withFetchUrl(myRemoteRepositoryDir2.getAbsolutePath()).build();//tracks same repo as myRoot2
 
-      VcsRoot root3 = vcsRoot().withId(3).withFetchUrl(myRemoteRepositoryDir.getAbsolutePath()).build();//tracks same repo as myRoot1
-      VcsRoot root4 = vcsRoot().withId(4).withFetchUrl(myRemoteRepositoryDir2.getAbsolutePath()).build();//tracks same repo as myRoot2
+    List<Boolean> result = myGit.checkSuitable(asList(
+      new VcsRootEntry(myRoot, new CheckoutRules("-:dir1")),
+      new VcsRootEntry(myRoot, new CheckoutRules("+:dir1")),
+      new VcsRootEntry(myRoot, new CheckoutRules("+:dir2")),
+      new VcsRootEntry(myRoot2, new CheckoutRules("+:dir2")),
+      new VcsRootEntry(root3, new CheckoutRules("+:dir1")),
+      new VcsRootEntry(root4, new CheckoutRules("+:dir4")),
+      new VcsRootEntry(root3, new CheckoutRules("+:dir5")),
+      new VcsRootEntry(root4, new CheckoutRules("+:dir6"))
+                                               ), asList(
+      "a7274ca8e024d98c7d59874f19f21d26ee31d41d-add81050184d3c818560bdd8839f50024c188586||dir1/text1.txt",//affects root and root3
+      "abababababababababababababababababababab||.")//affects no repo
+    );
 
-      List<Boolean> result = myGit.checkSuitable(asList(
-        new VcsRootEntry(myRoot, new CheckoutRules("-:dir1")),
-        new VcsRootEntry(myRoot, new CheckoutRules("+:dir1")),
-        new VcsRootEntry(myRoot, new CheckoutRules("+:dir2")),
-        new VcsRootEntry(myRoot2, new CheckoutRules("+:dir2")),
-        new VcsRootEntry(root3, new CheckoutRules("+:dir1")),
-        new VcsRootEntry(root4, new CheckoutRules("+:dir4")),
-        new VcsRootEntry(root3, new CheckoutRules("+:dir5")),
-        new VcsRootEntry(root4, new CheckoutRules("+:dir6"))
-        ), asList(
-        "a7274ca8e024d98c7d59874f19f21d26ee31d41d-add81050184d3c818560bdd8839f50024c188586||dir1/text1.txt",//affects root and root3
-        "abababababababababababababababababababab||.")//affects no repo
-      );
-
-      then(result).containsExactly(false, true, false, false, true, false, false, false);
-    } finally {
-      System.getProperties().remove("teamcity.git.checkSuitable.analyzeCheckoutRules");
-    }
+    then(result).containsExactly(false, true, false, false, true, false, false, false);
   }
 
 

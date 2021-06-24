@@ -27,13 +27,11 @@ import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatch
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
-import jetbrains.vcs.api.VcsSettings;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Ref;
@@ -398,38 +396,18 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   @Override
   public List<Boolean> checkSuitable(@NotNull List<VcsRootEntry> entries, @NotNull Collection<String> paths) {
-    boolean analyzeCheckoutRules = TeamCityProperties.getBoolean("teamcity.git.checkSuitable.analyzeCheckoutRules");
-
     Set<GitMapFullPath.FullPath> fullPaths = paths.stream().map(GitMapFullPath.FullPath::new).collect(Collectors.toSet());
-    Set<VcsRoot> uniqueVcsRoots = entries.stream().map(VcsSettings::getVcsRoot).collect(Collectors.toSet());
 
-    Map<VcsRoot, List<GitMapFullPath.FullPath>> vcsRootsWithPaths = findVcsRootsWithPaths(fullPaths, uniqueVcsRoots, !analyzeCheckoutRules);
+    Set<VcsRootEntry> vcsRootsWithPaths = findVcsRootEntriesWithPaths(fullPaths, entries);
     /* for logging */
     final Set<VcsRoot> suitableRoots = new HashSet<>();
 
-    Map<Pair<CheckoutRules, GitMapFullPath.FullPath>, Boolean> checkoutRulesCache = new HashMap<>();
-
     List<Boolean> res = new ArrayList<>();
     for (VcsRootEntry re: entries) {
-      List<GitMapFullPath.FullPath> applicablePaths = vcsRootsWithPaths.get(re.getVcsRoot());
-      if (applicablePaths == null) {
-        res.add(false);
-      } else {
-        boolean suitable = false;
-
-        if (analyzeCheckoutRules) {
-          for (GitMapFullPath.FullPath p: applicablePaths) {
-            if (!checkoutRulesCache.compute(Pair.create(re.getCheckoutRules(), p), (pair, r) -> pair.getFirst().map(pair.getSecond().getMappedPaths()).size() > 0)) continue;
-
-            suitable = true;
-            suitableRoots.add(re.getVcsRoot());
-            break;
-          }
-        } else {
-          suitable = true;
-        }
-
-        res.add(suitable);
+      boolean hasPaths = vcsRootsWithPaths.contains(re);
+      res.add(hasPaths);
+      if (hasPaths) {
+        suitableRoots.add(re.getVcsRoot());
       }
     }
 
@@ -443,34 +421,40 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  private Map<VcsRoot, List<GitMapFullPath.FullPath>> findVcsRootsWithPaths(@NotNull Collection<GitMapFullPath.FullPath> paths, @NotNull Collection<VcsRoot> vcsRoots, boolean stopOnFirstFoundPath) {
-    Map<VcsRoot, List<GitMapFullPath.FullPath>> res = new HashMap<>();
+  private Set<VcsRootEntry> findVcsRootEntriesWithPaths(@NotNull Collection<GitMapFullPath.FullPath> paths, @NotNull Collection<VcsRootEntry> rootEntries) {
+    Set<VcsRootEntry> res = new HashSet<>();
 
-    Map<File, List<GitMapFullPath.FullPath>> cloneDir2PathsCache = new HashMap<>();
-    for (VcsRoot root: vcsRoots) {
+    Set<String> mappedPaths = new HashSet<>();
+    paths.forEach(p -> mappedPaths.addAll(p.getMappedPaths()));
+
+    Map<Pair<File, CheckoutRules>, Boolean> cache = new HashMap<>();
+    for (VcsRootEntry re: rootEntries) {
+      VcsRoot root = re.getVcsRoot();
+      CheckoutRules checkoutRules = re.getCheckoutRules();
+      if (checkoutRules.map(mappedPaths).isEmpty()) continue;
+
       OperationContext context = createContext(root, "repositoryContainsPath");
       try {
         final GitVcsRoot gitRoot = context.getGitRoot();
         final File cloneDir = gitRoot.getRepositoryDir();
 
-        List<GitMapFullPath.FullPath> applicablePaths = cloneDir2PathsCache.compute(cloneDir, (dir, list) -> {
-          if (list == null) list = new ArrayList<>();
-
+        boolean pathsApplicable = cache.computeIfAbsent(Pair.create(cloneDir, checkoutRules), key -> {
           try {
-            for (GitMapFullPath.FullPath path : paths) {
-              if (myMapFullPath.repositoryContainsPath(context, gitRoot, path)) {
-                list.add(path);
-                if (stopOnFirstFoundPath) break;
+            for (GitMapFullPath.FullPath path: paths) {
+              if (!checkoutRules.map(path.getMappedPaths()).isEmpty() && myMapFullPath.repositoryContainsPath(context, gitRoot, path)) {
+                return true;
               }
             }
           } catch (VcsException e) {
             LOG.warnAndDebugDetails("Error while checking suitability for root " + LogUtil.describe(root) + ", assume root is not suitable", e);
           }
 
-          return list;
+          return false;
         });
 
-        if (!applicablePaths.isEmpty()) res.put(root, applicablePaths);
+        if (pathsApplicable) {
+          res.add(re);
+        }
       } catch (VcsException e) {
         LOG.warnAndDebugDetails("Error while checking suitability for root " + LogUtil.describe(root) + ", assume root is not suitable", e);
       } finally {
