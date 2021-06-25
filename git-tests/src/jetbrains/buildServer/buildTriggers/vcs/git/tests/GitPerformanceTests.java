@@ -16,7 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Date;
+import java.util.concurrent.atomic.AtomicLong;
 import jetbrains.buildServer.BaseTestCase;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -28,11 +33,6 @@ import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.Test;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Date;
-import java.util.concurrent.atomic.AtomicLong;
-
 /**
  * class for local experiments on performance.
  * This test is not intended to be executed in CI
@@ -40,6 +40,36 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Eugene Petrenko (eugene.petrenko@jetbrains.com)
  */
 public class GitPerformanceTests extends BaseTestCase {
+  @Test(invocationCount = 20)
+  public void incrementalIntellijFetch() throws Exception {
+    final VcsRootImpl root = VcsRootBuilder.vcsRoot()
+                                           .withBranchSpec("+:refs/heads/*")
+                                           .withFetchUrl("ssh://git@git.jetbrains.team/intellij.git")
+                                           .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_DEFAULT).build();
+
+    final ServerPaths sp = new ServerPaths("/Users/###/Tests/server_paths");
+
+    final GitSupportBuilder builder = GitSupportBuilder
+      .gitSupport()
+      .withServerPaths(sp)
+      .withPluginConfig(new PluginConfigBuilder(sp).setSeparateProcessForFetch(false).build());
+    GitVcsSupport support = builder.build();
+
+    final RepositoryStateData currentState = support.getCurrentState(root);
+
+    final long startTime = new Date().getTime();
+    System.out.println("Fetching repository...");
+
+    final OperationContext ctx = support.createContext(root, "fetch");
+    try {
+      support.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(ctx, currentState, true);
+    } finally {
+      ctx.close();
+    }
+
+    final long totalTime = new Date().getTime() - startTime;
+    System.out.println("Fetch time: " + totalTime + "ms");
+  }
 
   @Test
   public void toCleanCheckoutTest() throws Exception {
