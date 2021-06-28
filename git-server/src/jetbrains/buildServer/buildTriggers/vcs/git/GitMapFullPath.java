@@ -24,7 +24,6 @@ import java.util.*;
 import jetbrains.buildServer.parameters.ReferencesResolverUtil;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.impl.personal.PersonalPatchUtil;
-import jetbrains.buildServer.vcs.RevisionNotFoundException;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.eclipse.jgit.lib.Constants;
@@ -125,12 +124,7 @@ public class GitMapFullPath {
     } else {
       if (LOG.isDebugEnabled())
         LOG.debug("RevisionCache miss: root " + LogUtil.describe(root) + ", revision " + revision + ", lookup commit in repository");
-      try {
-        myCommitLoader.loadCommit(context, root, revision);
-        hasRevision = true;
-      } catch (RevisionNotFoundException e) {
-        hasRevision = false;
-      }
+      hasRevision = myCommitLoader.findCommit(context.getRepository(root), revision) != null;
       if (LOG.isDebugEnabled())
         LOG.debug("Root " + LogUtil.describe(root) + ", revision " + revision + (hasRevision ? " was found" : " wasn't found") + ", cache the result");
       repositoryCache.saveRevision(revision, hasRevision, resetCounter);
