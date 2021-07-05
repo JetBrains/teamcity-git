@@ -42,7 +42,18 @@ public class GitDetectorImpl implements GitDetector {
 
 
   @NotNull
+  @Override
+  public GitExec getGitPathAndVersion(@NotNull final AgentRunningBuild build) throws VcsException {
+    return getGitPathAndVersionInternal(null, null, build);
+  }
+
+  @NotNull
   public GitExec getGitPathAndVersion(@NotNull VcsRoot root, @NotNull BuildAgentConfiguration config, @NotNull AgentRunningBuild build) throws VcsException {
+    return getGitPathAndVersionInternal(root, config, build);
+  }
+
+  @NotNull
+  private GitExec getGitPathAndVersionInternal(@Nullable VcsRoot root, @Nullable BuildAgentConfiguration config, @NotNull AgentRunningBuild build) throws VcsException {
     String path = getPathFromRoot(root, config);
     if (path != null) {
       Loggers.VCS.info("Using vcs root's git: " + path);
@@ -91,12 +102,13 @@ public class GitDetectorImpl implements GitDetector {
   }
 
 
-  private String getPathFromRoot(VcsRoot root, BuildAgentConfiguration config) throws VcsException {
-    String path = root.getProperty(Constants.AGENT_GIT_PATH);
-    if (path != null) {
-      return myResolver.resolveGitPath(config, path);
-    }
-    return null;
+  private String getPathFromRoot(@Nullable VcsRoot root, @Nullable BuildAgentConfiguration config) throws VcsException {
+    if (root == null) return  null;
+
+    assert config != null;
+
+    final String path = root.getProperty(Constants.AGENT_GIT_PATH);
+    return path == null ? null : myResolver.resolveGitPath(config, path);
   }
 
 

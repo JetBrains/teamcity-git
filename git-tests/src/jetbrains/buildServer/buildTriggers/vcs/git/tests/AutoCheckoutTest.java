@@ -279,6 +279,12 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
         }
         throw new VcsException("Unexpected VCS root");
       }
+
+      @NotNull
+      @Override
+      public GitExec getGitPathAndVersion(@NotNull AgentRunningBuild build) throws VcsException {
+        throw new UnsupportedOperationException();
+      }
     };
     myVcsSupport = createVcsSupport(detector);
 
@@ -321,6 +327,12 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
       @NotNull
       public GitExec getGitPathAndVersion(@NotNull final VcsRoot root, @NotNull final BuildAgentConfiguration config, @NotNull final AgentRunningBuild build) throws VcsException {
         return new GitExec("git", version);
+      }
+
+      @NotNull
+      @Override
+      public GitExec getGitPathAndVersion(@NotNull AgentRunningBuild build) throws VcsException {
+        throw new UnsupportedOperationException();
       }
     };
     return createVcsSupport(detector);

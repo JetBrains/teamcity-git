@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.intellij.openapi.util.Pair;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.vcs.VcsException;
@@ -30,6 +29,9 @@ import org.jetbrains.annotations.NotNull;
 public interface GitDetector {
 
   @NotNull
-  public GitExec getGitPathAndVersion(@NotNull VcsRoot root, @NotNull BuildAgentConfiguration config, @NotNull AgentRunningBuild build) throws VcsException;
+  GitExec getGitPathAndVersion(@NotNull VcsRoot root, @NotNull BuildAgentConfiguration config, @NotNull AgentRunningBuild build) throws VcsException;
+
+  @NotNull
+  GitExec getGitPathAndVersion(@NotNull AgentRunningBuild build) throws VcsException;
 
 }
