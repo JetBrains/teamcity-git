@@ -128,6 +128,7 @@ public class CheckoutDirectoryCleanerTest extends BaseTestCase {
     final GeneralCommandLine cl = new GeneralCommandLine();
     cl.setExePath(myGitPath);
     cl.setWorkDirectory(myRepo.getAbsolutePath());
+    cl.addParameters("-c", "user.name=test", "-c", "user.email=test@test.com");
     cl.addParameter(name);
     cl.addParameters(params);
 
