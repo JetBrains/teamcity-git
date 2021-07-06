@@ -20,7 +20,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-public interface FetchCommand extends BaseCommand {
+public interface FetchCommand extends BaseCommand, AuthCommand<FetchCommand> {
 
   @NotNull
   FetchCommand setUseNativeSsh(boolean useNativeSsh);

@@ -20,7 +20,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-public interface SubmoduleUpdateCommand extends BaseCommand {
+public interface SubmoduleUpdateCommand extends BaseCommand, AuthCommand<SubmoduleUpdateCommand> {
 
   @NotNull
   SubmoduleUpdateCommand setUseNativeSsh(boolean useNativeSsh);
