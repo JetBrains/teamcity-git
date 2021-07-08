@@ -143,12 +143,8 @@ class ModificationDataRevWalk extends RevWalk {
       tw.setRecursive(true);
       myContext.addTree(myGitRoot, tw, myRepository, myCurrentCommit, shouldIgnoreSubmodulesErrors());
       RevCommit[] parents = myCurrentCommit.getParents();
-      boolean reportPerParentChangedFiles = parents.length > 1; // report only for merge commits
       for (RevCommit parentCommit : parents) {
         myContext.addTree(myGitRoot, tw, myRepository, parentCommit, true);
-        if (reportPerParentChangedFiles) {
-          tw.reportChangedFilesForParentCommit(parentCommit);
-        }
       }
 
       while (tw.next()) {
