@@ -1,0 +1,19 @@
+0000000000000000000000000000000000000000 bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf Pavel Sher <pavel.sher@jetbrains.com> 1625747107 +0200	commit (initial): readme
+bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf Pavel Sher <pavel.sher@jetbrains.com> 1625748207 +0200	checkout: moving from master to br1
+bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf a4bc5909156143a5590adadb2c20eaf71f2a3f8f Pavel Sher <pavel.sher@jetbrains.com> 1625748236 +0200	commit: new file
+a4bc5909156143a5590adadb2c20eaf71f2a3f8f d5a9a3c51fd53b1aec5e3746f521dc78355d7c78 Pavel Sher <pavel.sher@jetbrains.com> 1625748266 +0200	commit: new test
+d5a9a3c51fd53b1aec5e3746f521dc78355d7c78 b3e239298ba1cafca25b57c36ae9a7b3d8d2e3b6 Pavel Sher <pavel.sher@jetbrains.com> 1625748528 +0200	commit: build file
+b3e239298ba1cafca25b57c36ae9a7b3d8d2e3b6 d5a9a3c51fd53b1aec5e3746f521dc78355d7c78 Pavel Sher <pavel.sher@jetbrains.com> 1625748648 +0200	reset: moving to d5a9a3c51fd53b1aec5e3746f521dc78355d7c78
+d5a9a3c51fd53b1aec5e3746f521dc78355d7c78 d5a9a3c51fd53b1aec5e3746f521dc78355d7c78 Pavel Sher <pavel.sher@jetbrains.com> 1625748653 +0200	reset: moving to d5a9a3c51fd53b1aec5e3746f521dc78355d7c78
+d5a9a3c51fd53b1aec5e3746f521dc78355d7c78 182c0be19f520ad2e3125554323c800ccf9658fd Pavel Sher <pavel.sher@jetbrains.com> 1625748704 +0200	commit: test file1
+182c0be19f520ad2e3125554323c800ccf9658fd b265fd1608fe17f912a031312e1efc758c4e8a35 Pavel Sher <pavel.sher@jetbrains.com> 1625748725 +0200	commit: test file2
+b265fd1608fe17f912a031312e1efc758c4e8a35 db27c252664a29b6540c4b25d4f64eee5c6c84ed Pavel Sher <pavel.sher@jetbrains.com> 1625748744 +0200	commit: file1
+db27c252664a29b6540c4b25d4f64eee5c6c84ed bb6ab65d23fa0ffbaa61d44c8241f127cf0f323f Pavel Sher <pavel.sher@jetbrains.com> 1625748755 +0200	commit: file2
+bb6ab65d23fa0ffbaa61d44c8241f127cf0f323f bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf Pavel Sher <pavel.sher@jetbrains.com> 1625749138 +0200	checkout: moving from br1 to master
+bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf bb6ab65d23fa0ffbaa61d44c8241f127cf0f323f Pavel Sher <pavel.sher@jetbrains.com> 1625749153 +0200	merge br1: Fast-forward
+bb6ab65d23fa0ffbaa61d44c8241f127cf0f323f bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf Pavel Sher <pavel.sher@jetbrains.com> 1625749194 +0200	reset: moving to bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf
+bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf d5e0be562bd9690148c9e1699977059c1ced6410 Pavel Sher <pavel.sher@jetbrains.com> 1625749708 +0200	commit: build file
+d5e0be562bd9690148c9e1699977059c1ced6410 3dada99f39b112fe1de4da19a6ed5113f0035f21 Pavel Sher <pavel.sher@jetbrains.com> 1625749716 +0200	merge br1: Merge made by the 'recursive' strategy.
+3dada99f39b112fe1de4da19a6ed5113f0035f21 ae47e48aa75c7f12a9d9748a94362a9d5c559f15 Pavel Sher <pavel.sher@jetbrains.com> 1625749763 +0200	commit: fix build file
+ae47e48aa75c7f12a9d9748a94362a9d5c559f15 b304522994197be5f336d58cc34edc11cbda095e Pavel Sher <pavel.sher@jetbrains.com> 1625749781 +0200	commit: fix build file again
+b304522994197be5f336d58cc34edc11cbda095e b304522994197be5f336d58cc34edc11cbda095e Pavel Sher <pavel.sher@jetbrains.com> 1625755283 +0200	checkout: moving from master to revision_accepted_by_checkout_rules
