@@ -190,13 +190,15 @@ public class SSLInvestigatorTest {
       atLeast(1).of(context).isDeleteTempFiles();
       will(returnValue(false));
       atLeast(1).of(context).getGitExec();
-      will(returnValue(myMockery.mock(GitExec.class)));
+      will(returnValue(new GitExec("git", GitVersion.MIN)));
       atLeast(1).of(context).getCustomConfig();
       will(returnValue(Collections.emptyList()));
       atLeast(1).of(context).getLogger();
       will(returnValue(logger));
       atLeast(1).of(context).getTempDir();
       will(returnValue(myTempDirectory));
+      atLeast(1).of(context).getEnv();
+      will(returnValue(Collections.emptyMap()));
     }});
     return myLoggingFactory.createFactory(ssh, context);
   }
