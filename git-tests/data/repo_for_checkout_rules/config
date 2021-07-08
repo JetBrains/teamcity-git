@@ -1,0 +1,10 @@
+[core]
+	repositoryformatversion = 0
+	filemode = false
+	bare = false
+	logallrefupdates = true
+	ignorecase = true
+[receive]
+	denyCurrentBranch = ignore
+        denyDeleteCurrent = ignore
+

@@ -1,0 +1,9 @@
+0000000000000000000000000000000000000000 bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf Pavel Sher <pavel.sher@jetbrains.com> 1625748207 +0200	branch: Created from HEAD
+bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf a4bc5909156143a5590adadb2c20eaf71f2a3f8f Pavel Sher <pavel.sher@jetbrains.com> 1625748236 +0200	commit: new file
+a4bc5909156143a5590adadb2c20eaf71f2a3f8f d5a9a3c51fd53b1aec5e3746f521dc78355d7c78 Pavel Sher <pavel.sher@jetbrains.com> 1625748266 +0200	commit: new test
+d5a9a3c51fd53b1aec5e3746f521dc78355d7c78 b3e239298ba1cafca25b57c36ae9a7b3d8d2e3b6 Pavel Sher <pavel.sher@jetbrains.com> 1625748528 +0200	commit: build file
+b3e239298ba1cafca25b57c36ae9a7b3d8d2e3b6 d5a9a3c51fd53b1aec5e3746f521dc78355d7c78 Pavel Sher <pavel.sher@jetbrains.com> 1625748648 +0200	reset: moving to d5a9a3c51fd53b1aec5e3746f521dc78355d7c78
+d5a9a3c51fd53b1aec5e3746f521dc78355d7c78 182c0be19f520ad2e3125554323c800ccf9658fd Pavel Sher <pavel.sher@jetbrains.com> 1625748704 +0200	commit: test file1
+182c0be19f520ad2e3125554323c800ccf9658fd b265fd1608fe17f912a031312e1efc758c4e8a35 Pavel Sher <pavel.sher@jetbrains.com> 1625748725 +0200	commit: test file2
+b265fd1608fe17f912a031312e1efc758c4e8a35 db27c252664a29b6540c4b25d4f64eee5c6c84ed Pavel Sher <pavel.sher@jetbrains.com> 1625748744 +0200	commit: file1
+db27c252664a29b6540c4b25d4f64eee5c6c84ed bb6ab65d23fa0ffbaa61d44c8241f127cf0f323f Pavel Sher <pavel.sher@jetbrains.com> 1625748755 +0200	commit: file2
