@@ -36,12 +36,12 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.v
 import static org.assertj.core.api.BDDAssertions.then;
 
 @Test
-public class LatestIncludedRevisionTest extends BaseRemoteRepositoryTest {
+public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
   private TestLogger myLogger;
   private PluginConfigBuilder myConfig;
   private File myRepo;
 
-  public LatestIncludedRevisionTest() {
+  public LatestAcceptedRevisionTest() {
     super("repo_for_checkout_rules");
   }
 
