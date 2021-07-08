@@ -17,9 +17,10 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.UpdaterImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.InitCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -29,7 +30,7 @@ public class InitCommandImpl extends BaseCommandImpl implements InitCommand {
 
   private boolean myBare = false;
 
-  public InitCommandImpl(@NotNull GitCommandLine cmd) {
+  public InitCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
@@ -42,7 +43,7 @@ public class InitCommandImpl extends BaseCommandImpl implements InitCommand {
 
 
   public void call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameter("init");
     if (myBare)
       cmd.addParameter("--bare");

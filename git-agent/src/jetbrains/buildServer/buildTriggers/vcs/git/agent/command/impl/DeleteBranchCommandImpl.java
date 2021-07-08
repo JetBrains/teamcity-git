@@ -17,8 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.DeleteBranchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -26,7 +27,7 @@ public class DeleteBranchCommandImpl extends BaseCommandImpl implements DeleteBr
 
   private String myName;
 
-  public DeleteBranchCommandImpl(@NotNull GitCommandLine cmd) {
+  public DeleteBranchCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
@@ -37,7 +38,7 @@ public class DeleteBranchCommandImpl extends BaseCommandImpl implements DeleteBr
   }
 
   public void call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameter("branch");
     cmd.addParameter("-D");
     cmd.addParameter(myName);

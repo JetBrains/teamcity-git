@@ -16,18 +16,19 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.GcCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 public class GcCommandImpl extends BaseCommandImpl implements GcCommand {
-  public GcCommandImpl(@NotNull GitCommandLine cmd) {
+  public GcCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
   public void call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameter("gc");
     CommandUtil.runCommand(cmd);
   }

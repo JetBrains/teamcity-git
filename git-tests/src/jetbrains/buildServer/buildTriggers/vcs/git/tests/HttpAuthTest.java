@@ -17,12 +17,17 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.openapi.util.SystemInfo;
+import java.io.File;
+import java.io.IOException;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -34,12 +39,6 @@ import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Random;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;

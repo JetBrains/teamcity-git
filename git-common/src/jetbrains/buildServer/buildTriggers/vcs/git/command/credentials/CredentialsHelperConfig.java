@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.credentials;
 
 import com.intellij.openapi.util.Trinity;
-import org.jetbrains.annotations.NotNull;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.jetbrains.annotations.NotNull;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.agent.CredentialsHelper.*;
+import static jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelper.*;
 
 public class CredentialsHelperConfig {
   private final List<Trinity<String, String, String>> myCredentials = new ArrayList<Trinity<String, String, String>>();

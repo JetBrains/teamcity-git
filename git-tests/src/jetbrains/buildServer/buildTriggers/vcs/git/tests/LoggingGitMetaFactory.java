@@ -16,14 +16,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
-import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitFactory;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitMetaFactory;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
+import org.jetbrains.annotations.NotNull;
 
 public class LoggingGitMetaFactory implements GitMetaFactory {
   private final Map<String, List<String>> myInvokedMethods = new HashMap<String, List<String>>();
@@ -31,12 +32,8 @@ public class LoggingGitMetaFactory implements GitMetaFactory {
 
   @NotNull
   public GitFactory createFactory(@NotNull GitAgentSSHService sshService,
-                                  @NotNull AgentPluginConfig config,
-                                  @NotNull GitProgressLogger logger,
-                                  @NotNull File tempDir,
-                                  @NotNull Map<String, String> env,
                                   @NotNull Context ctx) {
-    return new GitFactoryProxy(sshService, config, tempDir, env, myInvokedMethods, myCallbacks, ctx);
+    return new GitFactoryProxy(sshService, myInvokedMethods, myCallbacks, ctx);
   }
 
 

@@ -16,19 +16,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.util.Map;
 
 public interface GitMetaFactory {
 
   @NotNull
   GitFactory createFactory(@NotNull GitAgentSSHService sshService,
-                           @NotNull AgentPluginConfig config,
-                           @NotNull GitProgressLogger logger,
-                           @NotNull File tempDir,
-                           @NotNull Map<String, String> env,
                            @NotNull Context ctx);
 
 }

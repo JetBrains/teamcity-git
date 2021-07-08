@@ -19,15 +19,16 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import java.io.File;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.Errors;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.Errors;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
+import static jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings.with;
 
 public class FetchCommandImpl extends BaseCommandImpl implements FetchCommand {
 
@@ -40,7 +41,7 @@ public class FetchCommandImpl extends BaseCommandImpl implements FetchCommand {
   private Integer myDepth;
   private boolean myFetchTags = true;
 
-  public FetchCommandImpl(@NotNull GitCommandLine cmd) {
+  public FetchCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
@@ -94,7 +95,7 @@ public class FetchCommandImpl extends BaseCommandImpl implements FetchCommand {
 
 
   public void call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameter("fetch");
     if (myQuite)
       cmd.addParameter("-q");

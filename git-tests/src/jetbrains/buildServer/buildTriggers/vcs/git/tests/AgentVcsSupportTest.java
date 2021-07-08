@@ -41,8 +41,12 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.EscapeEchoArgumentUnix;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.EscapeEchoArgumentWin;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.UnixScriptGen;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.WinScriptGen;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.CollectionsUtil;
@@ -1304,7 +1308,7 @@ public class AgentVcsSupportTest {
   @TestFor(issues = "TW-58811")
   public void deleted_thousands_tags_in_remote_repository_should_be_deleted_in_local_repository_effectively(Boolean useMirrors)
     throws Exception {
-    GitVersion version = new NativeGitFacade(getGitPath(), GitProgressLogger.NO_OP).version().call();
+    GitVersion version = new NativeGitFacade(getGitPath()).version().call();
     if (version.isLessThan(UpdaterImpl.GIT_UPDATE_REFS_STDIN)) {
       TestNGUtil.skip("Requires git version at least " + UpdaterImpl.GIT_UPDATE_REFS_STDIN);
     }
@@ -2103,14 +2107,9 @@ public class AgentVcsSupportTest {
   private class PushCommand {
     void run(String gitPath, String workDirectory) throws Exception {
       File tmpDir = new File(getTempDirectory());
-      GitCommandLine cmd = new GitCommandLine(null, SystemInfo.isUnix ? new UnixScriptGen(tmpDir, new EscapeEchoArgumentUnix())
-                                                                      : new WinScriptGen(tmpDir, new EscapeEchoArgumentWin()),
-                                              tmpDir,
-                                              true,
-                                              GitProgressLogger.NO_OP,
-                                              GitVersion.MIN,
-                                              new HashMap<String, String>(),
-                                              new NoBuildContext());
+      AgentGitCommandLine cmd = new AgentGitCommandLine(null, SystemInfo.isUnix ? new UnixScriptGen(tmpDir, new EscapeEchoArgumentUnix())
+                                                                                : new WinScriptGen(tmpDir, new EscapeEchoArgumentWin()),
+                                                        new NoBuildContext());
       cmd.setExePath(gitPath);
       cmd.setWorkingDirectory(new File(workDirectory));
       cmd.addParameters("push", "origin", "master");

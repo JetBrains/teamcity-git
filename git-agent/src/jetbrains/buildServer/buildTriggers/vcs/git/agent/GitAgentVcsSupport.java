@@ -18,7 +18,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.util.Pair;
 import java.io.File;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -107,8 +109,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull AgentRunningBuild build,
                             boolean cleanCheckoutRequested) throws VcsException {
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
-    Map<String, String> env = getGitCommandEnv(config, build);
-    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, config, getLogger(build, config), build.getBuildTempDirectory(), env, new BuildContext(build, config));
+    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, new BuildContext(build, config));
     Pair<CheckoutMode, File> targetDirAndMode = getTargetDirAndMode(config, rules, checkoutDirectory);
     CheckoutMode mode = targetDirAndMode.first;
     File targetDir = targetDirAndMode.second;
@@ -124,15 +125,6 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       updater = new UpdaterImpl(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager);
     }
     updater.update();
-  }
-
-  @NotNull
-  private Map<String, String> getGitCommandEnv(@NotNull AgentPluginConfig config, @NotNull AgentRunningBuild build) {
-    if (config.isRunGitWithBuildEnv()) {
-      return build.getBuildParameters().getEnvironmentVariables();
-    } else {
-      return new HashMap<>(0);
-    }
   }
 
   @NotNull
@@ -208,13 +200,6 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     IncludeRule rule = includeRules.get(0);
     return !"".equals(rule.getFrom()); //rule of form +:.=>dir doesn't require sparse checkout ('.' is transformed into empty string)
   }
-
-
-  @NotNull
-  private GitBuildProgressLogger getLogger(@NotNull AgentRunningBuild build, @NotNull AgentPluginConfig config) {
-    return new GitBuildProgressLogger(build.getBuildLogger().getFlowLogger("-1"), config.getGitProgressMode());
-  }
-
 
   @NotNull
   private Pair<CheckoutMode, File> getTargetDirAndMode(@NotNull AgentPluginConfig config,

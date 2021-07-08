@@ -16,19 +16,20 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleInitCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 public class SubmoduleInitCommandImpl extends BaseCommandImpl implements SubmoduleInitCommand {
 
-  public SubmoduleInitCommandImpl(@NotNull GitCommandLine cmd) {
+  public SubmoduleInitCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
   public void call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameter("submodule");
     cmd.addParameter("init");
     CommandUtil.runCommand(cmd);

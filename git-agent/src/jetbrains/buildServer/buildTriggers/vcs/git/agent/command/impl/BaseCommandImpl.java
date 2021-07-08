@@ -17,29 +17,28 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.openapi.util.Pair;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.BaseCommand;
-import org.jetbrains.annotations.NotNull;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.BaseCommand;
+import org.jetbrains.annotations.NotNull;
 
 class BaseCommandImpl implements BaseCommand {
 
-  private final GitCommandLine myCmd;
+  private final AgentGitCommandLine myCmd;
   private final List<Pair<String, String>> myConfigs = new ArrayList<Pair<String, String>>();
   private final Map<String, String> myEnv = new HashMap<String, String>();
   private final List<Runnable> myPostActions = new ArrayList<Runnable>();
 
-  BaseCommandImpl(@NotNull GitCommandLine cmd) {
+  BaseCommandImpl(@NotNull AgentGitCommandLine cmd) {
     myCmd = cmd;
   }
 
 
   @NotNull
-  protected GitCommandLine getCmd() {
+  protected AgentGitCommandLine getCmd() {
     for (Map.Entry<String, String> e : myEnv.entrySet()) {
       myCmd.addEnvParam(e.getKey(), e.getValue());
     }

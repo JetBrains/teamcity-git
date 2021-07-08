@@ -16,18 +16,19 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.PackRefs;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 public class PackRefsImpl extends BaseCommandImpl implements PackRefs {
-  public PackRefsImpl(@NotNull GitCommandLine cmd) {
+  public PackRefsImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
   public void call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameters("pack-refs", "--all");
     CommandUtil.runCommand(cmd);
   }

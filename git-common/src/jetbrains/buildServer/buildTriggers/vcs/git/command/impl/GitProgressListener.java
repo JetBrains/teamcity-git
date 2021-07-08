@@ -14,24 +14,20 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.errors;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
-import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.LineAwareByteArrayOutputStream;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
+public class GitProgressListener implements LineAwareByteArrayOutputStream.LineListener {
+  private final GitProgressLogger myLogger;
 
-public class GitIndexCorruptedException extends VcsException {
-
-  private final File myGitIndex;
-
-  public GitIndexCorruptedException(@NotNull File gitIndex, Throwable cause) {
-    super("Git index corrupted " + gitIndex.getAbsolutePath(), cause);
-    myGitIndex = gitIndex;
+  public GitProgressListener(@NotNull GitProgressLogger logger) {
+    myLogger = logger;
   }
 
-  @NotNull
-  public File getGitIndex() {
-    return myGitIndex;
+  public void newLineDetected(@NotNull String line) {
+    myLogger.progressMessage(line);
   }
 }

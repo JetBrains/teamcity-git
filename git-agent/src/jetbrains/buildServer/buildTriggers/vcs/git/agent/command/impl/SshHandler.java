@@ -23,9 +23,8 @@ import java.util.List;
 import java.util.Vector;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentPluginConfig;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.Context;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
@@ -65,8 +64,7 @@ public class SshHandler implements GitSSHService.Handler {
   public SshHandler(@NotNull GitSSHService ssh,
                     @Nullable VcsRootSshKeyManager sshKeyManager,
                     @NotNull AuthSettings authSettings,
-                    @NotNull GitCommandLine cmd,
-                    @NotNull File tmpDir,
+                    @NotNull AgentGitCommandLine cmd,
                     @NotNull Context ctx) throws VcsException {
     mySsh = ssh;
     myAuthSettings = authSettings;
@@ -81,7 +79,7 @@ public class SshHandler implements GitSSHService.Handler {
           TeamCitySshKey key = sshKeyManager.getKey(root);
           if (key != null) {
             try {
-              File privateKey = FileUtil.createTempFile(tmpDir, "key", "", true);
+              File privateKey = FileUtil.createTempFile(ctx.getTempDir(), "key", "", true);
               myFilesToClean.add(privateKey);
               FileUtil.writeFileAndReportErrors(privateKey, new String(key.getPrivateKey()));
               cmd.addEnvParam(GitSSHHandler.TEAMCITY_PRIVATE_KEY_PATH, privateKey.getCanonicalPath());
@@ -100,9 +98,7 @@ public class SshHandler implements GitSSHService.Handler {
     if (ctx.getPreferredSshAuthMethods() != null)
       cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_PREFERRED_AUTH_METHODS, ctx.getPreferredSshAuthMethods());
     cmd.addEnvParam(GitSSHHandler.TEAMCITY_DEBUG_SSH, String.valueOf(ctx.isDebugSsh()));
-    AgentPluginConfig config = ctx.getConfig();
-    if (config != null)
-      cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_IDLE_TIMEOUT_SECONDS, String.valueOf(config.getIdleTimeoutSeconds()));
+    cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_IDLE_TIMEOUT_SECONDS, String.valueOf(ctx.getIdleTimeoutSeconds()));
     String teamCityVersion = getTeamCityVersion();
     if (teamCityVersion != null) {
       cmd.addEnvParam(GitSSHHandler.TEAMCITY_VERSION, teamCityVersion);
@@ -118,7 +114,7 @@ public class SshHandler implements GitSSHService.Handler {
     myHandlerNo = ssh.registerHandler(this);
     cmd.addEnvParam(GitSSHHandler.SSH_HANDLER_ENV, Integer.toString(myHandlerNo));
 
-    final String sendEnv = ctx.getConfig().getSshRequestToken();
+    final String sendEnv = ctx.getSshRequestToken();
     if (StringUtil.isNotEmpty(sendEnv)) {
       cmd.addEnvParam(GitSSHHandler.TEAMCITY_SSH_REQUEST_TOKEN, sendEnv);
     }

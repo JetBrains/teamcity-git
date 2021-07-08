@@ -20,6 +20,7 @@ import java.util.Collection;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

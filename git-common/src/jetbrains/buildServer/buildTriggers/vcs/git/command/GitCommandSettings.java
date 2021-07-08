@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
+package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

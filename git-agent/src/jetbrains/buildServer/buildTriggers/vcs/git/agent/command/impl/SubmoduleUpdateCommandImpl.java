@@ -17,12 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleUpdateCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
+import static jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings.with;
 
 public class SubmoduleUpdateCommandImpl extends BaseCommandImpl implements SubmoduleUpdateCommand {
 
@@ -32,7 +32,7 @@ public class SubmoduleUpdateCommandImpl extends BaseCommandImpl implements Submo
   private boolean myForce;
   private Integer myDepth;
 
-  public SubmoduleUpdateCommandImpl(@NotNull GitCommandLine cmd) {
+  public SubmoduleUpdateCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
@@ -68,7 +68,7 @@ public class SubmoduleUpdateCommandImpl extends BaseCommandImpl implements Submo
   }
 
   public void call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameter("submodule");
     cmd.addParameter("update");
     if (myForce)

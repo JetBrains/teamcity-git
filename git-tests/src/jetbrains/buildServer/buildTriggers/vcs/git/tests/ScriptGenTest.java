@@ -18,17 +18,18 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.SystemInfo;
+import java.io.IOException;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.EscapeEchoArgumentUnix;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.EscapeEchoArgumentWin;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.UnixScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.WinScriptGen;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.TestFor;
@@ -38,8 +39,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.IOException;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.testng.AssertJUnit.assertEquals;

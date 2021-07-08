@@ -17,8 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.GetConfigCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -26,7 +27,7 @@ public class GetConfigCommandImpl extends BaseCommandImpl implements GetConfigCo
 
   private String myName;
 
-  public GetConfigCommandImpl(@NotNull GitCommandLine cmd) {
+  public GetConfigCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
@@ -47,7 +48,7 @@ public class GetConfigCommandImpl extends BaseCommandImpl implements GetConfigCo
   }
 
   private String callWithLevel(String... logLevel) throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameters("config", myName);
     ExecResult r = CommandUtil.runCommand(cmd, logLevel);
     CommandUtil.failIfNotEmptyStdErr(cmd, r);

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import org.jetbrains.annotations.Nullable;

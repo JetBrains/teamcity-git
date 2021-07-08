@@ -17,22 +17,22 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.util.ArrayList;
+import java.util.List;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.Retry;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static com.intellij.openapi.util.text.StringUtil.splitByLines;
-import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
+import static jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings.with;
 
 public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteCommand {
 
@@ -42,7 +42,7 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
   private int myRetryAttempts = 1;
   private int myTimeoutSeconds;
 
-  public LsRemoteCommandImpl(@NotNull GitCommandLine cmd) {
+  public LsRemoteCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
@@ -80,7 +80,7 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
 
   @NotNull
   public List<Ref> call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameter("ls-remote");
     if (myShowTags)
       cmd.addParameter("--tags");

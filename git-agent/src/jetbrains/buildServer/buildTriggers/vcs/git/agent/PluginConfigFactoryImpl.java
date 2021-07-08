@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 

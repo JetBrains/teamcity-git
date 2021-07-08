@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent;
+package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import org.jetbrains.annotations.NotNull;
 

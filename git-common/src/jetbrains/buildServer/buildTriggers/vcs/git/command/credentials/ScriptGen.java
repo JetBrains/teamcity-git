@@ -14,18 +14,16 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.credentials;
 
 import com.intellij.openapi.util.io.StreamUtil;
+import java.io.*;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.CredentialsHelper;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.*;
 
 public abstract class ScriptGen {
 

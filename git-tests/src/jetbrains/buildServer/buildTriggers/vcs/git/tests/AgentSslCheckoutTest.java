@@ -16,6 +16,9 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
@@ -28,10 +31,6 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl.USE_ALTERNATES;
 import static jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl.USE_MIRRORS;
@@ -135,8 +134,7 @@ public class AgentSslCheckoutTest extends BaseRemoteRepositoryTest {
   private GitFacade gitFacade(AgentRunningBuild build) throws VcsException {
     final AgentPluginConfig config = pluginConfigFactory().createConfig(build, myRoot);
     final Map<String, String> env = getGitCommandEnv(config, build);
-    final GitFactory gitFactory = gitMetaFactory().createFactory(getGitAgentSSHService(), config, getLogger(build, config),
-                                                                 build.getBuildTempDirectory(), env, new BuildContext(build, config));
+    final GitFactory gitFactory = gitMetaFactory().createFactory(getGitAgentSSHService(), new BuildContext(build, config));
     return gitFactory.create(myCheckoutDir);
   }
 
@@ -158,10 +156,5 @@ public class AgentSslCheckoutTest extends BaseRemoteRepositoryTest {
     } else {
       return new HashMap<>(0);
     }
-  }
-
-  @NotNull
-  private GitBuildProgressLogger getLogger(@NotNull AgentRunningBuild build, @NotNull AgentPluginConfig config) {
-    return new GitBuildProgressLogger(build.getBuildLogger().getFlowLogger("-1"), config.getGitProgressMode());
   }
 }

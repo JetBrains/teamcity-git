@@ -16,16 +16,16 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.DiffCommand;
-import jetbrains.buildServer.util.StringUtil;
-import jetbrains.buildServer.vcs.VcsException;
-import org.jetbrains.annotations.NotNull;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.DiffCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
+import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.vcs.VcsException;
+import org.jetbrains.annotations.NotNull;
 
 public class DiffCommandImpl extends BaseCommandImpl implements DiffCommand {
 
@@ -33,7 +33,7 @@ public class DiffCommandImpl extends BaseCommandImpl implements DiffCommand {
   private String myCommit2;
   private String myFormat;
 
-  public DiffCommandImpl(@NotNull GitCommandLine cmd) {
+  public DiffCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
@@ -61,7 +61,7 @@ public class DiffCommandImpl extends BaseCommandImpl implements DiffCommand {
   @NotNull
   @Override
   public List<String> call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameter("diff");
     if (myFormat != null) {
       cmd.addParameter(myFormat);

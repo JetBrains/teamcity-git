@@ -23,6 +23,7 @@ import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -115,7 +116,7 @@ public class GitDetectorImpl implements GitDetector {
   @NotNull
   private GitVersion getGitVersion(String path) throws VcsException {
     try {
-      return new NativeGitFacade(path, GitProgressLogger.NO_OP).version().call();
+      return new NativeGitFacade(path).version().call();
     } catch (VcsException e) {
       throw new VcsException("Unable to run git at path " + path, e);
     }

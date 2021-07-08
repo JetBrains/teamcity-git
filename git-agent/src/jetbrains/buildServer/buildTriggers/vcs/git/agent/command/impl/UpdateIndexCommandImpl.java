@@ -17,12 +17,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateIndexCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings.with;
+import static jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings.with;
 
 public class UpdateIndexCommandImpl extends BaseCommandImpl implements UpdateIndexCommand {
 
@@ -31,7 +31,7 @@ public class UpdateIndexCommandImpl extends BaseCommandImpl implements UpdateInd
   private boolean myReallyRefresh;
   private boolean myQuiet;
 
-  public UpdateIndexCommandImpl(@NotNull GitCommandLine cmd) {
+  public UpdateIndexCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
@@ -69,7 +69,7 @@ public class UpdateIndexCommandImpl extends BaseCommandImpl implements UpdateInd
 
   @Override
   public void call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameters("update-index");
     if (myQuiet)
       cmd.addParameter("-q");

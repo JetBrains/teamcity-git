@@ -17,8 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefBatchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -30,7 +31,7 @@ import static org.apache.commons.codec.Charsets.UTF_8;
 public class UpdateRefBatchCommandImpl extends BaseCommandImpl implements UpdateRefBatchCommand {
   private FastByteArrayBuilder myInput = new FastByteArrayBuilder();
 
-  public UpdateRefBatchCommandImpl(@NotNull GitCommandLine cmd) {
+  public UpdateRefBatchCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
@@ -86,7 +87,7 @@ public class UpdateRefBatchCommandImpl extends BaseCommandImpl implements Update
   }
 
   public void call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameter("update-ref");
     cmd.addParameter("--stdin");
     cmd.addParameter("-z");

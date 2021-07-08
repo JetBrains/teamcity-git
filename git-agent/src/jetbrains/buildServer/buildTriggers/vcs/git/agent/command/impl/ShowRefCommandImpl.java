@@ -17,15 +17,15 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.openapi.util.text.StringUtil;
+import java.util.*;
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.*;
 
 public class ShowRefCommandImpl extends BaseCommandImpl implements ShowRefCommand {
 
@@ -34,7 +34,7 @@ public class ShowRefCommandImpl extends BaseCommandImpl implements ShowRefComman
   private String myPattern;
   private boolean myShowTags;
 
-  public ShowRefCommandImpl(@NotNull GitCommandLine cmd) {
+  public ShowRefCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
@@ -53,7 +53,7 @@ public class ShowRefCommandImpl extends BaseCommandImpl implements ShowRefComman
 
   @NotNull
   public ShowRefResult call() {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameter("show-ref");
     if (myPattern != null)
       cmd.addParameters(myPattern);

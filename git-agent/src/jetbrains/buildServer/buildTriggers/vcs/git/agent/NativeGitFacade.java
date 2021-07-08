@@ -18,17 +18,17 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.SystemInfo;
-import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.ProcessTimeoutCallback;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
@@ -44,64 +44,33 @@ public class NativeGitFacade implements GitFacade {
 
   private final GitAgentSSHService mySsh;
   private final ScriptGen myScriptGen;
-  private final String myGitPath;
-  private final GitVersion myGitVersion;
   private final File myRepositoryDir;
-  private final File myTmpDir;
-  private final boolean myDeleteTempFiles;
-  private final GitProgressLogger myLogger;
-  private final GitExec myGitExec;
-  private final Map<String, String> myEnv;
   private final Context myCtx;
   private VcsRootSshKeyManager mySshKeyManager;
-  private boolean myUseGitSshCommand = true;
-  private final Collection<String> myCustomConfig;
 
   public NativeGitFacade(@NotNull GitAgentSSHService ssh,
-                         @NotNull String gitPath,
-                         @NotNull GitVersion gitVersion,
                          @NotNull File repositoryDir,
-                         @NotNull File tmpDir,
-                         boolean deleteTempFiles,
-                         @NotNull GitProgressLogger logger,
-                         @NotNull GitExec gitExec,
-                         @NotNull Map<String, String> env,
-                         @NotNull Collection<String> customConfig,
                          @NotNull Context ctx) {
     mySsh = ssh;
-    myTmpDir = tmpDir;
-    myScriptGen = makeScriptGen();
-    myGitPath = gitPath;
-    myGitVersion = gitVersion;
-    myRepositoryDir = repositoryDir;
-    myDeleteTempFiles = deleteTempFiles;
-    myLogger = logger;
-    myGitExec = gitExec;
-    myEnv = env;
-    myCustomConfig = customConfig;
     myCtx = ctx;
+    myScriptGen = makeScriptGen();
+    myRepositoryDir = repositoryDir;
   }
 
-  public NativeGitFacade(@NotNull String gitPath, @NotNull GitProgressLogger logger) {
-    this(gitPath, logger, new File("."));
+  public NativeGitFacade(@NotNull String gitPath) {
+    this(gitPath, new File("."));
   }
 
+  public NativeGitFacade(@NotNull File repositoryDirh) {
+    this("git", repositoryDirh);
+  }
 
   public NativeGitFacade(@NotNull String gitPath,
-                         @NotNull GitProgressLogger logger,
                          @NotNull File repositoryDir) {
     mySsh = null;
-    myTmpDir = new File(FileUtil.getTempDirectory());
+    myCtx = new NoBuildContext(gitPath);
     myScriptGen = makeScriptGen();
-    myGitPath = gitPath;
-    myGitVersion = GitVersion.MIN;
     myRepositoryDir = repositoryDir;
-    myDeleteTempFiles = true;
-    myLogger = logger;
-    myGitExec = null;
-    myEnv = new HashMap<String, String>(0);
-    myCustomConfig = Collections.emptyList();
-    myCtx = new NoBuildContext();
   }
 
 
@@ -266,8 +235,9 @@ public class NativeGitFacade implements GitFacade {
   @NotNull
   public String resolvePath(@NotNull File f) throws VcsException {
     try {
-      if (myGitExec.isCygwin()) {
-        String cygwinBin = myGitExec.getCygwinBinPath();
+      final GitExec gitExec = myCtx.getGitExec();
+      if (gitExec.isCygwin()) {
+        String cygwinBin = gitExec.getCygwinBinPath();
         GeneralCommandLine cmd = new GeneralCommandLine();
         cmd.setWorkDirectory(cygwinBin);
         cmd.setExePath(new File(cygwinBin, "cygpath.exe").getCanonicalPath());
@@ -286,13 +256,12 @@ public class NativeGitFacade implements GitFacade {
   }
 
   @NotNull
-  private GitCommandLine createCommandLine() {
-    GitCommandLine cmd = new GitCommandLine(mySsh, myScriptGen, myTmpDir, myDeleteTempFiles, myLogger, myGitVersion, myEnv, myCtx);
-    cmd.setExePath(myGitPath);
+  private AgentGitCommandLine createCommandLine() {
+    AgentGitCommandLine cmd = new AgentGitCommandLine(mySsh, myScriptGen, myCtx);
+    cmd.setExePath(myCtx.getGitExec().getPath());
     cmd.setWorkingDirectory(myRepositoryDir);
     cmd.setSshKeyManager(mySshKeyManager);
-    cmd.setUseGitSshCommand(myUseGitSshCommand);
-    for (String config : myCustomConfig) {
+    for (String config : myCtx.getCustomConfig()) {
       cmd.addParameters("-c", config);
     }
     return cmd;
@@ -302,13 +271,10 @@ public class NativeGitFacade implements GitFacade {
     mySshKeyManager = sshKeyManager;
   }
 
-  public void setUseGitSshCommand(boolean useGitSshCommand) {
-    myUseGitSshCommand = useGitSshCommand;
-  }
-
   @NotNull
   private ScriptGen makeScriptGen() {
-    return SystemInfo.isUnix ? new UnixScriptGen(myTmpDir, new EscapeEchoArgumentUnix()) : new WinScriptGen(myTmpDir, new EscapeEchoArgumentWin());
+    final File tempDir = myCtx.getTempDir();
+    return SystemInfo.isUnix ? new UnixScriptGen(tempDir, new EscapeEchoArgumentUnix()) : new WinScriptGen(tempDir, new EscapeEchoArgumentWin());
   }
 
 

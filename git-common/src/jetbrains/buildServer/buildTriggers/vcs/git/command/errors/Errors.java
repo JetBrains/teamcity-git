@@ -14,15 +14,29 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.errors;
 
-import jetbrains.buildServer.agent.BuildInterruptReason;
+import java.util.regex.Pattern;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-public class CheckoutCanceledException extends VcsException {
+public class Errors {
 
-  public CheckoutCanceledException(@NotNull BuildInterruptReason reason) {
-    super("Checkout canceled: " + reason);
+  private static final Pattern OUTDATED_INDEX_PATTERN = Pattern.compile(".*Entry '.+' not uptodate\\. Cannot merge\\..*", Pattern.DOTALL);
+
+  public static boolean isCorruptedIndexError(@NotNull VcsException e) {
+    String msg = e.getMessage();
+    if (msg == null)
+      return false;
+    return msg.contains("fatal: index file smaller than expected");
   }
+
+
+  public static boolean isOutdatedIndexError(@NotNull VcsException e) {
+    String msg = e.getMessage();
+    if (msg == null)
+      return false;
+    return OUTDATED_INDEX_PATTERN.matcher(msg).matches();
+  }
+
 }

@@ -16,15 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import jetbrains.buildServer.agent.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
-import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.util.Disposable;
-import jetbrains.buildServer.util.EventDispatcher;
-import jetbrains.buildServer.util.NamedThreadFactory;
-import org.eclipse.jgit.lib.RepositoryBuilder;
-import org.jetbrains.annotations.NotNull;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,6 +26,14 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import jetbrains.buildServer.agent.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
+import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.util.Disposable;
+import jetbrains.buildServer.util.EventDispatcher;
+import jetbrains.buildServer.util.NamedThreadFactory;
+import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Runs 'git gc' when agent is idle
@@ -119,7 +118,7 @@ public class GCIdleTask implements AgentIdleTasks.Task {
       Loggers.VCS.debug("Run git gc in " + path);
       Disposable name = NamedThreadFactory.patchThreadName("Run git gc in " + path);
       try {
-        new NativeGitFacade("git", GitProgressLogger.NO_OP, mirror).gc().call();
+        new NativeGitFacade(mirror).gc().call();
         myGcTimestamp.put(mirror.getName(), System.nanoTime());
       } catch (Exception e) {
         Loggers.VCS.warnAndDebugDetails("Error while running git gc in " + path, e);

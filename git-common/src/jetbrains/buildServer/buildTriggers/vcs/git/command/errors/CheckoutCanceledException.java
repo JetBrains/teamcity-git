@@ -14,20 +14,14 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.errors;
 
-import jetbrains.buildServer.LineAwareByteArrayOutputStream;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitProgressLogger;
+import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-public class GitProgressListener implements LineAwareByteArrayOutputStream.LineListener {
-  private final GitProgressLogger myLogger;
+public class CheckoutCanceledException extends VcsException {
 
-  public GitProgressListener(@NotNull GitProgressLogger logger) {
-    myLogger = logger;
-  }
-
-  public void newLineDetected(@NotNull String line) {
-    myLogger.progressMessage(line);
+  public CheckoutCanceledException(@NotNull String reason) {
+    super("Checkout canceled: " + reason);
   }
 }

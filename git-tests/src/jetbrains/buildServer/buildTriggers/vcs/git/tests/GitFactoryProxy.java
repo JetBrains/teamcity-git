@@ -20,39 +20,32 @@ import java.io.File;
 import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.Map;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitFacade;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitFactory;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.NativeGitFacade;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import org.jetbrains.annotations.NotNull;
 
 public class GitFactoryProxy implements GitFactory {
   private final GitAgentSSHService mySshService;
-  private final AgentPluginConfig myConfig;
-  private final File myTempDir;
-  private final Map<String, String> myEnv;
   private final Map<String, List<String>> myInvokedMethods;
   private final Map<String, GitCommandProxyCallback> myCallbacks;
   private final Context myCtx;
 
   public GitFactoryProxy(@NotNull GitAgentSSHService sshService,
-                         @NotNull AgentPluginConfig config,
-                         @NotNull File tempDir,
-                         @NotNull Map<String, String> env,
                          @NotNull Map<String, List<String>> invokedMethods,
                          @NotNull Map<String, GitCommandProxyCallback> callbacks,
                          @NotNull Context ctx) {
     mySshService = sshService;
-    myConfig = config;
-    myTempDir = tempDir;
     myInvokedMethods = invokedMethods;
-    myEnv = env;
     myCallbacks = callbacks;
     myCtx = ctx;
   }
 
   @NotNull
   public GitFacade create(@NotNull File repositoryDir) {
-    GitFacade facade = new NativeGitFacade(mySshService, myConfig.getPathToGit(), myConfig.getGitVersion(), repositoryDir, myTempDir,
-                                           myConfig.isDeleteTempFiles(), GitProgressLogger.NO_OP, myConfig.getGitExec(), myEnv,
-                                           myConfig.getCustomConfig(), myCtx);
+    GitFacade facade = new NativeGitFacade(mySshService, repositoryDir, myCtx);
     return (GitFacade)Proxy.newProxyInstance(GitFacadeProxy.class.getClassLoader(), new Class[]{GitFacade.class},
                                              new GitFacadeProxy(facade, myInvokedMethods, myCallbacks));
   }

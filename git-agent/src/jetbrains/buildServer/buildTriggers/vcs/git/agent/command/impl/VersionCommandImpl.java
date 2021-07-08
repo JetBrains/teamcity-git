@@ -18,20 +18,21 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.VersionCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 public class VersionCommandImpl extends BaseCommandImpl implements VersionCommand {
 
-  public VersionCommandImpl(@NotNull GitCommandLine cmd) {
+  public VersionCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
   }
 
   @NotNull
   public GitVersion call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameter("version");
     ExecResult r = CommandUtil.runCommand(cmd.repeatOnEmptyOutput(true), 60);
     CommandUtil.failIfNotEmptyStdErr(cmd, r);

@@ -16,15 +16,36 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import jetbrains.buildServer.agent.BuildInterruptReason;
+import com.intellij.openapi.util.io.FileUtil;
+import java.io.File;
+import java.nio.charset.Charset;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
+import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.log.Loggers;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class NoBuildContext implements Context {
 
+  private final GitExec myGitExec;
+
+  public NoBuildContext() {
+    this("git");
+  }
+
+  public NoBuildContext(@NotNull String gitPath) {
+    myGitExec = new GitExec(gitPath, GitVersion.MIN, null);
+  }
+
   @Nullable
   @Override
-  public BuildInterruptReason getInterruptionReason() {
+  public String getInterruptionReason() {
     return null;
   }
 
@@ -52,7 +73,64 @@ public class NoBuildContext implements Context {
 
   @Nullable
   @Override
-  public AgentPluginConfig getConfig() {
+  public Charset getCharset() {
     return null;
+  }
+
+  @Override
+  public boolean isDeleteTempFiles() {
+    return true;
+  }
+
+  @Override
+  public boolean isUseGitSshCommand() {
+    return true;
+  }
+
+  @NotNull
+  @Override
+  public File getTempDir() {
+    return new File(FileUtil.getTempDirectory());
+  }
+
+  @NotNull
+  @Override
+  public Map<String, String> getEnv() {
+    return Collections.emptyMap();
+  }
+
+  @NotNull
+  @Override
+  public GitExec getGitExec() {
+    return myGitExec;
+  }
+
+  @NotNull
+  @Override
+  public GitVersion getGitVersion() {
+    return myGitExec.getVersion();
+  }
+
+  @Override
+  public int getIdleTimeoutSeconds() {
+    return PluginConfig.DEFAULT_IDLE_TIMEOUT;
+  }
+
+  @Nullable
+  @Override
+  public String getSshRequestToken() {
+    return null;
+  }
+
+  @NotNull
+  @Override
+  public Collection<String> getCustomConfig() {
+    return Collections.emptyList();
+  }
+
+  @NotNull
+  @Override
+  public GitProgressLogger getLogger() {
+    return GitProgressLogger.NO_OP;
   }
 }

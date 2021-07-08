@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import java.io.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.ShallowUpdater;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitExecTimeout;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.CheckoutCanceledException;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
@@ -36,7 +36,7 @@ public class CommandUtil {
   public static final int DEFAULT_COMMAND_TIMEOUT_SEC = 3600;
 
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
-  public static void checkCommandFailed(@NotNull String cmdName, @NotNull ExecResult res, String... errorsLogLevel) throws VcsException {
+  private static void checkCommandFailed(@NotNull String cmdName, @NotNull ExecResult res, String... errorsLogLevel) throws VcsException {
     if ("info".equals(logLevel(errorsLogLevel)) && res.getExitCode() != 0 && res.getException() == null) {
       logMessage("'" + cmdName + "' exit code: " + res.getExitCode() + ". It is expected behaviour.", "info");
     } else {
@@ -51,7 +51,7 @@ public class CommandUtil {
   }
 
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
-  public static void commandFailed(final String cmdName, final ExecResult res, String... errorsLogLevel) throws VcsException {
+  private static void commandFailed(final String cmdName, final ExecResult res, String... errorsLogLevel) throws VcsException {
     Throwable exception = res.getException();
     String stderr = res.getStderr().trim();
     String stdout = res.getStdout().trim();
@@ -203,7 +203,7 @@ public class CommandUtil {
            msg.contains("no such remote") ||
            msg.contains("access denied") ||
            msg.contains("could not read from remote repository") ||
-           msg.contains(ShallowUpdater.REQUEST_UNADVERTISED_OBJECT_NOT_ALLOWED);
+           msg.contains("server does not allow request for unadvertised object");
   }
 
   public static boolean shouldFetchFromScratch(@NotNull VcsException e) {

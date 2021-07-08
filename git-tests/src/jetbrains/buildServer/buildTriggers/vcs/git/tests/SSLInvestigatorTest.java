@@ -17,12 +17,20 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.sun.net.httpserver.HttpsServer;
+import java.io.File;
+import java.net.URL;
+import java.util.Collections;
+import java.util.Optional;
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.GetConfigCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SetConfigCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import org.eclipse.jgit.transport.URIish;
@@ -30,11 +38,6 @@ import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.jmock.lib.legacy.ClassImposteriser;
 import org.testng.annotations.*;
-
-import java.io.File;
-import java.net.URL;
-import java.util.Collections;
-import java.util.Optional;
 
 import static org.testng.Assert.*;
 
@@ -177,23 +180,24 @@ public class SSLInvestigatorTest {
     return new SSLInvestigator(new URIish(new URL("https://localhost:" + myServerPort)), myTempDirectory.getPath(), myHomeDirectory.getPath());
   }
 
-  private GitFactory createFactory() throws Exception {
+  private GitFactory createFactory() {
     final GitAgentSSHService ssh = myMockery.mock(GitAgentSSHService.class);
-    final AgentPluginConfig pluginConfig = myMockery.mock(AgentPluginConfig.class);
+    final GitProgressLogger logger = myMockery.mock(GitProgressLogger.class);
     final Context context = myMockery.mock(Context.class);
     myMockery.checking(new Expectations() {{
-      atLeast(1).of(pluginConfig).getPathToGit();
-      will(returnValue("git"));
-      atLeast(1).of(pluginConfig).getGitVersion();
+      atLeast(1).of(context).getGitVersion();
       will(returnValue(GitVersion.MIN));
-      atLeast(1).of(pluginConfig).isDeleteTempFiles();
+      atLeast(1).of(context).isDeleteTempFiles();
       will(returnValue(false));
-      atLeast(1).of(pluginConfig).getGitExec();
+      atLeast(1).of(context).getGitExec();
       will(returnValue(myMockery.mock(GitExec.class)));
-      atLeast(1).of(pluginConfig).getCustomConfig();
+      atLeast(1).of(context).getCustomConfig();
       will(returnValue(Collections.emptyList()));
+      atLeast(1).of(context).getLogger();
+      will(returnValue(logger));
+      atLeast(1).of(context).getTempDir();
+      will(returnValue(myTempDirectory));
     }});
-    final GitProgressLogger logger = myMockery.mock(GitProgressLogger.class);
-    return myLoggingFactory.createFactory(ssh, pluginConfig, logger, myTempFiles.createTempDir(), Collections.emptyMap(), context);
+    return myLoggingFactory.createFactory(ssh, context);
   }
 }

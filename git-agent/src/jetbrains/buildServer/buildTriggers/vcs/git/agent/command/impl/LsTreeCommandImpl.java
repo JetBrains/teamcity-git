@@ -1,9 +1,10 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsTreeCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsTreeResult;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -13,7 +14,7 @@ public class LsTreeCommandImpl extends BaseCommandImpl implements LsTreeCommand 
   private String path;
   private String revision;
 
-  public LsTreeCommandImpl(@NotNull GitCommandLine myCmd) {
+  public LsTreeCommandImpl(@NotNull AgentGitCommandLine myCmd) {
     super(myCmd);
   }
 
@@ -31,7 +32,7 @@ public class LsTreeCommandImpl extends BaseCommandImpl implements LsTreeCommand 
 
   @Override
   public LsTreeResult call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    AgentGitCommandLine cmd = getCmd();
     cmd.addParameter("ls-tree");
     if (revision != null)
       cmd.addParameter(revision);

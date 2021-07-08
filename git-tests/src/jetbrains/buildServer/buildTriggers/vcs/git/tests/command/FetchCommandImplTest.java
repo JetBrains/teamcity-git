@@ -16,19 +16,19 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests.command;
 
-import com.intellij.openapi.util.io.FileUtil;
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitProgressLogger;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.NoBuildContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.FetchCommandImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.GitCommandSettings;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.errors.GitIndexCorruptedException;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.TestFor;
@@ -36,10 +36,6 @@ import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
 
 import static org.testng.AssertJUnit.fail;
 
@@ -69,8 +65,7 @@ public class FetchCommandImplTest {
       }
     };
 
-    File tmpDir = new File(FileUtil.getTempDirectory());
-    GitCommandLine failedCmd = new GitCommandLine(null, fakeGen, tmpDir, false, GitProgressLogger.NO_OP, GitVersion.MIN, new HashMap<String, String>(0), new NoBuildContext()) {
+    AgentGitCommandLine failedCmd = new AgentGitCommandLine(null, fakeGen, new NoBuildContext()) {
       @Override
       public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
         throw new VcsException("fatal: index file smaller than expected");

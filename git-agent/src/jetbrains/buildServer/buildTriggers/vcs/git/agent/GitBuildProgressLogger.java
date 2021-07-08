@@ -16,12 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import jetbrains.buildServer.agent.BuildProgressLogger;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.messages.BuildMessage1;
 import jetbrains.buildServer.messages.DefaultMessagesInfo;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class GitBuildProgressLogger implements GitProgressLogger {
 

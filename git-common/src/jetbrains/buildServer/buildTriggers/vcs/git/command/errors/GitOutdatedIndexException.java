@@ -14,26 +14,14 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.errors;
 
-import jetbrains.buildServer.agent.BuildInterruptReason;
-import org.jetbrains.annotations.Nullable;
+import jetbrains.buildServer.vcs.VcsException;
 
-public interface Context {
+public class GitOutdatedIndexException extends VcsException {
 
-  @Nullable
-  BuildInterruptReason getInterruptionReason();
+  public GitOutdatedIndexException(final Throwable cause) {
+    super(cause);
+  }
 
-  @Nullable
-  String getSshMacType();
-
-  @Nullable
-  String getPreferredSshAuthMethods();
-
-  boolean isProvideCredHelper();
-
-  @Nullable
-  AgentPluginConfig getConfig();
-
-  boolean isDebugSsh();
 }

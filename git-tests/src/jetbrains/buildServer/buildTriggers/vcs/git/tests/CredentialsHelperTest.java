@@ -16,18 +16,17 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.CredentialsHelper;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.CredentialsHelperConfig;
-import jetbrains.buildServer.util.StringUtil;
-import jetbrains.buildServer.util.TestFor;
-import org.jetbrains.annotations.NotNull;
-import org.testng.annotations.Test;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelper;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelperConfig;
+import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.util.TestFor;
+import org.jetbrains.annotations.NotNull;
+import org.testng.annotations.Test;
 
 import static jetbrains.buildServer.util.Util.map;
 import static org.assertj.core.api.BDDAssertions.then;

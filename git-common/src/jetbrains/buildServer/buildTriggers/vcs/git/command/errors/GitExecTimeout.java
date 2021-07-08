@@ -14,14 +14,12 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.errors;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.errors;
 
 import jetbrains.buildServer.vcs.VcsException;
 
-public class GitOutdatedIndexException extends VcsException {
-
-  public GitOutdatedIndexException(final Throwable cause) {
-    super(cause);
+public class GitExecTimeout extends VcsException {
+  public GitExecTimeout() {
+    super("Timeout exception");
   }
-
 }

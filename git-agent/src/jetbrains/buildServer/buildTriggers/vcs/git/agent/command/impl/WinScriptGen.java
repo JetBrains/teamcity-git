@@ -17,15 +17,14 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import com.intellij.openapi.util.io.FileUtil;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ScriptGen;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class WinScriptGen extends ScriptGen {
 
