@@ -30,6 +30,7 @@ import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -98,6 +99,59 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     });
   }
 
+  /**
+   * Returns the latest commit which affects file paths included by the specified checkout rules.
+   * @param root
+   * @param rules
+   * @param branchRevision
+   * @param stopRevisions
+   * @return
+   */
+  @Nullable
+  public String getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
+                                                         @NotNull CheckoutRules rules,
+                                                         @NotNull String branchName,
+                                                         @NotNull String branchRevision,
+                                                         @NotNull Collection<String> stopRevisions)
+    throws VcsException {
+    OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
+    GitVcsRoot gitRoot = context.getGitRoot();
+    return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+      try {
+        Repository r = context.getRepository();
+        ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
+        revWalk.sort(RevSort.TOPO);
+
+        new FetchContext(context)
+          .withToRevisions(Collections.singletonMap(branchName, branchRevision))
+          .fetchIfNoCommitsOrFail();
+
+        revWalk.markStart(getCommits(r, revWalk, Collections.singleton(branchRevision)));
+        markUninteresting(r, revWalk, stopRevisions);
+
+        while (revWalk.next() != null) {
+          if (revWalk.isIncludedByCheckoutRules(rules)) {
+            RevCommit commit = revWalk.getCurrentCommit();
+            return commit.getId().name();
+          }
+        }
+      } catch (Exception e) {
+        throw context.wrapException(e);
+      } finally {
+        context.close();
+      }
+      return null;
+    });
+
+  }
+
+  private void markUninteresting(@NotNull final Repository r, @NotNull final ModificationDataRevWalk revWalk, final @NotNull Collection<String> revisions)
+    throws IOException {
+    List<RevCommit> commits = getCommits(r, revWalk, revisions);
+    for (RevCommit commit : commits) {
+      revWalk.markUninteresting(commit);
+    }
+  }
 
   @NotNull
   private Set<String> getBranchesWithCommit(@NotNull Repository r, @NotNull RepositoryStateData state, @NotNull String commit) {
@@ -159,17 +213,26 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   }
 
 
+  @NotNull
   private List<RevCommit> getCommits(@NotNull RepositoryStateData state, @NotNull Repository r, @NotNull RevWalk walk) throws IOException {
-    List<RevCommit> revisions = new ArrayList<RevCommit>();
-    for (String revision : state.getBranchRevisions().values()) {
+    final Collection<String> revisions = state.getBranchRevisions().values();
+
+    return getCommits(r, walk, revisions);
+  }
+
+  @NotNull
+  private List<RevCommit> getCommits(final @NotNull Repository r, final @NotNull RevWalk walk, @NotNull final Collection<String> revisions)
+    throws IOException {
+    List<RevCommit> result = new ArrayList<>();
+    for (String revision : revisions) {
       ObjectId id = ObjectId.fromString(GitUtils.versionRevision(revision));
-      if (r.hasObject(id)) {
+      if (r.getObjectDatabase().has(id)) {
         RevObject obj = walk.parseAny(id);
         if (obj.getType() == Constants.OBJ_COMMIT)
-          revisions.add((RevCommit) obj);
+          result.add((RevCommit) obj);
       }
     }
-    return revisions;
+    return result;
   }
 
 

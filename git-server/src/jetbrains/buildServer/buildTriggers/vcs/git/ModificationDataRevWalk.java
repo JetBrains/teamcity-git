@@ -20,6 +20,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
+import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
 import jetbrains.buildServer.vcs.VcsException;
@@ -80,8 +81,7 @@ class ModificationDataRevWalk extends RevWalk {
 
   @NotNull
   public ModificationData createModificationData() throws IOException, VcsException {
-    if (myCurrentCommit == null)
-      throw new IllegalStateException("Current commit is null");
+    checkCurrentCommit();
 
     final String commitId = myCurrentCommit.getId().name();
     String message = GitServerUtil.getFullMessage(myCurrentCommit);
@@ -131,6 +131,42 @@ class ModificationDataRevWalk extends RevWalk {
     return result;
   }
 
+  private void checkCurrentCommit() {
+    if (myCurrentCommit == null)
+      throw new IllegalStateException("Current commit is null");
+  }
+
+  public boolean isIncludedByCheckoutRules(@NotNull CheckoutRules rules) throws VcsException, IOException {
+    checkCurrentCommit();
+    try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myRepository, myGitRoot.debugInfo(), myConfig.verboseTreeWalkLog())) {
+      tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(myGitRoot));
+      tw.setRecursive(true);
+      myContext.addTree(myGitRoot, tw, myRepository, myCurrentCommit, shouldIgnoreSubmodulesErrors());
+      RevCommit[] parents = myCurrentCommit.getParents();
+      boolean reportPerParentChangedFiles = parents.length > 1; // report only for merge commits
+      for (RevCommit parentCommit : parents) {
+        myContext.addTree(myGitRoot, tw, myRepository, parentCommit, true);
+        if (reportPerParentChangedFiles) {
+          tw.reportChangedFilesForParentCommit(parentCommit);
+        }
+      }
+
+      while (tw.next()) {
+        final String path = tw.getPathString();
+        if (rules.shouldInclude(path)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  @NotNull
+  public RevCommit getCurrentCommit() {
+    checkCurrentCommit();
+    return myCurrentCommit;
+  }
 
   private boolean shouldLimitByNumberOfCommits() {
     return myNumberOfCommitsToVisit != -1;
