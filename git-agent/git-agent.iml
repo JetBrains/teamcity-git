@@ -22,8 +22,6 @@
     <orderEntry type="library" name="TeamCity Third-Party" level="project" />
     <orderEntry type="library" name="Trilead SSH" level="project" />
     <orderEntry type="library" name="TeamCity Agent" level="project" />
-    <orderEntry type="library" name="jsch" level="project" />
-    <orderEntry type="library" name="jgit" level="project" />
     <orderEntry type="library" name="slf4j-api-1.7.5" level="project" />
     <orderEntry type="library" name="commons-codec" level="project" />
     <orderEntry type="library" name="TeamCity common" level="project" />
