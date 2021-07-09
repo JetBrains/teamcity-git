@@ -18,8 +18,6 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="git-common-internal" exported="" />
     <orderEntry type="library" name="git-trilead-ssh2" level="project" />
-    <orderEntry type="library" name="git-jsch" level="project" />
-    <orderEntry type="library" name="git-jgit" level="project" />
     <orderEntry type="library" name="git-commons-codec" level="project" />
     <orderEntry type="module" module-name="agent" exported="" />
     <orderEntry type="library" name="xmlrpc-2.0" level="project" />

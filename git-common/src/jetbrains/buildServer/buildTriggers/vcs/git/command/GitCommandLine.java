@@ -2,9 +2,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.util.SystemInfo;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.KeyPair;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -134,18 +134,17 @@ public class GitCommandLine extends GeneralCommandLine {
               }
             });
             FileUtil.writeFileAndReportErrors(privateKey, new String(key.getPrivateKey()));
-            // TODO: encrypted keys
-            //KeyPair keyPair = KeyPair.load(new JSch(), privateKey.getAbsolutePath());
-            //OutputStream out = null;
-            //try {
-            //  out = new BufferedOutputStream(new FileOutputStream(privateKey));
-            //  if (key.isEncrypted() && !keyPair.decrypt(authSettings.getPassphrase())) {
-            //    throw new VcsException("Wrong SSH key passphrase");
-            //  }
-            //  keyPair.writePrivateKey(out, null);
-            //} finally {
-            //  FileUtil.close(out);
-            //}
+            final KeyPair keyPair = KeyPair.load(new JSch(), privateKey.getAbsolutePath());
+            OutputStream out = null;
+            try {
+              out = new BufferedOutputStream(new FileOutputStream(privateKey));
+              if (key.isEncrypted() && !keyPair.decrypt(authSettings.getPassphrase())) {
+                throw new VcsException("Wrong SSH key passphrase");
+              }
+              keyPair.writePrivateKey(out, null);
+            } finally {
+              FileUtil.close(out);
+            }
             //set permissions to 600, without that ssh client rejects the key on *nix
             privateKey.setReadable(false, false);
             privateKey.setReadable(true, true);
