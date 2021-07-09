@@ -6,3 +6,5 @@
 	ignorecase = true
 [receive]
 	denyCurrentBranch = ignore
+        denyDeleteCurrent = ignore
+
