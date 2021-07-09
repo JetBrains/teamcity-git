@@ -23,13 +23,10 @@ import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
-import jetbrains.buildServer.buildTriggers.vcs.git.Retry;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Refs;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
-import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
@@ -369,47 +366,24 @@ public class AgentCommitLoaderFactory {
 
 
     private void callFetchWithRetry(@NotNull File repositoryDir, @NotNull String refspec, boolean shallowClone, boolean silent, int timeout) throws VcsException {
-      try {
-        Retry.retry(new Retry.Retryable<Void>() {
-          @Override
-          public boolean requiresRetry(@NotNull final Exception e) {
-            return CommandUtil.isRecoverable(e);
-          }
+      final FetchCommand result = myGitFactory.create(repositoryDir).fetch()
+                                              .setAuthSettings(myRoot.getAuthSettings())
+                                              .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
+                                              .setTimeout(timeout)
+                                              .setRefspec(refspec)
+                                              .setFetchTags(myPluginConfig.isFetchTags())
+                                              .setRetryAttempts(myPluginConfig.getRemoteOperationAttempts())
+                                              .addPreAction(() -> GitUtils.removeRefLocks(getGitDir()));
 
-          @Nullable
-          @Override
-          public Void call() throws VcsException {
-            GitUtils.removeRefLocks(getGitDir());
+      if (silent)
+        result.setQuite(true);
+      else
+        result.setShowProgress(true);
 
-            final FetchCommand result = myGitFactory.create(repositoryDir).fetch()
-                                                    .setAuthSettings(myRoot.getAuthSettings())
-                                                    .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
-                                                    .setTimeout(timeout)
-                                                    .setRefspec(refspec)
-                                                    .setFetchTags(myPluginConfig.isFetchTags());
+      if (shallowClone)
+        result.setDepth(1);
 
-            if (silent)
-              result.setQuite(true);
-            else
-              result.setShowProgress(true);
-
-            if (shallowClone)
-              result.setDepth(1);
-
-            result.call();
-            return null;
-          }
-
-          @NotNull
-          @Override
-          public com.intellij.openapi.diagnostic.Logger getLogger() {
-            return Loggers.VCS;
-          }
-        }, myPluginConfig.getRemoteOperationAttempts());
-      } catch (Exception t) {
-        if (t instanceof VcsException) throw (VcsException)t;
-        throw new VcsException(t);
-      }
+      result.call();
     }
 
     private boolean isSilentFetch() {

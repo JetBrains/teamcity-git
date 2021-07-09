@@ -30,4 +30,7 @@ public interface AuthCommand<T extends BaseCommand> {
   @NotNull
   T setTimeout(int timeout);
 
+  T addPreAction(@NotNull Runnable action);
+
+  T setRetryAttempts(int num);
 }

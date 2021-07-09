@@ -41,10 +41,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.EscapeEchoArgumentUnix;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.EscapeEchoArgumentWin;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.UnixScriptGen;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.WinScriptGen;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
@@ -964,7 +961,7 @@ public class AgentVcsSupportTest {
 
     //make first two fetches in local mirror to fail:
     AtomicInteger invocationCount = new AtomicInteger(0);
-    loggingFactory.addCallback(FetchCommand.class.getName() + ".call", new GitCommandProxyCallback() {
+    loggingFactory.addCallback(BaseAuthCommandImpl.class.getName() + ".doRunCmd", new GitCommandProxyCallback() {
       @Override
       public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
         if (invocationCount.getAndIncrement() <= 1)

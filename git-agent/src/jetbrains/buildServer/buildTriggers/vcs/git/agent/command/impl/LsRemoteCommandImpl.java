@@ -16,14 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import com.intellij.openapi.diagnostic.Logger;
 import java.util.ArrayList;
 import java.util.List;
-import jetbrains.buildServer.buildTriggers.vcs.git.Retry;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
-import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
@@ -34,7 +30,6 @@ import static com.intellij.openapi.util.text.StringUtil.splitByLines;
 public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> implements LsRemoteCommand {
 
   private boolean myShowTags = false;
-  private int myRetryAttempts = 1;
 
   public LsRemoteCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
@@ -47,42 +42,13 @@ public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> im
   }
 
   @NotNull
-  @Override
-  public LsRemoteCommand setRetryAttempts(int num) {
-    myRetryAttempts = num;
-    return this;
-  }
-
-  @NotNull
   public List<Ref> call() throws VcsException {
     AgentGitCommandLine cmd = getCmd();
     cmd.addParameter("ls-remote");
     if (myShowTags)
       cmd.addParameter("--tags");
     cmd.addParameter("origin");
-
-    try {
-      return Retry.retry(new Retry.Retryable<List<Ref>>() {
-        @Override
-        public boolean requiresRetry(@NotNull final Exception e) {
-          return CommandUtil.isRecoverable(e);
-        }
-
-        @Override
-        public List<Ref> call() throws VcsException {
-          return parse(runCmd(cmd).getStdout());
-        }
-
-        @NotNull
-        @Override
-        public Logger getLogger() {
-          return Loggers.VCS;
-        }
-      }, myRetryAttempts);
-    } catch (Exception t) {
-      if (t instanceof VcsException) throw (VcsException)t;
-      throw new VcsException(t);
-    }
+    return parse(runCmd(cmd).getStdout());
   }
 
   private List<Ref> parse(@NotNull final String str) {
@@ -91,7 +57,7 @@ public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> im
       if (isEmpty(line))
         continue;
       String objectId = line.substring(0, 40);
-      String name = line.substring(40, line.length()).trim();
+      String name = line.substring(40).trim();
       refs.add(new RefImpl(name, objectId));
     }
     return refs;
