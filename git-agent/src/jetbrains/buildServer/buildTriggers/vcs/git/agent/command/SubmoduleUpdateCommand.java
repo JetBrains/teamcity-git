@@ -16,20 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 public interface SubmoduleUpdateCommand extends BaseCommand, AuthCommand<SubmoduleUpdateCommand> {
-
-  @NotNull
-  SubmoduleUpdateCommand setUseNativeSsh(boolean useNativeSsh);
-
-  @NotNull
-  SubmoduleUpdateCommand setAuthSettings(@NotNull AuthSettings settings);
-
-  @NotNull
-  SubmoduleUpdateCommand setTimeout(int timeout);
 
   @NotNull
   SubmoduleUpdateCommand setForce(boolean force);

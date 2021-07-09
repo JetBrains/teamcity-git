@@ -16,23 +16,14 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import java.io.File;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ResetCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.Errors;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitOutdatedIndexException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings.with;
-
-public class ResetCommandImpl extends BaseCommandImpl implements ResetCommand {
+public class ResetCommandImpl extends BaseAuthCommandImpl<ResetCommand> implements ResetCommand {
   private boolean myHard = false;
   private String myRevision;
-  private boolean myUseNativeSsh;
-  private AuthSettings myAuthSettings;
 
   public ResetCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
@@ -50,40 +41,12 @@ public class ResetCommandImpl extends BaseCommandImpl implements ResetCommand {
     return this;
   }
 
-  @NotNull
-  @Override
-  public ResetCommand setAuthSettings(@NotNull AuthSettings authSettings) {
-    myAuthSettings = authSettings;
-    return this;
-  }
-
-  @NotNull
-  @Override
-  public ResetCommand setUseNativeSsh(boolean useNativeSsh) {
-    myUseNativeSsh = useNativeSsh;
-    return this;
-  }
-
   public void call() throws VcsException {
     AgentGitCommandLine cmd = getCmd();
     cmd.addParameters("reset");
     if (myHard)
       cmd.addParameter("--hard");
     cmd.addParameter(myRevision);
-    try {
-      cmd.run(with()
-                .authSettings(myAuthSettings)
-                .useNativeSsh(myUseNativeSsh));
-    } catch (VcsException e) {
-      if (Errors.isCorruptedIndexError(e)) {
-        File workingDir = cmd.getWorkingDirectory();
-        File gitIndex = new File(new File(workingDir, ".git"), "index");
-        throw new GitIndexCorruptedException(gitIndex, e);
-      }
-      if (Errors.isOutdatedIndexError(e)) {
-        throw new GitOutdatedIndexException(e);
-      }
-      throw e;
-    }
+    runCmd(cmd);
   }
 }

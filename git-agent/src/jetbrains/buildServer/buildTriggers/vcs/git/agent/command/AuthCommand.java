@@ -27,4 +27,7 @@ public interface AuthCommand<T extends BaseCommand> {
   @NotNull
   T setUseNativeSsh(boolean useNativeSsh);
 
+  @NotNull
+  T setTimeout(int timeout);
+
 }

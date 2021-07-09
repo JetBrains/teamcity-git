@@ -16,39 +16,18 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateIndexCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings.with;
+public class UpdateIndexCommandImpl extends BaseAuthCommandImpl<UpdateIndexCommand> implements UpdateIndexCommand {
 
-public class UpdateIndexCommandImpl extends BaseCommandImpl implements UpdateIndexCommand {
-
-  private boolean myUseNativeSsh;
-  private AuthSettings myAuthSettings;
   private boolean myReallyRefresh;
   private boolean myQuiet;
 
   public UpdateIndexCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
-  }
-
-
-  @NotNull
-  @Override
-  public UpdateIndexCommand setAuthSettings(@NotNull AuthSettings authSettings) {
-    myAuthSettings = authSettings;
-    return this;
-  }
-
-
-  @NotNull
-  @Override
-  public UpdateIndexCommand setUseNativeSsh(boolean useNativeSsh) {
-    myUseNativeSsh = useNativeSsh;
-    return this;
   }
 
 
@@ -75,6 +54,6 @@ public class UpdateIndexCommandImpl extends BaseCommandImpl implements UpdateInd
       cmd.addParameter("-q");
     if (myReallyRefresh)
       cmd.addParameter("--really-refresh");
-    cmd.run(with().authSettings(myAuthSettings).useNativeSsh(myUseNativeSsh));
+    runCmd(cmd);
   }
 }

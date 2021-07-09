@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
 import java.util.List;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
@@ -26,15 +25,6 @@ public interface LsRemoteCommand extends BaseCommand, AuthCommand<LsRemoteComman
 
   @NotNull
   LsRemoteCommand showTags();
-
-  @NotNull
-  LsRemoteCommand setAuthSettings(@NotNull AuthSettings authSettings);
-
-  @NotNull
-  LsRemoteCommand setUseNativeSsh(boolean useNativeSsh);
-
-  @NotNull
-  LsRemoteCommand setTimeout(int timeoutSeconds);
 
   @NotNull
   LsRemoteCommand setRetryAttempts(int num);

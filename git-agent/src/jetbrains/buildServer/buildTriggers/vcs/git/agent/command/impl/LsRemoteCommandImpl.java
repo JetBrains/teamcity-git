@@ -19,8 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import com.intellij.openapi.diagnostic.Logger;
 import java.util.ArrayList;
 import java.util.List;
-import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.Retry;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
@@ -32,15 +30,11 @@ import org.jetbrains.annotations.NotNull;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static com.intellij.openapi.util.text.StringUtil.splitByLines;
-import static jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings.with;
 
-public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteCommand {
+public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> implements LsRemoteCommand {
 
   private boolean myShowTags = false;
-  private AuthSettings myAuthSettings;
-  private boolean myUseNativeSsh = false;
   private int myRetryAttempts = 1;
-  private int myTimeoutSeconds;
 
   public LsRemoteCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
@@ -49,25 +43,6 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
   @NotNull
   public LsRemoteCommand showTags() {
     myShowTags = true;
-    return this;
-  }
-
-  @NotNull
-  public LsRemoteCommand setAuthSettings(@NotNull AuthSettings authSettings) {
-    myAuthSettings = authSettings;
-    return this;
-  }
-
-  @NotNull
-  public LsRemoteCommand setUseNativeSsh(boolean useNativeSsh) {
-    myUseNativeSsh = useNativeSsh;
-    return this;
-  }
-
-  @NotNull
-  @Override
-  public LsRemoteCommand setTimeout(int timeoutSeconds) {
-    myTimeoutSeconds = timeoutSeconds;
     return this;
   }
 
@@ -95,11 +70,7 @@ public class LsRemoteCommandImpl extends BaseCommandImpl implements LsRemoteComm
 
         @Override
         public List<Ref> call() throws VcsException {
-          final ExecResult result = cmd.run(with()
-                                              .timeout(myTimeoutSeconds)
-                                              .authSettings(myAuthSettings)
-                                              .useNativeSsh(myUseNativeSsh));
-          return parse(result.getStdout());
+          return parse(runCmd(cmd).getStdout());
         }
 
         @NotNull

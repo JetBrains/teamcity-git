@@ -16,42 +16,18 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleUpdateCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings.with;
+public class SubmoduleUpdateCommandImpl extends BaseAuthCommandImpl<SubmoduleUpdateCommand> implements SubmoduleUpdateCommand {
 
-public class SubmoduleUpdateCommandImpl extends BaseCommandImpl implements SubmoduleUpdateCommand {
-
-  private boolean myUseNativeSsh;
-  private AuthSettings myAuthSettings;
-  private int myTimeout;
   private boolean myForce;
   private Integer myDepth;
 
   public SubmoduleUpdateCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
-  }
-
-  @NotNull
-  public SubmoduleUpdateCommand setUseNativeSsh(boolean useNativeSsh) {
-    myUseNativeSsh = useNativeSsh;
-    return this;
-  }
-
-  @NotNull
-  public SubmoduleUpdateCommand setAuthSettings(@NotNull AuthSettings settings) {
-    myAuthSettings = settings;
-    return this;
-  }
-
-  @NotNull
-  public SubmoduleUpdateCommand setTimeout(int timeout) {
-    myTimeout = timeout;
-    return this;
   }
 
   @NotNull
@@ -76,8 +52,6 @@ public class SubmoduleUpdateCommandImpl extends BaseCommandImpl implements Submo
     if (myDepth != null) {
       cmd.addParameter("--depth=" + myDepth);
     }
-    cmd.run(with().timeout(myTimeout)
-                  .authSettings(myAuthSettings)
-                  .useNativeSsh(myUseNativeSsh));
+    runCmd(cmd);
   }
 }

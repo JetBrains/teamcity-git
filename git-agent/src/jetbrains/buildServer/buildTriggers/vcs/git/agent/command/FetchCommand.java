@@ -16,17 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 public interface FetchCommand extends BaseCommand, AuthCommand<FetchCommand> {
-
-  @NotNull
-  FetchCommand setUseNativeSsh(boolean useNativeSsh);
-
-  @NotNull
-  FetchCommand setTimeout(int timeout);
 
   @NotNull
   FetchCommand setRefspec(@NotNull String refspec);
@@ -36,9 +29,6 @@ public interface FetchCommand extends BaseCommand, AuthCommand<FetchCommand> {
 
   @NotNull
   FetchCommand setShowProgress(boolean showProgress);
-
-  @NotNull
-  FetchCommand setAuthSettings(@NotNull AuthSettings settings);
 
   @NotNull
   FetchCommand setDepth(int depth);

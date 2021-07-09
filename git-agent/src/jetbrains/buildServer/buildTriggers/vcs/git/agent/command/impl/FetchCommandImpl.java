@@ -16,45 +16,22 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import java.io.File;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.Errors;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings.with;
+public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implements FetchCommand {
 
-public class FetchCommandImpl extends BaseCommandImpl implements FetchCommand {
-
-  private boolean myUseNativeSsh;
-  private int myTimeout;
   private String myRefspec;
   private boolean myQuite;
   private boolean myShowProgress;
-  private AuthSettings myAuthSettings;
   private Integer myDepth;
   private boolean myFetchTags = true;
 
   public FetchCommandImpl(@NotNull AgentGitCommandLine cmd) {
     super(cmd);
-  }
-
-  @NotNull
-  public FetchCommand setUseNativeSsh(boolean useNativeSsh) {
-    myUseNativeSsh = useNativeSsh;
-    return this;
-  }
-
-  @NotNull
-  public FetchCommand setTimeout(int timeout) {
-    myTimeout = timeout;
-    return this;
   }
 
   @NotNull
@@ -72,12 +49,6 @@ public class FetchCommandImpl extends BaseCommandImpl implements FetchCommand {
   @NotNull
   public FetchCommand setShowProgress(boolean showProgress) {
     myShowProgress = showProgress;
-    return this;
-  }
-
-  @NotNull
-  public FetchCommand setAuthSettings(@NotNull AuthSettings settings) {
-    myAuthSettings = settings;
     return this;
   }
 
@@ -111,20 +82,6 @@ public class FetchCommandImpl extends BaseCommandImpl implements FetchCommand {
     cmd.addParameter("origin");
     cmd.addParameter(myRefspec);
     cmd.setHasProgress(true);
-    try {
-      cmd.run(with().timeout(myTimeout)
-                  .authSettings(myAuthSettings)
-                  .useNativeSsh(myUseNativeSsh));
-    } catch (VcsException e) {
-      if (Errors.isCorruptedIndexError(e)) {
-        File workingDir = cmd.getWorkingDirectory();
-        File gitIndex = new File(new File(workingDir, ".git"), "index");
-        throw new GitIndexCorruptedException(gitIndex, e);
-      }
-      if (CommandUtil.isTimeoutError(e)) {
-        throw new GitExecTimeout();
-      }
-      throw e;
-    }
+    runCmd(cmd);
   }
 }
