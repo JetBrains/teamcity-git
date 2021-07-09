@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import java.io.File;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitFacade;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -25,7 +26,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * @author dmitry.neverov
  */
-public interface GitFacade {
+public interface AgentGitFacade extends GitFacade {
 
   @NotNull
   InitCommand init();
@@ -67,9 +68,6 @@ public interface GitFacade {
   ListConfigCommand listConfig();
 
   @NotNull
-  FetchCommand fetch();
-
-  @NotNull
   LogCommand log();
 
   @NotNull
@@ -91,9 +89,6 @@ public interface GitFacade {
 
   @NotNull
   VersionCommand version();
-
-  @NotNull
-  LsRemoteCommand lsRemote();
 
   @NotNull
   PackRefs packRefs();

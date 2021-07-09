@@ -79,7 +79,7 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
 
   private void setupLfsStorage(@NotNull File gitDir, @NotNull File mirrorDir) throws VcsException {
     //add lfs.storage = <mirror/lfs>
-    GitFacade git = myGitFactory.create(gitDir);
+    AgentGitFacade git = myGitFactory.create(gitDir);
     File mirrorLfs = new File(mirrorDir, "lfs");
     String lfsStorage = git.resolvePath(mirrorLfs);
     git.setConfig()
@@ -167,7 +167,7 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
         final File submoduleDir = new File(repositoryDir, s.getPath());
         final File submoduleGitDir = GitUtils.getGitDir(submoduleDir);
 
-        final GitFacade gitFacade = myGitFactory.create(submoduleDir);
+        final AgentGitFacade gitFacade = myGitFactory.create(submoduleDir);
         if (!submoduleGitDir.exists())  {
           submoduleGitDir.mkdirs();
           gitFacade.init().call();

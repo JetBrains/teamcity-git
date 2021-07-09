@@ -20,8 +20,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.DiffCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
@@ -33,7 +34,7 @@ public class DiffCommandImpl extends BaseCommandImpl implements DiffCommand {
   private String myCommit2;
   private String myFormat;
 
-  public DiffCommandImpl(@NotNull AgentGitCommandLine cmd) {
+  public DiffCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
   }
 
@@ -61,7 +62,7 @@ public class DiffCommandImpl extends BaseCommandImpl implements DiffCommand {
   @NotNull
   @Override
   public List<String> call() throws VcsException {
-    AgentGitCommandLine cmd = getCmd();
+    GitCommandLine cmd = getCmd();
     cmd.addParameter("diff");
     if (myFormat != null) {
       cmd.addParameter(myFormat);

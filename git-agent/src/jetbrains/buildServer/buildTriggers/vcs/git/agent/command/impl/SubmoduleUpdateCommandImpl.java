@@ -16,8 +16,9 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleUpdateCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseAuthCommandImpl;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -26,7 +27,7 @@ public class SubmoduleUpdateCommandImpl extends BaseAuthCommandImpl<SubmoduleUpd
   private boolean myForce;
   private Integer myDepth;
 
-  public SubmoduleUpdateCommandImpl(@NotNull AgentGitCommandLine cmd) {
+  public SubmoduleUpdateCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
   }
 
@@ -44,7 +45,7 @@ public class SubmoduleUpdateCommandImpl extends BaseAuthCommandImpl<SubmoduleUpd
   }
 
   public void call() throws VcsException {
-    AgentGitCommandLine cmd = getCmd();
+    GitCommandLine cmd = getCmd();
     cmd.addParameter("submodule");
     cmd.addParameter("update");
     if (myForce)

@@ -16,8 +16,9 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CheckoutCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseAuthCommandImpl;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -26,7 +27,7 @@ public class CheckoutCommandImpl extends BaseAuthCommandImpl<CheckoutCommand> im
   private boolean myForce;
   private String myBranch;
 
-  public CheckoutCommandImpl(@NotNull AgentGitCommandLine cmd) {
+  public CheckoutCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
   }
 
@@ -43,7 +44,7 @@ public class CheckoutCommandImpl extends BaseAuthCommandImpl<CheckoutCommand> im
   }
 
   public void call() throws VcsException {
-    AgentGitCommandLine cmd = getCmd();
+    GitCommandLine cmd = getCmd();
     cmd.addParameters("checkout", "-q");
     if (myForce)
       cmd.addParameter("-f");

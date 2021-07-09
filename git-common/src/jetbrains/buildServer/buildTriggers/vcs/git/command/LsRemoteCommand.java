@@ -14,28 +14,19 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
+package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
+import java.util.List;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
-public interface FetchCommand extends BaseCommand, AuthCommand<FetchCommand> {
+public interface LsRemoteCommand extends BaseCommand, AuthCommand<LsRemoteCommand> {
 
   @NotNull
-  FetchCommand setRefspec(@NotNull String refspec);
+  LsRemoteCommand showTags();
 
   @NotNull
-  FetchCommand setQuite(boolean quite);
-
-  @NotNull
-  FetchCommand setShowProgress(boolean showProgress);
-
-  @NotNull
-  FetchCommand setDepth(int depth);
-
-  @NotNull
-  FetchCommand setFetchTags(boolean fetchTags);
-
-  void call() throws VcsException;
+  List<Ref> call() throws VcsException;
 
 }

@@ -16,9 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.io.File;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * @author dmitry.neverov
@@ -26,6 +25,6 @@ import java.io.File;
 public interface GitFactory {
 
   @NotNull
-  GitFacade create(@NotNull File repositoryDir);
+  AgentGitFacade create(@NotNull File repositoryDir);
 
 }

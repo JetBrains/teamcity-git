@@ -26,6 +26,8 @@ import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
@@ -63,7 +65,7 @@ public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
   }
 
   public void call() throws VcsException {
-    AgentGitCommandLine cmd = getCmd();
+    GitCommandLine cmd = getCmd();
     cmd.addParameters("clean", "-f", "-d");
     switch (myCleanPolicy) {
       case ALL_UNTRACKED:
@@ -101,7 +103,7 @@ public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
     }
   }
 
-  private void addExcludes(@NotNull AgentGitCommandLine cmd) {
+  private void addExcludes(@NotNull GitCommandLine cmd) {
     if (myExcludes.isEmpty()) return;
     for (String path : myExcludes) {
       cmd.addParameter("--exclude=" + path);

@@ -23,11 +23,11 @@ import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.FetchCommandImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.LsRemoteCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.ProcessTimeoutCallback;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
@@ -40,7 +40,7 @@ import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 /**
  * @author dmitry.neverov
  */
-public class NativeGitFacade implements GitFacade {
+public class NativeGitFacade implements AgentGitFacade {
 
   private final GitAgentSSHService mySsh;
   private final ScriptGen myScriptGen;

@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -30,7 +30,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
   private Integer myDepth;
   private boolean myFetchTags = true;
 
-  public FetchCommandImpl(@NotNull AgentGitCommandLine cmd) {
+  public FetchCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
   }
 
@@ -66,7 +66,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
 
 
   public void call() throws VcsException {
-    AgentGitCommandLine cmd = getCmd();
+    GitCommandLine cmd = getCmd();
     cmd.addParameter("fetch");
     if (myQuite)
       cmd.addParameter("-q");

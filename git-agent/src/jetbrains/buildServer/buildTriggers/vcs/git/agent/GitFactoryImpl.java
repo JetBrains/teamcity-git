@@ -36,7 +36,7 @@ public class GitFactoryImpl implements GitFactory {
 
 
   @NotNull
-  public GitFacade create(@NotNull File repositoryDir) {
+  public AgentGitFacade create(@NotNull File repositoryDir) {
     NativeGitFacade git = new NativeGitFacade(mySsh, repositoryDir, myCtx);
     git.setSshKeyManager(mySsh.getSshKeyManager());
     return git;

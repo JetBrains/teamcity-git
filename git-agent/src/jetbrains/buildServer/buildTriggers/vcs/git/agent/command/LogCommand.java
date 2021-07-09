@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
 
+import jetbrains.buildServer.buildTriggers.vcs.git.command.BaseCommand;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

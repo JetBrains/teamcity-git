@@ -116,7 +116,7 @@ public class AgentSslCheckoutTest extends BaseRemoteRepositoryTest {
   }
 
   private void checkConfig(boolean shouldCAInfo, AgentRunningBuild build) throws VcsException {
-    final GitFacade gitFacade = gitFacade(build);
+    final AgentGitFacade gitFacade = gitFacade(build);
     try {
       final String sslCAInfo = gitFacade.getConfig().setPropertyName("http.sslCAInfo").call();
       if (shouldCAInfo) {
@@ -131,7 +131,7 @@ public class AgentSslCheckoutTest extends BaseRemoteRepositoryTest {
     }
   }
 
-  private GitFacade gitFacade(AgentRunningBuild build) throws VcsException {
+  private AgentGitFacade gitFacade(AgentRunningBuild build) throws VcsException {
     final AgentPluginConfig config = pluginConfigFactory().createConfig(build, myRoot);
     final Map<String, String> env = getGitCommandEnv(config, build);
     final GitFactory gitFactory = gitMetaFactory().createFactory(getGitAgentSSHService(), new BuildContext(build, config));

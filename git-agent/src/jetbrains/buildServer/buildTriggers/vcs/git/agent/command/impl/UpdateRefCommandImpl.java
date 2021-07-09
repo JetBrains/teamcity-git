@@ -17,8 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -29,7 +30,7 @@ public class UpdateRefCommandImpl extends BaseCommandImpl implements UpdateRefCo
   private String myRevision;
   private boolean myDelete;
 
-  public UpdateRefCommandImpl(@NotNull AgentGitCommandLine cmd) {
+  public UpdateRefCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
   }
 
@@ -52,7 +53,7 @@ public class UpdateRefCommandImpl extends BaseCommandImpl implements UpdateRefCo
   }
 
   public void call() throws VcsException {
-    AgentGitCommandLine cmd = getCmd();
+    GitCommandLine cmd = getCmd();
     cmd.addParameter("update-ref");
     if (myDelete)
       cmd.addParameter("-d");

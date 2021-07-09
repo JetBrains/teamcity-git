@@ -16,8 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl;
 
+import java.io.File;
+import java.io.IOException;
+import java.security.*;
+import javax.net.ssl.*;
 import jetbrains.buildServer.agent.ssl.TrustedCertificatesDirectory;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitFacade;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitFacade;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
@@ -27,11 +31,6 @@ import org.apache.log4j.Logger;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import javax.net.ssl.*;
-import java.io.File;
-import java.io.IOException;
-import java.security.*;
 
 /**
  * Component for investigate either we need use custom ssl certificates for git fetch or not.
@@ -74,7 +73,7 @@ public class SSLInvestigator {
     }
   }
 
-  public void setCertificateOptions(@NotNull final GitFacade gitFacade) {
+  public void setCertificateOptions(@NotNull final AgentGitFacade gitFacade) {
     if (!isNeedCustomCertificates()) {
       deleteSslOption(gitFacade);
       return;
@@ -154,7 +153,7 @@ public class SSLInvestigator {
     }
   }
 
-  private void deleteSslOption(@NotNull final GitFacade gitFacade) {
+  private void deleteSslOption(@NotNull final AgentGitFacade gitFacade) {
     try {
       final String previous = gitFacade.getConfig().setPropertyName("http.sslCAInfo").callWithIgnoreExitCode();
       if (!StringUtil.isEmptyOrSpaces(previous)) {
@@ -166,7 +165,7 @@ public class SSLInvestigator {
     }
   }
 
-  private void setSslOption(@NotNull final GitFacade gitFacade, @NotNull final String path) {
+  private void setSslOption(@NotNull final AgentGitFacade gitFacade, @NotNull final String path) {
     try {
       gitFacade.setConfig().setPropertyName("http.sslCAInfo").setValue(path).call();
     } catch (Exception e) {

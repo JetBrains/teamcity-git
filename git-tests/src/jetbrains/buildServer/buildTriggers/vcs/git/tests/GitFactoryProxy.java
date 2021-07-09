@@ -20,8 +20,8 @@ import java.io.File;
 import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.Map;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitFacade;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitFacade;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.NativeGitFacade;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
@@ -44,9 +44,9 @@ public class GitFactoryProxy implements GitFactory {
   }
 
   @NotNull
-  public GitFacade create(@NotNull File repositoryDir) {
-    GitFacade facade = new NativeGitFacade(mySshService, repositoryDir, myCtx);
-    return (GitFacade)Proxy.newProxyInstance(GitFacadeProxy.class.getClassLoader(), new Class[]{GitFacade.class},
-                                             new GitFacadeProxy(facade, myInvokedMethods, myCallbacks));
+  public AgentGitFacade create(@NotNull File repositoryDir) {
+    AgentGitFacade facade = new NativeGitFacade(mySshService, repositoryDir, myCtx);
+    return (AgentGitFacade)Proxy.newProxyInstance(GitFacadeProxy.class.getClassLoader(), new Class[]{AgentGitFacade.class},
+                                                  new GitFacadeProxy(facade, myInvokedMethods, myCallbacks));
   }
 }

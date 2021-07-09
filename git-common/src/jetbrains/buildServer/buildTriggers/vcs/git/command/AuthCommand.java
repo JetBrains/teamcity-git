@@ -14,19 +14,23 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
+package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
-import java.util.List;
-import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.lib.Ref;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import org.jetbrains.annotations.NotNull;
 
-public interface LsRemoteCommand extends BaseCommand, AuthCommand<LsRemoteCommand> {
+public interface AuthCommand<T extends BaseCommand> {
 
   @NotNull
-  LsRemoteCommand showTags();
+  T setAuthSettings(@NotNull AuthSettings authSettings);
 
   @NotNull
-  List<Ref> call() throws VcsException;
+  T setUseNativeSsh(boolean useNativeSsh);
 
+  @NotNull
+  T setTimeout(int timeout);
+
+  T addPreAction(@NotNull Runnable action);
+
+  T setRetryAttempts(int num);
 }

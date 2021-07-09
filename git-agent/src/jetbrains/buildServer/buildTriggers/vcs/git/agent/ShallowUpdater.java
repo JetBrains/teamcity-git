@@ -55,7 +55,7 @@ public class ShallowUpdater extends UpdaterImpl {
 
   @Override
   protected void updateSubmodules(@NotNull final File repositoryDir) throws VcsException, ConfigInvalidException, IOException {
-    GitFacade git = myGitFactory.create(repositoryDir);
+    AgentGitFacade git = myGitFactory.create(repositoryDir);
     SubmoduleUpdateCommand submoduleUpdate = git.submoduleUpdate()
                                                 .setAuthSettings(myRoot.getAuthSettings())
                                                 .setUseNativeSsh(myPluginConfig.isUseNativeSSH())

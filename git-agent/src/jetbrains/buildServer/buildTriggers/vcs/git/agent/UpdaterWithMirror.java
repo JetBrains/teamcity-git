@@ -29,9 +29,9 @@ import jetbrains.buildServer.buildTriggers.vcs.git.CommonURIish;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsTreeResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.RefImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.Converter;
@@ -103,7 +103,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     } else {
       FileUtil.delete(bareRepositoryDir);
     }
-    final GitFacade git = myGitFactory.create(bareRepositoryDir);
+    final AgentGitFacade git = myGitFactory.create(bareRepositoryDir);
     final SSLInvestigator sslInvestigator = getSSLInvestigator(fetchUrl);
     boolean fetchRequired;
     if (!bareRepositoryDir.exists()) {
@@ -208,7 +208,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     //e.g. due to username exclusion from http(s) urls
     String remoteUrl = readRemoteUrl();
     String localMirrorUrl = getLocalMirrorUrl(myRoot.getRepositoryDir());
-    GitFacade git = myGitFactory.create(myTargetDirectory);
+    AgentGitFacade git = myGitFactory.create(myTargetDirectory);
     git.setConfig()
       .setPropertyName("url." + localMirrorUrl + ".insteadOf")
       .setValue(remoteUrl)
@@ -307,7 +307,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     }
   }
 
-  private String getSubmoduleRevision(@NotNull GitFacade git, @NotNull String revision, @NotNull String path) throws VcsException {
+  private String getSubmoduleRevision(@NotNull AgentGitFacade git, @NotNull String revision, @NotNull String path) throws VcsException {
     LsTreeResult lsTreeResult = git.lsTree().setRevision(revision).setPath(path).call();
     if (lsTreeResult == null) {
       return null;
@@ -316,7 +316,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
   }
 
   protected void setUseLocalSubmoduleMirror(@NotNull File repositoryDir, @NotNull String submoduleName, @NotNull String localMirrorUrl) throws VcsException {
-    GitFacade git = myGitFactory.create(repositoryDir);
+    AgentGitFacade git = myGitFactory.create(repositoryDir);
     git.setConfig()
             .setPropertyName("submodule." + submoduleName + ".url")
             .setValue(localMirrorUrl)
@@ -324,7 +324,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
   }
 
   protected void setUseRemoteSubmoduleOrigin(@NotNull File repositoryDir, @NotNull String originUrl) throws VcsException {
-    GitFacade git = myGitFactory.create(repositoryDir);
+    AgentGitFacade git = myGitFactory.create(repositoryDir);
     git.setConfig()
       .setPropertyName("remote.origin.url")
       .setValue(originUrl)
@@ -337,7 +337,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
   @NotNull
   protected Map<String, AggregatedSubmodule> getSubmodules(@NotNull File repositoryDir) throws IOException, VcsException, ConfigInvalidException {
-    final GitFacade git = myGitFactory.create(repositoryDir);
+    final AgentGitFacade git = myGitFactory.create(repositoryDir);
     final String revision = git.revParse().setRef("HEAD").call();
     if (StringUtil.isEmpty(revision)) return Collections.emptyMap();
 

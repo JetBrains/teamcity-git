@@ -1,4 +1,4 @@
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.File;
@@ -7,14 +7,13 @@ import java.util.List;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.Retry;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.AuthCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.BaseCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.AuthCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.BaseCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.Errors;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitOutdatedIndexException;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -28,7 +27,7 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
   private final List<Runnable> myPreActions = new ArrayList<Runnable>();
   private int myRetryAttempts = 1;
 
-  BaseAuthCommandImpl(@NotNull AgentGitCommandLine cmd) {
+  public BaseAuthCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
   }
 
@@ -63,7 +62,7 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
   }
 
   @NotNull
-  protected ExecResult runCmd(@NotNull AgentGitCommandLine cmd) throws VcsException {
+  protected ExecResult runCmd(@NotNull GitCommandLine cmd) throws VcsException {
     try {
       return Retry.retry(new Retry.Retryable<ExecResult>() {
         @Override
@@ -92,7 +91,7 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
   }
 
   @NotNull
-  private ExecResult doRunCmd(@NotNull AgentGitCommandLine cmd) throws VcsException {
+  private ExecResult doRunCmd(@NotNull GitCommandLine cmd) throws VcsException {
     try {
       return cmd.run(with()
                        .timeout(myTimeout)

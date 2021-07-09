@@ -14,23 +14,28 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
+package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-public interface AuthCommand<T extends BaseCommand> {
+public interface FetchCommand extends BaseCommand, AuthCommand<FetchCommand> {
 
   @NotNull
-  T setAuthSettings(@NotNull AuthSettings authSettings);
+  FetchCommand setRefspec(@NotNull String refspec);
 
   @NotNull
-  T setUseNativeSsh(boolean useNativeSsh);
+  FetchCommand setQuite(boolean quite);
 
   @NotNull
-  T setTimeout(int timeout);
+  FetchCommand setShowProgress(boolean showProgress);
 
-  T addPreAction(@NotNull Runnable action);
+  @NotNull
+  FetchCommand setDepth(int depth);
 
-  T setRetryAttempts(int num);
+  @NotNull
+  FetchCommand setFetchTags(boolean fetchTags);
+
+  void call() throws VcsException;
+
 }

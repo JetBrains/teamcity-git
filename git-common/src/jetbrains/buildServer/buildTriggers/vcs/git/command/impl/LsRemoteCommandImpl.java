@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import java.util.ArrayList;
 import java.util.List;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsRemoteCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
@@ -31,7 +31,7 @@ public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> im
 
   private boolean myShowTags = false;
 
-  public LsRemoteCommandImpl(@NotNull AgentGitCommandLine cmd) {
+  public LsRemoteCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
   }
 
@@ -43,7 +43,7 @@ public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> im
 
   @NotNull
   public List<Ref> call() throws VcsException {
-    AgentGitCommandLine cmd = getCmd();
+    GitCommandLine cmd = getCmd();
     cmd.addParameter("ls-remote");
     if (myShowTags)
       cmd.addParameter("--tags");

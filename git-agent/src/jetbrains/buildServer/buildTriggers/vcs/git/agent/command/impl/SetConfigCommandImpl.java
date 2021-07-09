@@ -17,8 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SetConfigCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -28,7 +29,7 @@ public class SetConfigCommandImpl extends BaseCommandImpl implements SetConfigCo
   private String myValue;
   private boolean myUnSet = false;
 
-  public SetConfigCommandImpl(@NotNull AgentGitCommandLine cmd) {
+  public SetConfigCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
   }
 
@@ -51,7 +52,7 @@ public class SetConfigCommandImpl extends BaseCommandImpl implements SetConfigCo
   }
 
   public void call() throws VcsException {
-    AgentGitCommandLine cmd = getCmd();
+    GitCommandLine cmd = getCmd();
     if (myUnSet) {
       cmd.addParameters("config", "--unset", myPropertyName);
     } else {

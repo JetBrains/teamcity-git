@@ -29,13 +29,14 @@ import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.RefImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.BaseCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelperConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitOutdatedIndexException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
@@ -247,7 +248,7 @@ public class UpdaterImpl implements Updater {
 
 
   private void updateSources() throws VcsException {
-    final GitFacade git = myGitFactory.create(myTargetDirectory);
+    final AgentGitFacade git = myGitFactory.create(myTargetDirectory);
     boolean branchChanged = false;
     removeIndexLock();
     if (GitUtilsAgent.isRegularBranch(myFullBranchName)) {
@@ -302,11 +303,11 @@ public class UpdaterImpl implements Updater {
     }
   }
 
-  private void forceCheckout(@NotNull GitFacade git, @NotNull String what) throws VcsException {
+  private void forceCheckout(@NotNull AgentGitFacade git, @NotNull String what) throws VcsException {
     checkout(git).setBranch(what).setForce(true).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
   }
 
-  private void runAndFixIndexErrors(@NotNull GitFacade git, @NotNull VcsCommand cmd) throws VcsException {
+  private void runAndFixIndexErrors(@NotNull AgentGitFacade git, @NotNull VcsCommand cmd) throws VcsException {
     try {
       cmd.call();
     } catch (GitIndexCorruptedException e) {
@@ -327,7 +328,7 @@ public class UpdaterImpl implements Updater {
 
 
   @NotNull
-  private UpdateIndexCommand updateIndex(final GitFacade git) {
+  private UpdateIndexCommand updateIndex(final AgentGitFacade git) {
     UpdateIndexCommand result = git.updateIndex()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
@@ -337,7 +338,7 @@ public class UpdaterImpl implements Updater {
 
 
   @NotNull
-  private ResetCommand reset(final GitFacade git) {
+  private ResetCommand reset(final AgentGitFacade git) {
     ResetCommand result = git.reset()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
@@ -346,7 +347,7 @@ public class UpdaterImpl implements Updater {
   }
 
   @NotNull
-  protected CheckoutCommand checkout(final GitFacade git) {
+  protected CheckoutCommand checkout(final AgentGitFacade git) {
     CheckoutCommand result = git.checkout()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
@@ -355,7 +356,7 @@ public class UpdaterImpl implements Updater {
   }
 
   protected void updateSubmodules(@NotNull final File repositoryDir) throws VcsException, ConfigInvalidException, IOException {
-    GitFacade git = myGitFactory.create(repositoryDir);
+    AgentGitFacade git = myGitFactory.create(repositoryDir);
     SubmoduleUpdateCommand submoduleUpdate = git.submoduleUpdate()
             .setAuthSettings(myRoot.getAuthSettings())
             .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
@@ -371,7 +372,7 @@ public class UpdaterImpl implements Updater {
       if (gitModules == null) return;
 
       myLogger.message("Checkout submodules in " + repositoryDir);
-      GitFacade git = myGitFactory.create(repositoryDir);
+      AgentGitFacade git = myGitFactory.create(repositoryDir);
       git.submoduleInit().call();
       git.submoduleSync().call();
 
@@ -774,7 +775,7 @@ public class UpdaterImpl implements Updater {
 
     myTargetDirectory.mkdirs();
     myLogger.message("The .git directory is missing in '" + myTargetDirectory + "'. Running 'git init'...");
-    final GitFacade gitFacade = myGitFactory.create(myTargetDirectory);
+    final AgentGitFacade gitFacade = myGitFactory.create(myTargetDirectory);
     gitFacade.init().call();
     validateUrls();
     configureRemoteUrl(new File(myTargetDirectory, ".git"), myRoot.getRepositoryFetchURL());
@@ -845,7 +846,7 @@ public class UpdaterImpl implements Updater {
 
   protected boolean removeOutdatedRefs(@NotNull File workingDir) throws VcsException {
     boolean outdatedRefsRemoved = false;
-    GitFacade git = myGitFactory.create(workingDir);
+    AgentGitFacade git = myGitFactory.create(workingDir);
     ShowRefResult showRefResult = git.showRef().call();
     Refs localRefs = new Refs(showRefResult.getValidRefs());
     Set<String> invalidRefs = showRefResult.getInvalidRefs();
@@ -884,7 +885,7 @@ public class UpdaterImpl implements Updater {
     return outdatedRefsRemoved;
   }
 
-  private void removeRefs(final GitFacade git, final Collection<String> invalidRefs) throws VcsException {
+  private void removeRefs(final AgentGitFacade git, final Collection<String> invalidRefs) throws VcsException {
     int size = invalidRefs.size();
     if (size == 0) return;
     if (size == 1 || myPluginConfig.getGitVersion().isLessThan(UpdaterImpl.GIT_UPDATE_REFS_STDIN)) {
@@ -927,7 +928,7 @@ public class UpdaterImpl implements Updater {
   protected Refs getRemoteRefs(@NotNull File workingDir) throws VcsException {
     if (myRemoteRefs != null && myTargetDirectory.equals(workingDir))
       return myRemoteRefs;
-    GitFacade git = myGitFactory.create(workingDir);
+    AgentGitFacade git = myGitFactory.create(workingDir);
     myRemoteRefs = new Refs(git.lsRemote().setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
       .setTimeout(myPluginConfig.getLsRemoteTimeoutSeconds())

@@ -23,8 +23,8 @@ import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Refs;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.util.FileUtil;
@@ -65,7 +65,7 @@ public class AgentCommitLoaderFactory {
       @Override
       protected void beforeFetch() throws VcsException {
         if (optimizeMirrorBeforeFetch()) {
-          final GitFacade git = gitFactory.create(targetDirectory);
+          final AgentGitFacade git = gitFactory.create(targetDirectory);
           git.gc().call();
           git.repack().call();
         }

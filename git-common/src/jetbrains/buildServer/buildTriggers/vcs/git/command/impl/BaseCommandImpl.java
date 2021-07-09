@@ -14,31 +14,30 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import com.intellij.openapi.util.Pair;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.BaseCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.BaseCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import org.jetbrains.annotations.NotNull;
 
-class BaseCommandImpl implements BaseCommand {
+public class BaseCommandImpl implements BaseCommand {
 
-  private final AgentGitCommandLine myCmd;
+  private final GitCommandLine myCmd;
   private final List<Pair<String, String>> myConfigs = new ArrayList<Pair<String, String>>();
   private final Map<String, String> myEnv = new HashMap<String, String>();
   private final List<Runnable> myPostActions = new ArrayList<Runnable>();
 
-  BaseCommandImpl(@NotNull AgentGitCommandLine cmd) {
+  public BaseCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
   }
 
-
   @NotNull
-  protected AgentGitCommandLine getCmd() {
+  protected GitCommandLine getCmd() {
     for (Map.Entry<String, String> e : myEnv.entrySet()) {
       myCmd.addEnvParam(e.getKey(), e.getValue());
     }

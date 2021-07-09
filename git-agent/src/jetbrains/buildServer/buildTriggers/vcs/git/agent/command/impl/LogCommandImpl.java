@@ -17,8 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LogCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -30,7 +31,7 @@ public class LogCommandImpl extends BaseCommandImpl implements LogCommand {
   private int myCommitsNumber;
   private String myFormat;
 
-  public LogCommandImpl(@NotNull AgentGitCommandLine cmd) {
+  public LogCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
   }
 
@@ -55,7 +56,7 @@ public class LogCommandImpl extends BaseCommandImpl implements LogCommand {
   @Nullable
   public String call() {
     try {
-      AgentGitCommandLine cmd = getCmd();
+      GitCommandLine cmd = getCmd();
       cmd.addParameters("log");
       if (myCommitsNumber != 0)
         cmd.addParameter("-n" + myCommitsNumber);
