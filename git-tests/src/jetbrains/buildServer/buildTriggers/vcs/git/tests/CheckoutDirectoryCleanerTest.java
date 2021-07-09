@@ -117,8 +117,8 @@ public class CheckoutDirectoryCleanerTest extends BaseTestCase {
 
     runCommand("add", "vcs_file");
     runCommand("commit", "-m", "initial commit");
-    if (enableCleanup) {
-      runCommand("config", "--local", "teamcity.freeDiskSpaceCleanupEnabled", "true");
+    if (!enableCleanup) {
+      runCommand("config", "--local", "teamcity.freeDiskSpaceCleanupEnabled", "false");
     }
 
     assertTrue(non_vcs_file.isFile());
