@@ -1,6 +1,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
+import com.intellij.openapi.util.SystemInfo;
 import java.io.File;
 import java.util.Collections;
 import java.util.Date;
@@ -55,7 +56,7 @@ public class CheckoutDirectoryCleanerTest extends BaseTestCase {
 
     myCleaner = new CheckoutDirectoryCleaner(myDirectoryMap, myGitDetector) {
       protected void runGitCommand(@NotNull File repo, @NotNull String pathToGit, @NotNull String cmdName, int timeout, @NotNull String... params) {
-        assertEquals("git", pathToGit);
+        assertEquals(SystemInfo.isWindows ? "git.exe" : "git", pathToGit);
         assertEquals(4, params.length);
         assertEquals("clean", params[0]);
         super.runGitCommand(repo, pathToGit, cmdName, timeout, params);

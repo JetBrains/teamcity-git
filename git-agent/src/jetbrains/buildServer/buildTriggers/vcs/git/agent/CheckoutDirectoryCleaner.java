@@ -55,9 +55,9 @@ public class CheckoutDirectoryCleaner implements DirectoryCleanersProvider {
 
   private static boolean isGitCleanEnabled(@NotNull File repo) {
     try (Repository repository = new RepositoryBuilder().setGitDir(new File(repo, ".git")).build()) {
-      return repository.getConfig().getBoolean("teamcity", "freeDiskSpaceCleanupEnabled", false);
+      return repository.getConfig().getBoolean("teamcity", "freeDiskSpaceCleanupEnabled", true);
     } catch (Exception e) {
-      return false;
+      return true;
     }
   }
 
