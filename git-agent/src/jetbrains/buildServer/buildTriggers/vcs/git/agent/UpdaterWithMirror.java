@@ -385,8 +385,9 @@ public class UpdaterWithMirror extends UpdaterImpl {
           aggregatedSubmodule = new AggregatedSubmodule(url);
         }
 
+        final String branch = gitModules.getString("submodule", submoduleName, "branch");
         aggregatedSubmodule.addSubmodule(new Submodule(submoduleName, submodulePath.replaceAll("/", Matcher.quoteReplacement(File.separator)), submoduleRevision,
-                                                       gitModules.getString("submodule", submoduleName, "branch")));
+                                                       ".".equals(branch) ? myFullBranchName : branch));
         aggregatedSubmodules.put(url, aggregatedSubmodule);
       }
 
