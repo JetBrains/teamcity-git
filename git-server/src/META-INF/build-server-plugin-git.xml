@@ -47,4 +47,8 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitTrustStoreProviderImpl"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitCustomizeVcsRootExtension"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitHubPasswordAuthRootRegistryFactoryImpl"/>
+
+  <bean id="preliminaryMergeManager" class="jetbrains.buildServer.buildTriggers.vcs.git.PreliminaryMergeManager">
+    <constructor-arg name="repositoryStateEvents" ref="repositoryStateEventDispatcher"/>
+  </bean>
 </beans>
