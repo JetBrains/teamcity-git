@@ -36,5 +36,7 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
              branchRevisionsToString(oldState.getBranchRevisions()) +
              " > " +
              branchRevisionsToString(newState.getBranchRevisions()));
+
+    System.out.println("test param : " + new VcsRootParametersExtractor(root).getParameter("teamcity.internal.vcs.preliminaryMerge.test"));
   }
 }
