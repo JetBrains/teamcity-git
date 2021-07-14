@@ -1,6 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.vcs.SVcsRoot;
+import java.util.Map;
 import jetbrains.buildServer.vcs.SVcsRootEx;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootInstance;
@@ -19,7 +19,7 @@ public class VcsRootParametersExtractor {
   }
 
   @Nullable
-  public String getParameter(String param) {
+  public Map.Entry<String, String> getParameterWithExternalId(String paramBeforeExternalId) {
     VcsRoot currentRoot = root;
 
     while (currentRoot instanceof VcsRootInstance) {
@@ -27,7 +27,11 @@ public class VcsRootParametersExtractor {
     }
 
     if (currentRoot instanceof SVcsRootEx) {
-      return ((SVcsRootEx) currentRoot).getProject().getParameterValue(param);
+      SVcsRootEx currentRootEx = (SVcsRootEx) currentRoot;
+      String externalId = currentRootEx.getExternalId();
+      String parameter = currentRootEx.getProject().getParameterValue(paramBeforeExternalId + "." + externalId);
+
+      return new java.util.AbstractMap.SimpleEntry<>(externalId, parameter);
     }
     else {
       throw new RuntimeException("Root error : todo normal exception");
