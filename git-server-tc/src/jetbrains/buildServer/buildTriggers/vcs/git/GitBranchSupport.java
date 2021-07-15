@@ -17,10 +17,26 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.vcs.BranchSupport;
+import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRoot;
+import org.eclipse.jgit.lib.Repository;
 import org.jetbrains.annotations.NotNull;
 
 
 public class GitBranchSupport implements BranchSupport, GitServerExtension {
+  private final GitVcsSupport myVcs;
+
+  public GitBranchSupport(GitVcsSupport vcs) {
+    myVcs = vcs;
+    myVcs.addExtension(this);
+  }
+
+  public void createBranch(@NotNull VcsRoot root,
+                           @NotNull String newBranchName) throws VcsException  {
+    OperationContext context = myVcs.createContext(root, "branchCreation");
+    Repository db = context.getRepository();
+    System.out.println("REPOSITORY: " + db.toString());
+  }
 
   @NotNull
   public String getRemoteRunOnBranchPattern() {

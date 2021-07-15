@@ -51,4 +51,5 @@
   <bean id="preliminaryMergeManager" class="jetbrains.buildServer.buildTriggers.vcs.git.PreliminaryMergeManager">
     <constructor-arg name="repositoryStateEvents" ref="repositoryStateEventDispatcher"/>
   </bean>
+  <bean id="branchSupport" class="jetbrains.buildServer.buildTriggers.vcs.git.GitBranchSupport"/>
 </beans>

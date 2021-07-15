@@ -2,25 +2,24 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.Pair;
 import java.util.*;
-import java.util.regex.Pattern;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.EventDispatcher;
-import jetbrains.buildServer.util.Hash;
 import java.util.function.Predicate;
-import jetbrains.buildServer.vcs.BranchSpec;
+import jetbrains.buildServer.vcs.BranchSupport;
 import jetbrains.buildServer.vcs.RepositoryState;
 import jetbrains.buildServer.vcs.RepositoryStateListener;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.spec.BranchSpecs;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class PreliminaryMergeManager implements RepositoryStateListener {
   private final BranchSpecs myBranchSpecs;
 
-  public PreliminaryMergeManager(@NotNull final EventDispatcher<RepositoryStateListener> repositoryStateEvents, @NotNull final BranchSpecs branchSpecs) {
-    printTmp("GitPluginPM init");
+  public PreliminaryMergeManager(@NotNull final EventDispatcher<RepositoryStateListener> repositoryStateEvents,
+                                 @NotNull final BranchSpecs branchSpecs) {
     myBranchSpecs = branchSpecs;
-    System.out.println(branchSpecs);
+
     repositoryStateEvents.addListener(this);
   }
 
@@ -63,15 +62,44 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
     System.out.println("target branch: " + sourcesTargetBranches.getValue());
 
     String targetBranchName = sourcesTargetBranches.getValue();
-    Pair<String, Pair<String, String>> targetBranchStates = new Pair<>(targetBranchName,
+    Pair<String, Pair<String, String>> targetBranchState = new Pair<>(targetBranchName,
                                                                        new Pair<>(oldState.getBranchRevisions().get(targetBranchName),
                                                                                   newState.getBranchRevisions().get(targetBranchName)));
 
-    System.out.println("targetBranchStates: " + targetBranchStates);
+    System.out.println("targetBranchStates: " + targetBranchState);
 
     HashMap<String, Pair<String, String>> sourceBranchesStates = createSourceBranchStates(oldState, newState, sourcesTargetBranches.getKey(), targetBranchName);
 
     System.out.println("States: " + sourceBranchesStates);
+
+    //iterate src branches, and create branch for each renewed
+
+    mergingPrototype(targetBranchState, sourceBranchesStates);
+  }
+
+  private void mergingPrototype(Pair<String, Pair<String, String>> targerBranchStates, HashMap<String, Pair<String, String>> srcBrachesStates) {
+    for (String sourceBranchName : srcBrachesStates.keySet()) {
+      if (isBranchRenewed(srcBrachesStates, sourceBranchName)) {
+        System.out.println("this branch is renewed: " + sourceBranchName);
+
+
+      }
+    }
+  }
+
+  @Nullable
+  private BranchSupport getBranchSupport() {
+    //analogue of getMergeSupport
+
+
+  }
+
+  private boolean isBranchRenewed(Pair<String, String> branchStates) {
+    return !branchStates.first.equals(branchStates.second);
+  }
+
+  private boolean isBranchRenewed(HashMap<String, Pair<String, String>> states, String branchName) {
+    return !states.get(branchName).first.equals(states.get(branchName).second);
   }
 
   private HashMap<String, Pair<String, String>> createSourceBranchStates(@NotNull RepositoryState oldState, @NotNull RepositoryState newState, @NotNull String sourceBranchFilter,
