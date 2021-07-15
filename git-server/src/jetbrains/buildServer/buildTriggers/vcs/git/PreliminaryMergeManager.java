@@ -6,15 +6,21 @@ import java.util.regex.Pattern;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.Hash;
+import java.util.function.Predicate;
+import jetbrains.buildServer.vcs.BranchSpec;
 import jetbrains.buildServer.vcs.RepositoryState;
 import jetbrains.buildServer.vcs.RepositoryStateListener;
 import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.spec.BranchSpecs;
 import org.jetbrains.annotations.NotNull;
 
 public class PreliminaryMergeManager implements RepositoryStateListener {
+  private final BranchSpecs myBranchSpecs;
 
-  public PreliminaryMergeManager(@NotNull final EventDispatcher<RepositoryStateListener> repositoryStateEvents) {
+  public PreliminaryMergeManager(@NotNull final EventDispatcher<RepositoryStateListener> repositoryStateEvents, @NotNull final BranchSpecs branchSpecs) {
     printTmp("GitPluginPM init");
+    myBranchSpecs = branchSpecs;
+    System.out.println(branchSpecs);
     repositoryStateEvents.addListener(this);
   }
 
@@ -61,26 +67,26 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
 
     System.out.println("targetBranchStates: " + targetBranchStates);
 
-    HashMap<String, Pair<String, String>> sourceBranchesStates = createSourceBranchStates(oldState, newState);
+    HashMap<String, Pair<String, String>> sourceBranchesStates = createSourceBranchStates(oldState, newState, sourcesTargetBranches.getKey(), targetBranchName);
 
     System.out.println("States: " + sourceBranchesStates);
-
-    //next step: filter src branches
-
-
-
   }
 
-  private HashMap<String, Pair<String, String>> createSourceBranchStates(@NotNull RepositoryState oldState, @NotNull RepositoryState newState) {
+  private HashMap<String, Pair<String, String>> createSourceBranchStates(@NotNull RepositoryState oldState, @NotNull RepositoryState newState, @NotNull String sourceBranchFilter,
+                                                                         @NotNull String targetBranch) {
     HashMap<String, Pair<String, String>> states = new HashMap<>();
 
-    Set<Map.Entry<String, String>> branchesSet = new HashSet<>(oldState.getBranchRevisions().entrySet());
-    branchesSet.addAll(newState.getBranchRevisions().entrySet());
+    Set<String> branchesSet = new HashSet<>(oldState.getBranchRevisions().keySet());
+    branchesSet.addAll(newState.getBranchRevisions().keySet());
 
-    for (Map.Entry<String, String> rev : branchesSet) {
-      states.put(rev.getKey(), new Pair<>(oldState.getBranchRevisions().get(rev.getKey()), newState.getBranchRevisions().get(rev.getKey())));
+    Predicate<String> filter = new PreliminaryMergeSourceBranchFilter(myBranchSpecs, sourceBranchFilter);
+    for (String branch : branchesSet) {
+      if (!filter.test(branch) || branch.equals(targetBranch)) {
+        continue;
+      }
+
+      states.put(branch, new Pair<>(oldState.getBranchRevisions().get(branch), newState.getBranchRevisions().get(branch)));
     }
-
     return states;
   }
 
