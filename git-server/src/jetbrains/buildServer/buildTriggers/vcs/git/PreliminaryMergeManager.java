@@ -50,6 +50,8 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
     VcsRootParametersExtractor paramsExecutor = new VcsRootParametersExtractor(root);
 
     //parameter: teamcity.internal.vcs.preliminaryMerge.<VCS root external id>=<source branch pattern>:<target branch name>
+
+    //todo refactor: universal method for getting branches
     Map.Entry<String, String> externalIdOnSourcesTargetBranchesParam = paramsExecutor.getParameterWithExternalId("teamcity.internal.vcs.preliminaryMerge");
     if (externalIdOnSourcesTargetBranchesParam == null) {
       return;
