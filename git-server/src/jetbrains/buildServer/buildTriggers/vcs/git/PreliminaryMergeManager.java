@@ -1,11 +1,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.Pair;
-import java.util.AbstractMap;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.EventDispatcher;
+import jetbrains.buildServer.util.Hash;
 import jetbrains.buildServer.vcs.RepositoryState;
 import jetbrains.buildServer.vcs.RepositoryStateListener;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -61,6 +61,23 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
 
     System.out.println("targetBranchStates: " + targetBranchStates);
 
+    HashMap<String, Pair<String, String>> sourceBranchesStates = createSourceBranchStates(oldState, newState);
+
+    System.out.println("States: " + sourceBranchesStates);
+
+  }
+
+  private HashMap<String, Pair<String, String>> createSourceBranchStates(@NotNull RepositoryState oldState, @NotNull RepositoryState newState) {
+    HashMap<String, Pair<String, String>> states = new HashMap<>();
+
+    Set<Map.Entry<String, String>> branchesSet = new HashSet<>(oldState.getBranchRevisions().entrySet());
+    branchesSet.addAll(newState.getBranchRevisions().entrySet());
+
+    for (Map.Entry<String, String> rev : branchesSet) {
+      states.put(rev.getKey(), new Pair<>(rev.getValue(), newState.getBranchRevisions().get(rev.getKey())));
+    }
+
+    return states;
   }
 
   private Map.Entry<String, String> parsePreliminaryMergeSourcesTargetBranches(String paramValue) {
