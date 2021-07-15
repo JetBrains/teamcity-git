@@ -95,6 +95,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
         } while (attemptsLeft > 0);
         return result;
       } catch (Exception e) {
+        e.printStackTrace(); //todo delete
         throw context.wrapException(e);
       } finally {
         context.close();
@@ -146,8 +147,9 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
                               @NotNull String message,
                               @NotNull MergeOptions options) throws IOException, VcsException {
     RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(dstBranch)).setDestination(GitUtils.expandRef(dstBranch)).setForceUpdate(true);
-    myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(gitRoot.getAuthSettings()));
+    myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(gitRoot.getAuthSettings())); //crash is there
     RevCommit srcCommit = myCommitLoader.findCommit(db, srcRevision);
+    System.out.println("src commit for merging: " + srcCommit);
     if (srcCommit == null)
       srcCommit = myCommitLoader.loadCommit(context, gitRoot, srcRevision);
 

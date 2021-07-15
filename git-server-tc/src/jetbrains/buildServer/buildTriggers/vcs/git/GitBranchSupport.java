@@ -22,7 +22,7 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.lib.Repository;
 import org.jetbrains.annotations.NotNull;
 
-
+//todo clear this class
 public class GitBranchSupport implements BranchSupport, GitServerExtension {
   private final GitVcsSupport myVcs;
 

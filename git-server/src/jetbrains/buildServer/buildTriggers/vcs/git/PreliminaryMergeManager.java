@@ -5,20 +5,22 @@ import java.util.*;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.EventDispatcher;
 import java.util.function.Predicate;
-import jetbrains.buildServer.vcs.BranchSupport;
-import jetbrains.buildServer.vcs.RepositoryState;
-import jetbrains.buildServer.vcs.RepositoryStateListener;
-import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.spec.BranchSpecs;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class PreliminaryMergeManager implements RepositoryStateListener {
   private final BranchSpecs myBranchSpecs;
+  private final InternalGitBranchSupport myBranchSupport;
+  private final MergeSupport myMergeSupport;
 
   public PreliminaryMergeManager(@NotNull final EventDispatcher<RepositoryStateListener> repositoryStateEvents,
-                                 @NotNull final BranchSpecs branchSpecs) {
+                                 @NotNull final BranchSpecs branchSpecs,
+                                 @NotNull InternalGitBranchSupport branchSupport,
+                                 @NotNull MergeSupport mergeSupport) {
     myBranchSpecs = branchSpecs;
+    myBranchSupport = branchSupport;
+    myMergeSupport = mergeSupport;
 
     repositoryStateEvents.addListener(this);
   }
@@ -74,24 +76,24 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
 
     //iterate src branches, and create branch for each renewed
 
-    mergingPrototype(targetBranchState, sourceBranchesStates);
+    mergingPrototype(root, targetBranchState, sourceBranchesStates);
   }
 
-  private void mergingPrototype(Pair<String, Pair<String, String>> targerBranchStates, HashMap<String, Pair<String, String>> srcBrachesStates) {
+  private void mergingPrototype(VcsRoot root, Pair<String, Pair<String, String>> targerBranchStates, HashMap<String, Pair<String, String>> srcBrachesStates) {
     for (String sourceBranchName : srcBrachesStates.keySet()) {
       if (isBranchRenewed(srcBrachesStates, sourceBranchName)) {
         System.out.println("this branch is renewed: " + sourceBranchName);
 
-
+        try {
+          String mergeBranchName = "refs/heads/" + myBranchSupport.createBranchProto(root, sourceBranchName);
+          myBranchSupport.merge(root, targerBranchStates.second.second, mergeBranchName, myMergeSupport);
+          System.out.println("merged " + targerBranchStates.second.second + " to " + mergeBranchName);
+        } catch (VcsException vcsException) {
+          //todo logging
+          vcsException.printStackTrace();
+        }
       }
     }
-  }
-
-  @Nullable
-  private BranchSupport getBranchSupport() {
-    //analogue of getMergeSupport
-
-
   }
 
   private boolean isBranchRenewed(Pair<String, String> branchStates) {

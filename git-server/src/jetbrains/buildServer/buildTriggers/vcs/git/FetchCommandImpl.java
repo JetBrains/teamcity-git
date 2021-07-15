@@ -147,7 +147,7 @@ public class FetchCommandImpl implements FetchCommand {
           });
 
 
-        final ExecResult result = gitResult.getExecResult();
+        final ExecResult result = gitResult.getExecResult(); //error is there
         VcsException commandError = CommandLineUtil.getCommandLineError("git fetch",
                                                                         " (repository dir: <TeamCity data dir>/system/caches/git/" +
                                                                         repository.getDirectory().getName() + ")",
