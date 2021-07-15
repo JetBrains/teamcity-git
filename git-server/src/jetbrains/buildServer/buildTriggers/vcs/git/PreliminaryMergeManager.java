@@ -65,6 +65,10 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
 
     System.out.println("States: " + sourceBranchesStates);
 
+    //next step: filter src branches
+
+
+
   }
 
   private HashMap<String, Pair<String, String>> createSourceBranchStates(@NotNull RepositoryState oldState, @NotNull RepositoryState newState) {
@@ -74,7 +78,7 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
     branchesSet.addAll(newState.getBranchRevisions().entrySet());
 
     for (Map.Entry<String, String> rev : branchesSet) {
-      states.put(rev.getKey(), new Pair<>(rev.getValue(), newState.getBranchRevisions().get(rev.getKey())));
+      states.put(rev.getKey(), new Pair<>(oldState.getBranchRevisions().get(rev.getKey()), newState.getBranchRevisions().get(rev.getKey())));
     }
 
     return states;
