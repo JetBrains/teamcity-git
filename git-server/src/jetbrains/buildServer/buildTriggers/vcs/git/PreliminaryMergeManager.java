@@ -1,5 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.openapi.util.Pair;
 import java.util.AbstractMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -43,15 +44,23 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
     VcsRootParametersExtractor paramsExecutor = new VcsRootParametersExtractor(root);
 
     //parameter: teamcity.internal.vcs.preliminaryMerge.<VCS root external id>=<source branch pattern>:<target branch name>
-    Map.Entry<String, String> exIdOnSourcesTargetBranchesParam = paramsExecutor.getParameterWithExternalId("teamcity.internal.vcs.preliminaryMerge");
-    if (exIdOnSourcesTargetBranchesParam == null) {
+    Map.Entry<String, String> externalIdOnSourcesTargetBranchesParam = paramsExecutor.getParameterWithExternalId("teamcity.internal.vcs.preliminaryMerge");
+    if (externalIdOnSourcesTargetBranchesParam == null) {
       return;
     }
 
-    Map.Entry<String, String> sourcesTargetBranches = parsePreliminaryMergeSourcesTargetBranches(exIdOnSourcesTargetBranchesParam.getValue());
+    Map.Entry<String, String> sourcesTargetBranches = parsePreliminaryMergeSourcesTargetBranches(externalIdOnSourcesTargetBranchesParam.getValue());
 
     System.out.println("source pattern: " + sourcesTargetBranches.getKey());
     System.out.println("target branch: " + sourcesTargetBranches.getValue());
+
+    String targetBranchName = sourcesTargetBranches.getValue();
+    Pair<String, Pair<String, String>> targetBranchStates = new Pair<>(targetBranchName,
+                                                                       new Pair<>(oldState.getBranchRevisions().get(targetBranchName),
+                                                                                  newState.getBranchRevisions().get(targetBranchName)));
+
+    System.out.println("targetBranchStates: " + targetBranchStates);
+
   }
 
   private Map.Entry<String, String> parsePreliminaryMergeSourcesTargetBranches(String paramValue) {
