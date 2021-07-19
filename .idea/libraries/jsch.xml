@@ -6,7 +6,6 @@
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.63-sources.jar!/src/main/java" />
       <root url="jar://$PROJECT_DIR$/lib/common/src/jzlib-1.1.3-sources.jar!/" />
     </SOURCES>
   </library>
