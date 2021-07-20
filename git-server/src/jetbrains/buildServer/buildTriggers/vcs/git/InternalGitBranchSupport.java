@@ -1,90 +1,59 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
-import jetbrains.buildServer.vcs.MergeOptions;
-import jetbrains.buildServer.vcs.MergeSupport;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsRoot;
+import java.util.concurrent.locks.ReentrantLock;
+import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.errors.*;
 import org.eclipse.jgit.lib.NullProgressMonitor;
 import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.Transport;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import static java.util.Arrays.asList;
 
 public class InternalGitBranchSupport {
-  private final GitVcsSupport myVcs;
   private final TransportFactory myTransportFactory;
   private final CommitLoader myCommitLoader;
+  private final RepositoryManager myRepositoryManager;
+  private final ServerPluginConfig myPluginConfig;
 
-  public InternalGitBranchSupport(@NotNull GitVcsSupport vcs,
-                                  @NotNull TransportFactory transportFactory,
-                                  @NotNull CommitLoader commitLoader) {
-    myVcs = vcs;
+  public InternalGitBranchSupport(@NotNull TransportFactory transportFactory,
+                                  @NotNull CommitLoader commitLoader,
+                                  @NotNull RepositoryManager repositoryManager,
+                                  @NotNull ServerPluginConfig pluginConfig) {
     myTransportFactory = transportFactory;
     myCommitLoader = commitLoader;
+    myRepositoryManager = repositoryManager;
+    myPluginConfig = pluginConfig;
   }
 
-  public String createBranchProto(@NotNull VcsRoot root, @NotNull String srcBranch) throws VcsException {
-    OperationContext context = myVcs.createContext(root, "branchCreation");
-    Repository db = context.getRepository();
-    System.out.println("REPOSITORY: " + db.toString());
-
-    Git git = new Git(db);
+  public String createBranchProto(@NotNull GitVcsRoot gitRoot,
+                                  @NotNull Git git,
+                                  @NotNull Repository db,
+                                  @NotNull OperationContext context,
+                                  @NotNull String srcBranch,
+                                  @NotNull String dstBranch) throws IOException, VcsException {
     try {
-      String newBranchName = "check_create_" + System.currentTimeMillis();
+      fetchIfRequired(srcBranch, git, db, gitRoot);
+
+      String newBranchName = constructName(srcBranch, dstBranch);
       git.branchCreate()
          .setName(newBranchName)
          .setStartPoint(srcBranch)
          .call();
 
-
-      System.out.println("branch " + newBranchName + " was created");
-      System.out.println("TODO push functionality");
-
-      GitVcsRoot gitRoot = context.getGitRoot();
-
-      try {
-
-        final Transport tn = myTransportFactory.createTransport(db, gitRoot.getRepositoryPushURL().get(), gitRoot.getAuthSettings(),
-                                                                10);
-
-        String topNewBranchCommitRevision = git.log().add(db.resolve(newBranchName)).call().iterator().next().getName();
-
-        System.out.println("top commit: " + topNewBranchCommitRevision);
-
-        ObjectId commitId = myCommitLoader.loadCommit(context, gitRoot, topNewBranchCommitRevision);
-
-        RemoteRefUpdate ru = new RemoteRefUpdate(db,
-                                                 null,
-                                                 commitId,
-                                                 GitUtils.expandRef(newBranchName), //todo
-                                                 false,
-                                                 "refs/heads/" + newBranchName,
-                                                 null);
-
-        tn.push(NullProgressMonitor.INSTANCE, Collections.singletonList(ru)); //todo close
-
-        System.out.println("pushed " + ru.getStatus() + " " + ru.getMessage());
-
-      } catch (TransportException | NotSupportedException ex) {
-        ex.printStackTrace();
-      } catch (AmbiguousObjectException e) {
-        e.printStackTrace();
-      } catch (IncorrectObjectTypeException e) {
-        e.printStackTrace();
-      } catch (MissingObjectException e) {
-        e.printStackTrace();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
+      pushNewBranch(newBranchName, context, db, git, gitRoot);
 
       return newBranchName;
     } catch (GitAPIException jgitException) {
@@ -92,16 +61,65 @@ public class InternalGitBranchSupport {
     }
   }
 
-  public void PrintBranches(Git git) throws GitAPIException {
-    List<Ref> call = git.branchList().call();
-    for (Ref ref : call) {
-      System.out.println("Branch: " + ref + " " + ref.getName() + " " + ref.getObjectId().getName());
-    }
+  @NotNull
+  public String constructName(String srcBranch, String dstBranch) {
+    return PreliminaryMergeManager.PRELIMINARY_MERGE_BRANCH_PREFIX + "/" + getLogicalName(srcBranch) + "/to/" + getLogicalName(dstBranch);
+  }
 
-    System.out.println("Now including remote branches:");
-    call = git.branchList().setListMode(ListBranchCommand.ListMode.ALL).call();
-    for (Ref ref : call) {
-      System.out.println("Branch: " + ref + " " + ref.getName() + " " + ref.getObjectId().getName());
+  @NotNull
+  private String getLogicalName(@NotNull String branchName) {
+    if (branchName.startsWith("refs/heads/")) {
+      return branchName.substring("refs/heads/".length());
+    }
+    return branchName;
+  }
+
+  private void fetchIfRequired(String branchName, Git git, Repository db, GitVcsRoot gitRoot) throws GitAPIException, IOException, VcsException {
+    if (branchLastCommit(branchName, git, db) == null) {
+      fetch(branchName, git, db, gitRoot);
+    }
+  }
+
+  public void fetch(String branchName, Git git, Repository db, GitVcsRoot gitRoot) throws VcsException, IOException {
+    RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(branchName)).setDestination(GitUtils.expandRef(branchName)).setForceUpdate(true);
+    myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(gitRoot.getAuthSettings()));
+  }
+
+  private void pushNewBranch(String newBranchName, OperationContext context, Repository db, Git git, GitVcsRoot gitRoot) throws VcsException, IOException, GitAPIException {
+    ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
+    lock.lock();
+
+    try {
+      try (final Transport tn = myTransportFactory.createTransport(db, gitRoot.getRepositoryPushURL().get(), gitRoot.getAuthSettings(),
+                                                                   myPluginConfig.getPushTimeoutSeconds())) {
+        String topNewBranchCommitRevision = branchLastCommit(newBranchName, git, db);
+        if (topNewBranchCommitRevision == null) {
+          Loggers.VCS.debug("New branch was not created");
+          return;
+        }
+
+        ObjectId commitId = myCommitLoader.loadCommit(context, gitRoot, topNewBranchCommitRevision);
+
+        RemoteRefUpdate ru = new RemoteRefUpdate(db,
+                                                 null,
+                                                 commitId,
+                                                 GitUtils.expandRef(newBranchName),
+                                                 false,
+                                                 GitUtils.expandRef(newBranchName),
+                                                 null);
+
+        tn.push(NullProgressMonitor.INSTANCE, Collections.singletonList(ru));
+
+        switch (ru.getStatus()) {
+          case UP_TO_DATE:
+          case OK:
+            Loggers.VCS.info("New branch " + newBranchName + " was created and pushed");
+          default:
+            Loggers.VCS.debug("Warning! New branch " + newBranchName + " was created, but not pushed");
+        }
+      }
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -109,6 +127,42 @@ public class InternalGitBranchSupport {
                     @NotNull String src,
                     @NotNull String dst,
                     @NotNull MergeSupport mergeSupport) throws VcsException {
+    //todo check new branch
     mergeSupport.merge(root, src, dst, "preliminary merge commit", new MergeOptions());
+  }
+
+  @Nullable
+  public String branchLastCommit(String branchName, Git git, Repository db)  {
+    try {
+      ObjectId commitObject = db.resolve(branchName);
+      if (commitObject == null)
+        return null;
+      return git.log().add(commitObject).call().iterator().next().getName();
+    }  catch (GitAPIException | IOException gitEx) {
+      gitEx.printStackTrace();
+      return null;
+    }
+  }
+
+  public boolean isBranchTopCommitInTree(String branchName, Git git, Repository db, String targetBranchName) {
+    try {
+      String commitSHA = git.log().add(db.resolve(targetBranchName)).call().iterator().next().getName();
+
+      int visitsLeft = 100;
+      for (RevCommit rev : git.log().add(db.resolve(branchName)).call()) {
+        if (visitsLeft-- == 0) {
+          break;
+        }
+
+        if (rev.getName().equals(commitSHA)) {
+          return true;
+        }
+      }
+
+      return false;
+    }  catch (GitAPIException | IOException gitEx) {
+      gitEx.printStackTrace();
+      return false;
+    }
   }
 }
