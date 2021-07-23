@@ -17,15 +17,18 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.Vector;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentPluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
@@ -107,6 +110,20 @@ public class SshHandler implements GitSSHService.Handler {
     if (teamCityVersion != null) {
       cmd.addEnvParam(GitSSHHandler.TEAMCITY_VERSION, teamCityVersion);
     }
+
+    try {
+      File intPropsFile = FileUtil.createTempFile(tmpDir, "int_props", "", true);
+      Properties props = new Properties();
+      props.putAll(TeamCityProperties.getPropertiesWithPrefix("teamcity."));
+      try (FileWriter fw = new FileWriter(intPropsFile)) {
+        props.store(fw, "Internal properties");
+      }
+      cmd.addEnvParam(GitSSHHandler.TEAMCITY_INT_PROPS_PATH, intPropsFile.getAbsolutePath());
+      myFilesToClean.add(intPropsFile);
+    } catch (IOException e) {
+      //
+    }
+
     try {
       cmd.addEnvParam(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath());
       // ask git to treat our command as OpenSSH compatible:

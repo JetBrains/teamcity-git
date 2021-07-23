@@ -17,16 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.jcraft.jsch.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.jetbrains.git4idea.ssh.GitSSHHandler;
-
-import javax.security.auth.callback.Callback;
-import javax.security.auth.callback.CallbackHandler;
-import javax.security.auth.callback.UnsupportedCallbackException;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.Security;
@@ -34,6 +26,16 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.security.auth.callback.Callback;
+import javax.security.auth.callback.CallbackHandler;
+import javax.security.auth.callback.UnsupportedCallbackException;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.serverSide.BasePropertiesModel;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.git4idea.ssh.GitSSHHandler;
 
 public class JSchClient {
 
@@ -60,10 +62,10 @@ public class JSchClient {
     myOptions = options;
   }
 
-
   public static void main(String... args) {
     boolean debug = Boolean.parseBoolean(System.getenv(GitSSHHandler.TEAMCITY_DEBUG_SSH));
     Logger logger = debug ? new StdErrLogger() : new InMemoryLogger(Logger.INFO);
+    initInternalProperties(logger);
     try {
       JSchClient ssh = createClient(logger, args);
       ssh.run();
@@ -78,6 +80,38 @@ public class JSchClient {
     }
   }
 
+  private static void initInternalProperties(final Logger logger) {
+    String intPropsPath = System.getenv(GitSSHHandler.TEAMCITY_INT_PROPS_PATH);
+    File intPropsFile = intPropsPath == null ? null : new File(intPropsPath);
+    if (intPropsFile != null && !intPropsFile.isFile()) {
+      logger.log(Logger.WARN, "Could not find an internal properties file at path: " + intPropsPath);
+      intPropsFile = null;
+    }
+    if (intPropsFile == null) {
+      new TeamCityProperties() {{
+        setModel(new BasePropertiesModel());
+      }};
+    } else {
+      Map<String, String> loadedProps = new HashMap<>();
+      Properties props = new Properties();
+      try {
+        FileReader r = new FileReader(intPropsFile);
+        props.load(r);
+        props.forEach((k, v) -> loadedProps.put((String)k, (String)v));
+      } catch (IOException e) {
+        logger.log(Logger.WARN, "Could not load internal properties from the file: " + intPropsPath + ", error: " + e.toString());
+      }
+      new TeamCityProperties() {{
+        setModel(new BasePropertiesModel() {
+          @NotNull
+          @Override
+          public Map<String, String> getUserDefinedProperties() {
+            return loadedProps;
+          }
+        });
+      }};
+    }
+  }
 
   private static JSchClient createClient(@NotNull Logger logger, String[] args) {
     return SSHCommandLine.parse(args, logger).createClient();
