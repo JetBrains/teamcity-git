@@ -2,6 +2,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.Pair;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.*;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.EventDispatcher;
@@ -31,15 +33,15 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
     repositoryStateEvents.addListener(this);
   }
 
-  private void printTmp(String toPrint) {
-    Loggers.VCS.debug(toPrint);
-    System.out.println(toPrint);
+  public static void printToLogs(String toPrint) {
+    Loggers.VCS.debug("[PM_feature: ]" + toPrint);
   }
 
-  private String branchRevisionsToString(Map<String, String> revs) {
-    StringBuilder revisions = new StringBuilder();
-    revs.forEach((key, value) -> revisions.append("\n{\n\t").append(key).append(" : ").append(value).append("\n}"));
-    return revisions.append("\n").toString();
+  public static void printStackTraceToLogs(Exception exception) {
+    StringWriter sw = new StringWriter();
+    PrintWriter pw = new PrintWriter(sw);
+    exception.printStackTrace(pw);
+    printToLogs(sw.toString());
   }
 
   @Override
@@ -49,11 +51,7 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
 
   @Override
   public void repositoryStateChanged(@NotNull VcsRoot root, @NotNull RepositoryState oldState, @NotNull RepositoryState newState) {
-    printTmp("GitPluginPM: new state: " +
-             branchRevisionsToString(oldState.getBranchRevisions()) +
-             " > " +
-             branchRevisionsToString(newState.getBranchRevisions()));
-
+    printToLogs("Repository update event");
     PreliminaryMergeBranchesExtractor branchesExecutor = new PreliminaryMergeBranchesExtractor(root, oldState, newState, myBranchSpecs);
     branchesExecutor.extractBranchesFromParams();
     Pair<String, Pair<String, String>> targetBranchState = branchesExecutor.getTargetBranchState();
@@ -78,38 +76,45 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
         String mergeBranchName = myBranchSupport.constructName(sourceBranchName, targetBranchStates.first);
         if (myBranchSupport.branchLastCommit(mergeBranchName, git, db) == null) {
           if (wereTargetOrSourceCreatedOrUpdated(targetBranchStates, srcBrachesStates, sourceBranchName)) {
+            printToLogs(sourceBranchName + " > " + targetBranchStates.first + " (should create new PM branch)");
             myBranchSupport.createBranch(gitRoot, git, db, context, sourceBranchName, mergeBranchName);
             myBranchSupport.merge(root, targetBranchStates.second.second, GitUtils.expandRef(mergeBranchName), myMergeSupport);
           }
         }
         else {
           if (wereTargetAndSourceUpdatedBoth(targetBranchStates, srcBrachesStates, sourceBranchName)) {
+            printToLogs(sourceBranchName + " > " + targetBranchStates.first + " (both were updated)");
             mergeSrcAndTargetToPMBranch(root, targetBranchStates, sourceBranchName, mergeBranchName, git, db);
           }
           else if (isBranchRenewed(srcBrachesStates, sourceBranchName)) {
             myBranchSupport.fetch(mergeBranchName, git, db, gitRoot);
             if (myBranchSupport.isBranchTopCommitInTree(mergeBranchName, git, db, targetBranchStates.first)) {
+              printToLogs(sourceBranchName + " > " + targetBranchStates.first + " (merge src to PM branch)");
               myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(sourceBranchName, git, db)),
                                     GitUtils.expandRef(mergeBranchName), myMergeSupport);
             }
             else {
+              printToLogs(sourceBranchName + " > " + targetBranchStates.first + " (merge src to PM branch (+target due to lost))");
               mergeSrcAndTargetToPMBranch(root, targetBranchStates, sourceBranchName, mergeBranchName, git, db);
             }
           }
           else if (isBranchRenewed(targetBranchStates.second)) {
             myBranchSupport.fetch(mergeBranchName, git, db, gitRoot);
             if (myBranchSupport.isBranchTopCommitInTree(mergeBranchName, git, db, sourceBranchName)) {
+              printToLogs(sourceBranchName + " > " + targetBranchStates.first + " (merge dst to PM branch)");
               myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(targetBranchStates.first, git, db)),
                                     GitUtils.expandRef(mergeBranchName), myMergeSupport);
             }
             else {
+              printToLogs(sourceBranchName + " > " + targetBranchStates.first + " (merge dst to PM branch (+src due to lost))");
               mergeSrcAndTargetToPMBranch(root, targetBranchStates, sourceBranchName, mergeBranchName, git, db);
             }
           }
         }
+        printToLogs("merged successful");
       }
     } catch (VcsException | IOException exception) {
-      Loggers.VCS.debug(exception);
+      printStackTraceToLogs(exception);
     }
 
   }

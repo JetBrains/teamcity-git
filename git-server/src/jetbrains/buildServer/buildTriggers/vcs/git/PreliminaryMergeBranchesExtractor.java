@@ -57,7 +57,8 @@ public class PreliminaryMergeBranchesExtractor {
       return new java.util.AbstractMap.SimpleEntry<>(externalId, parameter);
     }
     else {
-      throw new AssertionError("Root error");
+      PreliminaryMergeManager.printToLogs("root extraction error");
+      return null;
     }
   }
 

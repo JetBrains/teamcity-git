@@ -148,7 +148,6 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(dstBranch)).setDestination(GitUtils.expandRef(dstBranch)).setForceUpdate(true);
     myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(gitRoot.getAuthSettings()));
     RevCommit srcCommit = myCommitLoader.findCommit(db, srcRevision);
-    System.out.println("src commit for merging: " + srcCommit);
     if (srcCommit == null)
       srcCommit = myCommitLoader.loadCommit(context, gitRoot, srcRevision);
 

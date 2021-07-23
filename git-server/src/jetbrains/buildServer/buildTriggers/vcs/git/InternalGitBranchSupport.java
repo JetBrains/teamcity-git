@@ -1,12 +1,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
-import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -38,12 +34,12 @@ public class InternalGitBranchSupport {
     myPluginConfig = pluginConfig;
   }
 
-  public String createBranch(@NotNull GitVcsRoot gitRoot,
-                             @NotNull Git git,
-                             @NotNull Repository db,
-                             @NotNull OperationContext context,
-                             @NotNull String srcBranch,
-                             @NotNull String newBranchName) throws IOException, VcsException {
+  public void createBranch(@NotNull GitVcsRoot gitRoot,
+                           @NotNull Git git,
+                           @NotNull Repository db,
+                           @NotNull OperationContext context,
+                           @NotNull String srcBranch,
+                           @NotNull String newBranchName) throws IOException, VcsException {
     try {
       fetchIfRequired(srcBranch, git, db, gitRoot);
 
@@ -54,7 +50,6 @@ public class InternalGitBranchSupport {
 
       pushNewBranch(newBranchName, context, db, git, gitRoot);
 
-      return newBranchName;
     } catch (GitAPIException jgitException) {
       throw new VcsException(jgitException);
     }
@@ -93,7 +88,7 @@ public class InternalGitBranchSupport {
                                                                    myPluginConfig.getPushTimeoutSeconds())) {
         String topNewBranchCommitRevision = branchLastCommit(newBranchName, git, db);
         if (topNewBranchCommitRevision == null) {
-          Loggers.VCS.debug("New branch was not created");
+          PreliminaryMergeManager.printToLogs("New branch was not created");
           return;
         }
 
@@ -112,9 +107,9 @@ public class InternalGitBranchSupport {
         switch (ru.getStatus()) {
           case UP_TO_DATE:
           case OK:
-            Loggers.VCS.info("New branch " + newBranchName + " was created and pushed");
+            PreliminaryMergeManager.printToLogs("New branch " + newBranchName + " was created and pushed");
           default:
-            Loggers.VCS.debug("Warning! New branch " + newBranchName + " was created, but not pushed");
+            PreliminaryMergeManager.printToLogs("Warning! New branch " + newBranchName + " was created, but not pushed");
         }
       }
     } finally {
@@ -126,7 +121,6 @@ public class InternalGitBranchSupport {
                     @NotNull String src,
                     @NotNull String dst,
                     @NotNull MergeSupport mergeSupport) throws VcsException {
-    //todo check new branch
     mergeSupport.merge(root, src, dst, "preliminary merge commit", new MergeOptions());
   }
 
