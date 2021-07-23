@@ -116,7 +116,7 @@ public class GitDetectorImpl implements GitDetector {
   @NotNull
   private GitVersion getGitVersion(String path) throws VcsException {
     try {
-      return new NativeGitFacade(path).version().call();
+      return new AgentGitFacadeImpl(path).version().call();
     } catch (VcsException e) {
       throw new VcsException("Unable to run git at path " + path, e);
     }

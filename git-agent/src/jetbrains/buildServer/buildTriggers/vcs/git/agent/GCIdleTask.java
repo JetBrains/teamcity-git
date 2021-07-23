@@ -118,7 +118,7 @@ public class GCIdleTask implements AgentIdleTasks.Task {
       Loggers.VCS.debug("Run git gc in " + path);
       Disposable name = NamedThreadFactory.patchThreadName("Run git gc in " + path);
       try {
-        new NativeGitFacade(mirror).gc().call();
+        new AgentGitFacadeImpl(mirror).gc().call();
         myGcTimestamp.put(mirror.getName(), System.nanoTime());
       } catch (Exception e) {
         Loggers.VCS.warnAndDebugDetails("Error while running git gc in " + path, e);

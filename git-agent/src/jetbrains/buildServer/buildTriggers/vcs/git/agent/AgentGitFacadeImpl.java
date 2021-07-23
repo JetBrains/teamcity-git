@@ -34,27 +34,27 @@ import org.jetbrains.annotations.NotNull;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
-public class NativeGitFacade extends GitFacadeImpl implements AgentGitFacade {
+public class AgentGitFacadeImpl extends GitFacadeImpl implements AgentGitFacade {
 
   private final GitAgentSSHService mySsh;
 
-  public NativeGitFacade(@NotNull GitAgentSSHService ssh,
-                         @NotNull File repositoryDir,
-                         @NotNull Context ctx) {
+  public AgentGitFacadeImpl(@NotNull GitAgentSSHService ssh,
+                            @NotNull File repositoryDir,
+                            @NotNull Context ctx) {
     super(repositoryDir, ctx);
     mySsh = ssh;
   }
 
-  public NativeGitFacade(@NotNull String gitPath) {
+  public AgentGitFacadeImpl(@NotNull String gitPath) {
     this(gitPath, new File("."));
   }
 
-  public NativeGitFacade(@NotNull File repositoryDirh) {
+  public AgentGitFacadeImpl(@NotNull File repositoryDirh) {
     this("git", repositoryDirh);
   }
 
-  public NativeGitFacade(@NotNull String gitPath,
-                         @NotNull File repositoryDir) {
+  public AgentGitFacadeImpl(@NotNull String gitPath,
+                            @NotNull File repositoryDir) {
     super(repositoryDir, new NoBuildContext(gitPath));
     mySsh = null;
   }

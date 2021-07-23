@@ -1319,7 +1319,7 @@ public class AgentVcsSupportTest {
   @TestFor(issues = "TW-58811")
   public void deleted_thousands_tags_in_remote_repository_should_be_deleted_in_local_repository_effectively(Boolean useMirrors)
     throws Exception {
-    GitVersion version = new NativeGitFacade(getGitPath()).version().call();
+    GitVersion version = new AgentGitFacadeImpl(getGitPath()).version().call();
     if (version.isLessThan(UpdaterImpl.GIT_UPDATE_REFS_STDIN)) {
       TestNGUtil.skip("Requires git version at least " + UpdaterImpl.GIT_UPDATE_REFS_STDIN);
     }
