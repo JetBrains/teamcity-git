@@ -38,16 +38,15 @@ public class InternalGitBranchSupport {
     myPluginConfig = pluginConfig;
   }
 
-  public String createBranchProto(@NotNull GitVcsRoot gitRoot,
-                                  @NotNull Git git,
-                                  @NotNull Repository db,
-                                  @NotNull OperationContext context,
-                                  @NotNull String srcBranch,
-                                  @NotNull String dstBranch) throws IOException, VcsException {
+  public String createBranch(@NotNull GitVcsRoot gitRoot,
+                             @NotNull Git git,
+                             @NotNull Repository db,
+                             @NotNull OperationContext context,
+                             @NotNull String srcBranch,
+                             @NotNull String newBranchName) throws IOException, VcsException {
     try {
       fetchIfRequired(srcBranch, git, db, gitRoot);
 
-      String newBranchName = constructName(srcBranch, dstBranch);
       git.branchCreate()
          .setName(newBranchName)
          .setStartPoint(srcBranch)

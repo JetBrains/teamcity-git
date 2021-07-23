@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.*;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.EventDispatcher;
-import java.util.function.Predicate;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.spec.BranchSpecs;
 import org.eclipse.jgit.api.Git;
@@ -55,38 +54,21 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
              " > " +
              branchRevisionsToString(newState.getBranchRevisions()));
 
-    VcsRootParametersExtractor paramsExecutor = new VcsRootParametersExtractor(root);
-
-    //parameter: teamcity.internal.vcs.preliminaryMerge.<VCS root external id>=<source branch pattern>:<target branch name>
-
-    //todo refactor: universal method for getting branches
-    Map.Entry<String, String> externalIdOnSourcesTargetBranchesParam = paramsExecutor.getParameterWithExternalId("teamcity.internal.vcs.preliminaryMerge");
-    if (externalIdOnSourcesTargetBranchesParam == null) {
-      return;
-    }
-
-    Map.Entry<String, String> sourcesTargetBranches = parsePreliminaryMergeSourcesTargetBranches(externalIdOnSourcesTargetBranchesParam.getValue());
-
-    if (sourcesTargetBranches == null)
-      return;
-
-    String targetBranchName = sourcesTargetBranches.getValue();
-    Pair<String, Pair<String, String>> targetBranchState = new Pair<>(targetBranchName,
-                                                                       new Pair<>(oldState.getBranchRevisions().get(targetBranchName),
-                                                                                  newState.getBranchRevisions().get(targetBranchName)));
-
-    HashMap<String, Pair<String, String>> sourceBranchesStates = createSourceBranchStates(oldState, newState, sourcesTargetBranches.getKey(), targetBranchName);
-
-    //iterate src branches, and create branch for each renewed
+    PreliminaryMergeBranchesExtractor branchesExecutor = new PreliminaryMergeBranchesExtractor(root, oldState, newState, myBranchSpecs);
+    branchesExecutor.extractBranchesFromParams();
+    Pair<String, Pair<String, String>> targetBranchState = branchesExecutor.getTargetBranchState();
+    HashMap<String, Pair<String, String>> sourceBranchesStates = branchesExecutor.getSourceBranchesStates();
     try {
-      mergingPrototype(root, targetBranchState, sourceBranchesStates);
+      preliminaryMerge(root, targetBranchState, sourceBranchesStates);
     } catch (VcsException vcsException) {
       vcsException.printStackTrace();
     }
   }
 
-  private void mergingPrototype(VcsRoot root, Pair<String, Pair<String, String>> targetBranchStates, HashMap<String, Pair<String, String>> srcBrachesStates) throws VcsException {
-    OperationContext context = myVcs.createContext(root, "branchCreation");
+  private void preliminaryMerge(@NotNull VcsRoot root,
+                                @NotNull Pair<String, Pair<String, String>> targetBranchStates,
+                                @NotNull HashMap<String, Pair<String, String>> srcBrachesStates) throws VcsException {
+    OperationContext context = myVcs.createContext(root, "preliminaryMerge");
     Repository db = context.getRepository();
     Git git = new Git(db);
     GitVcsRoot gitRoot = context.getGitRoot();
@@ -96,51 +78,32 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
         String mergeBranchName = myBranchSupport.constructName(sourceBranchName, targetBranchStates.first);
         if (myBranchSupport.branchLastCommit(mergeBranchName, git, db) == null) {
           if (wereTargetOrSourceCreatedOrUpdated(targetBranchStates, srcBrachesStates, sourceBranchName)) {
-            System.out.println("shuold create new branch");
-
-            myBranchSupport.createBranchProto(gitRoot, git, db, context, sourceBranchName, targetBranchStates.first);
+            myBranchSupport.createBranch(gitRoot, git, db, context, sourceBranchName, mergeBranchName);
             myBranchSupport.merge(root, targetBranchStates.second.second, GitUtils.expandRef(mergeBranchName), myMergeSupport);
-
-            System.out.println("merged " + targetBranchStates.second.second + " to " + mergeBranchName);
           }
         }
         else {
           if (wereTargetAndSourceUpdatedBoth(targetBranchStates, srcBrachesStates, sourceBranchName)) {
-            System.out.println("both src and target were updated. This case will be done later");
-            myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(sourceBranchName, git, db)),
-                                  GitUtils.expandRef(mergeBranchName), myMergeSupport);
-            myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(targetBranchStates.first, git, db)),
-                                  GitUtils.expandRef(mergeBranchName), myMergeSupport);
+            mergeSrcAndTargetToPMBranch(root, targetBranchStates, sourceBranchName, mergeBranchName, git, db);
           }
-          else if (isBranchRenewed(srcBrachesStates, sourceBranchName)) { //and target branch has commit, which is parent for PR commit
+          else if (isBranchRenewed(srcBrachesStates, sourceBranchName)) {
             myBranchSupport.fetch(mergeBranchName, git, db, gitRoot);
             if (myBranchSupport.isBranchTopCommitInTree(mergeBranchName, git, db, targetBranchStates.first)) {
-
-              System.out.println("src branch was renewed case");
               myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(sourceBranchName, git, db)),
                                     GitUtils.expandRef(mergeBranchName), myMergeSupport);
             }
             else {
-              System.out.println("both src and target were updated. This case will be done later #2");
-              myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(sourceBranchName, git, db)),
-                                    GitUtils.expandRef(mergeBranchName), myMergeSupport);
-              myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(targetBranchStates.first, git, db)),
-                                    GitUtils.expandRef(mergeBranchName), myMergeSupport);
+              mergeSrcAndTargetToPMBranch(root, targetBranchStates, sourceBranchName, mergeBranchName, git, db);
             }
           }
-          else if (isBranchRenewed(targetBranchStates.second)) { //and src branch has commit, which is parent for PR commit
+          else if (isBranchRenewed(targetBranchStates.second)) {
             myBranchSupport.fetch(mergeBranchName, git, db, gitRoot);
             if (myBranchSupport.isBranchTopCommitInTree(mergeBranchName, git, db, sourceBranchName)) {
-              System.out.println("dst branch was renewed case");
               myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(targetBranchStates.first, git, db)),
                                     GitUtils.expandRef(mergeBranchName), myMergeSupport);
             }
             else {
-              System.out.println("both src and target were updated. This case will be done later #3");
-              myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(sourceBranchName, git, db)),
-                                    GitUtils.expandRef(mergeBranchName), myMergeSupport);
-              myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(targetBranchStates.first, git, db)),
-                                    GitUtils.expandRef(mergeBranchName), myMergeSupport);
+              mergeSrcAndTargetToPMBranch(root, targetBranchStates, sourceBranchName, mergeBranchName, git, db);
             }
           }
         }
@@ -149,6 +112,18 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
       Loggers.VCS.debug(exception);
     }
 
+  }
+
+  private void mergeSrcAndTargetToPMBranch(@NotNull VcsRoot root,
+                                           @NotNull Pair<String, Pair<String, String>> targetBranchStates,
+                                           @NotNull String sourceBranchName,
+                                           @NotNull String mergeBranchName,
+                                           @NotNull Git git,
+                                           @NotNull Repository db) throws VcsException {
+    myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(sourceBranchName, git, db)),
+                          GitUtils.expandRef(mergeBranchName), myMergeSupport);
+    myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(targetBranchStates.first, git, db)),
+                          GitUtils.expandRef(mergeBranchName), myMergeSupport);
   }
 
   private boolean wereTargetAndSourceUpdatedBoth(@NotNull Pair<String, Pair<String, String>> targerBranchStates,
@@ -191,32 +166,5 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
     return states.get(branchName).first == null && states.get(branchName).second != null;
   }
 
-  private HashMap<String, Pair<String, String>> createSourceBranchStates(@NotNull RepositoryState oldState, @NotNull RepositoryState newState, @NotNull String sourceBranchFilter,
-                                                                         @NotNull String targetBranch) {
-    HashMap<String, Pair<String, String>> states = new HashMap<>();
 
-    Set<String> branchesSet = new HashSet<>(oldState.getBranchRevisions().keySet());
-    branchesSet.addAll(newState.getBranchRevisions().keySet());
-
-    Predicate<String> filter = new PreliminaryMergeSourceBranchFilter(myBranchSpecs, sourceBranchFilter);
-    for (String branch : branchesSet) {
-      if (!filter.test(branch) || branch.equals(targetBranch)) {
-        continue;
-      }
-
-      states.put(branch, new Pair<>(oldState.getBranchRevisions().get(branch), newState.getBranchRevisions().get(branch)));
-    }
-    return states;
-  }
-
-  private Map.Entry<String, String> parsePreliminaryMergeSourcesTargetBranches(String paramValue) {
-    //regexes are too slow for this simple task
-    for (int i = 1; i < paramValue.length(); ++i) {
-      if (paramValue.charAt(i) == ':' && paramValue.charAt(i-1) != '+' && paramValue.charAt(i-1) != '0') {
-        return new AbstractMap.SimpleEntry<>(paramValue.substring(0, i), paramValue.substring(i+1));
-      }
-    }
-
-    return null; //todo exception???
-  }
 }
