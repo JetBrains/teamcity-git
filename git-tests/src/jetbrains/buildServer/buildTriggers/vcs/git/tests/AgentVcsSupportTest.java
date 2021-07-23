@@ -364,6 +364,18 @@ public class AgentVcsSupportTest {
     assertEquals("TW-71691", FileUtil.readText(file, "UTF-8").trim());
   }
 
+  @TestFor(issues = "TW-72198")
+  public void testDotInSubmoduleBranch() throws Exception {
+    myRoot.addProperty(Constants.BRANCH_NAME, "TW-72198");
+    myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "fd704a963d073ae4a2284eb03699433e48792747", myCheckoutDir, myBuild, false);
+
+    final File file = new File(myCheckoutDir, "submodule" + File.separator + "f.txt");
+    assertTrue(file.exists());
+    assertEquals("TW-72198", FileUtil.readText(file, "UTF-8").trim());
+  }
+
   @TestFor(issues = "TW-65043")
   public void testSubmmoduleCommitReferencedByTag_mirrors() throws Exception {
     myRoot.addProperty(Constants.BRANCH_NAME, "TW-65043");

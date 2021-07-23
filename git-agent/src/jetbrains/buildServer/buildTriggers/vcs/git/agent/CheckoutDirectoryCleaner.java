@@ -29,13 +29,15 @@ import jetbrains.buildServer.agent.DirectoryCleanersProviderContext;
 import jetbrains.buildServer.agent.DirectoryCleanersRegistry;
 import jetbrains.buildServer.agent.impl.directories.DirectoryMap;
 import jetbrains.buildServer.buildTriggers.vcs.git.CommandLineUtil;
+import jetbrains.buildServer.util.positioning.PositionAware;
+import jetbrains.buildServer.util.positioning.PositionConstraint;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class CheckoutDirectoryCleaner implements DirectoryCleanersProvider {
+public class CheckoutDirectoryCleaner implements DirectoryCleanersProvider, PositionAware {
 
   public static final int DEFAULT_COMMAND_TIMEOUT_SEC = 1200;
   public static final int COMMAND_OUTPUT_THRESHOLD = 8 * 1024 * 1024;
@@ -47,6 +49,18 @@ public class CheckoutDirectoryCleaner implements DirectoryCleanersProvider {
                                   @NotNull final GitDetector gitDetector) {
     myDirectoryMap = directoryMap;
     myGitDetector = gitDetector;
+  }
+
+  @NotNull
+  @Override
+  public String getOrderId() {
+    return getClass().getName();
+  }
+
+  @NotNull
+  @Override
+  public PositionConstraint getConstraint() {
+    return PositionConstraint.first();
   }
 
   private static boolean isGitRepo(@NotNull File root) {

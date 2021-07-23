@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.jcraft.jsch.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.git4idea.ssh.GitSSHHandler;
@@ -87,6 +88,7 @@ public class JSchClient {
     ChannelExec channel = null;
     Session session = null;
     try {
+      JSchConfigInitializer.initJSchConfig(JSch.class);
       JSch.setLogger(myLogger);
       JSch jsch = new JSch();
       String privateKeyPath = System.getenv(GitSSHHandler.TEAMCITY_PRIVATE_KEY_PATH);

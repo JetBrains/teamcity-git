@@ -19,6 +19,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitDetector;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitDetectorImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitPathResolverImpl;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.positioning.PositionConstraint;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jmock.Expectations;
@@ -105,6 +106,10 @@ public class CheckoutDirectoryCleanerTest extends BaseTestCase {
 
     assertTrue(new File(myRepo, "non_vcs_file").isFile());
     assertTrue(new File(myRepo, "vcs_file").isFile());
+  }
+
+  public void test_position_aware() {
+    assertEquals(PositionConstraint.first(), myCleaner.getConstraint());
   }
 
   private void prepareRepo(boolean enableCleanup) throws Exception {
