@@ -49,7 +49,8 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CollectChangesTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RevisionsCacheTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.WellKnownHostingsTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SSHCommandLineTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ssh.SSHCommandLineTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ssh.SSHAgentServiceTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SubmoduleUrlResolverTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ProcessXmxProviderTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RepositoryXmxStorageTest"/>
