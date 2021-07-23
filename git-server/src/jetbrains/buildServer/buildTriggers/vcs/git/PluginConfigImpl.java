@@ -49,6 +49,7 @@ import org.apache.http.HttpEntity;
 import org.apache.http.client.HttpClient;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Layout;
+import org.bouncycastle.asn1.smime.SMIMEAttributes;
 import org.bouncycastle.crypto.CipherParameters;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.transport.JschConfigSessionFactory;
@@ -257,6 +258,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
       GitVcsRoot.class,
       JSch.class,
       CipherParameters.class,
+      SMIMEAttributes.class,
       JZlib.class,
       Decoder.class,
       TObjectHashingStrategy.class,

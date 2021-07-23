@@ -29,6 +29,8 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import jetbrains.buildServer.vcs.VcsException;
 import org.apache.log4j.Logger;
+import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
+import org.bouncycastle.asn1.smime.SMIMEAttributes;
 import org.bouncycastle.crypto.CipherParameters;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -90,6 +92,7 @@ public class GitAgentSSHService extends GitSSHService {
         ScriptGenerator generator = new ScriptGenerator(GitSSHHandler.GIT_SSH_PREFIX, JSchClient.class, getTempDir());
         generator.addClasses(JSch.class);
         generator.addClasses(CipherParameters.class);
+        generator.addClasses(SMIMEAttributes.class);
         generator.addClasses(JZlib.class);
         generator.addClasses(GitUtils.class);
         generator.addClasses(NotNull.class);
