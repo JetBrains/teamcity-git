@@ -16,8 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.EscapeEchoArgumentUnix;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.EscapeEchoArgumentWin;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.EscapeEchoArgumentUnix;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.EscapeEchoArgumentWin;
 import org.testng.annotations.Test;
 
 import static org.testng.AssertJUnit.assertEquals;

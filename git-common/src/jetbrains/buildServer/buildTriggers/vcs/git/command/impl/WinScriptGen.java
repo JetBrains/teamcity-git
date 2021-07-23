@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
@@ -26,12 +26,12 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class UnixScriptGen extends ScriptGen {
+public class WinScriptGen extends ScriptGen {
 
   private final EscapeEchoArgument myEscaper;
 
-  public UnixScriptGen(@NotNull File tempDir,
-                       @NotNull EscapeEchoArgument escaper) {
+  public WinScriptGen(@NotNull File tempDir,
+                      @NotNull EscapeEchoArgument escaper) {
     super(tempDir);
     myEscaper = escaper;
   }
@@ -41,16 +41,13 @@ public class UnixScriptGen extends ScriptGen {
     return generateAskPass(authSettings.getPassword());
   }
 
-
   @NotNull
-  @Override
   public File generateAskPass(@Nullable String password) throws IOException {
-    File script = FileUtil.createTempFile(myTempDir, "pass", "", true);
+    File script = FileUtil.createTempFile(myTempDir, "pass", ".bat", true);
     PrintWriter out = null;
     try {
       out = new PrintWriter(new FileWriter(script));
-      out.println("#!/bin/sh");
-      out.println("printf " + myEscaper.escape(password));
+      out.println("@echo " + myEscaper.escape(password));
       if (!script.setExecutable(true))
         throw new IOException("Cannot make askpass script executable");
     } finally {
@@ -60,10 +57,9 @@ public class UnixScriptGen extends ScriptGen {
     return script;
   }
 
-
   @NotNull
   @Override
   protected String getCredHelperTemplate() {
-    return "/META-INF/credentials-helper.sh";
+    return "/META-INF/credentials-helper.bat";
   }
 }

@@ -17,44 +17,32 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
-import com.intellij.openapi.util.SystemInfo;
 import java.io.File;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.FetchCommandImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.LsRemoteCommandImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.ProcessTimeoutCallback;
-import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
-/**
- * @author dmitry.neverov
- */
-public class NativeGitFacade implements AgentGitFacade {
+public class NativeGitFacade extends GitFacadeImpl implements AgentGitFacade {
 
   private final GitAgentSSHService mySsh;
-  private final ScriptGen myScriptGen;
-  private final File myRepositoryDir;
-  private final Context myCtx;
-  private VcsRootSshKeyManager mySshKeyManager;
 
   public NativeGitFacade(@NotNull GitAgentSSHService ssh,
                          @NotNull File repositoryDir,
                          @NotNull Context ctx) {
+    super(repositoryDir, ctx);
     mySsh = ssh;
-    myCtx = ctx;
-    myScriptGen = makeScriptGen();
-    myRepositoryDir = repositoryDir;
   }
 
   public NativeGitFacade(@NotNull String gitPath) {
@@ -67,10 +55,8 @@ public class NativeGitFacade implements AgentGitFacade {
 
   public NativeGitFacade(@NotNull String gitPath,
                          @NotNull File repositoryDir) {
+    super(repositoryDir, new NoBuildContext(gitPath));
     mySsh = null;
-    myCtx = new NoBuildContext(gitPath);
-    myScriptGen = makeScriptGen();
-    myRepositoryDir = repositoryDir;
   }
 
 
@@ -141,11 +127,6 @@ public class NativeGitFacade implements AgentGitFacade {
   }
 
   @NotNull
-  public FetchCommand fetch() {
-    return new FetchCommandImpl(createCommandLine());
-  }
-
-  @NotNull
   public LogCommand log() {
     return new LogCommandImpl(createCommandLine());
   }
@@ -183,11 +164,6 @@ public class NativeGitFacade implements AgentGitFacade {
   @NotNull
   public VersionCommand version() {
     return new VersionCommandImpl(createCommandLine());
-  }
-
-  @NotNull
-  public LsRemoteCommand lsRemote() {
-    return new LsRemoteCommandImpl(createCommandLine());
   }
 
   @NotNull
@@ -235,7 +211,7 @@ public class NativeGitFacade implements AgentGitFacade {
   @NotNull
   public String resolvePath(@NotNull File f) throws VcsException {
     try {
-      final GitExec gitExec = myCtx.getGitExec();
+      final GitExec gitExec = getCtx().getGitExec();
       if (gitExec.isCygwin()) {
         String cygwinBin = gitExec.getCygwinBinPath();
         GeneralCommandLine cmd = new GeneralCommandLine();
@@ -256,27 +232,15 @@ public class NativeGitFacade implements AgentGitFacade {
   }
 
   @NotNull
-  private AgentGitCommandLine createCommandLine() {
-    AgentGitCommandLine cmd = new AgentGitCommandLine(mySsh, myScriptGen, myCtx);
-    cmd.setExePath(myCtx.getGitExec().getPath());
-    cmd.setWorkingDirectory(myRepositoryDir);
-    cmd.setSshKeyManager(mySshKeyManager);
-    for (String config : myCtx.getCustomConfig()) {
-      cmd.addParameters("-c", config);
-    }
-    return cmd;
-  }
-
-  public void setSshKeyManager(@Nullable VcsRootSshKeyManager sshKeyManager) {
-    mySshKeyManager = sshKeyManager;
+  protected AgentGitCommandLine createCommandLine() {
+    return (AgentGitCommandLine)super.createCommandLine();
   }
 
   @NotNull
-  private ScriptGen makeScriptGen() {
-    final File tempDir = myCtx.getTempDir();
-    return SystemInfo.isUnix ? new UnixScriptGen(tempDir, new EscapeEchoArgumentUnix()) : new WinScriptGen(tempDir, new EscapeEchoArgumentWin());
+  @Override
+  protected GitCommandLine makeCommandLine() {
+    return new AgentGitCommandLine(mySsh, getScriptGen(), getCtx());
   }
-
 
   @NotNull
   private Branches parseBranches(String out) {
@@ -290,11 +254,5 @@ public class NativeGitFacade implements AgentGitFacade {
       branches.addBranch(branchName, currentBranch);
     }
     return branches;
-  }
-
-
-  @NotNull
-  public ScriptGen getScriptGen() {
-    return myScriptGen;
   }
 }
