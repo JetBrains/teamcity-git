@@ -262,4 +262,10 @@ public class GitCommandLine extends GeneralCommandLine {
   public GitVersion getGitVersion() {
     return myCtx.getGitVersion();
   }
+
+  @Override
+  public Charset getCharset() {
+    final Charset charset = myCtx.getCharset();
+    return charset == null ? super.getCharset() : charset;
+  }
 }
