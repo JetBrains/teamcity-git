@@ -52,7 +52,27 @@ public class InternalGitBranchSupport {
       pushNewBranch(newBranchName, context, db, git, gitRoot);
 
     } catch (GitAPIException | VcsException gitEx) {
-      Loggers.VCS.warnAndDebugDetails("creating error", gitEx);
+      Loggers.VCS.warnAndDebugDetails("creating branch error", gitEx);
+    }
+  }
+
+  public void deleteBranch(@NotNull GitVcsRoot gitRoot,
+                           @NotNull Git git,
+                           @NotNull Repository db,
+                           @NotNull OperationContext context,
+                           @NotNull String branchName) throws IOException {
+    try {
+      fetchIfRequired(branchName, git, db, gitRoot);
+
+      git.branchDelete()
+         .setBranchNames(GitUtils.expandRef(branchName))
+         .setForce(true)
+         .call();
+
+      pushDelBranch(branchName, db, gitRoot);
+
+    } catch (GitAPIException | VcsException gitEx) {
+      Loggers.VCS.warnAndDebugDetails("deleting branch error", gitEx);
     }
   }
 
@@ -109,11 +129,45 @@ public class InternalGitBranchSupport {
           case UP_TO_DATE:
           case OK:
             PreliminaryMergeManager.printToLogs("New branch " + newBranchName + " was created and pushed");
+            break;
           default:
             PreliminaryMergeManager.printToLogs("Warning! New branch " + newBranchName + " was created, but not pushed");
+            break;
         }
       }
     } finally {
+      lock.unlock();
+    }
+  }
+
+  public void pushDelBranch(String delBranchName, Repository db, GitVcsRoot gitRoot) throws VcsException, IOException, GitAPIException {
+    ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
+    lock.lock();
+
+    try (final Transport tn = myTransportFactory.createTransport(db, gitRoot.getRepositoryPushURL().get(), gitRoot.getAuthSettings(),
+                                                                 myPluginConfig.getPushTimeoutSeconds())) {
+
+      RemoteRefUpdate ru = new RemoteRefUpdate(db,
+                                               null,
+                                               null,
+                                               GitUtils.expandRef(delBranchName),
+                                               true,
+                                               GitUtils.expandRef(delBranchName),
+                                               null);
+
+      tn.push(NullProgressMonitor.INSTANCE, Collections.singletonList(ru));
+
+      switch (ru.getStatus()) {
+        case UP_TO_DATE:
+        case OK:
+          PreliminaryMergeManager.printToLogs("Branch " + delBranchName + " was delated with push");
+          break;
+        default:
+          PreliminaryMergeManager.printToLogs("Warning! Branch " + delBranchName + " was deleted without push");
+          break;
+      }
+    }
+    finally {
       lock.unlock();
     }
   }

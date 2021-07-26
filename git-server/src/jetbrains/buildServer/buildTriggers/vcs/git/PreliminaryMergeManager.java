@@ -64,6 +64,8 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
     GitVcsRoot gitRoot = context.getGitRoot();
 
     try {
+      //myBranchSupport.deleteBranch(gitRoot, git, db, context, "del_1"); //works
+
       for (String sourceBranchName : srcBrachesStates.keySet()) {
         String mergeBranchName = myBranchSupport.constructName(sourceBranchName, targetBranchName);
         if (myBranchSupport.branchLastCommit(mergeBranchName, git, db) == null) {
@@ -103,7 +105,7 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
             }
           }
         }
-        printToLogs("merged successful");
+        printToLogs("PM handling is successful");
       }
     } catch (VcsException | IOException exception) {
       Loggers.VCS.warnAndDebugDetails("preliminary merge error", exception);
