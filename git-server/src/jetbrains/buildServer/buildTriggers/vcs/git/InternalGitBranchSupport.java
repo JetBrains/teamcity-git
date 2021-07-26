@@ -3,6 +3,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.locks.ReentrantLock;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -39,7 +40,7 @@ public class InternalGitBranchSupport {
                            @NotNull Repository db,
                            @NotNull OperationContext context,
                            @NotNull String srcBranch,
-                           @NotNull String newBranchName) throws IOException, VcsException {
+                           @NotNull String newBranchName) throws IOException {
     try {
       fetchIfRequired(srcBranch, git, db, gitRoot);
 
@@ -50,8 +51,8 @@ public class InternalGitBranchSupport {
 
       pushNewBranch(newBranchName, context, db, git, gitRoot);
 
-    } catch (GitAPIException jgitException) {
-      throw new VcsException(jgitException);
+    } catch (GitAPIException | VcsException gitEx) {
+      Loggers.VCS.warnAndDebugDetails("creating error", gitEx);
     }
   }
 
@@ -70,11 +71,11 @@ public class InternalGitBranchSupport {
 
   private void fetchIfRequired(String branchName, Git git, Repository db, GitVcsRoot gitRoot) throws GitAPIException, IOException, VcsException {
     if (branchLastCommit(branchName, git, db) == null) {
-      fetch(branchName, git, db, gitRoot);
+      fetch(branchName, db, gitRoot);
     }
   }
 
-  public void fetch(String branchName, Git git, Repository db, GitVcsRoot gitRoot) throws VcsException, IOException {
+  public void fetch(String branchName, Repository db, GitVcsRoot gitRoot) throws VcsException, IOException {
     RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(branchName)).setDestination(GitUtils.expandRef(branchName)).setForceUpdate(true);
     myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(gitRoot.getAuthSettings()));
   }
@@ -117,13 +118,6 @@ public class InternalGitBranchSupport {
     }
   }
 
-  public void merge(@NotNull VcsRoot root,
-                    @NotNull String src,
-                    @NotNull String dst,
-                    @NotNull MergeSupport mergeSupport) throws VcsException {
-    mergeSupport.merge(root, src, dst, "preliminary merge commit", new MergeOptions());
-  }
-
   @Nullable
   public String branchLastCommit(String branchName, Git git, Repository db)  {
     try {
@@ -132,7 +126,7 @@ public class InternalGitBranchSupport {
         return null;
       return git.log().add(commitObject).call().iterator().next().getName();
     }  catch (GitAPIException | IOException gitEx) {
-      gitEx.printStackTrace();
+      Loggers.VCS.warnAndDebugDetails("getting branch Last commit error", gitEx);
       return null;
     }
   }
@@ -154,7 +148,7 @@ public class InternalGitBranchSupport {
 
       return false;
     }  catch (GitAPIException | IOException gitEx) {
-      gitEx.printStackTrace();
+      Loggers.VCS.warnAndDebugDetails("finding branch top commit int tree error", gitEx);
       return false;
     }
   }

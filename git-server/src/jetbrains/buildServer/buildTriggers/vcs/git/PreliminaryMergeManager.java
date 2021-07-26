@@ -1,9 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import com.intellij.openapi.util.Pair;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.*;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.EventDispatcher;
@@ -34,14 +31,7 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
   }
 
   public static void printToLogs(String toPrint) {
-    Loggers.VCS.debug("[PM_feature: ]" + toPrint);
-  }
-
-  public static void printStackTraceToLogs(Exception exception) {
-    StringWriter sw = new StringWriter();
-    PrintWriter pw = new PrintWriter(sw);
-    exception.printStackTrace(pw);
-    printToLogs(sw.toString());
+    Loggers.VCS.debug("[Preliminary_Merge_feature]: " + toPrint);
   }
 
   @Override
@@ -54,18 +44,20 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
     printToLogs("Repository update event");
     PreliminaryMergeBranchesExtractor branchesExecutor = new PreliminaryMergeBranchesExtractor(root, oldState, newState, myBranchSpecs);
     branchesExecutor.extractBranchesFromParams();
-    Pair<String, Pair<String, String>> targetBranchState = branchesExecutor.getTargetBranchState();
-    HashMap<String, Pair<String, String>> sourceBranchesStates = branchesExecutor.getSourceBranchesStates();
+    String targetBranchName = branchesExecutor.getTargetBranchName();
+    BranchStates targetBranchStates = branchesExecutor.getTargetBranchStates();
+    HashMap<String, BranchStates> sourceBranchesStates = branchesExecutor.getSourceBranchesAndStates();
     try {
-      preliminaryMerge(root, targetBranchState, sourceBranchesStates);
+      preliminaryMerge(root, targetBranchName, targetBranchStates, sourceBranchesStates);
     } catch (VcsException vcsException) {
-      vcsException.printStackTrace();
+      Loggers.VCS.warnAndDebugDetails("repository state change error", vcsException);
     }
   }
 
   private void preliminaryMerge(@NotNull VcsRoot root,
-                                @NotNull Pair<String, Pair<String, String>> targetBranchStates,
-                                @NotNull HashMap<String, Pair<String, String>> srcBrachesStates) throws VcsException {
+                                @NotNull String targetBranchName,
+                                @NotNull BranchStates targetBranchStates,
+                                @NotNull HashMap<String, BranchStates> srcBrachesStates) throws VcsException {
     OperationContext context = myVcs.createContext(root, "preliminaryMerge");
     Repository db = context.getRepository();
     Git git = new Git(db);
@@ -73,103 +65,85 @@ public class PreliminaryMergeManager implements RepositoryStateListener {
 
     try {
       for (String sourceBranchName : srcBrachesStates.keySet()) {
-        String mergeBranchName = myBranchSupport.constructName(sourceBranchName, targetBranchStates.first);
+        String mergeBranchName = myBranchSupport.constructName(sourceBranchName, targetBranchName);
         if (myBranchSupport.branchLastCommit(mergeBranchName, git, db) == null) {
           if (wereTargetOrSourceCreatedOrUpdated(targetBranchStates, srcBrachesStates, sourceBranchName)) {
-            printToLogs(sourceBranchName + " > " + targetBranchStates.first + " (should create new PM branch)");
+            printToLogs(sourceBranchName + " > " + targetBranchName + " (should create new PM branch)");
             myBranchSupport.createBranch(gitRoot, git, db, context, sourceBranchName, mergeBranchName);
-            myBranchSupport.merge(root, targetBranchStates.second.second, GitUtils.expandRef(mergeBranchName), myMergeSupport);
+            myMergeSupport.merge(root, targetBranchStates.getNewState(), GitUtils.expandRef(mergeBranchName), "preliminary merge commit", new MergeOptions());
           }
         }
         else {
           if (wereTargetAndSourceUpdatedBoth(targetBranchStates, srcBrachesStates, sourceBranchName)) {
-            printToLogs(sourceBranchName + " > " + targetBranchStates.first + " (both were updated)");
-            mergeSrcAndTargetToPMBranch(root, targetBranchStates, sourceBranchName, mergeBranchName, git, db);
+            printToLogs(sourceBranchName + " > " + targetBranchName + " (both were updated)");
+            mergeSrcAndTargetToPMBranch(root, targetBranchName, sourceBranchName, mergeBranchName, git, db);
           }
-          else if (isBranchRenewed(srcBrachesStates, sourceBranchName)) {
-            myBranchSupport.fetch(mergeBranchName, git, db, gitRoot);
-            if (myBranchSupport.isBranchTopCommitInTree(mergeBranchName, git, db, targetBranchStates.first)) {
-              printToLogs(sourceBranchName + " > " + targetBranchStates.first + " (merge src to PM branch)");
-              myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(sourceBranchName, git, db)),
-                                    GitUtils.expandRef(mergeBranchName), myMergeSupport);
+          else if (srcBrachesStates.get(sourceBranchName).isBranchRenewed()) {
+            myBranchSupport.fetch(mergeBranchName, db, gitRoot);
+            if (myBranchSupport.isBranchTopCommitInTree(mergeBranchName, git, db, targetBranchName)) {
+              printToLogs(sourceBranchName + " > " + targetBranchName + " (merge src to PM branch)");
+              myMergeSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(sourceBranchName, git, db)),
+                                    GitUtils.expandRef(mergeBranchName), "preliminary merge commit", new MergeOptions());
             }
             else {
-              printToLogs(sourceBranchName + " > " + targetBranchStates.first + " (merge src to PM branch (+target due to lost))");
-              mergeSrcAndTargetToPMBranch(root, targetBranchStates, sourceBranchName, mergeBranchName, git, db);
+              printToLogs(sourceBranchName + " > " + targetBranchName + " (merge src to PM branch (+target due to lost))");
+              mergeSrcAndTargetToPMBranch(root, targetBranchName, sourceBranchName, mergeBranchName, git, db);
             }
           }
-          else if (isBranchRenewed(targetBranchStates.second)) {
-            myBranchSupport.fetch(mergeBranchName, git, db, gitRoot);
+          else if (targetBranchStates.isBranchRenewed()) {
+            myBranchSupport.fetch(mergeBranchName, db, gitRoot);
             if (myBranchSupport.isBranchTopCommitInTree(mergeBranchName, git, db, sourceBranchName)) {
-              printToLogs(sourceBranchName + " > " + targetBranchStates.first + " (merge dst to PM branch)");
-              myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(targetBranchStates.first, git, db)),
-                                    GitUtils.expandRef(mergeBranchName), myMergeSupport);
+              printToLogs(sourceBranchName + " > " + targetBranchName + " (merge dst to PM branch)");
+              myMergeSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(targetBranchName, git, db)),
+                                    GitUtils.expandRef(mergeBranchName), "preliminary merge commit", new MergeOptions());
             }
             else {
-              printToLogs(sourceBranchName + " > " + targetBranchStates.first + " (merge dst to PM branch (+src due to lost))");
-              mergeSrcAndTargetToPMBranch(root, targetBranchStates, sourceBranchName, mergeBranchName, git, db);
+              printToLogs(sourceBranchName + " > " + targetBranchName + " (merge dst to PM branch (+src due to lost))");
+              mergeSrcAndTargetToPMBranch(root, targetBranchName, sourceBranchName, mergeBranchName, git, db);
             }
           }
         }
         printToLogs("merged successful");
       }
     } catch (VcsException | IOException exception) {
-      printStackTraceToLogs(exception);
+      Loggers.VCS.warnAndDebugDetails("preliminary merge error", exception);
     }
 
   }
 
   private void mergeSrcAndTargetToPMBranch(@NotNull VcsRoot root,
-                                           @NotNull Pair<String, Pair<String, String>> targetBranchStates,
+                                           @NotNull String targetBranchName,
                                            @NotNull String sourceBranchName,
                                            @NotNull String mergeBranchName,
                                            @NotNull Git git,
                                            @NotNull Repository db) throws VcsException {
-    myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(sourceBranchName, git, db)),
-                          GitUtils.expandRef(mergeBranchName), myMergeSupport);
-    myBranchSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(targetBranchStates.first, git, db)),
-                          GitUtils.expandRef(mergeBranchName), myMergeSupport);
+    myMergeSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(sourceBranchName, git, db)),
+                          GitUtils.expandRef(mergeBranchName), "preliminary merge commit", new MergeOptions());
+    myMergeSupport.merge(root, Objects.requireNonNull(myBranchSupport.branchLastCommit(targetBranchName, git, db)),
+                          GitUtils.expandRef(mergeBranchName), "preliminary merge commit", new MergeOptions());
   }
 
-  private boolean wereTargetAndSourceUpdatedBoth(@NotNull Pair<String, Pair<String, String>> targerBranchStates,
-                                                 @NotNull HashMap<String, Pair<String, String>> srcBrachesStates,
+  private boolean wereTargetAndSourceUpdatedBoth(@NotNull BranchStates targerBranchStates,
+                                                 @NotNull HashMap<String, BranchStates> srcBrachesStates,
                                                  @NotNull String sourceBranchName) {
     return  !wereBothTargerAndSourceNewlyCreated(targerBranchStates, srcBrachesStates, sourceBranchName) &&
-            isBranchRenewed(targerBranchStates.second) &&
-            isBranchRenewed(srcBrachesStates, sourceBranchName);
+            targerBranchStates.isBranchRenewed() &&
+            srcBrachesStates.get(sourceBranchName).isBranchRenewed();
   }
 
-  private boolean wereTargetOrSourceCreatedOrUpdated(@NotNull Pair<String, Pair<String, String>> targerBranchStates,
-                                                        @NotNull HashMap<String, Pair<String, String>> srcBrachesStates,
-                                                        @NotNull String sourceBranchName) {
-    return isBranchNewlyCreated(targerBranchStates.second) ||
-           isBranchNewlyCreated(srcBrachesStates, sourceBranchName) ||
-           isBranchRenewed(targerBranchStates.second) ||
-           isBranchRenewed(srcBrachesStates, sourceBranchName);
+  private boolean wereTargetOrSourceCreatedOrUpdated(@NotNull BranchStates targerBranchStates,
+                                                     @NotNull HashMap<String, BranchStates> srcBrachesStates,
+                                                     @NotNull String sourceBranchName) {
+    return targerBranchStates.isBranchNewlyCreated() ||
+           srcBrachesStates.get(sourceBranchName).isBranchNewlyCreated() ||
+           targerBranchStates.isBranchRenewed() ||
+           srcBrachesStates.get(sourceBranchName).isBranchRenewed();
   }
 
-  private boolean wereBothTargerAndSourceNewlyCreated(@NotNull Pair<String, Pair<String, String>> targerBranchStates,
-                                                      @NotNull HashMap<String, Pair<String, String>> srcBrachesStates,
+  private boolean wereBothTargerAndSourceNewlyCreated(@NotNull BranchStates targerBranchStates,
+                                                      @NotNull HashMap<String, BranchStates> srcBrachesStates,
                                                       @NotNull String sourceBranchName) {
-    return isBranchNewlyCreated(targerBranchStates.second) &&
-           isBranchNewlyCreated(srcBrachesStates, sourceBranchName);
+    return targerBranchStates.isBranchNewlyCreated() &&
+           srcBrachesStates.get(sourceBranchName).isBranchNewlyCreated();
   }
-
-  private boolean isBranchRenewed(Pair<String, String> branchStates) {
-    return !branchStates.first.equals(branchStates.second);
-  }
-
-  private boolean isBranchRenewed(HashMap<String, Pair<String, String>> states, String branchName) {
-    return !states.get(branchName).first.equals(states.get(branchName).second);
-  }
-
-  private boolean isBranchNewlyCreated(Pair<String, String> branchStates) {
-    return branchStates.first == null && branchStates.second != null;
-  }
-
-  private boolean isBranchNewlyCreated(HashMap<String, Pair<String, String>> states, String branchName) {
-    return states.get(branchName).first == null && states.get(branchName).second != null;
-  }
-
-
 }

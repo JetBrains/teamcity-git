@@ -1,6 +1,5 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import com.intellij.openapi.util.Pair;
 import java.util.*;
 import java.util.function.Predicate;
 import jetbrains.buildServer.vcs.RepositoryState;
@@ -12,38 +11,52 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class PreliminaryMergeBranchesExtractor {
-  private final VcsRoot root;
-  private final RepositoryState oldState;
-  private final RepositoryState newState;
-  private final BranchSpecs branchSpecs;
-  private Pair<String, Pair<String, String>> targetBranchState;
-  private HashMap<String, Pair<String, String>> sourceBranchesStates;
+  private final VcsRoot myRoot;
+  private final RepositoryState myOldState;
+  private final RepositoryState myNewState;
+  private final BranchSpecs myBranchSpecs;
+  private String targetBranchName;
+  private BranchStates targetBranchStates;
+  private HashMap<String, BranchStates> sourceBranchesAndStates;
 
   public PreliminaryMergeBranchesExtractor(@NotNull VcsRoot root,
                                            @NotNull RepositoryState oldState,
                                            @NotNull RepositoryState newState,
                                            @NotNull BranchSpecs branchSpecs) {
-    this.root = root;
-    this.oldState = oldState;
-    this.newState = newState;
-    this.branchSpecs = branchSpecs;
+    myRoot = root;
+    myOldState = oldState;
+    myNewState = newState;
+    myBranchSpecs = branchSpecs;
   }
 
   public VcsRoot getRoot() {
-    return root;
+    return myRoot;
   }
 
-  public Pair<String, Pair<String, String>> getTargetBranchState() {
-    return targetBranchState;
+  public BranchStates getTargetBranchStates() {
+    if (targetBranchName == null) {
+      throw new IllegalStateException("target branch states are not establised. Call extractBranchesFromParams()");
+    }
+    return targetBranchStates;
   }
 
-  public HashMap<String, Pair<String, String>> getSourceBranchesStates() {
-    return sourceBranchesStates;
+  public String getTargetBranchName() {
+    if (targetBranchName == null) {
+      throw new IllegalStateException("target branch name is not establised. Call extractBranchesFromParams()");
+    }
+    return targetBranchName;
+  }
+
+  public HashMap<String, BranchStates> getSourceBranchesAndStates() {
+    if (sourceBranchesAndStates == null) {
+      throw new IllegalStateException("source branches are not established. Call extractBranchesFromParams()");
+    }
+    return sourceBranchesAndStates;
   }
 
   @Nullable
   public Map.Entry<String, String> getParameterWithExternalId(String paramBeforeExternalId) {
-    VcsRoot currentRoot = root;
+    VcsRoot currentRoot = myRoot;
 
     while (currentRoot instanceof VcsRootInstance) {
       currentRoot = ((VcsRootInstance) currentRoot).getParent();
@@ -74,12 +87,16 @@ public class PreliminaryMergeBranchesExtractor {
       return;
     }
 
-    String targetBranchName = sourcesTargetBranches.getValue();
-    targetBranchState = new Pair<>(targetBranchName,
-                                   new Pair<>(oldState.getBranchRevisions().get(targetBranchName),
-                                                               newState.getBranchRevisions().get(targetBranchName)));
+    targetBranchName = sourcesTargetBranches.getValue();
 
-    sourceBranchesStates = createSourceBranchStates(oldState, newState, sourcesTargetBranches.getKey(), targetBranchName);
+    String targetBranchNewState = myNewState.getBranchRevisions().get(targetBranchName);
+    if (targetBranchNewState == null) {
+      PreliminaryMergeManager.printToLogs("target branch is not existent");
+      return;
+    }
+
+    targetBranchStates = new BranchStates(myOldState.getBranchRevisions().get(targetBranchName), myNewState.getBranchRevisions().get(targetBranchName));
+    sourceBranchesAndStates = createSourceBranchStates(myOldState, myNewState, sourcesTargetBranches.getKey(), targetBranchName);
   }
 
   private Map.Entry<String, String> parsePMParam(String paramValue) {
@@ -93,19 +110,21 @@ public class PreliminaryMergeBranchesExtractor {
     return null;
   }
 
-  private HashMap<String, Pair<String, String>> createSourceBranchStates(@NotNull RepositoryState oldState, @NotNull RepositoryState newState, @NotNull String sourceBranchFilter,
-                                                                         @NotNull String targetBranch) {
-    HashMap<String, Pair<String, String>> states = new HashMap<>();
+  private HashMap<String, BranchStates> createSourceBranchStates(@NotNull RepositoryState oldState,
+                                                                 @NotNull RepositoryState newState,
+                                                                 @NotNull String sourceBranchFilter,
+                                                                 @NotNull String targetBranch) {
+    HashMap<String, BranchStates> states = new HashMap<>();
     Set<String> branchesSet = new HashSet<>(oldState.getBranchRevisions().keySet());
     branchesSet.addAll(newState.getBranchRevisions().keySet());
 
-    Predicate<String> filter = new PreliminaryMergeSourceBranchFilter(branchSpecs, sourceBranchFilter);
+    Predicate<String> filter = new PreliminaryMergeSourceBranchFilter(myBranchSpecs, sourceBranchFilter);
     for (String branch : branchesSet) {
       if (!filter.test(branch) || branch.equals(targetBranch)) {
         continue;
       }
 
-      states.put(branch, new Pair<>(oldState.getBranchRevisions().get(branch), newState.getBranchRevisions().get(branch)));
+      states.put(branch, new BranchStates(oldState.getBranchRevisions().get(branch), newState.getBranchRevisions().get(branch)));
     }
     return states;
   }
