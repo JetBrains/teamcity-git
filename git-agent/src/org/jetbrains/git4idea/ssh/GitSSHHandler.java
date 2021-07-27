@@ -16,10 +16,9 @@
 
 package org.jetbrains.git4idea.ssh;
 
+import java.util.Vector;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Vector;
 
 /**
  * An interface for GIT SSH handler
@@ -59,6 +58,7 @@ public interface GitSSHHandler {
   String TEAMCITY_SSH_IDLE_TIMEOUT_SECONDS = "TEAMCITY_SSH_IDLE_TIMEOUT_SECONDS";
   String TEAMCITY_VERSION = "TEAMCITY_VERSION";
   String TEAMCITY_SSH_REQUEST_TOKEN = "TEAMCITY_SSH_REQUEST_TOKEN";
+  String TEAMCITY_INT_PROPS_PATH = "TEAMCITY_INT_PROPS_PATH";
 
   /**
    * Verify server host key

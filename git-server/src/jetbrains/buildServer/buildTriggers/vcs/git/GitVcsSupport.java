@@ -22,6 +22,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import com.jcraft.jsch.JSch;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
 import jetbrains.buildServer.log.Loggers;
@@ -30,6 +32,7 @@ import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
+import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.eclipse.jgit.errors.NotSupportedException;
@@ -111,6 +114,8 @@ public class GitVcsSupport extends ServerVcsSupport
     resetCacheManager.registerHandler(resetRevisionsCacheHandler);
     myGitTrustStoreProvider = gitTrustStoreProvider;
     myTestConnection = customTestConnection == null ? this : customTestConnection;
+
+    JSchConfigInitializer.initJSchConfig(JSch.class);
   }
 
   public void setExtensionHolder(@Nullable ExtensionHolder extensionHolder) {

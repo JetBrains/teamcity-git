@@ -17,8 +17,10 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.Pair;
+import com.jcraft.jsch.JSch;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsUtil;
 import org.eclipse.jgit.lib.ProgressMonitor;
@@ -71,6 +73,8 @@ public class Fetcher {
 
       String internalPropsFile = properties.remove(Constants.FETCHER_INTERNAL_PROPERTIES_FILE);
       GitServerUtil.configureInternalProperties(new File(internalPropsFile));
+
+      JSchConfigInitializer.initJSchConfig(JSch.class);
 
       ByteArrayOutputStream gitOutput = new ByteArrayOutputStream();
       FetchProgressMonitor progress = new FetchProgressMonitor(new PrintStream(gitOutput));
