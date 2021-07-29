@@ -360,7 +360,7 @@ public class GitServerUtil {
     }
   }
 
-  static void removeRefLocks(@NotNull File dotGit) {
+  public static void removeRefLocks(@NotNull File dotGit) {
     final File packedRefsLock = new File(dotGit, "packed-refs.lock");
     if (packedRefsLock.isFile()) {
       removeLock(packedRefsLock);

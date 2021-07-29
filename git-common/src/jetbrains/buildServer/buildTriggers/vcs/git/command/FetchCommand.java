@@ -36,6 +36,9 @@ public interface FetchCommand extends BaseCommand, AuthCommand<FetchCommand> {
   @NotNull
   FetchCommand setFetchTags(boolean fetchTags);
 
+  @NotNull
+  FetchCommand setRemote(@NotNull String remoteUrl);
+
   void call() throws VcsException;
 
 }

@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitRepoOperations;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.RevisionNotFoundException;
 import jetbrains.buildServer.vcs.VcsException;
@@ -47,15 +48,15 @@ public class CommitLoaderImpl implements CommitLoader {
   public static final Logger PERFORMANCE_LOG = Logger.getInstance(CommitLoaderImpl.class.getName() + ".Performance");
 
   private final RepositoryManager myRepositoryManager;
-  private final FetchCommand myFetchCommand;
+  private final GitRepoOperations myGitRepoOperations;
   private final GitMapFullPath myMapFullPath;
   private final ServerPluginConfig myPluginConfig;
 
   public CommitLoaderImpl(@NotNull RepositoryManager repositoryManager,
-                          @NotNull FetchCommand fetchCommand,
+                          @NotNull GitRepoOperations gitRepoOperations,
                           @NotNull GitMapFullPath mapFullPath, ServerPluginConfig pluginConfig) {
     myRepositoryManager = repositoryManager;
-    myFetchCommand = fetchCommand;
+    myGitRepoOperations = gitRepoOperations;
     myMapFullPath = mapFullPath;
     myPluginConfig = pluginConfig;
     myMapFullPath.setCommitLoader(this);
@@ -123,7 +124,7 @@ public class CommitLoaderImpl implements CommitLoader {
     if (refspecs.isEmpty()) return;
 
     Map<String, Ref> oldRefs = new HashMap<>(db.getAllRefs());
-    myFetchCommand.fetch(db, fetchURI, refspecs, settings);
+    myGitRepoOperations.fetchCommand().fetch(db, fetchURI, refspecs, settings);
     if (myPluginConfig.refreshObjectDatabaseAfterFetch()) {
       db.getObjectDatabase().refresh();
     }

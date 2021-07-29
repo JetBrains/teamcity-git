@@ -252,7 +252,7 @@ public class GitCommandLine extends GeneralCommandLine {
     mySshKeyManager = root -> {
       final TeamCitySshKey key = sshKeyManager.getKey(root);
       if (key == null) {
-        myLogger.warning("Failed to retrieve uploaded ssh key from server, agent default ssh key will be used");
+        throw new IllegalArgumentException("Failed to retrieve uploaded ssh key");
       }
       return key;
     };

@@ -16,6 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
+import java.util.HashSet;
+import java.util.Set;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
@@ -24,11 +26,12 @@ import org.jetbrains.annotations.NotNull;
 
 public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implements FetchCommand {
 
-  private String myRefspec;
+  private final Set<String> myRefSpecs = new HashSet<>();
   private boolean myQuite;
   private boolean myShowProgress;
   private Integer myDepth;
   private boolean myFetchTags = true;
+  private String myRemoteUrl;
 
   public FetchCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -36,7 +39,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
 
   @NotNull
   public FetchCommand setRefspec(@NotNull String refspec) {
-    myRefspec = refspec;
+    myRefSpecs.add(refspec);
     return this;
   }
 
@@ -64,6 +67,12 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
     return this;
   }
 
+  @NotNull
+  @Override
+  public FetchCommand setRemote(@NotNull String remoteUrl) {
+    myRemoteUrl = remoteUrl;
+    return this;
+  }
 
   public void call() throws VcsException {
     GitCommandLine cmd = getCmd();
@@ -79,8 +88,13 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
     if (cmd.getGitVersion().isGreaterThan(new GitVersion(1, 7, 3))) {
       cmd.addParameter("--recurse-submodules=no"); // we process submodules separately
     }
-    cmd.addParameter("origin");
-    cmd.addParameter(myRefspec);
+
+    cmd.addParameter(myRemoteUrl == null ? "origin" : myRemoteUrl);
+
+    for (String refSpec : myRefSpecs) {
+      cmd.addParameter(refSpec);
+    }
+
     cmd.setHasProgress(true);
     runCmd(cmd);
   }

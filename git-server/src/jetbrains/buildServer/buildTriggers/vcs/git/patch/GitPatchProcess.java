@@ -16,11 +16,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
+import com.jcraft.jsch.JSch;
 import java.io.*;
 import java.util.Map;
-
-import com.jcraft.jsch.JSch;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitRepoOperations;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleFetchException;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
@@ -53,7 +54,8 @@ public class GitPatchProcess {
     TransportFactory transportFactory = new TransportFactoryImpl(config, sshKeyManager, settings.getGitTrustStoreProvider());
     FetcherProperties fetcherProperties = new FetcherProperties(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, fetcherProperties, sshKeyManager, settings.getGitTrustStoreProvider());
-    CommitLoader commitLoader = new CommitLoaderImpl(repositoryManager, fetchCommand, mapFullPath, config);
+    GitRepoOperations repoOperations = new GitRepoOperationsImpl(config, sshKeyManager, fetchCommand);
+    CommitLoader commitLoader = new CommitLoaderImpl(repositoryManager, repoOperations, mapFullPath, config);
 
     OperationContext context = new OperationContext(commitLoader, repositoryManager, settings.getRoot(), "build patch", GitProgress.NO_OP, config);
     OutputStream fos = new BufferedOutputStream(new FileOutputStream(settings.getPatchFile()));

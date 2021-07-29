@@ -23,6 +23,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
+import jetbrains.buildServer.ssh.TeamCitySshKey;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -55,5 +57,15 @@ public class AgentGitCommandLine extends GitCommandLine {
     } finally {
       h.unregister();
     }
+  }
+
+  public void setSshKeyManager(VcsRootSshKeyManager sshKeyManager) {
+    mySshKeyManager = root -> {
+      final TeamCitySshKey key = sshKeyManager.getKey(root);
+      if (key == null) {
+        myCtx.getLogger().warning("Failed to retrieve uploaded ssh key from server, agent default ssh key will be used");
+      }
+      return key;
+    };
   }
 }
