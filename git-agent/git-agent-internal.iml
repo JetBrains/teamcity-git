@@ -24,5 +24,23 @@
     <orderEntry type="module" module-name="agent" exported="" />
     <orderEntry type="library" name="xmlrpc-2.0" level="project" />
     <orderEntry type="module" module-name="common-impl" />
+    <orderEntry type="module" module-name="agent-openapi" exported="" />
+    <orderEntry type="module" module-name="agent-upgrade" exported="" />
+    <orderEntry type="module" module-name="common-tools" exported="" />
+    <orderEntry type="module" module-name="common" exported="" />
+    <orderEntry type="module" module-name="runtime-util" exported="" />
+    <orderEntry type="module" module-name="server-logging" exported="" />
+    <orderEntry type="module" module-name="common-runtime" exported="" />
+    <orderEntry type="module" module-name="messages" exported="" />
+    <orderEntry type="module" module-name="agent-upgrade-common" exported="" />
+    <orderEntry type="module" module-name="plugin-model-common" exported="" />
+    <orderEntry type="module" module-name="agent-launcher-common" exported="" />
+    <orderEntry type="module" module-name="common-spring" exported="" />
+    <orderEntry type="library" exported="" name="Spring-Framework" level="project" />
+    <orderEntry type="library" exported="" name="JetLauncher API" level="project" />
+    <orderEntry type="library" exported="" name="annotations.jar" level="project" />
+    <orderEntry type="module" module-name="plugin-model-common" />
+    <orderEntry type="module" module-name="common-spring" />
+    <orderEntry type="module" module-name="common-step-conditions" />
   </component>
 </module>
