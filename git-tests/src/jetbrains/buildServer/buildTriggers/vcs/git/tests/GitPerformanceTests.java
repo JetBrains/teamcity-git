@@ -24,13 +24,19 @@ import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
+import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitFetchCommand;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.ssh.TeamCitySshKey;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.RepositoryStateData;
+import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.testng.annotations.Test;
 
 /**
@@ -40,19 +46,27 @@ import org.testng.annotations.Test;
  * @author Eugene Petrenko (eugene.petrenko@jetbrains.com)
  */
 public class GitPerformanceTests extends BaseTestCase {
-  @Test(invocationCount = 20)
+  @Test(invocationCount = 100)
   public void incrementalIntellijFetch() throws Exception {
     final VcsRootImpl root = VcsRootBuilder.vcsRoot()
                                            .withBranchSpec("+:refs/heads/*")
                                            .withFetchUrl("ssh://git@git.jetbrains.team/intellij.git")
                                            .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_DEFAULT).build();
 
-    final ServerPaths sp = new ServerPaths("/Users/###/Tests/server_paths");
+    final ServerPaths sp = new ServerPaths("/Users/victory/Tests/server_paths");
 
+    final ServerPluginConfig config = new PluginConfigBuilder(sp).setSeparateProcessForFetch(false).build();
     final GitSupportBuilder builder = GitSupportBuilder
       .gitSupport()
       .withServerPaths(sp)
-      .withPluginConfig(new PluginConfigBuilder(sp).setSeparateProcessForFetch(false).build());
+      .withPluginConfig(config)
+      .withFetchCommand(new NativeGitFetchCommand(config, new VcsRootSshKeyManager() {
+        @Nullable
+        @Override
+        public TeamCitySshKey getKey(@NotNull VcsRoot root) {
+          return null;
+        }
+      }));
     GitVcsSupport support = builder.build();
 
     final RepositoryStateData currentState = support.getCurrentState(root);

@@ -26,6 +26,7 @@ public class GitCommandSettings {
   private Integer myTimeout = CommandUtil.DEFAULT_COMMAND_TIMEOUT_SEC;
   private AuthSettings myAuthSettings;
   private boolean myUseNativeSsh = false;
+  private byte[] myInput = new byte[0];
 
   public static GitCommandSettings with() {
     return new GitCommandSettings();
@@ -46,6 +47,11 @@ public class GitCommandSettings {
     return this;
   }
 
+  public GitCommandSettings addInput(@NotNull byte[] input) {
+    myInput = input;
+    return this;
+  }
+
   public int getTimeout() {
     return myTimeout;
   }
@@ -57,5 +63,10 @@ public class GitCommandSettings {
 
   public boolean isUseNativeSsh() {
     return myUseNativeSsh;
+  }
+
+  @NotNull
+  public byte[] getInput() {
+    return myInput;
   }
 }

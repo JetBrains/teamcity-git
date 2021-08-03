@@ -63,6 +63,11 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
 
   @NotNull
   protected ExecResult runCmd(@NotNull GitCommandLine cmd) throws VcsException {
+    return runCmd(cmd, new byte[0]);
+  }
+
+  @NotNull
+  protected ExecResult runCmd(@NotNull GitCommandLine cmd, @NotNull byte[] input) throws VcsException {
     try {
       return Retry.retry(new Retry.Retryable<ExecResult>() {
         @Override
@@ -75,7 +80,7 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
           for (Runnable action : myPreActions) {
             action.run();
           }
-          return doRunCmd(cmd);
+          return doRunCmd(cmd, input);
         }
 
         @NotNull
@@ -91,11 +96,12 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
   }
 
   @NotNull
-  private ExecResult doRunCmd(@NotNull GitCommandLine cmd) throws VcsException {
+  private ExecResult doRunCmd(@NotNull GitCommandLine cmd, @NotNull byte[] input) throws VcsException {
     try {
       return cmd.run(with()
                        .timeout(myTimeout)
                        .authSettings(myAuthSettings)
+                       .addInput(input)
                        .useNativeSsh(myUseNativeSsh));
     } catch (VcsException e) {
       if (CommandUtil.isTimeoutError(e)) {

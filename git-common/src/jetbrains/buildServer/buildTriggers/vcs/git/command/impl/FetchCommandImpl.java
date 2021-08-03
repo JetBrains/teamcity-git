@@ -89,13 +89,33 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
       cmd.addParameter("--recurse-submodules=no"); // we process submodules separately
     }
 
-    cmd.addParameter(myRemoteUrl == null ? "origin" : myRemoteUrl);
-
-    for (String refSpec : myRefSpecs) {
-      cmd.addParameter(refSpec);
-    }
-
     cmd.setHasProgress(true);
-    runCmd(cmd);
+
+    if (myRefSpecs.isEmpty()) {
+      cmd.addParameter(getRemote());
+      runCmd(cmd);
+    } else if (myRefSpecs.size() == 1) {
+      cmd.addParameter(getRemote());
+      cmd.addParameter(myRefSpecs.iterator().next());
+      runCmd(cmd);
+    } else {
+      cmd.addParameter("--stdin");
+      cmd.addParameter(getRemote());
+      runCmd(cmd, refSpecsToBytes());
+    }
+  }
+
+  @NotNull
+  private byte[] refSpecsToBytes() {
+    final StringBuilder res = new StringBuilder();
+    for (String refSpec : myRefSpecs) {
+      res.append(refSpec).append("\n");
+    }
+    return res.toString().getBytes();
+  }
+
+  @NotNull
+  private String getRemote() {
+    return myRemoteUrl == null ? "origin" : myRemoteUrl;
   }
 }

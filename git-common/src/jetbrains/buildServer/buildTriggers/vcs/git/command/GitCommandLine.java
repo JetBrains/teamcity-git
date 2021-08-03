@@ -97,12 +97,7 @@ public class GitCommandLine extends GeneralCommandLine {
 
   @NotNull
   protected ExecResult doRunCommand(@NotNull GitCommandSettings settings) throws VcsException {
-    return runCommand(settings.getTimeout());
-  }
-
-  @NotNull
-  private ExecResult runCommand(int timeoutSeconds) throws VcsException {
-    return CommandUtil.runCommand(this, timeoutSeconds, new byte[0]); // workaround to make sure process input stream is closed straight away
+    return CommandUtil.runCommand(this, settings.getTimeout(), settings.getInput());
   }
 
   private void configureGitSshCommand(@NotNull AuthSettings authSettings) throws VcsException {
