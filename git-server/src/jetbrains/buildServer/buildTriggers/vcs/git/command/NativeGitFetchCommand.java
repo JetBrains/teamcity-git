@@ -6,6 +6,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.NamedThreadFactory;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
@@ -51,7 +52,17 @@ public class NativeGitFetchCommand implements FetchCommand {
     else
       fetch.setShowProgress(true);
 
-    fetch.call();
+    NamedThreadFactory.executeWithNewThreadNameFuncThrow("Running native git fetch process for : " + getDebugInfo(db, fetchURI, refspecs), () -> {
+      fetch.call();
+      return true;
+    });
   }
 
+  private String getDebugInfo(@NotNull Repository db, @NotNull URIish uri, @NotNull Collection<RefSpec> refSpecs) {
+    final StringBuilder sb = new StringBuilder();
+    for (RefSpec spec : refSpecs) {
+      sb.append(spec).append(" ");
+    }
+    return "(" + (db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"") + uri + "#" + sb + ")";
+  }
 }

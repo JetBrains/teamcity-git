@@ -22,10 +22,13 @@ import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.ssh.TeamCitySshKey;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.MockVcsOperationProgressProvider;
 import jetbrains.buildServer.vcs.TestConnectionSupport;
+import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
@@ -54,49 +57,14 @@ public class GitSupportBuilder {
   }
 
   @NotNull
-  public GitVcsSupport build() {
-    if (myPluginConfigBuilder == null && myServerPaths == null && myPluginConfig == null)
-      throw new IllegalStateException("Plugin config or server paths should be set");
-    if (myPluginConfig == null)
-      myPluginConfig = myPluginConfigBuilder != null ? myPluginConfigBuilder.build() : new PluginConfigImpl(myServerPaths);
-    if (myTransportFactory == null)
-      myTransportFactory = new TransportFactoryImpl(myPluginConfig, new EmptyVcsRootSshKeyManager());
-
-    Mockery context = new Mockery();
-    if (myFetchCommand == null) {
-      if (myBeforeFetchHook == null) {
-        myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
-      } else {
-        final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
-        myFetchCommand = (db, fetchURI, refspecs, settings) -> {
-          myBeforeFetchHook.run();
-          originalCommand.fetch(db, fetchURI, refspecs, settings);
-        };
+  private static VcsRootSshKeyManager getSshKeyManager() {
+    return new VcsRootSshKeyManager() {
+      @Nullable
+      @Override
+      public TeamCitySshKey getKey(@NotNull VcsRoot root) {
+        return null;
       }
-    }
-    myMirrorManager = new MirrorManagerImpl(myPluginConfig, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
-    myRepositoryManager = new RepositoryManagerImpl(myPluginConfig, myMirrorManager);
-    final ResetCacheRegister resetCacheManager;
-    if (myResetCacheManager == null) {
-      context.setImposteriser(ClassImposteriser.INSTANCE);
-      resetCacheManager = context.mock(ResetCacheRegister.class);
-      context.checking(new Expectations() {{
-        allowing(resetCacheManager).registerHandler(with(any(ResetCacheHandler.class)));
-      }});
-    } else {
-      resetCacheManager = myResetCacheManager;
-    }
-    RevisionsCache revisionsCache = new RevisionsCache(myPluginConfig);
-    myMapFullPath = new GitMapFullPath(myPluginConfig, revisionsCache);
-    myCommitLoader = new CommitLoaderImpl(myRepositoryManager, new GitRepoOperationsImpl(myPluginConfig, sshKeyManager, myFetchCommand), myMapFullPath, myPluginConfig);
-    GitResetCacheHandler resetCacheHandler = new GitResetCacheHandler(myRepositoryManager, new GcErrors());
-    ResetRevisionsCacheHandler resetRevisionsCacheHandler = new ResetRevisionsCacheHandler(revisionsCache);
-    GitVcsSupport git = new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
-                                          new EmptyVcsRootSshKeyManager(), new MockVcsOperationProgressProvider(),
-                                          resetCacheHandler, resetRevisionsCacheHandler, myTestConnectionSupport);
-    git.addExtensions(myExtensions);
-    git.setExtensionHolder(myExtensionHolder);
-    return git;
+    };
   }
 
   @NotNull
@@ -169,5 +137,51 @@ public class GitSupportBuilder {
 
   public TransportFactory getTransportFactory() {
     return myTransportFactory;
+  }
+
+  @NotNull
+  public GitVcsSupport build() {
+    if (myPluginConfigBuilder == null && myServerPaths == null && myPluginConfig == null)
+      throw new IllegalStateException("Plugin config or server paths should be set");
+    if (myPluginConfig == null)
+      myPluginConfig = myPluginConfigBuilder != null ? myPluginConfigBuilder.build() : new PluginConfigImpl(myServerPaths);
+    if (myTransportFactory == null)
+      myTransportFactory = new TransportFactoryImpl(myPluginConfig, new EmptyVcsRootSshKeyManager());
+
+    Mockery context = new Mockery();
+    if (myFetchCommand == null) {
+      if (myBeforeFetchHook == null) {
+        myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
+      } else {
+        final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
+        myFetchCommand = (db, fetchURI, refspecs, settings) -> {
+          myBeforeFetchHook.run();
+          originalCommand.fetch(db, fetchURI, refspecs, settings);
+        };
+      }
+    }
+    myMirrorManager = new MirrorManagerImpl(myPluginConfig, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
+    myRepositoryManager = new RepositoryManagerImpl(myPluginConfig, myMirrorManager);
+    final ResetCacheRegister resetCacheManager;
+    if (myResetCacheManager == null) {
+      context.setImposteriser(ClassImposteriser.INSTANCE);
+      resetCacheManager = context.mock(ResetCacheRegister.class);
+      context.checking(new Expectations() {{
+        allowing(resetCacheManager).registerHandler(with(any(ResetCacheHandler.class)));
+      }});
+    } else {
+      resetCacheManager = myResetCacheManager;
+    }
+    RevisionsCache revisionsCache = new RevisionsCache(myPluginConfig);
+    myMapFullPath = new GitMapFullPath(myPluginConfig, revisionsCache);
+    myCommitLoader = new CommitLoaderImpl(myRepositoryManager, new GitRepoOperationsImpl(myPluginConfig, getSshKeyManager(), myFetchCommand), myMapFullPath, myPluginConfig);
+    GitResetCacheHandler resetCacheHandler = new GitResetCacheHandler(myRepositoryManager, new GcErrors());
+    ResetRevisionsCacheHandler resetRevisionsCacheHandler = new ResetRevisionsCacheHandler(revisionsCache);
+    GitVcsSupport git = new GitVcsSupport(myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
+                                          new EmptyVcsRootSshKeyManager(), new MockVcsOperationProgressProvider(),
+                                          resetCacheHandler, resetRevisionsCacheHandler, myTestConnectionSupport);
+    git.addExtensions(myExtensions);
+    git.setExtensionHolder(myExtensionHolder);
+    return git;
   }
 }
