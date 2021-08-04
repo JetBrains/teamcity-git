@@ -121,7 +121,7 @@ public class GitServerUtil {
   private static StoredConfig addConfigOptions(@NotNull StoredConfig config, @NotNull String remoteUrl) {
     config.setString("teamcity", null, "remote", remoteUrl);
 
-    // disables auto gc performed after some native git commands or (if enforced) ensures it runs in-process
+    // Disables auto gc performed after some native git commands or (if enforced) ensures it runs in-process
     final String gcAuto = config.getString("gc", null, "auto");
     if (gcAuto == null) {
       config.setInt("gc", null, "auto", -1);
@@ -131,6 +131,10 @@ public class GitServerUtil {
         config.setBoolean("gc", null, "autoDetach", false);
       }
     }
+
+    // Received pack will be stored as a pack, not as loose objects.
+    // Storing the pack can make operations complete faster, especially on slow filesystems.
+    config.setInt("transfer", null, "unpackLimit", 1);
 
     // For performance reasons by default jgit assumes that folder or file contents didn't change if
     // it's last modification and size remain the same as saved in snapshot

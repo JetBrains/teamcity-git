@@ -25,6 +25,7 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -120,8 +121,12 @@ public class CleanerTest extends BaseTestCase {
 
     //create more than 50 packs to trigger gc:
     File packDir = new File(repositoryDir, "objects/pack");
-    File pack = new File(packDir, "pack-3763fffad1c368b0a79f9a196ee098e303fc0c29.pack");
-    File idx = new File(packDir, "pack-3763fffad1c368b0a79f9a196ee098e303fc0c29.idx");
+
+    final File[] packs = FileUtil.listFiles(packDir, (dir, name) -> name.startsWith("pack-") && name.endsWith(".pack"));
+    assertTrue(packs.length > 0);
+
+    File pack = packs[0];
+    File idx = new File(packDir, StringUtil.replace(pack.getName(), ".pack", ".idx"));
     for (int i = 10; i <= 60; i++) {
       FileUtil.copy(pack, new File(packDir, "pack-" + i + "63fffad1c368b0a79f9a196ee098e303fc0c29.pack"));
       FileUtil.copy(idx, new File(packDir, "pack-" + i + "63fffad1c368b0a79f9a196ee098e303fc0c29.idx"));
