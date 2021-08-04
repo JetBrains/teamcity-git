@@ -55,6 +55,7 @@ import org.eclipse.jgit.internal.storage.file.LockFile;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.FetchConnection;
 import org.eclipse.jgit.transport.PushConnection;
 import org.eclipse.jgit.transport.Transport;
@@ -776,7 +777,9 @@ public class GitVcsSupportTest extends PatchTestCase {
     ZipUtil.extract(new File(getTestDataPath(), "TW-65641.zip"), mirror, null);
 
     // make sure old pack files won't be kept
-    context.getRepository().getConfig().setString("gc", null, "prunepackexpire", "now");
+    final StoredConfig config = context.getRepository().getConfig();
+    config.setString("gc", null, "prunepackexpire", "now");
+    config.save();
 
     final File gitObjects = new File(mirror + "/objects");
     Assert.assertTrue(gitObjects.isDirectory());
@@ -796,6 +799,80 @@ public class GitVcsSupportTest extends PatchTestCase {
     final HashSet<String> after = listObjectsRecursively(mirror);
     Assert.assertTrue(after.containsAll(before));
     after.removeAll(before);
+  }
+
+  @Test
+  public void gc_enabled_by_user() throws Exception {
+    final File repo = createTempDir();
+    ZipUtil.extract(new File(getTestDataPath(), "TW-65641-1.zip"), repo, null);
+
+    final GitVcsSupport support = getSupport();
+    final VcsRootImpl root = getRoot("master", false, repo);
+    final OperationContext context = support.createContext(root, "fetch");
+    final GitVcsRoot gitRoot = context.getGitRoot();
+    final File mirror = gitRoot.getRepositoryDir();
+    ZipUtil.extract(new File(getTestDataPath(), "TW-65641.zip"), mirror, null);
+
+    // make sure old pack files won't be kept
+    final StoredConfig config = context.getRepository().getConfig();
+    config.setString("gc", null, "prunepackexpire", "now");
+    config.setInt("gc", null, "auto", 1); // enable gc externally
+    config.save();
+
+    final File gitObjects = new File(mirror + "/objects");
+    Assert.assertTrue(gitObjects.isDirectory());
+
+    final HashSet<String> before = listObjectsRecursively(mirror);
+
+    support.collectChanges(root, "2faa6375bf6139923245a625a47bef046e5e6550", "ba04d81036c5953d17469f532e520fc1ecbcd3f1", CheckoutRules.DEFAULT);
+
+    Thread.sleep(5000); // enough time for auto gc to start
+    new WaitFor() {
+      @Override
+      protected boolean condition() {
+        return !new File(mirror, "gc.log.lock").isFile();
+      }
+    };
+
+    final HashSet<String> after = listObjectsRecursively(mirror);
+    Assert.assertFalse(after.containsAll(before));
+  }
+
+  @Test
+  public void gc_disabled_by_user() throws Exception {
+    final File repo = createTempDir();
+    ZipUtil.extract(new File(getTestDataPath(), "TW-65641-1.zip"), repo, null);
+
+    final GitVcsSupport support = getSupport();
+    final VcsRootImpl root = getRoot("master", false, repo);
+    final OperationContext context = support.createContext(root, "fetch");
+    final GitVcsRoot gitRoot = context.getGitRoot();
+    final File mirror = gitRoot.getRepositoryDir();
+    ZipUtil.extract(new File(getTestDataPath(), "TW-65641.zip"), mirror, null);
+
+    // make sure old pack files won't be kept
+    final StoredConfig config = context.getRepository().getConfig();
+    config.setString("gc", null, "prunepackexpire", "now");
+    config.setInt("gc", null, "auto", 0); // disable gc externally
+    config.save();
+
+    final File gitObjects = new File(mirror + "/objects");
+    Assert.assertTrue(gitObjects.isDirectory());
+
+    final HashSet<String> before = listObjectsRecursively(mirror);
+
+    support.collectChanges(root, "2faa6375bf6139923245a625a47bef046e5e6550", "ba04d81036c5953d17469f532e520fc1ecbcd3f1", CheckoutRules.DEFAULT);
+
+    Thread.sleep(5000); // enough time for auto gc to start
+    new WaitFor() {
+      @Override
+      protected boolean condition() {
+        return !new File(mirror, "gc.log.lock").isFile();
+      }
+    };
+
+    final HashSet<String> after = listObjectsRecursively(mirror);
+    Assert.assertTrue(after.containsAll(before));
   }
 
   @NotNull

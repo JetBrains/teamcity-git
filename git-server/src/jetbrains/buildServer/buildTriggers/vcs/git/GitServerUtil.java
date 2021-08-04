@@ -99,17 +99,14 @@ public class GitServerUtil {
         throw new VcsException("Newline in url '" + remoteUrl + "'");
       if (!new File(dir, "config").exists()) {
         r.create(true);
-        final StoredConfig config = r.getConfig();
-        config.setString("teamcity", null, "remote", remoteUrl);
-        addTrustFolderStatConfigOption(config).save();
+        addConfigOptions(r.getConfig(), remoteUrl).save();
       } else {
         final StoredConfig config = r.getConfig();
         final String existingRemote = config.getString("teamcity", null, "remote");
         if (existingRemote != null && !remoteUrl.equals(existingRemote)) {
           throw getWrongUrlError(dir, existingRemote, remote);
         } else if (existingRemote == null) {
-          config.setString("teamcity", null, "remote", remoteUrl);
-          addTrustFolderStatConfigOption(config).save();
+          addConfigOptions(config, remoteUrl).save();
         }
       }
       return r;
@@ -121,7 +118,20 @@ public class GitServerUtil {
   }
 
   @NotNull
-  private static StoredConfig addTrustFolderStatConfigOption(@NotNull StoredConfig config) {
+  private static StoredConfig addConfigOptions(@NotNull StoredConfig config, @NotNull String remoteUrl) {
+    config.setString("teamcity", null, "remote", remoteUrl);
+
+    // disables auto gc performed after some native git commands or (if enforced) ensures it runs in-process
+    final String gcAuto = config.getString("gc", null, "auto");
+    if (gcAuto == null) {
+      config.setInt("gc", null, "auto", -1);
+    } else {
+      final int gcAutoInt = config.getInt("gc", "auto", 0);
+      if (gcAutoInt > 0) {
+        config.setBoolean("gc", null, "autoDetach", false);
+      }
+    }
+
     // For performance reasons by default jgit assumes that folder or file contents didn't change if
     // it's last modification and size remain the same as saved in snapshot
     // (this heuristic is applied for objects/pack folder and refs/packed-refs file).
