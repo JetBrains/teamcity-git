@@ -75,7 +75,9 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
   }
 
   public void call() throws VcsException {
-    GitCommandLine cmd = getCmd();
+    final GitCommandLine cmd = getCmd();
+    final GitVersion gitVersion = cmd.getGitVersion();
+
     cmd.addParameter("fetch");
     if (myQuite)
       cmd.addParameter("-q");
@@ -85,18 +87,15 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
       cmd.addParameter("--depth=" + myDepth);
     if (!myFetchTags)
       cmd.addParameter("--no-tags");
-    if (cmd.getGitVersion().isGreaterThan(new GitVersion(1, 7, 3))) {
+    if (gitVersion.isGreaterThan(new GitVersion(1, 7, 3))) {
       cmd.addParameter("--recurse-submodules=no"); // we process submodules separately
     }
 
     cmd.setHasProgress(true);
 
-    if (myRefSpecs.isEmpty()) {
+    if (myRefSpecs.size() <= 1 || gitVersion.isLessThan(new GitVersion(2, 29, 0))) {
       cmd.addParameter(getRemote());
-      runCmd(cmd);
-    } else if (myRefSpecs.size() == 1) {
-      cmd.addParameter(getRemote());
-      cmd.addParameter(myRefSpecs.iterator().next());
+      myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));
       runCmd(cmd);
     } else {
       cmd.addParameter("--stdin");
