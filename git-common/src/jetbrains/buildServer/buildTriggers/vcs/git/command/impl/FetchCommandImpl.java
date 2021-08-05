@@ -100,17 +100,17 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
     } else {
       cmd.addParameter("--stdin");
       cmd.addParameter(getRemote());
-      runCmd(cmd, refSpecsToBytes());
+      runCmd(cmd, refSpecsToBytes(cmd));
     }
   }
 
   @NotNull
-  private byte[] refSpecsToBytes() {
+  private byte[] refSpecsToBytes(@NotNull GitCommandLine cmd) {
     final StringBuilder res = new StringBuilder();
     for (String refSpec : myRefSpecs) {
       res.append(refSpec).append("\n");
     }
-    return res.toString().getBytes();
+    return res.toString().getBytes(cmd.getCharset());
   }
 
   @NotNull

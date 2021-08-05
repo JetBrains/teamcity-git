@@ -14,7 +14,6 @@ import jetbrains.buildServer.util.FileUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-// TODO: make configurable
 public class ContextImpl implements Context {
 
   private final ServerPluginConfig myConfig;
@@ -51,7 +50,7 @@ public class ContextImpl implements Context {
   @Nullable
   @Override
   public Charset getCharset() {
-    return Charset.defaultCharset();
+    return Charset.forName("UTF-8");
   }
 
   @Override
@@ -78,7 +77,7 @@ public class ContextImpl implements Context {
   @NotNull
   @Override
   public Map<String, String> getEnv() {
-    return Collections.emptyMap();
+    return myConfig.passEnvToChildProcess() ? System.getenv() : Collections.emptyMap();
   }
 
   @NotNull
