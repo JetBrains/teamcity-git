@@ -8,4 +8,7 @@ public interface GitFacade {
 
   @NotNull
   LsRemoteCommand lsRemote();
+
+  @NotNull
+  RemoteCommand remote();
 }

@@ -121,6 +121,12 @@ public class GitServerUtil {
   private static StoredConfig addConfigOptions(@NotNull StoredConfig config, @NotNull String remoteUrl) {
     config.setString("teamcity", null, "remote", remoteUrl);
 
+    // This bare repository is a mirror fetching all refs, otherwise branches, removed in the remote, won't be correctly pruned before fetch
+    // see https://git-scm.com/docs/git-fetch#_pruning
+    config.setString("remote", "origin", "url", remoteUrl);
+    config.setString("remote", "origin", "fetch", "+refs/*:refs/*");
+    config.setBoolean("remote", "origin", "mirror", true);
+
     // Disables auto gc performed after some native git commands or (if enforced) ensures it runs in-process
     final String gcAuto = config.getString("gc", null, "auto");
     if (gcAuto == null) {

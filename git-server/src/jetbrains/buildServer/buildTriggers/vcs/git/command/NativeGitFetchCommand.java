@@ -34,13 +34,20 @@ public class NativeGitFetchCommand implements FetchCommand {
     final ContextImpl ctx = new ContextImpl(myConfig, settings);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
+
+    // Before running fetch we need to prune branches which no longer exist in the remote,
+    // otherwise git fails to update local branches which were e.g. renamed.
+    gitFacade.remote()
+             .setCommand("prune").setRemote("origin")
+             .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
+             .call();
+
     final jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand fetch = gitFacade.fetch();
     fetch
       .setRemote(fetchURI.toString())
-      .setAuthSettings(settings.getAuthSettings())
-      .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+      .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
       .setTimeout(myConfig.getFetchTimeout())
-      .setUseNativeSsh(true)
+      .setRetryAttempts(myConfig.getConnectionRetryAttempts())
       .addPreAction(() -> GitServerUtil.removeRefLocks(db.getDirectory()));
 
     for (RefSpec refSpec : refspecs) {
