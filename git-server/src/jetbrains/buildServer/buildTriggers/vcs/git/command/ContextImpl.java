@@ -1,6 +1,5 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
-import com.intellij.openapi.util.SystemInfo;
 import java.io.File;
 import java.nio.charset.Charset;
 import java.util.Collection;
@@ -18,9 +17,11 @@ public class ContextImpl implements Context {
 
   private final ServerPluginConfig myConfig;
   private final FetchSettings mySettings;
+  private final GitExec myGitExec;
 
-  public ContextImpl(@NotNull ServerPluginConfig config, @NotNull FetchSettings fetchSettings) {
+  public ContextImpl(@NotNull ServerPluginConfig config, GitExec gitExec, @NotNull FetchSettings fetchSettings) {
     myConfig = config;
+    myGitExec = gitExec;
     mySettings = fetchSettings;
   }
 
@@ -83,13 +84,13 @@ public class ContextImpl implements Context {
   @NotNull
   @Override
   public GitExec getGitExec() {
-    return new GitExec(SystemInfo.isWindows ? "git.exe" : "git", GitVersion.DEPRECATED, null);
+    return myGitExec;
   }
 
   @NotNull
   @Override
   public GitVersion getGitVersion() {
-    return GitVersion.DEPRECATED;
+    return getGitExec().getVersion();
   }
 
   @Override

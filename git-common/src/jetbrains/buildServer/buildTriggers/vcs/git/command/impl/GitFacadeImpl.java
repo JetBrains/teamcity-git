@@ -32,6 +32,11 @@ public class GitFacadeImpl implements GitFacade {
   }
 
   @NotNull
+  public VersionCommand version() {
+    return new VersionCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   public FetchCommand fetch() {
     return new FetchCommandImpl(createCommandLine());
   }

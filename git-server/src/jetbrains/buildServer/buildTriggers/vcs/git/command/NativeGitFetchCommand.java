@@ -18,10 +18,14 @@ public class NativeGitFetchCommand implements FetchCommand {
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
 
   private final ServerPluginConfig myConfig;
+  private final GitDetector myGitDetector;
   private final VcsRootSshKeyManager mySshKeyManager;
 
-  public NativeGitFetchCommand(@NotNull ServerPluginConfig config, @NotNull VcsRootSshKeyManager sshKeyManager) {
+  public NativeGitFetchCommand(@NotNull ServerPluginConfig config,
+                               @NotNull GitDetector gitDetector,
+                               @NotNull VcsRootSshKeyManager sshKeyManager) {
     myConfig = config;
+    myGitDetector = gitDetector;
     mySshKeyManager = sshKeyManager;
   }
 
@@ -31,7 +35,7 @@ public class NativeGitFetchCommand implements FetchCommand {
 
   @Override
   public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull FetchSettings settings) throws IOException, VcsException {
-    final ContextImpl ctx = new ContextImpl(myConfig, settings);
+    final ContextImpl ctx = new ContextImpl(myConfig, myGitDetector.detectGit(), settings);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 

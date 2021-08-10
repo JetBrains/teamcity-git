@@ -28,13 +28,13 @@ import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.NoBuildContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.FetchCommandImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -89,7 +89,7 @@ public class FetchCommandImplTest extends BaseTestCase {
   @TestFor(issues = "TW-18853")
   public void should_throw_special_exception_when_stderr_mentions_broken_index() throws VcsException {
 
-    AgentGitCommandLine failedCmd = new AgentGitCommandLine(null, getFakeGen(), new NoBuildContext()) {
+    AgentGitCommandLine failedCmd = new AgentGitCommandLine(null, getFakeGen(), new StubContext()) {
       @Override
       public ExecResult run(@NotNull GitCommandSettings settings) throws VcsException {
         throw new VcsException("fatal: index file smaller than expected");
@@ -143,7 +143,7 @@ public class FetchCommandImplTest extends BaseTestCase {
     final File work = createTempDir();
     runCommand(false, gitPath, work, "init");
 
-    final GitCommandLine cmd = new GitCommandLine(new NoBuildContext(), getFakeGen());
+    final GitCommandLine cmd = new GitCommandLine(new StubContext(), getFakeGen());
     cmd.setExePath(gitPath);
     cmd.setWorkingDirectory(work);
     final FetchCommandImpl fetch = new FetchCommandImpl(cmd);

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
@@ -31,15 +31,15 @@ import jetbrains.buildServer.log.Loggers;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class NoBuildContext implements Context {
+public class StubContext implements Context {
 
   private final GitExec myGitExec;
 
-  public NoBuildContext() {
+  public StubContext() {
     this("git");
   }
 
-  public NoBuildContext(@NotNull String gitPath) {
+  public StubContext(@NotNull String gitPath) {
     myGitExec = new GitExec(gitPath, GitVersion.MIN, null);
   }
 

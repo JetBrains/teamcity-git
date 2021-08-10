@@ -88,9 +88,6 @@ public interface AgentGitFacade extends GitFacade {
   ShowRefCommand showRef();
 
   @NotNull
-  VersionCommand version();
-
-  @NotNull
   PackRefs packRefs();
 
   @NotNull

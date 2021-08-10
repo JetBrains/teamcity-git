@@ -2120,7 +2120,7 @@ public class AgentVcsSupportTest {
       File tmpDir = new File(getTempDirectory());
       AgentGitCommandLine cmd = new AgentGitCommandLine(null, SystemInfo.isUnix ? new UnixScriptGen(tmpDir, new EscapeEchoArgumentUnix())
                                                                                 : new WinScriptGen(tmpDir, new EscapeEchoArgumentWin()),
-                                                        new NoBuildContext());
+                                                        new StubContext());
       cmd.setExePath(gitPath);
       cmd.setWorkingDirectory(new File(workDirectory));
       cmd.addParameters("push", "origin", "master");

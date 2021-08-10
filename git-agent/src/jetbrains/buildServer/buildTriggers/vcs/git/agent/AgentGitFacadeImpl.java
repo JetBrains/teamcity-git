@@ -28,6 +28,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.ProcessTimeoutCallback;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -55,7 +56,7 @@ public class AgentGitFacadeImpl extends GitFacadeImpl implements AgentGitFacade 
 
   public AgentGitFacadeImpl(@NotNull String gitPath,
                             @NotNull File repositoryDir) {
-    super(repositoryDir, new NoBuildContext(gitPath));
+    super(repositoryDir, new StubContext(gitPath));
     mySsh = null;
   }
 
@@ -159,11 +160,6 @@ public class AgentGitFacadeImpl extends GitFacadeImpl implements AgentGitFacade 
   @NotNull
   public ShowRefCommand showRef() {
     return new ShowRefCommandImpl(createCommandLine());
-  }
-
-  @NotNull
-  public VersionCommand version() {
-    return new VersionCommandImpl(createCommandLine());
   }
 
   @NotNull
