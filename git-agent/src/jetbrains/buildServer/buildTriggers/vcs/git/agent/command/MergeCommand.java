@@ -11,7 +11,7 @@ public interface MergeCommand extends BaseCommand {
   MergeCommand setAbort(boolean abort);
 
   @NotNull
-  MergeCommand setQuite(boolean quite);
+  MergeCommand setQuiet(boolean quite);
 
   void call() throws VcsException;
 }

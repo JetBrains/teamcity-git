@@ -12,7 +12,7 @@ import org.jetbrains.annotations.NotNull;
 public class MergeCommandImpl extends BaseCommandImpl implements MergeCommand {
   private final List<String> myMergeBranches = new ArrayList<>();
   private boolean myAbort = false;
-  private boolean myQuite = false;
+  private boolean myQuiet = false;
 
   public MergeCommandImpl(@NotNull GitCommandLine myCmd) {
     super(myCmd);
@@ -33,8 +33,8 @@ public class MergeCommandImpl extends BaseCommandImpl implements MergeCommand {
   }
 
   @NotNull
-  public MergeCommand setQuite(boolean quite) {
-    myQuite = quite;
+  public MergeCommand setQuiet(boolean quiet) {
+    myQuiet = quiet;
     return this;
   }
 
@@ -43,12 +43,12 @@ public class MergeCommandImpl extends BaseCommandImpl implements MergeCommand {
     GitCommandLine cmd = getCmd();
     cmd.addParameter("merge");
 
-    if (myQuite) {
+    if (myQuiet) {
       cmd.addParameter("-q");
     }
 
     if (myAbort) {
-      cmd.addParameters("--abort");
+      cmd.addParameter("--abort");
     }
 
     cmd.addParameters(myMergeBranches);
