@@ -9,6 +9,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.FetchSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -56,7 +57,7 @@ public class ContextImpl implements Context {
 
   @Override
   public boolean isDebugSsh() {
-    return true;
+    return Loggers.VCS.isDebugEnabled();
   }
 
   @Override
