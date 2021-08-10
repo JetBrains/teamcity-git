@@ -225,7 +225,7 @@ public class UpdaterImpl implements Updater {
   private boolean isShallowRepository(@NotNull File gitDir) {
     if (!myPluginConfig.getGitVersion().isLessThan(REV_PARSE_LEARNED_SHALLOW_CLONE)) {
       try {
-        return "true".equals(myGitFactory.create(gitDir).revParse().setParams("--is-shallow-repository").call());
+        return "true".equals(myGitFactory.create(gitDir).revParse().setShallow(true).call());
       } catch (VcsException e) {
         LOG.warn("Exception while running git rev-parse --is-shallow-repository", e);
       }

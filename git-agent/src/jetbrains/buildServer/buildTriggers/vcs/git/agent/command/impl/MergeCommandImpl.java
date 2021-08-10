@@ -11,7 +11,8 @@ import org.jetbrains.annotations.NotNull;
 
 public class MergeCommandImpl extends BaseCommandImpl implements MergeCommand {
   private final List<String> myMergeBranches = new ArrayList<>();
-  private final List<String> myParams = new ArrayList<>();
+  private boolean myAbort = false;
+  private boolean myQuite = false;
 
   public MergeCommandImpl(@NotNull GitCommandLine myCmd) {
     super(myCmd);
@@ -26,8 +27,14 @@ public class MergeCommandImpl extends BaseCommandImpl implements MergeCommand {
 
   @NotNull
   @Override
-  public MergeCommand setParams(String... params) {
-    myParams.addAll(Arrays.asList(params));
+  public MergeCommand setAbort(boolean abort) {
+    myAbort = abort;
+    return this;
+  }
+
+  @NotNull
+  public MergeCommand setQuite(boolean quite) {
+    myQuite = quite;
     return this;
   }
 
@@ -35,7 +42,15 @@ public class MergeCommandImpl extends BaseCommandImpl implements MergeCommand {
   public void call() throws VcsException {
     GitCommandLine cmd = getCmd();
     cmd.addParameter("merge");
-    cmd.addParameters(myParams);
+
+    if (myQuite) {
+      cmd.addParameter("-q");
+    }
+
+    if (myAbort) {
+      cmd.addParameters("--abort");
+    }
+
     cmd.addParameters(myMergeBranches);
 
     ExecResult result = CommandUtil.runCommand(cmd);

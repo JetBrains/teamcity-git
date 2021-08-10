@@ -8,7 +8,10 @@ public interface MergeCommand extends BaseCommand {
   MergeCommand setBranches(final String... mergeBranches);
 
   @NotNull
-  MergeCommand setParams(final String... params);
+  MergeCommand setAbort(boolean abort);
+
+  @NotNull
+  MergeCommand setQuite(boolean quite);
 
   void call() throws VcsException;
 }

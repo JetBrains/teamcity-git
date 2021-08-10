@@ -60,7 +60,9 @@ public class CreateBranchCommandImpl extends BaseCommandImpl implements CreateBr
       cmd.addParameter("--no-track");
     }
     cmd.addParameter(myName);
-    cmd.addParameter(myStartPoint);
+    if (myStartPoint != null) {
+      cmd.addParameter(myStartPoint);
+    }
     ExecResult result = CommandUtil.runCommand(cmd);
     CommandUtil.failIfNotEmptyStdErr(cmd, result);
   }
