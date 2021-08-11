@@ -16,6 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
+import java.util.Collections;
+import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import org.jetbrains.annotations.NotNull;
@@ -26,6 +28,7 @@ public class GitCommandSettings {
   private Integer myTimeout = CommandUtil.DEFAULT_COMMAND_TIMEOUT_SEC;
   private AuthSettings myAuthSettings;
   private boolean myUseNativeSsh = false;
+  private Map<String, String> myTraceEnv = Collections.emptyMap();
   private byte[] myInput = new byte[0];
 
   public static GitCommandSettings with() {
@@ -52,6 +55,11 @@ public class GitCommandSettings {
     return this;
   }
 
+  public GitCommandSettings trace(@NotNull Map<String, String> gitTraceEnv) {
+    myTraceEnv = gitTraceEnv;
+    return this;
+  }
+
   public int getTimeout() {
     return myTimeout;
   }
@@ -68,5 +76,14 @@ public class GitCommandSettings {
   @NotNull
   public byte[] getInput() {
     return myInput;
+  }
+
+  @NotNull
+  public Map<String, String> getTraceEnv() {
+    return myTraceEnv;
+  }
+
+  boolean isTrace() {
+    return !getTraceEnv().isEmpty();
   }
 }

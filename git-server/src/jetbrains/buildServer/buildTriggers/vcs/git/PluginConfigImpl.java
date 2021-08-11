@@ -23,9 +23,12 @@ import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.*;
 import com.jcraft.jzlib.JZlib;
 import gnu.trove.TObjectHashingStrategy;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -35,10 +38,7 @@ import jetbrains.buildServer.messages.serviceMessages.ServiceMessage;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
-import jetbrains.buildServer.util.Dates;
-import jetbrains.buildServer.util.DiagnosticUtil;
-import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.util.*;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.LowLevelPatchBuilder;
@@ -84,6 +84,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public static final String TEAMCITY_GIT_FETCH_PROCESS_MAX_MEMORY_LIMIT = "teamcity.git.fetch.process.max.memory.limit";
   public static final String CONNECTION_RETRY_INTERVAL_SECONDS = "teamcity.git.connectionRetryIntervalSeconds";
   public static final String CONNECTION_RETRY_ATTEMPTS = "teamcity.git.connectionRetryAttempts";
+  public static final String GIT_TRACE_ENV = "teamcity.git.traceEnv";
 
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
@@ -648,5 +649,18 @@ public class PluginConfigImpl implements ServerPluginConfig {
       LOG.warn(String.format("Unexpected \"%s\" value \"%s\": the value should be a float number from 0 to 1, where 0 means the feature is disabled", FETCH_REMOTE_BRANCHES_FACTOR, factor));
     }
     return factor;
+  }
+
+  @NotNull
+  @Override
+  public Map<String, String> getGitTraceEnv() {
+    final String prop = TeamCityProperties.getProperty(GIT_TRACE_ENV);
+    if (StringUtil.isEmpty(prop)) return Collections.emptyMap();
+    try {
+      return PropertiesUtil.toMap(PropertiesUtil.loadProperties(new ByteArrayInputStream(prop.replace(' ', '\n').getBytes(StandardCharsets.UTF_8))));
+    } catch (IOException e) {
+      LOG.warnAndDebugDetails("Failed to parse \"" + GIT_TRACE_ENV + "\" property value \"" + prop + "\"", e);
+      return Collections.emptyMap();
+    }
   }
 }

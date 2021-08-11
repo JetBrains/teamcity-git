@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
+import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import org.jetbrains.annotations.NotNull;
 
@@ -33,4 +34,6 @@ public interface AuthCommand<T extends BaseCommand> {
   T addPreAction(@NotNull Runnable action);
 
   T setRetryAttempts(int num);
+
+  T trace(@NotNull Map<String, String> gitTraceEnv);
 }

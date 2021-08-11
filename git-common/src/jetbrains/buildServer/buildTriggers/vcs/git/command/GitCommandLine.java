@@ -89,9 +89,10 @@ public class GitCommandLine extends GeneralCommandLine {
     }
     if (settings.isUseNativeSsh()) {
       if (AuthenticationMethod.TEAMCITY_SSH_KEY == authSettings.getAuthMethod() && myCtx.isUseGitSshCommand()) {
-        configureGitSshCommand(authSettings);
+        configureGitSshCommand(settings);
       }
     }
+    settings.getTraceEnv().entrySet().forEach(e -> addEnvParam(e.getKey(), e.getValue()));
     return doRunCommand(settings);
   }
 
@@ -100,14 +101,15 @@ public class GitCommandLine extends GeneralCommandLine {
     return CommandUtil.runCommand(this, settings.getTimeout(), settings.getInput());
   }
 
-  private void configureGitSshCommand(@NotNull AuthSettings authSettings) throws VcsException {
+  private void configureGitSshCommand(@NotNull GitCommandSettings settings) throws VcsException {
+    final AuthSettings authSettings = settings.getAuthSettings();
     //Git has 2 environment variables related to ssh: GIT_SSH and GIT_SSH_COMMAND.
     //We use GIT_SSH_COMMAND because git resolves the executable specified in it,
     //i.e. it finds the 'ssh' executable which is not in the PATH on windows by default.
 
     //We specify the following command:
     //
-    //  GIT_SSH_COMMAND=ssh -i "<path to decrypted key>" (-o "StrictHostKeyChecking=no")
+    //  GIT_SSH_COMMAND=ssh -i "<path to decrypted key>" (-o "StrictHostKeyChecking=no" -vvv)
     //
     //The key is decrypted by us because on MacOS ssh seems to ignore the SSH_ASKPASS and
     //runs the MacOS graphical keychain helper. Disabling it via the -o "KeychainIntegration=no"
@@ -152,6 +154,9 @@ public class GitCommandLine extends GeneralCommandLine {
             gitSshCommand.append("ssh -i \"").append(privateKeyPath).append("\"");
             if (authSettings.isIgnoreKnownHosts()) {
               gitSshCommand.append(" -o \"StrictHostKeyChecking=no\"");
+            }
+            if (myCtx.isDebugSsh() || settings.isTrace()) {
+              gitSshCommand.append("-vvv");
             }
             addEnvParam("GIT_SSH_COMMAND", gitSshCommand.toString());
           }

@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import com.jcraft.jsch.Proxy;
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -408,6 +409,12 @@ public class PluginConfigBuilder {
       @Override
       public float fetchRemoteBranchesFactor() {
         return myFetchRemoteBranchesFactor;
+      }
+
+      @NotNull
+      @Override
+      public Map<String, String> getGitTraceEnv() {
+        return Collections.emptyMap();
       }
     };
   }

@@ -177,4 +177,7 @@ public interface ServerPluginConfig extends PluginConfig {
   boolean refreshObjectDatabaseAfterFetch();
 
   float fetchRemoteBranchesFactor();
+
+  @NotNull
+  Map<String, String> getGitTraceEnv();
 }

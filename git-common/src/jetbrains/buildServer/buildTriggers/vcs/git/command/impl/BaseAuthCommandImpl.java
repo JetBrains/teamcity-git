@@ -3,7 +3,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.Retry;
@@ -26,6 +28,7 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
   private AuthSettings myAuthSettings;
   private final List<Runnable> myPreActions = new ArrayList<Runnable>();
   private int myRetryAttempts = 1;
+  private Map<String, String> myTraceEnv = Collections.emptyMap();
 
   public BaseAuthCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -58,6 +61,13 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
   @Override
   public T setRetryAttempts(int num) {
     myRetryAttempts = num;
+    return (T)this;
+  }
+
+
+  @Override
+  public T trace(@NotNull Map<String, String> gitTraceEnv) {
+    myTraceEnv = gitTraceEnv;
     return (T)this;
   }
 
@@ -102,7 +112,8 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
                        .timeout(myTimeout)
                        .authSettings(myAuthSettings)
                        .addInput(input)
-                       .useNativeSsh(myUseNativeSsh));
+                       .useNativeSsh(myUseNativeSsh)
+                       .trace(myTraceEnv));
     } catch (VcsException e) {
       if (CommandUtil.isTimeoutError(e)) {
         throw new GitExecTimeout();

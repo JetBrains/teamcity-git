@@ -44,15 +44,17 @@ public class NativeGitFetchCommand implements FetchCommand {
     gitFacade.remote()
              .setCommand("prune").setRemote("origin")
              .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
+             .trace(myConfig.getGitTraceEnv())
              .call();
 
-    final jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand fetch = gitFacade.fetch();
-    fetch
-      .setRemote(fetchURI.toString())
-      .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
-      .setTimeout(myConfig.getFetchTimeout())
-      .setRetryAttempts(myConfig.getConnectionRetryAttempts())
-      .addPreAction(() -> GitServerUtil.removeRefLocks(db.getDirectory()));
+    final jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand fetch =
+      gitFacade.fetch()
+               .setRemote(fetchURI.toString())
+               .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
+               .setTimeout(myConfig.getFetchTimeout())
+               .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+               .trace(myConfig.getGitTraceEnv())
+               .addPreAction(() -> GitServerUtil.removeRefLocks(db.getDirectory()));
 
     for (RefSpec refSpec : refspecs) {
       fetch.setRefspec(refSpec.toString());
