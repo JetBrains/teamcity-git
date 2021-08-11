@@ -156,7 +156,7 @@ public class GitCommandLine extends GeneralCommandLine {
               gitSshCommand.append(" -o \"StrictHostKeyChecking=no\"");
             }
             if (myCtx.isDebugSsh() || settings.isTrace()) {
-              gitSshCommand.append("-vvv");
+              gitSshCommand.append(" -vvv");
             }
             addEnvParam("GIT_SSH_COMMAND", gitSshCommand.toString());
           }

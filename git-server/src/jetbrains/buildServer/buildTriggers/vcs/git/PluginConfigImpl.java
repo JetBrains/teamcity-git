@@ -659,7 +659,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
     try {
       return PropertiesUtil.toMap(PropertiesUtil.loadProperties(new ByteArrayInputStream(prop.replace(' ', '\n').getBytes(StandardCharsets.UTF_8))));
     } catch (IOException e) {
-      LOG.warnAndDebugDetails("Failed to parse \"" + GIT_TRACE_ENV + "\" property value \"" + prop + "\"", e);
+      LOG.warnAndDebugDetails("Failed to parse \"" + GIT_TRACE_ENV + "\" property value \"" + prop + "\", git trace won't be enabled", e);
       return Collections.emptyMap();
     }
   }
