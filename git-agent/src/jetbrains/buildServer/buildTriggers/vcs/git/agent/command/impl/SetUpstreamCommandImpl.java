@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SetUpstreamCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
@@ -48,7 +47,6 @@ public class SetUpstreamCommandImpl extends BaseCommandImpl implements SetUpstre
     } else {
       cmd.addParameters("branch", "--set-upstream-to=" + myUpstreamBranch);
     }
-    ExecResult r = CommandUtil.runCommand(cmd);
-    CommandUtil.failIfNotEmptyStdErr(cmd, r);
+    CommandUtil.runCommand(cmd.stdErrExpected(false));
   }
 }

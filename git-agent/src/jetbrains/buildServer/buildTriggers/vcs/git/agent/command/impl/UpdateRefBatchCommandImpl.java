@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefBatchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseCommandImpl;
@@ -93,8 +92,7 @@ public class UpdateRefBatchCommandImpl extends BaseCommandImpl implements Update
     cmd.addParameter("--stdin");
     cmd.addParameter("-z");
     byte[] input = myInput.toByteArray();
-    ExecResult r = CommandUtil.runCommand(cmd, input);
-    CommandUtil.failIfNotEmptyStdErr(cmd, r);
+    CommandUtil.runCommand(cmd.stdErrExpected(false), input);
   }
 
   private void cmd(String cmd) {

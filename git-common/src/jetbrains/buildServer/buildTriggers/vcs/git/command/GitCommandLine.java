@@ -37,6 +37,10 @@ public class GitCommandLine extends GeneralCommandLine {
   private boolean myRepeatOnEmptyOutput = false;
   @Nullable private Integer myMaxOutputSize = null;
 
+  private boolean myAbnormalExitExpected = false;
+  private boolean myStdErrExpected = true;
+  private String myStdErrLogLevel = "warn";
+
   public GitCommandLine(@NotNull Context ctx, @NotNull ScriptGen scriptGen) {
     myCtx = ctx;
     myScriptGen = scriptGen;
@@ -267,5 +271,35 @@ public class GitCommandLine extends GeneralCommandLine {
   public Charset getCharset() {
     final Charset charset = myCtx.getCharset();
     return charset == null ? super.getCharset() : charset;
+  }
+
+  public boolean isAbnormalExitExpected() {
+    return myAbnormalExitExpected;
+  }
+
+  @NotNull
+  public GitCommandLine abnormalExitExpected(boolean abnormalExitExpected) {
+    myAbnormalExitExpected = abnormalExitExpected;
+    return this;
+  }
+
+  public String getStdErrLogLevel() {
+    return myStdErrLogLevel;
+  }
+
+  @NotNull
+  public GitCommandLine stdErrLogLevel(@NotNull String stdErrLogLevel) {
+    myStdErrLogLevel = stdErrLogLevel;
+    return this;
+  }
+
+  public boolean isStdErrExpected() {
+    return myStdErrExpected;
+  }
+
+  @NotNull
+  public GitCommandLine stdErrExpected(boolean stdErrExpected) {
+    myStdErrExpected = stdErrExpected;
+    return this;
   }
 }

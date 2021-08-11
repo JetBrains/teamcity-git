@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
-import com.intellij.execution.configurations.GeneralCommandLine;
 import java.io.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
@@ -30,28 +29,28 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-import static com.intellij.openapi.util.text.StringUtil.isEmpty;
-
 public class CommandUtil {
   public static final int DEFAULT_COMMAND_TIMEOUT_SEC = 3600;
 
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
-  private static void checkCommandFailed(@NotNull String cmdName, @NotNull ExecResult res, String... errorsLogLevel) throws VcsException {
-    if ("info".equals(logLevel(errorsLogLevel)) && res.getExitCode() != 0 && res.getException() == null) {
+  private static void checkCommandFailed(@NotNull GitCommandLine cmd, @NotNull String cmdName, @NotNull ExecResult res) throws VcsException {
+    if (cmd.isAbnormalExitExpected() && res.getExitCode() != 0 && res.getException() == null) {
       logMessage("'" + cmdName + "' exit code: " + res.getExitCode() + ". It is expected behaviour.", "info");
-    } else {
-      if (res.getExitCode() != 0 || res.getException() != null) {
+    } else if (res.getExitCode() != 0 || res.getException() != null) {
+      commandFailed(cmdName, res);
+    } else if (res.getStderr().length() > 0) {
+      if (cmd.isStdErrExpected()) {
+        final String ll = cmd.getStdErrLogLevel();
+        logMessage("Error output produced by: " + cmdName, ll);
+        logMessage(res.getStderr().trim(), ll);
+      } else {
         commandFailed(cmdName, res);
-      }
-      if (res.getStderr().length() > 0) {
-        logMessage("Error output produced by: " + cmdName, errorsLogLevel);
-        logMessage(res.getStderr().trim(), errorsLogLevel);
       }
     }
   }
 
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
-  private static void commandFailed(final String cmdName, final ExecResult res, String... errorsLogLevel) throws VcsException {
+  private static void commandFailed(final String cmdName, final ExecResult res) throws VcsException {
     Throwable exception = res.getException();
     String stderr = res.getStderr().trim();
     String stdout = res.getStdout().trim();
@@ -70,9 +69,9 @@ public class CommandUtil {
     if (exception != null && isImportant(exception)) {
       Writer stackWriter = new StringWriter();
       exception.printStackTrace(new PrintWriter(stackWriter));
-      message += "\n" + stackWriter.toString();
+      message += "\n" + stackWriter;
     }
-    logMessage(message, errorsLogLevel);
+    logMessage(message);
     if (exception != null)
       throw new VcsException(message, exception);
     throw new VcsException(message);
@@ -103,37 +102,39 @@ public class CommandUtil {
     return level.length > 0 ? level[0] : "warn";
   }
 
-  public static ExecResult runCommand(@NotNull GitCommandLine cli, final String... errorsLogLevel) throws VcsException {
-    return runCommand(cli, DEFAULT_COMMAND_TIMEOUT_SEC, errorsLogLevel);
+  public static ExecResult runCommand(@NotNull GitCommandLine cli) throws VcsException {
+    return runCommand(cli, DEFAULT_COMMAND_TIMEOUT_SEC);
   }
 
-  public static ExecResult runCommand(@NotNull GitCommandLine cli, byte[] input, final String... errorsLogLevel) throws VcsException {
-    return runCommand(cli, DEFAULT_COMMAND_TIMEOUT_SEC, input, errorsLogLevel);
+  public static ExecResult runCommand(@NotNull GitCommandLine cli, byte[] input) throws VcsException {
+    return runCommand(cli, DEFAULT_COMMAND_TIMEOUT_SEC, input);
   }
 
-  public static ExecResult runCommand(@NotNull GitCommandLine cli, int timeoutSeconds, final String... errorsLogLevel)
-    throws VcsException {
-    return runCommand(cli, timeoutSeconds, new byte[0], errorsLogLevel);
+  public static ExecResult runCommand(@NotNull GitCommandLine cli, int timeoutSeconds) throws VcsException {
+    return runCommand(cli, timeoutSeconds, new byte[0]);
   }
 
-  public static ExecResult runCommand(@NotNull GitCommandLine cli, int timeoutSeconds, byte[] input, final String... errorsLogLevel)
-    throws VcsException {
+  public static ExecResult runCommand(@NotNull GitCommandLine cli, int timeoutSeconds, byte[] input) throws VcsException {
     int attemptsLeft = 2;
     while (true) {
       try {
         cli.checkCanceled();
+
         String cmdStr = cli.getCommandLineString();
         File workingDir = cli.getWorkingDirectory();
         String inDir = workingDir != null ? "[" + workingDir.getAbsolutePath() + "]" : "";
-        String msg = inDir + ": " + cmdStr;
-        Loggers.VCS.info(msg);
+        Loggers.VCS.info(inDir + ": " + cmdStr);
+
         cli.logStart(cmdStr);
+
         ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
         ByteArrayOutputStream stderrBuffer = cli.createStderrBuffer();
         ExecResult res = SimpleCommandLineProcessRunner
           .runCommandSecure(cli, cli.getCommandLineString(), input, new ProcessTimeoutCallback(timeoutSeconds, cli.getMaxOutputSize()), stdoutBuffer, stderrBuffer);
+
         cli.logFinish(cmdStr);
-        CommandUtil.checkCommandFailed(cmdStr, res, errorsLogLevel);
+        CommandUtil.checkCommandFailed(cli, cmdStr, res);
+
         String out = res.getStdout();
         Loggers.VCS.debug(out);
         if (!StringUtil.isEmptyOrSpaces(out) || !cli.isRepeatOnEmptyOutput() || attemptsLeft <= 0)
@@ -148,10 +149,10 @@ public class CommandUtil {
     }
   }
 
-  public static void failIfNotEmptyStdErr(@NotNull GeneralCommandLine cli, @NotNull ExecResult res, String... errorsLogLevel) throws VcsException {
-    if (!isEmpty(res.getStderr()))
-      CommandUtil.commandFailed(cli.getCommandLineString(), res, errorsLogLevel);
-  }
+  //public static void failIfNotEmptyStdErr(@NotNull GeneralCommandLine cli, @NotNull ExecResult res) throws VcsException {
+  //  if (!isEmpty(res.getStderr()))
+  //    CommandUtil.commandFailed(cli.getCommandLineString(), res);
+  //}
 
 
   public static boolean isTimeoutError(@NotNull VcsException e) {

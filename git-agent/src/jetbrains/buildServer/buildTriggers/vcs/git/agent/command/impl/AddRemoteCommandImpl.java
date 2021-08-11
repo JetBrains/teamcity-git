@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.AddRemoteCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseCommandImpl;
@@ -48,7 +47,6 @@ public class AddRemoteCommandImpl extends BaseCommandImpl implements AddRemoteCo
   public void call() throws VcsException {
     GitCommandLine cmd = getCmd();
     cmd.addParameters("remote", "add", myName, myUrl);
-    ExecResult r = CommandUtil.runCommand(cmd);
-    CommandUtil.failIfNotEmptyStdErr(cmd, r);
+    CommandUtil.runCommand(cmd.stdErrExpected(false));
   }
 }

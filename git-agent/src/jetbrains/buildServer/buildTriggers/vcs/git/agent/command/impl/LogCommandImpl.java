@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LogCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseCommandImpl;
@@ -64,9 +63,7 @@ public class LogCommandImpl extends BaseCommandImpl implements LogCommand {
         cmd.addParameter("--pretty=format:" + myFormat);
       cmd.addParameter(myStartPoint);
       cmd.addParameter("--");
-      ExecResult r = CommandUtil.runCommand(cmd);
-      CommandUtil.failIfNotEmptyStdErr(cmd, r);
-      return r.getStdout().trim();
+      return CommandUtil.runCommand(cmd.stdErrExpected(false)).getStdout().trim();
     } catch (VcsException e) {
       return null;
     }

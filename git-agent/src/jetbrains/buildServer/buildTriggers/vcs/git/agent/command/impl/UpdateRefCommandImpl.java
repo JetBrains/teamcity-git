@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseCommandImpl;
@@ -60,7 +59,6 @@ public class UpdateRefCommandImpl extends BaseCommandImpl implements UpdateRefCo
     cmd.addParameter(myRef);
     if (myRevision != null)
       cmd.addParameter(myRevision);
-    ExecResult r = CommandUtil.runCommand(cmd);
-    CommandUtil.failIfNotEmptyStdErr(cmd, r);
+    CommandUtil.runCommand(cmd.stdErrExpected(false));
   }
 }

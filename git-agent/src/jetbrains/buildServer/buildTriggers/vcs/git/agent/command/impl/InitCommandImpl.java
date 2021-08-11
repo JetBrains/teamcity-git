@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
-import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.UpdaterImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.InitCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
@@ -52,7 +51,6 @@ public class InitCommandImpl extends BaseCommandImpl implements InitCommand {
       // TW-69468
       cmd.addParameter("--initial-branch=" + INITIAL_BRANCH);
     }
-    ExecResult r = CommandUtil.runCommand(cmd);
-    CommandUtil.failIfNotEmptyStdErr(cmd, r);
+    CommandUtil.runCommand(cmd.stdErrExpected(false));
   }
 }

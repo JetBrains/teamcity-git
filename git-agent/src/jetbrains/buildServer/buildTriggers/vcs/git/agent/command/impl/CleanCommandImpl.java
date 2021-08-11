@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
@@ -80,8 +79,7 @@ public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
     addExcludes(cmd);
     cmd.withMaxOutputSize(8 * 1024 * 1024);
     try {
-      ExecResult r = CommandUtil.runCommand(cmd);
-      CommandUtil.failIfNotEmptyStdErr(cmd, r);
+      CommandUtil.runCommand(cmd.stdErrExpected(false));
     } catch (VcsException e) {
       Loggers.VCS.warnAndDebugDetails("Failed to clean files", e);
       if (!SystemInfo.isWindows || CommandUtil.isCanceledError(e)) {

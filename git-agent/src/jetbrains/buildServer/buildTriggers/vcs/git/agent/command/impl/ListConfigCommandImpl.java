@@ -37,6 +37,6 @@ public class ListConfigCommandImpl extends BaseCommandImpl implements ListConfig
     if (!cmd.getGitVersion().isLessThan(new GitVersion(2, 8, 0))) {
       cmd.addParameter("--show-origin");
     }
-    return CommandUtil.runCommand(cmd, "info").getStdout().trim();
+    return CommandUtil.runCommand(cmd).getStdout().trim();
   }
 }
