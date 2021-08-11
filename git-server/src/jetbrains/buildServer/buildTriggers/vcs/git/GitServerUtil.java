@@ -103,9 +103,10 @@ public class GitServerUtil {
       } else {
         final StoredConfig config = r.getConfig();
         final String existingRemote = config.getString("teamcity", null, "remote");
+        final String refSpec = config.getString("remote", "origin", "fetch");
         if (existingRemote != null && !remoteUrl.equals(existingRemote)) {
           throw getWrongUrlError(dir, existingRemote, remote);
-        } else if (existingRemote == null) {
+        } else if (existingRemote == null || refSpec == null) {
           addConfigOptions(config, remoteUrl).save();
         }
       }
