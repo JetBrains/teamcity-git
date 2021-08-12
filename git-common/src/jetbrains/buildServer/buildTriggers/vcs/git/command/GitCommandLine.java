@@ -67,6 +67,9 @@ public class GitCommandLine extends GeneralCommandLine {
       getParametersList().addAt(0, "-c");
       getParametersList().addAt(1, "credential.helper=");
     }
+
+    settings.getTraceEnv().entrySet().forEach(e -> addEnvParam(e.getKey(), e.getValue()));
+
     final AuthSettings authSettings = settings.getAuthSettings();
     if (authSettings == null) {
       return doRunCommand(settings);
@@ -96,7 +99,6 @@ public class GitCommandLine extends GeneralCommandLine {
         configureGitSshCommand(settings);
       }
     }
-    settings.getTraceEnv().entrySet().forEach(e -> addEnvParam(e.getKey(), e.getValue()));
     return doRunCommand(settings);
   }
 
