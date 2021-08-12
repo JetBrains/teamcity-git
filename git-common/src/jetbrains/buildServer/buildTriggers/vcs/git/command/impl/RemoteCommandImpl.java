@@ -35,6 +35,6 @@ public class RemoteCommandImpl extends BaseAuthCommandImpl<RemoteCommand> implem
 
     final GitCommandLine cmd = getCmd();
     cmd.addParameters("remote", myCommand, myName);
-    runCmd(cmd);
+    runCmd(cmd.stdErrLogLevel("debug"));
   }
 }
