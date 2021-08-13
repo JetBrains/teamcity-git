@@ -21,5 +21,10 @@
     <orderEntry type="module" module-name="common-test-core" />
     <orderEntry type="module" module-name="server-test-core" />
     <orderEntry type="module" module-name="server-metrics" />
+    <orderEntry type="library" scope="TEST" name="org.mockito:mockito-core" level="project" />
+    <orderEntry type="module" module-name="oauth-integration-web" scope="TEST" />
+    <orderEntry type="module" module-name="oauth-integration" scope="TEST" />
+    <orderEntry type="module" module-name="web-openapi" scope="TEST" />
+    <orderEntry type="module" module-name="changeViewers" scope="TEST" />
   </component>
 </module>
