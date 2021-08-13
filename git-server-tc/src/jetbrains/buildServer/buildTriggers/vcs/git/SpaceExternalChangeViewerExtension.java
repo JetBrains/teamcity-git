@@ -7,7 +7,6 @@ import java.util.Map;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.serverSide.changeViewers.ExternalChangeViewerExtension;
 import jetbrains.buildServer.serverSide.changeViewers.PropertyType;
-import jetbrains.buildServer.serverSide.impl.auth.SecuredVcsManager;
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor;
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager;
 import jetbrains.buildServer.serverSide.oauth.space.SpaceConnectDescriber;
@@ -21,16 +20,13 @@ import org.jetbrains.annotations.Nullable;
 
 public class SpaceExternalChangeViewerExtension implements ExternalChangeViewerExtension {
 
-  private final SecuredVcsManager myVcsRootsManager;
   private final OAuthConnectionsManager myOAuthConnectionsManager;
 
   public SpaceExternalChangeViewerExtension(
     @NotNull ExtensionHolder extensionHolder,
-    @NotNull SecuredVcsManager securedVcsManager,
     @NotNull OAuthConnectionsManager oAuthConnectionsManager
   ) {
     extensionHolder.registerExtension(ExternalChangeViewerExtension.class, getClass().getName(), this);
-    myVcsRootsManager = securedVcsManager;
     myOAuthConnectionsManager = oAuthConnectionsManager;
   }
 

@@ -8,7 +8,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.SpaceExternalChangeViewerExtension;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.changeViewers.PropertyType;
-import jetbrains.buildServer.serverSide.impl.auth.SecuredVcsManager;
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor;
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager;
 import jetbrains.buildServer.serverSide.oauth.space.SpaceOAuthProvider;
@@ -26,7 +25,6 @@ import static org.testng.Assert.assertNull;
 public class SpaceExternalChangeViewerExtensionTest {
 
   private ExtensionHolder myExtensionHolder;
-  private SecuredVcsManager mySecuredVcsManager;
   private OAuthConnectionsManager myOAuthConnectionsManager;
 
   private final static String hostedOnJetBrainsSide = "https://git.jetbrains.space/golubinov/oauthspace/test-epo.git";
@@ -38,7 +36,6 @@ public class SpaceExternalChangeViewerExtensionTest {
   @BeforeMethod
   public void setUp() {
     myExtensionHolder = Mockito.mock(ExtensionHolder.class);
-    mySecuredVcsManager = Mockito.mock(SecuredVcsManager.class);
     myOAuthConnectionsManager = Mockito.mock(OAuthConnectionsManager.class);
   }
 
@@ -218,6 +215,6 @@ public class SpaceExternalChangeViewerExtensionTest {
 
   @NotNull
   private SpaceExternalChangeViewerExtension mySpaceExternalChangeViewerExtension() {
-    return new SpaceExternalChangeViewerExtension(myExtensionHolder, mySecuredVcsManager, myOAuthConnectionsManager);
+    return new SpaceExternalChangeViewerExtension(myExtensionHolder, myOAuthConnectionsManager);
   }
 }
