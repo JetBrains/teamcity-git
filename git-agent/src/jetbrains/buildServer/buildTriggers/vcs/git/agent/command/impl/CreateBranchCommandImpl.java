@@ -64,7 +64,6 @@ public class CreateBranchCommandImpl extends BaseCommandImpl implements CreateBr
     if (myStartPoint != null) {
       cmd.addParameter(myStartPoint);
     }
-    cmd.addParameter(myStartPoint);
     CommandUtil.runCommand(cmd.stdErrExpected(false));
   }
 }
