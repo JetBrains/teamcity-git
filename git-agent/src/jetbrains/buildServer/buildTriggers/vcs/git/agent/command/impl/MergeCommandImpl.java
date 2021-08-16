@@ -3,9 +3,10 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import jetbrains.buildServer.ExecResult;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.MergeCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseCommandImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -53,7 +54,6 @@ public class MergeCommandImpl extends BaseCommandImpl implements MergeCommand {
 
     cmd.addParameters(myMergeBranches);
 
-    ExecResult result = CommandUtil.runCommand(cmd);
-    CommandUtil.failIfNotEmptyStdErr(cmd, result);
+    CommandUtil.runCommand(cmd.stdErrExpected(false));
   }
 }
