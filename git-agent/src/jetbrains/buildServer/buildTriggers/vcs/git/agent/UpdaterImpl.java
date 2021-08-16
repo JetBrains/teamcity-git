@@ -228,7 +228,7 @@ public class UpdaterImpl implements Updater {
   private boolean isShallowRepository(@NotNull File gitDir) {
     if (!myPluginConfig.getGitVersion().isLessThan(REV_PARSE_LEARNED_SHALLOW_CLONE)) {
       try {
-        return "true".equals(myGitFactory.create(gitDir).revParse().setParams("--is-shallow-repository").call());
+        return "true".equals(myGitFactory.create(gitDir).revParse().setShallow(true).call());
       } catch (VcsException e) {
         LOG.warn("Exception while running git rev-parse --is-shallow-repository", e);
       }
@@ -968,15 +968,15 @@ public class UpdaterImpl implements Updater {
         //then the only workaround is to disable helpers manually in config files.
         command.addConfig("credential.helper", "");
       }
-      String path = credHelper.getCanonicalPath();
-      path = path.replaceAll("\\\\", "/");
-      command.addConfig("credential.helper", path);
       CredentialsHelperConfig config = new CredentialsHelperConfig();
       config.addCredentials(lfsAuth.first, lfsAuth.second, lfsAuth.third);
       config.setMatchAllUrls(myPluginConfig.isCredHelperMatchesAllUrls());
       for (Map.Entry<String, String> e : config.getEnv().entrySet()) {
         command.setEnv(e.getKey(), e.getValue());
       }
+      String path = credHelper.getCanonicalPath();
+      path = path.replaceAll("\\\\", "/");
+      command.addConfig("credential.helper", path);
       if (myPluginConfig.isCleanCredHelperScript()) {
         command.addPostAction(new Runnable() {
           @Override
@@ -988,6 +988,10 @@ public class UpdaterImpl implements Updater {
     } catch (Exception e) {
       if (credentialsHelper != null)
         FileUtil.delete(credentialsHelper);
+
+      final String msg = "Exception while creating credential.helper script: " + e.getMessage();
+      myLogger.warning(msg);
+      LOG.debug(msg, e);
     }
   }
 

@@ -113,4 +113,7 @@ public interface AgentGitFacade extends GitFacade {
 
   @NotNull
   DiffCommand diff();
+
+  @NotNull
+  MergeCommand merge();
 }

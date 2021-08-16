@@ -10,7 +10,10 @@ public interface RevParseCommand extends BaseCommand {
     RevParseCommand setRef(String ref);
 
     @NotNull
-    RevParseCommand setParams(String... params);
+    RevParseCommand setShallow(boolean isShallow);
+
+    @NotNull
+    RevParseCommand verify(String param);
 
     @Nullable
     String call() throws VcsException;

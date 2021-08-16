@@ -190,6 +190,12 @@ public class AgentGitFacadeImpl extends GitFacadeImpl implements AgentGitFacade 
   }
 
   @NotNull
+  @Override
+  public MergeCommand merge() {
+    return new MergeCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   public Branches listBranches(boolean all) throws VcsException {
     GitCommandLine cmd = createCommandLine();
     cmd.addParameter("branch");

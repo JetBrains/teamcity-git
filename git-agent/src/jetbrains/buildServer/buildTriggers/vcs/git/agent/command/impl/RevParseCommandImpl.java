@@ -13,7 +13,8 @@ import org.jetbrains.annotations.NotNull;
 
 public class RevParseCommandImpl extends BaseCommandImpl implements RevParseCommand {
     private String ref;
-    List<String> myParams = new ArrayList<>();
+    private boolean myShallowRepository = false;
+    private String myVerifyParam;
 
     public RevParseCommandImpl(@NotNull GitCommandLine myCmd) {
         super(myCmd);
@@ -28,8 +29,15 @@ public class RevParseCommandImpl extends BaseCommandImpl implements RevParseComm
 
     @NotNull
     @Override
-    public RevParseCommand setParams(final String... params) {
-        myParams.addAll(Arrays.asList(params));
+    public RevParseCommand setShallow(boolean isShallow) {
+        myShallowRepository = isShallow;
+        return this;
+    }
+
+    @NotNull
+    @Override
+    public RevParseCommand verify(String param) {
+        myVerifyParam = param;
         return this;
     }
 
@@ -37,7 +45,14 @@ public class RevParseCommandImpl extends BaseCommandImpl implements RevParseComm
     public String call() throws VcsException {
         GitCommandLine cmd = getCmd();
         cmd.addParameter("rev-parse");
-        cmd.addParameters(myParams);
+        if (myShallowRepository) {
+            cmd.addParameter("--is-shallow-repository");
+        }
+
+        if (myVerifyParam != null) {
+            cmd.addParameters("--verify", myVerifyParam);
+        }
+
         if (ref != null)
             cmd.addParameter(ref);
 
