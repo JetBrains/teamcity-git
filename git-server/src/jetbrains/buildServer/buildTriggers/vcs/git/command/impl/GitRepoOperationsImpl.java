@@ -27,7 +27,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations{
   @NotNull
   @Override
   public FetchCommand fetchCommand() {
-    if (TeamCityProperties.getBooleanOrTrue("teamcity.git.nativeOperationsEnabled")) {
+    if (TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled")) {
       return new NativeGitFetchCommand(myConfig, this::detectGit, mySshKeyManager);
     }
     return myJGitFetchCommand;
