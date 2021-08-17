@@ -21,5 +21,6 @@
     <orderEntry type="module" module-name="common-test-core" />
     <orderEntry type="module" module-name="server-test-core" />
     <orderEntry type="module" module-name="server-metrics" />
+    <orderEntry type="module" module-name="oauth-integration" scope="TEST" />
   </component>
 </module>

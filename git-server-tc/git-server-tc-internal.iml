@@ -29,5 +29,6 @@
     <orderEntry type="module" module-name="git-common-internal" />
     <orderEntry type="module" module-name="web-openapi" />
     <orderEntry type="module" module-name="changeViewers" />
+    <orderEntry type="module" module-name="oauth-integration" />
   </component>
 </module>
