@@ -19,7 +19,7 @@ public class ContextImpl implements Context {
   private final FetchSettings mySettings;
   private final GitExec myGitExec;
 
-  public ContextImpl(@NotNull ServerPluginConfig config, GitExec gitExec, @NotNull FetchSettings fetchSettings) {
+  public ContextImpl(@NotNull ServerPluginConfig config, @NotNull GitExec gitExec, @NotNull FetchSettings fetchSettings) {
     myConfig = config;
     myGitExec = gitExec;
     mySettings = fetchSettings;

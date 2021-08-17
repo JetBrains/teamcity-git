@@ -26,8 +26,10 @@ import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitFacadeImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings;
@@ -143,7 +145,8 @@ public class FetchCommandImplTest extends BaseTestCase {
     final File work = createTempDir();
     runCommand(false, gitPath, work, "init");
 
-    final GitCommandLine cmd = new GitCommandLine(new StubContext(), getFakeGen());
+    final GitVersion version = new AgentGitFacadeImpl(getGitPath()).version().call();
+    final GitCommandLine cmd = new GitCommandLine(new StubContext("git", version), getFakeGen());
     cmd.setExePath(gitPath);
     cmd.setWorkingDirectory(work);
     final FetchCommandImpl fetch = new FetchCommandImpl(cmd);

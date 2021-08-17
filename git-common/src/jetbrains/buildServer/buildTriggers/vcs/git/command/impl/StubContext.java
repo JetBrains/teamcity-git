@@ -40,7 +40,11 @@ public class StubContext implements Context {
   }
 
   public StubContext(@NotNull String gitPath) {
-    myGitExec = new GitExec(gitPath, GitVersion.MIN, null);
+    this(gitPath, GitVersion.MIN);
+  }
+
+  public StubContext(@NotNull String gitPath, @NotNull GitVersion version) {
+    myGitExec = new GitExec(gitPath, version, null);
   }
 
   @Nullable
