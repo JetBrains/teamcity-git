@@ -141,6 +141,7 @@ public class FetchCommandImplTest extends BaseTestCase {
   public void fetch_multiple_refspecs() throws Exception {
     final String gitPath = getGitPath();
     final File remote = GitTestUtil.dataFile("fetch_multiple_refspecs");
+    new File(remote, "refs" + File.separator + "heads").mkdirs();
 
     final File work = createTempDir();
     runCommand(false, gitPath, work, "init");
