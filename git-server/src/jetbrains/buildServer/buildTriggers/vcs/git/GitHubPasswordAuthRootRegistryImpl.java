@@ -59,7 +59,7 @@ public class GitHubPasswordAuthRootRegistryImpl implements GitHubPasswordAuthRoo
     repositoryStateEventDispatcher.addListener(new RepositoryStateListenerAdapter() {
       @Override
       public void beforeRepositoryStateUpdate(@NotNull VcsRoot rootInstance, @NotNull RepositoryState oldState, @NotNull RepositoryState newState) {
-        if (serverResponsibility.canCheckForChanges() && isGitHubPasswordRoot(rootInstance)) {
+        if (serverResponsibility.canCheckForChanges() && isGitRoot(rootInstance)) {
           update(rootInstance);
         }
       }
@@ -119,9 +119,13 @@ public class GitHubPasswordAuthRootRegistryImpl implements GitHubPasswordAuthRoo
 
   @TestOnly
   public void update(@NotNull VcsRoot rootInstance) {
-    final String secret = getPasswordProperty(rootInstance);
     final long rootId = rootInstance instanceof VcsRootInstance ? ((VcsRootInstance)rootInstance).getParentId() : rootInstance.getId();
+    if (!isGitHubPasswordRoot(rootInstance)) {
+      removeVcsRoot(rootId, true);
+      return;
+    }
 
+    final String secret = getPasswordProperty(rootInstance);
     // if secret is a 40-hex character string we suppose it's a PAT, not password
     if (StringUtil.isNotEmpty(secret) && secret.length() == 40 && isHexString(secret)) {
       final SVcsRoot root = myProjectManager.findVcsRootById(rootId);
