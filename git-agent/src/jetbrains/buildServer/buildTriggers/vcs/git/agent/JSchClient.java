@@ -89,7 +89,7 @@ public class JSchClient {
     }
     if (intPropsFile == null) {
       new TeamCityProperties() {{
-        setModel(new BasePropertiesModel());
+        setBaseModel();
       }};
     } else {
       Map<String, String> loadedProps = new HashMap<>();
