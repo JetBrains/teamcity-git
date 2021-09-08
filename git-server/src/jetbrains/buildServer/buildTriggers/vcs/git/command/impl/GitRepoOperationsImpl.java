@@ -39,7 +39,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations{
     if (gitPath == null) {
       throw new IllegalArgumentException("No path to git provided: please specify path to git executable using \"teamcity.server.git.executable.path\" server startup property");
     }
-    if (myGitExec == null || gitPath.equals(myGitExec.getPath())) {
+    if (myGitExec == null || !gitPath.equals(myGitExec.getPath())) {
       GitVersion gitVersion;
       try {
         gitVersion = new GitFacadeImpl(new File("."), new StubContext(gitPath)).version().call();
