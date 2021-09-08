@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
 public interface LsRemoteCommand extends BaseCommand, AuthCommand<LsRemoteCommand> {
 
   @NotNull
-  LsRemoteCommand showTags();
+  LsRemoteCommand peelRefs();
 
   @NotNull
   List<Ref> call() throws VcsException;

@@ -17,6 +17,10 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.jcraft.jsch.JSchException;
+import java.io.File;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import jetbrains.buildServer.TeamCityAsserts;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.TestFor;
@@ -36,16 +40,10 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.PluginConfigBuilder.pluginConfig;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
-import static org.testng.AssertJUnit.assertFalse;
-import static org.testng.AssertJUnit.assertTrue;
-import static org.testng.AssertJUnit.fail;
+import static org.testng.AssertJUnit.*;
 
 @Test
 public class TestConnectionTest extends BaseRemoteRepositoryTest {
@@ -90,7 +88,7 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
       myGit.testConnection(root);
       fail("Should throw an exception for not-existing repository");
     } catch (VcsException e) {
-      assertTrue(e.getMessage().contains("Cannot access the '" + url + "' repository"));
+      TeamCityAsserts.assertContainsAny(e.getMessage(), "Cannot access the '" + url + "' repository", "Please make sure you have the correct access rights and the repository exists");
       assertFalse(e.getMessage().endsWith("\n"));
     }
   }

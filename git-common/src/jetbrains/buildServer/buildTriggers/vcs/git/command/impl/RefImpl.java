@@ -41,7 +41,7 @@ public class RefImpl implements Ref {
   }
 
   public boolean isSymbolic() {
-    throw new UnsupportedOperationException();
+    return false;
   }
 
   public Ref getLeaf() {
@@ -53,7 +53,7 @@ public class RefImpl implements Ref {
   }
 
   public ObjectId getPeeledObjectId() {
-    throw new UnsupportedOperationException();
+    return null;
   }
 
   public boolean isPeeled() {

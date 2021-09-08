@@ -25,7 +25,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitFetchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
@@ -61,7 +61,7 @@ public class GitPerformanceTests extends BaseTestCase {
       .gitSupport()
       .withServerPaths(sp)
       .withPluginConfig(config)
-      .withFetchCommand(new NativeGitFetchCommand(config, () -> new StubContext().getGitExec(), new VcsRootSshKeyManager() {
+      .withFetchCommand(new NativeGitCommands(config, () -> new StubContext().getGitExec(), new VcsRootSshKeyManager() {
         @Nullable
         @Override
         public TeamCitySshKey getKey(@NotNull VcsRoot root) {

@@ -2,18 +2,24 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Map;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.FetchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.LsRemoteCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.NamedThreadFactory;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
-public class NativeGitFetchCommand implements FetchCommand {
+public class NativeGitCommands implements FetchCommand, LsRemoteCommand {
 
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
 
@@ -21,9 +27,9 @@ public class NativeGitFetchCommand implements FetchCommand {
   private final GitDetector myGitDetector;
   private final VcsRootSshKeyManager mySshKeyManager;
 
-  public NativeGitFetchCommand(@NotNull ServerPluginConfig config,
-                               @NotNull GitDetector gitDetector,
-                               @NotNull VcsRootSshKeyManager sshKeyManager) {
+  public NativeGitCommands(@NotNull ServerPluginConfig config,
+                           @NotNull GitDetector gitDetector,
+                           @NotNull VcsRootSshKeyManager sshKeyManager) {
     myConfig = config;
     myGitDetector = gitDetector;
     mySshKeyManager = sshKeyManager;
@@ -35,7 +41,7 @@ public class NativeGitFetchCommand implements FetchCommand {
 
   @Override
   public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull FetchSettings settings) throws IOException, VcsException {
-    final ContextImpl ctx = new ContextImpl(myConfig, myGitDetector.detectGit(), settings);
+    final ContextImpl ctx = new ContextImpl(myConfig, myGitDetector.detectGit(), settings.getProgress());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
@@ -71,11 +77,41 @@ public class NativeGitFetchCommand implements FetchCommand {
     });
   }
 
+  @NotNull
+  @Override
+  public Map<String, Ref> lsRemote(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws VcsException {
+    final Context ctx = new ContextImpl(myConfig, myGitDetector.detectGit());
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
+    gitFacade.setSshKeyManager(mySshKeyManager);
+
+    final jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand lsRemote =
+      gitFacade.lsRemote()
+               .peelRefs()
+               .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
+               .setTimeout(myConfig.getRepositoryStateTimeoutSeconds())
+               .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+               .trace(myConfig.getGitTraceEnv());
+
+    return NamedThreadFactory.executeWithNewThreadNameFuncThrow("Running native git ls-remote process for : " + getDebugInfo(db, gitRoot.getRepositoryFetchURL().get()), () -> {
+      return lsRemote.call().stream().collect(Collectors.toMap(Ref::getName, ref -> ref));
+    });
+  }
+
+  @NotNull
   private String getDebugInfo(@NotNull Repository db, @NotNull URIish uri, @NotNull Collection<RefSpec> refSpecs) {
+    return getDebugInfo(db, uri, refSpecs.toArray(new RefSpec[0]));
+  }
+
+  @NotNull
+  private String getDebugInfo(@NotNull Repository db, @NotNull URIish uri, RefSpec... refSpecs) {
     final StringBuilder sb = new StringBuilder();
+    sb.append("(").append(db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"").append(uri).append("#");
     for (RefSpec spec : refSpecs) {
       sb.append(spec).append(" ");
     }
-    return "(" + (db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"") + uri + "#" + sb + ")";
+    sb.append(")");
+
+    final int commandLineStrLimit = TeamCityProperties.getInteger("teamcity.externalProcessRunner.limitCommandLineLengthInThreadName", 1000);
+    return StringUtil.truncateStringValueWithDotsAtCenter(sb.toString(), commandLineStrLimit);
   }
 }

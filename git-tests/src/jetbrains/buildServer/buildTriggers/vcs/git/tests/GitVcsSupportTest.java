@@ -1153,7 +1153,7 @@ public class GitVcsSupportTest extends PatchTestCase {
       new TransportException("com.jcraft.jsch.JSchException: verify: false", new JSchException("test")),
       new TransportException("com.jcraft.jsch.JSchException: channel is not opened.", new JSchException("test"))
     );
-    ServerPluginConfig config = myConfigBuilder.withGetConnectionRetryAttempts(recoverableErrors.size() + 1).withConnectionRetryIntervalMillis(0).build();
+    ServerPluginConfig config = myConfigBuilder.withGetConnectionRetryAttempts(recoverableErrors.size() + 1).withConnectionRetryIntervalMillis(0).setCurrentStateTimeoutSeconds(1).build();
     VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
     TransportFactory transportFactory = new TransportFactoryImpl(config, manager) {
       @Override

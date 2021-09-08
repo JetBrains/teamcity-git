@@ -20,7 +20,6 @@ import com.jcraft.jsch.JSch;
 import java.io.*;
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.GitRepoOperations;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleFetchException;
 import jetbrains.buildServer.serverSide.CachePaths;
@@ -54,7 +53,7 @@ public class GitPatchProcess {
     TransportFactory transportFactory = new TransportFactoryImpl(config, sshKeyManager, settings.getGitTrustStoreProvider());
     FetcherProperties fetcherProperties = new FetcherProperties(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, fetcherProperties, sshKeyManager, settings.getGitTrustStoreProvider());
-    GitRepoOperations repoOperations = new GitRepoOperationsImpl(config, sshKeyManager, fetchCommand);
+    GitRepoOperations repoOperations = new GitRepoOperationsImpl(config, transportFactory, sshKeyManager, fetchCommand);
     CommitLoader commitLoader = new CommitLoaderImpl(repositoryManager, repoOperations, mapFullPath, config);
 
     OperationContext context = new OperationContext(commitLoader, repositoryManager, settings.getRoot(), "build patch", GitProgress.NO_OP, config);

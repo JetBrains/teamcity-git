@@ -264,7 +264,7 @@ public class GitUrlSupportTest extends BaseTestCase {
       toGitRoot(url);
       fail();
     } catch (VcsException e) {
-      assertContains(e.getMessage(), "not authorized");
+      assertContainsAny(e.getMessage().toLowerCase(), "not authorized", "authentication failed");
     }
   }
 

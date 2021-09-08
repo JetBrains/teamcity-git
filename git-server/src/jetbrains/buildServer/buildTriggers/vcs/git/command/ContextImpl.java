@@ -5,7 +5,7 @@ import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
-import jetbrains.buildServer.buildTriggers.vcs.git.FetchSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitProgress;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
@@ -16,13 +16,17 @@ import org.jetbrains.annotations.Nullable;
 public class ContextImpl implements Context {
 
   private final ServerPluginConfig myConfig;
-  private final FetchSettings mySettings;
+  private final GitProgress myProgress;
   private final GitExec myGitExec;
 
-  public ContextImpl(@NotNull ServerPluginConfig config, @NotNull GitExec gitExec, @NotNull FetchSettings fetchSettings) {
+  public ContextImpl(@NotNull ServerPluginConfig config, @NotNull GitExec gitExec) {
+    this(config, gitExec, GitProgress.NO_OP);
+  }
+
+  public ContextImpl(@NotNull ServerPluginConfig config, @NotNull GitExec gitExec, @NotNull GitProgress progress) {
     myConfig = config;
     myGitExec = gitExec;
-    mySettings = fetchSettings;
+    myProgress = progress;
   }
 
   @Nullable
@@ -121,7 +125,7 @@ public class ContextImpl implements Context {
 
       @Override
       public void message(@NotNull String message) {
-        mySettings.getProgress().reportProgress(message);
+        myProgress.reportProgress(message);
       }
 
       @Override

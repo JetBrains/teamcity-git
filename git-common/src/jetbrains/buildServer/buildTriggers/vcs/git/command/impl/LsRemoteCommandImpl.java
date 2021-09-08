@@ -17,7 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand;
 import jetbrains.buildServer.vcs.VcsException;
@@ -29,15 +31,15 @@ import static com.intellij.openapi.util.text.StringUtil.splitByLines;
 
 public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> implements LsRemoteCommand {
 
-  private boolean myShowTags = false;
+  private boolean myPeelRefs = false;
 
   public LsRemoteCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
   }
 
   @NotNull
-  public LsRemoteCommand showTags() {
-    myShowTags = true;
+  public LsRemoteCommand peelRefs() {
+    myPeelRefs = true;
     return this;
   }
 
@@ -45,21 +47,26 @@ public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> im
   public List<Ref> call() throws VcsException {
     GitCommandLine cmd = getCmd();
     cmd.addParameter("ls-remote");
-    if (myShowTags)
-      cmd.addParameter("--tags");
     cmd.addParameter("origin");
     return parse(runCmd(cmd).getStdout());
   }
 
-  private List<Ref> parse(@NotNull final String str) {
-    List<Ref> refs = new ArrayList<Ref>();
+  private List<Ref> parse(@NotNull final String str) throws VcsException {
+    final Map<String, Ref> refs = new HashMap<>();
     for (String line : splitByLines(str)) {
-      if (isEmpty(line))
-        continue;
-      String objectId = line.substring(0, 40);
+      if (isEmpty(line)) continue;
+
+      final String objectId = line.substring(0, 40);
       String name = line.substring(40).trim();
-      refs.add(new RefImpl(name, objectId));
+
+      if (myPeelRefs && name.endsWith("^{}")) {
+        name = name.substring(0, name.length() - 3);
+        final Ref prior = refs.get(name);
+        if (prior == null) throw new VcsException(String.format("Advertisement of %s^'{}' came before %s", name, name));
+      }
+
+      refs.put(name, new RefImpl(name, objectId));
     }
-    return refs;
+    return new ArrayList<>(refs.values());
   }
 }

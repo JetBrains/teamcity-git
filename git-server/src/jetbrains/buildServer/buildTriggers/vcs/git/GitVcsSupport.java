@@ -18,16 +18,13 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
+import com.jcraft.jsch.JSch;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import com.jcraft.jsch.JSch;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
-import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
@@ -35,18 +32,12 @@ import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
-import org.eclipse.jgit.errors.NotSupportedException;
-import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
-import org.eclipse.jgit.transport.FetchConnection;
-import org.eclipse.jgit.transport.Transport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
-import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
 import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
 
@@ -58,10 +49,10 @@ public class GitVcsSupport extends ServerVcsSupport
              TestConnectionSupport, IncludeRuleBasedMappingProvider {
 
   private static final Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
-  private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
   static final String GIT_REPOSITORY_HAS_NO_BRANCHES = "Git repository has no branches";
   static final String DEFAULT_BRANCH_REVISION_NOT_FOUND = "Cannot find revision of the default branch";
 
+  private final GitRepoOperations myGitRepoOperations;
   private ExtensionHolder myExtensionHolder;
   private volatile String myDisplayName = null;
   private final ServerPluginConfig myConfig;
@@ -75,7 +66,8 @@ public class GitVcsSupport extends ServerVcsSupport
   private final TestConnectionSupport myTestConnection;
   private Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
 
-  public GitVcsSupport(@NotNull ServerPluginConfig config,
+  public GitVcsSupport(@NotNull GitRepoOperations gitRepoOperations,
+                       @NotNull ServerPluginConfig config,
                        @NotNull ResetCacheRegister resetCacheManager,
                        @NotNull TransportFactory transportFactory,
                        @NotNull RepositoryManager repositoryManager,
@@ -86,11 +78,12 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull GitResetCacheHandler resetCacheHandler,
                        @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler,
                        @Nullable TestConnectionSupport customTestConnection) {
-    this(config, resetCacheManager, transportFactory, repositoryManager, mapFullPath, commitLoader, sshKeyManager, progressProvider,
+    this(gitRepoOperations, config, resetCacheManager, transportFactory, repositoryManager, mapFullPath, commitLoader, sshKeyManager, progressProvider,
          resetCacheHandler, resetRevisionsCacheHandler, new GitTrustStoreProviderStatic(null), customTestConnection);
   }
 
-  public GitVcsSupport(@NotNull ServerPluginConfig config,
+  public GitVcsSupport(@NotNull GitRepoOperations gitRepoOperations,
+                       @NotNull ServerPluginConfig config,
                        @NotNull ResetCacheRegister resetCacheManager,
                        @NotNull TransportFactory transportFactory,
                        @NotNull RepositoryManager repositoryManager,
@@ -102,6 +95,7 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler,
                        @NotNull GitTrustStoreProvider gitTrustStoreProvider,
                        @Nullable TestConnectionSupport customTestConnection) {
+    myGitRepoOperations = gitRepoOperations;
     myConfig = config;
     myTransportFactory = transportFactory;
     myRepositoryManager = repositoryManager;
@@ -502,44 +496,8 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   private Map<String, Ref> getRemoteRefs(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws Exception {
-    return IOGuard.allowNetworkCall(() -> {
-      try {
-        return Retry.retry(new Retry.Retryable<Map<String, Ref>>() {
-          @Override
-          public boolean requiresRetry(@NotNull final Exception e) {
-            return GitServerUtil.isRecoverable(e);
-          }
-
-          @Nullable
-          @Override
-          public Map<String, Ref> call() throws Exception {
-            final long start = System.currentTimeMillis();
-            try (
-              final Transport transport = myTransportFactory.createTransport(db, gitRoot.getRepositoryFetchURL().get(), gitRoot.getAuthSettings(), myConfig.getRepositoryStateTimeoutSeconds());
-              final FetchConnection connection = transport.openFetch()) {
-              return connection.getRefsMap();
-            } catch (NotSupportedException nse) {
-              throw friendlyNotSupportedException(gitRoot, nse);
-            } catch (WrongPassphraseException e) {
-              throw new VcsException(e.getMessage(), e);
-            } finally {
-              final long finish = System.currentTimeMillis();
-              PERFORMANCE_LOG.debug("[getRemoteRefs] repository: " + LogUtil.describe(gitRoot) + ", took " + (finish - start) + "ms");
-            }
-          }
-
-          @NotNull
-          @Override
-          public Logger getLogger() {
-            return Loggers.VCS;
-          }
-        }, myConfig.getConnectionRetryIntervalMillis(), myConfig.getConnectionRetryAttempts());
-      } catch (TransportException t) {
-        throw friendlyTransportException(t, gitRoot);
-      }
-    });
+    return myGitRepoOperations.lsRemoteCommand().lsRemote(db, gitRoot);
   }
-
 
   public Collection<VcsClientMapping> getClientMapping(final @NotNull VcsRoot root, final @NotNull IncludeRule rule) throws VcsException {
 

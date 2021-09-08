@@ -23,7 +23,6 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.GitRepoOperations;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.RevisionNotFoundException;
 import jetbrains.buildServer.vcs.VcsException;
