@@ -85,6 +85,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public static final String CONNECTION_RETRY_INTERVAL_SECONDS = "teamcity.git.connectionRetryIntervalSeconds";
   public static final String CONNECTION_RETRY_ATTEMPTS = "teamcity.git.connectionRetryAttempts";
   public static final String GIT_TRACE_ENV = "teamcity.git.traceEnv";
+  private static final String USE_DEFAULT_CHARSET = "teamcity.git.useDefaultCharset";
+  private static final String GIT_OUTPUT_CHARSET = "teamcity.git.outputCharset";
 
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
@@ -662,5 +664,15 @@ public class PluginConfigImpl implements ServerPluginConfig {
       LOG.warnAndDebugDetails("Failed to parse \"" + GIT_TRACE_ENV + "\" property value \"" + prop + "\", git trace won't be enabled", e);
       return Collections.emptyMap();
     }
+  }
+
+  @Nullable
+  @Override
+  public String getGitOutputCharsetName() {
+    final boolean useDefault = TeamCityProperties.getBoolean(USE_DEFAULT_CHARSET);
+    if (useDefault) return null;
+
+    final String charsetName = TeamCityProperties.getProperty(GIT_OUTPUT_CHARSET);
+    return StringUtil.isNotEmpty(charsetName) ? charsetName : "UTF-8";
   }
 }

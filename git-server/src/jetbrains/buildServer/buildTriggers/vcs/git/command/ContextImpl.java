@@ -2,6 +2,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
 import java.io.File;
 import java.nio.charset.Charset;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -55,7 +56,13 @@ public class ContextImpl implements Context {
   @Nullable
   @Override
   public Charset getCharset() {
-    return Charset.forName("UTF-8");
+    final String charsetName = myConfig.getGitOutputCharsetName();
+    if (charsetName == null) return null;
+    try {
+      return Charset.forName(charsetName);
+    } catch (UnsupportedCharsetException e) {
+      return Charset.forName("UTF-8");
+    }
   }
 
   @Override

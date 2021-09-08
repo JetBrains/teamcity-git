@@ -83,12 +83,6 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isProvideCredHelper();
 
-  /**
-   * Returns charset name for git output or null if the default charset should be used
-   */
-  @Nullable
-  String getGitOutputCharsetName();
-
   int getLsRemoteTimeoutSeconds();
 
   int getSubmoduleUpdateTimeoutSeconds();

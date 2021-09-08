@@ -16,9 +16,9 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.io.File;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * @author dmitry.neverov
@@ -34,4 +34,9 @@ public interface PluginConfig extends MirrorConfig {
 
   String getPathToGit();
 
+  /**
+   * Returns charset name for git output or null if the default charset should be used
+   */
+  @Nullable
+  String getGitOutputCharsetName();
 }
