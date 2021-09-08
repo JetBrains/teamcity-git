@@ -8,6 +8,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.LsRemoteCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.NamedThreadFactory;
@@ -47,11 +48,15 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand {
 
     // Before running fetch we need to prune branches which no longer exist in the remote,
     // otherwise git fails to update local branches which were e.g. renamed.
-    gitFacade.remote()
-             .setCommand("prune").setRemote("origin")
-             .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
-             .trace(myConfig.getGitTraceEnv())
-             .call();
+    try {
+      gitFacade.remote()
+               .setCommand("prune").setRemote("origin")
+               .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
+               .trace(myConfig.getGitTraceEnv())
+               .call();
+    } catch (VcsException e) {
+      Loggers.VCS.warnAndDebugDetails("Error while pruning removed branches in " + db, e);
+    }
 
     final jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand fetch =
       gitFacade.fetch()
