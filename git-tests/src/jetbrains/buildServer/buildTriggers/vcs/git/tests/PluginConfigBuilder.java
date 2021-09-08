@@ -416,6 +416,12 @@ public class PluginConfigBuilder {
       public Map<String, String> getGitTraceEnv() {
         return Collections.emptyMap();
       }
+
+      @Nullable
+      @Override
+      public String getGitOutputCharsetName() {
+        return null;
+      }
     };
   }
 
