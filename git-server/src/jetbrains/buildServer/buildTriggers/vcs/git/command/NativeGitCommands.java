@@ -42,7 +42,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand {
 
   @Override
   public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull FetchSettings settings) throws IOException, VcsException {
-    final ContextImpl ctx = new ContextImpl(myConfig, myGitDetector.detectGit(), settings.getProgress());
+    final Context ctx = new ContextImpl(myConfig, myGitDetector.detectGit(), settings.getProgress());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
