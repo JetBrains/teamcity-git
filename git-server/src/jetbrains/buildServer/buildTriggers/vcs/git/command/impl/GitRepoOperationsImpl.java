@@ -45,20 +45,30 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   @Override
   public FetchCommand fetchCommand() {
-    if (isNativeGitOperationsEnabled()) {
+    if (isNativeGitOperationsEnabledAndSupported()) {
       return new NativeGitCommands(myConfig, this::detectGit, mySshKeyManager);
     }
     return myJGitFetchCommand;
   }
 
-  private boolean isNativeGitOperationsEnabled() {
+  public boolean isNativeGitOperationsEnabled() {
     return TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled");
+  }
+
+  @Override
+  public boolean isNativeGitOperationsSupported() {
+    final GitExec gitExec = gitExec();
+    return gitExec != null && GitVersion.fetchSupportsStdin(gitExec.getVersion());
+  }
+
+  private boolean isNativeGitOperationsEnabledAndSupported() {
+    return isNativeGitOperationsEnabled() && isNativeGitOperationsSupported();
   }
 
   @NotNull
   @Override
   public LsRemoteCommand lsRemoteCommand() {
-    if (isNativeGitOperationsEnabled()) {
+    if (isNativeGitOperationsEnabledAndSupported()) {
       return new NativeGitCommands(myConfig, this::detectGit, mySshKeyManager);
     }
 
@@ -138,5 +148,15 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
       }
     }
     return myGitExec;
+  }
+
+  @Nullable
+  @Override
+  public GitExec gitExec() {
+    try {
+      return detectGit();
+    } catch (VcsException ignored) {
+    }
+    return null;
   }
 }

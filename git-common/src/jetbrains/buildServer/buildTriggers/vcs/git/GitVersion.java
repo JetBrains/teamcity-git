@@ -153,4 +153,10 @@ public final class GitVersion implements Comparable<GitVersion> {
   public GitVersion previousVersion() {
     return new GitVersion(myMajor, myMinor, myRevision - 1);
   }
+
+  // --stdin option was added to git fetch command in version 2.29.0
+  // https://git-scm.com/docs/git-fetch#Documentation/git-fetch.txt---stdin
+  public static boolean fetchSupportsStdin(@NotNull GitVersion version) {
+    return !version.isLessThan(new GitVersion(2, 29, 0));
+  }
 }

@@ -16,6 +16,8 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitAgentVersionHealthPage"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitHubPasswordAuthHealthReport"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitHubPasswordAuthHealthPage"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitServerVersionHealthReport"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitServerVersionHealthPage"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitExternalChangeViewerExtension"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.SpaceExternalChangeViewerExtension"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.CleanupCustomizer"/>
