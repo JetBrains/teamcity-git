@@ -16,6 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.File;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
@@ -27,12 +32,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
-
-import java.io.File;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.copyRepository;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
@@ -66,7 +65,7 @@ public abstract class BaseRemoteRepositoryTest {
       copyRepository(dataFile(r), remoteRepository);
       myRemoteRepositories.put(r, remoteRepository);
     }
-    myAgentConfiguration = BuildAgentConfigurationBuilder.agentConfiguration(myTempFiles.createTempDir(), myTempFiles.createTempDir())
+    myAgentConfiguration = BuildAgentConfigurationBuilder.agentConfiguration(myTempFiles.createTempDir(), myTempFiles.createTempDir(), myTempFiles.createTempDir())
       .build();
   }
 

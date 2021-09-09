@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.IOException;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl;
@@ -24,8 +25,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder;
 import jetbrains.buildServer.util.EventDispatcher;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.IOException;
 
 class AgentSupportBuilder {
 
@@ -51,7 +50,7 @@ class AgentSupportBuilder {
     if (myGitDetector == null)
       myGitDetector = new GitDetectorImpl(resolver);
     if (myAgentConfiguration == null)
-      myAgentConfiguration = BuildAgentConfigurationBuilder.agentConfiguration(myTempFiles.createTempDir(), myTempFiles.createTempDir()).build();
+      myAgentConfiguration = BuildAgentConfigurationBuilder.agentConfiguration(myTempFiles.createTempDir(), myTempFiles.createTempDir(), myTempFiles.createTempDir()).build();
     if (myPluginConfigFactory == null)
       myPluginConfigFactory = new PluginConfigFactoryImpl(myAgentConfiguration, myGitDetector);
     if (myMirrorManager == null)

@@ -31,15 +31,17 @@ public class BuildAgentConfigurationBuilder {
 
   private final File myAgentTempDir;
   private final File myAgentCacheDir;
+  private final File myAgentWorkDir;
   private final Map<String, String> myAgentConfig = new HashMap<>(1);
 
-  public BuildAgentConfigurationBuilder(@NotNull File agentTempDir, @NotNull File agentCacheDir) {
+  public BuildAgentConfigurationBuilder(@NotNull File agentTempDir, @NotNull File agentCacheDir, @NotNull File agentWorkDir) {
     myAgentTempDir = agentTempDir;
     myAgentCacheDir = agentCacheDir;
+    myAgentWorkDir = agentWorkDir;
   }
 
-  public static BuildAgentConfigurationBuilder agentConfiguration(@NotNull File agentTempDir, @NotNull File agentCacheDir) {
-    return new BuildAgentConfigurationBuilder(agentTempDir, agentCacheDir);
+  public static BuildAgentConfigurationBuilder agentConfiguration(@NotNull File agentTempDir, @NotNull File agentCacheDir, @NotNull File agentWorkDir) {
+    return new BuildAgentConfigurationBuilder(agentTempDir, agentCacheDir, agentWorkDir);
   }
 
   @NotNull
@@ -93,7 +95,7 @@ public class BuildAgentConfigurationBuilder {
 
       @NotNull
       public File getWorkDirectory() {
-        throw new UnsupportedOperationException();
+        return myAgentWorkDir;
       }
 
       @NotNull
