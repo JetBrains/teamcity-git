@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command;
 import java.io.File;
 import java.nio.charset.Charset;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
@@ -69,4 +70,9 @@ public interface Context {
 
   @NotNull
   GitProgressLogger getLogger();
+
+  boolean isDebugGitCommands();
+
+  @NotNull
+  List<String> getKnownRepoLocations();
 }

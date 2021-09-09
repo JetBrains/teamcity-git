@@ -5,11 +5,13 @@ import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgress;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -150,5 +152,16 @@ public class ContextImpl implements Context {
 
       }
     };
+  }
+
+  @Override
+  public boolean isDebugGitCommands() {
+    return TeamCityProperties.getBoolean("teamcity.git.debugNativeGit");
+  }
+
+  @NotNull
+  @Override
+  public List<String> getKnownRepoLocations() {
+    return Collections.singletonList(myConfig.getCachesDir().getAbsolutePath());
   }
 }

@@ -19,10 +19,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import jetbrains.buildServer.agent.AgentRunningBuild;
+import java.util.*;
+import jetbrains.buildServer.agent.AgentRunningBuildEx;
 import jetbrains.buildServer.agent.BuildInterruptReason;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
@@ -34,11 +32,11 @@ import org.jetbrains.annotations.Nullable;
 
 public class BuildContext implements Context {
 
-  private final AgentRunningBuild myBuild;
+  private final AgentRunningBuildEx myBuild;
   private final AgentPluginConfig myConfig;
   private final GitProgressLogger myLogger;
 
-  public BuildContext(@NotNull AgentRunningBuild build,
+  public BuildContext(@NotNull AgentRunningBuildEx build,
                       @NotNull AgentPluginConfig config) {
     myBuild = build;
     myConfig = config;
@@ -149,5 +147,16 @@ public class BuildContext implements Context {
   @Override
   public GitProgressLogger getLogger() {
     return myLogger;
+  }
+
+  @Override
+  public boolean isDebugGitCommands() {
+    return true;
+  }
+
+  @NotNull
+  @Override
+  public List<String> getKnownRepoLocations() {
+    return Arrays.asList(myBuild.getAgentConfiguration().getWorkDirectory().getAbsolutePath(), myConfig.getCachesDir().getAbsolutePath());
   }
 }

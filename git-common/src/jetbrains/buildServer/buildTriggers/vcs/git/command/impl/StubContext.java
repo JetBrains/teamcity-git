@@ -21,6 +21,7 @@ import java.io.File;
 import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
@@ -136,5 +137,16 @@ public class StubContext implements Context {
   @Override
   public GitProgressLogger getLogger() {
     return GitProgressLogger.NO_OP;
+  }
+
+  @Override
+  public boolean isDebugGitCommands() {
+    return false;
+  }
+
+  @NotNull
+  @Override
+  public List<String> getKnownRepoLocations() {
+    return Collections.emptyList();
   }
 }

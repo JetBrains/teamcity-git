@@ -29,20 +29,20 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
+import static jetbrains.buildServer.util.FileUtil.normalizeSeparator;
+
 public class CommandUtil {
   public static final int DEFAULT_COMMAND_TIMEOUT_SEC = 3600;
 
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
   private static void checkCommandFailed(@NotNull GitCommandLine cmd, @NotNull String cmdName, @NotNull ExecResult res) throws VcsException {
     if (cmd.isAbnormalExitExpected() && res.getExitCode() != 0 && res.getException() == null) {
-      logMessage("'" + cmdName + "' exit code: " + res.getExitCode() + ". It is expected behaviour.", "info");
+      logMessage(cmdName + " exit code is " + res.getExitCode() + ": it is expected behaviour.", "info");
     } else if (res.getExitCode() != 0 || res.getException() != null) {
       commandFailed(cmdName, res);
     } else if (res.getStderr().length() > 0) {
       if (cmd.isStdErrExpected()) {
-        final String ll = cmd.getStdErrLogLevel();
-        logMessage("Error output produced by: " + cmdName, ll);
-        logMessage(res.getStderr().trim(), ll);
+        logMessage("Error output produced by " + cmdName + ":\n" + res.getStderr().trim(), cmd.getStdErrLogLevel());
       } else {
         commandFailed(cmdName, res);
       }
@@ -55,7 +55,7 @@ public class CommandUtil {
     String stderr = res.getStderr().trim();
     String stdout = res.getStdout().trim();
     int exitCode = res.getExitCode();
-    String message = "'" + cmdName + "' command failed." +
+    String message = cmdName + " command failed." +
                      (exitCode != 0 ? "\nexit code: " + exitCode : "") +
                      (!StringUtil.isEmpty(stdout) ? "\n" + "stdout: " + stdout : "") +
                      (!StringUtil.isEmpty(stderr) ? "\n" + "stderr: " + stderr : "");
@@ -120,11 +120,9 @@ public class CommandUtil {
       try {
         cli.checkCanceled();
 
-        String cmdStr = cli.getCommandLineString();
-        File workingDir = cli.getWorkingDirectory();
-        String inDir = workingDir != null ? "[" + workingDir.getAbsolutePath() + "]" : "";
-        Loggers.VCS.info(inDir + ": " + cmdStr);
-
+        final String cmdStr = cli.getCommandLineString();
+        final String fullCmdStr = getFullCmdStr(cli);
+        Loggers.VCS.debug(fullCmdStr);
         cli.logStart(cmdStr);
 
         ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
@@ -133,10 +131,12 @@ public class CommandUtil {
           .runCommandSecure(cli, cli.getCommandLineString(), input, new ProcessTimeoutCallback(timeoutSeconds, cli.getMaxOutputSize()), stdoutBuffer, stderrBuffer);
 
         cli.logFinish(cmdStr);
-        CommandUtil.checkCommandFailed(cli, cmdStr, res);
+        CommandUtil.checkCommandFailed(cli, fullCmdStr, res);
 
-        String out = res.getStdout();
-        Loggers.VCS.debug(out);
+        final String out = res.getStdout();
+        if (cli.getContext().isDebugGitCommands()) {
+          Loggers.VCS.debug("Output produced by " + fullCmdStr + ":\n" + res.getStderr().trim() + out);
+        }
         if (!StringUtil.isEmptyOrSpaces(out) || !cli.isRepeatOnEmptyOutput() || attemptsLeft <= 0)
           return res;
         Loggers.VCS.warn("Get an unexpected empty output, will repeat command, attempts left: " + attemptsLeft);
@@ -149,11 +149,24 @@ public class CommandUtil {
     }
   }
 
-  //public static void failIfNotEmptyStdErr(@NotNull GeneralCommandLine cli, @NotNull ExecResult res) throws VcsException {
-  //  if (!isEmpty(res.getStderr()))
-  //    CommandUtil.commandFailed(cli.getCommandLineString(), res);
-  //}
-
+  @NotNull
+  private static String getFullCmdStr(@NotNull GitCommandLine cli) {
+    final File workingDir = cli.getWorkingDirectory();
+    String path;
+    if (workingDir == null) {
+      path = "";
+    } else {
+      path = normalizeSeparator(workingDir.getAbsolutePath());
+      for (String knownFolder : cli.getContext().getKnownRepoLocations()) {
+        knownFolder = normalizeSeparator(knownFolder);
+        if (path.contains(knownFolder)) {
+          path = path.substring(path.indexOf(knownFolder) + knownFolder.length() + 1); // we need only folder name
+          break;
+        }
+      }
+    }
+    return "[" + path + "] " + cli.getCommandLineString();
+  }
 
   public static boolean isTimeoutError(@NotNull VcsException e) {
     return isMessageContains(e, "exception: jetbrains.buildServer.ProcessTimeoutException");

@@ -304,4 +304,9 @@ public class GitCommandLine extends GeneralCommandLine {
     myStdErrExpected = stdErrExpected;
     return this;
   }
+
+  @NotNull
+  public Context getContext() {
+    return myCtx;
+  }
 }
