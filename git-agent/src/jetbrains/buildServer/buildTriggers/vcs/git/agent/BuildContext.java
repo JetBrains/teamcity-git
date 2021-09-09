@@ -20,7 +20,7 @@ import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.*;
-import jetbrains.buildServer.agent.AgentRunningBuildEx;
+import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildInterruptReason;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
@@ -32,11 +32,11 @@ import org.jetbrains.annotations.Nullable;
 
 public class BuildContext implements Context {
 
-  private final AgentRunningBuildEx myBuild;
+  private final AgentRunningBuild myBuild;
   private final AgentPluginConfig myConfig;
   private final GitProgressLogger myLogger;
 
-  public BuildContext(@NotNull AgentRunningBuildEx build,
+  public BuildContext(@NotNull AgentRunningBuild build,
                       @NotNull AgentPluginConfig config) {
     myBuild = build;
     myConfig = config;
