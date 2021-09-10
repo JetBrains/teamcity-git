@@ -11,6 +11,9 @@ public interface GitRepoOperations {
   @NotNull
   LsRemoteCommand lsRemoteCommand();
 
+  @NotNull
+  PushCommand pushCommand();
+
   @Nullable
   GitExec gitExec();
 

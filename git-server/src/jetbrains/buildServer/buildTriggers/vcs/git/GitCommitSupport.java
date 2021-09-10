@@ -18,29 +18,29 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.dircache.DirCacheBuilder;
 import org.eclipse.jgit.dircache.DirCacheEntry;
-import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.RefSpec;
-import org.eclipse.jgit.transport.RemoteRefUpdate;
-import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.util.io.AutoLFInputStream;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.*;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static java.util.Arrays.asList;
 
@@ -51,19 +51,16 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
   private final GitVcsSupport myVcs;
   private final CommitLoader myCommitLoader;
   private final RepositoryManager myRepositoryManager;
-  private final TransportFactory myTransportFactory;
-  private final ServerPluginConfig myPluginConfig;
+  private final GitRepoOperations myRepoOperations;
 
   public GitCommitSupport(@NotNull GitVcsSupport vcs,
                           @NotNull CommitLoader commitLoader,
                           @NotNull RepositoryManager repositoryManager,
-                          @NotNull TransportFactory transportFactory,
-                          @NotNull ServerPluginConfig pluginConfig) {
+                          @NotNull GitRepoOperations repoOperations) {
     myVcs = vcs;
     myCommitLoader = commitLoader;
     myRepositoryManager = repositoryManager;
-    myTransportFactory = transportFactory;
-    myPluginConfig = pluginConfig;
+    myRepoOperations = repoOperations;
     myVcs.addExtension(this);
   }
 
@@ -73,7 +70,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     Lock rmLock = myRepositoryManager.getRmLock(context.getGitRoot().getRepositoryDir()).readLock();
     rmLock.lock();
     Repository db = context.getRepository();
-    return new GitCommitPatchBuilder(myVcs, context, myCommitLoader, db, myRepositoryManager, myTransportFactory, myPluginConfig, rmLock);
+    return new GitCommitPatchBuilder(myVcs, context, myCommitLoader, db, myRepositoryManager, myRepoOperations, rmLock);
   }
 
 
@@ -86,8 +83,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
     private final Map<String, ObjectId> myObjectMap = new HashMap<String, ObjectId>();
     private final Set<String> myDeletedDirs = new HashSet<String>();
     private final RepositoryManager myRepositoryManager;
-    private final TransportFactory myTransportFactory;
-    private final ServerPluginConfig myPluginConfig;
+    private final GitRepoOperations myRepoOperations;
     private final Lock myRmLock;
 
     private GitCommitPatchBuilder(@NotNull GitVcsSupport vcs,
@@ -95,8 +91,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
                                   @NotNull CommitLoader commitLoader,
                                   @NotNull Repository db,
                                   @NotNull RepositoryManager repositoryManager,
-                                  @NotNull TransportFactory transportFactory,
-                                  @NotNull ServerPluginConfig pluginConfig,
+                                  @NotNull GitRepoOperations repoOperations,
                                   @NotNull Lock rmLock) {
       myVcs = vcs;
       myContext = context;
@@ -104,8 +99,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       myDb = db;
       myObjectWriter = db.newObjectInserter();
       myRepositoryManager = repositoryManager;
-      myTransportFactory = transportFactory;
-      myPluginConfig = pluginConfig;
+      myRepoOperations = repoOperations;
       myRmLock = rmLock;
     }
 
@@ -167,30 +161,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
         lock.lock();
         try {
-          final Transport tn = myTransportFactory.createTransport(myDb, gitRoot.getRepositoryPushURL().get(), gitRoot.getAuthSettings(),
-                                                                  myPluginConfig.getPushTimeoutSeconds());
-          try {
-            RemoteRefUpdate ru = new RemoteRefUpdate(myDb, null, commitId, GitUtils.expandRef(gitRoot.getRef()), false, null, lastCommit);
-            tn.push(NullProgressMonitor.INSTANCE, Collections.singletonList(ru));
-            switch (ru.getStatus()) {
-              case UP_TO_DATE:
-              case OK:
-                LOG.info("Change '" + commitSettings.getDescription() + "' was successfully committed");
-                return CommitResult.createSuccessResult(commitId.name());
-              default: {
-                StringBuilder error = new StringBuilder();
-                error.append("Push failed, status: ").append(ru.getStatus());
-                if (ru.getMessage() != null)
-                  error.append(", message: ").append(ru.getMessage());
-                throw new VcsException(error.toString());
-              }
-            }
-          } catch (IOException e) {
-            LOG.warn("Error while pushing a commit, root " + gitRoot + ", revision " + commitId + ", destination " + GitUtils.expandRef(gitRoot.getRef()), e);
-            throw e;
-          } finally {
-            tn.close();
-          }
+          return myRepoOperations.pushCommand().push(myDb, gitRoot, commitId.name(), lastCommit.name(), commitSettings);
         } finally {
           lock.unlock();
         }

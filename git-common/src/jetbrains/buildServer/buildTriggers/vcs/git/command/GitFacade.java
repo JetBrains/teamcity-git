@@ -15,4 +15,7 @@ public interface GitFacade {
 
   @NotNull
   RemoteCommand remote();
+
+  @NotNull
+  PushCommand push();
 }

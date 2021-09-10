@@ -16,8 +16,14 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitCommitSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.*;
@@ -27,12 +33,6 @@ import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
@@ -58,8 +58,10 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     ServerPaths myPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
     GitSupportBuilder builder = gitSupport().withServerPaths(myPaths);
     myGit = builder.build();
-    myCommitSupport = new GitCommitSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), builder.getTransportFactory(),
-                                           builder.getPluginConfig());
+    myCommitSupport = new GitCommitSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), new GitRepoOperationsImpl(builder.getPluginConfig(),
+                                                                                                                                       builder.getTransportFactory(),
+                                                                                                                                       r -> null,
+                                                                                                                                       (a,b, c, d) -> {}));
     myRoot = vcsRoot().withFetchUrl(getRemoteRepositoryDir("merge")).build();
   }
 

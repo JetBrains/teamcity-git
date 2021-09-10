@@ -2,6 +2,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.File;
+import java.util.Collections;
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
@@ -10,12 +11,17 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.vcs.CommitResult;
+import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
+import org.eclipse.jgit.lib.NullProgressMonitor;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.FetchConnection;
+import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.Transport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -71,14 +77,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     if (isNativeGitOperationsEnabledAndSupported()) {
       return new NativeGitCommands(myConfig, this::detectGit, mySshKeyManager);
     }
-
-    return new LsRemoteCommand() {
-      @NotNull
-      @Override
-      public Map<String, Ref> lsRemote(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws VcsException {
-        return getRemoteRefsJGit(db, gitRoot);
-      }
-    };
+    return this::getRemoteRefsJGit;
   }
 
   @NotNull
@@ -158,5 +157,44 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     } catch (VcsException ignored) {
     }
     return null;
+  }
+
+  @NotNull
+  @Override
+  public PushCommand pushCommand() {
+    if (isNativeGitOperationsEnabledAndSupported()) {
+      return new NativeGitCommands(myConfig, this::detectGit, mySshKeyManager);
+    }
+    return this::pushJGit;
+  }
+
+  @NotNull
+  private CommitResult pushJGit(@NotNull Repository db, @NotNull GitVcsRoot gitRoot,
+                                @NotNull String commit, @NotNull String lastCommit,
+                                @NotNull CommitSettings settings) throws VcsException {
+    try (Transport tn = myTransportFactory.createTransport(db, gitRoot.getRepositoryPushURL().get(), gitRoot.getAuthSettings(), myConfig.getPushTimeoutSeconds())) {
+      final ObjectId commitId = ObjectId.fromString(commit);
+      final ObjectId lastCommitId = ObjectId.fromString(lastCommit);
+
+      final RemoteRefUpdate ru = new RemoteRefUpdate(db, null, commitId, GitUtils.expandRef(gitRoot.getRef()), false, null, lastCommitId);
+      tn.push(NullProgressMonitor.INSTANCE, Collections.singletonList(ru));
+      switch (ru.getStatus()) {
+        case UP_TO_DATE:
+        case OK:
+          Loggers.VCS.info("Change '" + settings.getDescription() + "' was successfully committed");
+          return CommitResult.createSuccessResult(commitId.name());
+        default: {
+          StringBuilder error = new StringBuilder();
+          error.append("Push failed, status: ").append(ru.getStatus());
+          if (ru.getMessage() != null)
+            error.append(", message: ").append(ru.getMessage());
+          throw new VcsException(error.toString());
+        }
+      }
+    } catch (VcsException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new VcsException("Error while pushing a commit, root " + gitRoot + ", revision " + commit + ", destination " + GitUtils.expandRef(gitRoot.getRef()), e);
+    }
   }
 }

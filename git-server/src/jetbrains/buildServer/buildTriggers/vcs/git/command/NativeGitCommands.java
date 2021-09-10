@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.LsRemoteCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.PushCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
 import jetbrains.buildServer.log.Loggers;
@@ -13,6 +14,8 @@ import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.NamedThreadFactory;
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.vcs.CommitResult;
+import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -20,7 +23,7 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
-public class NativeGitCommands implements FetchCommand, LsRemoteCommand {
+public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand {
 
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
 
@@ -99,6 +102,24 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand {
 
     return NamedThreadFactory.executeWithNewThreadNameFuncThrow("Running native git ls-remote process for : " + getDebugInfo(db, gitRoot.getRepositoryFetchURL().get()), () -> {
       return lsRemote.call().stream().collect(Collectors.toMap(Ref::getName, ref -> ref));
+    });
+  }
+
+  @NotNull
+  @Override
+  public CommitResult push(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull String commit, @NotNull String lastCommit, @NotNull CommitSettings settings) throws VcsException {
+    final Context ctx = new ContextImpl(myConfig, myGitDetector.detectGit());
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
+    gitFacade.setSshKeyManager(mySshKeyManager);
+
+    return NamedThreadFactory.executeWithNewThreadNameFuncThrow("Running native git push process for : " + getDebugInfo(db, gitRoot.getRepositoryFetchURL().get()), () -> {
+      gitFacade.push()
+               .setRefspec(GitUtils.expandRef(gitRoot.getRef()))
+               .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
+               .setTimeout(myConfig.getPushTimeoutSeconds())
+               .trace(myConfig.getGitTraceEnv())
+               .call();
+      return CommitResult.createSuccessResult(commit);
     });
   }
 
