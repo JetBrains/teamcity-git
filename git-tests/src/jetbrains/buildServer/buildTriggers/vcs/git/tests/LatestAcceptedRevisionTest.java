@@ -16,6 +16,9 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
 import jetbrains.buildServer.TestLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -27,10 +30,6 @@ import org.apache.log4j.Level;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
@@ -69,7 +68,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:."),
                                                                                      "bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf",
                                                                                      Collections.singleton("bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf"));
-    then(rev).isNull();
+    then(rev).isEqualTo("bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf"); // stop revisions are inclusive
 
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("-:."),
                                                                                      "bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf",

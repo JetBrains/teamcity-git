@@ -34,7 +34,7 @@ import org.jetbrains.annotations.Nullable;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
-public class GitCollectChangesPolicy implements CollectChangesBetweenRepositories {
+public class GitCollectChangesPolicy implements CollectChangesBetweenRepositories, RevisionMatchedByCheckoutRulesCalculator {
 
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
 
@@ -99,14 +99,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     });
   }
 
-  /**
-   * Returns the latest commit which affects file paths included by the specified checkout rules.
-   * @param root
-   * @param rules
-   * @param startRevision
-   * @param stopRevisions
-   * @return
-   */
   @Nullable
   public String getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,
@@ -122,7 +114,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         revWalk.sort(RevSort.TOPO);
 
         revWalk.markStart(getCommits(r, revWalk, Collections.singleton(startRevision)));
-        markUninteresting(r, revWalk, stopRevisions);
+        markParentsAsUninteresting(r, revWalk, stopRevisions);
 
         while (revWalk.next() != null) {
           if (revWalk.isIncludedByCheckoutRules(rules)) {
@@ -137,14 +129,18 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       }
       return null;
     });
-
   }
 
-  private void markUninteresting(@NotNull final Repository r, @NotNull final ModificationDataRevWalk revWalk, final @NotNull Collection<String> revisions)
+  private void markParentsAsUninteresting(@NotNull final Repository r, @NotNull final ModificationDataRevWalk revWalk, final @NotNull Collection<String> revisions)
     throws IOException {
     List<RevCommit> commits = getCommits(r, revWalk, revisions);
+    Set<RevCommit> toMark = new HashSet<>();
     for (RevCommit commit : commits) {
-      revWalk.markUninteresting(commit);
+      Collections.addAll(toMark, commit.getParents());
+    }
+
+    for (RevCommit c: toMark) {
+      revWalk.markUninteresting(c);
     }
   }
 
