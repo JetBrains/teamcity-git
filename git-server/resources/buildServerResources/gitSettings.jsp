@@ -151,6 +151,7 @@
           Specify the username if there is no username in the clone URL. The username specified here overrides the username from the URL.
         </div>
         <props:hiddenProperty name="oauthProviderId" />
+        <props:hiddenProperty name="tokenType" />
       </td>
     </tr>
     <tr id="gitPasswordRow" class="auth password">
@@ -485,7 +486,8 @@
           BS.jQueryDropdown($('authMethod')).ufd("changeOptions");
           $('username').value = cre.oauthLogin;
           $('oauthProviderId').value = cre.oauthProviderId;
-          if (cre.permanentToken) {
+          $('tokenType').value = cre.tokenType;
+          if (cre.permanentToken || cre.tokenType) {
             $('secure:password').value = '**************';
           }
           gitSelectAuthentication(true);
