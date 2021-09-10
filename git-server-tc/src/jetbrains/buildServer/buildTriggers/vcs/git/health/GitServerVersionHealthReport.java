@@ -46,7 +46,7 @@ public class GitServerVersionHealthReport extends HealthStatusReport {
 
   @Override
   public void report(@NotNull HealthStatusScope scope, @NotNull HealthStatusItemConsumer consumer) {
-    if (!myGitOperations.isNativeGitOperationsEnabled()) return;
+    if (!myGitOperations.isNativeGitOperationsEnabled() || myGitOperations.isNativeGitOperationsSupported()) return;
 
     final GitExec gitExec = myGitOperations.gitExec();
     final Map<String, Object> data = new HashMap<>();
