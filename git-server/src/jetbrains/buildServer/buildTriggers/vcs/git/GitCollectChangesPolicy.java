@@ -103,15 +103,14 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
    * Returns the latest commit which affects file paths included by the specified checkout rules.
    * @param root
    * @param rules
-   * @param branchRevision
+   * @param startRevision
    * @param stopRevisions
    * @return
    */
   @Nullable
   public String getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,
-                                                         @NotNull String branchName,
-                                                         @NotNull String branchRevision,
+                                                         @NotNull String startRevision,
                                                          @NotNull Collection<String> stopRevisions)
     throws VcsException {
     OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
@@ -122,11 +121,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
         revWalk.sort(RevSort.TOPO);
 
-        new FetchContext(context)
-          .withToRevisions(Collections.singletonMap(branchName, branchRevision))
-          .fetchIfNoCommitsOrFail();
-
-        revWalk.markStart(getCommits(r, revWalk, Collections.singleton(branchRevision)));
+        revWalk.markStart(getCommits(r, revWalk, Collections.singleton(startRevision)));
         markUninteresting(r, revWalk, stopRevisions);
 
         while (revWalk.next() != null) {
