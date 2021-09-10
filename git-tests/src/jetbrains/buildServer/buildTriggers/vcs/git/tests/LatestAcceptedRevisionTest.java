@@ -98,7 +98,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev).isEqualTo("b265fd1608fe17f912a031312e1efc758c4e8a35");
   }
 
-  public void test_merges() throws IOException, VcsException {
+  public void branch_merged_to_master() throws IOException, VcsException {
     GitVcsSupport support = git();
     VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
 
@@ -106,15 +106,40 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
                                                                                             "b304522994197be5f336d58cc34edc11cbda095e",
                                                                                             Collections.emptyList());
-    then(rev).isEqualTo("3dada99f39b112fe1de4da19a6ed5113f0035f21");
+    then(rev).isEqualTo("bb6ab65d23fa0ffbaa61d44c8241f127cf0f323f");
 
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test"),
                                                                                      "b304522994197be5f336d58cc34edc11cbda095e",
                                                                                      Collections.emptyList());
-    then(rev).isEqualTo("3dada99f39b112fe1de4da19a6ed5113f0035f21");
+    then(rev).isEqualTo("b265fd1608fe17f912a031312e1efc758c4e8a35");
   }
 
+  public void master_merged_to_branch() throws IOException, VcsException {
+    GitVcsSupport support = git();
+    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
 
+    ensureFetchPerformed(support, root, "refs/heads/br2", "9c191865e2f2b05727e067aa4f918f3ed54f1f1a");
+    String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
+                                                                                            "9c191865e2f2b05727e067aa4f918f3ed54f1f1a",
+                                                                                            Collections.emptyList());
+    then(rev).isEqualTo("338563d3115318d610ad54839cab287e94b18925");
+  }
+
+  public void both_parents_of_merge_are_interesting() throws IOException, VcsException {
+    GitVcsSupport support = git();
+    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+
+    ensureFetchPerformed(support, root, "refs/heads/master", "0ce2e3b06b628633f7b8f73ce634ece1cfe25534");
+    String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test"),
+                                                                                            "0ce2e3b06b628633f7b8f73ce634ece1cfe25534",
+                                                                                            Collections.emptyList());
+    then(rev).isEqualTo("a37f9e92344bd037787a98b1f7c8f80ade6d5b68");
+
+    rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test"),
+                                                                                            "a37f9e92344bd037787a98b1f7c8f80ade6d5b68",
+                                                                                            Collections.emptyList());
+    then(rev).isEqualTo("a37f9e92344bd037787a98b1f7c8f80ade6d5b68");
+  }
 
   @NotNull
   private GitVcsSupport git() {

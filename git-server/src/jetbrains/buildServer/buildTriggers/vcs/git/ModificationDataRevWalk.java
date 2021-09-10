@@ -138,13 +138,37 @@ class ModificationDataRevWalk extends RevWalk {
 
   public boolean isIncludedByCheckoutRules(@NotNull CheckoutRules rules) throws VcsException, IOException {
     checkCurrentCommit();
+
+    if (myCurrentCommit.getParentCount() > 1) {
+      // merge commit is interesting only if more than one of its parents change interesting files,
+      // otherwise, if files are changed by one parent only, then we need to go deeper and find the actual commit which changed the files
+      int numAffectedParents = 0;
+      for (RevCommit parent: myCurrentCommit.getParents()) {
+        try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myRepository, myGitRoot.debugInfo(), myConfig.verboseTreeWalkLog())) {
+          tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(myGitRoot));
+          tw.setRecursive(true);
+          myContext.addTree(myGitRoot, tw, myRepository, myCurrentCommit, true, false, rules);
+          myContext.addTree(myGitRoot, tw, myRepository, parent, true, false, rules);
+
+          while (tw.next()) {
+            final String path = tw.getPathString();
+            if (rules.shouldInclude(path)) {
+              numAffectedParents++;
+              break;
+            }
+          }
+        }
+      }
+
+      return numAffectedParents > 1;
+    }
+
     try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myRepository, myGitRoot.debugInfo(), myConfig.verboseTreeWalkLog())) {
       tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(myGitRoot));
       tw.setRecursive(true);
-      myContext.addTree(myGitRoot, tw, myRepository, myCurrentCommit, shouldIgnoreSubmodulesErrors());
-      RevCommit[] parents = myCurrentCommit.getParents();
-      for (RevCommit parentCommit : parents) {
-        myContext.addTree(myGitRoot, tw, myRepository, parentCommit, true);
+      myContext.addTree(myGitRoot, tw, myRepository, myCurrentCommit, true, false, rules);
+      for (RevCommit parent: myCurrentCommit.getParents()) {
+        myContext.addTree(myGitRoot, tw, myRepository, parent, true, false, rules);
       }
 
       while (tw.next()) {
