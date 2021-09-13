@@ -141,6 +141,28 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev).isEqualTo("a37f9e92344bd037787a98b1f7c8f80ade6d5b68");
   }
 
+  public void both_parents_of_merge_are_interesting_latest_parents_change_non_interesting_files() throws IOException, VcsException {
+    GitVcsSupport support = git();
+    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+
+    ensureFetchPerformed(support, root, "refs/heads/br4", "ce92302a768ce0763e83aebf8c0e16e102c8d06b");
+    String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
+                                                                                            "ce92302a768ce0763e83aebf8c0e16e102c8d06b",
+                                                                                            Collections.emptyList());
+    then(rev).isEqualTo("d036d012385a762568a474b57337b9cf398b96e0");
+  }
+
+  public void traverse_through_merges_looking_for_interesting_commit() throws VcsException, IOException {
+    GitVcsSupport support = git();
+    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+
+    ensureFetchPerformed(support, root, "refs/heads/master", "6ff32b16fe485e7a0a1e209bf10987e1ad46292e");
+    String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test/subDir"),
+                                                                                            "6ff32b16fe485e7a0a1e209bf10987e1ad46292e",
+                                                                                            Collections.emptyList());
+    then(rev).isEqualTo("be6e6b68e84b5aec8a022a8b2d740ed39a7c63b9");
+  }
+
   @NotNull
   private GitVcsSupport git() {
     return gitSupport().withPluginConfig(myConfig).build();
