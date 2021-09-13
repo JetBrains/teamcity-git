@@ -32,6 +32,7 @@ import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -100,14 +101,13 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     });
   }
 
-  @NotNull
-  public ComputedRevision getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
+  @Nullable
+  public String getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,
-                                                         @NotNull String startRevision,
-                                                         @NotNull Set<String> stopRevisions)
+                                                         @NotNull String startRevision)
     throws VcsException {
     Disposable name = NamedDaemonThreadFactory.patchThreadName("Computing the latest commit affected by checkout rules: " + rules +
-                                                               " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision + ", stop revisions: " + stopRevisions);
+                                                               " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision);
     try {
       OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
       GitVcsRoot gitRoot = context.getGitRoot();
@@ -118,19 +118,15 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
           revWalk.sort(RevSort.TOPO);
 
           revWalk.markStart(getCommits(r, revWalk, Collections.singleton(startRevision)));
-          markParentsAsUninteresting(r, revWalk, stopRevisions);
 
           Set<RevCommit> uninteresting = new HashSet<>();
-          Set<String> visitedStopRevisions = new HashSet<>();
           while (revWalk.next() != null) {
-            uninteresting.clear();
             RevCommit commit = revWalk.getCurrentCommit();
-            if (stopRevisions.contains(commit.getName())) {
-              visitedStopRevisions.add(commit.getName());
-            }
+
+            uninteresting.clear();
 
             if (revWalk.isIncludedByCheckoutRules(rules, uninteresting)) {
-              return new ComputedRevision(commit.getId().name(), visitedStopRevisions);
+              return commit.getId().name();
             }
 
             for (RevCommit c: uninteresting) {
@@ -138,7 +134,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
             }
           }
 
-          return new ComputedRevision(null, visitedStopRevisions);
+          return null;
         } catch (Exception e) {
           throw context.wrapException(e);
         } finally {
@@ -147,19 +143,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       });
     } finally {
       name.dispose();
-    }
-  }
-
-  private void markParentsAsUninteresting(@NotNull final Repository r, @NotNull final ModificationDataRevWalk revWalk, final @NotNull Collection<String> revisions)
-    throws IOException {
-    List<RevCommit> commits = getCommits(r, revWalk, revisions);
-    Set<RevCommit> toMark = new HashSet<>();
-    for (RevCommit commit : commits) {
-      Collections.addAll(toMark, commit.getParents());
-    }
-
-    for (RevCommit c: toMark) {
-      revWalk.markUninteresting(c);
     }
   }
 
