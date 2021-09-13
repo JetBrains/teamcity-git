@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
+import jetbrains.buildServer.util.Disposable;
+import jetbrains.buildServer.util.NamedDaemonThreadFactory;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
@@ -105,37 +107,43 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                          @NotNull String startRevision,
                                                          @NotNull Collection<String> stopRevisions)
     throws VcsException {
-    OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
-    GitVcsRoot gitRoot = context.getGitRoot();
-    return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-      try {
-        Repository r = context.getRepository();
-        ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
-        revWalk.sort(RevSort.TOPO);
+    Disposable name = NamedDaemonThreadFactory.patchThreadName("Computing the latest commit affected by checkout rules: " + rules +
+                                                               " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision + ", stop revisions: " + stopRevisions);
+    try {
+      OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
+      GitVcsRoot gitRoot = context.getGitRoot();
+      return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+        try {
+          Repository r = context.getRepository();
+          ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
+          revWalk.sort(RevSort.TOPO);
 
-        revWalk.markStart(getCommits(r, revWalk, Collections.singleton(startRevision)));
-        markParentsAsUninteresting(r, revWalk, stopRevisions);
+          revWalk.markStart(getCommits(r, revWalk, Collections.singleton(startRevision)));
+          markParentsAsUninteresting(r, revWalk, stopRevisions);
 
-        Set<RevCommit> uninteresting = new HashSet<>();
+          Set<RevCommit> uninteresting = new HashSet<>();
 
-        while (revWalk.next() != null) {
-          uninteresting.clear();
-          if (revWalk.isIncludedByCheckoutRules(rules, uninteresting)) {
-            RevCommit commit = revWalk.getCurrentCommit();
-            return commit.getId().name();
+          while (revWalk.next() != null) {
+            uninteresting.clear();
+            if (revWalk.isIncludedByCheckoutRules(rules, uninteresting)) {
+              RevCommit commit = revWalk.getCurrentCommit();
+              return commit.getId().name();
+            }
+
+            for (RevCommit c: uninteresting) {
+              revWalk.markUninteresting(c);
+            }
           }
-
-          for (RevCommit c: uninteresting) {
-            revWalk.markUninteresting(c);
-          }
+        } catch (Exception e) {
+          throw context.wrapException(e);
+        } finally {
+          context.close();
         }
-      } catch (Exception e) {
-        throw context.wrapException(e);
-      } finally {
-        context.close();
-      }
-      return null;
-    });
+        return null;
+      });
+    } finally {
+      name.dispose();
+    }
   }
 
   private void markParentsAsUninteresting(@NotNull final Repository r, @NotNull final ModificationDataRevWalk revWalk, final @NotNull Collection<String> revisions)
