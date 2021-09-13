@@ -116,10 +116,17 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         revWalk.markStart(getCommits(r, revWalk, Collections.singleton(startRevision)));
         markParentsAsUninteresting(r, revWalk, stopRevisions);
 
+        Set<RevCommit> uninteresting = new HashSet<>();
+
         while (revWalk.next() != null) {
-          if (revWalk.isIncludedByCheckoutRules(rules)) {
+          uninteresting.clear();
+          if (revWalk.isIncludedByCheckoutRules(rules, uninteresting)) {
             RevCommit commit = revWalk.getCurrentCommit();
             return commit.getId().name();
+          }
+
+          for (RevCommit c: uninteresting) {
+            revWalk.markUninteresting(c);
           }
         }
       } catch (Exception e) {

@@ -136,14 +136,18 @@ class ModificationDataRevWalk extends RevWalk {
       throw new IllegalStateException("Current commit is null");
   }
 
-  public boolean isIncludedByCheckoutRules(@NotNull CheckoutRules rules) throws VcsException, IOException {
+  public boolean isIncludedByCheckoutRules(@NotNull CheckoutRules rules, @NotNull Set<RevCommit> uninterestingParents) throws VcsException, IOException {
     checkCurrentCommit();
 
+    final RevCommit[] parents = myCurrentCommit.getParents();
+
     if (myCurrentCommit.getParentCount() > 1) {
-      // merge commit is interesting only if more than one of its parents change interesting files,
-      // otherwise, if files are changed by one parent only, then we need to go deeper and find the actual commit which changed the files
+      // merge commit is interesting only if more than one of it changes interesting files when comparing to both of its parents,
+      // otherwise, if files are changed comparing to one parent only, then we need to go deeper through this parent
+      // and find the actual commit which changed the files
       int numAffectedParents = 0;
-      for (RevCommit parent: myCurrentCommit.getParents()) {
+
+      for (RevCommit parent: parents) {
         try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myRepository, myGitRoot.debugInfo(), myConfig.verboseTreeWalkLog())) {
           tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(myGitRoot));
           tw.setRecursive(true);
@@ -156,6 +160,12 @@ class ModificationDataRevWalk extends RevWalk {
               numAffectedParents++;
               break;
             }
+
+            for (RevCommit p: parents) {
+              if (p != parent) {
+                uninterestingParents.add(p);
+              }
+            }
           }
         }
       }
@@ -167,7 +177,7 @@ class ModificationDataRevWalk extends RevWalk {
       tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(myGitRoot));
       tw.setRecursive(true);
       myContext.addTree(myGitRoot, tw, myRepository, myCurrentCommit, true, false, rules);
-      for (RevCommit parent: myCurrentCommit.getParents()) {
+      for (RevCommit parent: parents) {
         myContext.addTree(myGitRoot, tw, myRepository, parent, true, false, rules);
       }
 
