@@ -136,14 +136,14 @@ class ModificationDataRevWalk extends RevWalk {
       throw new IllegalStateException("Current commit is null");
   }
 
-  public boolean isIncludedByCheckoutRules(@NotNull CheckoutRules rules, @NotNull Set<RevCommit> uninterestingParents) throws VcsException, IOException {
+  public boolean isIncludedByCheckoutRules(@NotNull CheckoutRules rules, @NotNull Set<RevCommit> uninteresting) throws VcsException, IOException {
     checkCurrentCommit();
 
     final RevCommit[] parents = myCurrentCommit.getParents();
 
     if (myCurrentCommit.getParentCount() > 1) {
-      // merge commit is interesting only if more than one of it changes interesting files when comparing to both of its parents,
-      // otherwise, if files are changed comparing to one parent only, then we need to go deeper through this parent
+      // merge commit is interesting only if it changes interesting files when comparing to both of its parents,
+      // otherwise, if files are changed comparing to one parent only, then we need to go deeper through the commit graph
       // and find the actual commit which changed the files
       int numAffectedParents = 0;
 
@@ -154,16 +154,21 @@ class ModificationDataRevWalk extends RevWalk {
           myContext.addTree(myGitRoot, tw, myRepository, myCurrentCommit, true, false, rules);
           myContext.addTree(myGitRoot, tw, myRepository, parent, true, false, rules);
 
+          boolean hasInterestingPath = false;
           while (tw.next()) {
             final String path = tw.getPathString();
             if (rules.shouldInclude(path)) {
-              numAffectedParents++;
+              hasInterestingPath = true;
               break;
             }
+          }
 
+          if (hasInterestingPath) {
+            numAffectedParents++;
+          } else {
             for (RevCommit p: parents) {
               if (p != parent) {
-                uninterestingParents.add(p);
+                uninteresting.add(p);
               }
             }
           }

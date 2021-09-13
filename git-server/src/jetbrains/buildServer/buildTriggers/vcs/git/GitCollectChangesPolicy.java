@@ -32,7 +32,6 @@ import org.eclipse.jgit.revwalk.RevObject;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -101,11 +100,11 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     });
   }
 
-  @Nullable
-  public String getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
+  @NotNull
+  public ComputedRevision getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,
                                                          @NotNull String startRevision,
-                                                         @NotNull Collection<String> stopRevisions)
+                                                         @NotNull Set<String> stopRevisions)
     throws VcsException {
     Disposable name = NamedDaemonThreadFactory.patchThreadName("Computing the latest commit affected by checkout rules: " + rules +
                                                                " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision + ", stop revisions: " + stopRevisions);
@@ -122,24 +121,29 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
           markParentsAsUninteresting(r, revWalk, stopRevisions);
 
           Set<RevCommit> uninteresting = new HashSet<>();
-
+          Set<String> visitedStopRevisions = new HashSet<>();
           while (revWalk.next() != null) {
             uninteresting.clear();
+            RevCommit commit = revWalk.getCurrentCommit();
+            if (stopRevisions.contains(commit.getName())) {
+              visitedStopRevisions.add(commit.getName());
+            }
+
             if (revWalk.isIncludedByCheckoutRules(rules, uninteresting)) {
-              RevCommit commit = revWalk.getCurrentCommit();
-              return commit.getId().name();
+              return new ComputedRevision(commit.getId().name(), visitedStopRevisions);
             }
 
             for (RevCommit c: uninteresting) {
               revWalk.markUninteresting(c);
             }
           }
+
+          return new ComputedRevision(null, visitedStopRevisions);
         } catch (Exception e) {
           throw context.wrapException(e);
         } finally {
           context.close();
         }
-        return null;
       });
     } finally {
       name.dispose();
