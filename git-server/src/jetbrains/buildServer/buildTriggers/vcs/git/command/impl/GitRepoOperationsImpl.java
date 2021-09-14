@@ -31,6 +31,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendly
 
 public class GitRepoOperationsImpl implements GitRepoOperations {
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
+  private static final String GIT_NATIVE_OPERATIONS_ENABLED = "teamcity.git.nativeOperationsEnabled";
 
   private final TransportFactory myTransportFactory;
   private final VcsRootSshKeyManager mySshKeyManager;
@@ -58,16 +59,19 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   }
 
   public boolean isNativeGitOperationsEnabled(@NotNull String repoUrl) {
-    for (Map.Entry<String, String> e : TeamCityProperties.getPropertiesWithPrefix("teamcity.git.nativeOperationsEnabled").entrySet()) {
-      if (e.getKey().endsWith(repoUrl)) {
-        return Boolean.parseBoolean(e.getKey());
+    if (TeamCityProperties.getBoolean(GIT_NATIVE_OPERATIONS_ENABLED)) return true;
+
+    for (Map.Entry<String, String> e : TeamCityProperties.getPropertiesWithPrefix(GIT_NATIVE_OPERATIONS_ENABLED).entrySet()) {
+      final String url = e.getKey().substring(GIT_NATIVE_OPERATIONS_ENABLED.length() + 1);
+      if (repoUrl.startsWith(url)) {
+        return Boolean.parseBoolean(e.getValue());
       }
     }
     return false;
   }
 
   public boolean isNativeGitOperationsEnabled() {
-    return !TeamCityProperties.getPropertiesWithPrefix("teamcity.git.nativeOperationsEnabled").isEmpty();
+    return !TeamCityProperties.getPropertiesWithPrefix(GIT_NATIVE_OPERATIONS_ENABLED).isEmpty();
   }
 
   @Override
