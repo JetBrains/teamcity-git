@@ -148,9 +148,9 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   @NotNull
   private String getDebugInfo(@NotNull Repository db, @NotNull URIish uri, @NotNull Collection<RefSpec> refSpecs) {
     final StringBuilder sb = new StringBuilder();
-    sb.append("(").append(db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"").append(uri).append("#");
+    sb.append("(").append(db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"").append(uri);
     for (RefSpec spec : refSpecs) {
-      sb.append(spec).append(" ");
+      sb.append(", ").append(spec);
     }
     sb.append(")");
 
