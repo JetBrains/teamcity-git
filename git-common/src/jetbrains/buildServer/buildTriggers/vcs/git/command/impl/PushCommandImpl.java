@@ -41,7 +41,7 @@ public class PushCommandImpl extends BaseAuthCommandImpl<PushCommand> implements
     cmd.addParameter(getRemote());
     myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));
 
-    runCmd(cmd);
+    runCmd(cmd.stdErrLogLevel("debug"));
   }
 
   @NotNull
