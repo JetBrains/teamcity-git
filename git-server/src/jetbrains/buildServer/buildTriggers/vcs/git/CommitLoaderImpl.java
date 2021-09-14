@@ -123,7 +123,7 @@ public class CommitLoaderImpl implements CommitLoader {
     if (refspecs.isEmpty()) return;
 
     Map<String, Ref> oldRefs = new HashMap<>(db.getAllRefs());
-    myGitRepoOperations.fetchCommand().fetch(db, fetchURI, refspecs, settings);
+    myGitRepoOperations.fetchCommand(fetchURI.toString()).fetch(db, fetchURI, refspecs, settings);
     if (myPluginConfig.refreshObjectDatabaseAfterFetch()) {
       db.getObjectDatabase().refresh();
     }

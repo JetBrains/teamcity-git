@@ -161,7 +161,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
         lock.lock();
         try {
-          return myRepoOperations.pushCommand().push(myDb, gitRoot, commitId.name(), lastCommit.name(), commitSettings);
+          return myRepoOperations.pushCommand(gitRoot.getRepositoryPushURL().toString()).push(myDb, gitRoot, commitId.name(), lastCommit.name(), commitSettings);
         } finally {
           lock.unlock();
         }

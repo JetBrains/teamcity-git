@@ -6,13 +6,13 @@ import org.jetbrains.annotations.Nullable;
 
 public interface GitRepoOperations {
   @NotNull
-  FetchCommand fetchCommand();
+  FetchCommand fetchCommand(@NotNull String repoUrl);
 
   @NotNull
-  LsRemoteCommand lsRemoteCommand();
+  LsRemoteCommand lsRemoteCommand(@NotNull String repoUrl);
 
   @NotNull
-  PushCommand pushCommand();
+  PushCommand pushCommand(@NotNull String repoUrl);
 
   @Nullable
   GitExec gitExec();

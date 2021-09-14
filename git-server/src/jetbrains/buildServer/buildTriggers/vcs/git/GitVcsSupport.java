@@ -496,7 +496,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   private Map<String, Ref> getRemoteRefs(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws Exception {
-    return myGitRepoOperations.lsRemoteCommand().lsRemote(db, gitRoot);
+    return myGitRepoOperations.lsRemoteCommand(gitRoot.getRepositoryFetchURL().toString()).lsRemote(db, gitRoot);
   }
 
   public Collection<VcsClientMapping> getClientMapping(final @NotNull VcsRoot root, final @NotNull IncludeRule rule) throws VcsException {

@@ -50,15 +50,24 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
 
   @NotNull
   @Override
-  public FetchCommand fetchCommand() {
-    if (isNativeGitOperationsEnabledAndSupported()) {
+  public FetchCommand fetchCommand(@NotNull String repoUrl) {
+    if (isNativeGitOperationsEnabledAndSupported(repoUrl)) {
       return new NativeGitCommands(myConfig, this::detectGit, mySshKeyManager);
     }
     return myJGitFetchCommand;
   }
 
+  public boolean isNativeGitOperationsEnabled(@NotNull String repoUrl) {
+    for (Map.Entry<String, String> e : TeamCityProperties.getPropertiesWithPrefix("teamcity.git.nativeOperationsEnabled").entrySet()) {
+      if (e.getKey().endsWith(repoUrl)) {
+        return Boolean.parseBoolean(e.getKey());
+      }
+    }
+    return false;
+  }
+
   public boolean isNativeGitOperationsEnabled() {
-    return TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled");
+    return !TeamCityProperties.getPropertiesWithPrefix("teamcity.git.nativeOperationsEnabled").isEmpty();
   }
 
   @Override
@@ -67,14 +76,14 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     return gitExec != null && GitVersion.fetchSupportsStdin(gitExec.getVersion());
   }
 
-  private boolean isNativeGitOperationsEnabledAndSupported() {
-    return isNativeGitOperationsEnabled() && isNativeGitOperationsSupported();
+  private boolean isNativeGitOperationsEnabledAndSupported(@NotNull String repoUrl) {
+    return isNativeGitOperationsEnabled(repoUrl) && isNativeGitOperationsSupported();
   }
 
   @NotNull
   @Override
-  public LsRemoteCommand lsRemoteCommand() {
-    if (isNativeGitOperationsEnabledAndSupported()) {
+  public LsRemoteCommand lsRemoteCommand(@NotNull String repoUrl) {
+    if (isNativeGitOperationsEnabledAndSupported(repoUrl)) {
       return new NativeGitCommands(myConfig, this::detectGit, mySshKeyManager);
     }
     return this::getRemoteRefsJGit;
@@ -161,8 +170,8 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
 
   @NotNull
   @Override
-  public PushCommand pushCommand() {
-    if (isNativeGitOperationsEnabledAndSupported()) {
+  public PushCommand pushCommand(@NotNull String repoUrl) {
+    if (isNativeGitOperationsEnabledAndSupported(repoUrl)) {
       return new NativeGitCommands(myConfig, this::detectGit, mySshKeyManager);
     }
     return this::pushJGit;
