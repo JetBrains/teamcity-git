@@ -104,9 +104,10 @@ public class GitServerUtil {
         final StoredConfig config = r.getConfig();
         final String existingRemote = config.getString("teamcity", null, "remote");
         final String refSpec = config.getString("remote", "origin", "fetch");
+        final String mirror = config.getString("remote", "origin", "mirror");
         if (existingRemote != null && !remoteUrl.equals(existingRemote)) {
           throw getWrongUrlError(dir, existingRemote, remote);
-        } else if (existingRemote == null || refSpec == null) {
+        } else if (existingRemote == null || refSpec == null || mirror != null) {
           addConfigOptions(config, remoteUrl).save();
         }
       }
@@ -126,7 +127,7 @@ public class GitServerUtil {
     // see https://git-scm.com/docs/git-fetch#_pruning
     config.setString("remote", "origin", "url", remoteUrl);
     config.setString("remote", "origin", "fetch", "+refs/*:refs/*");
-    config.setBoolean("remote", "origin", "mirror", true);
+    config.unset("remote", "origin", "mirror");
 
     // Disables auto gc performed after some native git commands or (if enforced) ensures it runs in-process
     final String gcAuto = config.getString("gc", null, "auto");
