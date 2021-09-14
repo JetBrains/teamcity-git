@@ -156,16 +156,7 @@ class ModificationDataRevWalk extends RevWalk {
           myContext.addTree(myGitRoot, tw, myRepository, myCurrentCommit, true, false, rules);
           myContext.addTree(myGitRoot, tw, myRepository, parent, true, false, rules);
 
-          boolean hasInterestingPath = false;
-          while (tw.next()) {
-            final String path = tw.getPathString();
-            if (rules.shouldInclude(path)) {
-              hasInterestingPath = true;
-              break;
-            }
-          }
-
-          if (hasInterestingPath) {
+          if (isAcceptedByCheckoutRules(rules, tw)) {
             numAffectedParents++;
           } else {
             for (RevCommit p: parents) {
@@ -188,18 +179,23 @@ class ModificationDataRevWalk extends RevWalk {
       tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(myGitRoot));
       tw.setRecursive(true);
       myContext.addTree(myGitRoot, tw, myRepository, myCurrentCommit, true, false, rules);
-      for (RevCommit parent: parents) {
-        myContext.addTree(myGitRoot, tw, myRepository, parent, true, false, rules);
+      if (parents.length > 0) {
+        myContext.addTree(myGitRoot, tw, myRepository, parents[0], true, false, rules);
       }
 
-      while (tw.next()) {
-        final String path = tw.getPathString();
-        if (rules.shouldInclude(path)) {
-          return true;
-        }
-      }
+      if (isAcceptedByCheckoutRules(rules, tw)) return true;
     }
 
+    return false;
+  }
+
+  private boolean isAcceptedByCheckoutRules(final @NotNull CheckoutRules rules, @NotNull final VcsChangeTreeWalk tw) throws IOException {
+    while (tw.next()) {
+      final String path = tw.getPathString();
+      if (rules.shouldInclude(path)) {
+        return true;
+      }
+    }
     return false;
   }
 

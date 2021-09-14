@@ -125,7 +125,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
           Set<String> uninteresting = new HashSet<>();
           while (revWalk.next() != null) {
             RevCommit commit = revWalk.getCurrentCommit();
-            if (uninteresting.contains(commit.name())) {
+            if (uninteresting.remove(commit.name())) { // no need to keep all uninteresting commits in memory as RevWalk only visits every commit once
               continue;
             }
             if (visited != null) {
