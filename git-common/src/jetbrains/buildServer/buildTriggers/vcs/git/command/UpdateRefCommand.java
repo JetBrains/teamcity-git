@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
+package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.command.BaseCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -30,6 +29,9 @@ public interface UpdateRefCommand extends BaseCommand {
 
   @NotNull
   UpdateRefCommand setRevision(@NotNull String revision);
+
+  @NotNull
+  UpdateRefCommand setOldValue(@NotNull String v);
 
   void call() throws VcsException;
 

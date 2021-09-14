@@ -97,11 +97,6 @@ public class AgentGitFacadeImpl extends GitFacadeImpl implements AgentGitFacade 
   }
 
   @NotNull
-  public UpdateRefCommand updateRef() {
-    return new UpdateRefCommandImpl(createCommandLine());
-  }
-
-  @NotNull
   public UpdateRefBatchCommand updateRefBatch() {
     return new UpdateRefBatchCommandImpl(createCommandLine());
   }

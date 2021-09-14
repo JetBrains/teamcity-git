@@ -50,9 +50,6 @@ public interface AgentGitFacade extends GitFacade {
   ResetCommand reset();
 
   @NotNull
-  UpdateRefCommand updateRef();
-
-  @NotNull
   UpdateRefBatchCommand updateRefBatch();
 
   @NotNull

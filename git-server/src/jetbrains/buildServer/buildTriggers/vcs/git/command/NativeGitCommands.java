@@ -112,9 +112,12 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
+    final String ref = GitUtils.expandRef(gitRoot.getRef());
+    gitFacade.updateRef().setRef(ref).setRevision(commit).setOldValue(lastCommit).call();
+
     return NamedThreadFactory.executeWithNewThreadNameFuncThrow("Running native git push process for : " + getDebugInfo(db, gitRoot.getRepositoryFetchURL().get()), () -> {
       gitFacade.push()
-               .setRefspec(GitUtils.expandRef(gitRoot.getRef()))
+               .setRefspec(ref)
                .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
                .setTimeout(myConfig.getPushTimeoutSeconds())
                .trace(myConfig.getGitTraceEnv())

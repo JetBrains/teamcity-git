@@ -18,4 +18,7 @@ public interface GitFacade {
 
   @NotNull
   PushCommand push();
+
+  @NotNull
+  UpdateRefCommand updateRef();
 }

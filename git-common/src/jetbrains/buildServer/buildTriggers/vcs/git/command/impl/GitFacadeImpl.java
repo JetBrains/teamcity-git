@@ -59,6 +59,11 @@ public class GitFacadeImpl implements GitFacade {
   }
 
   @NotNull
+  public UpdateRefCommand updateRef() {
+    return new UpdateRefCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   protected GitCommandLine createCommandLine() {
     final GitCommandLine cmd = makeCommandLine();
     cmd.setExePath(myCtx.getGitExec().getPath());

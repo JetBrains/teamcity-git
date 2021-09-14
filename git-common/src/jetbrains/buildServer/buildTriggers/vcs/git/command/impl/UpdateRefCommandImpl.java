@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
+package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseCommandImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.UpdateRefCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 public class UpdateRefCommandImpl extends BaseCommandImpl implements UpdateRefCommand {
 
   private String myRef;
+  private String myOldValue;
   private String myRevision;
   private boolean myDelete;
 
@@ -46,6 +45,13 @@ public class UpdateRefCommandImpl extends BaseCommandImpl implements UpdateRefCo
   }
 
   @NotNull
+  @Override
+  public UpdateRefCommand setOldValue(@NotNull String v) {
+    myOldValue = v;
+    return this;
+  }
+
+  @NotNull
   public UpdateRefCommand delete() {
     myDelete = true;
     return this;
@@ -59,6 +65,8 @@ public class UpdateRefCommandImpl extends BaseCommandImpl implements UpdateRefCo
     cmd.addParameter(myRef);
     if (myRevision != null)
       cmd.addParameter(myRevision);
+    if (myOldValue != null)
+      cmd.addParameter(myOldValue);
     CommandUtil.runCommand(cmd.stdErrExpected(false));
   }
 }
