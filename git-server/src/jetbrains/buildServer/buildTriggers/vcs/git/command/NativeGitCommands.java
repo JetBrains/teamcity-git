@@ -64,6 +64,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand fetch =
       gitFacade.fetch()
                .setRemote(fetchURI.toString())
+               .setFetchTags(false)
                .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
                .setTimeout(myConfig.getFetchTimeout())
                .setRetryAttempts(myConfig.getConnectionRetryAttempts())
