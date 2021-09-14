@@ -134,8 +134,10 @@ public class CommandUtil {
         CommandUtil.checkCommandFailed(cli, fullCmdStr, res);
 
         final String out = res.getStdout().trim();
-        if (cli.getContext().isDebugGitCommands() || out.length() < 1024) {
-          Loggers.VCS.debug("Output produced by " + fullCmdStr + ":\n" + out);
+        if (StringUtil.isNotEmpty(out)) {
+          if (cli.getContext().isDebugGitCommands() || out.length() < 1024) {
+            Loggers.VCS.debug("Output produced by " + fullCmdStr + ":\n" + out);
+          }
         }
         if (!StringUtil.isEmptyOrSpaces(out) || !cli.isRepeatOnEmptyOutput() || attemptsLeft <= 0)
           return res;
