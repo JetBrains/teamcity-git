@@ -135,6 +135,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
     return executeCommand("push", LogUtil.describe(gitRoot), () -> {
       gitFacade.push()
+               .setRemote(gitRoot.getRepositoryPushURL().toString())
                .setRefspec(ref)
                .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
                .setTimeout(myConfig.getPushTimeoutSeconds())
