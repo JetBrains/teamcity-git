@@ -1,5 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
+import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
@@ -12,6 +13,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.FuncThrow;
 import jetbrains.buildServer.util.NamedThreadFactory;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CommitResult;
@@ -25,6 +27,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand {
 
+  private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
 
   private final ServerPluginConfig myConfig;
@@ -41,6 +44,20 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   private static boolean isSilentFetch(@NotNull Context ctx) {
     return ctx.getGitVersion().isLessThan(GIT_WITH_PROGRESS_VERSION);
+  }
+
+  private static <R> R executeCommand(@NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, RefSpec... refSpecs) throws VcsException{
+    return NamedThreadFactory.executeWithNewThreadNameFuncThrow(
+      String.format("Running native git %s process for : %s", action, debugInfo),
+      () -> {
+        final long start = System.currentTimeMillis();
+        try {
+          return cmd.apply();
+        } finally {
+          final long finish = System.currentTimeMillis();
+          PERFORMANCE_LOG.debug("[git " + action + "] repository: " + debugInfo + " took " + (finish - start) + "ms");
+        }
+      });
   }
 
   @Override
@@ -80,7 +97,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     else
       fetch.setShowProgress(true);
 
-    NamedThreadFactory.executeWithNewThreadNameFuncThrow("Running native git fetch process for : " + getDebugInfo(db, fetchURI, refspecs), () -> {
+    executeCommand("fetch", getDebugInfo(db, fetchURI, refspecs), () -> {
       fetch.call();
       return true;
     });
@@ -101,7 +118,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                .setRetryAttempts(myConfig.getConnectionRetryAttempts())
                .trace(myConfig.getGitTraceEnv());
 
-    return NamedThreadFactory.executeWithNewThreadNameFuncThrow("Running native git ls-remote process for : " + getDebugInfo(db, gitRoot.getRepositoryFetchURL().get()), () -> {
+    return executeCommand("ls-remote", LogUtil.describe(gitRoot), () -> {
       return lsRemote.call().stream().collect(Collectors.toMap(Ref::getName, ref -> ref));
     });
   }
@@ -116,7 +133,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final String ref = GitUtils.expandRef(gitRoot.getRef());
     gitFacade.updateRef().setRef(ref).setRevision(commit).setOldValue(lastCommit).call();
 
-    return NamedThreadFactory.executeWithNewThreadNameFuncThrow("Running native git push process for : " + getDebugInfo(db, gitRoot.getRepositoryFetchURL().get()), () -> {
+    return executeCommand("push", LogUtil.describe(gitRoot), () -> {
       gitFacade.push()
                .setRefspec(ref)
                .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
@@ -129,11 +146,6 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   @NotNull
   private String getDebugInfo(@NotNull Repository db, @NotNull URIish uri, @NotNull Collection<RefSpec> refSpecs) {
-    return getDebugInfo(db, uri, refSpecs.toArray(new RefSpec[0]));
-  }
-
-  @NotNull
-  private String getDebugInfo(@NotNull Repository db, @NotNull URIish uri, RefSpec... refSpecs) {
     final StringBuilder sb = new StringBuilder();
     sb.append("(").append(db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"").append(uri).append("#");
     for (RefSpec spec : refSpecs) {
