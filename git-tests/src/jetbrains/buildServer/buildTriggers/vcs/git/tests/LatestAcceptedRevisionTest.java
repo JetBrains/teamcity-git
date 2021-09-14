@@ -19,6 +19,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 import jetbrains.buildServer.TestLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -141,9 +144,26 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
 
     ensureFetchPerformed(support, root, "refs/heads/master", "6d8cc5e06db390a20f5b2bf278206a0ec47f05dc");
+    Set<String> visited = new HashSet<>();
     String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test/subDir"),
-                                                                                            "6ff32b16fe485e7a0a1e209bf10987e1ad46292e");
+                                                                                            "6ff32b16fe485e7a0a1e209bf10987e1ad46292e",
+                                                                                            visited);
     then(rev).isEqualTo("be6e6b68e84b5aec8a022a8b2d740ed39a7c63b9");
+    then(visited).containsOnly("6ff32b16fe485e7a0a1e209bf10987e1ad46292e",
+                               "eea4a3e48901ba036998c9fe0afdc78cc8a05a33",
+                               "1330f191b990a389459e28f8754c913e9b417c93",
+                               "75c9325d5b129f299fba8567f0fd7f599d336e8f",
+                               "be6e6b68e84b5aec8a022a8b2d740ed39a7c63b9");
+
+    visited.clear();
+    rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test/TestFile4.java"),
+                                                                                     "6ff32b16fe485e7a0a1e209bf10987e1ad46292e",
+                                                                                     visited);
+    then(rev).isEqualTo("40224a053e16145562d1befa3d0a127c54f5dbff");
+    then(visited).containsOnly("6ff32b16fe485e7a0a1e209bf10987e1ad46292e",
+                               "ce92302a768ce0763e83aebf8c0e16e102c8d06b",
+                               "d036d012385a762568a474b57337b9cf398b96e0",
+                               "40224a053e16145562d1befa3d0a127c54f5dbff");
   }
 
   @NotNull

@@ -27,10 +27,7 @@ import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevObject;
-import org.eclipse.jgit.revwalk.RevSort;
-import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.revwalk.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -104,8 +101,15 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   @Nullable
   public String getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,
-                                                         @NotNull String startRevision)
-    throws VcsException {
+                                                         @NotNull String startRevision) throws VcsException {
+    return getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevision, null);
+  }
+
+  @Nullable
+  public String getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
+                                                         @NotNull CheckoutRules rules,
+                                                         @NotNull String startRevision,
+                                                         @Nullable Set<String> visited) throws VcsException {
     Disposable name = NamedDaemonThreadFactory.patchThreadName("Computing the latest commit affected by checkout rules: " + rules +
                                                                " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision);
     try {
@@ -115,22 +119,21 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         try {
           Repository r = context.getRepository();
           ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
-          revWalk.sort(RevSort.TOPO);
 
           revWalk.markStart(getCommits(r, revWalk, Collections.singleton(startRevision)));
 
-          Set<RevCommit> uninteresting = new HashSet<>();
+          Set<String> uninteresting = new HashSet<>();
           while (revWalk.next() != null) {
             RevCommit commit = revWalk.getCurrentCommit();
-
-            uninteresting.clear();
-
-            if (revWalk.isIncludedByCheckoutRules(rules, uninteresting)) {
-              return commit.getId().name();
+            if (uninteresting.contains(commit.name())) {
+              continue;
+            }
+            if (visited != null) {
+              visited.add(commit.name());
             }
 
-            for (RevCommit c: uninteresting) {
-              revWalk.markUninteresting(c);
+            if (revWalk.isIncludedByCheckoutRules(rules, uninteresting)) {
+              return commit.name();
             }
           }
 

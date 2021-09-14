@@ -30,6 +30,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
@@ -136,7 +137,7 @@ class ModificationDataRevWalk extends RevWalk {
       throw new IllegalStateException("Current commit is null");
   }
 
-  public boolean isIncludedByCheckoutRules(@NotNull CheckoutRules rules, @NotNull Set<RevCommit> uninteresting) throws VcsException, IOException {
+  public boolean isIncludedByCheckoutRules(@NotNull CheckoutRules rules, @NotNull Set<String> uninteresting) throws VcsException, IOException {
     checkCurrentCommit();
 
     final RevCommit[] parents = myCurrentCommit.getParents();
@@ -147,6 +148,7 @@ class ModificationDataRevWalk extends RevWalk {
       // and find the actual commit which changed the files
       int numAffectedParents = 0;
 
+      Set<RevCommit> uninterestingParents = new HashSet<>();
       for (RevCommit parent: parents) {
         try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myRepository, myGitRoot.debugInfo(), myConfig.verboseTreeWalkLog())) {
           tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(myGitRoot));
@@ -168,11 +170,15 @@ class ModificationDataRevWalk extends RevWalk {
           } else {
             for (RevCommit p: parents) {
               if (p != parent) {
-                uninteresting.add(p);
+                uninterestingParents.add(p);
               }
             }
           }
         }
+      }
+
+      if (numAffectedParents <= 1) {
+        collectUninterestingCommits(parents, uninterestingParents, uninteresting);
       }
 
       return numAffectedParents > 1;
@@ -195,6 +201,75 @@ class ModificationDataRevWalk extends RevWalk {
     }
 
     return false;
+  }
+
+  private void collectUninterestingCommits(@NotNull final RevCommit[] parents,
+                                           @NotNull final Set<RevCommit> uninterestingParents,
+                                           @NotNull final Set<String> uninteresting) throws IOException {
+    if (uninterestingParents.size() == parents.length) {
+      // all parents are uninteresting, it means we should traverse the parents till the merge base and add all found commits as uninteresting
+      RevWalk walk = new RevWalk(myRepository);
+      try {
+        walk.setRevFilter(RevFilter.MERGE_BASE);
+        Set<RevCommit> starts = new HashSet<>();
+        for (RevCommit p: parents) {
+          starts.add(walk.parseCommit(p.getId()));
+        }
+
+        for (RevCommit c: starts) {
+          walk.markStart(c);
+        }
+
+        RevCommit mergeBase = walk.next();
+        walk.reset();
+
+        walk.setRevFilter(RevFilter.ALL);
+        for (RevCommit c: starts) {
+          walk.markStart(c);
+        }
+        if (mergeBase != null) {
+          walk.markUninteresting(mergeBase);
+        }
+
+        RevCommit next;
+        while ((next = walk.next()) != null) {
+          uninteresting.add(next.name());
+        }
+      } finally {
+        walk.reset();
+        walk.close();
+        walk.dispose();
+      }
+
+      return;
+    }
+
+    Set<RevCommit> interestingParents = new HashSet<>();
+    for (RevCommit c: parents) {
+      if (uninterestingParents.contains(c)) continue;
+      interestingParents.add(c);
+    }
+
+    // we should mark all commits reachable from uninteresting parents as uninteresting, except those which are also reachable from the interesting parents
+    RevWalk walk = new RevWalk(myRepository);
+    try {
+      for (RevCommit p: interestingParents) {
+        walk.markUninteresting(walk.parseCommit(p.getId()));
+      }
+
+      for (RevCommit p: uninterestingParents) {
+        walk.markStart(walk.parseCommit(p.getId()));
+      }
+
+      RevCommit next;
+      while ((next = walk.next()) != null) {
+        uninteresting.add(next.name());
+      }
+    } finally {
+      walk.reset();
+      walk.close();
+      walk.dispose();
+    }
   }
 
   @NotNull
