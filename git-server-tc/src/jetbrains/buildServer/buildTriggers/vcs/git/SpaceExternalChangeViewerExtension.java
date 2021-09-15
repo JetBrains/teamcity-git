@@ -48,7 +48,7 @@ public class SpaceExternalChangeViewerExtension implements ExternalChangeViewerE
 
     final String gitPath = uri.getPath();
 
-    if (uri.getHost().endsWith("jetbrains.space")) {
+    if (uri.getHost().endsWith(".jetbrains.space")) {
       // Space is on the Jetbrains side
       final String[] strings = gitPath.substring(1).split("/");
       if (strings.length == 3) {
