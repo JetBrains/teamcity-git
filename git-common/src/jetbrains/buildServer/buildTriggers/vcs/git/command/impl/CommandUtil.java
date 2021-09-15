@@ -71,7 +71,6 @@ public class CommandUtil {
       exception.printStackTrace(new PrintWriter(stackWriter));
       message += "\n" + stackWriter;
     }
-    logMessage(message);
     if (exception != null)
       throw new VcsException(message, exception);
     throw new VcsException(message);
