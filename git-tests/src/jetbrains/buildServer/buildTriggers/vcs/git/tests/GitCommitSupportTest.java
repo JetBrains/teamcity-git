@@ -16,20 +16,26 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import com.intellij.execution.configurations.GeneralCommandLine;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitCommitSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.SimpleCommandLineProcessRunner;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.util.FuncThrow;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.*;
 import org.assertj.core.groups.Tuple;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
+import org.eclipse.jgit.transport.RefSpec;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -46,23 +52,23 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
   private GitVcsSupport myGit;
   private CommitSupport myCommitSupport;
   private VcsRoot myRoot;
+  private ServerPaths myPaths;
 
   public GitCommitSupportTest() {
     super("merge");
   }
 
-  @BeforeMethod
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
-    ServerPaths myPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    GitSupportBuilder builder = gitSupport().withServerPaths(myPaths);
-    myGit = builder.build();
-    myCommitSupport = new GitCommitSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), new GitRepoOperationsImpl(builder.getPluginConfig(),
-                                                                                                                                       builder.getTransportFactory(),
-                                                                                                                                       r -> null,
-                                                                                                                                       (a,b, c, d) -> {}));
-    myRoot = vcsRoot().withFetchUrl(getRemoteRepositoryDir("merge")).build();
+  @NotNull
+  private static String showRef(@NotNull File repo, @NotNull String ref) throws Exception {
+    final GeneralCommandLine cmd = new GeneralCommandLine();
+    cmd.setWorkDirectory(repo.getAbsolutePath());
+    cmd.setExePath("git");
+    cmd.addParameters("show-ref", ref);
+    final ExecResult result = SimpleCommandLineProcessRunner.runCommand(cmd, null);
+    if (result.getExitCode() == 0 && result.getStderr().isEmpty()) {
+      return result.getStdout();
+    }
+    throw new Exception(result.toString());
   }
 
 
@@ -232,6 +238,71 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
       .isTrue();
   }
 
+  @NotNull
+  private static GitExec detectGitStub() {
+    return new GitExec("git", GitVersion.MIN);
+  }
+
+  @BeforeMethod
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+    myPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
+    GitSupportBuilder builder = gitSupport().withServerPaths(myPaths);
+    myGit = builder.build();
+    myCommitSupport = new GitCommitSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), new GitRepoOperationsImpl(builder.getPluginConfig(),
+                                                                                                                                       builder.getTransportFactory(),
+                                                                                                                                       r -> null,
+                                                                                                                                       (a,b, c, d) -> {}));
+    myRoot = vcsRoot().withFetchUrl(getRemoteRepositoryDir("merge")).build();
+  }
+
+  @Test
+  public void local_state_restored_if_push_fails() throws Exception {
+    // perform successfull commit to make local repo not empty
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
+    byte[] bytes = "test-content".getBytes();
+    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream(bytes));
+    patchBuilder.commit(new CommitSettingsImpl("user", "Commit description"));
+    patchBuilder.dispose();
+
+    GitSupportBuilder builder = gitSupport().withServerPaths(myPaths);
+    builder.build();
+    final ServerPluginConfig config = builder.getPluginConfig();
+    final RepositoryManager repositoryManager = builder.getRepositoryManager();
+    myCommitSupport = new GitCommitSupport(myGit, builder.getCommitLoader(), repositoryManager, new GitRepoOperationsImpl(config,
+                                                                                                                          builder.getTransportFactory(),
+                                                                                                                          r -> null,
+                                                                                                                          (a,b, c, d) -> {}) {
+      @NotNull
+      @Override
+      public PushCommand pushCommand(@NotNull String repoUrl) {
+        return new NativeGitCommands(config, GitCommitSupportTest::detectGitStub, r -> null) {
+          @Override
+          protected <R> R executeCommand(@NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, RefSpec... refSpecs) throws VcsException {
+            throw new VcsException("Always fails");
+          }
+        };
+      }
+    });
+
+    final File mirror = repositoryManager.getMirrorDir(getRemoteRepositoryDir("merge").getAbsolutePath());
+    final String before = showRef(mirror, "refs/heads/master");
+    final RepositoryStateData state1 = myGit.getCurrentState(myRoot);
+
+    patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
+    bytes = "new-test-content".getBytes();
+    patchBuilder.createFile("new-file-to-commit", new ByteArrayInputStream(bytes));
+    try {
+      patchBuilder.commit(new CommitSettingsImpl("user", "New commit description"));
+    } catch (VcsException e) {
+      //expected
+    }
+    patchBuilder.dispose();
+
+    assertEquals(state1, myGit.getCurrentState(myRoot));
+    assertEquals(before, showRef(mirror, "refs/heads/master"));
+  }
 
   private class CommitSettingsImpl implements CommitSettings {
     private final String myUserName;

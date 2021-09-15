@@ -1,5 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.Collection;
@@ -46,7 +47,8 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     return ctx.getGitVersion().isLessThan(GIT_WITH_PROGRESS_VERSION);
   }
 
-  private static <R> R executeCommand(@NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, RefSpec... refSpecs) throws VcsException{
+  @VisibleForTesting
+  protected <R> R executeCommand(@NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, RefSpec... refSpecs) throws VcsException{
     return NamedThreadFactory.executeWithNewThreadNameFuncThrow(
       String.format("Running native git %s process for : %s", action, debugInfo),
       () -> {
@@ -133,16 +135,27 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final String ref = GitUtils.expandRef(gitRoot.getRef());
     gitFacade.updateRef().setRef(ref).setRevision(commit).setOldValue(lastCommit).call();
 
-    return executeCommand("push", LogUtil.describe(gitRoot), () -> {
-      gitFacade.push()
-               .setRemote(gitRoot.getRepositoryPushURL().toString())
-               .setRefspec(ref)
-               .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
-               .setTimeout(myConfig.getPushTimeoutSeconds())
-               .trace(myConfig.getGitTraceEnv())
-               .call();
-      return CommitResult.createSuccessResult(commit);
-    });
+    final String debugInfo = LogUtil.describe(gitRoot);
+    try {
+      return executeCommand("push", debugInfo, () -> {
+        gitFacade.push()
+                 .setRemote(gitRoot.getRepositoryPushURL().toString())
+                 .setRefspec(ref)
+                 .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
+                 .setTimeout(myConfig.getPushTimeoutSeconds())
+                 .trace(myConfig.getGitTraceEnv())
+                 .call();
+        return CommitResult.createSuccessResult(commit);
+      });
+    } catch (VcsException e) {
+      // restore local ref
+      try {
+        gitFacade.updateRef().setRef(ref).setRevision(lastCommit).setOldValue(commit).call();
+      } catch (VcsException v) {
+        Loggers.VCS.warn("Failed to restore initial revision " + lastCommit + " of " + ref + " after unssuccessful push of revision " + commit + " for " + debugInfo, v);
+      }
+      throw e;
+    }
   }
 
   @NotNull
