@@ -27,7 +27,10 @@ import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.revwalk.*;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevObject;
+import org.eclipse.jgit.revwalk.RevSort;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -101,14 +104,16 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   @Nullable
   public String getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,
-                                                         @NotNull String startRevision) throws VcsException {
-    return getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevision, null);
+                                                         @NotNull String startRevision,
+                                                         @NotNull Collection<String> stopRevisions) throws VcsException {
+    return getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevision, stopRevisions, null);
   }
 
   @Nullable
   public String getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,
                                                          @NotNull String startRevision,
+                                                         @NotNull Collection<String> stopRevisions,
                                                          @Nullable Set<String> visited) throws VcsException {
     Disposable name = NamedDaemonThreadFactory.patchThreadName("Computing the latest commit affected by checkout rules: " + rules +
                                                                " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision);
@@ -121,6 +126,11 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
           ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
 
           revWalk.markStart(getCommits(r, revWalk, Collections.singleton(startRevision)));
+          for (RevCommit c: getCommits(r, revWalk, stopRevisions)) {
+            for (RevCommit p: c.getParents()) {
+              revWalk.markUninteresting(p);
+            }
+          }
 
           Set<String> uninteresting = new HashSet<>();
           while (revWalk.next() != null) {

@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-
 import jetbrains.buildServer.TestLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -63,11 +62,13 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
     ensureFetchPerformed(support, root, "refs/heads/master", "bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf");
     String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:."),
-                                                                                       "bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf");
+                                                                                       "bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf",
+                                                                                            Collections.emptySet());
     then(rev).isEqualTo("bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf");
 
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("-:."),
-                                                                                     "bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf");
+                                                                                     "bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf",
+                                                                                     Collections.emptySet());
     then(rev).isNull();
   }
 
@@ -83,12 +84,26 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
     ensureFetchPerformed(support, root, "refs/heads/br1", "d5a9a3c51fd53b1aec5e3746f521dc78355d7c78");
     String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
-                                                                                            "d5a9a3c51fd53b1aec5e3746f521dc78355d7c78");
+                                                                                            "d5a9a3c51fd53b1aec5e3746f521dc78355d7c78",
+                                                                                            Collections.emptySet());
     then(rev).isEqualTo("a4bc5909156143a5590adadb2c20eaf71f2a3f8f");
 
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test"),
-                                                                                     "bb6ab65d23fa0ffbaa61d44c8241f127cf0f323f");
+                                                                                     "bb6ab65d23fa0ffbaa61d44c8241f127cf0f323f",
+                                                                                     Collections.emptySet());
     then(rev).isEqualTo("b265fd1608fe17f912a031312e1efc758c4e8a35");
+
+    rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
+                                                                                     "b265fd1608fe17f912a031312e1efc758c4e8a35",
+                                                                                     Collections.singleton(
+                                                                                       "d5a9a3c51fd53b1aec5e3746f521dc78355d7c78"));
+    then(rev).isNull();
+
+    rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
+                                                                                     "b265fd1608fe17f912a031312e1efc758c4e8a35",
+                                                                                     Collections.singleton(
+                                                                                       "a4bc5909156143a5590adadb2c20eaf71f2a3f8f"));
+    then(rev).isEqualTo("a4bc5909156143a5590adadb2c20eaf71f2a3f8f");
   }
 
   public void branch_merged_to_master() throws IOException, VcsException {
@@ -97,11 +112,13 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
     ensureFetchPerformed(support, root, "refs/heads/master", "b304522994197be5f336d58cc34edc11cbda095e");
     String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
-                                                                                            "b304522994197be5f336d58cc34edc11cbda095e");
+                                                                                            "b304522994197be5f336d58cc34edc11cbda095e",
+                                                                                            Collections.emptySet());
     then(rev).isEqualTo("bb6ab65d23fa0ffbaa61d44c8241f127cf0f323f");
 
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test"),
-                                                                                     "b304522994197be5f336d58cc34edc11cbda095e");
+                                                                                     "b304522994197be5f336d58cc34edc11cbda095e",
+                                                                                     Collections.emptySet());
     then(rev).isEqualTo("b265fd1608fe17f912a031312e1efc758c4e8a35");
   }
 
@@ -111,7 +128,8 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
     ensureFetchPerformed(support, root, "refs/heads/br2", "9c191865e2f2b05727e067aa4f918f3ed54f1f1a");
     String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
-                                                                                            "9c191865e2f2b05727e067aa4f918f3ed54f1f1a");
+                                                                                            "9c191865e2f2b05727e067aa4f918f3ed54f1f1a",
+                                                                                            Collections.emptySet());
     then(rev).isEqualTo("338563d3115318d610ad54839cab287e94b18925");
   }
 
@@ -121,11 +139,13 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
     ensureFetchPerformed(support, root, "refs/heads/master", "0ce2e3b06b628633f7b8f73ce634ece1cfe25534");
     String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test"),
-                                                                                            "0ce2e3b06b628633f7b8f73ce634ece1cfe25534");
+                                                                                            "0ce2e3b06b628633f7b8f73ce634ece1cfe25534",
+                                                                                            Collections.emptySet());
     then(rev).isEqualTo("a37f9e92344bd037787a98b1f7c8f80ade6d5b68");
 
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test"),
-                                                                                            "a37f9e92344bd037787a98b1f7c8f80ade6d5b68");
+                                                                                            "a37f9e92344bd037787a98b1f7c8f80ade6d5b68",
+                                                                                     Collections.emptySet());
     then(rev).isEqualTo("a37f9e92344bd037787a98b1f7c8f80ade6d5b68");
   }
 
@@ -135,7 +155,8 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
     ensureFetchPerformed(support, root, "refs/heads/br4", "ce92302a768ce0763e83aebf8c0e16e102c8d06b");
     String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
-                                                                                            "ce92302a768ce0763e83aebf8c0e16e102c8d06b");
+                                                                                            "ce92302a768ce0763e83aebf8c0e16e102c8d06b",
+                                                                                            Collections.emptySet());
     then(rev).isEqualTo("d036d012385a762568a474b57337b9cf398b96e0");
   }
 
@@ -147,6 +168,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     Set<String> visited = new HashSet<>();
     String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test/subDir"),
                                                                                             "6ff32b16fe485e7a0a1e209bf10987e1ad46292e",
+                                                                                            Collections.emptySet(),
                                                                                             visited);
     then(rev).isEqualTo("be6e6b68e84b5aec8a022a8b2d740ed39a7c63b9");
     then(visited).containsOnly("6ff32b16fe485e7a0a1e209bf10987e1ad46292e",
@@ -158,6 +180,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     visited.clear();
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test/TestFile4.java"),
                                                                                      "6ff32b16fe485e7a0a1e209bf10987e1ad46292e",
+                                                                                     Collections.emptySet(),
                                                                                      visited);
     then(rev).isEqualTo("40224a053e16145562d1befa3d0a127c54f5dbff");
     then(visited).containsOnly("6ff32b16fe485e7a0a1e209bf10987e1ad46292e",
