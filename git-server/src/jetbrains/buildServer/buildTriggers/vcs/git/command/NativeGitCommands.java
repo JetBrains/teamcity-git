@@ -1,6 +1,5 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.Collection;
@@ -47,7 +46,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     return ctx.getGitVersion().isLessThan(GIT_WITH_PROGRESS_VERSION);
   }
 
-  @VisibleForTesting
+  // Visible for testing
   protected <R> R executeCommand(@NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, RefSpec... refSpecs) throws VcsException{
     return NamedThreadFactory.executeWithNewThreadNameFuncThrow(
       String.format("Running native git %s process for : %s", action, debugInfo),
