@@ -144,6 +144,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                  .setTimeout(myConfig.getPushTimeoutSeconds())
                  .trace(myConfig.getGitTraceEnv())
                  .call();
+        Loggers.VCS.info("Change '" + settings.getDescription() + "' was successfully committed");
         return CommitResult.createSuccessResult(commit);
       });
     } catch (VcsException e) {
