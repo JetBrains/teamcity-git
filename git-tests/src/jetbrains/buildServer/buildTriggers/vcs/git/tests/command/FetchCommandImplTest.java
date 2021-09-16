@@ -139,6 +139,9 @@ public class FetchCommandImplTest extends BaseTestCase {
   }
 
   public void fetch_multiple_refspecs() throws Exception {
+    final GitVersion version = new AgentGitFacadeImpl(getGitPath()).version().call();
+    if (!GitVersion.fetchSupportsStdin(version)) throw new SkipException("Git version is too old to run this test");
+
     final String gitPath = getGitPath();
     final File remote = GitTestUtil.dataFile("fetch_multiple_refspecs");
     new File(remote, "refs" + File.separator + "heads").mkdirs();
@@ -146,7 +149,6 @@ public class FetchCommandImplTest extends BaseTestCase {
     final File work = createTempDir();
     runCommand(false, gitPath, work, "init");
 
-    final GitVersion version = new AgentGitFacadeImpl(getGitPath()).version().call();
     final GitCommandLine cmd = new GitCommandLine(new StubContext("git", version), getFakeGen());
     cmd.setExePath(gitPath);
     cmd.setWorkingDirectory(work);
