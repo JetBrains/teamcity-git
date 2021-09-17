@@ -49,6 +49,7 @@ import org.apache.http.HttpEntity;
 import org.apache.http.client.HttpClient;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Layout;
+import org.bouncycastle.crypto.CipherParameters;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.transport.JschConfigSessionFactory;
 import org.eclipse.jgit.transport.http.apache.HttpClientConnectionFactory;
@@ -258,6 +259,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
       Logger.class,
       GitVcsRoot.class,
       JSch.class,
+      CipherParameters.class,
       JZlib.class,
       Decoder.class,
       TObjectHashingStrategy.class,

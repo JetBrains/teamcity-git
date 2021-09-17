@@ -2,11 +2,14 @@
   <library name="jsch">
     <CLASSES>
       <root url="jar://$PROJECT_DIR$/lib/common/jzlib-1.1.3.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/common/jsch-0.1.64-SNAPSHOT.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/bcprov-jdk15on-1.69.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/bcutil-jdk15on-1.69.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/jsch-0.1.67.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
       <root url="jar://$PROJECT_DIR$/lib/common/src/jzlib-1.1.3-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/src/jsch-0.1.67-sources.jar!/" />
     </SOURCES>
   </library>
 </component>
