@@ -189,6 +189,21 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                "40224a053e16145562d1befa3d0a127c54f5dbff");
   }
 
+  @Test(enabled = false)
+  public void tree_does_not_have_difference_with_parents() throws VcsException, IOException {
+    GitVcsSupport support = git();
+    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+
+    ensureFetchPerformed(support, root, "refs/heads/master", "6399724fac6ec9c62e8795fc037ad385e873911f");
+    Set<String> visited = new HashSet<>();
+
+    String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
+                                                                                            "6399724fac6ec9c62e8795fc037ad385e873911f",
+                                                                                            Collections.emptySet(),
+                                                                                            visited);
+    then(rev).isEqualTo("6394695f179d87f7f5fc712e12dfac0ed0d98652");
+  }
+
   @NotNull
   private GitVcsSupport git() {
     return gitSupport().withPluginConfig(myConfig).build();
