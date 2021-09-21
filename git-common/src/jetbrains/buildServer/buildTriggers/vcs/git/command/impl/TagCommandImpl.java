@@ -14,7 +14,7 @@ public class TagCommandImpl extends BaseCommandImpl implements TagCommand {
   private boolean myAnnotate;
   private String myTaggerName;
   private String myTaggerEmail;
-  private String myMessage;
+  private String myMessage = "";
 
   public TagCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -50,11 +50,23 @@ public class TagCommandImpl extends BaseCommandImpl implements TagCommand {
 
   @NotNull
   @Override
-  public TagCommand annotate(@NotNull String name, @NotNull String email, @NotNull String message) {
-    myAnnotate = true;
+  public TagCommand annotate(boolean annotate) {
+    myAnnotate = annotate;
+    return this;
+  }
+
+  @NotNull
+  @Override
+  public TagCommand setTagger(@NotNull String name, @NotNull String email) {
     myTaggerName = name;
     myTaggerEmail= email;
-    myMessage = message;
+    return this;
+  }
+
+  @NotNull
+  @Override
+  public TagCommand setMessage(@NotNull String msg) {
+    myMessage = msg;
     return this;
   }
 
@@ -70,8 +82,6 @@ public class TagCommandImpl extends BaseCommandImpl implements TagCommand {
       cmd.addParameters("-a", "-m", myMessage);
       if (StringUtil.isNotEmpty(myTaggerName)) {
         cmd.addEnvParam("GIT_COMMITTER_NAME", myTaggerName);
-      }
-      if (StringUtil.isNotEmpty(myTaggerEmail)) {
         cmd.addEnvParam("GIT_COMMITTER_EMAIL", myTaggerEmail);
       }
     }

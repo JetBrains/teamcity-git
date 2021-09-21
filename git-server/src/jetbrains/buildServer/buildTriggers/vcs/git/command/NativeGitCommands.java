@@ -171,8 +171,8 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final GitVcsRoot gitRoot = context.getGitRoot();
 
     final PersonIdent tagger = PersonIdentFactory.getTagger(gitRoot, db);
-    gitFacade.tag().setName(tag).setCommit(commit).force(true)
-             .annotate(tagger.getName(), tagger.getEmailAddress(), "automatically created by TeamCity VCS labeling build feature").call();
+    gitFacade.tag().setName(tag).setCommit(commit).force(true).annotate(true)
+             .setTagger(tagger.getName(), tagger.getEmailAddress()).setMessage("automatically created by TeamCity VCS labeling build feature").call();
 
     final String debugInfo = LogUtil.describe(gitRoot);
     try {

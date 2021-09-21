@@ -18,7 +18,13 @@ public interface TagCommand extends BaseCommand {
   TagCommand delete(boolean delete);
 
   @NotNull
-  TagCommand annotate(@NotNull String name, @NotNull String email, @NotNull String message);
+  TagCommand annotate(boolean annotate);
+
+  @NotNull
+  TagCommand setTagger(@NotNull String name, @NotNull String email);
+
+  @NotNull
+  TagCommand setMessage(@NotNull String msg);
 
   void call() throws VcsException;
 }
