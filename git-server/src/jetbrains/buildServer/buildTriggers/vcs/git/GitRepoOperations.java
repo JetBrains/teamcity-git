@@ -14,6 +14,9 @@ public interface GitRepoOperations {
   @NotNull
   PushCommand pushCommand(@NotNull String repoUrl);
 
+  @NotNull
+  TagCommand tagCommand(@NotNull GitVcsSupport vcsSupport, @NotNull String repoUrl);
+
   @Nullable
   GitExec gitExec();
 

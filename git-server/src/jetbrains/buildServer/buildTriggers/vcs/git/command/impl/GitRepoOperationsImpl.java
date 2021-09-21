@@ -70,6 +70,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     return false;
   }
 
+  @Override
   public boolean isNativeGitOperationsEnabled() {
     return !TeamCityProperties.getPropertiesWithPrefix(GIT_NATIVE_OPERATIONS_ENABLED).isEmpty();
   }
@@ -209,5 +210,14 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     } catch (Exception e) {
       throw new VcsException("Error while pushing a commit, root " + gitRoot + ", revision " + commit + ", destination " + GitUtils.expandRef(gitRoot.getRef()), e);
     }
+  }
+
+  @NotNull
+  @Override
+  public TagCommand tagCommand(@NotNull GitVcsSupport vcsSupport, @NotNull String repoUrl) {
+    if (isNativeGitOperationsEnabledAndSupported(repoUrl)) {
+      return new NativeGitCommands(myConfig, this::detectGit, mySshKeyManager);
+    }
+    return new GitLabelingSupport(vcsSupport, myTransportFactory, myConfig);
   }
 }

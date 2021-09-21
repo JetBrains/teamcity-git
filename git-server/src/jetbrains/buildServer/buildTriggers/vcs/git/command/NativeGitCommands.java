@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.LsRemoteCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.PushCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.TagCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
 import jetbrains.buildServer.log.Loggers;
@@ -19,13 +20,14 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CommitResult;
 import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
-public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand {
+public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand, TagCommand {
 
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
@@ -153,6 +155,44 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
         gitFacade.updateRef().setRef(ref).setRevision(lastCommit).setOldValue(commit).call();
       } catch (VcsException v) {
         Loggers.VCS.warn("Failed to restore initial revision " + lastCommit + " of " + ref + " after unssuccessful push of revision " + commit + " for " + debugInfo, v);
+      }
+      throw e;
+    }
+  }
+
+  @Override
+  @NotNull
+  public String tag(@NotNull OperationContext context, @NotNull String tag, @NotNull String commit) throws VcsException {
+    final Context ctx = new ContextImpl(myConfig, myGitDetector.detectGit());
+    final Repository db = context.getRepository();
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
+    gitFacade.setSshKeyManager(mySshKeyManager);
+
+    final GitVcsRoot gitRoot = context.getGitRoot();
+
+    final PersonIdent tagger = PersonIdentFactory.getTagger(gitRoot, db);
+    gitFacade.tag().setName(tag).setCommit(commit).force(true)
+             .annotate(tagger.getName(), tagger.getEmailAddress(), "automatically created by TeamCity VCS labeling build feature").call();
+
+    final String debugInfo = LogUtil.describe(gitRoot);
+    try {
+      return executeCommand("push", debugInfo, () -> {
+        gitFacade.push()
+                 .setRemote(gitRoot.getRepositoryPushURL().toString())
+                 .setRefspec(tag)
+                 .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
+                 .setTimeout(myConfig.getPushTimeoutSeconds())
+                 .trace(myConfig.getGitTraceEnv())
+                 .call();
+        Loggers.VCS.info("Tag '" + tag + "' was successfully pushed for " + debugInfo);
+        return tag;
+      });
+    } catch (VcsException e) {
+      // remove local tag
+      try {
+        gitFacade.tag().delete(true).setName(tag).call();
+      } catch (VcsException v) {
+        Loggers.VCS.warn("Failed to delete local tag " + tag + " of " + commit + " after unssuccessful push for " + debugInfo, v);
       }
       throw e;
     }

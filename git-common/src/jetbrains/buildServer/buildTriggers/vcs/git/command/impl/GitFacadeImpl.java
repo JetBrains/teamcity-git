@@ -64,6 +64,12 @@ public class GitFacadeImpl implements GitFacade {
   }
 
   @NotNull
+  @Override
+  public TagCommand tag() {
+    return new TagCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   protected GitCommandLine createCommandLine() {
     final GitCommandLine cmd = makeCommandLine();
     cmd.setExePath(myCtx.getGitExec().getPath());

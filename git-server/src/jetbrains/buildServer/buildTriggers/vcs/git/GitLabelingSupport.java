@@ -17,7 +17,10 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.vcs.*;
+import java.io.IOException;
+import java.util.*;
+import jetbrains.buildServer.vcs.RepositoryStateData;
+import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.internal.storage.pack.PackWriter;
 import org.eclipse.jgit.lib.*;
@@ -29,82 +32,68 @@ import org.eclipse.jgit.transport.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
-import java.util.*;
-
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static java.util.Arrays.asList;
 
 /**
 * @author dmitry.neverov
 */
-public class GitLabelingSupport implements LabelingSupport {
+public class GitLabelingSupport implements TagCommand {
 
   private final static Logger LOG = Logger.getInstance(GitLabelingSupport.class.getName());
 
   private final GitVcsSupport myVcs;
   private final CommitLoader myCommitLoader;
-  private final RepositoryManager myRepositoryManager;
   private final TransportFactory myTransportFactory;
   private final ServerPluginConfig myConfig;
 
   public GitLabelingSupport(@NotNull GitVcsSupport vcs,
-                            @NotNull CommitLoader commitLoader,
-                            @NotNull RepositoryManager repositoryManager,
                             @NotNull TransportFactory transportFactory,
                             @NotNull ServerPluginConfig config) {
     myVcs = vcs;
-    myCommitLoader = commitLoader;
-    myRepositoryManager = repositoryManager;
+    myCommitLoader = vcs.getCommitLoader();
     myTransportFactory = transportFactory;
     myConfig = config;
   }
 
+  @Override
   @NotNull
-  public String label(@NotNull String label,
-                      @NotNull String version,
-                      @NotNull VcsRoot root,
-                      @NotNull CheckoutRules checkoutRules) throws VcsException {
-    OperationContext context = myVcs.createContext(root, "labeling");
+  public String tag(@NotNull OperationContext context, @NotNull String label, @NotNull String version) throws VcsException {
     GitVcsRoot gitRoot = context.getGitRoot();
-    return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-      RevisionsInfo revisionsInfo = new RevisionsInfo();
-      if (myConfig.useTagPackHeuristics()) {
-        LOG.debug("Update repository before labeling " + gitRoot.debugInfo());
-        RepositoryStateData currentState = myVcs.getCurrentState(gitRoot);
-        if (!myConfig.analyzeTagsInPackHeuristics())
-          currentState = excludeTags(currentState);
-        try {
-          myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, currentState, false);
-        } catch (Exception e) {
-          LOG.debug("Error while updating repository " + gitRoot.debugInfo(), e);
-        }
-        revisionsInfo = new RevisionsInfo(currentState);
-      }
+    RevisionsInfo revisionsInfo = new RevisionsInfo();
+    if (myConfig.useTagPackHeuristics()) {
+      LOG.debug("Update repository before labeling " + gitRoot.debugInfo());
+      RepositoryStateData currentState = myVcs.getCurrentState(gitRoot);
+      if (!myConfig.analyzeTagsInPackHeuristics())
+        currentState = excludeTags(currentState);
       try {
-        long start = System.currentTimeMillis();
-        Repository r = context.getRepository();
-        String commitSHA = GitUtils.versionRevision(version);
-        RevCommit commit = myCommitLoader.loadCommit(context, gitRoot, commitSHA);
-        Git git = new Git(r);
-        Ref tagRef = git.tag().setTagger(PersonIdentFactory.getTagger(gitRoot, r))
-          .setName(label)
-          .setObjectId(commit)
-          .setForceUpdate(true)
-          .call();
-        if (tagRef.getObjectId() == null || resolve(r, tagRef) == null) {
-          LOG.warn("Tag's " + tagRef.getName() + " objectId " + (tagRef.getObjectId() != null ? tagRef.getObjectId().name() + " " : "") + "cannot be resolved");
-        } else if (LOG.isDebugEnabled()) {
-          LOG.debug("Tag created  " + label + "=" + version + " for " + gitRoot.debugInfo() +
-                    " in " + (System.currentTimeMillis() - start) + "ms");
-        }
-        return push(label, version, gitRoot, r, tagRef, revisionsInfo);
+        myVcs.getCollectChangesPolicy().ensureRepositoryStateLoadedFor(context, currentState, false);
       } catch (Exception e) {
-        throw context.wrapException(e);
-      } finally {
-        context.close();
+        LOG.debug("Error while updating repository " + gitRoot.debugInfo(), e);
       }
-    });
+      revisionsInfo = new RevisionsInfo(currentState);
+    }
+    try {
+      long start = System.currentTimeMillis();
+      Repository r = context.getRepository();
+      String commitSHA = GitUtils.versionRevision(version);
+      RevCommit commit = myCommitLoader.loadCommit(context, gitRoot, commitSHA);
+      Git git = new Git(r);
+      Ref tagRef = git.tag().setTagger(PersonIdentFactory.getTagger(gitRoot, r))
+        .setName(label)
+        .setObjectId(commit)
+        .setForceUpdate(true).setMessage("")
+        .call();
+      if (tagRef.getObjectId() == null || resolve(r, tagRef) == null) {
+        LOG.warn("Tag's " + tagRef.getName() + " objectId " + (tagRef.getObjectId() != null ? tagRef.getObjectId().name() + " " : "") + "cannot be resolved");
+      } else if (LOG.isDebugEnabled()) {
+        LOG.debug("Tag created  " + label + "=" + version + " for " + gitRoot.debugInfo() +
+                  " in " + (System.currentTimeMillis() - start) + "ms");
+      }
+      return push(label, version, gitRoot, r, tagRef, revisionsInfo);
+    } catch (Exception e) {
+      throw context.wrapException(e);
+    }
   }
 
   @NotNull

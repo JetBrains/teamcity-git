@@ -21,4 +21,7 @@ public interface GitFacade {
 
   @NotNull
   UpdateRefCommand updateRef();
+
+  @NotNull
+  TagCommand tag();
 }
