@@ -17,6 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.dircache.DirCacheBuilder;
@@ -28,14 +31,8 @@ import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.transport.RefSpec;
-import org.eclipse.jgit.transport.RemoteRefUpdate;
-import org.eclipse.jgit.transport.Transport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static java.util.Arrays.asList;
 
@@ -46,19 +43,19 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
   private final GitVcsSupport myVcs;
   private final CommitLoader myCommitLoader;
   private final RepositoryManager myRepositoryManager;
-  private final TransportFactory myTransportFactory;
   private final ServerPluginConfig myPluginConfig;
+  private final GitRepoOperations myRepoOperations;
 
   public GitMergeSupport(@NotNull GitVcsSupport vcs,
                          @NotNull CommitLoader commitLoader,
                          @NotNull RepositoryManager repositoryManager,
-                         @NotNull TransportFactory transportFactory,
-                         @NotNull ServerPluginConfig pluginConfig) {
+                         @NotNull ServerPluginConfig pluginConfig,
+                         @NotNull GitRepoOperations repoOperations) {
     myVcs = vcs;
     myCommitLoader = commitLoader;
     myRepositoryManager = repositoryManager;
-    myTransportFactory = transportFactory;
     myPluginConfig = pluginConfig;
+    myRepoOperations = repoOperations;
     myVcs.addExtension(this);
   }
 
@@ -166,24 +163,12 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
     ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
     lock.lock();
     try {
-      final Transport tn = myTransportFactory.createTransport(db, gitRoot.getRepositoryPushURL().get(), gitRoot.getAuthSettings(),
-                                                              myPluginConfig.getPushTimeoutSeconds());
-      try {
-        RemoteRefUpdate ru = new RemoteRefUpdate(db, null, commitId, GitUtils.expandRef(dstBranch), false, null, dstBranchLastCommit);
-        tn.push(NullProgressMonitor.INSTANCE, Collections.singletonList(ru));
-        switch (ru.getStatus()) {
-          case UP_TO_DATE:
-          case OK:
-            return MergeResult.createMergeSuccessResult();
-          default:
-            return MergeResult.createMergeError("Push failed, " + ru.getMessage());
-        }
-      } catch (IOException e) {
-        LOG.debug("Error while pushing a merge commit, root " + gitRoot + ", revision " + srcRevision + ", destination " + dstBranch, e);
-        throw e;
-      } finally {
-        tn.close();
-      }
+      myRepoOperations.pushCommand(gitRoot.getRepositoryPushURL().toString())
+                      .push(db, gitRoot, dstBranch, commitId.name(), dstBranchLastCommit.name());
+      return MergeResult.createMergeSuccessResult();
+    } catch (Exception e) {
+      LOG.debug("Error while pushing a merge commit, root " + gitRoot + ", revision " + srcRevision + ", destination " + dstBranch, e);
+      throw e;
     } finally {
       lock.unlock();
     }
