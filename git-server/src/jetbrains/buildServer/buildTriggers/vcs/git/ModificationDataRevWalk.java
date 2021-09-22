@@ -20,6 +20,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
+import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
 import jetbrains.buildServer.vcs.VcsException;
@@ -29,6 +30,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
@@ -38,71 +40,41 @@ import org.jetbrains.annotations.Nullable;
 /**
  * @author dmitry.neverov
  */
-class ModificationDataRevWalk extends RevWalk {
+class ModificationDataRevWalk extends LimitingRevWalk {
 
   private static final Logger LOG = Logger.getInstance(ModificationDataRevWalk.class.getName());
 
-  private final ServerPluginConfig myConfig;
-  private final OperationContext myContext;
-  private final GitVcsRoot myGitRoot;
-  private final Repository myRepository;
   private final int mySearchDepth;
-  private int myNextCallCount = 0;
-  private RevCommit myCurrentCommit;
-  private int myNumberOfCommitsToVisit = -1;
-
 
   ModificationDataRevWalk(@NotNull ServerPluginConfig config, @NotNull OperationContext context) throws VcsException {
-    super(context.getRepository());
-    myConfig = config;
-    myContext = context;
-    myGitRoot = context.getGitRoot();
-    myRepository = context.getRepository();
-    mySearchDepth = myConfig.getFixedSubmoduleCommitSearchDepth();
+    super(config, context);
+    mySearchDepth = config.getFixedSubmoduleCommitSearchDepth();
   }
-
-
-  @Override
-  public RevCommit next() throws IOException {
-    myCurrentCommit = super.next();
-    myNextCallCount++;
-    if (myCurrentCommit != null && shouldLimitByNumberOfCommits() && myNextCallCount > myNumberOfCommitsToVisit) {
-      myCurrentCommit = null;
-    }
-    return myCurrentCommit;
-  }
-
-
-  public void limitByNumberOfCommits(final int numberOfCommitsToVisit) {
-    myNumberOfCommitsToVisit = numberOfCommitsToVisit;
-  }
-
 
   @NotNull
   public ModificationData createModificationData() throws IOException, VcsException {
-    if (myCurrentCommit == null)
-      throw new IllegalStateException("Current commit is null");
+    checkCurrentCommit();
 
-    final String commitId = myCurrentCommit.getId().name();
-    String message = GitServerUtil.getFullMessage(myCurrentCommit);
-    final PersonIdent authorIdent = GitServerUtil.getAuthorIdent(myCurrentCommit);
+    final String commitId = getCurrentCommit().getId().name();
+    String message = GitServerUtil.getFullMessage(getCurrentCommit());
+    final PersonIdent authorIdent = GitServerUtil.getAuthorIdent(getCurrentCommit());
     final Date authorDate = authorIdent.getWhen();
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Collecting changes in commit " + commitId + ":" + message + " (" + authorDate + ") for " + myGitRoot.debugInfo());
+      LOG.debug("Collecting changes in commit " + commitId + ":" + message + " (" + authorDate + ") for " + getGitRoot().debugInfo());
     }
 
-    final String parentVersion = getFirstParentVersion(myCurrentCommit);
-    final CommitChangesBuilder builder = new CommitChangesBuilder(myCurrentCommit, commitId, parentVersion);
+    final String parentVersion = getFirstParentVersion(getCurrentCommit());
+    final CommitChangesBuilder builder = new CommitChangesBuilder(getCurrentCommit(), commitId, parentVersion);
     builder.collectCommitChanges();
     final List<VcsChange> changes = builder.getChanges();
 
-    final String author = GitServerUtil.getUser(myGitRoot, authorIdent);
+    final String author = GitServerUtil.getUser(getGitRoot(), authorIdent);
     final ModificationData result = new ModificationData(
       authorDate,
       changes,
       message,
       author,
-      myGitRoot.getOriginalRoot(),
+      getGitRoot().getOriginalRoot(),
       commitId,
       commitId);
 
@@ -110,8 +82,8 @@ class ModificationDataRevWalk extends RevWalk {
     if (!attributes.isEmpty())
       result.setAttributes(attributes);
 
-    final PersonIdent commiterIdent = GitServerUtil.getCommitterIdent(myCurrentCommit);
-    final String commiter = GitServerUtil.getUser(myGitRoot, commiterIdent);
+    final PersonIdent commiterIdent = GitServerUtil.getCommitterIdent(getCurrentCommit());
+    final String commiter = GitServerUtil.getUser(getGitRoot(), commiterIdent);
     final Date commitDate = commiterIdent.getWhen();
     if (!Objects.equals(authorDate, commitDate)) {
       result.setAttribute("teamcity.commit.time", Long.toString(commitDate.getTime()));
@@ -120,8 +92,8 @@ class ModificationDataRevWalk extends RevWalk {
       result.setAttribute("teamcity.commit.user", commiter);
     }
 
-    if (myCurrentCommit.getParentCount() > 0) {
-      for (RevCommit parent : myCurrentCommit.getParents()) {
+    if (getCurrentCommit().getParentCount() > 0) {
+      for (RevCommit parent : getCurrentCommit().getParents()) {
         parseBody(parent);
         result.addParentRevision(parent.getId().name());
       }
@@ -131,16 +103,9 @@ class ModificationDataRevWalk extends RevWalk {
     return result;
   }
 
-
-  private boolean shouldLimitByNumberOfCommits() {
-    return myNumberOfCommitsToVisit != -1;
-  }
-
-
   private boolean shouldIgnoreSubmodulesErrors() {
-    return myNextCallCount > 1;//ignore submodule errors for all commits excluding the first one
+    return getVisitedCommitsNum() > 1;//ignore submodule errors for all commits excluding the first one
   }
-
 
   @NotNull
   private String getFirstParentVersion(@NotNull final RevCommit commit) throws IOException {
@@ -160,8 +125,8 @@ class ModificationDataRevWalk extends RevWalk {
     private final String parentVersion;
     private final List<VcsChange> changes = new ArrayList<VcsChange>();
     private final Map<String, String> myAttributes = new HashMap<>();
-    private final String repositoryDebugInfo = myGitRoot.debugInfo();
-    private final IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(myGitRoot);
+    private final String repositoryDebugInfo = getGitRoot().debugInfo();
+    private final IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(getGitRoot());
     private final Map<String, String> commitsWithFix = new HashMap<String, String>();
 
     /**
@@ -191,15 +156,15 @@ class ModificationDataRevWalk extends RevWalk {
      * collect changes for the commit
      */
     public void collectCommitChanges() throws IOException, VcsException {
-      final VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myRepository, repositoryDebugInfo, myConfig.verboseTreeWalkLog());
-      try {
+      try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(getRepository(), repositoryDebugInfo, getConfig().verboseTreeWalkLog())) {
         tw.setFilter(filter);
         tw.setRecursive(true);
-        myContext.addTree(myGitRoot, tw, myRepository, commit, shouldIgnoreSubmodulesErrors());
+        getContext().addTree(getGitRoot(), tw, getRepository(), commit, shouldIgnoreSubmodulesErrors());
         RevCommit[] parents = commit.getParents();
-        boolean reportPerParentChangedFiles = myConfig.reportPerParentChangedFiles() && parents.length > 1; // report only for merge commits
+        boolean reportPerParentChangedFiles =
+          getConfig().reportPerParentChangedFiles() && parents.length > 1; // report only for merge commits
         for (RevCommit parentCommit : parents) {
-          myContext.addTree(myGitRoot, tw, myRepository, parentCommit, true);
+          getContext().addTree(getGitRoot(), tw, getRepository(), parentCommit, true);
           if (reportPerParentChangedFiles) {
             tw.reportChangedFilesForParentCommit(parentCommit);
           }
@@ -213,8 +178,6 @@ class ModificationDataRevWalk extends RevWalk {
             myAttributes.putAll(changedFilesAttributes);
           }
         }
-      } finally {
-        tw.close();
       }
     }
 
@@ -234,7 +197,7 @@ class ModificationDataRevWalk extends RevWalk {
       }
 
       private void processChange(@NotNull final String path) throws IOException, VcsException {
-        if (!myGitRoot.isCheckoutSubmodules()) {
+        if (!getGitRoot().isCheckoutSubmodules()) {
           addVcsChange();
           return;
         }
@@ -260,19 +223,16 @@ class ModificationDataRevWalk extends RevWalk {
       }
 
       private void subWalk(@NotNull final String path, @NotNull final RevCommit commitWithFix) throws IOException, VcsException {
-        final VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(myRepository, repositoryDebugInfo, myConfig.verboseTreeWalkLog());
-        try {
+        try (VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(getRepository(), repositoryDebugInfo, getConfig().verboseTreeWalkLog())) {
           tw2.setFilter(TreeFilter.ANY_DIFF);
           tw2.setRecursive(true);
-          myContext.addTree(myGitRoot, tw2, myRepository, commit, true);
-          myContext.addTree(myGitRoot, tw2, myRepository, commitWithFix, true);
+          getContext().addTree(getGitRoot(), tw2, getRepository(), commit, true);
+          getContext().addTree(getGitRoot(), tw2, getRepository(), commitWithFix, true);
           while (tw2.next()) {
             if (tw2.getPathString().startsWith(path + "/")) {
               addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
             }
           }
-        } finally {
-          tw2.close();
         }
       }
 
@@ -294,8 +254,7 @@ class ModificationDataRevWalk extends RevWalk {
       if (mySearchDepth == 0)
         return null;
 
-      final RevWalk revWalk = new RevWalk(myRepository);
-      try {
+      try (RevWalk revWalk = new RevWalk(getRepository())) {
         final RevCommit fromRev = revWalk.parseCommit(fromCommit.getId());
         revWalk.markStart(fromRev);
         revWalk.sort(RevSort.TOPO);
@@ -306,29 +265,26 @@ class ModificationDataRevWalk extends RevWalk {
         int depth = 0;
         while (result == null && depth < mySearchDepth && (prevRev = revWalk.next()) != null) {
           depth++;
-          final TreeWalk prevTreeWalk = new TreeWalk(myRepository);
-          try {
+          try (TreeWalk prevTreeWalk = new TreeWalk(getRepository())) {
             prevTreeWalk.setFilter(TreeFilter.ALL);
             prevTreeWalk.setRecursive(true);
-            myContext.addTree(myGitRoot, prevTreeWalk, myRepository, prevRev, true, false, null);
-            while(prevTreeWalk.next()) {
+            getContext().addTree(getGitRoot(), prevTreeWalk, getRepository(), prevRev, true, false, null);
+            while (prevTreeWalk.next()) {
               String path = prevTreeWalk.getPathString();
               if (path.startsWith(submodulePath + "/")) {
                 final SubmoduleAwareTreeIterator iter = prevTreeWalk.getTree(0, SubmoduleAwareTreeIterator.class);
-                final SubmoduleAwareTreeIterator parentIter = iter.getParent();
-                if (iter != null && !iter.isSubmoduleError() && parentIter != null && parentIter.isOnSubmodule()) {
-                  result = prevRev;
-                  break;
+                if (iter != null) {
+                  final SubmoduleAwareTreeIterator parentIter = iter.getParent();
+                  if (!iter.isSubmoduleError() && parentIter != null && parentIter.isOnSubmodule()) {
+                    result = prevRev;
+                    break;
+                  }
                 }
               }
             }
-          } finally {
-            prevTreeWalk.close();
           }
         }
         return result;
-      } finally {
-        revWalk.close();
       }
     }
   }
