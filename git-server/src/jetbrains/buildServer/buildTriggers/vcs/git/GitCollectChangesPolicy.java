@@ -123,7 +123,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
         try {
           Repository r = context.getRepository();
-          ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
+          CheckoutRulesRevWalk revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
 
           revWalk.markStart(getCommits(r, revWalk, Collections.singleton(startRevision)));
           for (RevCommit c: getCommits(r, revWalk, stopRevisions)) {
@@ -132,22 +132,12 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
             }
           }
 
-          Set<String> uninteresting = new HashSet<>();
-          while (revWalk.next() != null) {
-            RevCommit commit = revWalk.getCurrentCommit();
-            if (uninteresting.remove(commit.name())) { // no need to keep all uninteresting commits in memory as RevWalk only visits every commit once
-              continue;
-            }
-            if (visited != null) {
-              visited.add(commit.name());
-            }
-
-            if (revWalk.isIncludedByCheckoutRules(rules, uninteresting)) {
-              return commit.name();
-            }
+          RevCommit result = revWalk.getNextMatchedCommit();
+          if (visited != null) {
+            visited.addAll(revWalk.getVisitedRevisions());
           }
 
-          return null;
+          return result == null ? null : result.name();
         } catch (Exception e) {
           throw context.wrapException(e);
         } finally {
