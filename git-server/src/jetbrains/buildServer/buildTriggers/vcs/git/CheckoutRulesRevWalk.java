@@ -103,12 +103,10 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
           // there were mutual merges which brought changes of each parent to another parent and vice versa
           // (see case from LatestAcceptedRevisionTest.merge_commit_tree_does_not_have_difference_with_parents())
           // to solve this problem, we'll find a merge base of these parents (the nearest common ancestor) and then we'll check if there were changes
-          // in files affected by checkout rules between one parent and this merge base,
-          // if so, then we'll return the current merge commit as the one accepted by checkout rules
-          // (seems if there was a mutual merge of ancestors in all parents, then it's enough to check only one parent for presence of interesting files)
+          // in files affected by checkout rules between the current merge commit and this merge base,
+          // if there are changes, then we'll return the current merge commit as the one accepted by checkout rules
 
           if (hasInterestingCommitsSinceMergeBase(getCurrentCommit())) {
-            // interesting changes exist, then return the current merge commit as an interesting one
             return true;
           }
         }
