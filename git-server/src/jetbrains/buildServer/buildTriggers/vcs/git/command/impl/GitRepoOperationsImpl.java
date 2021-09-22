@@ -184,18 +184,19 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
 
   @NotNull
   private CommitResult pushJGit(@NotNull Repository db, @NotNull GitVcsRoot gitRoot,
-                                @NotNull String commit, @NotNull String lastCommit,
-                                @NotNull CommitSettings settings) throws VcsException {
+                                @NotNull String ref,
+                                @NotNull String commit, @NotNull String lastCommit) throws VcsException {
+
+    ref = GitUtils.expandRef(ref);
     try (Transport tn = myTransportFactory.createTransport(db, gitRoot.getRepositoryPushURL().get(), gitRoot.getAuthSettings(), myConfig.getPushTimeoutSeconds())) {
       final ObjectId commitId = ObjectId.fromString(commit);
       final ObjectId lastCommitId = ObjectId.fromString(lastCommit);
 
-      final RemoteRefUpdate ru = new RemoteRefUpdate(db, null, commitId, GitUtils.expandRef(gitRoot.getRef()), false, null, lastCommitId);
+      final RemoteRefUpdate ru = new RemoteRefUpdate(db, null, commitId, ref, false, null, lastCommitId);
       tn.push(NullProgressMonitor.INSTANCE, Collections.singletonList(ru));
       switch (ru.getStatus()) {
         case UP_TO_DATE:
         case OK:
-          Loggers.VCS.info("Change '" + settings.getDescription() + "' was successfully committed");
           return CommitResult.createSuccessResult(commitId.name());
         default: {
           StringBuilder error = new StringBuilder();
@@ -208,7 +209,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     } catch (VcsException e) {
       throw e;
     } catch (Exception e) {
-      throw new VcsException("Error while pushing a commit, root " + gitRoot + ", revision " + commit + ", destination " + GitUtils.expandRef(gitRoot.getRef()), e);
+      throw new VcsException("Error while pushing a commit, root " + gitRoot + ", revision " + commit + ", destination " + ref, e);
     }
   }
 

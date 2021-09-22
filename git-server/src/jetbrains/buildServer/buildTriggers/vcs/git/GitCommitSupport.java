@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.dircache.DirCache;
@@ -161,7 +162,10 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         ReentrantLock lock = myRepositoryManager.getWriteLock(gitRoot.getRepositoryDir());
         lock.lock();
         try {
-          return myRepoOperations.pushCommand(gitRoot.getRepositoryPushURL().toString()).push(myDb, gitRoot, commitId.name(), lastCommit.name(), commitSettings);
+          final CommitResult result =
+            myRepoOperations.pushCommand(gitRoot.getRepositoryPushURL().toString()).push(myDb, gitRoot, gitRoot.getRef(), commitId.name(), lastCommit.name());
+          Loggers.VCS.info("Change '" + commitSettings.getDescription() + "' was successfully committed");
+          return result;
         } finally {
           lock.unlock();
         }

@@ -18,7 +18,6 @@ import jetbrains.buildServer.util.FuncThrow;
 import jetbrains.buildServer.util.NamedThreadFactory;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CommitResult;
-import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
@@ -128,12 +127,11 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   @NotNull
   @Override
-  public CommitResult push(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull String commit, @NotNull String lastCommit, @NotNull CommitSettings settings) throws VcsException {
+  public CommitResult push(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull String ref, @NotNull String commit, @NotNull String lastCommit) throws VcsException {
     final Context ctx = new ContextImpl(myConfig, myGitDetector.detectGit());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
-    final String ref = GitUtils.expandRef(gitRoot.getRef());
     gitFacade.updateRef().setRef(ref).setRevision(commit).setOldValue(lastCommit).call();
 
     final String debugInfo = LogUtil.describe(gitRoot);
@@ -146,7 +144,6 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                  .setTimeout(myConfig.getPushTimeoutSeconds())
                  .trace(myConfig.getGitTraceEnv())
                  .call();
-        Loggers.VCS.info("Change '" + settings.getDescription() + "' was successfully committed");
         return CommitResult.createSuccessResult(commit);
       });
     } catch (VcsException e) {
