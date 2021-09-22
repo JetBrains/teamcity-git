@@ -189,8 +189,22 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                "40224a053e16145562d1befa3d0a127c54f5dbff");
   }
 
-  @Test(enabled = false)
-  public void tree_does_not_have_difference_with_parents() throws VcsException, IOException {
+  /**
+   * This test is for the following case:
+   * <pre>
+   *       o m3
+   *     /  \
+   * m1 o    o m2
+   *    | \/ |
+   * c1 o   o c2
+   *    |  /
+   *    o
+   * </pre>
+   * Here m1 and m2 have the same trees, so when m3 is created there is no diff between m3 & m1 and m3 & m2.
+   * So although both c1 & c2 change interesting files we won't see a diff in trees in m3 comparing to its parents and
+   * can think that nothing interesting was changed, while this is not true.
+   */
+  public void merge_commit_tree_does_not_have_difference_with_parents() throws VcsException, IOException {
     GitVcsSupport support = git();
     VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
 
@@ -201,7 +215,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                                                                             "6399724fac6ec9c62e8795fc037ad385e873911f",
                                                                                             Collections.emptySet(),
                                                                                             visited);
-    then(rev).isEqualTo("6394695f179d87f7f5fc712e12dfac0ed0d98652");
+    then(rev).isEqualTo("6394695f179d87f7f5fc712e12dfac0ed0d98652"); // m3 is 6394695f179d87f7f5fc712e12dfac0ed0d98652
   }
 
   @NotNull
