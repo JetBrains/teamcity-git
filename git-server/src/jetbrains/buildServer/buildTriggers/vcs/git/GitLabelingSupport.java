@@ -82,7 +82,7 @@ public class GitLabelingSupport implements TagCommand {
       Ref tagRef = git.tag().setTagger(PersonIdentFactory.getTagger(gitRoot, r))
         .setName(label)
         .setObjectId(commit)
-        .setForceUpdate(true).setMessage("")
+        .setForceUpdate(true)
         .call();
       if (tagRef.getObjectId() == null || resolve(r, tagRef) == null) {
         LOG.warn("Tag's " + tagRef.getName() + " objectId " + (tagRef.getObjectId() != null ? tagRef.getObjectId().name() + " " : "") + "cannot be resolved");
