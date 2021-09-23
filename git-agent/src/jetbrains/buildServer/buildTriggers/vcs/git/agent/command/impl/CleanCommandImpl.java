@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import jetbrains.buildServer.buildTriggers.vcs.git.AgentCleanFilesPolicy;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.BaseCommandImpl;
@@ -46,7 +45,7 @@ public class CleanCommandImpl extends BaseCommandImpl implements CleanCommand {
   private AgentCleanFilesPolicy myCleanPolicy = AgentCleanFilesPolicy.ALL_UNTRACKED;
   private final List<String> myExcludes = new ArrayList<String>();
 
-  public CleanCommandImpl(@NotNull AgentGitCommandLine cmd) {
+  public CleanCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
   }
 
