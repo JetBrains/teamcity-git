@@ -30,6 +30,7 @@
     <orderEntry type="module" module-name="web-openapi" />
     <orderEntry type="module" module-name="changeViewers" />
     <orderEntry type="module" module-name="server-openapi" />
+    <orderEntry type="module" module-name="usage-statistics-api" />
     <orderEntry type="module" module-name="server-model" />
     <orderEntry type="module" module-name="messages" />
     <orderEntry type="module" module-name="vcs-plugin-api" />
