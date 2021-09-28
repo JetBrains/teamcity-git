@@ -209,12 +209,23 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
 
     ensureFetchPerformed(support, root, "refs/heads/master", "6399724fac6ec9c62e8795fc037ad385e873911f");
-    Set<String> visited = new HashSet<>();
 
     String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
                                                                                             "6399724fac6ec9c62e8795fc037ad385e873911f",
                                                                                             Collections.emptySet(),
-                                                                                            visited);
+                                                                                            null);
+    then(rev).isEqualTo("6394695f179d87f7f5fc712e12dfac0ed0d98652"); // m3 is 6394695f179d87f7f5fc712e12dfac0ed0d98652
+
+    rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src/File6.java"),
+                                                                                            "6399724fac6ec9c62e8795fc037ad385e873911f",
+                                                                                            Collections.emptySet(),
+                                                                                            null);
+    then(rev).isEqualTo("6394695f179d87f7f5fc712e12dfac0ed0d98652"); // m3 is 6394695f179d87f7f5fc712e12dfac0ed0d98652
+
+    rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src/File7.java"),
+                                                                                            "6399724fac6ec9c62e8795fc037ad385e873911f",
+                                                                                            Collections.emptySet(),
+                                                                                            null);
     then(rev).isEqualTo("6394695f179d87f7f5fc712e12dfac0ed0d98652"); // m3 is 6394695f179d87f7f5fc712e12dfac0ed0d98652
   }
 

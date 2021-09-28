@@ -26,9 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * This RevWalk class accepts checkout rules and traverses commits graph until it finds a commit matched by these rules.
@@ -157,15 +155,21 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
           walk.markStart(c);
         }
 
+        List<RevCommit> mergeBases = new ArrayList<>();
         RevCommit mergeBase = walk.next();
+        while (mergeBase != null) {
+          mergeBases.add(mergeBase);
+          mergeBase = walk.next();
+        }
+
         walk.reset();
 
         walk.setRevFilter(RevFilter.ALL);
         for (RevCommit c: starts) {
           walk.markStart(c);
         }
-        if (mergeBase != null) {
-          walk.markUninteresting(mergeBase);
+        for (RevCommit mb: mergeBases) {
+          walk.markUninteresting(mb);
         }
 
         RevCommit next;
@@ -223,16 +227,20 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
       }
 
       RevCommit mergeBase = walk.next();
-      if (mergeBase == null) return false;
+      while (mergeBase != null) {
+        try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(getRepository(), getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog())) {
+          tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
+          tw.setRecursive(true);
+          getContext().addTree(getGitRoot(), tw, getRepository(), getCurrentCommit(), true, false, myCheckoutRules);
+          getContext().addTree(getGitRoot(), tw, getRepository(), parseCommit(mergeBase.getId()), true, false, myCheckoutRules);
 
-      try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(getRepository(), getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog())) {
-        tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
-        tw.setRecursive(true);
-        getContext().addTree(getGitRoot(), tw, getRepository(), getCurrentCommit(), true, false, myCheckoutRules);
-        getContext().addTree(getGitRoot(), tw, getRepository(), parseCommit(mergeBase.getId()), true, false, myCheckoutRules);
+          if (isAcceptedByCheckoutRules(myCheckoutRules, tw)) return true;
+        }
 
-        return isAcceptedByCheckoutRules(myCheckoutRules, tw);
+        mergeBase = walk.next();
       }
+
+      return false;
     } finally {
       walk.reset();
       walk.close();
