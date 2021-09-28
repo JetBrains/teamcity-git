@@ -220,13 +220,20 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                                                                             "6399724fac6ec9c62e8795fc037ad385e873911f",
                                                                                             Collections.emptySet(),
                                                                                             null);
-    then(rev).isEqualTo("6394695f179d87f7f5fc712e12dfac0ed0d98652"); // m3 is 6394695f179d87f7f5fc712e12dfac0ed0d98652
+    then(rev).isEqualTo("6394695f179d87f7f5fc712e12dfac0ed0d98652");
 
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src/File7.java"),
                                                                                             "6399724fac6ec9c62e8795fc037ad385e873911f",
                                                                                             Collections.emptySet(),
                                                                                             null);
-    then(rev).isEqualTo("6394695f179d87f7f5fc712e12dfac0ed0d98652"); // m3 is 6394695f179d87f7f5fc712e12dfac0ed0d98652
+    then(rev).isEqualTo("6394695f179d87f7f5fc712e12dfac0ed0d98652");
+
+    rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test/TestFile5.java"),
+                                                                                            "6399724fac6ec9c62e8795fc037ad385e873911f",
+                                                                                            Collections.emptySet(),
+                                                                                            null);
+    then(rev).isEqualTo("8fc8c2a8baf37a71a2cdd0c2b0cd1eedfd1649e8");
+
   }
 
   @NotNull
