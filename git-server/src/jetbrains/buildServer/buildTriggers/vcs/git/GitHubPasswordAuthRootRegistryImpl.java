@@ -121,7 +121,7 @@ public class GitHubPasswordAuthRootRegistryImpl implements GitHubPasswordAuthRoo
   public void update(@NotNull VcsRoot rootInstance) {
     final long rootId = rootInstance instanceof VcsRootInstance ? ((VcsRootInstance)rootInstance).getParentId() : rootInstance.getId();
     if (!isGitHubPasswordRoot(rootInstance)) {
-      removeVcsRoot(rootId, true);
+      removeVcsRoot(rootId, null);
       return;
     }
 
