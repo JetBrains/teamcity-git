@@ -1,6 +1,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -151,7 +152,10 @@ public class GitHubPasswordAuthRootRegistryImplTest extends BaseTestCase {
 
       @Override
       public void subscribe(@NotNull String eventName, @NotNull Consumer<Event> eventConsumer) {
+      }
 
+      @Override
+      public void subscribeOnEvents(@NotNull String eventName, @NotNull Consumer<List<Event>> eventConsumer) throws IllegalArgumentException {
       }
 
       @Override
