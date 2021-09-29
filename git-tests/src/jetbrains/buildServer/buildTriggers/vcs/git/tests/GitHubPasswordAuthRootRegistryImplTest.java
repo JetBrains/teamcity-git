@@ -124,6 +124,41 @@ public class GitHubPasswordAuthRootRegistryImplTest extends BaseTestCase {
     assertFalse(registry.containsVcsRoot(1));
     assertTrue(registry.getRegistry().isEmpty());
     BaseTestCase.assertMap(events, "gitHubPasswordAuthUsageRemove", 1L);
+
+    {
+      // add root to registry again
+      events.clear();
+      timeService.inc();
+      vcsProperties.put(Constants.PASSWORD, "12345");
+      registry.update(new VcsRootImpl(1, vcsProperties));
+
+      assertTrue(registry.containsVcsRoot(1));
+      BaseTestCase.assertMap(registry.getRegistry(), 1L, timeService.myTime);
+      BaseTestCase.assertMap(events, "gitHubPasswordAuthUsageAdd", 1L);
+    }
+
+    {
+      // TW-72780
+      events.clear();
+      timeService.inc();
+      vcsProperties.put(Constants.AUTH_METHOD, AuthenticationMethod.ANONYMOUS.name());
+      timeService.inc(350, TimeUnit.SECONDS);
+      registry.update(new VcsRootImpl(1, vcsProperties));
+      assertFalse(registry.containsVcsRoot(1));
+      assertTrue(registry.getRegistry().isEmpty());
+      BaseTestCase.assertMap(events, "gitHubPasswordAuthUsageRemove", 1L);
+    }
+
+    {
+      // TW-73295
+      events.clear();
+      timeService.inc();
+      timeService.inc(350, TimeUnit.SECONDS);
+      registry.update(new VcsRootImpl(1, vcsProperties));
+      assertFalse(registry.containsVcsRoot(1));
+      assertTrue(registry.getRegistry().isEmpty());
+      assertTrue(events.isEmpty());
+    }
   }
 
   @NotNull
