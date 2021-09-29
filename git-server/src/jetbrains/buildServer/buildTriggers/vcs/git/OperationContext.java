@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
+import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
@@ -58,19 +59,22 @@ public class OperationContext {
   private final GitProgress myProgress;
   private final ServerPluginConfig myPluginConfig;
   private final Map<String, StoredConfig> myConfigsCache = new HashMap<String, StoredConfig>(); //repository path -> its config
+  private final OAuthTokensStorage myTokensStorage;
 
   public OperationContext(@NotNull final CommitLoader commitLoader,
                           @NotNull final RepositoryManager repositoryManager,
                           @Nullable final VcsRoot root,
                           @NotNull final String operation,
                           @NotNull final GitProgress progress,
-                          @NotNull final ServerPluginConfig pluginConfig) {
+                          @NotNull final ServerPluginConfig pluginConfig,
+                          @Nullable final OAuthTokensStorage tokensStorage) {
     myCommitLoader = commitLoader;
     myRepositoryManager = repositoryManager;
     myRoot = root;
     myOperation = operation;
     myProgress = progress;
     myPluginConfig = pluginConfig;
+    myTokensStorage = tokensStorage;
   }
 
 
@@ -114,7 +118,7 @@ public class OperationContext {
   }
 
   public GitVcsRoot getGitRoot(@NotNull VcsRoot root) throws VcsException {
-    return new GitVcsRoot(myRepositoryManager, root, new URIishHelperImpl());
+    return new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), myTokensStorage);
   }
 
   @NotNull

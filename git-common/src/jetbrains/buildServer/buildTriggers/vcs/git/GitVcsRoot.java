@@ -52,7 +52,9 @@ public class GitVcsRoot {
   private File myCustomRepositoryDir;
   private final AgentCheckoutPolicy myCheckoutPolicy;
   private final boolean myIncludeContentHashes;
-  private final URIishHelper myURIishHelper;
+  protected final URIishHelper myURIishHelper;
+  protected final String myRawFetchUrl;
+  protected final String myPushUrl;
 
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root, @NotNull URIishHelper urIishHelper) throws VcsException {
     this(mirrorManager, root, root.getProperty(Constants.BRANCH_NAME), urIishHelper);
@@ -67,16 +69,16 @@ public class GitVcsRoot {
     myUsernameStyle = readUserNameStyle();
     mySubmodulePolicy = readSubmodulesPolicy();
     myAuthSettings = new AuthSettings(this, urIishHelper);
-    String rawFetchUrl = getProperty(Constants.FETCH_URL);
-    if (rawFetchUrl.contains("\n") || rawFetchUrl.contains("\r"))
-      throw new VcsException("Newline in fetch url '" + rawFetchUrl + "'");
-    myRepositoryFetchURL = myURIishHelper.createAuthURI(myAuthSettings, rawFetchUrl);
-    myRepositoryFetchURLNoFixErrors = myURIishHelper.createAuthURI(myAuthSettings, rawFetchUrl, false);
-    String pushUrl = getProperty(Constants.PUSH_URL);
-    if (pushUrl != null && (pushUrl.contains("\n") || pushUrl.contains("\r")))
-      throw new VcsException("Newline in push url '" + pushUrl + "'");
-    myRepositoryPushURL = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURL : myURIishHelper.createAuthURI(myAuthSettings, pushUrl);
-    myRepositoryPushURLNoFixErrors = StringUtil.isEmpty(pushUrl) ? myRepositoryFetchURLNoFixErrors : myURIishHelper.createAuthURI(myAuthSettings, pushUrl, false);
+    myRawFetchUrl = getProperty(Constants.FETCH_URL);
+    if (myRawFetchUrl.contains("\n") || myRawFetchUrl.contains("\r"))
+      throw new VcsException("Newline in fetch url '" + myRawFetchUrl + "'");
+    myRepositoryFetchURL = myURIishHelper.createAuthURI(myAuthSettings, myRawFetchUrl);
+    myRepositoryFetchURLNoFixErrors = myURIishHelper.createAuthURI(myAuthSettings, myRawFetchUrl, false);
+    myPushUrl = getProperty(Constants.PUSH_URL);
+    if (myPushUrl != null && (myPushUrl.contains("\n") || myPushUrl.contains("\r")))
+      throw new VcsException("Newline in push url '" + myPushUrl + "'");
+    myRepositoryPushURL = StringUtil.isEmpty(myPushUrl) ? myRepositoryFetchURL : myURIishHelper.createAuthURI(myAuthSettings, myPushUrl);
+    myRepositoryPushURLNoFixErrors = StringUtil.isEmpty(myPushUrl) ? myRepositoryFetchURLNoFixErrors : myURIishHelper.createAuthURI(myAuthSettings, myPushUrl, false);
     myUsernameForTags = getProperty(Constants.USERNAME_FOR_TAGS);
     myBranchSpec = getProperty(Constants.BRANCH_SPEC);
     myAutoCrlf = Boolean.valueOf(getProperty(Constants.SERVER_SIDE_AUTO_CRLF, "false"));
