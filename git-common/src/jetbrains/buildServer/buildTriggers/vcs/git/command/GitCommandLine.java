@@ -17,6 +17,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.CheckoutCanceledException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitProgressListener;
+import jetbrains.buildServer.log.LogUtil;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
@@ -94,10 +96,8 @@ public class GitCommandLine extends GeneralCommandLine {
         throw new VcsException(e);
       }
     }
-    if (settings.isUseNativeSsh()) {
-      if (AuthenticationMethod.TEAMCITY_SSH_KEY == authSettings.getAuthMethod() && myCtx.isUseGitSshCommand()) {
-        configureGitSshCommand(settings);
-      }
+    if (authSettings.getAuthMethod().isSsh() && settings.isUseNativeSsh() && myCtx.isUseGitSshCommand()) {
+      configureGitSshCommand(settings);
     }
     return doRunCommand(settings);
   }
@@ -120,54 +120,72 @@ public class GitCommandLine extends GeneralCommandLine {
     //The key is decrypted by us because on MacOS ssh seems to ignore the SSH_ASKPASS and
     //runs the MacOS graphical keychain helper. Disabling it via the -o "KeychainIntegration=no"
     //option results in the 'Bad configuration option: keychainintegration' error.
+
+    final boolean isUploadedKeyAuth = AuthenticationMethod.TEAMCITY_SSH_KEY == authSettings.getAuthMethod();
+    if (isUploadedKeyAuth || authSettings.isIgnoreKnownHosts()) {
+      File privateKey = null;
+      try {
+        StringBuilder gitSshCommand = new StringBuilder("ssh");
+        if (isUploadedKeyAuth) {
+          privateKey = getPrivateKey(authSettings);
+          gitSshCommand.append(" -i \"").append(privateKey.getAbsolutePath().replace('\\', '/')).append("\"");
+        }
+        if (authSettings.isIgnoreKnownHosts()) {
+          gitSshCommand.append(" -o \"StrictHostKeyChecking=no\"");
+        }
+        if (myCtx.isDebugSsh() || settings.isTrace()) {
+          gitSshCommand.append(" -vvv");
+        }
+        addEnvParam("GIT_SSH_COMMAND", gitSshCommand.toString());
+      } catch (Exception e) {
+        if (privateKey != null)
+          FileUtil.delete(privateKey);
+        if (e instanceof VcsException)
+          throw (VcsException) e;
+        throw new VcsException(e);
+      }
+
+    }
+  }
+
+  @NotNull
+  private File getPrivateKey(@NotNull AuthSettings authSettings) throws VcsException {
     File privateKey = null;
     try {
-      String keyId = authSettings.getTeamCitySshKeyId();
-      if (keyId != null && mySshKeyManager != null) {
-        VcsRoot root = authSettings.getRoot();
-        if (root != null) {
-          TeamCitySshKey key = mySshKeyManager.getKey(root);
-          if (key != null) {
-            privateKey = FileUtil.createTempFile(myCtx.getTempDir(), "key", "", true);
-            final File finalPrivateKey = privateKey;
-            addPostAction(new Runnable() {
-              @Override
-              public void run() {
-                FileUtil.delete(finalPrivateKey);
-              }
-            });
-            FileUtil.writeFileAndReportErrors(privateKey, new String(key.getPrivateKey()));
-            final KeyPair keyPair = KeyPair.load(new JSch(), privateKey.getAbsolutePath());
-            OutputStream out = null;
-            try {
-              out = new BufferedOutputStream(new FileOutputStream(privateKey));
-              if (key.isEncrypted() && !keyPair.decrypt(authSettings.getPassphrase())) {
-                throw new VcsException("Wrong SSH key passphrase");
-              }
-              keyPair.writePrivateKey(out, null);
-            } finally {
-              FileUtil.close(out);
-            }
-            //set permissions to 600, without that ssh client rejects the key on *nix
-            privateKey.setReadable(false, false);
-            privateKey.setReadable(true, true);
-            privateKey.setWritable(false, false);
-            privateKey.setWritable(true, true);
-
-            String privateKeyPath = privateKey.getAbsolutePath().replace('\\', '/');
-
-            StringBuilder gitSshCommand = new StringBuilder();
-            gitSshCommand.append("ssh -i \"").append(privateKeyPath).append("\"");
-            if (authSettings.isIgnoreKnownHosts()) {
-              gitSshCommand.append(" -o \"StrictHostKeyChecking=no\"");
-            }
-            if (myCtx.isDebugSsh() || settings.isTrace()) {
-              gitSshCommand.append(" -vvv");
-            }
-            addEnvParam("GIT_SSH_COMMAND", gitSshCommand.toString());
-          }
-        }
+      final String keyId = authSettings.getTeamCitySshKeyId();
+      final VcsRoot root = authSettings.getRoot();
+      if (keyId == null ||  root == null || mySshKeyManager == null) {
+        final String msg = "Failed to locate uploaded SSH key " + keyId + " for vcs root %s " + (mySshKeyManager == null ? ": null ssh key manager" : "");
+        Loggers.VCS.warn(String.format(msg,  LogUtil.describe(root)));
+        throw new VcsException(String.format(msg, root == null ? null : root.getName()));
       }
+
+      final TeamCitySshKey key = mySshKeyManager.getKey(root);
+      if (key == null) {
+        throw new VcsException("Failed to locate uploaded SSH key " + keyId + " for vcs root " + root.getName());
+      }
+      privateKey = FileUtil.createTempFile(myCtx.getTempDir(), "key", "", true);
+      final File finalPrivateKey = privateKey;
+      addPostAction(() -> FileUtil.delete(finalPrivateKey));
+      FileUtil.writeFileAndReportErrors(privateKey, new String(key.getPrivateKey()));
+      final KeyPair keyPair = KeyPair.load(new JSch(), privateKey.getAbsolutePath());
+      OutputStream out = null;
+      try {
+        out = new BufferedOutputStream(new FileOutputStream(privateKey));
+        if (key.isEncrypted() && !keyPair.decrypt(authSettings.getPassphrase())) {
+          throw new VcsException("Wrong SSH key passphrase");
+        }
+        keyPair.writePrivateKey(out, null);
+      } finally {
+        FileUtil.close(out);
+      }
+      //set permissions to 600, without that ssh client rejects the key on *nix
+      privateKey.setReadable(false, false);
+      privateKey.setReadable(true, true);
+      privateKey.setWritable(false, false);
+      privateKey.setWritable(true, true);
+
+      return privateKey;
     } catch (Exception e) {
       if (privateKey != null)
         FileUtil.delete(privateKey);

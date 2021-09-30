@@ -23,32 +23,38 @@ public enum AuthenticationMethod {
   /**
    * Anonymous access (or password is a part of URL)
    */
-  ANONYMOUS("Anonymous"),
+  ANONYMOUS("Anonymous", false),
   /**
    * The default SSH private key
    */
-  PRIVATE_KEY_DEFAULT("Default Private Key"),
+  PRIVATE_KEY_DEFAULT("Default Private Key", true),
   /**
    * The private key is specified in the file
    */
-  PRIVATE_KEY_FILE("Private Key"),
+  PRIVATE_KEY_FILE("Private Key", true),
   /**
    * The password is used
    */
-  PASSWORD("Password"),
+  PASSWORD("Password", false),
 
-  TEAMCITY_SSH_KEY("TeamCity SSH Key");
+  TEAMCITY_SSH_KEY("TeamCity SSH Key", true);
 
   /**
    * Name of auth method for user, e.g. in error messages
    */
   private final String myUIName;
+  private final boolean myIsSsh;
 
-  AuthenticationMethod(String uiName) {
+  AuthenticationMethod(String uiName, final boolean isSsh) {
     myUIName = uiName;
+    myIsSsh = isSsh;
   }
 
   public String uiName() {
     return myUIName;
+  }
+
+  public boolean isSsh() {
+    return myIsSsh;
   }
 }
