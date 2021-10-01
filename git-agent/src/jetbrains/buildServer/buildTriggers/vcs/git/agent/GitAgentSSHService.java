@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jzlib.JZlib;
@@ -25,6 +26,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import jetbrains.buildServer.vcs.VcsException;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -91,6 +93,8 @@ public class GitAgentSSHService extends GitSSHService {
         generator.addClasses(NotNull.class);
         generator.addClasses(GitSSHHandler.class);
         generator.addClasses(VcsException.class);
+        generator.addClasses(JSchConfigInitializer.class);
+        generator.addClasses(Pair.class); // JSchConfigInitializer depends on it
         myScript = generator.generate();
         myScriptPath = myScript.getCanonicalPath();
         if (SystemInfo.isWindows && myScriptPath.contains(" ")) {

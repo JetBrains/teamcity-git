@@ -1,9 +1,10 @@
 <component name="libraryTable">
   <library name="jgit-server">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/lib/server/bcpkix-jdk15on-1.65.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/server/bcpg-jdk15on-1.65.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/server/bcprov-jdk15on-1.65.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/bcutil-jdk15on-1.69.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/bcprov-jdk15on-1.69.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/server/bcpg-jdk15on-1.69.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/server/bcpkix-jdk15on-1.69.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

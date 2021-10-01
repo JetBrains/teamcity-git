@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.googlecode.javaewah.EWAHCompressedBitmap;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.*;
 import com.jcraft.jzlib.JZlib;
@@ -38,6 +39,7 @@ import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.LowLevelPatchBuilder;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
@@ -273,7 +275,9 @@ public class PluginConfigImpl implements ServerPluginConfig {
       org.slf4j.Logger.class,
       org.slf4j.impl.StaticLoggerBinder.class,
       EWAHCompressedBitmap.class,
-      JschConfigSessionFactory.class
+      JschConfigSessionFactory.class,
+      JSchConfigInitializer.class,
+      Pair.class
     ));
     Collections.addAll(result, GitVcsSupport.class.getInterfaces());
     return result;

@@ -18,11 +18,14 @@ package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
 import java.io.*;
 import java.util.Map;
+
+import com.jcraft.jsch.JSch;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleFetchException;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
@@ -40,6 +43,7 @@ public class GitPatchProcess {
     GitServerUtil.configureStreamFileThreshold(Integer.MAX_VALUE);
     GitServerUtil.configureExternalProcessLogger(settings.isDebugEnabled());
     GitServerUtil.setupMemoryMappedIndexReading();
+    JSchConfigInitializer.initJSchConfig(JSch.class);
 
     PluginConfigImpl config = new PluginConfigImpl(new ConstantCachePaths(settings.getGitCachesDir()));
     RepositoryManager repositoryManager = new RepositoryManagerImpl(
