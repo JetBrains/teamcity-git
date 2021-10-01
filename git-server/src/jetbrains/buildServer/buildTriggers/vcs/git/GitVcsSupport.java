@@ -207,7 +207,8 @@ public class GitVcsSupport extends ServerVcsSupport
       final File trustedCertificatesDir = myGitTrustStoreProvider.getTrustedCertificatesDir();
       GitPatchBuilderDispatcher gitPatchBuilder = new GitPatchBuilderDispatcher(myConfig, mySshKeyManager, context, builder, fromRevision,
                                                                                 toRevision, checkoutRules,
-                                                                                trustedCertificatesDir == null ? null : trustedCertificatesDir.getAbsolutePath());
+                                                                                trustedCertificatesDir == null ? null : trustedCertificatesDir.getAbsolutePath(),
+                                                                                myConfig.isSeparateProcessForPatch() && !myGitRepoOperations.isNativeGitOperationsEnabled(gitRoot.getRepositoryFetchURL().toString()));
       try {
         myCommitLoader.loadCommit(context, gitRoot, toRevision);
         gitPatchBuilder.buildPatch();

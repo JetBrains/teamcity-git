@@ -55,6 +55,7 @@ public final class GitPatchBuilderDispatcher {
   private final String myToRevision;
   private final CheckoutRules myRules;
   private final String myTrustedCertificatesDir;
+  private final boolean myUseSeparateProcessForPatch;
 
   public GitPatchBuilderDispatcher(@NotNull ServerPluginConfig config,
                                    @NotNull VcsRootSshKeyManager sshKeyManager,
@@ -63,7 +64,8 @@ public final class GitPatchBuilderDispatcher {
                                    @Nullable String fromRevision,
                                    @NotNull String toRevision,
                                    @NotNull CheckoutRules rules,
-                                   @Nullable String trustedCertificatesDir) throws VcsException {
+                                   @Nullable String trustedCertificatesDir,
+                                   boolean useSeparateProcessForPatch) throws VcsException {
     myConfig = config;
     mySshKeyManager = sshKeyManager;
     myContext = context;
@@ -73,10 +75,11 @@ public final class GitPatchBuilderDispatcher {
     myToRevision = toRevision;
     myRules = rules;
     myTrustedCertificatesDir = trustedCertificatesDir;
+    myUseSeparateProcessForPatch = useSeparateProcessForPatch;
   }
 
   public void buildPatch() throws Exception {
-    if (myConfig.isSeparateProcessForPatch()) {
+    if (myUseSeparateProcessForPatch) {
       LOG.info("Build patch in separate process, root: " + LogUtil.describe(myGitRoot) +
                ", fromRevision: " + myFromRevision +
                ", toRevision: " + myToRevision);

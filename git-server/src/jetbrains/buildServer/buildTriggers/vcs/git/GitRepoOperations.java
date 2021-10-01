@@ -20,6 +20,8 @@ public interface GitRepoOperations {
   @Nullable
   GitExec gitExec();
 
+  boolean isNativeGitOperationsEnabled(@NotNull String repoUrl);
+
   boolean isNativeGitOperationsEnabled();
 
   boolean isNativeGitOperationsSupported();

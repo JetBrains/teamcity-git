@@ -57,12 +57,13 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     return myJGitFetchCommand;
   }
 
+  @Override
   public boolean isNativeGitOperationsEnabled(@NotNull String repoUrl) {
     if (TeamCityProperties.getBoolean(GIT_NATIVE_OPERATIONS_ENABLED)) return true;
 
     for (Map.Entry<String, String> e : TeamCityProperties.getPropertiesWithPrefix(GIT_NATIVE_OPERATIONS_ENABLED).entrySet()) {
       final String url = e.getKey().substring(GIT_NATIVE_OPERATIONS_ENABLED.length() + 1);
-      if (repoUrl.startsWith(url)) {
+      if (repoUrl.contains(url)) {
         return Boolean.parseBoolean(e.getValue());
       }
     }
