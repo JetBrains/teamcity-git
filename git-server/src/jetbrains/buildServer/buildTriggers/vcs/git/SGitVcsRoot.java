@@ -1,5 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.openapi.util.text.StringUtil;
 import java.util.HashMap;
 import java.util.Map;
 import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage;
@@ -23,6 +24,26 @@ public class SGitVcsRoot extends GitVcsRoot {
                      @Nullable OAuthTokensStorage tokenStorage) throws VcsException {
     super(mirrorManager, root, urIishHelper);
     myTokenStorage = tokenStorage;
+  }
+
+  @Override
+  public CommonURIish getRepositoryFetchURL() {
+    return myURIishHelper.createAuthURI(getAuthSettings(), super.getRepositoryFetchURL());
+  }
+
+  @Override
+  public CommonURIish getRepositoryFetchURLNoFixedErrors() {
+    return myURIishHelper.createAuthURI(getAuthSettings(), super.getRepositoryFetchURLNoFixedErrors(), false);
+  }
+
+  @Override
+  public CommonURIish getRepositoryPushURL() {
+    return StringUtil.isEmpty(myPushUrl) ? getRepositoryFetchURL() : myURIishHelper.createAuthURI(getAuthSettings(), super.getRepositoryPushURL());
+  }
+
+  @Override
+  public CommonURIish getRepositoryPushURLNoFixedErrors() {
+    return StringUtil.isEmpty(myPushUrl) ? getRepositoryFetchURLNoFixedErrors() : myURIishHelper.createAuthURI(getAuthSettings(), super.getRepositoryPushURL(), false);
   }
 
   @NotNull
