@@ -121,7 +121,7 @@ public class CommandUtil {
 
         final String cmdStr = cli.getCommandLineString();
         final String fullCmdStr = getFullCmdStr(cli);
-        Loggers.VCS.debug(fullCmdStr);
+        Loggers.VCS.debug(fullCmdStr + (cli.getContext().isDebugGitCommands() ? " with env " + cli.getEnvParams() : ""));
         cli.logStart(cmdStr);
 
         ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
