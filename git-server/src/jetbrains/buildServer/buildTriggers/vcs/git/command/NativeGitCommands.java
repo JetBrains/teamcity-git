@@ -48,7 +48,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   }
 
   // Visible for testing
-  protected <R> R executeCommand(@NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, RefSpec... refSpecs) throws VcsException{
+  protected <R> R executeCommand(@NotNull Context ctx, @NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, RefSpec... refSpecs) throws VcsException{
     return NamedThreadFactory.executeWithNewThreadNameFuncThrow(
       String.format("Running native git %s process for : %s", action, debugInfo),
       () -> {
@@ -57,7 +57,9 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
           return cmd.apply();
         } finally {
           final long finish = System.currentTimeMillis();
-          PERFORMANCE_LOG.debug("[git " + action + "] repository: " + debugInfo + " took " + (finish - start) + "ms");
+          final String msg = "[git " + action + "] repository: " + debugInfo + " took " + (finish - start) + "ms";
+          if (ctx.isDebugGitCommands()) PERFORMANCE_LOG.info(msg);
+          else PERFORMANCE_LOG.debug(msg);
         }
       });
   }
@@ -99,7 +101,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     else
       fetch.setShowProgress(true);
 
-    executeCommand("fetch", getDebugInfo(db, fetchURI, refspecs), () -> {
+    executeCommand(ctx, "fetch", getDebugInfo(db, fetchURI, refspecs), () -> {
       fetch.call();
       return true;
     });
@@ -120,7 +122,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                .setRetryAttempts(myConfig.getConnectionRetryAttempts())
                .trace(myConfig.getGitTraceEnv());
 
-    return executeCommand("ls-remote", LogUtil.describe(gitRoot), () -> {
+    return executeCommand(ctx, "ls-remote", LogUtil.describe(gitRoot), () -> {
       return lsRemote.call().stream().collect(Collectors.toMap(Ref::getName, ref -> ref));
     });
   }
@@ -136,7 +138,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
     final String debugInfo = LogUtil.describe(gitRoot);
     try {
-      return executeCommand("push", debugInfo, () -> {
+      return executeCommand(ctx, "push", debugInfo, () -> {
         gitFacade.push()
                  .setRemote(gitRoot.getRepositoryPushURL().toString())
                  .setRefspec(ref)
@@ -173,7 +175,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
     final String debugInfo = LogUtil.describe(gitRoot);
     try {
-      return executeCommand("push", debugInfo, () -> {
+      return executeCommand(ctx, "push", debugInfo, () -> {
         gitFacade.push()
                  .setRemote(gitRoot.getRepositoryPushURL().toString())
                  .setRefspec(tag)

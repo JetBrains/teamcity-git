@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
@@ -279,7 +280,7 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
       public PushCommand pushCommand(@NotNull String repoUrl) {
         return new NativeGitCommands(config, GitCommitSupportTest::detectGitStub, r -> null) {
           @Override
-          protected <R> R executeCommand(@NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, RefSpec... refSpecs) throws VcsException {
+          protected <R> R executeCommand(@NotNull Context ctx, @NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, RefSpec... refSpecs) throws VcsException {
             throw new VcsException("Always fails");
           }
         };
