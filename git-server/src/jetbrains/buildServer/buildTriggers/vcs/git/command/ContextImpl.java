@@ -69,7 +69,7 @@ public class ContextImpl implements Context {
 
   @Override
   public boolean isDebugSsh() {
-    return false;
+    return isDebugGitCommands();
   }
 
   @Override
