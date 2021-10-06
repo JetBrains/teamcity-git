@@ -343,23 +343,19 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public LabelingSupport getLabelingSupport() {
-    return new LabelingSupport() {
-      @NotNull
-      @Override
-      public String label(@NotNull String label, @NotNull String version, @NotNull VcsRoot root, @NotNull CheckoutRules checkoutRules) throws VcsException {
-        final OperationContext context = createContext(root, "labeling");
-        try {
-          final GitVcsRoot gitRoot = context.getGitRoot();
-          myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-            myGitRepoOperations.tagCommand(GitVcsSupport.this, gitRoot.getRepositoryFetchURL().toString()).tag(context, label, version);
-          });
-        } catch (Exception e) {
-          throw context.wrapException(e);
-        } finally {
-          context.close();
-        }
-        return label;
+    return (label, version, root, checkoutRules) -> {
+      final OperationContext context = createContext(root, "labeling");
+      try {
+        final GitVcsRoot gitRoot = context.getGitRoot();
+        myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+          myGitRepoOperations.tagCommand(GitVcsSupport.this, gitRoot.getRepositoryFetchURL().toString()).tag(context, label, version);
+        });
+      } catch (Exception e) {
+        throw context.wrapException(e);
+      } finally {
+        context.close();
       }
+      return label;
     };
   }
 
