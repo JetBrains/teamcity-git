@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
@@ -22,6 +23,7 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
@@ -109,6 +111,8 @@ public class GitCommandLine extends GeneralCommandLine {
 
   private void configureGitSshCommand(@NotNull GitCommandSettings settings) throws VcsException {
     final AuthSettings authSettings = settings.getAuthSettings();
+    if (authSettings == null) return;
+
     //Git has 2 environment variables related to ssh: GIT_SSH and GIT_SSH_COMMAND.
     //We use GIT_SSH_COMMAND because git resolves the executable specified in it,
     //i.e. it finds the 'ssh' executable which is not in the PATH on windows by default.
@@ -121,58 +125,64 @@ public class GitCommandLine extends GeneralCommandLine {
     //runs the MacOS graphical keychain helper. Disabling it via the -o "KeychainIntegration=no"
     //option results in the 'Bad configuration option: keychainintegration' error.
 
-    final boolean isUploadedKeyAuth = AuthenticationMethod.TEAMCITY_SSH_KEY == authSettings.getAuthMethod();
-    if (isUploadedKeyAuth || authSettings.isIgnoreKnownHosts()) {
-      File privateKey = null;
-      try {
-        StringBuilder gitSshCommand = new StringBuilder("ssh");
-        if (isUploadedKeyAuth) {
-          privateKey = getPrivateKey(authSettings);
+    final boolean ignoreKnownHosts = authSettings.isIgnoreKnownHosts();
+    File privateKey = null;
+    try {
+      privateKey = getPrivateKey(authSettings);
+      if (privateKey != null || ignoreKnownHosts) {
+        final StringBuilder gitSshCommand = new StringBuilder("ssh");
+        if (privateKey != null) {
           gitSshCommand.append(" -i \"").append(privateKey.getAbsolutePath().replace('\\', '/')).append("\"");
         }
-        if (authSettings.isIgnoreKnownHosts()) {
-          gitSshCommand.append(" -o \"StrictHostKeyChecking=no\"");
+        if (ignoreKnownHosts) {
+          gitSshCommand.append(" -o \"StrictHostKeyChecking=no\" -o \"UserKnownHostsFile=/dev/null\"");
         }
         if (myCtx.isDebugSsh() || settings.isTrace()) {
           gitSshCommand.append(" -vvv");
         }
         addEnvParam("GIT_SSH_COMMAND", gitSshCommand.toString());
-      } catch (Exception e) {
-        if (privateKey != null)
-          FileUtil.delete(privateKey);
-        if (e instanceof VcsException)
-          throw (VcsException) e;
-        throw new VcsException(e);
       }
-
+    } catch (Exception e) {
+      if (privateKey != null)
+        FileUtil.delete(privateKey);
+      if (e instanceof VcsException)
+        throw (VcsException) e;
+      throw new VcsException(e);
     }
   }
 
-  @NotNull
+  @Nullable
   private File getPrivateKey(@NotNull AuthSettings authSettings) throws VcsException {
     File privateKey = null;
     try {
-      final String keyId = authSettings.getTeamCitySshKeyId();
-      final VcsRoot root = authSettings.getRoot();
-      if (keyId == null ||  root == null || mySshKeyManager == null) {
-        final String msg = "Failed to locate uploaded SSH key " + keyId + " for vcs root %s " + (mySshKeyManager == null ? ": null ssh key manager" : "");
-        Loggers.VCS.warn(String.format(msg,  LogUtil.describe(root)));
-        throw new VcsException(String.format(msg, root == null ? null : root.getName()));
+      switch (authSettings.getAuthMethod()) {
+        case TEAMCITY_SSH_KEY:
+          privateKey = getUploadedPrivateKey(authSettings);
+          break;
+        case PRIVATE_KEY_FILE:
+          final String keyPath = authSettings.getPrivateKeyFilePath();
+          if (StringUtil.isEmpty(keyPath)) {
+            throw new VcsException("Authentication method is \"" + AuthenticationMethod.PRIVATE_KEY_FILE.uiName() + "\", but no private key path provided");
+          }
+
+          final File finalPrivateKey = createTmpKeyFile();
+          addPostAction(() -> FileUtil.delete(finalPrivateKey));
+          privateKey = finalPrivateKey;
+
+          FileUtil.copy(new File(keyPath), privateKey);
+          break;
+        case PRIVATE_KEY_DEFAULT:
+          // we do not decrypt default ssh keys
+          return null;
+        default:
+          return null;
       }
 
-      final TeamCitySshKey key = mySshKeyManager.getKey(root);
-      if (key == null) {
-        throw new VcsException("Failed to locate uploaded SSH key " + keyId + " for vcs root " + root.getName());
-      }
-      privateKey = FileUtil.createTempFile(myCtx.getTempDir(), "key", "", true);
-      final File finalPrivateKey = privateKey;
-      addPostAction(() -> FileUtil.delete(finalPrivateKey));
-      FileUtil.writeFileAndReportErrors(privateKey, new String(key.getPrivateKey()));
       final KeyPair keyPair = KeyPair.load(new JSch(), privateKey.getAbsolutePath());
       OutputStream out = null;
       try {
         out = new BufferedOutputStream(new FileOutputStream(privateKey));
-        if (key.isEncrypted() && !keyPair.decrypt(authSettings.getPassphrase())) {
+        if (keyPair.isEncrypted() && !keyPair.decrypt(authSettings.getPassphrase())) {
           throw new VcsException("Wrong SSH key passphrase");
         }
         keyPair.writePrivateKey(out, null);
@@ -193,6 +203,32 @@ public class GitCommandLine extends GeneralCommandLine {
         throw (VcsException) e;
       throw new VcsException(e);
     }
+  }
+
+  @NotNull
+  private File getUploadedPrivateKey(@NotNull AuthSettings authSettings) throws Exception {
+    final String keyId = authSettings.getTeamCitySshKeyId();
+    final VcsRoot root = authSettings.getRoot();
+    if (keyId == null ||  root == null || mySshKeyManager == null) {
+      final String msg = "Failed to locate uploaded SSH key " + keyId + " for vcs root %s " + (mySshKeyManager == null ? ": null ssh key manager" : "");
+      Loggers.VCS.warn(String.format(msg,  LogUtil.describe(root)));
+      throw new VcsException(String.format(msg, root == null ? null : root.getName()));
+    }
+
+    final TeamCitySshKey key = mySshKeyManager.getKey(root);
+    if (key == null) {
+      throw new VcsException("Failed to locate uploaded SSH key " + keyId + " for vcs root " + root.getName());
+    }
+    final File privateKey = createTmpKeyFile();
+    addPostAction(() -> FileUtil.delete(privateKey));
+
+    FileUtil.writeFileAndReportErrors(privateKey, new String(key.getPrivateKey()));
+
+    return privateKey;
+  }
+
+  private File createTmpKeyFile() throws IOException {
+    return FileUtil.createTempFile(myCtx.getTempDir(), "key", "", true);
   }
 
   public void checkCanceled() throws VcsException {
