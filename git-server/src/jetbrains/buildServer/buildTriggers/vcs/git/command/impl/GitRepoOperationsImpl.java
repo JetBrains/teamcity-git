@@ -11,6 +11,7 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CommitResult;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.NotSupportedException;
@@ -59,7 +60,8 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
 
   @Override
   public boolean isNativeGitOperationsEnabled(@NotNull String repoUrl) {
-    if (TeamCityProperties.getBoolean(GIT_NATIVE_OPERATIONS_ENABLED)) return true;
+    final String global = TeamCityProperties.getProperty(GIT_NATIVE_OPERATIONS_ENABLED);
+    if (StringUtil.isNotEmpty(global)) return Boolean.parseBoolean(global);
 
     for (Map.Entry<String, String> e : TeamCityProperties.getPropertiesWithPrefix(GIT_NATIVE_OPERATIONS_ENABLED).entrySet()) {
       final String url = e.getKey().substring(GIT_NATIVE_OPERATIONS_ENABLED.length() + 1);
