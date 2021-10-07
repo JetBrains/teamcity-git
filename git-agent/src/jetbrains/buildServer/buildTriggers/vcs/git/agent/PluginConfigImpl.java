@@ -16,10 +16,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import com.intellij.openapi.diagnostic.Logger;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.regex.Pattern;
 import jetbrains.buildServer.agent.AgentMiscConstants;
 import jetbrains.buildServer.agent.AgentRunningBuild;
@@ -33,9 +38,9 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.PropertiesUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsRoot;
-import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -44,7 +49,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public class PluginConfigImpl implements AgentPluginConfig {
 
-  private final static Logger LOG = Logger.getLogger(PluginConfigImpl.class);
+  public static final String GIT_TRACE_ENV = "teamcity.git.traceEnv";
 
   public static final String IDLE_TIMEOUT = "teamcity.git.idle.timeout.seconds";
   public static final String USE_NATIVE_SSH = "teamcity.git.use.native.ssh";
@@ -78,6 +83,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String CUSTOM_GIT_CONFIG = "teamcity.internal.git.customConfig";
   public static final String REMOTE_OPERATION_ATTEMPTS = "teamcity.internal.git.remoteOperationAttempts";
   public static final String TEAMCITY_GIT_SSH_DEBUG = "teamcity.git.sshDebug";
+  private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class);
 
   private static final Pattern NEW_LINE = Pattern.compile("(\r\n|\r|\n)");
 
@@ -454,6 +460,19 @@ public class PluginConfigImpl implements AgentPluginConfig {
         return defaultValue;
     } catch (NumberFormatException e) {
       return defaultValue;
+    }
+  }
+
+  @NotNull
+  @Override
+  public Map<String, String> getGitTraceEnv() {
+    final String prop = myBuild.getSharedConfigParameters().get(GIT_TRACE_ENV);
+    if (StringUtil.isEmpty(prop)) return Collections.emptyMap();
+    try {
+      return PropertiesUtil.toMap(PropertiesUtil.loadProperties(new ByteArrayInputStream(prop.replace(' ', '\n').getBytes(StandardCharsets.UTF_8))));
+    } catch (IOException e) {
+      LOG.warnAndDebugDetails("Failed to parse \"" + GIT_TRACE_ENV + "\" property value \"" + prop + "\", git trace won't be enabled", e);
+      return Collections.emptyMap();
     }
   }
 }

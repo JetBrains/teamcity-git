@@ -373,6 +373,7 @@ public class AgentCommitLoaderFactory {
                                               .setRefspec(refspec)
                                               .setFetchTags(myPluginConfig.isFetchTags())
                                               .setRetryAttempts(myPluginConfig.getRemoteOperationAttempts())
+                                              .trace(myPluginConfig.getGitTraceEnv())
                                               .addPreAction(() -> GitUtils.removeRefLocks(getGitDir()));
 
       if (silent)
@@ -439,6 +440,7 @@ public class AgentCommitLoaderFactory {
                                   .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
                                   .setTimeout(myPluginConfig.getLsRemoteTimeoutSeconds())
                                   .setRetryAttempts(myPluginConfig.getRemoteOperationAttempts())
+                                  .trace(myPluginConfig.getGitTraceEnv())
                                   .call());
     }
     protected void message(@NotNull String msg) {

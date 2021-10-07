@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import java.util.Collection;
+import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
@@ -100,6 +101,9 @@ public interface AgentPluginConfig extends PluginConfig {
   boolean isDebugSsh();
 
   boolean isNoFetchRequiredIfRevisionInRepo();
+
+  @NotNull
+  Map<String, String> getGitTraceEnv();
 
   /**
    * Defines how progress output from git commands is written into build log
