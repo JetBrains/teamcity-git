@@ -87,11 +87,9 @@ public class GitCommandLine extends GeneralCommandLine {
         }
         getParametersList().addAt(0, "-c");
         getParametersList().addAt(1, "core.askpass=" + askPassPath);
-        addPostAction(new Runnable() {
-          public void run() {
-            if (myCtx.isDeleteTempFiles())
-              FileUtil.delete(askPass);
-          }
+        addPostAction(() -> {
+          if (myCtx.isDeleteTempFiles())
+            FileUtil.delete(askPass);
         });
         addEnvParam("GIT_ASKPASS", askPassPath);
       } catch (IOException e) {
