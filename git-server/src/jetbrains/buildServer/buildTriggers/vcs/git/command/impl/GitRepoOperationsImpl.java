@@ -12,6 +12,7 @@ import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.util.UptodateValue;
 import jetbrains.buildServer.vcs.CommitResult;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.NotSupportedException;
@@ -37,7 +38,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   private final VcsRootSshKeyManager mySshKeyManager;
   private final ServerPluginConfig myConfig;
   private final FetchCommand myJGitFetchCommand;
-  private GitExec myGitExec;
+  private final UptodateValue<GitExec> myGitExec = new UptodateValue<GitExec>(() -> detectGit(), 60 * 1000);
 
   public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
                                @NotNull TransportFactory transportFactory,
@@ -53,7 +54,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @Override
   public FetchCommand fetchCommand(@NotNull String repoUrl) {
     if (isNativeGitOperationsEnabledAndSupported(repoUrl)) {
-      return new NativeGitCommands(myConfig, this::detectGit, mySshKeyManager);
+      return new NativeGitCommands(myConfig, this::gitExecOrFail, mySshKeyManager);
     }
     return myJGitFetchCommand;
   }
@@ -91,7 +92,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @Override
   public LsRemoteCommand lsRemoteCommand(@NotNull String repoUrl) {
     if (isNativeGitOperationsEnabledAndSupported(repoUrl)) {
-      return new NativeGitCommands(myConfig, this::detectGit, mySshKeyManager);
+      return new NativeGitCommands(myConfig, this::gitExecOrFail, mySshKeyManager);
     }
     return this::getRemoteRefsJGit;
   }
@@ -144,33 +145,36 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   }
 
   @NotNull
-  private GitExec detectGit() throws VcsException {
+  private GitExec detectGit() {
     final String gitPath = myConfig.getPathToGit();
     if (gitPath == null) {
       throw new IllegalArgumentException("No path to git provided: please specify path to git executable using \"teamcity.server.git.executable.path\" server startup property");
     }
-    if (myGitExec == null || !gitPath.equals(myGitExec.getPath())) {
-      GitVersion gitVersion;
-      try {
-        gitVersion = new GitFacadeImpl(new File("."), new StubContext(gitPath)).version().call();
-      } catch (VcsException e) {
-        throw new VcsException("Unable to run git at path " + gitPath + ": please specify correct path to git executable using \"teamcity.server.git.executable.path\" server startup property", e);
-      }
-      if (gitVersion.isSupported()) {
-        myGitExec = new GitExec(gitPath, gitVersion, null);
-      } else {
-        throw new VcsException("TeamCity supports git version " + GitVersion.DEPRECATED + " or higher, found git ("+ gitPath +") has version " + gitVersion + ": please upgrade git");
-      }
+    GitVersion gitVersion;
+    try {
+      gitVersion = new GitFacadeImpl(new File("."), new StubContext(gitPath)).version().call();
+    } catch (VcsException e) {
+      throw new IllegalArgumentException("Unable to run git at path \"" + gitPath + "\": please specify correct path to git executable using \"teamcity.server.git.executable.path\" server startup property", e);
     }
-    return myGitExec;
+    if (gitVersion.isSupported()) {
+      return new GitExec(gitPath, gitVersion, null);
+    }
+    throw new IllegalArgumentException("TeamCity supports git version " + GitVersion.DEPRECATED + " or higher, found git (path \""+ gitPath +"\") has version " + gitVersion + ": please upgrade git");
+  }
+
+
+  @NotNull
+  private GitExec gitExecOrFail() throws VcsException {
+    return myGitExec.getValue();
   }
 
   @Nullable
   @Override
   public GitExec gitExec() {
     try {
-      return detectGit();
-    } catch (VcsException ignored) {
+      return gitExecOrFail();
+    } catch (Exception e) {
+      Loggers.VCS.warnAndDebugDetails("Failed to detect supported git executable, native git operations will be disabled", e);
     }
     return null;
   }
@@ -179,7 +183,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @Override
   public PushCommand pushCommand(@NotNull String repoUrl) {
     if (isNativeGitOperationsEnabledAndSupported(repoUrl)) {
-      return new NativeGitCommands(myConfig, this::detectGit, mySshKeyManager);
+      return new NativeGitCommands(myConfig, this::gitExecOrFail, mySshKeyManager);
     }
     return this::pushJGit;
   }
@@ -219,7 +223,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @Override
   public TagCommand tagCommand(@NotNull GitVcsSupport vcsSupport, @NotNull String repoUrl) {
     if (isNativeGitOperationsEnabledAndSupported(repoUrl)) {
-      return new NativeGitCommands(myConfig, this::detectGit, mySshKeyManager);
+      return new NativeGitCommands(myConfig, this::gitExecOrFail, mySshKeyManager);
     }
     return new GitLabelingSupport(vcsSupport, myTransportFactory, myConfig);
   }

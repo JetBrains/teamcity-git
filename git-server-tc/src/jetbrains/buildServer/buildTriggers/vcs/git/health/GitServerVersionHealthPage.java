@@ -34,12 +34,12 @@ public class GitServerVersionHealthPage extends HealthStatusItemPageExtension {
   public boolean isAvailable(@NotNull HttpServletRequest request) {
     if (!super.isAvailable(request)) return false;
     if (!SessionUser.getUser(request).isPermissionGrantedGlobally(Permission.MANAGE_SERVER_INSTALLATION)) return false;
-    if (!myGitOperations.isNativeGitOperationsEnabled()) return false;
+    if (!myGitOperations.isNativeGitOperationsEnabled() || myGitOperations.isNativeGitOperationsSupported()) return false;
 
     final HealthStatusItem item = getStatusItem(request);
     final Object gitExec = item.getAdditionalData().get("gitExec");
 
-    return gitExec instanceof GitExec && ((GitExec)gitExec).getVersion().equals(getCurrentGitVersion());
+    return gitExec == null || gitExec instanceof GitExec && ((GitExec)gitExec).getVersion().equals(getCurrentGitVersion());
   }
 
   @Nullable
