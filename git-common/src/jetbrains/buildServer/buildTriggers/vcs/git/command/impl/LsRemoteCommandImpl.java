@@ -48,7 +48,7 @@ public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> im
     GitCommandLine cmd = getCmd();
     cmd.addParameter("ls-remote");
     cmd.addParameter("origin");
-    return parse(runCmd(cmd).getStdout());
+    return parse(runCmd(cmd.stdErrLogLevel("debug")).getStdout());
   }
 
   private List<Ref> parse(@NotNull final String str) throws VcsException {
