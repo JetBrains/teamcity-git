@@ -130,18 +130,21 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   @NotNull
   @Override
   public CommitResult push(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull String ref, @NotNull String commit, @NotNull String lastCommit) throws VcsException {
+
+    final String fullRef = GitUtils.expandRef(ref);
+
     final Context ctx = new ContextImpl(myConfig, myGitDetector.detectGit());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
-    gitFacade.updateRef().setRef(ref).setRevision(commit).setOldValue(lastCommit).call();
+    gitFacade.updateRef().setRef(fullRef).setRevision(commit).setOldValue(lastCommit).call();
 
     final String debugInfo = LogUtil.describe(gitRoot);
     try {
       return executeCommand(ctx, "push", debugInfo, () -> {
         gitFacade.push()
                  .setRemote(gitRoot.getRepositoryPushURL().toString())
-                 .setRefspec(ref)
+                 .setRefspec(fullRef)
                  .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
                  .setTimeout(myConfig.getPushTimeoutSeconds())
                  .trace(myConfig.getGitTraceEnv())
@@ -151,9 +154,9 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     } catch (VcsException e) {
       // restore local ref
       try {
-        gitFacade.updateRef().setRef(ref).setRevision(lastCommit).setOldValue(commit).call();
+        gitFacade.updateRef().setRef(fullRef).setRevision(lastCommit).setOldValue(commit).call();
       } catch (VcsException v) {
-        Loggers.VCS.warn("Failed to restore initial revision " + lastCommit + " of " + ref + " after unssuccessful push of revision " + commit + " for " + debugInfo, v);
+        Loggers.VCS.warn("Failed to restore initial revision " + lastCommit + " of " + fullRef + " after unssuccessful push of revision " + commit + " for " + debugInfo, v);
       }
       throw e;
     }
