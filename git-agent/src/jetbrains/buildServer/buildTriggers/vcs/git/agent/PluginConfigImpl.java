@@ -49,7 +49,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public class PluginConfigImpl implements AgentPluginConfig {
 
-  public static final String GIT_TRACE_ENV = "teamcity.git.traceEnv";
+  public static final String GIT_TRACE_ENV = "teamcity.internal.git.traceEnv";
 
   public static final String IDLE_TIMEOUT = "teamcity.git.idle.timeout.seconds";
   public static final String USE_NATIVE_SSH = "teamcity.git.use.native.ssh";
@@ -82,7 +82,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String CLEAN_RESPECTS_OTHER_ROOTS = "teamcity.internal.git.cleanRespectsOtherRoots";
   public static final String CUSTOM_GIT_CONFIG = "teamcity.internal.git.customConfig";
   public static final String REMOTE_OPERATION_ATTEMPTS = "teamcity.internal.git.remoteOperationAttempts";
-  public static final String TEAMCITY_GIT_SSH_DEBUG = "teamcity.git.sshDebug";
+  public static final String TEAMCITY_GIT_SSH_DEBUG = "teamcity.internal.git.sshDebug";
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class);
 
   private static final Pattern NEW_LINE = Pattern.compile("(\r\n|\r|\n)");
