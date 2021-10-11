@@ -149,4 +149,9 @@ public class StubContext implements Context {
   public List<String> getKnownRepoLocations() {
     return Collections.emptyList();
   }
+
+  @Override
+  public boolean isUseSshAskPass() {
+    return false;
+  }
 }

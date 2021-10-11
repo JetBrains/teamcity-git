@@ -164,4 +164,9 @@ public class ContextImpl implements Context {
   public List<String> getKnownRepoLocations() {
     return Collections.singletonList(myConfig.getCachesDir().getAbsolutePath());
   }
+
+  @Override
+  public boolean isUseSshAskPass() {
+    return TeamCityProperties.getBoolean("teamcity.git.useSshAskPas");
+  }
 }

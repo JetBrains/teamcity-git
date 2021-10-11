@@ -159,4 +159,10 @@ public class BuildContext implements Context {
   public List<String> getKnownRepoLocations() {
     return Arrays.asList(myBuild.getAgentConfiguration().getWorkDirectory().getAbsolutePath(), myConfig.getCachesDir().getAbsolutePath());
   }
+
+  @Override
+  public boolean isUseSshAskPass() {
+    //TODO: add agent-side implementation
+    return false;
+  }
 }

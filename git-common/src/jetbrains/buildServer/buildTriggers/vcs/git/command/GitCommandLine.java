@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
@@ -79,24 +80,18 @@ public class GitCommandLine extends GeneralCommandLine {
       return doRunCommand(settings);
     }
     if (AuthenticationMethod.PASSWORD == authSettings.getAuthMethod()) {
-      try {
-        final File askPass = myScriptGen.generateAskPass(authSettings);
-        String askPassPath = askPass.getAbsolutePath();
-        if (askPassPath.contains(" ") && SystemInfo.isWindows) {
-          askPassPath = GitUtils.getShortFileName(askPass);
-        }
+      withAskPassScript(authSettings.getPassword(), askPassPath -> {
         getParametersList().addAt(0, "-c");
         getParametersList().addAt(1, "core.askpass=" + askPassPath);
-        addPostAction(() -> {
-          if (myCtx.isDeleteTempFiles())
-            FileUtil.delete(askPass);
-        });
+
         addEnvParam("GIT_ASKPASS", askPassPath);
-      } catch (IOException e) {
-        throw new VcsException(e);
-      }
+        if (myCtx.isUseSshAskPass()) {
+          addEnvParam("SSH_ASKPASS", askPassPath);
+          addEnvParam("DISPLAY", "");
+        }
+      });
     }
-    if (authSettings.getAuthMethod().isSsh() && settings.isUseNativeSsh() && myCtx.isUseGitSshCommand()) {
+    if (settings.isUseNativeSsh() && myCtx.isUseGitSshCommand()) {
       configureGitSshCommand(settings);
     }
     return doRunCommand(settings);
@@ -135,6 +130,11 @@ public class GitCommandLine extends GeneralCommandLine {
         if (ignoreKnownHosts) {
           gitSshCommand.append(" -o \"StrictHostKeyChecking=no\" -o \"UserKnownHostsFile=/dev/null\"");
         }
+        if (authSettings.getAuthMethod().isSsh()) {
+          gitSshCommand.append(" -o \"PreferredAuthentications=publickey\" \"-o PasswordAuthentication=no\"");
+        } else {
+          gitSshCommand.append(" -o \"PreferredAuthentications=password,keyboard-interactive\" \"-o PubkeyAuthentication=no\"");
+        }
         if (myCtx.isDebugSsh() || settings.isTrace()) {
           gitSshCommand.append(" -vvv");
         }
@@ -152,6 +152,7 @@ public class GitCommandLine extends GeneralCommandLine {
   @Nullable
   private File getPrivateKey(@NotNull AuthSettings authSettings) throws VcsException {
     File privateKey = null;
+    final boolean useSshAskPass = myCtx.isUseSshAskPass();
     try {
       switch (authSettings.getAuthMethod()) {
         case TEAMCITY_SSH_KEY:
@@ -170,23 +171,34 @@ public class GitCommandLine extends GeneralCommandLine {
           FileUtil.copy(new File(keyPath), privateKey);
           break;
         case PRIVATE_KEY_DEFAULT:
-          // we do not decrypt default ssh keys
-          return null;
+          // we do not decrypt default ssh keys using java
+          if (!useSshAskPass) {
+            return null;
+          }
         default:
           return null;
       }
 
-      final KeyPair keyPair = KeyPair.load(new JSch(), privateKey.getAbsolutePath());
-      OutputStream out = null;
-      try {
-        out = new BufferedOutputStream(new FileOutputStream(privateKey));
-        if (keyPair.isEncrypted() && !keyPair.decrypt(authSettings.getPassphrase())) {
-          throw new VcsException("Wrong SSH key passphrase");
+      final String passphrase = authSettings.getPassphrase();
+      if (useSshAskPass) {
+        withAskPassScript(passphrase, askPassPath -> {
+          addEnvParam("SSH_ASKPASS", askPassPath);
+          addEnvParam("DISPLAY", "");
+        });
+      } else {
+        final KeyPair keyPair = KeyPair.load(new JSch(), privateKey.getAbsolutePath());
+        OutputStream out = null;
+        try {
+          out = new BufferedOutputStream(new FileOutputStream(privateKey));
+          if (keyPair.isEncrypted() && !keyPair.decrypt(passphrase)) {
+            throw new VcsException("Wrong SSH key passphrase");
+          }
+          keyPair.writePrivateKey(out, null);
+        } finally {
+          FileUtil.close(out);
         }
-        keyPair.writePrivateKey(out, null);
-      } finally {
-        FileUtil.close(out);
       }
+
       //set permissions to 600, without that ssh client rejects the key on *nix
       privateKey.setReadable(false, false);
       privateKey.setReadable(true, true);
@@ -201,6 +213,29 @@ public class GitCommandLine extends GeneralCommandLine {
         throw (VcsException) e;
       throw new VcsException(e);
     }
+  }
+
+  private void withAskPassScript(@Nullable String pass, @NotNull Consumer<String> action) throws VcsException {
+    File askPass = null;
+    String askPassPath;
+    try {
+      askPass = myScriptGen.generateAskPass(pass);
+      askPassPath = askPass.getAbsolutePath();
+      if (askPassPath.contains(" ") && SystemInfo.isWindows) {
+        askPassPath = GitUtils.getShortFileName(askPass);
+      }
+      action.accept(askPassPath);
+    } catch (Exception e) {
+      if (askPass != null) {
+        FileUtil.delete(askPass);
+      }
+      throw new VcsException(e);
+    }
+    final File finalAskPass = askPass;
+    addPostAction(() -> {
+      if (myCtx.isDeleteTempFiles())
+        FileUtil.delete(finalAskPass);
+    });
   }
 
   @NotNull

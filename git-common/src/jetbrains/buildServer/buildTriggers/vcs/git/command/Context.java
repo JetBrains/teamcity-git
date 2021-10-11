@@ -75,4 +75,6 @@ public interface Context {
 
   @NotNull
   List<String> getKnownRepoLocations();
+
+  boolean isUseSshAskPass();
 }
