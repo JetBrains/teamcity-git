@@ -44,6 +44,10 @@ public class VcsRootBuilder {
   private boolean myAutoCrlf = false;
   private boolean myReportTags = false;
   private Boolean myUseMirrors;
+  private boolean myIgnoreKnownHosts = true;
+  private String myPrivateKeyPath;
+  private String myTeamCitySshKey;
+  private String myPassphrase;
 
   public static VcsRootBuilder vcsRoot() {
     return new VcsRootBuilder();
@@ -76,8 +80,19 @@ public class VcsRootBuilder {
       result.addProperty(Constants.PATH, myPath);
     if (myAgentGitPath != null)
       result.addProperty(Constants.AGENT_GIT_PATH, myAgentGitPath);
+    if (myPrivateKeyPath != null) {
+      result.addProperty(Constants.PRIVATE_KEY_PATH, myPrivateKeyPath);
+    }
+    if (myTeamCitySshKey != null) {
+      result.addProperty("teamcitySshKey", myTeamCitySshKey);
+    }
+    if (myPassphrase != null) {
+      result.addProperty(Constants.PASSPHRASE, myPassphrase);
+    }
+
     result.addProperty(Constants.SERVER_SIDE_AUTO_CRLF, String.valueOf(myAutoCrlf));
     result.addProperty(Constants.REPORT_TAG_REVISIONS, String.valueOf(myReportTags));
+    result.addProperty(Constants.IGNORE_KNOWN_HOSTS, String.valueOf(myIgnoreKnownHosts));
     return result;
   }
 
@@ -160,6 +175,26 @@ public class VcsRootBuilder {
 
   public VcsRootBuilder withUseMirrors(boolean doUseMirrors) {
     myUseMirrors = doUseMirrors;
+    return this;
+  }
+
+  public VcsRootBuilder withIgnoreKnownHosts(boolean ignore) {
+    myIgnoreKnownHosts = ignore;
+    return this;
+  }
+
+  public VcsRootBuilder withPrivateKeyPath(String privateKeyPath) {
+    myPrivateKeyPath = privateKeyPath;
+    return this;
+  }
+
+  public VcsRootBuilder withTeamCitySshKey(String teamCitySshKey) {
+    myTeamCitySshKey = teamCitySshKey;
+    return this;
+  }
+
+  public VcsRootBuilder withPassphrase(String passphrase) {
+    myPassphrase = passphrase;
     return this;
   }
 }
