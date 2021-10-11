@@ -1,0 +1,44 @@
+<component name="libraryTable">
+  <library name="org.testcontainers:testcontainers:1.16.0" type="repository">
+    <properties maven-id="org.testcontainers:testcontainers:1.16.0" />
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/testcontainers/testcontainers/1.16.0/testcontainers-1.16.0.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/junit/junit/4.12/junit-4.12.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/slf4j-api/1.7.30/slf4j-api-1.7.30.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/commons/commons-compress/1.20/commons-compress-1.20.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/rnorth/duct-tape/duct-tape/1.0.8/duct-tape-1.0.8.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/docker-java/docker-java-api/3.2.11/docker-java-api-3.2.11.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-annotations/2.10.3/jackson-annotations-2.10.3.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/docker-java/docker-java-transport-zerodep/3.2.11/docker-java-transport-zerodep-3.2.11.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/docker-java/docker-java-transport/3.2.11/docker-java-transport-3.2.11.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/net/java/dev/jna/jna/5.8.0/jna-5.8.0.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/org/testcontainers/testcontainers/1.16.0/testcontainers-1.16.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/junit/junit/4.12/junit-4.12-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/slf4j-api/1.7.30/slf4j-api-1.7.30-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/commons/commons-compress/1.20/commons-compress-1.20-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/rnorth/duct-tape/duct-tape/1.0.8/duct-tape-1.0.8-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/docker-java/docker-java-api/3.2.11/docker-java-api-3.2.11-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-annotations/2.10.3/jackson-annotations-2.10.3-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/docker-java/docker-java-transport-zerodep/3.2.11/docker-java-transport-zerodep-3.2.11-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/docker-java/docker-java-transport/3.2.11/docker-java-transport-3.2.11-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/net/java/dev/jna/jna/5.8.0/jna-5.8.0-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/testcontainers/testcontainers/1.16.0/testcontainers-1.16.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/junit/junit/4.12/junit-4.12-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/slf4j-api/1.7.30/slf4j-api-1.7.30-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/commons/commons-compress/1.20/commons-compress-1.20-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/rnorth/duct-tape/duct-tape/1.0.8/duct-tape-1.0.8-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/docker-java/docker-java-api/3.2.11/docker-java-api-3.2.11-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-annotations/2.10.3/jackson-annotations-2.10.3-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/docker-java/docker-java-transport-zerodep/3.2.11/docker-java-transport-zerodep-3.2.11-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/docker-java/docker-java-transport/3.2.11/docker-java-transport-3.2.11-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/net/java/dev/jna/jna/5.8.0/jna-5.8.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
