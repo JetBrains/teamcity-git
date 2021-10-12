@@ -640,7 +640,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   @Override
   public long repositoryWriteLockTimeout() {
-    return TeamCityProperties.getLong("teamcity.git.repositoryWriteLockTimeoutSeconds", 0);
+    return TeamCityProperties.getLong("teamcity.git.repositoryWriteLockTimeoutSeconds", 60);
   }
 
   @Override
