@@ -118,9 +118,15 @@ public class SshAuthenticationTest extends BaseTestCase {
   }
 
   public void ssh_git_password_disabled() throws Exception {
-    do_ssh_test(false, true, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication no", null, null,
-                b -> b.withAuthMethod(AuthenticationMethod.PASSWORD).withPassword("git_user_pass")
-    );
+    try {
+      do_ssh_test(false, true, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication no", null, null,
+                  b -> b.withAuthMethod(AuthenticationMethod.PASSWORD).withPassword("git_user_pass")
+      );
+      fail("Exception was expected");
+    } catch (Exception e) {
+      if (e.getMessage().contains("Auth fail")) return;
+      throw e;
+    }
   }
 
   public void ssh_git_password_disabled_native() throws Exception {
