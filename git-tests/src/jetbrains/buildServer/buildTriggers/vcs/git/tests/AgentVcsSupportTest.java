@@ -82,7 +82,7 @@ import static org.testng.AssertJUnit.*;
  * @author dmitry.neverov
  */
 @Test
-public class AgentVcsSupportTest {
+public class AgentVcsSupportTest extends BaseTestCase {
 
   private static final Pattern NEW_LINE = Pattern.compile("(\r\n|\r|\n)");
 
@@ -881,6 +881,7 @@ public class AgentVcsSupportTest {
 
 
   public void should_handle_ref_pointing_to_invalid_object() throws Exception {
+    enableAndRecordDebugLog();
     File repo = dataFile("repo_for_fetch.1");
     File remoteRepo = myTempFiles.createTempDir();
     copyRepository(repo, remoteRepo);
