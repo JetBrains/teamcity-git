@@ -121,13 +121,14 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
       GitVcsRoot gitRoot = context.getGitRoot();
       return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+        CheckoutRulesRevWalk revWalk = null;
         try {
-          Repository r = context.getRepository();
-          CheckoutRulesRevWalk revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
+          revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
 
-          revWalk.markStart(getCommits(r, revWalk, Collections.singleton(startRevision)));
-          for (RevCommit c: getCommits(r, revWalk, stopRevisions)) {
-            for (RevCommit p: c.getParents()) {
+          revWalk.markStart(revWalk.parseCommit(ObjectId.fromString(GitUtils.versionRevision(startRevision))));
+          for (String stopRev: stopRevisions) {
+            RevCommit stopCommit = revWalk.parseCommit(ObjectId.fromString(GitUtils.versionRevision(stopRev)));
+            for (RevCommit p: stopCommit.getParents()) {
               revWalk.markUninteresting(p);
             }
           }
@@ -141,6 +142,10 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         } catch (Exception e) {
           throw context.wrapException(e);
         } finally {
+          if (revWalk != null) {
+            revWalk.close();
+            revWalk.dispose();
+          }
           context.close();
         }
       });

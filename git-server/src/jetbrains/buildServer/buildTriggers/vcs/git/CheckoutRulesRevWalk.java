@@ -20,6 +20,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErr
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
@@ -37,12 +38,14 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private final Set<String> myCollectedUninterestingRevisions = new HashSet<>();
   private final Set<String> myVisitedRevisions = new HashSet<>();
   private final Map<String, List<ObjectId>> myMergeBasesCache = new HashMap<>();
+  private final ObjectReader myReader;
 
   CheckoutRulesRevWalk(@NotNull final ServerPluginConfig config,
                        @NotNull final OperationContext context,
                        @NotNull final CheckoutRules checkoutRules) throws VcsException {
-    super(config, context);
+    super(context.getRepository().getObjectDatabase().newCachedDatabase().newReader(), config, context);
     myCheckoutRules = checkoutRules;
+    myReader = getObjectReader();
   }
 
   @Nullable
@@ -79,7 +82,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
       Set<RevCommit> uninterestingParents = new HashSet<>();
       for (RevCommit parent: parents) {
-        try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(getRepository(), getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog())) {
+        try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myReader, getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog())) {
           tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
           tw.setRecursive(true);
           getContext().addTree(getGitRoot(), tw, getRepository(), getCurrentCommit(), true, false, myCheckoutRules);
@@ -119,7 +122,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
       return numAffectedParents > 1;
     }
 
-    try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(getRepository(), getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog())) {
+    try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myReader, getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog())) {
       tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
       tw.setRecursive(true);
       getContext().addTree(getGitRoot(), tw, getRepository(), getCurrentCommit(), true, false, myCheckoutRules);
@@ -149,7 +152,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
       // all parents are uninteresting, and we already check that there were no changes in files matched by checkout rules since the merge base
       List<ObjectId> mergeBases = findCurrentCommitMergeBases();
 
-      RevWalk walk = new RevWalk(getRepository());
+      RevWalk walk = newRevWalk();
       try {
         Set<RevCommit> starts = new HashSet<>();
         for (RevCommit p: parents) {
@@ -183,7 +186,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     }
 
     // we should mark all commits reachable from uninteresting parents as uninteresting, except those which are also reachable from the interesting parents
-    RevWalk walk = new RevWalk(getRepository());
+    RevWalk walk = newRevWalk();
     try {
       for (RevCommit p: interestingParents) {
         walk.markUninteresting(walk.parseCommit(p.getId()));
@@ -209,7 +212,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     List<ObjectId> cached = myMergeBasesCache.get(getCurrentCommit().name());
     if (cached != null) return cached;
 
-    RevWalk walk = new RevWalk(getRepository());
+    RevWalk walk = newRevWalk();
 
     List<ObjectId> mergeBases;
     try {
@@ -242,7 +245,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private boolean hasInterestingCommitsSinceMergeBase() throws IOException, VcsException {
     List<ObjectId> mergeBases = findCurrentCommitMergeBases();
     for (ObjectId mergeBaseId: mergeBases) {
-      try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(getRepository(), getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog())) {
+      try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myReader, getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog())) {
         tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
         tw.setRecursive(true);
         getContext().addTree(getGitRoot(), tw, getRepository(), getCurrentCommit(), true, false, myCheckoutRules);
@@ -253,5 +256,16 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     }
 
     return false;
+  }
+
+  @NotNull
+  private RevWalk newRevWalk() {
+    return new RevWalk(myReader);
+  }
+
+  @Override
+  public void close() {
+    super.close();
+    myReader.close();
   }
 }
