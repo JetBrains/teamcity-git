@@ -116,7 +116,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                          @NotNull Collection<String> stopRevisions,
                                                          @Nullable Set<String> visited) throws VcsException {
     Disposable name = NamedDaemonThreadFactory.patchThreadName("Computing the latest commit affected by checkout rules: " + rules +
-                                                               " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision);
+                                                               " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision + ", stop revisions: " + stopRevisions);
     try {
       OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
       GitVcsRoot gitRoot = context.getGitRoot();
