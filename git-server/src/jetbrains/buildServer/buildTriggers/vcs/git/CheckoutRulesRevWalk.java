@@ -20,7 +20,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErr
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
@@ -38,14 +37,12 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private final Set<String> myCollectedUninterestingRevisions = new HashSet<>();
   private final Set<String> myVisitedRevisions = new HashSet<>();
   private final Map<String, List<ObjectId>> myMergeBasesCache = new HashMap<>();
-  private final ObjectReader myReader;
 
   CheckoutRulesRevWalk(@NotNull final ServerPluginConfig config,
                        @NotNull final OperationContext context,
                        @NotNull final CheckoutRules checkoutRules) throws VcsException {
-    super(context.getRepository().getObjectDatabase().newCachedDatabase().newReader(), config, context);
+    super(config, context);
     myCheckoutRules = checkoutRules;
-    myReader = getObjectReader();
   }
 
   @Nullable
@@ -74,7 +71,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
     final RevCommit[] parents = getCurrentCommit().getParents();
 
-    if (getCurrentCommit().getParentCount() > 1) {
+    if (parents.length > 1) {
       // merge commit is interesting only if it changes interesting files when comparing to both of its parents,
       // otherwise, if files are changed comparing to one parent only, then we need to go deeper through the commit graph
       // and find the actual commit which changed the files
@@ -82,7 +79,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
       Set<RevCommit> uninterestingParents = new HashSet<>();
       for (RevCommit parent: parents) {
-        try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myReader, getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog())) {
+        try (VcsChangeTreeWalk tw = newVcsChangeTreeWalk()) {
           tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
           tw.setRecursive(true);
           getContext().addTree(getGitRoot(), tw, getRepository(), getCurrentCommit(), true, false, myCheckoutRules);
@@ -122,7 +119,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
       return numAffectedParents > 1;
     }
 
-    try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myReader, getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog())) {
+    try (VcsChangeTreeWalk tw = newVcsChangeTreeWalk()) {
       tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
       tw.setRecursive(true);
       getContext().addTree(getGitRoot(), tw, getRepository(), getCurrentCommit(), true, false, myCheckoutRules);
@@ -245,7 +242,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private boolean hasInterestingCommitsSinceMergeBase() throws IOException, VcsException {
     List<ObjectId> mergeBases = findCurrentCommitMergeBases();
     for (ObjectId mergeBaseId: mergeBases) {
-      try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(myReader, getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog())) {
+      try (VcsChangeTreeWalk tw = newVcsChangeTreeWalk()) {
         tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
         tw.setRecursive(true);
         getContext().addTree(getGitRoot(), tw, getRepository(), getCurrentCommit(), true, false, myCheckoutRules);
@@ -260,12 +257,11 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
   @NotNull
   private RevWalk newRevWalk() {
-    return new RevWalk(myReader);
+    return new RevWalk(getObjectReader());
   }
 
-  @Override
-  public void close() {
-    super.close();
-    myReader.close();
+  @NotNull
+  private VcsChangeTreeWalk newVcsChangeTreeWalk() {
+    return new VcsChangeTreeWalk(getObjectReader(), getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog());
   }
 }
