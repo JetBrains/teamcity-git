@@ -75,7 +75,10 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
 
   @Override
   public boolean isNativeGitOperationsEnabled() {
-    return !TeamCityProperties.getPropertiesWithPrefix(GIT_NATIVE_OPERATIONS_ENABLED).isEmpty();
+    for (String v : TeamCityProperties.getPropertiesWithPrefix(GIT_NATIVE_OPERATIONS_ENABLED).values()) {
+      if (Boolean.parseBoolean(v)) return true;
+    }
+    return false;
   }
 
   @Override
