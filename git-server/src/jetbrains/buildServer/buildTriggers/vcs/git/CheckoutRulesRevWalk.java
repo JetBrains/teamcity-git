@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
@@ -35,6 +36,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private final CheckoutRules myCheckoutRules;
   private final Set<String> myCollectedUninterestingRevisions = new HashSet<>();
   private final Set<String> myVisitedRevisions = new HashSet<>();
+  private final Map<String, List<ObjectId>> myMergeBasesCache = new HashMap<>();
 
   CheckoutRulesRevWalk(@NotNull final ServerPluginConfig config,
                        @NotNull final OperationContext context,
@@ -51,6 +53,8 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
       if (isCurrentCommitIncluded()) {
         return getCurrentCommit();
       }
+
+      myMergeBasesCache.remove(getCurrentCommit().name());
     }
 
     return null;
@@ -104,12 +108,12 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
           // in files affected by checkout rules between the current merge commit and this merge base,
           // if there are changes, then we'll return the current merge commit as the one accepted by checkout rules
 
-          if (hasInterestingCommitsSinceMergeBase(getCurrentCommit())) {
+          if (hasInterestingCommitsSinceMergeBase()) {
             return true;
           }
         }
 
-        collectUninterestingCommits(parents, uninterestingParents);
+        collectUninterestingCommits(uninterestingParents);
       }
 
       return numAffectedParents > 1;
@@ -139,13 +143,14 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     return false;
   }
 
-  private void collectUninterestingCommits(@NotNull final RevCommit[] parents,
-                                           @NotNull final Set<RevCommit> uninterestingParents) throws IOException {
+  private void collectUninterestingCommits(@NotNull final Set<RevCommit> uninterestingParents) throws IOException {
+    RevCommit[] parents = getCurrentCommit().getParents();
     if (uninterestingParents.size() == parents.length) {
       // all parents are uninteresting, and we already check that there were no changes in files matched by checkout rules since the merge base
+      List<ObjectId> mergeBases = findCurrentCommitMergeBases();
+
       RevWalk walk = new RevWalk(getRepository());
       try {
-        walk.setRevFilter(RevFilter.MERGE_BASE);
         Set<RevCommit> starts = new HashSet<>();
         for (RevCommit p: parents) {
           starts.add(walk.parseCommit(p.getId()));
@@ -154,22 +159,8 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
         for (RevCommit c: starts) {
           walk.markStart(c);
         }
-
-        List<RevCommit> mergeBases = new ArrayList<>();
-        RevCommit mergeBase = walk.next();
-        while (mergeBase != null) {
-          mergeBases.add(mergeBase);
-          mergeBase = walk.next();
-        }
-
-        walk.reset();
-
-        walk.setRevFilter(RevFilter.ALL);
-        for (RevCommit c: starts) {
-          walk.markStart(c);
-        }
-        for (RevCommit mb: mergeBases) {
-          walk.markUninteresting(mb);
+        for (ObjectId mbRevision: mergeBases) {
+          walk.markUninteresting(walk.parseCommit(mbRevision));
         }
 
         RevCommit next;
@@ -213,38 +204,54 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     }
   }
 
-  private boolean hasInterestingCommitsSinceMergeBase(@NotNull RevCommit mergeCommit) throws IOException, VcsException {
+  @NotNull
+  private List<ObjectId> findCurrentCommitMergeBases() throws IOException {
+    List<ObjectId> cached = myMergeBasesCache.get(getCurrentCommit().name());
+    if (cached != null) return cached;
+
     RevWalk walk = new RevWalk(getRepository());
+
+    List<ObjectId> mergeBases;
     try {
       walk.setRevFilter(RevFilter.MERGE_BASE);
       Set<RevCommit> starts = new HashSet<>();
-      for (RevCommit p : mergeCommit.getParents()) {
+      for (RevCommit p: getCurrentCommit().getParents()) {
         starts.add(walk.parseCommit(p.getId()));
       }
 
-      for (RevCommit c : starts) {
+      for (RevCommit c: starts) {
         walk.markStart(c);
       }
 
+      mergeBases = new ArrayList<>();
       RevCommit mergeBase = walk.next();
       while (mergeBase != null) {
-        try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(getRepository(), getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog())) {
-          tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
-          tw.setRecursive(true);
-          getContext().addTree(getGitRoot(), tw, getRepository(), getCurrentCommit(), true, false, myCheckoutRules);
-          getContext().addTree(getGitRoot(), tw, getRepository(), parseCommit(mergeBase.getId()), true, false, myCheckoutRules);
-
-          if (isAcceptedByCheckoutRules(myCheckoutRules, tw)) return true;
-        }
-
+        mergeBases.add(mergeBase.getId());
         mergeBase = walk.next();
       }
-
-      return false;
     } finally {
       walk.reset();
       walk.close();
       walk.dispose();
     }
+
+    myMergeBasesCache.put(getCurrentCommit().name(), mergeBases);
+    return mergeBases;
+  }
+
+  private boolean hasInterestingCommitsSinceMergeBase() throws IOException, VcsException {
+    List<ObjectId> mergeBases = findCurrentCommitMergeBases();
+    for (ObjectId mergeBaseId: mergeBases) {
+      try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(getRepository(), getGitRoot().debugInfo(), getConfig().verboseTreeWalkLog())) {
+        tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
+        tw.setRecursive(true);
+        getContext().addTree(getGitRoot(), tw, getRepository(), getCurrentCommit(), true, false, myCheckoutRules);
+        getContext().addTree(getGitRoot(), tw, getRepository(), parseCommit(mergeBaseId), true, false, myCheckoutRules);
+
+        if (isAcceptedByCheckoutRules(myCheckoutRules, tw)) return true;
+      }
+    }
+
+    return false;
   }
 }
