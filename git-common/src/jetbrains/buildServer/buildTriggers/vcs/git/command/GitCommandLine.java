@@ -87,7 +87,7 @@ public class GitCommandLine extends GeneralCommandLine {
         addEnvParam("GIT_ASKPASS", askPassPath);
         if (myCtx.isUseSshAskPass()) {
           addEnvParam("SSH_ASKPASS", askPassPath);
-          addEnvParam("DISPLAY", "");
+          addEnvParam("DISPLAY", ":0.0");
         }
       });
     }
@@ -183,7 +183,7 @@ public class GitCommandLine extends GeneralCommandLine {
       if (useSshAskPass) {
         withAskPassScript(passphrase, askPassPath -> {
           addEnvParam("SSH_ASKPASS", askPassPath);
-          addEnvParam("DISPLAY", "");
+          addEnvParam("DISPLAY", ":0.0");
         });
       } else {
         final KeyPair keyPair = KeyPair.load(new JSch(), privateKey.getAbsolutePath());
