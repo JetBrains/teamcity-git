@@ -131,10 +131,11 @@ public class GitCommandLine extends GeneralCommandLine {
           gitSshCommand.append(" -o \"StrictHostKeyChecking=no\" -o \"UserKnownHostsFile=/dev/null\"");
         }
         if (authSettings.getAuthMethod().isSsh()) {
-          gitSshCommand.append(" -o \"PreferredAuthentications=publickey\" \"-o PasswordAuthentication=no\"");
+          gitSshCommand.append(" -o \"PreferredAuthentications=publickey\" -o \"PasswordAuthentication=no\"");
         } else {
-          gitSshCommand.append(" -o \"PreferredAuthentications=password,keyboard-interactive\" \"-o PubkeyAuthentication=no\"");
+          gitSshCommand.append(" -o \"PreferredAuthentications=password,keyboard-interactive\" -o \"PubkeyAuthentication=no\"");
         }
+        gitSshCommand.append(" -o \"IdentitiesOnly=yes\"");
         if (myCtx.isDebugSsh() || settings.isTrace()) {
           gitSshCommand.append(" -vvv");
         }
@@ -171,11 +172,8 @@ public class GitCommandLine extends GeneralCommandLine {
           FileUtil.copy(new File(keyPath), privateKey);
           break;
         case PRIVATE_KEY_DEFAULT:
-          // we do not decrypt default ssh keys using java
-          if (!useSshAskPass) {
-            return null;
-          }
-          break;
+          // we do not decrypt default ssh keys
+          return null;
         default:
           return null;
       }
