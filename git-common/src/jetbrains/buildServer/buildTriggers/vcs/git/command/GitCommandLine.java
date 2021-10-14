@@ -175,6 +175,7 @@ public class GitCommandLine extends GeneralCommandLine {
           if (!useSshAskPass) {
             return null;
           }
+          break;
         default:
           return null;
       }
