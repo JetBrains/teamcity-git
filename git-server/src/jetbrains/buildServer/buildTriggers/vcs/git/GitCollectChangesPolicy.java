@@ -25,6 +25,7 @@ import jetbrains.buildServer.util.Disposable;
 import jetbrains.buildServer.util.NamedDaemonThreadFactory;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.ObjectDatabase;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -125,9 +126,18 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         try {
           revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
 
-          revWalk.markStart(revWalk.parseCommit(ObjectId.fromString(GitUtils.versionRevision(startRevision))));
+          ObjectId startRevId = ObjectId.fromString(GitUtils.versionRevision(startRevision));
+          ObjectDatabase objectDatabase = revWalk.getRepository().getObjectDatabase();
+          if (!objectDatabase.has(startRevId)) {
+            return null;
+          }
+
+          revWalk.markStart(revWalk.parseCommit(startRevId));
           for (String stopRev: stopRevisions) {
-            RevCommit stopCommit = revWalk.parseCommit(ObjectId.fromString(GitUtils.versionRevision(stopRev)));
+            ObjectId stopRevId = ObjectId.fromString(GitUtils.versionRevision(stopRev));
+            if (!objectDatabase.has(startRevId)) continue;
+
+            RevCommit stopCommit = revWalk.parseCommit(stopRevId);
             for (RevCommit p: stopCommit.getParents()) {
               revWalk.markUninteresting(p);
             }
