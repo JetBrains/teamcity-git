@@ -83,6 +83,16 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev).isNull();
   }
 
+  public void test_start_and_stop_are_not_in_repository() throws IOException, VcsException {
+    GitVcsSupport support = git();
+    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+
+    String rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test"),
+                                                                                       "94f6d9029650d88a96e7785d9bc672408bb6e076",
+                                                                                            Collections.singleton("e45f42c7cdcc2d3433e4542cca8f0e2c46d06489"));
+    then(rev).isNull();
+  }
+
   private void ensureFetchPerformed(@NotNull final GitVcsSupport support, @NotNull final VcsRoot root, @NotNull String branchName, @NotNull String branchTipRevision) throws VcsException {
     support.getCollectChangesPolicy().collectChanges(root, RepositoryStateData.createVersionState(branchName, Collections.emptyMap()),
                                                      RepositoryStateData.createVersionState(branchName, Collections.singletonMap(branchName, branchTipRevision)),
