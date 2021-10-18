@@ -54,7 +54,7 @@ public class SpaceExternalChangeViewerExtension implements ExternalChangeViewerE
       if (strings.length == 3) {
         final String orgName = strings[0];
         final String project = strings[1];
-        final String repository = strings[2].replaceAll("\\.git$", "");
+        final String repository = strings[2].replaceFirst("\\.git$", "");
         final String repositoryUrl = String.format("https://%s.jetbrains.space/p/%s/repositories/%s", orgName, project, repository);
 
         return createResponse(repositoryUrl);
@@ -73,7 +73,7 @@ public class SpaceExternalChangeViewerExtension implements ExternalChangeViewerE
           final String[] strings = gitPath.substring(1).split("/");
           if (strings.length == 2) {
             final String project = strings[0];
-            final String repository = strings[1].replaceAll("\\.git$", "");
+            final String repository = strings[1].replaceFirst("\\.git$", "");
             final String repositoryUrl = String.format("https://%s/p/%s/repositories/%s", spaceAddress, project, repository);
 
             return createResponse(repositoryUrl);
