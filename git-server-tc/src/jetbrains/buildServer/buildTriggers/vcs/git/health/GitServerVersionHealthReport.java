@@ -48,7 +48,7 @@ public class GitServerVersionHealthReport extends HealthStatusReport {
   public void report(@NotNull HealthStatusScope scope, @NotNull HealthStatusItemConsumer consumer) {
     if (!myGitOperations.isNativeGitOperationsEnabled() || myGitOperations.isNativeGitOperationsSupported()) return;
 
-    final GitExec gitExec = myGitOperations.gitExec();
+    final GitExec gitExec = myGitOperations.detectGit();
     final Map<String, Object> data = new HashMap<>();
     data.put("gitExec", gitExec);
     consumer.consumeGlobal(new HealthStatusItem("GitServerVersionId", CATEGORY, data));

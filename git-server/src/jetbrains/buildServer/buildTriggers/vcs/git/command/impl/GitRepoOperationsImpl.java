@@ -4,6 +4,8 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.io.File;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.locks.ReentrantLock;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
@@ -12,7 +14,6 @@ import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
-import jetbrains.buildServer.util.UptodateValue;
 import jetbrains.buildServer.vcs.CommitResult;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.NotSupportedException;
@@ -38,7 +39,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   private final VcsRootSshKeyManager mySshKeyManager;
   private final ServerPluginConfig myConfig;
   private final FetchCommand myJGitFetchCommand;
-  private final UptodateValue<GitExec> myGitExec = new UptodateValue<GitExec>(() -> detectGit(), 60 * 1000);
+  private final LazyGitExec myGitExec = new LazyGitExec();
 
   public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
                                @NotNull TransportFactory transportFactory,
@@ -53,8 +54,12 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   @Override
   public FetchCommand fetchCommand(@NotNull String repoUrl) {
-    if (isNativeGitOperationsEnabledAndSupported(repoUrl)) {
-      return new NativeGitCommands(myConfig, this::gitExecOrFail, mySshKeyManager);
+    if (isNativeGitOperationsEnabled(repoUrl)) {
+      final GitExec gitExec = gitExecInternal();
+      if (isNativeGitOperationsSupported(gitExec)) {
+        //noinspection ConstantConditions
+        return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager);
+      }
     }
     return myJGitFetchCommand;
   }
@@ -83,7 +88,11 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
 
   @Override
   public boolean isNativeGitOperationsSupported() {
-    final GitExec gitExec = gitExec();
+    final GitExec gitExec = gitExecInternal();
+    return gitExec != null && GitVersion.fetchSupportsStdin(gitExec.getVersion());
+  }
+
+  public boolean isNativeGitOperationsSupported(@Nullable GitExec gitExec) {
     return gitExec != null && GitVersion.fetchSupportsStdin(gitExec.getVersion());
   }
 
@@ -94,8 +103,12 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   @Override
   public LsRemoteCommand lsRemoteCommand(@NotNull String repoUrl) {
-    if (isNativeGitOperationsEnabledAndSupported(repoUrl)) {
-      return new NativeGitCommands(myConfig, this::gitExecOrFail, mySshKeyManager);
+    if (isNativeGitOperationsEnabled(repoUrl)) {
+      final GitExec gitExec = gitExecInternal();
+      if (isNativeGitOperationsSupported(gitExec)) {
+        //noinspection ConstantConditions
+        return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager);
+      }
     }
     return this::getRemoteRefsJGit;
   }
@@ -148,7 +161,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   }
 
   @NotNull
-  private GitExec detectGit() {
+  private GitExec detectGitInternal() {
     final String gitPath = myConfig.getPathToGit();
     if (gitPath == null) {
       throw new IllegalArgumentException("No path to git provided: please specify path to git executable using \"teamcity.server.git.executable.path\" server startup property");
@@ -166,27 +179,27 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   }
 
 
-  @NotNull
-  private GitExec gitExecOrFail() throws VcsException {
-    return myGitExec.getValue();
+  @Nullable
+  private GitExec gitExecInternal() {
+    return myGitExec.getOrDetect();
   }
 
   @Nullable
   @Override
-  public GitExec gitExec() {
-    try {
-      return gitExecOrFail();
-    } catch (Exception e) {
-      Loggers.VCS.warnAndDebugDetails("Failed to detect supported git executable, native git operations will be disabled", e);
-    }
-    return null;
+  public GitExec detectGit() {
+    myGitExec.reset();
+    return myGitExec.getOrDetect();
   }
 
   @NotNull
   @Override
   public PushCommand pushCommand(@NotNull String repoUrl) {
-    if (isNativeGitOperationsEnabledAndSupported(repoUrl)) {
-      return new NativeGitCommands(myConfig, this::gitExecOrFail, mySshKeyManager);
+    if (isNativeGitOperationsEnabled(repoUrl)) {
+      final GitExec gitExec = gitExecInternal();
+      if (isNativeGitOperationsSupported(gitExec)) {
+        //noinspection ConstantConditions
+        return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager);
+      }
     }
     return this::pushJGit;
   }
@@ -225,9 +238,50 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   @Override
   public TagCommand tagCommand(@NotNull GitVcsSupport vcsSupport, @NotNull String repoUrl) {
-    if (isNativeGitOperationsEnabledAndSupported(repoUrl)) {
-      return new NativeGitCommands(myConfig, this::gitExecOrFail, mySshKeyManager);
+    if (isNativeGitOperationsEnabled(repoUrl)) {
+      final GitExec gitExec = gitExecInternal();
+      if (isNativeGitOperationsSupported(gitExec)) {
+        //noinspection ConstantConditions
+        return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager);
+      }
     }
     return new GitLabelingSupport(vcsSupport, myTransportFactory, myConfig);
+  }
+
+  private class LazyGitExec {
+    private final ReentrantLock myLock = new ReentrantLock();
+    private volatile Optional<GitExec> myRef = null;
+
+    @Nullable
+    GitExec getOrDetect() {
+      Optional<GitExec> val = myRef;
+      if (val != null) {
+        return val.orElse(null);
+      }
+
+      myLock.lock();
+      try {
+        val = myRef;
+        if (val != null) {
+          return val.orElse(null);
+        }
+
+        try {
+          val = Optional.of(detectGitInternal());
+        } catch (Exception e) {
+          val = Optional.empty();
+          Loggers.VCS.warn("Failed to detect supported git executable, native git operations will be disabled", e);
+        }
+
+        myRef = val;
+        return val.orElse(null);
+      } finally {
+        myLock.unlock();
+      }
+    }
+
+    void reset() {
+      myRef = null;
+    }
   }
 }

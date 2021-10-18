@@ -18,7 +18,7 @@ public interface GitRepoOperations {
   TagCommand tagCommand(@NotNull GitVcsSupport vcsSupport, @NotNull String repoUrl);
 
   @Nullable
-  GitExec gitExec();
+  GitExec detectGit();
 
   boolean isNativeGitOperationsEnabled(@NotNull String repoUrl);
 
