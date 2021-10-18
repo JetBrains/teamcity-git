@@ -157,7 +157,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     try {
       gitVersion = new GitFacadeImpl(new File("."), new StubContext(gitPath)).version().call();
     } catch (VcsException e) {
-      throw new IllegalArgumentException("Unable to run git at path \"" + gitPath + "\": please specify correct path to git executable using \"teamcity.server.git.executable.path\" server startup property", e);
+      throw new IllegalArgumentException("Unable to run git at path \"" + gitPath + "\": please specify correct path to git executable using \"teamcity.server.git.executable.path\" server startup property, error: " + e.getMessage(), e);
     }
     if (gitVersion.isSupported()) {
       return new GitExec(gitPath, gitVersion, null);
