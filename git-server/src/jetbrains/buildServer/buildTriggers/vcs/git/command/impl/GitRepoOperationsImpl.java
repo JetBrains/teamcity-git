@@ -54,14 +54,19 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   @Override
   public FetchCommand fetchCommand(@NotNull String repoUrl) {
+    return (FetchCommand)getNativeGitCommandOptional(repoUrl).orElse(myJGitFetchCommand);
+  }
+
+  @NotNull
+  private Optional<GitCommand> getNativeGitCommandOptional(@NotNull String repoUrl) {
     if (isNativeGitOperationsEnabled(repoUrl)) {
       final GitExec gitExec = gitExecInternal();
       if (isNativeGitOperationsSupported(gitExec)) {
         //noinspection ConstantConditions
-        return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager);
+        return Optional.of(new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager));
       }
     }
-    return myJGitFetchCommand;
+    return Optional.empty();
   }
 
   @Override
@@ -98,14 +103,13 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   @Override
   public LsRemoteCommand lsRemoteCommand(@NotNull String repoUrl) {
-    if (isNativeGitOperationsEnabled(repoUrl)) {
-      final GitExec gitExec = gitExecInternal();
-      if (isNativeGitOperationsSupported(gitExec)) {
-        //noinspection ConstantConditions
-        return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager);
+    return (LsRemoteCommand)getNativeGitCommandOptional(repoUrl).orElse(new LsRemoteCommand() {
+      @NotNull
+      @Override
+      public Map<String, Ref> lsRemote(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws VcsException {
+        return getRemoteRefsJGit(db, gitRoot);
       }
-    }
-    return this::getRemoteRefsJGit;
+    });
   }
 
   @NotNull
@@ -189,14 +193,13 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   @Override
   public PushCommand pushCommand(@NotNull String repoUrl) {
-    if (isNativeGitOperationsEnabled(repoUrl)) {
-      final GitExec gitExec = gitExecInternal();
-      if (isNativeGitOperationsSupported(gitExec)) {
-        //noinspection ConstantConditions
-        return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager);
+    return (PushCommand)getNativeGitCommandOptional(repoUrl).orElse(new PushCommand() {
+      @NotNull
+      @Override
+      public CommitResult push(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull String ref, @NotNull String commit, @NotNull String lastCommit) throws VcsException {
+        return pushJGit(db, gitRoot, ref, commit, lastCommit);
       }
-    }
-    return this::pushJGit;
+    });
   }
 
   @NotNull
@@ -233,14 +236,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   @Override
   public TagCommand tagCommand(@NotNull GitVcsSupport vcsSupport, @NotNull String repoUrl) {
-    if (isNativeGitOperationsEnabled(repoUrl)) {
-      final GitExec gitExec = gitExecInternal();
-      if (isNativeGitOperationsSupported(gitExec)) {
-        //noinspection ConstantConditions
-        return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager);
-      }
-    }
-    return new GitLabelingSupport(vcsSupport, myTransportFactory, myConfig);
+    return (TagCommand)getNativeGitCommandOptional(repoUrl).orElse(new GitLabelingSupport(vcsSupport, myTransportFactory, myConfig));
   }
 
   private class LazyGitExec {
