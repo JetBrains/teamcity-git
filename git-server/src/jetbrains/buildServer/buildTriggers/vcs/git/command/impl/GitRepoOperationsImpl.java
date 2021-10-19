@@ -88,16 +88,11 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
 
   @Override
   public boolean isNativeGitOperationsSupported() {
-    final GitExec gitExec = gitExecInternal();
-    return gitExec != null && GitVersion.fetchSupportsStdin(gitExec.getVersion());
+    return isNativeGitOperationsSupported(gitExecInternal());
   }
 
   public boolean isNativeGitOperationsSupported(@Nullable GitExec gitExec) {
     return gitExec != null && GitVersion.fetchSupportsStdin(gitExec.getVersion());
-  }
-
-  private boolean isNativeGitOperationsEnabledAndSupported(@NotNull String repoUrl) {
-    return isNativeGitOperationsEnabled(repoUrl) && isNativeGitOperationsSupported();
   }
 
   @NotNull
