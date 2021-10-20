@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
 import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage;
+import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
@@ -59,7 +60,7 @@ public class OperationContext {
   private final GitProgress myProgress;
   private final ServerPluginConfig myPluginConfig;
   private final Map<String, StoredConfig> myConfigsCache = new HashMap<String, StoredConfig>(); //repository path -> its config
-  private final OAuthTokensStorage myTokensStorage;
+  private final TokenRefresher myTokenRefresher;
 
   public OperationContext(@NotNull final CommitLoader commitLoader,
                           @NotNull final RepositoryManager repositoryManager,
@@ -67,14 +68,14 @@ public class OperationContext {
                           @NotNull final String operation,
                           @NotNull final GitProgress progress,
                           @NotNull final ServerPluginConfig pluginConfig,
-                          @Nullable final OAuthTokensStorage tokensStorage) {
+                          @Nullable final TokenRefresher tokenRefresher) {
     myCommitLoader = commitLoader;
     myRepositoryManager = repositoryManager;
     myRoot = root;
     myOperation = operation;
     myProgress = progress;
     myPluginConfig = pluginConfig;
-    myTokensStorage = tokensStorage;
+    myTokenRefresher = tokenRefresher;
   }
 
 
@@ -118,7 +119,7 @@ public class OperationContext {
   }
 
   public GitVcsRoot getGitRoot(@NotNull VcsRoot root) throws VcsException {
-    return new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), myTokensStorage);
+    return new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), myTokenRefresher);
   }
 
   @NotNull

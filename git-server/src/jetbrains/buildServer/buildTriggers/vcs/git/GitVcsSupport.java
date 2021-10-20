@@ -27,6 +27,7 @@ import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage;
+import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
@@ -65,8 +66,8 @@ public class GitVcsSupport extends ServerVcsSupport
   private final VcsOperationProgressProvider myProgressProvider;
   private final GitTrustStoreProvider myGitTrustStoreProvider;
   private final TestConnectionSupport myTestConnection;
-  private final OAuthTokensStorage myTokenStorage;
-  private Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
+  private final TokenRefresher myTokenRefresher;
+  private final Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
 
   public GitVcsSupport(@NotNull GitRepoOperations gitRepoOperations,
                        @NotNull ServerPluginConfig config,
@@ -79,10 +80,10 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull VcsOperationProgressProvider progressProvider,
                        @NotNull GitResetCacheHandler resetCacheHandler,
                        @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler,
-                       @NotNull OAuthTokensStorage tokenStorage,
+                       @NotNull TokenRefresher tokenRefresher,
                        @Nullable TestConnectionSupport customTestConnection) {
     this(gitRepoOperations, config, resetCacheManager, transportFactory, repositoryManager, mapFullPath, commitLoader, sshKeyManager, progressProvider,
-         resetCacheHandler, resetRevisionsCacheHandler, new GitTrustStoreProviderStatic(null), tokenStorage, customTestConnection);
+         resetCacheHandler, resetRevisionsCacheHandler, new GitTrustStoreProviderStatic(null), tokenRefresher, customTestConnection);
   }
 
   public GitVcsSupport(@NotNull GitRepoOperations gitRepoOperations,
@@ -97,7 +98,7 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull GitResetCacheHandler resetCacheHandler,
                        @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler,
                        @NotNull GitTrustStoreProvider gitTrustStoreProvider,
-                       @NotNull OAuthTokensStorage tokenStorage,
+                       @NotNull TokenRefresher tokenRefresher,
                        @Nullable TestConnectionSupport customTestConnection) {
     myGitRepoOperations = gitRepoOperations;
     myConfig = config;
@@ -112,7 +113,7 @@ public class GitVcsSupport extends ServerVcsSupport
     resetCacheManager.registerHandler(resetRevisionsCacheHandler);
     myGitTrustStoreProvider = gitTrustStoreProvider;
     myTestConnection = customTestConnection == null ? this : customTestConnection;
-    myTokenStorage = tokenStorage;
+    myTokenRefresher = tokenRefresher;
     JSchConfigInitializer.initJSchConfig(JSch.class);
   }
 
@@ -147,8 +148,8 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     if (toVersion == null)
       return Collections.emptyList();
-    GitVcsRoot fromGitRoot = new SGitVcsRoot(myRepositoryManager, fromRoot, new URIishHelperImpl(), myTokenStorage);
-    GitVcsRoot toGitRoot = new SGitVcsRoot(myRepositoryManager, toRoot, new URIishHelperImpl(), myTokenStorage);
+    GitVcsRoot fromGitRoot = new SGitVcsRoot(myRepositoryManager, fromRoot, new URIishHelperImpl(), myTokenRefresher);
+    GitVcsRoot toGitRoot = new SGitVcsRoot(myRepositoryManager, toRoot, new URIishHelperImpl(), myTokenRefresher);
     RepositoryStateData fromState = RepositoryStateData.createVersionState(fromGitRoot.getRef(), fromVersion);
     RepositoryStateData toState = RepositoryStateData.createVersionState(toGitRoot.getRef(), toVersion);
     return getCollectChangesPolicy().collectChanges(fromRoot, fromState, toRoot, toState, checkoutRules);
@@ -160,7 +161,7 @@ public class GitVcsSupport extends ServerVcsSupport
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     if (currentVersion == null)
       return Collections.emptyList();
-    GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), myTokenStorage);
+    GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), myTokenRefresher);
     RepositoryStateData fromState = RepositoryStateData.createVersionState(gitRoot.getRef(), fromVersion);
     RepositoryStateData toState = RepositoryStateData.createVersionState(gitRoot.getRef(), currentVersion);
     return getCollectChangesPolicy().collectChanges(root, fromState, toState, checkoutRules);
@@ -169,7 +170,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public RepositoryStateData getCurrentState(@NotNull VcsRoot root) throws VcsException {
-    GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), myTokenStorage);
+    GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), myTokenRefresher);
     return getCurrentState(gitRoot);
   }
 
@@ -343,7 +344,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   public OperationContext createContext(@Nullable VcsRoot root, @NotNull String operation, @NotNull GitProgress progress) {
-    return new OperationContext(myCommitLoader, myRepositoryManager, root, operation, progress, myConfig, myTokenStorage);
+    return new OperationContext(myCommitLoader, myRepositoryManager, root, operation, progress, myConfig, myTokenRefresher);
   }
 
   @NotNull

@@ -3,7 +3,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.util.text.StringUtil;
 import java.util.HashMap;
 import java.util.Map;
-import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage;
+import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -14,16 +14,16 @@ import org.jetbrains.annotations.Nullable;
 public class SGitVcsRoot extends GitVcsRoot {
 
   @Nullable
-  private final OAuthTokensStorage myTokenStorage;
+  private final TokenRefresher myTokenRefresher;
   private AuthSettings myResolvedAuthSettings = null;
 
 
   public SGitVcsRoot(@NotNull MirrorManager mirrorManager,
                      @NotNull VcsRoot root,
                      @NotNull URIishHelper urIishHelper,
-                     @Nullable OAuthTokensStorage tokenStorage) throws VcsException {
+                     @Nullable TokenRefresher tokenRefresher) throws VcsException {
     super(mirrorManager, root, urIishHelper);
-    myTokenStorage = tokenStorage;
+    myTokenRefresher = tokenRefresher;
   }
 
   @Override
@@ -51,7 +51,7 @@ public class SGitVcsRoot extends GitVcsRoot {
   public AuthSettings getAuthSettings() {
     AuthSettings authSettings = super.getAuthSettings();
     String password = authSettings.getPassword();
-    if (myTokenStorage == null || password == null || !password.startsWith("oauth2:")) {
+    if (myTokenRefresher == null || password == null || !password.startsWith("oauth2:")) {
       return authSettings;
     }
     Map<String, String> newProps = new HashMap<>();
@@ -76,14 +76,14 @@ public class SGitVcsRoot extends GitVcsRoot {
   }
 
   private String getOrRefreshToken(@NotNull VcsRoot vcsRoot, @NotNull String suspectedTokenId) {
-    if (myTokenStorage == null)
+    if (myTokenRefresher == null)
       return suspectedTokenId;
     SVcsRoot parentRoot = vcsRoot instanceof SVcsRoot ? (SVcsRoot)vcsRoot
                                                       : vcsRoot instanceof VcsRootInstance ? ((VcsRootInstance)vcsRoot).getParent() : null;
     if (parentRoot == null) {
-      return myTokenStorage.getOrRefreshToken(vcsRoot.getExternalId(), suspectedTokenId, suspectedTokenId);
+      return myTokenRefresher.getOrRefreshToken(vcsRoot.getExternalId(), suspectedTokenId, suspectedTokenId);
     } else {
-      return myTokenStorage.getOrRefreshToken(parentRoot.getProject(), suspectedTokenId, suspectedTokenId);
+      return myTokenRefresher.getOrRefreshToken(parentRoot.getProject(), suspectedTokenId, suspectedTokenId);
     }
   }
 }
