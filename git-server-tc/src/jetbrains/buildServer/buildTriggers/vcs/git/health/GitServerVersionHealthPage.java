@@ -44,7 +44,7 @@ public class GitServerVersionHealthPage extends HealthStatusItemPageExtension {
 
   @Nullable
   private GitVersion getCurrentGitVersion() {
-    final GitExec gitExec = myGitOperations.gitExec();
+    final GitExec gitExec = myGitOperations.detectGit();
     return gitExec == null ? null : gitExec.getVersion();
   }
 }
