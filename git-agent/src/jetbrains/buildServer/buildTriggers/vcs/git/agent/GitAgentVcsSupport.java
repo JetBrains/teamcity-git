@@ -122,7 +122,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     CheckoutMode mode = targetDirAndMode.first;
     File targetDir = targetDirAndMode.second;
     Updater updater;
-    AgentGitVcsRoot gitRoot = new AgentGitVcsRoot(myMirrorManager, targetDir, root, myTokenStorage);
+    AgentGitVcsRoot gitRoot = new AgentGitVcsRoot(myMirrorManager, targetDir, root, myTokenStorage, isTokenRefreshEnabled(build));
     if (config.isUseShallowClone(gitRoot)) {
       updater = new ShallowUpdater(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
     } else if (config.isUseAlternates(gitRoot)) {
@@ -133,6 +133,10 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       updater = new UpdaterImpl(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
     }
     updater.update();
+  }
+
+  static boolean isTokenRefreshEnabled(@NotNull AgentRunningBuild build) {
+    return Boolean.parseBoolean(build.getSharedConfigParameters().get("teamcity.internal.auth.tokenRefresh.enabled"));
   }
 
   @NotNull

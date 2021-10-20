@@ -46,10 +46,12 @@ public class AgentGitVcsRoot extends GitVcsRoot {
   private final File myLocalRepositoryDir;
 
   private final AgentTokenStorage myTokenStorage;
+  private final boolean myTokenRefreshEnabled;
 
   private AuthSettings myResolvedAuthSettings = null;
 
-  public AgentGitVcsRoot(MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root, AgentTokenStorage tokenStorage) throws VcsException {
+  public AgentGitVcsRoot(MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root,
+                         AgentTokenStorage tokenStorage, boolean isTokenRefreshEnabled) throws VcsException {
     super(mirrorManager, root, new URIishHelperImpl());
     myLocalRepositoryDir = localRepositoryDir;
     String clean = getProperty(Constants.AGENT_CLEAN_POLICY);
@@ -57,6 +59,7 @@ public class AgentGitVcsRoot extends GitVcsRoot {
     String cleanFiles = getProperty(Constants.AGENT_CLEAN_FILES_POLICY);
     myCleanFilesPolicy = cleanFiles == null ? AgentCleanFilesPolicy.ALL_UNTRACKED : AgentCleanFilesPolicy.valueOf(cleanFiles);
     myTokenStorage = tokenStorage;
+    myTokenRefreshEnabled = isTokenRefreshEnabled;
   }
 
   /**
@@ -90,6 +93,8 @@ public class AgentGitVcsRoot extends GitVcsRoot {
   @Override
   public AuthSettings getAuthSettings() {
     AuthSettings authSettings = super.getAuthSettings();
+    if (!myTokenRefreshEnabled)
+      return authSettings;
     if (authSettings.getAuthMethod() != AuthenticationMethod.PASSWORD) {
       return authSettings;
     }

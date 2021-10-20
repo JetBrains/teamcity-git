@@ -114,7 +114,8 @@ public class UpdaterImpl implements Updater {
     myRevision = GitUtils.versionRevision(version);
     myTargetDirectory = targetDir;
     mySubmoduleManager = submoduleManager;
-    myRoot = new AgentGitVcsRoot(mirrorManager, myTargetDirectory, root, tokenStorage);
+    myRoot = new AgentGitVcsRoot(mirrorManager, myTargetDirectory, root, tokenStorage,
+                                 GitAgentVcsSupport.isTokenRefreshEnabled(build));
     myFullBranchName = getBranch();
     myRules = rules;
     myCheckoutMode = checkoutMode;
