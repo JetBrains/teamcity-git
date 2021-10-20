@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import com.intellij.openapi.util.text.StringUtil;
 import java.util.HashMap;
 import java.util.Map;
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
@@ -83,6 +84,26 @@ public class AgentGitVcsRoot extends GitVcsRoot {
     //ignore custom clone path on server
     String fetchUrl = getRepositoryFetchURL().toString();
     return myMirrorManager.getMirrorDir(fetchUrl);
+  }
+
+  @Override
+  public CommonURIish getRepositoryFetchURL() {
+    return myURIishHelper.createAuthURI(getAuthSettings(), super.getRepositoryFetchURL());
+  }
+
+  @Override
+  public CommonURIish getRepositoryFetchURLNoFixedErrors() {
+    return myURIishHelper.createAuthURI(getAuthSettings(), super.getRepositoryFetchURLNoFixedErrors(), false);
+  }
+
+  @Override
+  public CommonURIish getRepositoryPushURL() {
+    return StringUtil.isEmpty(myPushUrl) ? getRepositoryFetchURL() : myURIishHelper.createAuthURI(getAuthSettings(), super.getRepositoryPushURL());
+  }
+
+  @Override
+  public CommonURIish getRepositoryPushURLNoFixedErrors() {
+    return StringUtil.isEmpty(myPushUrl) ? getRepositoryFetchURLNoFixedErrors() : myURIishHelper.createAuthURI(getAuthSettings(), super.getRepositoryPushURL(), false);
   }
 
   @NotNull
