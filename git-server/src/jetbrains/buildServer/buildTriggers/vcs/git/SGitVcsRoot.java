@@ -50,6 +50,9 @@ public class SGitVcsRoot extends GitVcsRoot {
   @Override
   public AuthSettings getAuthSettings() {
     AuthSettings authSettings = super.getAuthSettings();
+    if (authSettings.getAuthMethod() != AuthenticationMethod.PASSWORD) {
+      return authSettings;
+    }
     String password = authSettings.getPassword();
     if (myTokenRefresher == null || password == null || !password.startsWith("oauth2:")) {
       return authSettings;
