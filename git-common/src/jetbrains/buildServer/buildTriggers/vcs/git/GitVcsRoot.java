@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.text.StringUtil;
+import java.util.concurrent.atomic.AtomicReference;
 import jetbrains.buildServer.log.LogUtil;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -35,10 +36,10 @@ public class GitVcsRoot {
 
   protected final MirrorManager myMirrorManager;
   private final VcsRoot myDelegate;
-  private final CommonURIish myRepositoryFetchURL;
-  private final CommonURIish myRepositoryFetchURLNoFixErrors;
-  private final CommonURIish myRepositoryPushURL;
-  private final CommonURIish myRepositoryPushURLNoFixErrors;
+  private final AtomicReference<CommonURIish> myRepositoryFetchURL = new AtomicReference<>();
+  private final AtomicReference<CommonURIish> myRepositoryFetchURLNoFixErrors = new AtomicReference<>();;
+  private final AtomicReference<CommonURIish> myRepositoryPushURL = new AtomicReference<>();;
+  private final AtomicReference<CommonURIish> myRepositoryPushURLNoFixErrors = new AtomicReference<>();;
   private final String myRef;
   private final UserNameStyle myUsernameStyle;
   private final SubmodulesCheckoutPolicy mySubmodulePolicy;
@@ -72,13 +73,13 @@ public class GitVcsRoot {
     myRawFetchUrl = getProperty(Constants.FETCH_URL);
     if (myRawFetchUrl.contains("\n") || myRawFetchUrl.contains("\r"))
       throw new VcsException("Newline in fetch url '" + myRawFetchUrl + "'");
-    myRepositoryFetchURL = myURIishHelper.createAuthURI(myAuthSettings, myRawFetchUrl);
-    myRepositoryFetchURLNoFixErrors = myURIishHelper.createAuthURI(myAuthSettings, myRawFetchUrl, false);
+    myRepositoryFetchURL.set(myURIishHelper.createAuthURI(myAuthSettings, myRawFetchUrl));
+    myRepositoryFetchURLNoFixErrors.set(myURIishHelper.createAuthURI(myAuthSettings, myRawFetchUrl, false));
     myPushUrl = getProperty(Constants.PUSH_URL);
     if (myPushUrl != null && (myPushUrl.contains("\n") || myPushUrl.contains("\r")))
       throw new VcsException("Newline in push url '" + myPushUrl + "'");
-    myRepositoryPushURL = StringUtil.isEmpty(myPushUrl) ? myRepositoryFetchURL : myURIishHelper.createAuthURI(myAuthSettings, myPushUrl);
-    myRepositoryPushURLNoFixErrors = StringUtil.isEmpty(myPushUrl) ? myRepositoryFetchURLNoFixErrors : myURIishHelper.createAuthURI(myAuthSettings, myPushUrl, false);
+    myRepositoryPushURL.set(StringUtil.isEmpty(myPushUrl) ? myRepositoryFetchURL.get() : myURIishHelper.createAuthURI(myAuthSettings, myPushUrl));
+    myRepositoryPushURLNoFixErrors.set(StringUtil.isEmpty(myPushUrl) ? myRepositoryFetchURLNoFixErrors.get() : myURIishHelper.createAuthURI(myAuthSettings, myPushUrl, false));
     myUsernameForTags = getProperty(Constants.USERNAME_FOR_TAGS);
     myBranchSpec = getProperty(Constants.BRANCH_SPEC);
     myAutoCrlf = Boolean.valueOf(getProperty(Constants.SERVER_SIDE_AUTO_CRLF, "false"));
@@ -200,11 +201,27 @@ public class GitVcsRoot {
    * @return the URL for the repository
    */
   public CommonURIish getRepositoryFetchURL() {
-    return myRepositoryFetchURL;
+    return getOrRefreshUrl(myRepositoryFetchURL, true);
   }
 
   public CommonURIish getRepositoryFetchURLNoFixedErrors() {
-    return myRepositoryFetchURLNoFixErrors;
+    return getOrRefreshUrl(myRepositoryFetchURLNoFixErrors, false);
+  }
+
+  /**
+   * @return the push URL for the repository
+   */
+  public CommonURIish getRepositoryPushURL() {
+    return StringUtil.isEmpty(myPushUrl) ? getRepositoryFetchURL() : getOrRefreshUrl(myRepositoryPushURL, true);
+  }
+
+  public CommonURIish getRepositoryPushURLNoFixedErrors() {
+    return StringUtil.isEmpty(myPushUrl) ? getRepositoryFetchURLNoFixedErrors() : getOrRefreshUrl(myRepositoryPushURLNoFixErrors, false);
+  }
+
+  private CommonURIish getOrRefreshUrl(@NotNull AtomicReference<CommonURIish> urlRef, boolean fixErrors) {
+    CommonURIish newVal = myURIishHelper.createAuthURI(getAuthSettings(), urlRef.get(), fixErrors);
+    return urlRef.accumulateAndGet(newVal, (o, n) -> o.equals(n) ? o : n);
   }
 
   /**
@@ -219,17 +236,6 @@ public class GitVcsRoot {
    */
   public String debugInfo() {
     return " (" + getRepositoryDir() + ", " + getRepositoryFetchURL().toString() + "#" + getRef() + ")";
-  }
-
-  /**
-   * @return the push URL for the repository
-   */
-  public CommonURIish getRepositoryPushURL() {
-    return myRepositoryPushURL;
-  }
-
-  public CommonURIish getRepositoryPushURLNoFixedErrors() {
-    return myRepositoryPushURLNoFixErrors;
   }
 
   public String getUsernameForTags() {
@@ -305,17 +311,17 @@ public class GitVcsRoot {
   }
 
   public boolean isOnGithub() {
-    return "github.com".equals(myRepositoryFetchURL.getHost());
+    return "github.com".equals(myRepositoryFetchURL.get().getHost());
   }
 
   public boolean isSsh() {
-    return myRepositoryFetchURL.getScheme() == null ||
-           "ssh".equals(myRepositoryFetchURL.getScheme());
+    return myRepositoryFetchURL.get().getScheme() == null ||
+           "ssh".equals(myRepositoryFetchURL.get().getScheme());
   }
 
   public boolean isHttp() {
-    return "http".equals(myRepositoryFetchURL.getScheme()) ||
-           "https".equals(myRepositoryFetchURL.getScheme());
+    return "http".equals(myRepositoryFetchURL.get().getScheme()) ||
+           "https".equals(myRepositoryFetchURL.get().getScheme());
   }
 
   public boolean isIgnoreMissingDefaultBranch() {

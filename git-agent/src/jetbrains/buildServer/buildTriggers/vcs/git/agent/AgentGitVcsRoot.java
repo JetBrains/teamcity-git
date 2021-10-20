@@ -86,26 +86,6 @@ public class AgentGitVcsRoot extends GitVcsRoot {
     return myMirrorManager.getMirrorDir(fetchUrl);
   }
 
-  @Override
-  public CommonURIish getRepositoryFetchURL() {
-    return myURIishHelper.createAuthURI(getAuthSettings(), super.getRepositoryFetchURL());
-  }
-
-  @Override
-  public CommonURIish getRepositoryFetchURLNoFixedErrors() {
-    return myURIishHelper.createAuthURI(getAuthSettings(), super.getRepositoryFetchURLNoFixedErrors(), false);
-  }
-
-  @Override
-  public CommonURIish getRepositoryPushURL() {
-    return StringUtil.isEmpty(myPushUrl) ? getRepositoryFetchURL() : myURIishHelper.createAuthURI(getAuthSettings(), super.getRepositoryPushURL());
-  }
-
-  @Override
-  public CommonURIish getRepositoryPushURLNoFixedErrors() {
-    return StringUtil.isEmpty(myPushUrl) ? getRepositoryFetchURLNoFixedErrors() : myURIishHelper.createAuthURI(getAuthSettings(), super.getRepositoryPushURL(), false);
-  }
-
   @NotNull
   @Override
   public AuthSettings getAuthSettings() {
