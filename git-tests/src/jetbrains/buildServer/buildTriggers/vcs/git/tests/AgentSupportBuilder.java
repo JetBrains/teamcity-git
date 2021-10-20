@@ -19,12 +19,16 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import java.io.IOException;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.agent.*;
+import jetbrains.buildServer.agent.oauth.AgentTokenRetriever;
+import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
+import jetbrains.buildServer.agent.oauth.ExpiringAccessToken;
 import jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder;
 import jetbrains.buildServer.util.EventDispatcher;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 class AgentSupportBuilder {
 
@@ -77,9 +81,17 @@ class AgentSupportBuilder {
     };
     myGitAgentSSHService =
       new GitAgentSSHService(myAgent, myAgentConfiguration, new MockGitPluginDescriptor(), mySshKeyProvider, buildTracker);
+
+    AgentTokenRetriever tokenRetriever = new AgentTokenRetriever() {
+      @Nullable
+      @Override
+      public ExpiringAccessToken retrieveToken(@NotNull String tokenId) {
+        return null;
+      }
+    };
     return new GitAgentVcsSupport(myFS, new MockDirectoryCleaner(), myGitAgentSSHService,
                                   myPluginConfigFactory, myMirrorManager, new SubmoduleManagerImpl(myMirrorManager), myGitMetaFactory,
-                                  EventDispatcher.create(AgentLifeCycleListener.class));
+                                  EventDispatcher.create(AgentLifeCycleListener.class), new AgentTokenStorage(EventDispatcher.create(AgentLifeCycleListener.class), tokenRetriever));
   }
 
 

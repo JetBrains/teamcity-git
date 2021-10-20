@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
+import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.util.FileUtil;
@@ -50,8 +51,8 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
                                @NotNull File targetDir,
                                @NotNull CheckoutRules rules,
                                @NotNull CheckoutMode mode,
-                               @NotNull SubmoduleManager submoduleManager) throws VcsException {
-    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode, submoduleManager);
+                               @NotNull SubmoduleManager submoduleManager, AgentTokenStorage tokenStorage) throws VcsException {
+    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode, submoduleManager, tokenStorage);
     myGitDir = new File(myTargetDirectory, ".git");
   }
 

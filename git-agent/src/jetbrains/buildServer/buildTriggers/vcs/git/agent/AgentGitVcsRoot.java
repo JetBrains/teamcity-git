@@ -16,16 +16,21 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import java.util.HashMap;
+import java.util.Map;
+import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 
 import java.io.File;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Agent Git plugin settings class
  */
 public class AgentGitVcsRoot extends GitVcsRoot {
+
   /**
    * The clean policy for the agent
    */
@@ -39,14 +44,18 @@ public class AgentGitVcsRoot extends GitVcsRoot {
    */
   private final File myLocalRepositoryDir;
 
+  private final AgentTokenStorage myTokenStorage;
 
-  public AgentGitVcsRoot(MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root) throws VcsException {
+  private AuthSettings myResolvedAuthSettings = null;
+
+  public AgentGitVcsRoot(MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root, AgentTokenStorage tokenStorage) throws VcsException {
     super(mirrorManager, root, new URIishHelperImpl());
     myLocalRepositoryDir = localRepositoryDir;
     String clean = getProperty(Constants.AGENT_CLEAN_POLICY);
     myCleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);
     String cleanFiles = getProperty(Constants.AGENT_CLEAN_FILES_POLICY);
     myCleanFilesPolicy = cleanFiles == null ? AgentCleanFilesPolicy.ALL_UNTRACKED : AgentCleanFilesPolicy.valueOf(cleanFiles);
+    myTokenStorage = tokenStorage;
   }
 
   /**
@@ -74,6 +83,35 @@ public class AgentGitVcsRoot extends GitVcsRoot {
     //ignore custom clone path on server
     String fetchUrl = getRepositoryFetchURL().toString();
     return myMirrorManager.getMirrorDir(fetchUrl);
+  }
+
+  @NotNull
+  @Override
+  public AuthSettings getAuthSettings() {
+    AuthSettings authSettings = super.getAuthSettings();
+    String password = authSettings.getPassword();
+    if (myTokenStorage == null || password == null || !password.startsWith("oauth2:")) {
+      return authSettings;
+    }
+    String newToken = myTokenStorage.getOrRefreshToken(password, password);
+    if (myResolvedAuthSettings != null) {
+      String oldToken = myResolvedAuthSettings.getPassword();
+      if (oldToken != null && oldToken.equals(newToken)) {
+        return myResolvedAuthSettings;
+      }
+    }
+
+    VcsRoot vcsRoot = getOriginalRoot();
+    Map<String, String> newProps = new HashMap<>();
+
+    getProperties().forEach((k, v) -> {
+      if (k.equals(Constants.PASSWORD)) {
+        newProps.put(k, newToken);
+      } else {
+        newProps.put(k, v);
+      }
+    });
+    return myResolvedAuthSettings = new AuthSettings(newProps, vcsRoot, myURIishHelper);
   }
 
   /**
