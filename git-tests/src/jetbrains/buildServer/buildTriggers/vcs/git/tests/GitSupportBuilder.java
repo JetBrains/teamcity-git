@@ -21,7 +21,10 @@ import java.util.List;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
+import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.oauth.OAuthToken;
+import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
@@ -178,9 +181,30 @@ public class GitSupportBuilder {
     myCommitLoader = new CommitLoaderImpl(myRepositoryManager, gitRepoOperations, myMapFullPath, myPluginConfig);
     GitResetCacheHandler resetCacheHandler = new GitResetCacheHandler(myRepositoryManager, new GcErrors());
     ResetRevisionsCacheHandler resetRevisionsCacheHandler = new ResetRevisionsCacheHandler(revisionsCache);
+
+    TokenRefresher tokenRefresher = new TokenRefresher() {
+      @Nullable
+      @Override
+      public String getOrRefreshToken(@NotNull String vcsRootExtId, @NotNull String tokenFullId, @Nullable String defaultValue) {
+        return null;
+      }
+
+      @Nullable
+      @Override
+      public String getOrRefreshToken(@NotNull SProject project, @NotNull String tokenFullId, @Nullable String defaultValue) {
+        return null;
+      }
+
+      @Nullable
+      @Override
+      public OAuthToken getOrRefreshToken(@NotNull SProject project, @NotNull String tokenFullId) {
+        return null;
+      }
+    };
+
     GitVcsSupport git = new GitVcsSupport(gitRepoOperations, myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
                                           new EmptyVcsRootSshKeyManager(), new MockVcsOperationProgressProvider(),
-                                          resetCacheHandler, resetRevisionsCacheHandler, myTestConnectionSupport);
+                                          resetCacheHandler, resetRevisionsCacheHandler, tokenRefresher, myTestConnectionSupport);
     git.addExtensions(myExtensions);
     git.setExtensionHolder(myExtensionHolder);
     return git;
