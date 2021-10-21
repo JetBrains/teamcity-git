@@ -56,6 +56,7 @@ public final class GitPatchBuilderDispatcher {
   private final CheckoutRules myRules;
   private final String myTrustedCertificatesDir;
   private final boolean myUseSeparateProcessForPatch;
+  private final SshSessionMetaFactory mySshMetaFactory;
 
   public GitPatchBuilderDispatcher(@NotNull ServerPluginConfig config,
                                    @NotNull VcsRootSshKeyManager sshKeyManager,
@@ -65,7 +66,8 @@ public final class GitPatchBuilderDispatcher {
                                    @NotNull String toRevision,
                                    @NotNull CheckoutRules rules,
                                    @Nullable String trustedCertificatesDir,
-                                   boolean useSeparateProcessForPatch) throws VcsException {
+                                   boolean useSeparateProcessForPatch,
+                                   @NotNull SshSessionMetaFactory sshMetaFactory) throws VcsException {
     myConfig = config;
     mySshKeyManager = sshKeyManager;
     myContext = context;
@@ -76,6 +78,7 @@ public final class GitPatchBuilderDispatcher {
     myRules = rules;
     myTrustedCertificatesDir = trustedCertificatesDir;
     myUseSeparateProcessForPatch = useSeparateProcessForPatch;
+    mySshMetaFactory = sshMetaFactory;
   }
 
   public void buildPatch() throws Exception {
@@ -182,7 +185,7 @@ public final class GitPatchBuilderDispatcher {
   }
 
   private void buildPatchInSameProcess() throws Exception {
-    new GitPatchBuilder(myContext, myBuilder, myFromRevision, myToRevision, myRules, myConfig.verboseTreeWalkLog())
+    new GitPatchBuilder(myContext, myBuilder, myFromRevision, myToRevision, myRules, myConfig.verboseTreeWalkLog(), mySshMetaFactory)
       .buildPatch();
   }
 

@@ -16,21 +16,29 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
-import jetbrains.buildServer.vcs.patches.PatchBuilder;
-import jetbrains.buildServer.vcs.patches.PatchBuilderContentInputStream;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.ObjectLoader;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.util.io.AutoCRLFInputStream;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.Callable;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.patches.PatchBuilder;
+import jetbrains.buildServer.vcs.patches.PatchBuilderContentInputStream;
+import org.eclipse.jgit.lfs.Lfs;
+import org.eclipse.jgit.lfs.LfsBlobLoader;
+import org.eclipse.jgit.lfs.LfsPointer;
+import org.eclipse.jgit.lfs.SmudgeFilter;
+import org.eclipse.jgit.lfs.lib.AnyLongObjectId;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectLoader;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.transport.SshSessionFactory;
+import org.eclipse.jgit.transport.URIish;
+import org.eclipse.jgit.util.io.AutoCRLFInputStream;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
 * @author dmitry.neverov
@@ -46,6 +54,8 @@ public class LoadContentAction implements Callable<Void> {
   private final String myPath;
   private final String myMappedPath;
   private final String myMode;
+  private final ServerPluginConfig myConfig;
+  private final SshSessionMetaFactory mySshMetaFactory;
 
   public LoadContentAction(@NotNull final ContentLoaderFactory contentFactory,
                            final GitVcsRoot root,
@@ -56,7 +66,9 @@ public class LoadContentAction implements Callable<Void> {
                            final ObjectId objectId,
                            final String path,
                            final String mappedPath,
-                           final String mode) {
+                           final String mode,
+                           final ServerPluginConfig config,
+                           final SshSessionMetaFactory sshMetaFactory) {
     myContentFactory = contentFactory;
     myRoot = root;
     myBuilder = builder;
@@ -67,6 +79,8 @@ public class LoadContentAction implements Callable<Void> {
     myPath = path;
     myMappedPath = mappedPath;
     myMode = mode;
+    myConfig = config;
+    mySshMetaFactory = sshMetaFactory;
   }
 
   public Void call() throws Exception {
@@ -81,7 +95,7 @@ public class LoadContentAction implements Callable<Void> {
           @NotNull
           @Override
           protected InputStream openStream() throws IOException {
-            return LoadContentAction.this.openContentStream(loader);
+            return openContentStream(loader);
           }
 
           @Nullable
@@ -110,10 +124,47 @@ public class LoadContentAction implements Callable<Void> {
   }
 
   @NotNull
-  protected ObjectLoader getObjectLoader() throws IOException {
+  protected ObjectLoader getObjectLoader() throws IOException, VcsException {
     ObjectLoader loader = myContentFactory.open(myRepository, myObjectId);
     if (loader == null)
       throw new IOException("Unable to find blob " + myObjectId.name() + (myPath == null ? "" : "(" + myPath + ")") + " in repository " + myRepository);
+
+    return myConfig.downloadLfsObjectsForPatch() ? smudgeLfsBlob(loader) : loader;
+  }
+
+  @NotNull
+  public ObjectLoader smudgeLfsBlob(@NotNull ObjectLoader loader)
+    throws IOException, VcsException {
+    if (loader.getSize() > LfsPointer.SIZE_THRESHOLD) {
+      return loader;
+    }
+
+    try (final InputStream is = loader.openStream()) {
+      LfsPointer ptr = LfsPointer.parseLfsPointer(is);
+      if (ptr != null) {
+        Lfs lfs = new Lfs(myRepository);
+        AnyLongObjectId oid = ptr.getOid();
+        Path mediaFile = lfs.getMediaFile(oid);
+        if (!Files.exists(mediaFile)) {
+          final SshSessionFactory oldFactory = SshSessionFactory.getInstance();
+          final URIish url = myRoot.getRepositoryFetchURL().get();
+          if (myRoot.isHttp() || !URIishHelperImpl.requiresCredentials(url)) {
+            SmudgeFilter.downloadLfsResource(lfs, myRepository, ptr);
+          } else {
+            try {
+              SshSessionFactory.setInstance(mySshMetaFactory.getSshSessionFactory(url, myRoot.getAuthSettings()));
+              SmudgeFilter.downloadLfsResource(lfs, myRepository, ptr);
+            } finally {
+              SshSessionFactory.setInstance(oldFactory);
+            }
+
+          }
+        }
+
+        return new LfsBlobLoader(mediaFile);
+      }
+    }
+
     return loader;
   }
 

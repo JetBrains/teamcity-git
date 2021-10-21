@@ -51,6 +51,7 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Layout;
 import org.bouncycastle.asn1.smime.SMIMEAttributes;
 import org.bouncycastle.crypto.CipherParameters;
+import org.eclipse.jgit.lfs.LfsBlobLoader;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.transport.JschConfigSessionFactory;
 import org.eclipse.jgit.transport.http.apache.HttpClientConnectionFactory;
@@ -89,6 +90,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public static final String GIT_TRACE_ENV = "teamcity.git.traceEnv";
   private static final String USE_DEFAULT_CHARSET = "teamcity.git.useDefaultCharset";
   private static final String GIT_OUTPUT_CHARSET = "teamcity.git.outputCharset";
+  private static final String PATCH_DOWNLOAD_LFS_OBJECTS = "teamcity.git.patch.downloadLfsObjects";
 
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
@@ -239,6 +241,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
     classes.add(org.slf4j.Logger.class);
     classes.add(org.slf4j.impl.StaticLoggerBinder.class);
     classes.add(EWAHCompressedBitmap.class);
+    classes.add(LfsBlobLoader.class);
     return ClasspathUtil.composeClasspath(classes.toArray(new Class[classes.size()]), null, null);
   }
 
@@ -678,5 +681,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
     final String charsetName = TeamCityProperties.getProperty(GIT_OUTPUT_CHARSET);
     return StringUtil.isNotEmpty(charsetName) ? charsetName : "UTF-8";
+  }
+
+  @Override
+  public boolean downloadLfsObjectsForPatch() {
+    return TeamCityProperties.getBooleanOrTrue(PATCH_DOWNLOAD_LFS_OBJECTS);
   }
 }

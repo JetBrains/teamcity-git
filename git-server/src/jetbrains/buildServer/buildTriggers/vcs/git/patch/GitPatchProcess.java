@@ -66,7 +66,7 @@ public class GitPatchProcess {
                           settings.getToRevision(),
                           settings.getCheckoutRules(),
                           settings.isVerboseTreeWalkLog(),
-                          new PrintFile()).buildPatch();
+                          new PrintFile(), transportFactory).buildPatch();
       patchBuilder.close();
     } catch (Throwable t) {
       if (settings.isDebugEnabled() || isImportant(t)) {

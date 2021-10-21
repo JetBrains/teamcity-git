@@ -180,4 +180,6 @@ public interface ServerPluginConfig extends PluginConfig {
 
   @NotNull
   Map<String, String> getGitTraceEnv();
+
+  boolean downloadLfsObjectsForPatch();
 }

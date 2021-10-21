@@ -22,6 +22,8 @@ import com.jcraft.jsch.Cipher;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+import java.io.File;
+import java.util.*;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsException;
@@ -37,16 +39,13 @@ import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
-import java.util.*;
-
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static java.util.Collections.emptySet;
 
 /**
 * @author dmitry.neverov
 */
-public class TransportFactoryImpl implements TransportFactory {
+public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFactory {
 
   private static Logger LOG = Logger.getInstance(TransportFactoryImpl.class.getName());
 
@@ -96,7 +95,7 @@ public class TransportFactoryImpl implements TransportFactory {
       t.setCredentialsProvider(new AuthCredentialsProvider(authSettings));
       if (t instanceof SshTransport) {
         SshTransport ssh = (SshTransport)t;
-        ssh.setSshSessionFactory(getSshSessionFactory(authSettings, url));
+        ssh.setSshSessionFactory(getSshSessionFactory(url, authSettings));
       }
       t.setTimeout(timeoutSeconds);
       return t;
@@ -155,7 +154,8 @@ public class TransportFactoryImpl implements TransportFactory {
    * @return session factory object
    * @throws VcsException in case of problems with creating object
    */
-  private SshSessionFactory getSshSessionFactory(AuthSettings authSettings, URIish url) throws VcsException {
+  @NotNull
+  public SshSessionFactory getSshSessionFactory(@NotNull URIish url, @NotNull AuthSettings authSettings) throws VcsException {
     switch (authSettings.getAuthMethod()) {
       case PRIVATE_KEY_DEFAULT:
         return new DefaultJschConfigSessionFactory(myConfig, authSettings, myJSchOptions);

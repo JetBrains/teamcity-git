@@ -17,8 +17,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
@@ -26,14 +29,10 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
+import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Callable;
 
 public class GitPatchBuilder {
 
@@ -52,14 +51,16 @@ public class GitPatchBuilder {
   private Repository myRepository;
   private VcsChangeTreeWalk myTreeWalk;
   private final boolean myVerboseTreeWalkLog;
+  private final SshSessionMetaFactory mySshMetaFactory;
 
   public GitPatchBuilder(@NotNull OperationContext context,
                          @NotNull PatchBuilder builder,
                          @Nullable String fromRevision,
                          @NotNull String toRevision,
                          @NotNull CheckoutRules rules,
-                         boolean verboseTreeWalkLog) throws VcsException {
-    this(context, builder, fromRevision, toRevision, rules, verboseTreeWalkLog, new PatchFileAction());
+                         boolean verboseTreeWalkLog,
+                         @NotNull SshSessionMetaFactory sshMetaFactory) throws VcsException {
+    this(context, builder, fromRevision, toRevision, rules, verboseTreeWalkLog, new PatchFileAction(), sshMetaFactory);
   }
 
   public GitPatchBuilder(@NotNull OperationContext context,
@@ -68,7 +69,8 @@ public class GitPatchBuilder {
                          @NotNull String toRevision,
                          @NotNull CheckoutRules rules,
                          boolean verboseTreeWalkLog,
-                         @NotNull PatchFileAction patchFileAction) throws VcsException {
+                         @NotNull PatchFileAction patchFileAction,
+                         @NotNull SshSessionMetaFactory sshMetaFactory) throws VcsException {
     myContext = context;
     myGitRoot = context.getGitRoot();
     myBuilder = builder;
@@ -76,6 +78,7 @@ public class GitPatchBuilder {
     myToRevision = toRevision;
     myRules = rules;
     myFullCheckout = fromRevision == null;
+    mySshMetaFactory = sshMetaFactory;
     myTreeWalk = null;
     myVerboseTreeWalkLog = verboseTreeWalkLog;
     myFileAction = patchFileAction;
@@ -198,7 +201,9 @@ public class GitPatchBuilder {
       id,
       path,
       mappedPath,
-      mode);
+      mode,
+      myContext.getPluginConfig(),
+      mySshMetaFactory);
   }
 
   @NotNull

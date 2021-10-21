@@ -422,6 +422,11 @@ public class PluginConfigBuilder {
       public String getGitOutputCharsetName() {
         return null;
       }
+
+      @Override
+      public boolean downloadLfsObjectsForPatch() {
+        return true;
+      }
     };
   }
 

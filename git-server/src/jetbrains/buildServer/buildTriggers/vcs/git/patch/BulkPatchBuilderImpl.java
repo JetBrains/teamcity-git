@@ -16,6 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.patch;
 
+import java.io.IOException;
+import java.util.List;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.vcs.BulkPatchService;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -29,19 +31,18 @@ import org.eclipse.jgit.lib.Repository;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
-import java.util.List;
-
 /**
  * @author Eugene Petrenko (eugene.petrenko@gmail.com)
  */
 public class BulkPatchBuilderImpl implements BulkPatchService, GitServerExtension {
   private final ServerPluginConfig myConfig;
   private final GitVcsSupport myVcs;
+  private final SshSessionMetaFactory mySshMetaFactory;
 
-  public BulkPatchBuilderImpl(@NotNull final ServerPluginConfig config, @NotNull final GitVcsSupport vcs) {
+  public BulkPatchBuilderImpl(@NotNull final ServerPluginConfig config, @NotNull final GitVcsSupport vcs, @NotNull SshSessionMetaFactory sshMetaFactory) {
     myConfig = config;
     myVcs = vcs;
+    mySshMetaFactory = sshMetaFactory;
 
     myVcs.addExtension(this);
   }
@@ -65,7 +66,7 @@ public class BulkPatchBuilderImpl implements BulkPatchService, GitServerExtensio
           final String toBase = request.getToVersion();
 
           try {
-            new GitPatchBuilder(ctx, patchBuilder, prevBase, toBase, rules, myConfig.verboseTreeWalkLog()) {
+            new GitPatchBuilder(ctx, patchBuilder, prevBase, toBase, rules, myConfig.verboseTreeWalkLog(), mySshMetaFactory) {
               @NotNull
               @Override
               protected ObjectReader newObjectReaderForTree() {

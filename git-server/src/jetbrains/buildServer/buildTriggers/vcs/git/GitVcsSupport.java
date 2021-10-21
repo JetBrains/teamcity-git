@@ -208,7 +208,8 @@ public class GitVcsSupport extends ServerVcsSupport
       GitPatchBuilderDispatcher gitPatchBuilder = new GitPatchBuilderDispatcher(myConfig, mySshKeyManager, context, builder, fromRevision,
                                                                                 toRevision, checkoutRules,
                                                                                 trustedCertificatesDir == null ? null : trustedCertificatesDir.getAbsolutePath(),
-                                                                                myConfig.isSeparateProcessForPatch() && !myGitRepoOperations.isNativeGitOperationsEnabled(gitRoot.getRepositoryFetchURL().toString()));
+                                                                                myConfig.isSeparateProcessForPatch() && !myGitRepoOperations.isNativeGitOperationsEnabled(gitRoot.getRepositoryFetchURL().toString()),
+                                                                                myTransportFactory);
       try {
         myCommitLoader.loadCommit(context, gitRoot, toRevision);
         gitPatchBuilder.buildPatch();

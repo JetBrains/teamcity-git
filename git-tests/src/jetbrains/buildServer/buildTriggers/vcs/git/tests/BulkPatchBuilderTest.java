@@ -16,6 +16,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.Closeable;
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitFetchService;
@@ -39,16 +48,6 @@ import org.junit.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.io.Closeable;
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
@@ -79,7 +78,7 @@ public class BulkPatchBuilderTest extends BaseTestCase {
     GitSupportBuilder builder = gitSupport().withServerPaths(myPaths);
     myGit = builder.build();
     myCommitSupport = new GitCommitsInfoBuilder(myGit, new GitFetchService(myGit));
-    myBulkBuilder = new BulkPatchBuilderImpl(builder.getPluginConfig(), myGit);
+    myBulkBuilder = new BulkPatchBuilderImpl(builder.getPluginConfig(), myGit, builder.getTransportFactory());
 
     myRepositoryDir = myTempFiles.createTempDir();
     File masterRep = dataFile("repo.git");
