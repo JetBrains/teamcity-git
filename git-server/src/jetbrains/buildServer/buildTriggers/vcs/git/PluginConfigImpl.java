@@ -685,6 +685,6 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   @Override
   public boolean downloadLfsObjectsForPatch() {
-    return TeamCityProperties.getBooleanOrTrue(PATCH_DOWNLOAD_LFS_OBJECTS);
+    return TeamCityProperties.getBoolean(PATCH_DOWNLOAD_LFS_OBJECTS);
   }
 }
