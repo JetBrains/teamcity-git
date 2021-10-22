@@ -34,7 +34,6 @@ import org.eclipse.jgit.lfs.lib.AnyLongObjectId;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.util.io.AutoCRLFInputStream;
 import org.jetbrains.annotations.NotNull;
@@ -146,18 +145,14 @@ public class LoadContentAction implements Callable<Void> {
         AnyLongObjectId oid = ptr.getOid();
         Path mediaFile = lfs.getMediaFile(oid);
         if (!Files.exists(mediaFile)) {
-          final SshSessionFactory oldFactory = SshSessionFactory.getInstance();
           final URIish url = myRoot.getRepositoryFetchURL().get();
+          // authentication is currently supported only for ssh
           if (myRoot.isHttp() || !URIishHelperImpl.requiresCredentials(url)) {
             SmudgeFilter.downloadLfsResource(lfs, myRepository, ptr);
           } else {
-            try {
-              SshSessionFactory.setInstance(mySshMetaFactory.getSshSessionFactory(url, myRoot.getAuthSettings()));
-              SmudgeFilter.downloadLfsResource(lfs, myRepository, ptr);
-            } finally {
-              SshSessionFactory.setInstance(oldFactory);
-            }
-
+            mySshMetaFactory.withSshSessionFactory(url, myRoot.getAuthSettings(), () -> {
+              return SmudgeFilter.downloadLfsResource(lfs, myRepository, ptr);
+            });
           }
         }
 

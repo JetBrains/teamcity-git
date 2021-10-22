@@ -50,7 +50,7 @@ public class GitPatchProcess {
       config, new MirrorManagerImpl(config, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl()));
     GitMapFullPath mapFullPath = new GitMapFullPath(config, new RevisionsCache(config));
     VcsRootSshKeyManager sshKeyManager = new ConstantSshKeyManager(settings.getKeyBytes());
-    TransportFactory transportFactory = new TransportFactoryImpl(config, sshKeyManager, settings.getGitTrustStoreProvider());
+    TransportFactory transportFactory = new TransportFactoryImpl(config, settings.getGitTrustStoreProvider(), new SshSessionMetaFactoryImpl(config, sshKeyManager));
     FetcherProperties fetcherProperties = new FetcherProperties(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, fetcherProperties, sshKeyManager, settings.getGitTrustStoreProvider());
     GitRepoOperations repoOperations = new GitRepoOperationsImpl(config, transportFactory, sshKeyManager, fetchCommand);
@@ -66,7 +66,8 @@ public class GitPatchProcess {
                           settings.getToRevision(),
                           settings.getCheckoutRules(),
                           settings.isVerboseTreeWalkLog(),
-                          new PrintFile(), transportFactory).buildPatch();
+                          new PrintFile(),
+                          new SshSessionMetaFactoryImpl(config, sshKeyManager)).buildPatch();
       patchBuilder.close();
     } catch (Throwable t) {
       if (settings.isDebugEnabled() || isImportant(t)) {

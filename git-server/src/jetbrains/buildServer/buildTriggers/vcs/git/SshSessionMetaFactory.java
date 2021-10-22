@@ -1,9 +1,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.util.concurrent.Callable;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public interface SshSessionMetaFactory {
   /**
@@ -16,4 +18,7 @@ public interface SshSessionMetaFactory {
    */
   @NotNull
   SshSessionFactory getSshSessionFactory(@NotNull URIish url, @NotNull AuthSettings authSettings) throws VcsException;
+
+  @Nullable
+  <T> T withSshSessionFactory(@NotNull URIish url, @NotNull AuthSettings authSettings, @NotNull Callable<T> operation) throws VcsException;
 }

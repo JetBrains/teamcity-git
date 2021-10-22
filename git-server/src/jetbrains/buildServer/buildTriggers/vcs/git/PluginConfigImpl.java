@@ -111,7 +111,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
                                                            GET_REPOSITORY_STATE_TIMEOUT_SECONDS,
                                                            IGNORE_MISSING_REMOTE_REF,
                                                            CONNECTION_RETRY_INTERVAL_SECONDS,
-                                                           CONNECTION_RETRY_ATTEMPTS);
+                                                           CONNECTION_RETRY_ATTEMPTS,
+                                                           PATCH_DOWNLOAD_LFS_OBJECTS);
 
   public PluginConfigImpl() {
     myCachesDir = null;

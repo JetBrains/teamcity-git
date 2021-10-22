@@ -57,6 +57,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private volatile String myDisplayName = null;
   private final ServerPluginConfig myConfig;
   private final TransportFactory myTransportFactory;
+  private final SshSessionMetaFactory mySshSessionMetaFactory;
   private final RepositoryManager myRepositoryManager;
   private final GitMapFullPath myMapFullPath;
   private final CommitLoader myCommitLoader;
@@ -70,6 +71,7 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull ServerPluginConfig config,
                        @NotNull ResetCacheRegister resetCacheManager,
                        @NotNull TransportFactory transportFactory,
+                       @NotNull SshSessionMetaFactory sshSessionMetaFactory,
                        @NotNull RepositoryManager repositoryManager,
                        @NotNull GitMapFullPath mapFullPath,
                        @NotNull CommitLoader commitLoader,
@@ -78,7 +80,7 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull GitResetCacheHandler resetCacheHandler,
                        @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler,
                        @Nullable TestConnectionSupport customTestConnection) {
-    this(gitRepoOperations, config, resetCacheManager, transportFactory, repositoryManager, mapFullPath, commitLoader, sshKeyManager, progressProvider,
+    this(gitRepoOperations, config, resetCacheManager, transportFactory, sshSessionMetaFactory, repositoryManager, mapFullPath, commitLoader, sshKeyManager, progressProvider,
          resetCacheHandler, resetRevisionsCacheHandler, new GitTrustStoreProviderStatic(null), customTestConnection);
   }
 
@@ -86,6 +88,7 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull ServerPluginConfig config,
                        @NotNull ResetCacheRegister resetCacheManager,
                        @NotNull TransportFactory transportFactory,
+                       @NotNull SshSessionMetaFactory sshSessionMetaFactory,
                        @NotNull RepositoryManager repositoryManager,
                        @NotNull GitMapFullPath mapFullPath,
                        @NotNull CommitLoader commitLoader,
@@ -98,6 +101,7 @@ public class GitVcsSupport extends ServerVcsSupport
     myGitRepoOperations = gitRepoOperations;
     myConfig = config;
     myTransportFactory = transportFactory;
+    mySshSessionMetaFactory = sshSessionMetaFactory;
     myRepositoryManager = repositoryManager;
     myMapFullPath = mapFullPath;
     myCommitLoader = commitLoader;
@@ -209,7 +213,7 @@ public class GitVcsSupport extends ServerVcsSupport
                                                                                 toRevision, checkoutRules,
                                                                                 trustedCertificatesDir == null ? null : trustedCertificatesDir.getAbsolutePath(),
                                                                                 myConfig.isSeparateProcessForPatch() && !myGitRepoOperations.isNativeGitOperationsEnabled(gitRoot.getRepositoryFetchURL().toString()),
-                                                                                myTransportFactory);
+                                                                                mySshSessionMetaFactory);
       try {
         myCommitLoader.loadCommit(context, gitRoot, toRevision);
         gitPatchBuilder.buildPatch();

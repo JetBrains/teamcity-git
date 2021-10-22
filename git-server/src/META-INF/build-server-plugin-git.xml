@@ -20,11 +20,12 @@
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd"
        default-autowire="constructor">
   <bean id="config" class="jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl"/>
+  <bean id="sshSessionMetaFactoryImpl" class="jetbrains.buildServer.buildTriggers.vcs.git.SshSessionMetaFactoryImpl"/>
   <bean id="transport" class="jetbrains.buildServer.buildTriggers.vcs.git.TransportFactoryImpl"/>
   <bean id="fetchCommand" class="jetbrains.buildServer.buildTriggers.vcs.git.FetchCommandImpl"/>
   <bean id="repoOperations" class="jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl"/>
   <bean id="jetbrainsGitServer" class="jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport">
-    <constructor-arg index="11"><null/></constructor-arg>
+    <constructor-arg index="12"><null/></constructor-arg>
   </bean>
   <bean id="urlSupport" class="jetbrains.buildServer.buildTriggers.vcs.git.GitUrlSupport"/>
   <bean id="remoteRepositoryUrlInvestigator" class="jetbrains.buildServer.buildTriggers.vcs.git.RemoteRepositoryUrlInvestigatorImpl"/>

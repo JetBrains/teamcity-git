@@ -27,7 +27,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * @author dmitry.neverov
  */
-public interface TransportFactory extends SshSessionMetaFactory {
+public interface TransportFactory {
 
   /**
    * Get a transport connection for specified local repository, URL and authentication settings

@@ -78,7 +78,7 @@ public class BulkPatchBuilderTest extends BaseTestCase {
     GitSupportBuilder builder = gitSupport().withServerPaths(myPaths);
     myGit = builder.build();
     myCommitSupport = new GitCommitsInfoBuilder(myGit, new GitFetchService(myGit));
-    myBulkBuilder = new BulkPatchBuilderImpl(builder.getPluginConfig(), myGit, builder.getTransportFactory());
+    myBulkBuilder = new BulkPatchBuilderImpl(builder.getPluginConfig(), myGit, builder.getSshSessionMetaFactory());
 
     myRepositoryDir = myTempFiles.createTempDir();
     File masterRep = dataFile("repo.git");

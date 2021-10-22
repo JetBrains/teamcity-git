@@ -18,24 +18,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.Pair;
 import com.jcraft.jsch.JSch;
-import jetbrains.buildServer.util.DiagnosticUtil;
-import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
-import jetbrains.buildServer.vcs.VcsException;
-import jetbrains.buildServer.vcs.VcsUtil;
-import org.eclipse.jgit.lib.ProgressMonitor;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.RepositoryBuilder;
-import org.eclipse.jgit.transport.FetchResult;
-import org.eclipse.jgit.transport.RefSpec;
-import org.eclipse.jgit.transport.TrackingRefUpdate;
-import org.eclipse.jgit.transport.URIish;
-import org.jetbrains.annotations.NotNull;
-
-import javax.management.Notification;
-import javax.management.NotificationEmitter;
-import javax.management.NotificationListener;
-import javax.management.openmbean.CompositeData;
 import java.io.*;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
@@ -47,6 +29,22 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import javax.management.Notification;
+import javax.management.NotificationEmitter;
+import javax.management.NotificationListener;
+import javax.management.openmbean.CompositeData;
+import jetbrains.buildServer.util.DiagnosticUtil;
+import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
+import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsUtil;
+import org.eclipse.jgit.lib.ProgressMonitor;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.transport.FetchResult;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.TrackingRefUpdate;
+import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.MB;
 
@@ -124,7 +122,7 @@ public class Fetcher {
     GitServerUtil.setupMemoryMappedIndexReading();
     GitServerUtil.configureStreamFileThreshold(Integer.MAX_VALUE);
 
-    TransportFactory transportFactory = new TransportFactoryImpl(config, new EmptyVcsRootSshKeyManager(), new GitTrustStoreProviderStatic(trustedCertificatesDir));
+    TransportFactory transportFactory = new TransportFactoryImpl(config, new GitTrustStoreProviderStatic(trustedCertificatesDir), new SshSessionMetaFactoryImpl(config, new EmptyVcsRootSshKeyManager()));
     Repository repository = GitServerUtil.getRepositoryWithDisabledAutoGc(repositoryDir);
 
     workaroundRacyGit();

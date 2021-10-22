@@ -31,7 +31,6 @@ import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
@@ -198,12 +197,6 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
                                        @NotNull AuthSettings authSettings,
                                        int timeoutSeconds) throws NotSupportedException, VcsException, TransportException {
         throw new TransportException(url.toString() + ": " + error, new JSchException(error));
-      }
-
-      @NotNull
-      @Override
-      public SshSessionFactory getSshSessionFactory(@NotNull URIish url, @NotNull AuthSettings authSettings) throws VcsException {
-        throw new UnsupportedOperationException();
       }
     };
 
