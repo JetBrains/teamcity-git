@@ -584,6 +584,9 @@ public class JSchClient {
           it.remove();
           port = Integer.parseInt(it.next());
           it.remove();
+        } else if ("--".equals(next)) {
+          // git lfs can send -- before , see TW-73634
+          it.remove();
         }
       }
 
