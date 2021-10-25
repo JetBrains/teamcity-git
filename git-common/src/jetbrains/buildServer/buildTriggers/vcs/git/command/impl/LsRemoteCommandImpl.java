@@ -16,18 +16,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
-import static com.intellij.openapi.util.text.StringUtil.isEmpty;
-import static com.intellij.openapi.util.text.StringUtil.splitByLines;
+import static jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil.splitByLines;
 
 public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> implements LsRemoteCommand {
 
@@ -54,7 +51,6 @@ public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> im
   private List<Ref> parse(@NotNull final String str) throws VcsException {
     final Map<String, Ref> refs = new HashMap<>();
     for (String line : splitByLines(str)) {
-      if (isEmpty(line)) continue;
 
       final String objectId = line.substring(0, 40);
       String name = line.substring(40).trim();

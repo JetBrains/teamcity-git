@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
-import java.io.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
@@ -28,6 +27,11 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static jetbrains.buildServer.util.FileUtil.normalizeSeparator;
 
@@ -224,5 +228,26 @@ public class CommandUtil {
   public static boolean shouldFetchFromScratch(@NotNull VcsException e) {
     if (e instanceof GitExecTimeout || CommandUtil.isCanceledError(e)) return false;
     return !isRemoteAccessError(e);
+  }
+
+  @NotNull
+  public static List<String> splitByLines(@NotNull String str) {
+    final int len = str.length();
+    if (len == 0) return Collections.emptyList();
+
+    final List<String> res = new ArrayList<>();
+    int start = 0;
+    while (start < len) {
+      int lfIndex = str.indexOf('\n', start);
+      if (lfIndex < 0) {
+        lfIndex = len;
+      }
+      final String line = str.substring(start, lfIndex);
+      if (line.length() > 0) {
+        res.add(line);
+      }
+      start = lfIndex + 1;
+    }
+    return res;
   }
 }

@@ -29,6 +29,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.DiffWithUpperLimitRevisionTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentSslCheckoutTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SSLInvestigatorTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CommandUtilTest"/>
     </classes>
   </test>
 </suite>
