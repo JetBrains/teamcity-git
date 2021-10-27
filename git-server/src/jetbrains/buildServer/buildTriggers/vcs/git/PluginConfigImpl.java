@@ -109,7 +109,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
                                                            GET_REPOSITORY_STATE_TIMEOUT_SECONDS,
                                                            IGNORE_MISSING_REMOTE_REF,
                                                            CONNECTION_RETRY_INTERVAL_SECONDS,
-                                                           CONNECTION_RETRY_ATTEMPTS);
+                                                           CONNECTION_RETRY_ATTEMPTS,
+                                                           JSchConfigInitializer.JSCH_CONFIG_INT_PROPERTY_PREFIX);
 
   public PluginConfigImpl() {
     myCachesDir = null;
@@ -505,7 +506,9 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public Map<String, String> getFetcherProperties() {
     Map<String, String> fetcherProps = new HashMap<String, String>();
     for (String propName : myFetcherPropertyNames) {
-      fetcherProps.put(propName, TeamCityProperties.getProperty(propName));
+      TeamCityProperties.getPropertiesWithPrefix(propName).forEach((k, v) -> {
+        fetcherProps.put(k, v);
+      });
     }
     return fetcherProps;
   }
