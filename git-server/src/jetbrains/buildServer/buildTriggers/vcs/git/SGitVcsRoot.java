@@ -14,6 +14,8 @@ public class SGitVcsRoot extends GitVcsRoot {
 
   @Nullable
   private final OAuthTokensStorage myTokenStorage;
+  private AuthSettings myResolvedAuthSettings = null;
+
 
   public SGitVcsRoot(@NotNull MirrorManager mirrorManager,
                      @NotNull VcsRoot root,
@@ -34,14 +36,22 @@ public class SGitVcsRoot extends GitVcsRoot {
     Map<String, String> newProps = new HashMap<>();
     VcsRoot vcsRoot = getOriginalRoot();
 
+    String newToken = getOrRefreshToken(vcsRoot, password);
+    if (myResolvedAuthSettings != null) {
+      String oldToken = myResolvedAuthSettings.getPassword();
+      if (oldToken != null && oldToken.equals(newToken)) {
+        return myResolvedAuthSettings;
+      }
+    }
+
     getProperties().forEach((k, v) -> {
       if (k.equals(Constants.PASSWORD)) {
-        newProps.put(k, getOrRefreshToken(vcsRoot, v));
+        newProps.put(k, newToken);
       } else {
         newProps.put(k, v);
       }
     });
-    return new AuthSettings(newProps, vcsRoot, myURIishHelper);
+    return myResolvedAuthSettings = new AuthSettings(newProps, vcsRoot, myURIishHelper);
   }
 
   private String getOrRefreshToken(@NotNull VcsRoot vcsRoot, @NotNull String suspectedTokenId) {
