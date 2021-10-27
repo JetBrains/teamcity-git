@@ -130,7 +130,7 @@ public class CommandUtil {
           .runCommandSecure(cli, cli.getCommandLineString(), input, new ProcessTimeoutCallback(timeoutSeconds, cli.getMaxOutputSize()), stdoutBuffer, stderrBuffer);
 
         cli.logFinish(cmdStr);
-        CommandUtil.checkCommandFailed(cli, fullCmdStr, res);
+        CommandUtil.checkCommandFailed(cli, cmdStr, res);
 
         final String out = res.getStdout().trim();
         if (StringUtil.isNotEmpty(out)) {

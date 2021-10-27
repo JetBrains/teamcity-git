@@ -12,7 +12,7 @@ import org.jetbrains.annotations.NotNull;
 public class GitServerVersionHealthReport extends HealthStatusReport {
 
   public static final String TYPE = "GitServerVersionHealthReport";
-  private static final String DESCRIPTION = "Installed git version is not supported for running native commands on TeamCity server-side";
+  private static final String DESCRIPTION = "Disabled running native commands on TeamCity server-side";
   private static final ItemCategory CATEGORY = new ItemCategory( "GitServerVersionHealthCategory", DESCRIPTION, ItemSeverity.WARN);
 
   private final GitRepoOperations myGitOperations;
@@ -46,11 +46,19 @@ public class GitServerVersionHealthReport extends HealthStatusReport {
 
   @Override
   public void report(@NotNull HealthStatusScope scope, @NotNull HealthStatusItemConsumer consumer) {
-    if (!myGitOperations.isNativeGitOperationsEnabled() || myGitOperations.isNativeGitOperationsSupported()) return;
+    if (!myGitOperations.isNativeGitOperationsEnabled()) return;
 
-    final GitExec gitExec = myGitOperations.detectGit();
+    GitExec gitExec = null;
+    String reason = null;
+    try {
+      gitExec = myGitOperations.detectGit();
+      if (myGitOperations.isNativeGitOperationsSupported(gitExec)) return;
+    } catch (Exception e) {
+      reason = e.getMessage();
+    }
     final Map<String, Object> data = new HashMap<>();
     data.put("gitExec", gitExec);
+    data.put("reason", reason);
     consumer.consumeGlobal(new HealthStatusItem("GitServerVersionId", CATEGORY, data));
   }
 }
