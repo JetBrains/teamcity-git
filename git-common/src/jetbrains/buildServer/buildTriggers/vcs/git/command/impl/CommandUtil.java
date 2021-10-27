@@ -16,6 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
@@ -27,11 +31,6 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 import static jetbrains.buildServer.util.FileUtil.normalizeSeparator;
 
@@ -134,7 +133,7 @@ public class CommandUtil {
           .runCommandSecure(cli, cli.getCommandLineString(), input, new ProcessTimeoutCallback(timeoutSeconds, cli.getMaxOutputSize()), stdoutBuffer, stderrBuffer);
 
         cli.logFinish(cmdStr);
-        CommandUtil.checkCommandFailed(cli, fullCmdStr, res);
+        CommandUtil.checkCommandFailed(cli, cmdStr, res);
 
         final String out = res.getStdout().trim();
         if (StringUtil.isNotEmpty(out)) {
