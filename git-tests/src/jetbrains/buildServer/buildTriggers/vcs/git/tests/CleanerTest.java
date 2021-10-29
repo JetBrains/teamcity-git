@@ -119,6 +119,10 @@ public class CleanerTest extends BaseTestCase {
         if (i == 5) {
           throw e;
         }
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException ignored) {
+        }
       }
     }
   }
