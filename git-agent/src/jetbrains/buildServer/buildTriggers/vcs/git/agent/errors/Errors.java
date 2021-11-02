@@ -29,7 +29,7 @@ public class Errors {
     String msg = e.getMessage();
     if (msg == null)
       return false;
-    return msg.contains("fatal: index file smaller than expected");
+    return msg.contains("fatal: index file smaller than expected") || msg.contains("fatal: index file corrupt");
   }
 
 
