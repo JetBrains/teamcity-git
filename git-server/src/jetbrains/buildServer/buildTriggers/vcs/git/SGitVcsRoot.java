@@ -34,7 +34,7 @@ public class SGitVcsRoot extends GitVcsRoot {
       return authSettings;
     }
     String password = authSettings.getPassword();
-    if (myTokenRefresher == null || password == null || !password.startsWith("oauth2:")) {
+    if (myTokenRefresher == null || password == null || !password.startsWith("tc_token_id:")) {
       return authSettings;
     }
     Map<String, String> newProps = new HashMap<>();

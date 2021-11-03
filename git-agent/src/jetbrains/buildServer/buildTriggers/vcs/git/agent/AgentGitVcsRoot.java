@@ -99,7 +99,7 @@ public class AgentGitVcsRoot extends GitVcsRoot {
       return authSettings;
     }
     String password = authSettings.getPassword();
-    if (myTokenStorage == null || password == null || !password.startsWith("oauth2:")) {
+    if (myTokenStorage == null || password == null || !password.startsWith("tc_token_id:")) {
       return authSettings;
     }
     String newToken = myTokenStorage.getOrRefreshToken(password, password);
