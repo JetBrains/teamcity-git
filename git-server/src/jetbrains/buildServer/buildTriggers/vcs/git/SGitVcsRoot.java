@@ -1,6 +1,5 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import com.intellij.openapi.util.text.StringUtil;
 import java.util.HashMap;
 import java.util.Map;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
@@ -64,9 +63,9 @@ public class SGitVcsRoot extends GitVcsRoot {
     SVcsRoot parentRoot = vcsRoot instanceof SVcsRoot ? (SVcsRoot)vcsRoot
                                                       : vcsRoot instanceof VcsRootInstance ? ((VcsRootInstance)vcsRoot).getParent() : null;
     if (parentRoot == null) {
-      return myTokenRefresher.getOrRefreshToken(vcsRoot.getExternalId(), suspectedTokenId, suspectedTokenId);
+      return myTokenRefresher.getRefreshableTokenValue(vcsRoot.getExternalId(), suspectedTokenId, suspectedTokenId);
     } else {
-      return myTokenRefresher.getOrRefreshToken(parentRoot.getProject(), suspectedTokenId, suspectedTokenId);
+      return myTokenRefresher.getRefreshableTokenValue(parentRoot.getProject(), suspectedTokenId, suspectedTokenId);
     }
   }
 }
