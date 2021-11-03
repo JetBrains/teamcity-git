@@ -25,9 +25,9 @@ import java.util.Properties;
 import java.util.Vector;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
@@ -126,7 +126,7 @@ public class SshHandler implements GitSSHService.Handler {
       cmd.addEnvParam(GitSSHHandler.GIT_SSH_VARIANT_ENV, "ssh");
     } catch (IOException e) {
       deleteKeys();
-      throw new VcsException("SSH script cannot be generated", e);
+      throw new VcsException("SSH script cannot be generated: " + e.getMessage(), e);
     }
     myHandlerNo = ssh.registerHandler(this);
     cmd.addEnvParam(GitSSHHandler.SSH_HANDLER_ENV, Integer.toString(myHandlerNo));

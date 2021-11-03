@@ -196,7 +196,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       repository = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
       return repository.getConfig().getString("remote", "origin", "url");
     } catch (IOException e) {
-      throw new VcsException("Error while reading remote repository url", e);
+      throw new VcsException("Error while reading remote repository url: " + e.getMessage(), e);
     } finally {
       if (repository != null)
         repository.close();
@@ -225,7 +225,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       // See `man git clone` --local flag
       return new URIish(repositoryDir.toURI().toASCIIString()).toString();
     } catch (URISyntaxException e) {
-      throw new VcsException("Cannot create uri for local mirror " + repositoryDir.getAbsolutePath(), e);
+      throw new VcsException("Cannot create uri for local mirror " + repositoryDir.getAbsolutePath() + ": " + e.getMessage(), e);
     }
   }
 

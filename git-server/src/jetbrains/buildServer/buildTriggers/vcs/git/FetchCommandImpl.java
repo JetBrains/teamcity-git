@@ -19,6 +19,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessExecutor;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessStuckMonitor;
@@ -38,13 +44,6 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.fetchAndCheckResults;
 
@@ -368,7 +367,7 @@ public class FetchCommandImpl implements FetchCommand {
       }
       return VcsUtil.propertiesToStringSecure(properties).getBytes(StandardCharsets.UTF_8);
     } catch (IOException e) {
-      throw new VcsException("Error while generating fetch process input", e);
+      throw new VcsException("Error while generating fetch process input: " + e.getMessage(), e);
     }
   }
 

@@ -225,7 +225,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     } catch (VcsException e) {
       throw e;
     } catch (Exception e) {
-      throw new VcsException("Error while pushing a commit, root " + gitRoot + ", revision " + commit + ", destination " + ref, e);
+      throw new VcsException("Error while pushing a commit, root " + gitRoot + ", revision " + commit + ", destination " + ref + ": " + e.getMessage(), e);
     }
   }
 

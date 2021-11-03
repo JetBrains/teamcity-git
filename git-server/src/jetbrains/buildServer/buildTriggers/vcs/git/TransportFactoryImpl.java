@@ -100,7 +100,7 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
       t.setTimeout(timeoutSeconds);
       return t;
     } catch (TransportException e) {
-      throw new VcsException("Cannot create transport", e);
+      throw new VcsException("Cannot create transport: " + e.getMessage(), e);
     }
   }
 
