@@ -102,7 +102,7 @@ public class AgentGitVcsRoot extends GitVcsRoot {
     if (myTokenStorage == null || password == null || !password.startsWith("tc_token_id:")) {
       return authSettings;
     }
-    String newToken = myTokenStorage.getOrRefreshToken(password, password);
+    String newToken = myTokenStorage.getOrRefreshToken(password);
     if (myResolvedAuthSettings != null) {
       String oldToken = myResolvedAuthSettings.getPassword();
       if (oldToken != null && oldToken.equals(newToken)) {

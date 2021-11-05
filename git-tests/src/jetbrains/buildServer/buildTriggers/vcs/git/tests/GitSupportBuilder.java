@@ -184,13 +184,13 @@ public class GitSupportBuilder {
     TokenRefresher tokenRefresher = new TokenRefresher() {
       @Nullable
       @Override
-      public String getRefreshableTokenValue(@NotNull String vcsRootExtId, @NotNull String tokenFullId, @Nullable String defaultValue) {
+      public String getRefreshableTokenValue(@NotNull String vcsRootExtId, @NotNull String tokenFullId) {
         return null;
       }
 
       @Nullable
       @Override
-      public String getRefreshableTokenValue(@NotNull SProject project, @NotNull String tokenFullId, @Nullable String defaultValue) {
+      public String getRefreshableTokenValue(@NotNull SProject project, @NotNull String tokenFullId) {
         return null;
       }
 

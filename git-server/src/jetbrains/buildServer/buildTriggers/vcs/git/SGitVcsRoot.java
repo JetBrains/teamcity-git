@@ -57,15 +57,15 @@ public class SGitVcsRoot extends GitVcsRoot {
     return myResolvedAuthSettings = new AuthSettings(newProps, vcsRoot, myURIishHelper);
   }
 
-  private String getOrRefreshToken(@NotNull VcsRoot vcsRoot, @NotNull String suspectedTokenId) {
+  private String getOrRefreshToken(@NotNull VcsRoot vcsRoot, @NotNull String tokenId) {
     if (myTokenRefresher == null)
-      return suspectedTokenId;
+      return tokenId;
     SVcsRoot parentRoot = vcsRoot instanceof SVcsRoot ? (SVcsRoot)vcsRoot
                                                       : vcsRoot instanceof VcsRootInstance ? ((VcsRootInstance)vcsRoot).getParent() : null;
     if (parentRoot == null) {
-      return myTokenRefresher.getRefreshableTokenValue(vcsRoot.getExternalId(), suspectedTokenId, suspectedTokenId);
+      return myTokenRefresher.getRefreshableTokenValue(vcsRoot.getExternalId(), tokenId);
     } else {
-      return myTokenRefresher.getRefreshableTokenValue(parentRoot.getProject(), suspectedTokenId, suspectedTokenId);
+      return myTokenRefresher.getRefreshableTokenValue(parentRoot.getProject(), tokenId);
     }
   }
 }
