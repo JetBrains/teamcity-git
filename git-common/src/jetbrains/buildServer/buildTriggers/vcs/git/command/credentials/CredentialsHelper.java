@@ -199,7 +199,7 @@ public class CredentialsHelper {
       return result;
     }
 
-    private void addCredentials(@NotNull String url, @NotNull String username, @NotNull String password) {
+    private void addCredentials(@NotNull String url, @Nullable String username, @NotNull String password) {
       myCredentials.put(url, new Cred(username, password));
     }
 
