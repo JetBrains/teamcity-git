@@ -92,10 +92,6 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   }
 
   @Override
-  public boolean isNativeGitOperationsSupported() {
-    return isNativeGitOperationsSupported(gitExecInternal());
-  }
-
   public boolean isNativeGitOperationsSupported(@Nullable GitExec gitExec) {
     return gitExec != null && GitVersion.fetchSupportsStdin(gitExec.getVersion());
   }
@@ -160,21 +156,21 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   }
 
   @NotNull
-  private GitExec detectGitInternal() {
+  private GitExec detectGitInternal() throws VcsException {
     final String gitPath = myConfig.getPathToGit();
-    if (gitPath == null) {
-      throw new IllegalArgumentException("No path to git provided: please specify path to git executable using \"teamcity.server.git.executable.path\" server startup property");
+    if (StringUtil.isEmpty(gitPath)) {
+      throw new VcsException("No path to git provided: please specify path to git executable using \"teamcity.server.git.executable.path\" server startup property");
     }
     GitVersion gitVersion;
     try {
       gitVersion = new GitFacadeImpl(new File("."), new StubContext(gitPath)).version().call();
     } catch (VcsException e) {
-      throw new IllegalArgumentException("Unable to run git at path \"" + gitPath + "\": please specify correct path to git executable using \"teamcity.server.git.executable.path\" server startup property, error: " + e.getMessage(), e);
+      throw new VcsException("Unable to run git at path \"" + gitPath + "\": please specify correct path to git executable using \"teamcity.server.git.executable.path\" server startup property, error: " + e.getMessage(), e);
     }
     if (gitVersion.isSupported()) {
       return new GitExec(gitPath, gitVersion, null);
     }
-    throw new IllegalArgumentException("TeamCity supports git version " + GitVersion.DEPRECATED + " or higher, found git (path \""+ gitPath +"\") has version " + gitVersion + ": please upgrade git");
+    throw new VcsException("TeamCity supports git version " + GitVersion.DEPRECATED + " or higher, detected git (path \""+ gitPath +"\") has version " + gitVersion + ".\n" + "Please install the latest git version");
   }
 
 
@@ -183,11 +179,11 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     return myGitExec.getOrDetect();
   }
 
-  @Nullable
+  @NotNull
   @Override
-  public GitExec detectGit() {
+  public GitExec detectGit() throws VcsException {
     myGitExec.reset();
-    return myGitExec.getOrDetect();
+    return detectGitInternal();
   }
 
   @NotNull
@@ -229,7 +225,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     } catch (VcsException e) {
       throw e;
     } catch (Exception e) {
-      throw new VcsException("Error while pushing a commit, root " + gitRoot + ", revision " + commit + ", destination " + ref, e);
+      throw new VcsException("Error while pushing a commit, root " + gitRoot + ", revision " + commit + ", destination " + ref + ": " + e.getMessage(), e);
     }
   }
 

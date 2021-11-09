@@ -98,6 +98,23 @@ public class CredentialsHelperTest {
                        entry("password", "secret"));
   }
 
+  @TestFor(issues = "TW-73873")
+  public void null_username() throws Exception {
+    CredentialsHelperConfig config = new CredentialsHelperConfig();
+    config.addCredentials("https://acme.org/user/repo.git", null, "secret");
+    config.setMatchAllUrls(true);
+    Map<String, String> out = run(
+      map("protocol", "https",
+          "host", "unknown.org",
+          "path", "/some/path"),
+      config.getEnv());
+
+    then(out).contains(entry("protocol", "https"),
+                       entry("host", "unknown.org"),
+                       entry("path", "/some/path"),
+                       entry("password", "secret"));
+  }
+
 
   @NotNull
   private Map<String, String> run(@NotNull Map<String, String> input,

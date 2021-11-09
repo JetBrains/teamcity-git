@@ -222,7 +222,7 @@ public class AgentGitFacadeImpl extends GitFacadeImpl implements AgentGitFacade 
         return f.getCanonicalPath();
       }
     } catch (Throwable e) {
-      throw new VcsException("Error while resolving path " + f.getAbsolutePath(), e);
+      throw new VcsException("Error while resolving path " + f.getAbsolutePath() + ": " + e.getMessage(), e);
     }
   }
 

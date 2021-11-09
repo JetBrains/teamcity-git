@@ -123,7 +123,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
         eolStream = new AutoLFInputStream(new ByteArrayInputStream(bytes.toByteArray()), true, true);
         myObjectMap.put(path, myObjectWriter.insert(Constants.OBJ_BLOB, length, eolStream));
       } catch (IOException e) {
-        throw new VcsException("Error while inserting file content to repository, file: " + path, e);
+        throw new VcsException("Error while inserting file content to repository, file: " + path + ": " + e.getMessage(), e);
       }
     }
 

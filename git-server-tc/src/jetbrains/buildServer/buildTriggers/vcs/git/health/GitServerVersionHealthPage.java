@@ -6,6 +6,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.serverSide.auth.Permission;
 import jetbrains.buildServer.serverSide.healthStatus.HealthStatusItem;
+import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.web.openapi.PagePlaces;
 import jetbrains.buildServer.web.openapi.PluginDescriptor;
 import jetbrains.buildServer.web.openapi.healthStatus.HealthStatusItemPageExtension;
@@ -34,7 +35,7 @@ public class GitServerVersionHealthPage extends HealthStatusItemPageExtension {
   public boolean isAvailable(@NotNull HttpServletRequest request) {
     if (!super.isAvailable(request)) return false;
     if (!SessionUser.getUser(request).isPermissionGrantedGlobally(Permission.MANAGE_SERVER_INSTALLATION)) return false;
-    if (!myGitOperations.isNativeGitOperationsEnabled() || myGitOperations.isNativeGitOperationsSupported()) return false;
+    if (!myGitOperations.isNativeGitOperationsEnabled()) return false;
 
     final HealthStatusItem item = getStatusItem(request);
     final Object gitExec = item.getAdditionalData().get("gitExec");
@@ -44,7 +45,10 @@ public class GitServerVersionHealthPage extends HealthStatusItemPageExtension {
 
   @Nullable
   private GitVersion getCurrentGitVersion() {
-    final GitExec gitExec = myGitOperations.detectGit();
-    return gitExec == null ? null : gitExec.getVersion();
+    try {
+      return myGitOperations.detectGit().getVersion();
+    } catch (VcsException e) {
+      return null;
+    }
   }
 }

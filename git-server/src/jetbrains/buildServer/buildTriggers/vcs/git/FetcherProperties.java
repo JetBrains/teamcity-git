@@ -16,12 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.io.File;
+import java.io.IOException;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
-import java.io.IOException;
 
 public class FetcherProperties {
 
@@ -39,7 +38,7 @@ public class FetcherProperties {
       GitServerUtil.writeAsProperties(props, myConfig.getFetcherProperties());
       return props;
     } catch (IOException e) {
-      throw new VcsException("Cannot create properties file for git fetch process", e);
+      throw new VcsException("Cannot create properties file for git fetch process: " + e.getMessage(), e);
     }
   }
 }

@@ -392,12 +392,9 @@ public class UpdaterImpl implements Updater {
       Loggers.VCS.info("Submodules update in " + repositoryDir.getAbsolutePath() + " is finished in " +
                        (System.currentTimeMillis() - start) + " ms");
 
-    } catch (IOException e) {
+    } catch (Exception e) {
       Loggers.VCS.error("Submodules checkout failed", e);
-      throw new VcsException("Submodules checkout failed", e);
-    } catch (ConfigInvalidException e) {
-      Loggers.VCS.error("Submodules checkout failed", e);
-      throw new VcsException("Submodules checkout failed", e);
+      throw new VcsException("Submodules checkout failed: " + e.getMessage(), e);
     }
   }
 
@@ -647,7 +644,7 @@ public class UpdaterImpl implements Updater {
     } catch (IOException e) {
       String msg = "Error while remove url.* sections";
       LOG.error(msg, e);
-      throw new VcsException(msg, e);
+      throw new VcsException(msg + ": " + e.getMessage(), e);
     } finally {
       if (r != null)
         r.close();
@@ -665,7 +662,7 @@ public class UpdaterImpl implements Updater {
     } catch (IOException e) {
       String msg = "Error while removing lfs.storage section";
       LOG.error(msg, e);
-      throw new VcsException(msg, e);
+      throw new VcsException(msg + ": " + e.getMessage(), e);
     } finally {
       if (r != null)
         r.close();

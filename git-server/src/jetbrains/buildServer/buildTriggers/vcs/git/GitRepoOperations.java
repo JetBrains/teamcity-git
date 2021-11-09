@@ -1,8 +1,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public interface GitRepoOperations {
   @NotNull
@@ -17,12 +17,12 @@ public interface GitRepoOperations {
   @NotNull
   TagCommand tagCommand(@NotNull GitVcsSupport vcsSupport, @NotNull String repoUrl);
 
-  @Nullable
-  GitExec detectGit();
+  @NotNull
+  GitExec detectGit() throws VcsException;
 
   boolean isNativeGitOperationsEnabled(@NotNull String repoUrl);
 
   boolean isNativeGitOperationsEnabled();
 
-  boolean isNativeGitOperationsSupported();
+  boolean isNativeGitOperationsSupported(@NotNull GitExec gitExec);
 }
