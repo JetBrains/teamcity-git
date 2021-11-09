@@ -27,6 +27,8 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import java.io.File;
 import org.jetbrains.annotations.NotNull;
 
+import static jetbrains.buildServer.agent.oauth.AgentTokenStorage.TOKEN_ID_PREFIX;
+
 /**
  * Agent Git plugin settings class
  */
@@ -99,7 +101,7 @@ public class AgentGitVcsRoot extends GitVcsRoot {
       return authSettings;
     }
     String password = authSettings.getPassword();
-    if (myTokenStorage == null || password == null || !password.startsWith("tc_token_id:")) {
+    if (myTokenStorage == null || password == null || !password.startsWith(TOKEN_ID_PREFIX)) {
       return authSettings;
     }
     String newToken = myTokenStorage.getOrRefreshToken(password);

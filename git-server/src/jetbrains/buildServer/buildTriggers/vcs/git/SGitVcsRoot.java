@@ -10,6 +10,8 @@ import jetbrains.buildServer.vcs.VcsRootInstance;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage.TOKEN_ID_PREFIX;
+
 public class SGitVcsRoot extends GitVcsRoot {
 
   @Nullable
@@ -33,7 +35,7 @@ public class SGitVcsRoot extends GitVcsRoot {
       return authSettings;
     }
     String password = authSettings.getPassword();
-    if (myTokenRefresher == null || password == null || !password.startsWith("tc_token_id:")) {
+    if (myTokenRefresher == null || password == null || !password.startsWith(TOKEN_ID_PREFIX)) {
       return authSettings;
     }
     Map<String, String> newProps = new HashMap<>();
