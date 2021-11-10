@@ -16,10 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthCredentialsProvider;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
-import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.eclipse.jgit.transport.CredentialItem;
@@ -41,7 +38,7 @@ public class AuthSettingsTest {
       .withAuthMethod(AuthenticationMethod.PASSWORD)
       .withUsername("user")
       .build();
-    CredentialsProvider c = new AuthCredentialsProvider(new AuthSettings(root, new URIishHelperImpl()));
+    CredentialsProvider c = new AuthCredentialsProvider(new AuthSettingsImpl(root, new URIishHelperImpl()));
     assertFalse(c.supports(new CredentialItem.Username(), new CredentialItem.Password()));
     c.get(new URIish("http://some.org/repository"), new CredentialItem.Username(), new CredentialItem.Password());
   }
@@ -52,7 +49,7 @@ public class AuthSettingsTest {
       .withAuthMethod(AuthenticationMethod.PASSWORD)
       .withUsername("user")
       .build();
-    CredentialsProvider c = new AuthCredentialsProvider(new AuthSettings(root, new URIishHelperImpl()));
+    CredentialsProvider c = new AuthCredentialsProvider(new AuthSettingsImpl(root, new URIishHelperImpl()));
     assertFalse(c.supports(new CredentialItem.Username(), new CredentialItem.Password()));
 
     final URIish uri = new URIish("http://some.org/repository");
@@ -70,7 +67,7 @@ public class AuthSettingsTest {
       .withAuthMethod(AuthenticationMethod.PASSWORD)
       .withPassword("pwd")
       .build();
-    CredentialsProvider c = new AuthCredentialsProvider(new AuthSettings(root, new URIishHelperImpl()));
+    CredentialsProvider c = new AuthCredentialsProvider(new AuthSettingsImpl(root, new URIishHelperImpl()));
     CredentialItem.Username username = new CredentialItem.Username();
     c.get(new URIish(url), username, new CredentialItem.Password());
     assertEquals(user, username.getValue());
@@ -82,7 +79,7 @@ public class AuthSettingsTest {
     VcsRoot root = vcsRoot().withFetchUrl("git@github.com:name/repo.git")
       .withAuthMethod(AuthenticationMethod.PRIVATE_KEY_DEFAULT)
       .build();
-    assertEquals("git", new AuthSettings(root, new URIishHelperImpl()).getUserName());
+    assertEquals("git", new AuthSettingsImpl(root, new URIishHelperImpl()).getUserName());
   }
 
 
@@ -93,7 +90,7 @@ public class AuthSettingsTest {
       .withUsername("user")
       .withPassword("pwd")
       .build();
-    AuthSettings authSettings = new AuthSettings(root, new URIishHelperImpl());
+    AuthSettings authSettings = new AuthSettingsImpl(root, new URIishHelperImpl());
     URIish authURI = new URIishHelperImpl().createAuthURI(authSettings, "git://some.org/repo.git").get();
     assertNull(authURI.getUser());
     assertNull(authURI.getPass());

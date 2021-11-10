@@ -25,7 +25,6 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsUtil;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.TrackingRefUpdate;
@@ -118,7 +117,7 @@ public class Fetcher {
     final String fetchUrl = vcsRootProperties.get(Constants.FETCH_URL);
     final String refspecs = vcsRootProperties.get(Constants.REFSPEC);
     final String trustedCertificatesDir = vcsRootProperties.get(Constants.GIT_TRUST_STORE_PROVIDER);
-    AuthSettings auth = new AuthSettings(vcsRootProperties, new URIishHelperImpl());
+    AuthSettings auth = new AuthSettingsImpl(vcsRootProperties, new URIishHelperImpl());
     PluginConfigImpl config = new PluginConfigImpl();
 
     GitServerUtil.setupMemoryMappedIndexReading();

@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.intellij.openapi.util.text.StringUtil;
 import java.util.HashMap;
 import java.util.Map;
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
@@ -122,7 +121,7 @@ public class AgentGitVcsRoot extends GitVcsRoot {
         newProps.put(k, v);
       }
     });
-    return myResolvedAuthSettings = new AuthSettings(newProps, vcsRoot, myURIishHelper);
+    return myResolvedAuthSettings = new AuthSettingsImpl(newProps, vcsRoot, myURIishHelper);
   }
 
   /**

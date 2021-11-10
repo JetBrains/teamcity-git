@@ -26,6 +26,7 @@ import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettingsImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
@@ -114,7 +115,7 @@ public class FetchCommandImplTest extends BaseTestCase {
 
   @NotNull
   private AuthSettings getEmptyAuthSettings() {
-    return new AuthSettings(new HashMap<String, String>(), new URIishHelperImpl());
+    return new AuthSettingsImpl(new HashMap<String, String>(), new URIishHelperImpl());
   }
 
   @NotNull

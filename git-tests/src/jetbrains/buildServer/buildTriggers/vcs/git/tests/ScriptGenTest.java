@@ -22,7 +22,7 @@ import java.io.IOException;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettingsImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
@@ -84,7 +84,7 @@ public class ScriptGenTest {
   public void check_escaping(@NotNull String password) throws Exception {
     VcsRoot root = createRootWithPassword(password);
     GeneralCommandLine cmd = new GeneralCommandLine();
-    cmd.setExePath(createGenerator().generateAskPass(new AuthSettings(root, new URIishHelperImpl())).getCanonicalPath());
+    cmd.setExePath(createGenerator().generateAskPass(new AuthSettingsImpl(root, new URIishHelperImpl())).getCanonicalPath());
     ExecResult result = SimpleCommandLineProcessRunner.runCommand(cmd, null);
     assertEquals(password, trimNewLines(result.getStdout()));
   }

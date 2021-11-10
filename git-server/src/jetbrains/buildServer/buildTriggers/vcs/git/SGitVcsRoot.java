@@ -56,7 +56,7 @@ public class SGitVcsRoot extends GitVcsRoot {
         newProps.put(k, v);
       }
     });
-    return myResolvedAuthSettings = new AuthSettings(newProps, vcsRoot, myURIishHelper);
+    return myResolvedAuthSettings = new AuthSettingsImpl(newProps, vcsRoot, myURIishHelper);
   }
 
   private String getOrRefreshToken(@NotNull VcsRoot vcsRoot, @NotNull String tokenId) {

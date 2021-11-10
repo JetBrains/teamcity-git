@@ -37,9 +37,9 @@ public class GitVcsRoot {
   protected final MirrorManager myMirrorManager;
   private final VcsRoot myDelegate;
   private final AtomicReference<CommonURIish> myRepositoryFetchURL = new AtomicReference<>();
-  private final AtomicReference<CommonURIish> myRepositoryFetchURLNoFixErrors = new AtomicReference<>();;
-  private final AtomicReference<CommonURIish> myRepositoryPushURL = new AtomicReference<>();;
-  private final AtomicReference<CommonURIish> myRepositoryPushURLNoFixErrors = new AtomicReference<>();;
+  private final AtomicReference<CommonURIish> myRepositoryFetchURLNoFixErrors = new AtomicReference<>();
+  private final AtomicReference<CommonURIish> myRepositoryPushURL = new AtomicReference<>();
+  private final AtomicReference<CommonURIish> myRepositoryPushURLNoFixErrors = new AtomicReference<>();
   private final String myRef;
   private final UserNameStyle myUsernameStyle;
   private final SubmodulesCheckoutPolicy mySubmodulePolicy;
@@ -69,7 +69,7 @@ public class GitVcsRoot {
     myURIishHelper = urIishHelper;
     myUsernameStyle = readUserNameStyle();
     mySubmodulePolicy = readSubmodulesPolicy();
-    myAuthSettings = new AuthSettings(this, urIishHelper);
+    myAuthSettings = new AuthSettingsImpl(this, urIishHelper);
     myRawFetchUrl = getProperty(Constants.FETCH_URL);
     if (myRawFetchUrl.contains("\n") || myRawFetchUrl.contains("\r"))
       throw new VcsException("Newline in fetch url '" + myRawFetchUrl + "'");
