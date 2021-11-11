@@ -46,7 +46,8 @@ import static jetbrains.buildServer.util.CollectionsUtil.setOf;
  */
 public class GitVcsSupport extends ServerVcsSupport
   implements VcsBulkSuitabilityChecker, BuildPatchByCheckoutRules,
-             TestConnectionSupport, IncludeRuleBasedMappingProvider {
+             TestConnectionSupport, IncludeRuleBasedMappingProvider,
+             VcsRootIdentityProvider {
 
   private static final Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   static final String GIT_REPOSITORY_HAS_NO_BRANCHES = "Git repository has no branches";
@@ -595,5 +596,16 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public RepositoryManager getRepositoryManager() {
     return myRepositoryManager;
+  }
+
+  @NotNull
+  @Override
+  public String getVcsRootIdentity(@NotNull VcsRoot vcsRoot) throws VcsException {
+    final OperationContext context = createContext(vcsRoot, "get vcs root identity");
+    try {
+      return context.getGitRoot().getRepositoryDir().getName();
+    } finally {
+      context.close();
+    }
   }
 }
