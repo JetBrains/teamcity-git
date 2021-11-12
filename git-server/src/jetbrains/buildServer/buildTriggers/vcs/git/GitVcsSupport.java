@@ -604,6 +604,8 @@ public class GitVcsSupport extends ServerVcsSupport
     final OperationContext context = createContext(vcsRoot, "get vcs root identity");
     try {
       final GitVcsRoot gitRoot = context.getGitRoot();
+      // we include "Use tags as branches" setting here, because the same repo with and without tags turns out to be different
+      // entities from the point of view of TeamCity core (at least when working with current state)
       return gitRoot.getRepositoryDir().getName() + (gitRoot.isReportTags() ? ".inclTags" : "");
     } finally {
       context.close();
