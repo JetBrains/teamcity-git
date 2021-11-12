@@ -603,7 +603,8 @@ public class GitVcsSupport extends ServerVcsSupport
   public String getVcsRootIdentity(@NotNull VcsRoot vcsRoot) throws VcsException {
     final OperationContext context = createContext(vcsRoot, "get vcs root identity");
     try {
-      return context.getGitRoot().getRepositoryDir().getName();
+      final GitVcsRoot gitRoot = context.getGitRoot();
+      return gitRoot.getRepositoryDir().getName() + (gitRoot.isReportTags() ? ".inclTags" : "");
     } finally {
       context.close();
     }
