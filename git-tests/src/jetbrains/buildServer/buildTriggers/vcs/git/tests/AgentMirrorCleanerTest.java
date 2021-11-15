@@ -17,17 +17,24 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.agent.AgentLifeCycleListener;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.DirectoryCleanersProviderContext;
 import jetbrains.buildServer.agent.DirectoryCleanersRegistry;
+import jetbrains.buildServer.agent.oauth.AgentTokenRetriever;
+import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
+import jetbrains.buildServer.agent.oauth.ExpiringAccessToken;
+import jetbrains.buildServer.agent.oauth.InvalidAccessToken;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentMirrorCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.SubmoduleManagerImpl;
 import jetbrains.buildServer.util.Dates;
+import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.testng.Assert;
@@ -57,7 +64,15 @@ public class AgentMirrorCleanerTest {
     myContext = new Mockery();
     myMirrorManager = myContext.mock(MirrorManager.class);
     mySubmoduleManager = new SubmoduleManagerImpl(myMirrorManager);
-    myAgentMirrorCleaner = new AgentMirrorCleaner(myMirrorManager, mySubmoduleManager);
+    AgentTokenRetriever tokenRetriever = new AgentTokenRetriever() {
+      @NotNull
+      @Override
+      public ExpiringAccessToken retrieveToken(@NotNull String tokenId) {
+        return new InvalidAccessToken();
+      }
+    };
+    AgentTokenStorage tokenStorage = new AgentTokenStorage(EventDispatcher.create(AgentLifeCycleListener.class), tokenRetriever);
+    myAgentMirrorCleaner = new AgentMirrorCleaner(myMirrorManager, mySubmoduleManager, tokenStorage);
   }
 
   public void should_register_mirrors_not_used_in_current_build() throws IOException {

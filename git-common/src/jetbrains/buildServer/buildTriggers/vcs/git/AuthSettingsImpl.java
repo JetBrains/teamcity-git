@@ -3,10 +3,16 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod.PASSWORD;
 
 public class AuthSettingsImpl implements AuthSettings {
 
@@ -17,22 +23,29 @@ public class AuthSettingsImpl implements AuthSettings {
   private final String myPassphrase;
   private final String myPrivateKeyFilePath;
   private final String myUserName;
-  private final String myPassword;
+  private final String myTokenId;
+  private String myPassword;
   private final String myTeamCitySshKeyId;
+  private final Function<String, String> myTokenRetriever;
+  private final Lock myTokenRetrievalLock = new ReentrantLock();
 
   public AuthSettingsImpl(@NotNull VcsRoot root, @NotNull URIishHelper urIishHelper) {
-    this(root.getProperties(), root, urIishHelper);
+    this(root.getProperties(), root, urIishHelper, null);
   }
 
-  public AuthSettingsImpl(@NotNull GitVcsRoot root, @NotNull URIishHelper urIishHelper) {
-    this(root.getProperties(), root.getOriginalRoot(), urIishHelper);
+  public AuthSettingsImpl(@NotNull GitVcsRoot root, @NotNull URIishHelper urIishHelper, @Nullable Function <String, String> tokenRetriever) {
+    this(root.getProperties(), root.getOriginalRoot(), urIishHelper, tokenRetriever);
   }
 
   public AuthSettingsImpl(@NotNull Map<String, String> properties, @NotNull URIishHelper urIishHelper) {
-    this(properties, null, urIishHelper);
+    this(properties, null, urIishHelper, null);
   }
 
   public AuthSettingsImpl(@NotNull Map<String, String> properties, @Nullable VcsRoot root, @NotNull URIishHelper urIishHelper) {
+    this(properties, root, urIishHelper, null);
+  }
+
+  public AuthSettingsImpl(@NotNull Map<String, String> properties, @Nullable VcsRoot root, @NotNull URIishHelper urIishHelper, @Nullable Function <String, String> tokenRetriever) {
     myAuthMethod = readAuthMethod(properties);
     myIgnoreKnownHosts = "true".equals(properties.get(Constants.IGNORE_KNOWN_HOSTS));
     if (myAuthMethod == AuthenticationMethod.PRIVATE_KEY_FILE) {
@@ -47,9 +60,17 @@ public class AuthSettingsImpl implements AuthSettings {
     }
     myUrIishHelper = urIishHelper;
     myUserName = readUsername(properties);
-    myPassword = myAuthMethod != AuthenticationMethod.PASSWORD ? null : properties.get(Constants.PASSWORD);
+    String passwordValue = properties.get(Constants.PASSWORD);
+    boolean isTokenId = isTokenId(passwordValue);
+    myPassword = myAuthMethod != PASSWORD || isTokenId ? null : passwordValue;
+    myTokenId = myAuthMethod != PASSWORD || !isTokenId ? null : passwordValue;
     myTeamCitySshKeyId = myAuthMethod != AuthenticationMethod.TEAMCITY_SSH_KEY ? null : properties.get(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME);
     myRoot = root;
+    myTokenRetriever = tokenRetriever;
+  }
+
+  protected boolean isTokenId(@Nullable String passwordValue) {
+    return false; // this is a common code, we can only distinguis between token ids and other values in server- and agent-specific code.
   }
 
   @Nullable
@@ -98,6 +119,19 @@ public class AuthSettingsImpl implements AuthSettings {
   @Nullable
   @Override
   public String getPassword() {
+    if (myAuthMethod != PASSWORD || myTokenId == null || myTokenRetriever == null)
+      return myPassword;
+
+    myTokenRetrievalLock.lock();
+    try {
+      String newToken = myTokenRetriever.apply(myTokenId);
+      if (!Objects.equals(newToken, myPassword)) {
+        myPassword = newToken;
+      }
+    } finally {
+      myTokenRetrievalLock.unlock();
+    }
+
     return myPassword;
   }
 

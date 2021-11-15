@@ -16,8 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import java.util.HashMap;
-import java.util.Map;
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.vcs.VcsException;
@@ -25,8 +23,6 @@ import jetbrains.buildServer.vcs.VcsRoot;
 
 import java.io.File;
 import org.jetbrains.annotations.NotNull;
-
-import static jetbrains.buildServer.agent.oauth.AgentTokenStorage.TOKEN_ID_PREFIX;
 
 /**
  * Agent Git plugin settings class
@@ -49,7 +45,18 @@ public class AgentGitVcsRoot extends GitVcsRoot {
   private final AgentTokenStorage myTokenStorage;
   private final boolean myTokenRefreshEnabled;
 
-  private AuthSettings myResolvedAuthSettings = null;
+  public AgentGitVcsRoot(MirrorManager mirrorManager, VcsRoot root,
+                         AgentTokenStorage tokenStorage, boolean isTokenRefreshEnabled) throws VcsException {
+    super(mirrorManager, root, new URIishHelperImpl());
+    myLocalRepositoryDir = getRepositoryDir();
+    String clean = getProperty(Constants.AGENT_CLEAN_POLICY);
+    myCleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);
+    String cleanFiles = getProperty(Constants.AGENT_CLEAN_FILES_POLICY);
+    myCleanFilesPolicy = cleanFiles == null ? AgentCleanFilesPolicy.ALL_UNTRACKED : AgentCleanFilesPolicy.valueOf(cleanFiles);
+    myTokenStorage = tokenStorage;
+    myTokenRefreshEnabled = isTokenRefreshEnabled;
+  }
+
 
   public AgentGitVcsRoot(MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root,
                          AgentTokenStorage tokenStorage, boolean isTokenRefreshEnabled) throws VcsException {
@@ -84,44 +91,17 @@ public class AgentGitVcsRoot extends GitVcsRoot {
     return myLocalRepositoryDir;
   }
 
+  @Override
+  protected AuthSettings createAuthSettings(@NotNull URIishHelper urIishHelper) {
+    return new AgentAuthSettings(this, urIishHelper,
+                                 tokenId -> myTokenRefreshEnabled ? myTokenStorage.getOrRefreshToken(tokenId)
+                                                                  : tokenId);  // treat token id as token if the functionality is disabled
+  }
+
   public File getRepositoryDir() {
     //ignore custom clone path on server
     String fetchUrl = getRepositoryFetchURL().toString();
     return myMirrorManager.getMirrorDir(fetchUrl);
-  }
-
-  @NotNull
-  @Override
-  public AuthSettings getAuthSettings() {
-    AuthSettings authSettings = super.getAuthSettings();
-    if (!myTokenRefreshEnabled)
-      return authSettings;
-    if (authSettings.getAuthMethod() != AuthenticationMethod.PASSWORD) {
-      return authSettings;
-    }
-    String password = authSettings.getPassword();
-    if (myTokenStorage == null || password == null || !password.startsWith(TOKEN_ID_PREFIX)) {
-      return authSettings;
-    }
-    String newToken = myTokenStorage.getOrRefreshToken(password);
-    if (myResolvedAuthSettings != null) {
-      String oldToken = myResolvedAuthSettings.getPassword();
-      if (oldToken != null && oldToken.equals(newToken)) {
-        return myResolvedAuthSettings;
-      }
-    }
-
-    VcsRoot vcsRoot = getOriginalRoot();
-    Map<String, String> newProps = new HashMap<>();
-
-    getProperties().forEach((k, v) -> {
-      if (k.equals(Constants.PASSWORD)) {
-        newProps.put(k, newToken);
-      } else {
-        newProps.put(k, v);
-      }
-    });
-    return myResolvedAuthSettings = new AuthSettingsImpl(newProps, vcsRoot, myURIishHelper);
   }
 
   /**

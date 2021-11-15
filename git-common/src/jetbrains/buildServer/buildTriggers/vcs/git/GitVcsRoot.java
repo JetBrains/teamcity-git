@@ -69,7 +69,7 @@ public class GitVcsRoot {
     myURIishHelper = urIishHelper;
     myUsernameStyle = readUserNameStyle();
     mySubmodulePolicy = readSubmodulesPolicy();
-    myAuthSettings = new AuthSettingsImpl(this, urIishHelper);
+    myAuthSettings = createAuthSettings(urIishHelper);
     myRawFetchUrl = getProperty(Constants.FETCH_URL);
     if (myRawFetchUrl.contains("\n") || myRawFetchUrl.contains("\r"))
       throw new VcsException("Newline in fetch url '" + myRawFetchUrl + "'");
@@ -90,8 +90,8 @@ public class GitVcsRoot {
     myCheckoutPolicy = readCheckoutPolicy();
   }
 
-  public GitVcsRoot getRootForBranch(@NotNull String branch) throws VcsException {
-    return new GitVcsRoot(myMirrorManager, myDelegate, branch, myURIishHelper);
+  protected AuthSettings createAuthSettings(@NotNull URIishHelper urIishHelper) {
+    return new AuthSettingsImpl(getOriginalRoot(), urIishHelper);
   }
 
   @Nullable

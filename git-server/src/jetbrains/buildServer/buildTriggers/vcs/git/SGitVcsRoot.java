@@ -1,7 +1,5 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import java.util.HashMap;
-import java.util.Map;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
@@ -10,14 +8,10 @@ import jetbrains.buildServer.vcs.VcsRootInstance;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage.TOKEN_ID_PREFIX;
-
 public class SGitVcsRoot extends GitVcsRoot {
 
   @Nullable
   private final TokenRefresher myTokenRefresher;
-  private AuthSettings myResolvedAuthSettings = null;
-
 
   public SGitVcsRoot(@NotNull MirrorManager mirrorManager,
                      @NotNull VcsRoot root,
@@ -27,39 +21,13 @@ public class SGitVcsRoot extends GitVcsRoot {
     myTokenRefresher = tokenRefresher;
   }
 
-  @NotNull
   @Override
-  public AuthSettings getAuthSettings() {
-    AuthSettings authSettings = super.getAuthSettings();
-    if (authSettings.getAuthMethod() != AuthenticationMethod.PASSWORD) {
-      return authSettings;
-    }
-    String password = authSettings.getPassword();
-    if (myTokenRefresher == null || password == null || !password.startsWith(TOKEN_ID_PREFIX)) {
-      return authSettings;
-    }
-    Map<String, String> newProps = new HashMap<>();
-    VcsRoot vcsRoot = getOriginalRoot();
-
-    String newToken = getOrRefreshToken(vcsRoot, password);
-    if (myResolvedAuthSettings != null) {
-      String oldToken = myResolvedAuthSettings.getPassword();
-      if (oldToken != null && oldToken.equals(newToken)) {
-        return myResolvedAuthSettings;
-      }
-    }
-
-    getProperties().forEach((k, v) -> {
-      if (k.equals(Constants.PASSWORD)) {
-        newProps.put(k, newToken);
-      } else {
-        newProps.put(k, v);
-      }
-    });
-    return myResolvedAuthSettings = new AuthSettingsImpl(newProps, vcsRoot, myURIishHelper);
+  protected AuthSettings createAuthSettings(@NotNull URIishHelper urIishHelper) {
+    return new SAuthSettings(this, urIishHelper, tokenId -> getOrRefreshToken(tokenId));
   }
 
-  private String getOrRefreshToken(@NotNull VcsRoot vcsRoot, @NotNull String tokenId) {
+  private String getOrRefreshToken(@NotNull String tokenId) {
+    VcsRoot vcsRoot = getOriginalRoot();
     if (myTokenRefresher == null)
       return tokenId;
     SVcsRoot parentRoot = vcsRoot instanceof SVcsRoot ? (SVcsRoot)vcsRoot
