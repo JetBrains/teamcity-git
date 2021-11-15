@@ -611,4 +611,10 @@ public class GitVcsSupport extends ServerVcsSupport
       context.close();
     }
   }
+
+  @NotNull
+  @Override
+  public String getDefaultBranchPropertyName() {
+    return Constants.BRANCH_NAME;
+  }
 }
