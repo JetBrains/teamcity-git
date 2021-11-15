@@ -108,10 +108,10 @@ public class AgentMirrorCleanerTest {
         one(myMirrorManager).getLastUsedTime(r3mirror); will(returnValue(r3lastAccess.getTime()));
         one(myMirrorManager).getLastUsedTime(r4mirror); will(returnValue(r4lastAccess.getTime()));
 
-        one(myMirrorManager).getMirrorDir("git://some.org/r1"); will(returnValue(r1mirror));
-        one(myMirrorManager).getMirrorDir("git://some.org/r2"); will(returnValue(r2mirror));
-        one(myMirrorManager).getMirrorDir("git://some.org/r3"); will(returnValue(r3mirror));
-        one(myMirrorManager).getMirrorDir("git://some.org/r4"); will(returnValue(r4mirror));
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r1"); will(returnValue(r1mirror));
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r2"); will(returnValue(r2mirror));
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r3"); will(returnValue(r3mirror));
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r4"); will(returnValue(r4mirror));
 
         one(registry).addCleaner(r3mirror, r3lastAccess);
         one(registry).addCleaner(r4mirror, r4lastAccess);
@@ -184,7 +184,7 @@ public class AgentMirrorCleanerTest {
         one(myMirrorManager).getMappings(); will(returnValue(map("git://some.org/r1", invalidMirror)));
         one(myMirrorManager).getBaseMirrorsDir(); will(returnValue(baseMirrorsDir));
         one(myMirrorManager).isInvalidDirName(invalidMirror.getName()); will(returnValue(true));
-        one(myMirrorManager).getMirrorDir("git://some.org/r1"); will(returnValue(invalidMirror));
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r1"); will(returnValue(invalidMirror));
         one(myMirrorManager).removeMirrorDir(invalidMirror);}});
       myAgentMirrorCleaner.registerDirectoryCleaners(createCleanerContext(repositoriesInBuild), registry);
     } finally {
