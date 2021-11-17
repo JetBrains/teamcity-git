@@ -612,9 +612,10 @@ public class GitVcsSupport extends ServerVcsSupport
     }
   }
 
-  @NotNull
+  @Nullable
   @Override
-  public String getDefaultBranchPropertyName() {
-    return Constants.BRANCH_NAME;
+  public String getDefaultBranchName(@NotNull VcsRoot vcsRoot) {
+    final String prop = vcsRoot.getProperty(Constants.BRANCH_NAME);
+    return prop == null ? null : GitUtils.expandRef(prop);
   }
 }
