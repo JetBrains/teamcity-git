@@ -47,7 +47,8 @@ import static jetbrains.buildServer.util.CollectionsUtil.setOf;
  */
 public class GitVcsSupport extends ServerVcsSupport
   implements VcsBulkSuitabilityChecker, BuildPatchByCheckoutRules,
-             TestConnectionSupport, IncludeRuleBasedMappingProvider {
+             TestConnectionSupport, IncludeRuleBasedMappingProvider,
+             VcsRootIdentityProvider {
 
   private static final Logger LOG = Logger.getInstance(GitVcsSupport.class.getName());
   static final String GIT_REPOSITORY_HAS_NO_BRANCHES = "Git repository has no branches";
@@ -599,5 +600,26 @@ public class GitVcsSupport extends ServerVcsSupport
   @NotNull
   public RepositoryManager getRepositoryManager() {
     return myRepositoryManager;
+  }
+
+  @NotNull
+  @Override
+  public String getVcsRootIdentity(@NotNull VcsRoot vcsRoot) throws VcsException {
+    final OperationContext context = createContext(vcsRoot, "get vcs root identity");
+    try {
+      final GitVcsRoot gitRoot = context.getGitRoot();
+      // we include "Use tags as branches" setting here, because the same repo with and without tags turns out to be different
+      // entities from the point of view of TeamCity core (at least when working with current state)
+      return gitRoot.getRepositoryDir().getName() + (gitRoot.isReportTags() ? ".inclTags" : "");
+    } finally {
+      context.close();
+    }
+  }
+
+  @Nullable
+  @Override
+  public String getDefaultBranchName(@NotNull VcsRoot vcsRoot) {
+    final String prop = vcsRoot.getProperty(Constants.BRANCH_NAME);
+    return prop == null ? null : GitUtils.expandRef(prop);
   }
 }

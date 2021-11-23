@@ -149,6 +149,17 @@
         </param>
       </option>
     </param>
+<!-- Disable until decide whether to keep these params
+    <param name="oauthProviderId">
+      <description>
+        OAuth connection project feature ID used for providing credentials for repository
+      </description>
+    </param>
+    <param name="tokenType" type="TokenType">
+      <description>
+        OAuth connection token type used for providing credentials for repository
+      </description>
+    </param>-->
   </params>
   <types>
     <enum name="UserNameStyle">
@@ -241,5 +252,12 @@
         <description>Will run "git clean -dfx"</description>
       </option>
     </enum>
+<!--    <enum name="TokenType">
+      <description>
+        OAuth connection token type used for providing credentials for repository
+      </description>
+      <option name="PERMANENT" value="permanent" description="Permanent token type"/>
+      <option name="REFRESHABLE" value="refreshable" description="Refreshable token type"/>
+    </enum>-->
   </types>
 </dsl-extension>
