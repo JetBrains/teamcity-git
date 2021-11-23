@@ -21,14 +21,14 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.oauth.AgentTokenRetriever;
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
-import jetbrains.buildServer.agent.oauth.ExpiringAccessToken;
 import jetbrains.buildServer.buildTriggers.vcs.git.HashCalculatorImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder;
+import jetbrains.buildServer.oauth.ExpiringAccessToken;
+import jetbrains.buildServer.oauth.InvalidAccessToken;
 import jetbrains.buildServer.util.EventDispatcher;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 class AgentSupportBuilder {
 
@@ -83,10 +83,10 @@ class AgentSupportBuilder {
       new GitAgentSSHService(myAgent, myAgentConfiguration, new MockGitPluginDescriptor(), mySshKeyProvider, buildTracker);
 
     AgentTokenRetriever tokenRetriever = new AgentTokenRetriever() {
-      @Nullable
+      @NotNull
       @Override
       public ExpiringAccessToken retrieveToken(@NotNull String tokenId) {
-        return null;
+        return new InvalidAccessToken();
       }
     };
     return new GitAgentVcsSupport(myFS, new MockDirectoryCleaner(), myGitAgentSSHService,

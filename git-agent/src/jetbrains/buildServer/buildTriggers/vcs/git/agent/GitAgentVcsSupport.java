@@ -160,7 +160,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     }
 
     try {
-      GitVcsRoot gitRoot = new AgentGitVcsRoot(myMirrorManager, vcsRoot, myTokenStorage, isTokenRefreshEnabled(build));
+      GitVcsRoot gitRoot = new GitVcsRoot(myMirrorManager, vcsRoot, new URIishHelperImpl());
       UpdaterImpl.checkAuthMethodIsSupported(gitRoot, config);
     } catch (VcsException e) {
       return AgentCheckoutAbility.canNotCheckout(e.getMessage());

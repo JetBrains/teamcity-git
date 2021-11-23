@@ -93,7 +93,7 @@ public class AgentGitVcsRoot extends GitVcsRoot {
 
   @Override
   protected AuthSettings createAuthSettings(@NotNull URIishHelper urIishHelper) {
-    return new AgentAuthSettings(this, urIishHelper,
+    return new AuthSettingsImpl(this, urIishHelper,
                                  tokenId -> myTokenRefreshEnabled ? myTokenStorage.getOrRefreshToken(tokenId)
                                                                   : tokenId);  // treat token id as token if the functionality is disabled
   }

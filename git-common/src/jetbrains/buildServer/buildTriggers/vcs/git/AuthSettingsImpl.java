@@ -12,6 +12,7 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static jetbrains.buildServer.oauth.AccessToken.TOKEN_ID_PREFIX;
 import static jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod.PASSWORD;
 
 public class AuthSettingsImpl implements AuthSettings {
@@ -69,8 +70,8 @@ public class AuthSettingsImpl implements AuthSettings {
     myTokenRetriever = tokenRetriever;
   }
 
-  protected boolean isTokenId(@Nullable String passwordValue) {
-    return false; // this is a common code, we can only distinguis between token ids and other values in server- and agent-specific code.
+  private boolean isTokenId(@Nullable String passwordValue) {
+    return passwordValue != null && passwordValue.startsWith(TOKEN_ID_PREFIX);
   }
 
   @Nullable
@@ -150,7 +151,7 @@ public class AuthSettingsImpl implements AuthSettings {
     result.put(Constants.PASSPHRASE, myPassphrase);
     result.put(Constants.PRIVATE_KEY_PATH, myPrivateKeyFilePath);
     result.put(Constants.USERNAME, myUserName);
-    result.put(Constants.PASSWORD, myPassword);
+    result.put(Constants.PASSWORD, getPassword());
     filterNullValues(result);
     return result;
   }

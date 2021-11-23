@@ -36,11 +36,9 @@ import jetbrains.buildServer.TestNGUtil;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.oauth.AgentTokenRetriever;
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
-import jetbrains.buildServer.agent.oauth.ExpiringAccessToken;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefBatchCommand;
@@ -50,6 +48,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.UpdateRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
+import jetbrains.buildServer.oauth.ExpiringAccessToken;
+import jetbrains.buildServer.oauth.InvalidAccessToken;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.EventDispatcher;
@@ -123,10 +123,10 @@ public class AgentVcsSupportTest {
     myBuild = createRunningBuild(true);
     myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).build();
     AgentTokenRetriever tokenRetriever = new AgentTokenRetriever() {
-      @Nullable
+      @NotNull
       @Override
       public ExpiringAccessToken retrieveToken(@NotNull String tokenId) {
-        return null;
+        return new InvalidAccessToken();
       }
     };
     myTookenStorage = new AgentTokenStorage(EventDispatcher.create(AgentLifeCycleListener.class), tokenRetriever);

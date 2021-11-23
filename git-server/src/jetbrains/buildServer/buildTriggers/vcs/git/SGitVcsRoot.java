@@ -23,7 +23,7 @@ public class SGitVcsRoot extends GitVcsRoot {
 
   @Override
   protected AuthSettings createAuthSettings(@NotNull URIishHelper urIishHelper) {
-    return new SAuthSettings(this, urIishHelper, tokenId -> getOrRefreshToken(tokenId));
+    return new AuthSettingsImpl(this, urIishHelper, tokenId -> getOrRefreshToken(tokenId));
   }
 
   private String getOrRefreshToken(@NotNull String tokenId) {
