@@ -163,7 +163,7 @@ public class AuthSettingsImpl implements AuthSettings {
 
   @Override
   public boolean isToBeRefreshed() {
-    return myToken != null && myToken.isExpired();
+    return myTokenRetriever != null && myToken != null && myToken.isExpired();
   }
 
   private void filterNullValues(Map<String, String> map) {

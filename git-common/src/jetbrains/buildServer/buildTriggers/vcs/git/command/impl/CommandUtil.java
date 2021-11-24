@@ -23,6 +23,7 @@ import java.util.List;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.CheckoutCanceledException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
@@ -201,8 +202,12 @@ public class CommandUtil {
     return isMessageContains(e, "Connection reset");
   }
 
-  public static boolean isRecoverable(@NotNull Exception e) {
+  public static boolean isRecoverable(@NotNull Exception e, AuthSettings authSettings, int attempt) {
     if (e instanceof ProcessTimeoutException || e instanceof GitExecTimeout) return true;
+
+    if (authSettings.isToBeRefreshed() && attempt == 1)
+      return true;
+
     if (!(e instanceof VcsException)) return false;
 
     final VcsException ve = (VcsException)e;

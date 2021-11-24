@@ -81,8 +81,8 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
     try {
       return Retry.retry(new Retry.Retryable<ExecResult>() {
         @Override
-        public boolean requiresRetry(@NotNull Exception e) {
-          return CommandUtil.isRecoverable(e);
+        public boolean requiresRetry(@NotNull Exception e, int attempt) {
+          return CommandUtil.isRecoverable(e, myAuthSettings, attempt);
         }
 
         @Override

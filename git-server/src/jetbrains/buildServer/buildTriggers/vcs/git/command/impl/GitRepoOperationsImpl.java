@@ -115,8 +115,8 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
         try {
           return Retry.retry(new Retry.Retryable<Map<String, Ref>>() {
             @Override
-            public boolean requiresRetry(@NotNull final Exception e) {
-              return GitServerUtil.isRecoverable(e);
+            public boolean requiresRetry(@NotNull final Exception e, int attempt) {
+              return GitServerUtil.isRecoverable(e, gitRoot.getAuthSettings(), attempt);
             }
 
             @Nullable

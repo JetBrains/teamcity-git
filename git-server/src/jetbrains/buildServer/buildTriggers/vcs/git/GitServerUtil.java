@@ -434,8 +434,8 @@ public class GitServerUtil {
                                                 @NotNull AuthSettings authSettings) throws Exception {
     return Retry.retry(new Retry.Retryable<Map<String, Ref>>() {
       @Override
-      public boolean requiresRetry(@NotNull final Exception e) {
-        return isRecoverable(e);
+      public boolean requiresRetry(@NotNull final Exception e, int attempt) {
+        return isRecoverable(e, authSettings, attempt);
       }
 
       @Nullable
@@ -622,8 +622,8 @@ public class GitServerUtil {
     try {
       return Retry.retry(new Retry.Retryable<FetchResult>() {
         @Override
-        public boolean requiresRetry(@NotNull final Exception e) {
-          return isRecoverable(e);
+        public boolean requiresRetry(@NotNull final Exception e, int attempt) {
+          return isRecoverable(e, authSettings, attempt);
         }
 
         @Nullable
@@ -719,8 +719,11 @@ public class GitServerUtil {
     return fullRefName.startsWith(org.eclipse.jgit.lib.Constants.R_TAGS);
   }
 
-  public static boolean isRecoverable(@NotNull Exception e) {
+  public static boolean isRecoverable(@NotNull Exception e, AuthSettings authSettings, int attempt) {
     if (!(e instanceof TransportException)) return false;
+
+    if (authSettings.isToBeRefreshed() && attempt == 1)
+      return true;
 
     String message = e.getMessage();
     if (message == null)
