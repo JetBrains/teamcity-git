@@ -173,7 +173,9 @@ public class CommandUtil {
   }
 
   public static boolean isTimeoutError(@NotNull VcsException e) {
-    return isMessageContains(e, "exception: jetbrains.buildServer.ProcessTimeoutException");
+    return isMessageContains(e, "exception: jetbrains.buildServer.ProcessTimeoutException") ||
+           isMessageContains(e, "Connection timed out") ||
+           isMessageContains(e, "Operation timed out");
   }
 
   public static boolean isCanceledError(@NotNull VcsException e) {
