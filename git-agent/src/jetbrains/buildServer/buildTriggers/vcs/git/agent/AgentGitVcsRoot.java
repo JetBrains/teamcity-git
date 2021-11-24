@@ -18,11 +18,13 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.oauth.ExpiringAccessToken;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 
 import java.io.File;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Agent Git plugin settings class
@@ -43,31 +45,28 @@ public class AgentGitVcsRoot extends GitVcsRoot {
   private final File myLocalRepositoryDir;
 
   private final AgentTokenStorage myTokenStorage;
-  private final boolean myTokenRefreshEnabled;
 
   public AgentGitVcsRoot(MirrorManager mirrorManager, VcsRoot root,
                          AgentTokenStorage tokenStorage, boolean isTokenRefreshEnabled) throws VcsException {
-    super(mirrorManager, root, new URIishHelperImpl());
+    super(mirrorManager, root, new URIishHelperImpl(), isTokenRefreshEnabled);
     myLocalRepositoryDir = getRepositoryDir();
     String clean = getProperty(Constants.AGENT_CLEAN_POLICY);
     myCleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);
     String cleanFiles = getProperty(Constants.AGENT_CLEAN_FILES_POLICY);
     myCleanFilesPolicy = cleanFiles == null ? AgentCleanFilesPolicy.ALL_UNTRACKED : AgentCleanFilesPolicy.valueOf(cleanFiles);
     myTokenStorage = tokenStorage;
-    myTokenRefreshEnabled = isTokenRefreshEnabled;
   }
 
 
   public AgentGitVcsRoot(MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root,
                          AgentTokenStorage tokenStorage, boolean isTokenRefreshEnabled) throws VcsException {
-    super(mirrorManager, root, new URIishHelperImpl());
+    super(mirrorManager, root, new URIishHelperImpl(), isTokenRefreshEnabled);
     myLocalRepositoryDir = localRepositoryDir;
     String clean = getProperty(Constants.AGENT_CLEAN_POLICY);
     myCleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);
     String cleanFiles = getProperty(Constants.AGENT_CLEAN_FILES_POLICY);
     myCleanFilesPolicy = cleanFiles == null ? AgentCleanFilesPolicy.ALL_UNTRACKED : AgentCleanFilesPolicy.valueOf(cleanFiles);
     myTokenStorage = tokenStorage;
-    myTokenRefreshEnabled = isTokenRefreshEnabled;
   }
 
   /**
@@ -91,13 +90,6 @@ public class AgentGitVcsRoot extends GitVcsRoot {
     return myLocalRepositoryDir;
   }
 
-  @Override
-  protected AuthSettings createAuthSettings(@NotNull URIishHelper urIishHelper) {
-    return new AuthSettingsImpl(this, urIishHelper,
-                                 tokenId -> myTokenRefreshEnabled ? myTokenStorage.getOrRefreshToken(tokenId)
-                                                                  : tokenId);  // treat token id as token if the functionality is disabled
-  }
-
   public File getRepositoryDir() {
     //ignore custom clone path on server
     String fetchUrl = getRepositoryFetchURL().toString();
@@ -109,5 +101,10 @@ public class AgentGitVcsRoot extends GitVcsRoot {
    */
   public String debugInfo() {
     return "(" + getName() + ", " + getLocalRepositoryDir() + "," + getRepositoryFetchURL().toString() + ")";
+  }
+
+  @Nullable
+  protected ExpiringAccessToken getOrRefreshToken(@NotNull String tokenId) {
+    return myTokenStorage == null ? null : myTokenStorage.getOrRefreshToken(tokenId);
   }
 }

@@ -20,6 +20,7 @@ import com.intellij.openapi.util.text.StringUtil;
 import java.util.concurrent.atomic.AtomicReference;
 import jetbrains.buildServer.log.LogUtil;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.oauth.ExpiringAccessToken;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -47,6 +48,7 @@ public class GitVcsRoot {
   private final String myUsernameForTags;
   private final String myBranchSpec;
   private final boolean myAutoCrlf;
+  private final boolean myTokenRefreshEnabled;
   private boolean myReportTags;
   private final boolean myIgnoreMissingDefaultBranch;
   private final boolean myIncludeCommitInfoSubmodules;
@@ -57,11 +59,18 @@ public class GitVcsRoot {
   protected final String myRawFetchUrl;
   protected final String myPushUrl;
 
-  public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root, @NotNull URIishHelper urIishHelper) throws VcsException {
-    this(mirrorManager, root, root.getProperty(Constants.BRANCH_NAME), urIishHelper);
+
+  public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root,
+                    @NotNull URIishHelper urIishHelper) throws VcsException {
+    this(mirrorManager, root, urIishHelper, false);
   }
 
-  public GitVcsRoot(@NotNull MirrorManager mirrorManager, @NotNull VcsRoot root, @Nullable String ref, @NotNull URIishHelper urIishHelper) throws VcsException {
+  public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root,
+                    @NotNull URIishHelper urIishHelper, boolean isTokenRefreshEnabled) throws VcsException {
+    this(mirrorManager, root, root.getProperty(Constants.BRANCH_NAME), urIishHelper, isTokenRefreshEnabled);
+  }
+
+  public GitVcsRoot(@NotNull MirrorManager mirrorManager, @NotNull VcsRoot root, @Nullable String ref, @NotNull URIishHelper urIishHelper, boolean isTokenRefreshEnabled) throws VcsException {
     myMirrorManager = mirrorManager;
     myDelegate = root;
     myCustomRepositoryDir = getPath();
@@ -69,6 +78,7 @@ public class GitVcsRoot {
     myURIishHelper = urIishHelper;
     myUsernameStyle = readUserNameStyle();
     mySubmodulePolicy = readSubmodulesPolicy();
+    myTokenRefreshEnabled = isTokenRefreshEnabled;
     myAuthSettings = createAuthSettings(urIishHelper);
     myRawFetchUrl = getProperty(Constants.FETCH_URL);
     if (myRawFetchUrl.contains("\n") || myRawFetchUrl.contains("\r"))
@@ -90,8 +100,8 @@ public class GitVcsRoot {
     myCheckoutPolicy = readCheckoutPolicy();
   }
 
-  protected AuthSettings createAuthSettings(@NotNull URIishHelper urIishHelper) {
-    return new AuthSettingsImpl(getOriginalRoot(), urIishHelper);
+  private AuthSettings createAuthSettings(@NotNull URIishHelper urIishHelper) {
+    return new AuthSettingsImpl(this, urIishHelper, myTokenRefreshEnabled ? tokenId -> getOrRefreshToken(tokenId) : null);
   }
 
   @Nullable
@@ -330,5 +340,10 @@ public class GitVcsRoot {
 
   public boolean isIncludeCommitInfoSubmodules() {
     return myIncludeCommitInfoSubmodules;
+  }
+
+  @Nullable
+  protected ExpiringAccessToken getOrRefreshToken(@NotNull String tokenId) {
+    return null;
   }
 }

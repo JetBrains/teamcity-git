@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
+import jetbrains.buildServer.oauth.ExpiringAccessToken;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
@@ -25,16 +26,17 @@ public class AuthSettingsImpl implements AuthSettings {
   private final String myPrivateKeyFilePath;
   private final String myUserName;
   private final String myTokenId;
+  private ExpiringAccessToken myToken;
   private String myPassword;
   private final String myTeamCitySshKeyId;
-  private final Function<String, String> myTokenRetriever;
+  private final Function<String, ExpiringAccessToken> myTokenRetriever;
   private final Lock myTokenRetrievalLock = new ReentrantLock();
 
   public AuthSettingsImpl(@NotNull VcsRoot root, @NotNull URIishHelper urIishHelper) {
     this(root.getProperties(), root, urIishHelper, null);
   }
 
-  public AuthSettingsImpl(@NotNull GitVcsRoot root, @NotNull URIishHelper urIishHelper, @Nullable Function <String, String> tokenRetriever) {
+  public AuthSettingsImpl(@NotNull GitVcsRoot root, @NotNull URIishHelper urIishHelper, @Nullable Function <String, ExpiringAccessToken> tokenRetriever) {
     this(root.getProperties(), root.getOriginalRoot(), urIishHelper, tokenRetriever);
   }
 
@@ -46,7 +48,7 @@ public class AuthSettingsImpl implements AuthSettings {
     this(properties, root, urIishHelper, null);
   }
 
-  public AuthSettingsImpl(@NotNull Map<String, String> properties, @Nullable VcsRoot root, @NotNull URIishHelper urIishHelper, @Nullable Function <String, String> tokenRetriever) {
+  public AuthSettingsImpl(@NotNull Map<String, String> properties, @Nullable VcsRoot root, @NotNull URIishHelper urIishHelper, @Nullable Function <String, ExpiringAccessToken> tokenRetriever) {
     myAuthMethod = readAuthMethod(properties);
     myIgnoreKnownHosts = "true".equals(properties.get(Constants.IGNORE_KNOWN_HOSTS));
     if (myAuthMethod == AuthenticationMethod.PRIVATE_KEY_FILE) {
@@ -125,9 +127,12 @@ public class AuthSettingsImpl implements AuthSettings {
 
     myTokenRetrievalLock.lock();
     try {
-      String newToken = myTokenRetriever.apply(myTokenId);
-      if (!Objects.equals(newToken, myPassword)) {
-        myPassword = newToken;
+      myToken = myTokenRetriever.apply(myTokenId);
+      if (myToken != null) {
+        String newTokenValue = myToken.getAccessToken();
+        if (!Objects.equals(newTokenValue, myPassword)) {
+          myPassword = newTokenValue;
+        }
       }
     } finally {
       myTokenRetrievalLock.unlock();
@@ -154,6 +159,11 @@ public class AuthSettingsImpl implements AuthSettings {
     result.put(Constants.PASSWORD, getPassword());
     filterNullValues(result);
     return result;
+  }
+
+  @Override
+  public boolean isToBeRefreshed() {
+    return myToken != null && myToken.isExpired();
   }
 
   private void filterNullValues(Map<String, String> map) {

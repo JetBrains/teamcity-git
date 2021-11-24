@@ -1,5 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.oauth.ExpiringAccessToken;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
@@ -17,25 +18,22 @@ public class SGitVcsRoot extends GitVcsRoot {
                      @NotNull VcsRoot root,
                      @NotNull URIishHelper urIishHelper,
                      @Nullable TokenRefresher tokenRefresher) throws VcsException {
-    super(mirrorManager, root, urIishHelper);
+    super(mirrorManager, root, urIishHelper, tokenRefresher != null);
     myTokenRefresher = tokenRefresher;
   }
 
-  @Override
-  protected AuthSettings createAuthSettings(@NotNull URIishHelper urIishHelper) {
-    return new AuthSettingsImpl(this, urIishHelper, tokenId -> getOrRefreshToken(tokenId));
-  }
-
-  private String getOrRefreshToken(@NotNull String tokenId) {
+  @Nullable
+  protected ExpiringAccessToken getOrRefreshToken(@NotNull String tokenId) {
     VcsRoot vcsRoot = getOriginalRoot();
     if (myTokenRefresher == null)
-      return tokenId;
+      return null;
+
     SVcsRoot parentRoot = vcsRoot instanceof SVcsRoot ? (SVcsRoot)vcsRoot
                                                       : vcsRoot instanceof VcsRootInstance ? ((VcsRootInstance)vcsRoot).getParent() : null;
     if (parentRoot == null) {
-      return myTokenRefresher.getRefreshableTokenValue(vcsRoot.getExternalId(), tokenId);
+      return myTokenRefresher.getRefreshableToken(vcsRoot.getExternalId(), tokenId);
     } else {
-      return myTokenRefresher.getRefreshableTokenValue(parentRoot.getProject(), tokenId);
+      return myTokenRefresher.getRefreshableToken(parentRoot.getProject(), tokenId);
     }
   }
 }
