@@ -656,7 +656,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   @Override
   public float fetchRemoteBranchesFactor() {
-    final float factor = TeamCityProperties.getFloat(FETCH_REMOTE_BRANCHES_FACTOR, 0.7f);
+    final float factor = TeamCityProperties.getFloat(FETCH_REMOTE_BRANCHES_FACTOR, 0);
     if (factor > 1) {
       LOG.warn(String.format("Unexpected \"%s\" value \"%s\": the value should be a float number from 0 to 1, where 0 means the feature is disabled", FETCH_REMOTE_BRANCHES_FACTOR, factor));
     }
