@@ -512,7 +512,16 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   private Map<String, Ref> getRemoteRefs(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws Exception {
-    return myGitRepoOperations.lsRemoteCommand(gitRoot.getRepositoryFetchURL().toString()).lsRemote(db, gitRoot);
+    return myGitRepoOperations.lsRemoteCommand(gitRoot.getRepositoryFetchURL().toString()).lsRemote(db, gitRoot, new FetchSettings(gitRoot.getAuthSettings(), createProgress()));
+  }
+
+  @NotNull
+  private GitProgress createProgress() {
+    try {
+      return new GitVcsOperationProgress(myProgressProvider.getProgress());
+    } catch (IllegalStateException e) {
+      return GitProgress.NO_OP;
+    }
   }
 
   public Collection<VcsClientMapping> getClientMapping(final @NotNull VcsRoot root, final @NotNull IncludeRule rule) throws VcsException {

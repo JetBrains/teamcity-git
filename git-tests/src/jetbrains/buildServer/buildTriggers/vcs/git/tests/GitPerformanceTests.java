@@ -21,12 +21,9 @@ import java.io.OutputStream;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicLong;
 import jetbrains.buildServer.BaseTestCase;
-import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
-import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -47,7 +44,8 @@ import org.testng.annotations.Test;
  * @author Eugene Petrenko (eugene.petrenko@jetbrains.com)
  */
 public class GitPerformanceTests extends BaseTestCase {
-  @Test(invocationCount = 100)
+  @Test
+  //@Test(invocationCount = 100)
   public void incrementalIntellijFetch() throws Exception {
     final VcsRootImpl root = VcsRootBuilder.vcsRoot()
                                            .withBranchSpec("+:refs/heads/*")
@@ -56,12 +54,12 @@ public class GitPerformanceTests extends BaseTestCase {
 
     final ServerPaths sp = new ServerPaths("/Users/victory/Tests/server_paths");
 
-    final ServerPluginConfig config = new PluginConfigBuilder(sp).setSeparateProcessForFetch(false).build();
+    final ServerPluginConfig config = new PluginConfigBuilder(sp).setSeparateProcessForFetch(true).build();
     final GitSupportBuilder builder = GitSupportBuilder
       .gitSupport()
       .withServerPaths(sp)
       .withPluginConfig(config)
-      .withFetchCommand(new NativeGitCommands(config, () -> new StubContext().getGitExec(), new VcsRootSshKeyManager() {
+      .withFetchCommand(new NativeGitCommands(config, () -> new GitExec("git", new GitVersion(2, 34, 0)), new VcsRootSshKeyManager() {
         @Nullable
         @Override
         public TeamCitySshKey getKey(@NotNull VcsRoot root) {

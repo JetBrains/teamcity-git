@@ -102,7 +102,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     return (LsRemoteCommand)getNativeGitCommandOptional(repoUrl).orElse(new LsRemoteCommand() {
       @NotNull
       @Override
-      public Map<String, Ref> lsRemote(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws VcsException {
+      public Map<String, Ref> lsRemote(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull FetchSettings settings) throws VcsException {
         return getRemoteRefsJGit(db, gitRoot);
       }
     });

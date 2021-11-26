@@ -109,8 +109,8 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   @NotNull
   @Override
-  public Map<String, Ref> lsRemote(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws VcsException {
-    final Context ctx = new ContextImpl(myConfig, myGitDetector.detectGit());
+  public Map<String, Ref> lsRemote(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull FetchSettings settings) throws VcsException {
+    final Context ctx = new ContextImpl(myConfig, myGitDetector.detectGit(), settings.getProgress());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 

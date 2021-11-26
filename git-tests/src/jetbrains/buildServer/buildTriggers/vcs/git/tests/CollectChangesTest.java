@@ -473,6 +473,33 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     git().getCollectChangesPolicy().collectChanges(root, s2, s3, CheckoutRules.DEFAULT);
   }
 
+  public void tag_turned_into_dir() throws Exception {
+    VcsRoot root = vcsRoot().withFetchUrl(myRepo)
+                            .withBranch("master")
+                            .build();
+    RepositoryStateData s1 = createVersionState("refs/heads/master",
+                                                map("refs/heads/master", "f3f826ce85d6dad25156b2d7550cedeb1a422f4c",
+                                                    "refs/heads/patch-tests", "a894d7d58ffde625019a9ecf8267f5f1d1e5c341"));
+    RepositoryStateData s2 = createVersionState("refs/heads/master",
+                                                map("refs/heads/master", "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f",
+                                                    "refs/heads/patch-tests", "a894d7d58ffde625019a9ecf8267f5f1d1e5c341"));
+
+    git().getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
+
+    //rename refs/heads/patch-tests to refs/heads/patch-tests/a and make it point to commit not yet fetched by TC, so the fetch is required
+    Repository r = new RepositoryBuilder().setGitDir(myRepo).build();
+    r.getRefDatabase().newRename("refs/heads/patch-tests", "refs/heads/patch-tests/a").rename();
+    RefUpdate refUpdate = r.updateRef("refs/heads/patch-tests/a");
+    refUpdate.setForceUpdate(true);
+    refUpdate.setNewObjectId(ObjectId.fromString("39679cc440c83671fbf6ad8083d92517f9602300"));
+    refUpdate.update();
+
+    RepositoryStateData s3 = createVersionState("refs/heads/master",
+                                                map("refs/heads/master", "3b9fbfbb43e7edfad018b482e15e7f93cca4e69f",
+                                                    "refs/heads/patch-tests/a", "39679cc440c83671fbf6ad8083d92517f9602300"));
+    git().getCollectChangesPolicy().collectChanges(root, s2, s3, CheckoutRules.DEFAULT);
+  }
+
 
   @TestFor(issues = "TW-36653")
   public void comma_in_branch_name() throws Exception {
