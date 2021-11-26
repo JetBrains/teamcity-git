@@ -17,19 +17,18 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import com.jcraft.jsch.JSch;
+import java.io.File;
+import java.nio.file.Files;
+import java.util.Map;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
-import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
-import jetbrains.buildServer.vcs.VcsException;
 import org.apache.log4j.Level;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -42,11 +41,6 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.nio.file.Files;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 
@@ -281,7 +275,7 @@ public class SshAuthenticationTest extends BaseTestCase {
       final URIish fetchUrl = new URIish(repoUrl);
       final Repository db = repositoryManager.openRepository(fetchUrl);
       final Map<String, Ref> refs =
-        repoOperations.lsRemoteCommand(repoUrl).lsRemote(db, gitRoot);
+        repoOperations.lsRemoteCommand(repoUrl).lsRemote(db, gitRoot, new FetchSettings(gitRoot.getAuthSettings()));
       assertContains(refs.keySet(), "refs/pull/1");
 
       final StringBuilder progress = new StringBuilder();
@@ -313,7 +307,7 @@ public class SshAuthenticationTest extends BaseTestCase {
         GitSupportBuilder.gitSupport().withServerPaths(serverPaths).withPluginConfig(config).withTransportFactory(transportFactory).build();
       repoOperations.tagCommand(vcsSupport, repoUrl).tag(vcsSupport.createContext(gitRoot.getOriginalRoot(),"tag"), "test_tag", "b896070465af79121c9a4eb5300ecff29453c164");
 
-      assertContains(repoOperations.lsRemoteCommand(repoUrl).lsRemote(db, gitRoot).keySet(), "refs/tags/test_tag");
+      assertContains(repoOperations.lsRemoteCommand(repoUrl).lsRemote(db, gitRoot, new FetchSettings(gitRoot.getAuthSettings())).keySet(), "refs/tags/test_tag");
 
       return null;
     }));
