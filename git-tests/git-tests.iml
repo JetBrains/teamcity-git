@@ -30,5 +30,6 @@
     <orderEntry type="library" name="TeamCity common" level="project" />
     <orderEntry type="library" name="org.testcontainers:testcontainers:1.16.0" level="project" />
     <orderEntry type="library" name="TeamCity Agent OAuth Support" level="project" />
+    <orderEntry type="library" name="TeamCity Common OAuth Support" level="project" />
   </component>
 </module>
