@@ -128,7 +128,7 @@ public class GitCommandLine extends GeneralCommandLine {
           gitSshCommand.append(" -i \"").append(privateKey.getAbsolutePath().replace('\\', '/')).append("\"");
         }
         if (ignoreKnownHosts) {
-          gitSshCommand.append(" -o \"StrictHostKeyChecking=no\" -o \"UserKnownHostsFile=/dev/null\"");
+          gitSshCommand.append(" -o \"StrictHostKeyChecking=no\" -o \"UserKnownHostsFile=/dev/null\" -o \"GlobalKnownHostsFile=/dev/null\"");
         }
         if (authSettings.getAuthMethod().isKeyAuth()) {
           gitSshCommand.append(" -o \"PreferredAuthentications=publickey\" -o \"PasswordAuthentication=no\"");
