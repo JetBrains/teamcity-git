@@ -130,7 +130,7 @@ public class GitCommandLine extends GeneralCommandLine {
         if (ignoreKnownHosts) {
           gitSshCommand.append(" -o \"StrictHostKeyChecking=no\" -o \"UserKnownHostsFile=/dev/null\"");
         }
-        if (authSettings.getAuthMethod().isSsh()) {
+        if (authSettings.getAuthMethod().isKeyAuth()) {
           gitSshCommand.append(" -o \"PreferredAuthentications=publickey\" -o \"PasswordAuthentication=no\"");
         } else {
           gitSshCommand.append(" -o \"PreferredAuthentications=password,keyboard-interactive\" -o \"PubkeyAuthentication=no\"");
