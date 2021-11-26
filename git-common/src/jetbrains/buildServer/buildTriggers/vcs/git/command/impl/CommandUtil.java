@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
+import com.intellij.openapi.diagnostic.Logger;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,7 +28,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.CheckoutCanceledException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
-import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -35,6 +35,8 @@ import org.jetbrains.annotations.NotNull;
 import static jetbrains.buildServer.util.FileUtil.normalizeSeparator;
 
 public class CommandUtil {
+  private static final Logger LOG = Logger.getInstance(CommandUtil.class);
+  
   public static final int DEFAULT_COMMAND_TIMEOUT_SEC = 3600;
 
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
@@ -92,11 +94,11 @@ public class CommandUtil {
   private static void logMessage(String message, String... level) {
     final String theLevel = logLevel(level);
     if (theLevel.equals("warn")) {
-      Loggers.VCS.warn(message);
+      LOG.warn(message);
     } else if (theLevel.equals("debug")) {
-      Loggers.VCS.debug(message);
+      LOG.debug(message);
     } else if (theLevel.equals("info")) {
-      Loggers.VCS.info(message);
+      LOG.info(message);
     }
   }
 
@@ -124,7 +126,7 @@ public class CommandUtil {
 
         final String cmdStr = cli.getCommandLineString();
         final String fullCmdStr = getFullCmdStr(cli);
-        Loggers.VCS.debug(fullCmdStr + (cli.getContext().isDebugGitCommands() ? " with env " + cli.getEnvParams() : ""));
+        LOG.debug(fullCmdStr + (cli.getContext().isDebugGitCommands() ? " with env " + cli.getEnvParams() : ""));
         cli.logStart(cmdStr);
 
         ByteArrayOutputStream stdoutBuffer = new ByteArrayOutputStream();
@@ -138,12 +140,12 @@ public class CommandUtil {
         final String out = res.getStdout().trim();
         if (StringUtil.isNotEmpty(out)) {
           if (cli.getContext().isDebugGitCommands() || out.length() < 1024) {
-            Loggers.VCS.debug("Output produced by " + fullCmdStr + ":\n" + out);
+            LOG.debug("Output produced by " + fullCmdStr + ":\n" + out);
           }
         }
         if (!StringUtil.isEmptyOrSpaces(out) || !cli.isRepeatOnEmptyOutput() || attemptsLeft <= 0)
           return res;
-        Loggers.VCS.warn("Get an unexpected empty output, will repeat command, attempts left: " + attemptsLeft);
+        LOG.warn("Get an unexpected empty output, will repeat command, attempts left: " + attemptsLeft);
         attemptsLeft--;
       } finally {
         for (Runnable action : cli.getPostActions()) {
