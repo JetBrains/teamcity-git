@@ -128,6 +128,9 @@ public class GitCommandLine extends GeneralCommandLine {
         }
         if (ignoreKnownHosts) {
           gitSshCommand.append(" -o \"StrictHostKeyChecking=no\" -o \"UserKnownHostsFile=/dev/null\" -o \"GlobalKnownHostsFile=/dev/null\"");
+        } else {
+          myLogger.warning(
+            "\"Ignore known hosts database\" setting is disabled, please make sure that per-user or global known host key database contains remote host key, otherwise git operations may hang or fail in unexpected way");
         }
         if (authSettings.getAuthMethod().isKeyAuth()) {
           gitSshCommand.append(" -o \"PreferredAuthentications=publickey\" -o \"PasswordAuthentication=no\" -o \"KbdInteractiveAuthentication=no\"");
