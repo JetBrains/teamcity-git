@@ -224,6 +224,7 @@ public class CommandUtil {
            msg.contains("no remote repository specified") ||
            msg.contains("no such remote") ||
            msg.contains("access denied") ||
+           msg.contains("permission denied") ||
            msg.contains("could not read from remote repository") ||
            msg.contains("server does not allow request for unadvertised object");
   }
