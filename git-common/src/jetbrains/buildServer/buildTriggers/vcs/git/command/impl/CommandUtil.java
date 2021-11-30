@@ -205,15 +205,15 @@ public class CommandUtil {
   public static boolean isRecoverable(@NotNull Exception e, AuthSettings authSettings, int attempt) {
     if (e instanceof ProcessTimeoutException || e instanceof GitExecTimeout) return true;
 
-    if (authSettings.isToBeRefreshed() && attempt == 1)
-      return true;
-
     if (!(e instanceof VcsException)) return false;
 
     final VcsException ve = (VcsException)e;
     if (isTimeoutError(ve) || isConnectionRefused(ve) || isConnectionReset(ve)) return true;
     if (isCanceledError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
+
+    if (authSettings.doesTokenNeedRefresh() && attempt == 1)
+      return true;
 
     return !isRemoteAccessError(ve);
   }

@@ -722,9 +722,6 @@ public class GitServerUtil {
   public static boolean isRecoverable(@NotNull Exception e, AuthSettings authSettings, int attempt) {
     if (!(e instanceof TransportException)) return false;
 
-    if (authSettings.isToBeRefreshed() && attempt == 1)
-      return true;
-
     String message = e.getMessage();
     if (message == null)
       return false;
@@ -735,6 +732,10 @@ public class GitServerUtil {
     {
       return true;
     }
+
+    if (authSettings.doesTokenNeedRefresh() && attempt == 1)
+      return true;
+
     Throwable cause = e.getCause();
     if (cause instanceof JSchException) {
       return message.contains("Session.connect: java.net.SocketException: Connection reset") ||

@@ -49,6 +49,6 @@ public interface AuthSettings {
   @NotNull
   public Map<String, String> toMap();
 
-  public boolean isToBeRefreshed();
+  public boolean doesTokenNeedRefresh();
 
 }

@@ -149,7 +149,7 @@ public class AuthSettingsImpl implements AuthSettings {
   }
 
   @Override
-  public boolean isToBeRefreshed() {
+  public boolean doesTokenNeedRefresh() {
     return myTokenRetriever != null && myToken != null && myToken.isExpired();
   }
 
