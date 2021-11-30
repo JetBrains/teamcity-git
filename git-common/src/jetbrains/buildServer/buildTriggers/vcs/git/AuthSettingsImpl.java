@@ -3,9 +3,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import jetbrains.buildServer.oauth.ExpiringAccessToken;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -27,10 +24,9 @@ public class AuthSettingsImpl implements AuthSettings {
   private final String myUserName;
   private final String myTokenId;
   private ExpiringAccessToken myToken;
-  private String myPassword;
+  private final String myPassword;
   private final String myTeamCitySshKeyId;
   private final Function<String, ExpiringAccessToken> myTokenRetriever;
-  private final Lock myTokenRetrievalLock = new ReentrantLock();
 
   public AuthSettingsImpl(@NotNull VcsRoot root, @NotNull URIishHelper urIishHelper) {
     this(root.getProperties(), root, urIishHelper, null);
@@ -125,20 +121,11 @@ public class AuthSettingsImpl implements AuthSettings {
     if (myAuthMethod != PASSWORD || myTokenId == null || myTokenRetriever == null)
       return myPassword;
 
-    myTokenRetrievalLock.lock();
-    try {
-      myToken = myTokenRetriever.apply(myTokenId);
-      if (myToken != null) {
-        String newTokenValue = myToken.getAccessToken();
-        if (!Objects.equals(newTokenValue, myPassword)) {
-          myPassword = newTokenValue;
-        }
-      }
-    } finally {
-      myTokenRetrievalLock.unlock();
-    }
+    myToken = myTokenRetriever.apply(myTokenId);
+    if (myToken == null)
+      return null;
 
-    return myPassword;
+    return myToken.getAccessToken();
   }
 
   @Nullable
