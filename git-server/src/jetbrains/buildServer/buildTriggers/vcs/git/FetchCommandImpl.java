@@ -98,7 +98,9 @@ public class FetchCommandImpl implements FetchCommand {
     final String debugInfo = getDebugInfo(repository, uri, specs);
     final ProcessXmxProvider xmxProvider = new ProcessXmxProvider(new RepositoryXmxStorage(repository, "fetch"), myConfig, "fetch", debugInfo);
     Integer xmx = xmxProvider.getNextXmx();
+    int attempt = 0;
     while (xmx != null) {
+      attempt++;
       File gitPropertiesFile = null;
       File teamcityPrivateKey = null;
       GitProcessStuckMonitor processStuckMonitor = null;
@@ -152,6 +154,10 @@ public class FetchCommandImpl implements FetchCommand {
                                                                         repository.getDirectory().getName() + ")",
                                                                         result, true, true);
         if (commandError != null) {
+
+          if (attempt == 1 && settings.getAuthSettings().doesTokenNeedRefresh())
+            continue;
+
           commandError.setRecoverable(isRecoverable(commandError));
 
           /* if the process had not enough memory or we killed it because gc */
