@@ -202,20 +202,22 @@ public class CommandUtil {
     return isMessageContains(e, "Connection reset");
   }
 
-  public static boolean isRecoverable(@NotNull Exception e, AuthSettings authSettings, int attempt) {
-    if (e instanceof ProcessTimeoutException || e instanceof GitExecTimeout) return true;
+  public static boolean isRecoverable(@NotNull Exception e, AuthSettings authSettings, int attempt, int maxAttempts) {
+    boolean attemptsLeft = attempt < maxAttempts;
+
+    if (e instanceof ProcessTimeoutException || e instanceof GitExecTimeout) return attemptsLeft;
 
     if (!(e instanceof VcsException)) return false;
 
     final VcsException ve = (VcsException)e;
-    if (isTimeoutError(ve) || isConnectionRefused(ve) || isConnectionReset(ve)) return true;
+    if (isTimeoutError(ve) || isConnectionRefused(ve) || isConnectionReset(ve)) return attemptsLeft;
     if (isCanceledError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
 
     if (authSettings.doesTokenNeedRefresh() && attempt == 1)
       return true;
 
-    return !isRemoteAccessError(ve);
+    return attemptsLeft && !isRemoteAccessError(ve);
   }
 
   @SuppressWarnings("BooleanMethodIsAlwaysInverted")

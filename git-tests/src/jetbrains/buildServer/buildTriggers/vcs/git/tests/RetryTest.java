@@ -55,7 +55,7 @@ public class RetryTest extends BaseTestCase {
     final Ref<Integer> attemptNum = new Ref(1);
     return new Retry.Retryable<Void>() {
       @Override
-      public boolean requiresRetry(@NotNull final Exception e, int attempt) {
+      public boolean requiresRetry(@NotNull final Exception e, int attempt, int maxAttempts) {
         return true;
       }
 
