@@ -452,6 +452,15 @@ public class SshAuthenticationTest extends BaseTestCase {
       }
       if (savedLocalKeys != null && !FileUtil.isEmptyDir(savedLocalKeys)) {
         FileUtil.copyDir(savedLocalKeys, localKeys);
+        chmod(localKeys, "700");
+        final File[] files = localKeys.listFiles();
+        if (files != null) {
+          for (File f : files) {
+            final String name = f.getName();
+            if (name.endsWith(".pub") || "known_hosts".equals(name)) continue;
+            chmod(f, "600");
+          }
+        }
       }
       FileUtil.delete(savedLocalKeys);
     }
