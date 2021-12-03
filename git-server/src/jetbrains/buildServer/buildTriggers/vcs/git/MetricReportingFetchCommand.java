@@ -29,12 +29,10 @@ import java.util.Collection;
 
 public class MetricReportingFetchCommand implements FetchCommand {
   private final FetchCommand myDelegate;
-  private final Counter myFetchCounter;
   private final Counter myFetchDurationTimer;
 
-  public MetricReportingFetchCommand(@NotNull final FetchCommand delegate, @NotNull Counter fetchCounter, @NotNull Counter fetchDurationTimer) {
+  public MetricReportingFetchCommand(@NotNull final FetchCommand delegate, @NotNull Counter fetchDurationTimer) {
     myDelegate = delegate;
-    myFetchCounter = fetchCounter;
     myFetchDurationTimer = fetchDurationTimer;
   }
 
@@ -43,7 +41,6 @@ public class MetricReportingFetchCommand implements FetchCommand {
                     @NotNull final URIish fetchURI,
                     @NotNull final Collection<RefSpec> refspecs,
                     @NotNull final FetchSettings settings) throws IOException, VcsException {
-    myFetchCounter.increment(1);
     try (Stoppable ignored = myFetchDurationTimer.startMsecsTimer()) {
       myDelegate.fetch(db, fetchURI, refspecs, settings);
     }

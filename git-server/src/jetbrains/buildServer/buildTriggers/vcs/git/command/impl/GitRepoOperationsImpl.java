@@ -55,14 +55,13 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   private final ServerPluginConfig myConfig;
   private final FetchCommand myJGitFetchCommand;
   private final LazyGitExec myGitExec = new LazyGitExec();
-  private final Counter myFetchCounter;
   private final Counter myFetchDurationTimer;
 
   public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
                                @NotNull TransportFactory transportFactory,
                                @NotNull VcsRootSshKeyManager sshKeyManager,
                                @NotNull FetchCommand jGitFetchCommand) {
-    this(config, transportFactory, sshKeyManager, jGitFetchCommand, EMPTY_COUNTER, EMPTY_COUNTER);
+    this(config, transportFactory, sshKeyManager, jGitFetchCommand, EMPTY_COUNTER);
   }
 
   public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
@@ -71,11 +70,6 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
                                @NotNull FetchCommand jGitFetchCommand,
                                @NotNull ServerMetrics serverMetrics) {
     this(config, transportFactory, sshKeyManager, jGitFetchCommand,
-         serverMetrics.metricBuilder("vcs.git.fetch.calls")
-           .dataType(MetricDataType.NUMBER)
-           .experimental(true)
-           .description("git fetch operations counter")
-           .buildCounter(),
          serverMetrics.metricBuilder("vcs.git.fetch.duration")
            .dataType(MetricDataType.MILLISECONDS)
            .experimental(true)
@@ -88,20 +82,18 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
                                @NotNull TransportFactory transportFactory,
                                @NotNull VcsRootSshKeyManager sshKeyManager,
                                @NotNull FetchCommand jGitFetchCommand,
-                               @NotNull Counter fetchCounter,
                                @NotNull Counter fetchDurationTimer ) {
     myConfig = config;
     myTransportFactory = transportFactory;
     mySshKeyManager = sshKeyManager;
     myJGitFetchCommand = jGitFetchCommand;
-    myFetchCounter = fetchCounter;
     myFetchDurationTimer = fetchDurationTimer;
   }
 
   @NotNull
   @Override
   public FetchCommand fetchCommand(@NotNull String repoUrl) {
-    return new MetricReportingFetchCommand((FetchCommand)getNativeGitCommandOptional(repoUrl).orElse(myJGitFetchCommand), myFetchCounter, myFetchDurationTimer);
+    return new MetricReportingFetchCommand((FetchCommand)getNativeGitCommandOptional(repoUrl).orElse(myJGitFetchCommand), myFetchDurationTimer);
   }
 
   @NotNull
