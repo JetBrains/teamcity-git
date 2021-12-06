@@ -257,8 +257,9 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     GitHubClient client = new GitHubClient();
     AuthSettings auth = new AuthSettingsImpl(props, new URIishHelperImpl());
     final String password = auth.getPassword();
-    if (auth.getAuthMethod() == AuthenticationMethod.PASSWORD && StringUtil.isNotEmpty(password)) {
-      if (ReferencesResolverUtil.containsReference(password) || password.length() != 40) return; // we can only proceed with PAT, password auth is no longer supported by github API
+    AuthenticationMethod authMethod = auth.getAuthMethod();
+    if (authMethod.isPasswordBased() && StringUtil.isNotEmpty(password)) {
+      if (authMethod == AuthenticationMethod.ACCESS_TOKEN || ReferencesResolverUtil.containsReference(password) || password.length() != 40) return; // we can only proceed with PAT, password auth is no longer supported by github API
 
       if (auth.getUserName() != null) {
         client.setCredentials(auth.getUserName(), password);
@@ -269,9 +270,9 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
       props.put(Constants.BRANCH_NAME, GitUtils.expandRef(r.getMasterBranch()));
     } catch (RequestException r) {
       Loggers.VCS.warnAndDebugDetails("Failed to request details for the GitHub repository: " + ghRepo.repositoryUrl(), r);
-      if (auth.getAuthMethod() == AuthenticationMethod.PASSWORD) {
+      if (auth.getAuthMethod().isPasswordBased()) {
         if (r.getStatus() == 401) {
-          throw new VcsAuthenticationException("Incorrect username or password"); // seems credentials are incorrect
+          throw new VcsAuthenticationException("Incorrect username or password/token"); // seems credentials are incorrect
         }
 
         throw new VcsAuthenticationException(r.getMessage()); // some limits exceeded?
@@ -287,8 +288,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     authSettings.put(Constants.AUTH_METHOD, getAuthMethod(url, uri).toString());
     Credentials credentials = url.getCredentials();
     if (credentials != null) {
-      authSettings.put(Constants.USERNAME, credentials.getUsername());
-      authSettings.put(Constants.PASSWORD, credentials.getPassword());
+      credentials.setToPropertyMap(authSettings);
     } else {
       authSettings.put(Constants.USERNAME, uri.getUser());
     }
@@ -298,8 +298,9 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
   private AuthenticationMethod getAuthMethod(@NotNull VcsUrl url, @NotNull URIish uri) {
     if (isScpSyntax(uri) || "ssh".equals(uri.getScheme()))
       return AuthenticationMethod.PRIVATE_KEY_DEFAULT;
-    if (url.getCredentials() != null)
-      return AuthenticationMethod.PASSWORD;
+    Credentials credentials = url.getCredentials();
+    if (credentials != null)
+      return credentials instanceof RefreshableTokenCredentials ? AuthenticationMethod.ACCESS_TOKEN : AuthenticationMethod.PASSWORD;
     return AuthenticationMethod.ANONYMOUS;
   }
 

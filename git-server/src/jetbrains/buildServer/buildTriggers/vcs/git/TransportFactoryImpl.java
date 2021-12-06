@@ -163,11 +163,11 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
         return new CustomPrivateKeySessionFactory(myConfig, authSettings, myJSchOptions);
       case TEAMCITY_SSH_KEY:
         return new TeamCitySshKeySessionFactory(myConfig, authSettings, myJSchOptions, mySshKeyManager);
-      case PASSWORD:
+      case PASSWORD: case ACCESS_TOKEN:
         return new PasswordJschConfigSessionFactory(myConfig, authSettings, myJSchOptions);
       default:
         final AuthenticationMethod method = authSettings.getAuthMethod();
-        final String methodName = method == null ? "<null>" : method.uiName();
+        final String methodName = method.uiName();
         throw new VcsAuthenticationException(url.toString(), "The authentication method " + methodName + " is not supported for SSH, please provide SSH key or credentials");
     }
   }

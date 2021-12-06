@@ -727,7 +727,7 @@ public class UpdaterImpl implements Updater {
       return;//anonymous protocol, don't check anything
     AuthSettings authSettings = root.getAuthSettings();
     switch (authSettings.getAuthMethod()) {
-      case PASSWORD:
+      case PASSWORD: case ACCESS_TOKEN:
         if ("http".equals(root.getRepositoryFetchURL().getScheme()) ||
             "https".equals(root.getRepositoryFetchURL().getScheme())) {
           GitVersion actualVersion = config.getGitVersion();
@@ -1003,7 +1003,7 @@ public class UpdaterImpl implements Updater {
     try {
       URIish uri = new URIish(myRoot.getRepositoryFetchURL().toString());
       String scheme = uri.getScheme();
-      if (myRoot.getAuthSettings().getAuthMethod() == AuthenticationMethod.PASSWORD &&
+      if (myRoot.getAuthSettings().getAuthMethod().isPasswordBased() &&
           ("http".equals(scheme) || "https".equals(scheme))) {
         String lfsUrl = uri.setPass("").setUser("").toASCIIString();
         if (lfsUrl.endsWith(".git")) {

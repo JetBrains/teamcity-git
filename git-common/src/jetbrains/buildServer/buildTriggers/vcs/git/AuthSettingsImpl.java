@@ -10,7 +10,7 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static jetbrains.buildServer.oauth.AccessToken.TOKEN_ID_PREFIX;
+import static jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod.ACCESS_TOKEN;
 import static jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod.PASSWORD;
 
 public class AuthSettingsImpl implements AuthSettings {
@@ -59,17 +59,11 @@ public class AuthSettingsImpl implements AuthSettings {
     }
     myUrIishHelper = urIishHelper;
     myUserName = readUsername(properties);
-    String passwordValue = properties.get(Constants.PASSWORD);
-    boolean isTokenId = isTokenId(passwordValue);
-    myPassword = myAuthMethod != PASSWORD || isTokenId ? null : passwordValue;
-    myTokenId = myAuthMethod != PASSWORD || !isTokenId ? null : passwordValue;
+    myTokenId = properties.get(Constants.TOKEN_ID);
+    myPassword = properties.get(Constants.PASSWORD);
     myTeamCitySshKeyId = myAuthMethod != AuthenticationMethod.TEAMCITY_SSH_KEY ? null : properties.get(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME);
     myRoot = root;
     myTokenRetriever = tokenRetriever;
-  }
-
-  private boolean isTokenId(@Nullable String passwordValue) {
-    return passwordValue != null && passwordValue.startsWith(TOKEN_ID_PREFIX);
   }
 
   @Nullable
@@ -118,7 +112,7 @@ public class AuthSettingsImpl implements AuthSettings {
   @Nullable
   @Override
   public String getPassword() {
-    if (myAuthMethod != PASSWORD || myTokenId == null || myTokenRetriever == null)
+    if (myAuthMethod != ACCESS_TOKEN || myTokenId == null || myTokenRetriever == null)
       return myPassword;
 
     myToken = myTokenRetriever.apply(myTokenId);
