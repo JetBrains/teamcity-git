@@ -65,7 +65,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private final VcsOperationProgressProvider myProgressProvider;
   private final GitTrustStoreProvider myGitTrustStoreProvider;
   private final TestConnectionSupport myTestConnection;
-  private Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
+  private final Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
 
   public GitVcsSupport(@NotNull GitRepoOperations gitRepoOperations,
                        @NotNull ServerPluginConfig config,
@@ -453,11 +453,25 @@ public class GitVcsSupport extends ServerVcsSupport
         final GitVcsRoot gitRoot = context.getGitRoot();
         final File cloneDir = gitRoot.getRepositoryDir();
 
+        // group paths with the same revisions because most likely for all of them the operation can be performed only once
+        Map<Pair<String, String>, List<GitMapFullPath.FullPath>> pathsGroupedByRevisions = new HashMap<>();
+        for (GitMapFullPath.FullPath path: paths) {
+          pathsGroupedByRevisions.computeIfAbsent(Pair.create(path.getRevision(), path.getHintRevision()), k -> new ArrayList<>()).add(path);
+        }
+
         boolean pathsApplicable = cache.computeIfAbsent(Pair.create(cloneDir, checkoutRules), key -> {
           try {
-            for (GitMapFullPath.FullPath path: paths) {
-              if (!checkoutRules.map(path.getMappedPaths()).isEmpty() && myMapFullPath.repositoryContainsPath(context, gitRoot, path)) {
-                return true;
+            for (Map.Entry<Pair<String, String>, List<GitMapFullPath.FullPath>> e: pathsGroupedByRevisions.entrySet()) {
+              for (GitMapFullPath.FullPath path: e.getValue()) {
+                if (checkoutRules.map(path.getMappedPaths()).isEmpty()) continue;
+                final GitMapFullPath.RevisionCheckResult result = myMapFullPath.repositoryContainsPath(context, gitRoot, path);
+                if (result == GitMapFullPath.RevisionCheckResult.CONTAINS_PATH) return true;
+
+                if (result == GitMapFullPath.RevisionCheckResult.DOES_NOT_CONTAIN_REVISION) {
+                  // seems the path has revisions and revisions check returned false
+                  // as we grouped all the paths with the same revisions together there is no need to check other paths in the same group
+                  break;
+                }
               }
             }
           } catch (VcsException e) {

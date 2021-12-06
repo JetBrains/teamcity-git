@@ -70,20 +70,27 @@ public class GitMapFullPath {
     if (LOG.isDebugEnabled())
       LOG.debug("MapFullPath root: " + LogUtil.describe(root) + ", path " + path);
     FullPath fullPath = new FullPath(path);
-    if (repositoryContainsPath(context, root, fullPath)) {
+    if (repositoryContainsPath(context, root, fullPath) == RevisionCheckResult.CONTAINS_PATH) {
       return fullPath.getMappedPaths();
     } else {
       return Collections.emptySet();
     }
   }
 
+  public enum RevisionCheckResult {
+    DOES_NOT_CONTAIN_REVISION,
+    DOES_NOT_CONTAIN_PATH,
+    IO_ERROR,
+    CONTAINS_PATH
+  }
 
-  boolean repositoryContainsPath(@NotNull OperationContext context,
+  @NotNull
+  RevisionCheckResult repositoryContainsPath(@NotNull OperationContext context,
                                  @NotNull GitVcsRoot root,
                                  @NotNull FullPath path) throws VcsException {
     if (!path.isValid()) {
       LOG.warn("Invalid path: " + path);
-      return false;
+      return RevisionCheckResult.DOES_NOT_CONTAIN_PATH;
     }
 
     try {
@@ -91,23 +98,25 @@ public class GitMapFullPath {
         // if full path has a hint revision, use it as it should rarely change and most likely will be cached
         // if hint revision is not found, the repositories are different
         if (!repositoryContainsRevision(context, root, path.getHintRevision(), RevisionCacheType.HINT_CACHE)) {
-          return false;
+          return RevisionCheckResult.DOES_NOT_CONTAIN_REVISION;
         }
 
         // main revision might not yet be present in the repository, as we do not do fetch before the operation,
         // so just pushed revision is likely to be missing
         if (!TeamCityProperties.getBoolean("teamcity.git.mapFullPath.checkRevisionWhenHintRevisionIsFound") || !path.containsRevision()) {
-          return true;
+          return RevisionCheckResult.CONTAINS_PATH;
         }
       }
       if (path.containsRevision()) {
-        return repositoryContainsRevision(context, root, path.getRevision(), RevisionCacheType.COMMIT_CACHE);
+        final boolean hasRevision = repositoryContainsRevision(context, root, path.getRevision(), RevisionCacheType.COMMIT_CACHE);
+        return hasRevision ? RevisionCheckResult.CONTAINS_PATH : RevisionCheckResult.DOES_NOT_CONTAIN_REVISION;
       } else {
-        return urlsMatch(root, path);
+        final boolean urlsMatched = urlsMatch(root, path);
+        return urlsMatched ? RevisionCheckResult.CONTAINS_PATH : RevisionCheckResult.DOES_NOT_CONTAIN_PATH;
       }
     } catch (IOException e) {
       LOG.error("Error while checking path suitability for root " + LogUtil.describe(root) + ", path: " + path.getPath(), e);
-      return false;
+      return RevisionCheckResult.IO_ERROR;
     }
   }
 
