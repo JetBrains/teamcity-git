@@ -59,8 +59,13 @@ public class AuthSettingsImpl implements AuthSettings {
     }
     myUrIishHelper = urIishHelper;
     myUserName = readUsername(properties);
-    myTokenId = properties.get(Constants.TOKEN_ID);
-    myPassword = properties.get(Constants.PASSWORD);
+    if (myAuthMethod.isPasswordBased()) {
+      myTokenId = properties.get(Constants.TOKEN_ID);
+      myPassword = properties.get(Constants.PASSWORD);
+    } else {
+      myTokenId = null;
+      myPassword = null;
+    }
     myTeamCitySshKeyId = myAuthMethod != AuthenticationMethod.TEAMCITY_SSH_KEY ? null : properties.get(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME);
     myRoot = root;
     myTokenRetriever = tokenRetriever;
