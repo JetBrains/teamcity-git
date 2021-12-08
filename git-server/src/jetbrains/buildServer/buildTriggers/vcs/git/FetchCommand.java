@@ -32,7 +32,7 @@ public interface FetchCommand extends GitCommand {
   /**
    * Makes a fetch into local repository (db.getDirectory() should be not null)
    */
-  public void fetch(@NotNull Repository db,
+  void fetch(@NotNull Repository db,
                     @NotNull URIish fetchURI,
                     @NotNull Collection<RefSpec> refspecs,
                     @NotNull FetchSettings settings) throws IOException, VcsException;
