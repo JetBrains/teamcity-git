@@ -16,20 +16,26 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import com.intellij.execution.configurations.GeneralCommandLine;
+import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.JSch;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.BaseTestCase;
+import jetbrains.buildServer.ExecResult;
+import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
-import jetbrains.buildServer.vcs.VcsException;
 import org.apache.log4j.Level;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -40,13 +46,9 @@ import org.jetbrains.annotations.Nullable;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testng.SkipException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.nio.file.Files;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 
@@ -119,7 +121,7 @@ public class SshAuthenticationTest extends BaseTestCase {
 
   public void ssh_git_password_disabled() throws Exception {
     try {
-      do_ssh_test(false, true, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication no", null, null,
+      do_ssh_test(false, true, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication no\nPubkeyAuthentication no", null, null,
                   b -> b.withAuthMethod(AuthenticationMethod.PASSWORD).withPassword("git_user_pass")
       );
       fail("Exception was expected");
@@ -131,7 +133,7 @@ public class SshAuthenticationTest extends BaseTestCase {
 
   public void ssh_git_password_disabled_native() throws Exception {
     try {
-      do_ssh_test(true, true, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication no", null, null,
+      do_ssh_test(true, true, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication no\nPubkeyAuthentication no", null, null,
                   b -> b.withAuthMethod(AuthenticationMethod.PASSWORD).withPassword("git_user_pass")
       );
       fail("Exception was expected");
@@ -139,6 +141,48 @@ public class SshAuthenticationTest extends BaseTestCase {
       if (e.getMessage().contains("Permission denied")) return;
       throw e;
     }
+  }
+
+  @Test(dataProvider = "true,false")
+  public void ssh_git_password_disabled_local_rsa_encrypted_key(boolean nativeOperationsEnabled) throws Exception {
+    withSubstitutedLocalKeys("id_rsa_encrypted", () -> {
+      try {
+        do_ssh_test(nativeOperationsEnabled, false, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication no\nPubkeyAuthentication yes", null, "keys/id_rsa_encrypted.pub",
+                    b -> b.withAuthMethod(AuthenticationMethod.PASSWORD)
+        );
+        fail("Exception was expected");
+      } catch (Exception e) {
+        if (e.getMessage().contains("Permission denied") || e.getMessage().contains("Auth fail")) return null;
+        throw e;
+      }
+      return null;
+    });
+  }
+
+  @Test(dataProvider = "true,false")
+  public void ssh_git_local_rsa_key(boolean nativeOperationsEnabled) throws Exception {
+    withSubstitutedLocalKeys("id_rsa", () -> {
+      do_ssh_test(nativeOperationsEnabled, false, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication no\nPubkeyAuthentication yes", null, "keys/id_rsa.pub",
+                  b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_DEFAULT)
+      );
+      return null;
+    });
+  }
+
+  @Test(dataProvider = "true,false")
+  public void ssh_git_password_disabled_local_rsa_key(boolean nativeOperationsEnabled) throws Exception {
+    withSubstitutedLocalKeys("id_rsa", () -> {
+      try {
+        do_ssh_test(nativeOperationsEnabled, false, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication no\nPubkeyAuthentication yes", null, "keys/id_rsa.pub",
+                    b -> b.withAuthMethod(AuthenticationMethod.PASSWORD)
+        );
+        fail("Authentication was expected to fail");
+      } catch (Exception e) {
+        if (e.getMessage().contains("Permission denied") || e.getMessage().contains("Auth fail")) return null;
+        throw e;
+      }
+      return null;
+    });
   }
 
   @Test(dataProvider = "true,false")
@@ -252,13 +296,27 @@ public class SshAuthenticationTest extends BaseTestCase {
     );
   }
 
+  @Test(dataProvider = "true,false")
+  public void ssh_git_rsa_key_ignore_known_hosts(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_rsa");
+    withSubstitutedLocalKeys("known_hosts", () -> {
+      do_ssh_test(nativeOperationsEnabled, false, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication no\nPubkeyAuthentication yes", null, "keys/id_rsa.pub",
+                  b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(key.getAbsolutePath()), false);
+      return null;
+    });
+  }
+
   private void do_ssh_test(boolean nativeOperationsEnabled, boolean useSshAskPass, @NotNull String urlFormat, @NotNull String sshdConfig, @Nullable TeamCitySshKey tcKey, @Nullable String publicKey, @NotNull VcsRootConfigurator builder) throws Exception {
+    do_ssh_test(nativeOperationsEnabled, useSshAskPass, urlFormat, sshdConfig, tcKey, publicKey, builder, true);
+  }
+
+  private void do_ssh_test(boolean nativeOperationsEnabled, boolean useSshAskPass, @NotNull String urlFormat, @NotNull String sshdConfig, @Nullable TeamCitySshKey tcKey, @Nullable String publicKey, @NotNull VcsRootConfigurator builder, boolean ignoreKnownHosts) throws Exception {
     if (!nativeOperationsEnabled) {
       JSchConfigInitializer.initJSchConfig(JSch.class);
     }
 
     final File pub_key = publicKey == null ? null : dataFile(publicKey);
-    ssh_test(pub_key, sshdConfig, container -> JSchLoggers.evaluateWithLoggingLevel(Level.DEBUG, () -> {
+    ssh_test(pub_key, sshdConfig, container -> {
       setInternalProperty("teamcity.git.nativeOperationsEnabled", String.valueOf(nativeOperationsEnabled));
       setInternalProperty("teamcity.git.useSshAskPas", String.valueOf(useSshAskPass));
       setInternalProperty("teamcity.git.debugNativeGit", "true");
@@ -275,13 +333,15 @@ public class SshAuthenticationTest extends BaseTestCase {
       final RepositoryManagerImpl repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
       final String repoUrl = String.format(urlFormat, container.getContainerIpAddress(), container.getMappedPort(22));
 
-      final GitVcsRoot gitRoot = new GitVcsRoot(mirrorManager, builder.config(VcsRootBuilder.vcsRoot().withFetchUrl(repoUrl).withIgnoreKnownHosts(true)).build(), new URIishHelperImpl());
+      final GitVcsRoot gitRoot = new GitVcsRoot(mirrorManager, builder.config(VcsRootBuilder.vcsRoot().withFetchUrl(repoUrl).withIgnoreKnownHosts(ignoreKnownHosts)).build(), new URIishHelperImpl());
+
+      JSch.setLogger(JSchLoggers.STD_DEBUG_JSCH_LOGGER);
 
       // here we test some git operations
       final URIish fetchUrl = new URIish(repoUrl);
       final Repository db = repositoryManager.openRepository(fetchUrl);
       final Map<String, Ref> refs =
-        repoOperations.lsRemoteCommand(repoUrl).lsRemote(db, gitRoot);
+        repoOperations.lsRemoteCommand(repoUrl).lsRemote(db, gitRoot, new FetchSettings(gitRoot.getAuthSettings()));
       assertContains(refs.keySet(), "refs/pull/1");
 
       final StringBuilder progress = new StringBuilder();
@@ -313,10 +373,8 @@ public class SshAuthenticationTest extends BaseTestCase {
         GitSupportBuilder.gitSupport().withServerPaths(serverPaths).withPluginConfig(config).withTransportFactory(transportFactory).build();
       repoOperations.tagCommand(vcsSupport, repoUrl).tag(vcsSupport.createContext(gitRoot.getOriginalRoot(),"tag"), "test_tag", "b896070465af79121c9a4eb5300ecff29453c164");
 
-      assertContains(repoOperations.lsRemoteCommand(repoUrl).lsRemote(db, gitRoot).keySet(), "refs/tags/test_tag");
-
-      return null;
-    }));
+      assertContains(repoOperations.lsRemoteCommand(repoUrl).lsRemote(db, gitRoot, new FetchSettings(gitRoot.getAuthSettings())).keySet(), "refs/tags/test_tag");
+    });
   }
 
   private void ssh_test(@Nullable File pub_key, @NotNull String sshdConfig, @NotNull ContainerTest test) throws Exception {
@@ -365,11 +423,68 @@ public class SshAuthenticationTest extends BaseTestCase {
     }
   }
 
+  private void withSubstitutedLocalKeys(@NotNull String keyName, @NotNull Callable operation) throws IOException {
+    if (SystemInfo.isWindows) throw new SkipException("Test is not intended to run on Windows");
+
+    final File key = dataFile("keys/" + keyName);
+    final File localKeys = new File(System.getProperty("user.home"), ".ssh");
+    File localKey = null;
+    File savedLocalKeys = null;
+    if (!FileUtil.isEmptyDir(localKeys)) {
+      savedLocalKeys = createTempDir();
+      FileUtil.copyDir(localKeys, savedLocalKeys);
+    }
+    try {
+      FileUtil.delete(localKeys);
+      FileUtil.createDir(localKeys);
+      chmod(localKeys, "700");
+      localKey = new File(localKeys, keyName.endsWith("_encrypted") ? keyName.replace("_encrypted", "") : keyName);
+      FileUtil.copy(key, localKey);
+      chmod(localKey, "600");
+      try {
+        operation.call();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    } finally {
+      if (localKey != null) {
+        FileUtil.delete(localKey);
+      }
+      if (savedLocalKeys != null && !FileUtil.isEmptyDir(savedLocalKeys)) {
+        FileUtil.copyDir(savedLocalKeys, localKeys);
+        chmod(localKeys, "700");
+        final File[] files = localKeys.listFiles();
+        if (files != null) {
+          for (File f : files) {
+            final String name = f.getName();
+            if (name.endsWith(".pub") || "known_hosts".equals(name)) continue;
+            chmod(f, "600");
+          }
+        }
+      }
+      FileUtil.delete(savedLocalKeys);
+    }
+  }
+
   private interface ContainerTest {
     void run(@NotNull GenericContainer container) throws Exception;
   }
 
   private interface VcsRootConfigurator {
     @NotNull VcsRootBuilder config(@NotNull VcsRootBuilder b);
+  }
+
+  private void chmod(@NotNull File file, @NotNull String mode) {
+    GeneralCommandLine cmd = new GeneralCommandLine();
+    cmd.setExePath("chmod"); // test do not run under windows anyway
+    cmd.addParameters(mode, file.getAbsolutePath());
+
+    final ExecResult execResult = SimpleCommandLineProcessRunner.runCommand(cmd, null);
+    final Throwable error = execResult.getException();
+    if (error != null) throw new RuntimeException(error);
+
+    final int exitCode = execResult.getExitCode();
+    if (exitCode == 0) return;
+    throw new RuntimeException(cmd.getCommandLineString() + " failed with " + exitCode + " exit code");
   }
 }

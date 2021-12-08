@@ -21,6 +21,7 @@ import java.io.IOException;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
+import jetbrains.buildServer.vcs.VcsUtil;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.jetbrains.annotations.NotNull;
 
@@ -59,7 +60,7 @@ public class VcsRootBuilder {
     final int id = myId != null ? myId : 1;
     VcsRootImpl result = new VcsRootImpl(id, Constants.VCS_NAME);
     result.setName(myFetchUrl);
-    result.addProperty(VcsRootImpl.VCS_NAME_PROP, Constants.VCS_NAME);
+    result.addProperty(VcsUtil.VCS_NAME_PROP, Constants.VCS_NAME);
     result.addProperty(Constants.FETCH_URL, myFetchUrl);
     if (myPushUrl != null)
       result.addProperty(Constants.PUSH_URL, myPushUrl);

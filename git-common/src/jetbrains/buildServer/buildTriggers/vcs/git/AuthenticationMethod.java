@@ -61,7 +61,7 @@ public enum AuthenticationMethod {
     return myUIName;
   }
 
-  public boolean isSsh() {
+  public boolean isKeyAuth() {
     return myIsSsh;
   }
 

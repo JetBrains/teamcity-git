@@ -4,6 +4,7 @@ import javax.servlet.http.HttpServletRequest;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitRepoOperations;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.auth.Permission;
 import jetbrains.buildServer.serverSide.healthStatus.HealthStatusItem;
 import jetbrains.buildServer.vcs.VcsException;
@@ -46,7 +47,7 @@ public class GitServerVersionHealthPage extends HealthStatusItemPageExtension {
   @Nullable
   private GitVersion getCurrentGitVersion() {
     try {
-      return myGitOperations.detectGit().getVersion();
+      return IOGuard.allowCommandLine(() -> myGitOperations.detectGit().getVersion());
     } catch (VcsException e) {
       return null;
     }

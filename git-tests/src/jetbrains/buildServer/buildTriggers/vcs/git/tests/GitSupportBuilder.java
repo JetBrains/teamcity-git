@@ -60,13 +60,7 @@ public class GitSupportBuilder {
 
   @NotNull
   private static VcsRootSshKeyManager getSshKeyManager() {
-    return new VcsRootSshKeyManager() {
-      @Nullable
-      @Override
-      public TeamCitySshKey getKey(@NotNull VcsRoot root) {
-        return null;
-      }
-    };
+    return root -> null;
   }
 
   @NotNull

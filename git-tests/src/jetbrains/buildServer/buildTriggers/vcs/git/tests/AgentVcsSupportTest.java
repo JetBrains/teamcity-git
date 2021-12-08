@@ -57,6 +57,7 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsUtil;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.assertj.core.api.Assertions;
 import org.eclipse.jgit.api.Git;
@@ -2072,8 +2073,8 @@ public class AgentVcsSupportTest {
   private VcsRootImpl createRoot(final File remote, final String branch) throws IOException {
     myVcsRootId++;
     return new VcsRootImpl(myVcsRootId, new HashMap<String, String>() {{
-      put(VcsRootImpl.VCS_NAME_PROP, Constants.VCS_NAME);
-      put(VcsRootImpl.VCS_ROOT_NAME_PROP, "test" + myVcsRootId);
+      put(VcsUtil.VCS_NAME_PROP, Constants.VCS_NAME);
+      put(VcsUtil.VCS_ROOT_NAME_PROP, "test" + myVcsRootId);
       put(Constants.FETCH_URL, GitUtils.toURL(remote));
       put(Constants.AGENT_GIT_PATH, getGitPath());
       put(Constants.BRANCH_NAME, branch);

@@ -1,15 +1,14 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import com.intellij.openapi.diagnostic.Logger;
-import java.io.File;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.locks.ReentrantLock;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.metrics.Counter;
+import jetbrains.buildServer.metrics.MetricDataType;
+import jetbrains.buildServer.metrics.ServerMetrics;
+import jetbrains.buildServer.metrics.Stoppable;
 import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -28,33 +27,73 @@ import org.eclipse.jgit.transport.Transport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.locks.ReentrantLock;
+
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
 
 public class GitRepoOperationsImpl implements GitRepoOperations {
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
   private static final String GIT_NATIVE_OPERATIONS_ENABLED = "teamcity.git.nativeOperationsEnabled";
+  private static final Counter EMPTY_COUNTER = new Counter() {
+    @Override
+    public void increment(final double v) {
+    }
+
+    @Override
+    public Stoppable startMsecsTimer() {
+      return null;
+    }
+  };
 
   private final TransportFactory myTransportFactory;
   private final VcsRootSshKeyManager mySshKeyManager;
   private final ServerPluginConfig myConfig;
   private final FetchCommand myJGitFetchCommand;
   private final LazyGitExec myGitExec = new LazyGitExec();
+  private final Counter myFetchDurationTimer;
 
   public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
                                @NotNull TransportFactory transportFactory,
                                @NotNull VcsRootSshKeyManager sshKeyManager,
                                @NotNull FetchCommand jGitFetchCommand) {
+    this(config, transportFactory, sshKeyManager, jGitFetchCommand, EMPTY_COUNTER);
+  }
+
+  public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
+                               @NotNull TransportFactory transportFactory,
+                               @NotNull VcsRootSshKeyManager sshKeyManager,
+                               @NotNull FetchCommand jGitFetchCommand,
+                               @NotNull ServerMetrics serverMetrics) {
+    this(config, transportFactory, sshKeyManager, jGitFetchCommand,
+         serverMetrics.metricBuilder("vcs.git.fetch.duration")
+           .dataType(MetricDataType.MILLISECONDS)
+           .experimental(true)
+           .description("git fetch operations duration")
+           .buildCounter()
+    );
+  }
+
+  private GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
+                               @NotNull TransportFactory transportFactory,
+                               @NotNull VcsRootSshKeyManager sshKeyManager,
+                               @NotNull FetchCommand jGitFetchCommand,
+                               @NotNull Counter fetchDurationTimer ) {
     myConfig = config;
     myTransportFactory = transportFactory;
     mySshKeyManager = sshKeyManager;
     myJGitFetchCommand = jGitFetchCommand;
+    myFetchDurationTimer = fetchDurationTimer;
   }
 
   @NotNull
   @Override
   public FetchCommand fetchCommand(@NotNull String repoUrl) {
-    return (FetchCommand)getNativeGitCommandOptional(repoUrl).orElse(myJGitFetchCommand);
+    return new MetricReportingFetchCommand((FetchCommand)getNativeGitCommandOptional(repoUrl).orElse(myJGitFetchCommand), myFetchDurationTimer);
   }
 
   @NotNull
@@ -99,13 +138,8 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   @Override
   public LsRemoteCommand lsRemoteCommand(@NotNull String repoUrl) {
-    return (LsRemoteCommand)getNativeGitCommandOptional(repoUrl).orElse(new LsRemoteCommand() {
-      @NotNull
-      @Override
-      public Map<String, Ref> lsRemote(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws VcsException {
-        return getRemoteRefsJGit(db, gitRoot);
-      }
-    });
+    return (LsRemoteCommand)getNativeGitCommandOptional(repoUrl).orElse(
+      (LsRemoteCommand)(db, gitRoot, settings) -> getRemoteRefsJGit(db, gitRoot));
   }
 
   @NotNull
@@ -189,13 +223,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   @Override
   public PushCommand pushCommand(@NotNull String repoUrl) {
-    return (PushCommand)getNativeGitCommandOptional(repoUrl).orElse(new PushCommand() {
-      @NotNull
-      @Override
-      public CommitResult push(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull String ref, @NotNull String commit, @NotNull String lastCommit) throws VcsException {
-        return pushJGit(db, gitRoot, ref, commit, lastCommit);
-      }
-    });
+    return (PushCommand)getNativeGitCommandOptional(repoUrl).orElse((PushCommand)this::pushJGit);
   }
 
   @NotNull

@@ -8,5 +8,5 @@ import org.jetbrains.annotations.NotNull;
 
 public interface LsRemoteCommand extends GitCommand {
   @NotNull
-  Map<String, Ref> lsRemote(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws VcsException;
+  Map<String, Ref> lsRemote(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull FetchSettings settings) throws VcsException;
 }

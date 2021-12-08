@@ -91,6 +91,23 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     assertEquals("file-to-commit", m.getChanges().get(0).getFileName());
   }
 
+  public void test_short_branch_name() throws Exception {
+    RepositoryStateData state1 = myGit.getCurrentState(myRoot);
+
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
+    byte[] bytes = "test-content".getBytes();
+    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream(bytes));
+    patchBuilder.commit(new CommitSettingsImpl("user", "Commit description"));
+    patchBuilder.dispose();
+
+    RepositoryStateData state2 = myGit.getCurrentState(myRoot);
+    List<ModificationData> changes = myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);
+    assertEquals(1, changes.size());
+    ModificationData m = changes.get(0);
+    assertEquals("user", m.getUserName());
+    assertEquals("Commit description", m.getDescription());
+    assertEquals("file-to-commit", m.getChanges().get(0).getFileName());
+  }
 
   @TestFor(issues = "TW-38226")
   public void should_canonicalize_line_endings_on_commit() throws Exception {

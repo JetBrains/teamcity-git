@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2018 JetBrains s.r.o.
+ * Copyright 2000-2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.metrics.Counter;
+import jetbrains.buildServer.metrics.Stoppable;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
@@ -25,17 +27,22 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.util.Collection;
 
-/**
- * @author dmitry.neverov
- */
-public interface FetchCommand extends GitCommand {
+public class MetricReportingFetchCommand implements FetchCommand {
+  private final FetchCommand myDelegate;
+  private final Counter myFetchDurationTimer;
 
-  /**
-   * Makes a fetch into local repository (db.getDirectory() should be not null)
-   */
-  void fetch(@NotNull Repository db,
-             @NotNull URIish fetchURI,
-             @NotNull Collection<RefSpec> refspecs,
-             @NotNull FetchSettings settings) throws IOException, VcsException;
+  public MetricReportingFetchCommand(@NotNull final FetchCommand delegate, @NotNull Counter fetchDurationTimer) {
+    myDelegate = delegate;
+    myFetchDurationTimer = fetchDurationTimer;
+  }
 
+  @Override
+  public void fetch(@NotNull final Repository db,
+                    @NotNull final URIish fetchURI,
+                    @NotNull final Collection<RefSpec> refspecs,
+                    @NotNull final FetchSettings settings) throws IOException, VcsException {
+    try (Stoppable ignored = myFetchDurationTimer.startMsecsTimer()) {
+      myDelegate.fetch(db, fetchURI, refspecs, settings);
+    }
+  }
 }
