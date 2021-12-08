@@ -703,7 +703,7 @@ public class AgentVcsSupportTest {
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
-    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage, false);
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
     File bareRepositoryDir = root.getRepositoryDir();
     assertTrue(bareRepositoryDir.exists());
     //check some dirs that should be present in the bare repository:
@@ -730,7 +730,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildBeforeUsingMirrors, false);
     AgentRunningBuild buildWithMirrorsEnabled = createRunningBuild(true);
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
-    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage, false);
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
     String localMirrorUrl = new URIish(root.getRepositoryDir().toURI().toASCIIString()).toString();
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
     assertEquals(root.getRepositoryFetchURL().toString(), r.getConfig().getString("url", localMirrorUrl, "insteadOf"));
@@ -747,7 +747,7 @@ public class AgentVcsSupportTest {
 
   @TestFor(issues = "TW-67736")
   public void delete_url_insteadOf_from_config_when_switching_from_mirrors_to_alternates() throws Exception {
-    final GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage, false);
+    final GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
     {
       final AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, "true"));
       myVcsSupport.updateSources(root.getOriginalRoot(), new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
@@ -776,7 +776,7 @@ public class AgentVcsSupportTest {
 
   public void stop_use_any_mirror_if_agent_property_changed_to_false() throws Exception {
     AgentRunningBuild build2 = createRunningBuild(false);
-    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage, false);
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
 
     //add some mirror
@@ -837,7 +837,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
 
     //corrupt local mirror
-    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage, false);
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
     File mirror = myBuilder.getMirrorManager().getMirrorDir(root.getRepositoryFetchURL().toString());
     File[] children = mirror.listFiles();
     if (children != null) {
@@ -1565,7 +1565,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build, true);
 
     //manually create a branch tmp_branch_for_build with, it seems like it wasn't removed due to errors in previous checkouts
-    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage, false);
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
     File mirror = myBuilder.getMirrorManager().getMirrorDir(root.getRepositoryFetchURL().toString());
     File emptyBranchFile = new File(mirror, "refs" + File.separator + "heads" + File.separator + "tmp_branch_for_build");
     FileUtil.writeToFile(emptyBranchFile, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653\n".getBytes());

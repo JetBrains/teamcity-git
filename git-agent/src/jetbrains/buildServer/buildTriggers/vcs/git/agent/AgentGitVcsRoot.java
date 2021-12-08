@@ -46,9 +46,8 @@ public class AgentGitVcsRoot extends GitVcsRoot {
 
   private final AgentTokenStorage myTokenStorage;
 
-  public AgentGitVcsRoot(MirrorManager mirrorManager, VcsRoot root,
-                         AgentTokenStorage tokenStorage, boolean isTokenRefreshEnabled) throws VcsException {
-    super(mirrorManager, root, new URIishHelperImpl(), isTokenRefreshEnabled);
+  public AgentGitVcsRoot(MirrorManager mirrorManager, VcsRoot root, AgentTokenStorage tokenStorage) throws VcsException {
+    super(mirrorManager, root, new URIishHelperImpl(), true);
     myLocalRepositoryDir = getRepositoryDir();
     String clean = getProperty(Constants.AGENT_CLEAN_POLICY);
     myCleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);
@@ -58,9 +57,8 @@ public class AgentGitVcsRoot extends GitVcsRoot {
   }
 
 
-  public AgentGitVcsRoot(MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root,
-                         AgentTokenStorage tokenStorage, boolean isTokenRefreshEnabled) throws VcsException {
-    super(mirrorManager, root, new URIishHelperImpl(), isTokenRefreshEnabled);
+  public AgentGitVcsRoot(MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root, AgentTokenStorage tokenStorage) throws VcsException {
+    super(mirrorManager, root, new URIishHelperImpl(), true);
     myLocalRepositoryDir = localRepositoryDir;
     String clean = getProperty(Constants.AGENT_CLEAN_POLICY);
     myCleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);
