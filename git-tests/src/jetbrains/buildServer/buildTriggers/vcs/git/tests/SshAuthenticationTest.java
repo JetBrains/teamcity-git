@@ -36,7 +36,6 @@ import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
-import org.apache.log4j.Level;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
@@ -206,6 +205,16 @@ public class SshAuthenticationTest extends BaseTestCase {
     do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", null, "keys/id_rsa.pub",
                 b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(key.getAbsolutePath())
     );
+  }
+
+  public void ssh_git_rsa_key_file_with_request_token() throws Exception {
+    final StringBuilder log = enableAndRecordDebugLog();
+    setInternalProperty("teamcity.git.sendSshSendEnvRequestToken", "true");
+    final File key = dataFile("keys/id_rsa");
+    do_ssh_test(true, true, "ssh://git@%s:%s/home/git/repo.git", "AcceptEnv TEAMCITY_SSH_REQUEST_TOKEN\nLogLevel DEBUG3", null, "keys/id_rsa.pub",
+                b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(key.getAbsolutePath()).withRequestToken("239")
+    );
+    assertContains(log.toString(), "Setting env 1: TEAMCITY_SSH_REQUEST_TOKEN=239");
   }
 
   public void ssh_git_ecdsa_encrypted_key_file() throws Exception {
@@ -405,11 +414,15 @@ public class SshAuthenticationTest extends BaseTestCase {
 //                                                               "ls -lah $GIT_HOME/repo.git\n" +
                                                                "chown git:git -R $GIT_HOME && chmod 700 $GIT_HOME/.ssh  && chmod 600 $GIT_HOME/.ssh/authorized_keys\n" +
                                                                "echo \"" + sshdConfig + "\" >> /etc/ssh/sshd_config\n" +
-                                                               "/usr/sbin/sshd -D")
+                                                               "/usr/sbin/sshd -D -e")
                                        .build()))
       .withExposedPorts(22)
       .withFileSystemBind(dataFile("repo.git").getAbsolutePath(), "/git-server/repos/repo.git", BindMode.READ_ONLY)
-      .withLogConsumer(l -> System.out.println("DOCKER: " + l.getUtf8String()));
+      .withLogConsumer(l -> {
+        final String msg = "DOCKER: " + l.getUtf8String();
+        System.out.println(msg);
+        if (myTestLogger != null) myTestLogger.log(msg);
+      });
 
     if (pub_key != null) {
       gitServer.withFileSystemBind(pub_key.getAbsolutePath(), "/git-server/keys/" + pub_key.getName(), BindMode.READ_ONLY);

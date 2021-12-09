@@ -22,6 +22,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.vcs.VcsUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.jetbrains.annotations.NotNull;
 
@@ -49,6 +50,7 @@ public class VcsRootBuilder {
   private String myPrivateKeyPath;
   private String myTeamCitySshKey;
   private String myPassphrase;
+  private String myRequestToken;
 
   public static VcsRootBuilder vcsRoot() {
     return new VcsRootBuilder();
@@ -89,6 +91,9 @@ public class VcsRootBuilder {
     }
     if (myPassphrase != null) {
       result.addProperty(Constants.PASSPHRASE, myPassphrase);
+    }
+    if (myRequestToken != null) {
+      result.addProperty(PluginConfigImpl.SSH_SEND_ENV_REQUEST_TOKEN, myRequestToken);
     }
 
     result.addProperty(Constants.SERVER_SIDE_AUTO_CRLF, String.valueOf(myAutoCrlf));
@@ -196,6 +201,11 @@ public class VcsRootBuilder {
 
   public VcsRootBuilder withPassphrase(String passphrase) {
     myPassphrase = passphrase;
+    return this;
+  }
+
+  public VcsRootBuilder withRequestToken(String requestToken) {
+    myRequestToken = requestToken;
     return this;
   }
 }

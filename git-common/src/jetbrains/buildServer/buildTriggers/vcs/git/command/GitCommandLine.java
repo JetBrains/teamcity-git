@@ -118,10 +118,11 @@ public class GitCommandLine extends GeneralCommandLine {
     //option results in the 'Bad configuration option: keychainintegration' error.
 
     final boolean ignoreKnownHosts = authSettings.isIgnoreKnownHosts();
+    final String sendEnv = myCtx.getSshRequestToken();
     File privateKey = null;
     try {
       privateKey = getPrivateKey(authSettings);
-      if (privateKey != null || ignoreKnownHosts) {
+      if (privateKey != null || ignoreKnownHosts || StringUtil.isNotEmpty(sendEnv)) {
         final StringBuilder gitSshCommand = new StringBuilder("ssh");
         if (privateKey != null) {
           gitSshCommand.append(" -i \"").append(privateKey.getAbsolutePath().replace('\\', '/')).append("\"");
@@ -138,6 +139,10 @@ public class GitCommandLine extends GeneralCommandLine {
           gitSshCommand.append(" -o \"PreferredAuthentications=password,keyboard-interactive\" -o \"PubkeyAuthentication=no\"");
         }
         gitSshCommand.append(" -o \"IdentitiesOnly=yes\"");
+
+        if (StringUtil.isNotEmpty(sendEnv)) {
+          gitSshCommand.append(" -o \"SetEnv TEAMCITY_SSH_REQUEST_TOKEN").append("=").append(sendEnv).append("\"");
+        }
         if (myCtx.isDebugSsh() || settings.isTrace()) {
           gitSshCommand.append(" -vvv");
         }
