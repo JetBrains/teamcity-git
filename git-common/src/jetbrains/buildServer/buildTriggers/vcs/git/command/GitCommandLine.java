@@ -134,7 +134,7 @@ public class GitCommandLine extends GeneralCommandLine {
             "\"Ignore known hosts database\" setting is disabled, please make sure that per-user or global known host key database contains remote host key, otherwise git operations may hang or fail in unexpected way");
         }
         if (authSettings.getAuthMethod().isKeyAuth()) {
-          gitSshCommand.append(" -o \"PreferredAuthentications=publickey\" -o \"PasswordAuthentication=no\" -o \"InteractiveAuthentication=no\"");
+          gitSshCommand.append(" -o \"PreferredAuthentications=publickey\" -o \"PasswordAuthentication=no\" -o \"KbdInteractiveAuthentication=no\"");
         } else {
           gitSshCommand.append(" -o \"PreferredAuthentications=password,keyboard-interactive\" -o \"PubkeyAuthentication=no\"");
         }
