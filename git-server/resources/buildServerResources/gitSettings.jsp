@@ -344,7 +344,7 @@
       var that = this;
       $j('#authMethod option').each(function() {
         var method = $j(this).val();
-        if (method == selected || that.contains(fetchCompatible, method) && that.contains(pushCompatible, method)) {
+        if (method == selected || that.isSelectable(method) && that.contains(fetchCompatible, method) && that.contains(pushCompatible, method)) {
           $j(this).attr("disabled", false);
         } else {
           $j(this).attr("disabled", "disabled");
@@ -352,6 +352,9 @@
       });
     },
 
+    isSelectable: function(method) {
+      return method != "ACCESS_TOKEN";
+    },
 
     getLimitingProtocols: function (fetchProto, fetchCompatMethods, pushProto, pushCompatMethods) {
       var allMethods = this.getAllAuthMethods();
