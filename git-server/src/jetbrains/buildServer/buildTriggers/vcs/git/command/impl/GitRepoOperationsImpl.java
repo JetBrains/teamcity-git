@@ -311,8 +311,8 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     @Override
     public Counter apply(final String repoUrl) {
       final String key = myReposWhitelist.contains(repoUrl) ? repoUrl : "ALL";
-      return myFetchDurationTimers.computeIfAbsent(repoUrl, url -> myServerMetrics.metricBuilder("vcs.git.fetch.duration")
-        .tags(key)
+      return myFetchDurationTimers.computeIfAbsent(key, url -> myServerMetrics.metricBuilder("vcs.git.fetch.duration")
+        .tags("repoUrl", key)
         .dataType(MetricDataType.MILLISECONDS)
         .experimental(true)
         .description("git fetch operations duration")
