@@ -612,6 +612,10 @@ public class Cleanup {
         public Integer getMaxAcceptedOutputSize() {
           return null;
         }
+        @Override
+        public boolean isUseProcessTreeTerminator() {
+          return true;
+        }
       });
 
       VcsException commandError = CommandLineUtil.getCommandLineError("'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", result);
