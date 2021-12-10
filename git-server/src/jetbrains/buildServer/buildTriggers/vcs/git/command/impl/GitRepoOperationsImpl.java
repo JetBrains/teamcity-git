@@ -1,6 +1,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.File;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
@@ -27,14 +33,6 @@ import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.Transport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyNotSupportedException;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
@@ -73,7 +71,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
                                @NotNull VcsRootSshKeyManager sshKeyManager,
                                @NotNull FetchCommand jGitFetchCommand,
                                @NotNull ServerMetrics serverMetrics) {
-    this(config, transportFactory, sshKeyManager, jGitFetchCommand, new FetchDurationTimers(serverMetrics, config.getFetchDurationMetricRepos()));
+    this(config, transportFactory, sshKeyManager, jGitFetchCommand, new FetchDurationTimers(serverMetrics, config));
   }
 
   private GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
@@ -299,18 +297,19 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   }
 
   private static class FetchDurationTimers implements Function<String, Counter> {
-    private final List<String> myReposWhitelist; // we report metric separately for these repos
+    private final ServerPluginConfig myConfig;
     private final ServerMetrics myServerMetrics;
     private final ConcurrentHashMap<String, Counter> myFetchDurationTimers = new ConcurrentHashMap<>();
 
-    private FetchDurationTimers(@NotNull ServerMetrics serverMetrics, @NotNull List<String> reposWhitelist) {
+    private FetchDurationTimers(@NotNull ServerMetrics serverMetrics, @NotNull ServerPluginConfig config) {
       myServerMetrics = serverMetrics;
-      myReposWhitelist = reposWhitelist;
+      myConfig = config;
     }
 
     @Override
     public Counter apply(final String repoUrl) {
-      final String key = myReposWhitelist.contains(repoUrl) ? repoUrl : "ALL";
+      // we can report metric separately for specified repos
+      final String key = myConfig.getFetchDurationMetricRepos().contains(repoUrl) ? repoUrl : "ALL";
       return myFetchDurationTimers.computeIfAbsent(key, url -> myServerMetrics.metricBuilder("vcs.git.fetch.duration")
         .tags("repoUrl", key)
         .dataType(MetricDataType.MILLISECONDS)
