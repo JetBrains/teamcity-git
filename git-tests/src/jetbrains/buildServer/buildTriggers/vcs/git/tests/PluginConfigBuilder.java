@@ -427,6 +427,12 @@ public class PluginConfigBuilder {
       public boolean downloadLfsObjectsForPatch() {
         return true;
       }
+
+      @NotNull
+      @Override
+      public List<String> getFetchDurationMetricRepos() {
+        return Collections.emptyList();
+      }
     };
   }
 

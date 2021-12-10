@@ -66,7 +66,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   @Override
   public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull FetchSettings settings) throws IOException, VcsException {
-    final Context ctx = new ContextImpl(myConfig, myGitDetector.detectGit(), settings.getProgress());
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit(), settings.getProgress());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
@@ -110,7 +110,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   @NotNull
   @Override
   public Map<String, Ref> lsRemote(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull FetchSettings settings) throws VcsException {
-    final Context ctx = new ContextImpl(myConfig, myGitDetector.detectGit(), settings.getProgress());
+    final Context ctx = new ContextImpl(gitRoot, myConfig, myGitDetector.detectGit(), settings.getProgress());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
@@ -133,7 +133,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
     final String fullRef = GitUtils.expandRef(ref);
 
-    final Context ctx = new ContextImpl(myConfig, myGitDetector.detectGit());
+    final Context ctx = new ContextImpl(gitRoot, myConfig, myGitDetector.detectGit());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
@@ -165,7 +165,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   @Override
   @NotNull
   public String tag(@NotNull OperationContext context, @NotNull String tag, @NotNull String commit) throws VcsException {
-    final Context ctx = new ContextImpl(myConfig, myGitDetector.detectGit());
+    final Context ctx = new ContextImpl(context.getGitRoot(), myConfig, myGitDetector.detectGit());
     final Repository db = context.getRepository();
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);

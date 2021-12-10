@@ -7,10 +7,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitProgress;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
-import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
+
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import org.jetbrains.annotations.NotNull;
@@ -21,12 +19,14 @@ public class ContextImpl implements Context {
   private final ServerPluginConfig myConfig;
   private final GitProgress myProgress;
   private final GitExec myGitExec;
+  private final GitVcsRoot myRoot;
 
-  public ContextImpl(@NotNull ServerPluginConfig config, @NotNull GitExec gitExec) {
-    this(config, gitExec, GitProgress.NO_OP);
+  public ContextImpl(@Nullable GitVcsRoot root, @NotNull ServerPluginConfig config, @NotNull GitExec gitExec) {
+    this(root, config, gitExec, GitProgress.NO_OP);
   }
 
-  public ContextImpl(@NotNull ServerPluginConfig config, @NotNull GitExec gitExec, @NotNull GitProgress progress) {
+  public ContextImpl(@Nullable GitVcsRoot root, @NotNull ServerPluginConfig config, @NotNull GitExec gitExec, @NotNull GitProgress progress) {
+    myRoot = root;
     myConfig = config;
     myGitExec = gitExec;
     myProgress = progress;
@@ -114,6 +114,12 @@ public class ContextImpl implements Context {
   @Nullable
   @Override
   public String getSshRequestToken() {
+    if (myRoot == null) return null;
+    if (TeamCityProperties.getBoolean("teamcity.git.sendSshSendEnvRequestToken")) {
+      final String token = myRoot.getProperty("sshSendEnvRequestToken");
+      if (token == null) return null;
+      return token.contains("%") ? null : token;
+    }
     return null;
   }
 

@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.jcraft.jsch.Proxy;
 import java.util.List;
 import java.util.Map;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.quartz.CronExpression;
@@ -182,4 +183,7 @@ public interface ServerPluginConfig extends PluginConfig {
   Map<String, String> getGitTraceEnv();
 
   boolean downloadLfsObjectsForPatch();
+
+  @NotNull
+  List<String> getFetchDurationMetricRepos();
 }

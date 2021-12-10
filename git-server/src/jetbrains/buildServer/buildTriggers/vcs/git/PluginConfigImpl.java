@@ -92,6 +92,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private static final String USE_DEFAULT_CHARSET = "teamcity.git.useDefaultCharset";
   private static final String GIT_OUTPUT_CHARSET = "teamcity.git.outputCharset";
   private static final String PATCH_DOWNLOAD_LFS_OBJECTS = "teamcity.git.patch.downloadLfsObjects";
+  private static final String FETCH_DURATION_METRIC_REPOS = "teamcity.git.fetch.durationMetricRepos";
 
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
@@ -691,5 +692,13 @@ public class PluginConfigImpl implements ServerPluginConfig {
   @Override
   public boolean downloadLfsObjectsForPatch() {
     return TeamCityProperties.getBoolean(PATCH_DOWNLOAD_LFS_OBJECTS);
+  }
+
+  @NotNull
+  @Override
+  public List<String> getFetchDurationMetricRepos() {
+    final String prop = TeamCityProperties.getPropertyOrNull(FETCH_DURATION_METRIC_REPOS);
+    return prop == null ? Collections.emptyList() : Arrays.asList(prop.replace("\r\n", ";").replace("\n", ";").split(";"));
+
   }
 }
