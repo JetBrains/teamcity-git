@@ -12,11 +12,9 @@ import jetbrains.buildServer.buildTriggers.vcs.git.TagCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FuncThrow;
 import jetbrains.buildServer.util.NamedThreadFactory;
-import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CommitResult;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -204,12 +202,17 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   private String getDebugInfo(@NotNull Repository db, @NotNull URIish uri, @NotNull Collection<RefSpec> refSpecs) {
     final StringBuilder sb = new StringBuilder();
     sb.append("(").append(db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"").append(uri);
+    final int size = refSpecs.size();
+    int num = 0;
     for (RefSpec spec : refSpecs) {
       sb.append(", ").append(spec);
+      if (num++ > 10) break;
+    }
+    final int hidden = size - num;
+    if (hidden > 0) {
+      sb.append(" and ").append(hidden).append(" more");
     }
     sb.append(")");
-
-    final int commandLineStrLimit = TeamCityProperties.getInteger("teamcity.externalProcessRunner.limitCommandLineLengthInThreadName", 1000);
-    return StringUtil.truncateStringValueWithDotsAtCenter(sb.toString(), commandLineStrLimit);
+    return sb.toString();
   }
 }
