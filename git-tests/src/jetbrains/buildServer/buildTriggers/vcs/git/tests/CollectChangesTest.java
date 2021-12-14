@@ -871,6 +871,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   @Test
   @TestFor(issues = "TW-71924")
   public void fetch_remote_refs_factor() throws Exception {
+    setInternalProperty("teamcity.git.nativeOperationsEnabled", "true");
     myConfig.setFetchRemoteBranchesFactor(0.01f);
 
     ServerPluginConfig config = myConfig.build();
