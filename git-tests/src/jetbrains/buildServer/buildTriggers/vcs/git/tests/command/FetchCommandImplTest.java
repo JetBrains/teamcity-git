@@ -26,6 +26,7 @@ import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
@@ -138,11 +139,41 @@ public class FetchCommandImplTest extends BaseTestCase {
     };
   }
 
+  @NotNull
+  private static GitProgressLogger createLogger(@NotNull StringBuilder sb) {
+    return new GitProgressLogger() {
+      @Override
+      public void openBlock(@NotNull String name) {
+        message(name);
+      }
+
+      @Override
+      public void message(@NotNull String message) {
+        sb.append(message);
+      }
+
+      @Override
+      public void warning(@NotNull String message) {
+        message(message);
+      }
+
+      @Override
+      public void progressMessage(@NotNull String message) {
+        message(message);
+      }
+
+      @Override
+      public void closeBlock(@NotNull String name) {
+      }
+    };
+  }
+
+  @Test
   public void fetch_multiple_refspecs() throws Exception {
-    final GitVersion version = new AgentGitFacadeImpl(getGitPath()).version().call();
+    final String gitPath = getGitPath();
+    final GitVersion version = new AgentGitFacadeImpl(gitPath).version().call();
     if (!GitVersion.fetchSupportsStdin(version)) throw new SkipException("Git version is too old to run this test");
 
-    final String gitPath = getGitPath();
     final File remote = GitTestUtil.dataFile("fetch_multiple_refspecs");
     new File(remote, "refs" + File.separator + "heads").mkdirs();
 
@@ -162,6 +193,41 @@ public class FetchCommandImplTest extends BaseTestCase {
 
     fetch.call();
     assertEquals(6000, FileUtil.listFiles(new File(work, ".git/refs/remotes/origin"), (d, n) -> true).length);
+  }
 
+  @Test
+  public void negative_refspec_for_tags() throws Exception {
+    final String gitPath = getGitPath();
+    final GitVersion version = new AgentGitFacadeImpl(gitPath).version().call();
+    if (!GitVersion.negativeRefSpecSupported(version)) throw new SkipException("Git version is too old to run this test");
+
+    final File remote = GitTestUtil.dataFile("fetch_multiple_refspecs");
+    new File(remote, "refs" + File.separator + "heads").mkdirs();
+
+    final File work = createTempDir();
+    runCommand(false, gitPath, work, "init", "--bare");
+
+    final StringBuilder log = new StringBuilder();
+    final StubContext context = new StubContext("git", version);
+    context.setLogger(createLogger(log));
+
+    final GitCommandLine cmd = new GitCommandLine(context, getFakeGen());
+    cmd.setExePath(gitPath);
+    cmd.setWorkingDirectory(work);
+    final FetchCommandImpl fetch = new FetchCommandImpl(cmd);
+    fetch.setRemote(remote.getAbsolutePath());
+    fetch.setAuthSettings(getEmptyAuthSettings());
+
+    fetch.setRefspec("+refs/*:refs/*");
+    fetch.setRefspec("^refs/tags/*");
+    fetch.setFetchTags(false);
+
+    fetch.call();
+
+    // master + 6000 branches
+    assertEquals(6001, FileUtil.listFiles(new File(work, "refs/heads"), (d, n) -> true).length);
+    assertFalse(new File(work, "refs/tags/my_tag").exists());
+    final String logStr = log.toString();
+    assertFalse(logStr.contains("my_tag"));
   }
 }

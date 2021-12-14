@@ -161,7 +161,10 @@ public class CommitLoaderImpl implements CommitLoader {
 
       final Set<String> filteredRemoteRefs = getFilteredRemoteRefs(context, remoteRefs); // unlike remoteRefs, which includes all remote refs, doesn't include tags if not enabled
       final boolean fetchRemoteRefs = shouldFetchRemoteRefs(context, revisions, filteredRemoteRefs);
-      final Collection<RefSpec> refSpecs = fetchRemoteRefs ? getRefSpecForRemoteRefs(filteredRemoteRefs) : getRefSpecForCurrentState(context, missingRevisions, remoteRefs);
+      settings.setFetchAllRefs(fetchRemoteRefs);
+      settings.setFetchAllTags(context.getGitRoot().isReportTags());
+
+      final Collection<RefSpec> refSpecs = getRefSpecForCurrentState(context, missingRevisions, remoteRefs);
       doFetch(db, fetchURI, refSpecs, settings);
 
       missingRevisions = findLocallyMissingRevisions(context, db, missingRevisions, false);
@@ -171,7 +174,8 @@ public class CommitLoaderImpl implements CommitLoader {
       if (fetchAllRefsDisabled && missingRevisions.stream().noneMatch(RefCommit::isRefTip)) return;
 
       if (fetchAllRefsDisabled && !fetchRemoteRefs) {
-        doFetch(db, fetchURI, getRefSpecForRemoteRefs(filteredRemoteRefs), settings);
+        settings.setFetchAllRefs(true);
+        doFetch(db, fetchURI, Collections.singleton(new RefSpec("+refs/*:refs/*")), settings);
       } else if (!fetchAllRefsDisabled) {
         doFetch(db, fetchURI, getAllRefSpec(), settings);
       }
@@ -290,11 +294,6 @@ public class CommitLoaderImpl implements CommitLoader {
       throw exception;
     }
     return result;
-  }
-
-  @NotNull
-  private Collection<RefSpec> getRefSpecForRemoteRefs(@NotNull Collection<String> refs) {
-    return refs.stream().map(r -> new RefSpec(r + ":" + r).setForceUpdate(true)).collect(Collectors.toList());
   }
 
   @NotNull

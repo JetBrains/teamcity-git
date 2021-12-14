@@ -64,7 +64,8 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   @Override
   public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull FetchSettings settings) throws IOException, VcsException {
-    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit(), settings.getProgress());
+    final GitExec gitExec = myGitDetector.detectGit();
+    final Context ctx = new ContextImpl(null, myConfig, gitExec, settings.getProgress());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
@@ -90,8 +91,15 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                .trace(myConfig.getGitTraceEnv())
                .addPreAction(() -> GitServerUtil.removeRefLocks(db.getDirectory()));
 
-    for (RefSpec refSpec : refspecs) {
-      fetch.setRefspec(refSpec.toString());
+    if (settings.isFetchAllRefs() && settings.isFetchAllTags()) {
+      fetch.setRefspec("+refs/*:refs/*");
+    } else if (settings.isFetchAllRefs() && GitVersion.negativeRefSpecSupported(gitExec.getVersion())) {
+      fetch.setRefspec("+refs/*:refs/*");
+      fetch.setRefspec("^refs/tags/*");
+    } else {
+      for (RefSpec refSpec : refspecs) {
+        fetch.setRefspec(refSpec.toString());
+      }
     }
 
     if (isSilentFetch(ctx))

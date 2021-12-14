@@ -16,20 +16,21 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.Writer;
+import java.nio.charset.Charset;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import org.eclipse.jgit.lib.NullProgressMonitor;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.TextProgressMonitor;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.Writer;
-import java.nio.charset.Charset;
-
 public class FetchSettings {
   private final AuthSettings myAuthSettings;
   private final GitProgress myProgress;
+  private boolean myFetchAllRefs = false;
+  private boolean myFetchAllTags = false;
 
   public FetchSettings(@NotNull AuthSettings authSettings) {
     this(authSettings, GitProgress.NO_OP);
@@ -76,5 +77,21 @@ public class FetchSettings {
   @NotNull
   public GitProgress getProgress() {
     return myProgress;
+  }
+
+  public boolean isFetchAllRefs() {
+    return myFetchAllRefs;
+  }
+
+  public void setFetchAllRefs(boolean fetchAllRefs) {
+    myFetchAllRefs = fetchAllRefs;
+  }
+
+  public boolean isFetchAllTags() {
+    return myFetchAllTags;
+  }
+
+  public void setFetchAllTags(boolean fetchAllTags) {
+    myFetchAllTags = fetchAllTags;
   }
 }

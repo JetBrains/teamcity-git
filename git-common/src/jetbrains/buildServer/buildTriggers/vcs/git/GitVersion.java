@@ -154,9 +154,15 @@ public final class GitVersion implements Comparable<GitVersion> {
     return new GitVersion(myMajor, myMinor, myRevision - 1);
   }
 
+  public static final GitVersion GIT_VERSION_2_29 = new GitVersion(2, 29, 0);
+
   // --stdin option was added to git fetch command in version 2.29.0
   // https://git-scm.com/docs/git-fetch#Documentation/git-fetch.txt---stdin
   public static boolean fetchSupportsStdin(@NotNull GitVersion version) {
-    return !version.isLessThan(new GitVersion(2, 29, 0));
+    return !version.isLessThan(GIT_VERSION_2_29);
+  }
+
+  public static boolean negativeRefSpecSupported(@NotNull GitVersion version) {
+    return !version.isLessThan(GIT_VERSION_2_29);
   }
 }

@@ -35,6 +35,7 @@ import org.jetbrains.annotations.Nullable;
 public class StubContext implements Context {
 
   private final GitExec myGitExec;
+  private GitProgressLogger myLogger = GitProgressLogger.NO_OP;
 
   public StubContext() {
     this("git");
@@ -136,7 +137,7 @@ public class StubContext implements Context {
   @NotNull
   @Override
   public GitProgressLogger getLogger() {
-    return GitProgressLogger.NO_OP;
+    return myLogger;
   }
 
   @Override
@@ -153,5 +154,9 @@ public class StubContext implements Context {
   @Override
   public boolean isUseSshAskPass() {
     return false;
+  }
+
+  public void setLogger(@NotNull GitProgressLogger logger) {
+    myLogger = logger;
   }
 }
