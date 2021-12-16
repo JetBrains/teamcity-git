@@ -16,14 +16,11 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.io.IOException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.IOException;
-import java.util.Collection;
 
 /**
  * @author dmitry.neverov
@@ -35,7 +32,6 @@ public interface FetchCommand extends GitCommand {
    */
   void fetch(@NotNull Repository db,
              @NotNull URIish fetchURI,
-             @NotNull Collection<RefSpec> refspecs,
              @NotNull FetchSettings settings) throws IOException, VcsException;
 
 }

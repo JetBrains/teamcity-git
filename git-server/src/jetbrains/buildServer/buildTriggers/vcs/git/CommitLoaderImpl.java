@@ -62,6 +62,20 @@ public class CommitLoaderImpl implements CommitLoader {
   }
 
   @NotNull
+  private static FetchSettings getFetchSettings(@NotNull OperationContext context,
+                                                @NotNull Collection<RefSpec> refSpecs,
+                                                boolean fetchRemoteRefs, boolean includeTags) throws VcsException {
+    final FetchSettings settings = new FetchSettings(context.getGitRoot().getAuthSettings(), context.getProgress(), refSpecs);
+    settings.setFetchMode(FetchSettings.getFetchMode(fetchRemoteRefs, includeTags));
+    return settings;
+  }
+
+  @NotNull
+  private static Set<RefSpec> getAllRefSpec() {
+    return Collections.singleton(new RefSpec("refs/*:refs/*").setForceUpdate(true));
+  }
+
+  @NotNull
   public RevCommit loadCommit(@NotNull OperationContext context,
                               @NotNull GitVcsRoot root,
                               @NotNull String revision) throws VcsException, IOException {
@@ -83,7 +97,7 @@ public class CommitLoaderImpl implements CommitLoader {
       LOG.debug("Cannot find commit " + commitSHA + " in the branch " + root.getRef() +
                 " of repository " + root.debugInfo() + ", fetch all branches");
       RefSpec spec = new RefSpec().setSourceDestination("refs/*", "refs/*").setForceUpdate(true);
-      fetch(db, root.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(root.getAuthSettings()));
+      fetch(db, root.getRepositoryFetchURL().get(), new FetchSettings(root.getAuthSettings(), asList(spec)));
       try {
         return getCommit(db, commitId);
       } catch (IOException e1) {
@@ -94,7 +108,6 @@ public class CommitLoaderImpl implements CommitLoader {
 
   public void fetch(@NotNull Repository db,
                     @NotNull URIish fetchURI,
-                    @NotNull Collection<RefSpec> refspecs,
                     @NotNull FetchSettings settings) throws IOException, VcsException {
     File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
@@ -110,7 +123,7 @@ public class CommitLoaderImpl implements CommitLoader {
         settings.getProgress().reportProgress("Waited for exclusive lock in cloned directory, wait time: " + waitTime + "ms");
       }
       PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + waitTime + "ms");
-      doFetch(db, fetchURI, refspecs, settings);
+      doFetch(db, fetchURI, settings);
     } finally {
       lock.unlock();
     }
@@ -118,71 +131,16 @@ public class CommitLoaderImpl implements CommitLoader {
 
   private void doFetch(@NotNull final Repository db,
                        @NotNull final URIish fetchURI,
-                       @NotNull final Collection<RefSpec> refspecs,
                        @NotNull final FetchSettings settings) throws IOException, VcsException {
-    if (refspecs.isEmpty()) return;
+    if (settings.getRefSpecs().isEmpty()) return;
 
     Map<String, Ref> oldRefs = new HashMap<>(db.getAllRefs());
-    myGitRepoOperations.fetchCommand(fetchURI.toString()).fetch(db, fetchURI, refspecs, settings);
+    myGitRepoOperations.fetchCommand(fetchURI.toString()).fetch(db, fetchURI, settings);
     if (myPluginConfig.refreshObjectDatabaseAfterFetch()) {
       db.getObjectDatabase().refresh();
     }
     Map<String, Ref> newRefs = new HashMap<>(db.getAllRefs());
     myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
-  }
-
-  public void loadCommits(@NotNull OperationContext context,
-                          @NotNull URIish fetchURI,
-                          @NotNull Collection<RefCommit> revisions,
-                          @NotNull Set<String> remoteRefs,
-                          @NotNull FetchSettings settings) throws IOException, VcsException {
-    if (revisions.isEmpty()) return;
-
-    final Repository db = context.getRepository();
-    final File repositoryDir = db.getDirectory();
-    assert repositoryDir != null : "Non-local repository";
-
-    Collection<RefCommit> missingRevisions = findLocallyMissingRevisions(context, db, revisions, false);
-    if (missingRevisions.isEmpty()) return;
-
-    final long start = System.currentTimeMillis();
-    final ReentrantLock lock = acquireWriteLock(repositoryDir, context.getPluginConfig().repositoryWriteLockTimeout());
-    try {
-      final long finish = System.currentTimeMillis();
-      final long waitTime = finish - start;
-      if (waitTime > 20000) {
-        // if wait time was significant, report it in progress
-        settings.getProgress().reportProgress("Waited for exclusive lock in cloned directory, wait time: " + waitTime + "ms");
-      }
-      PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + waitTime + "ms");
-
-      missingRevisions = findLocallyMissingRevisions(context, db, missingRevisions, false);
-      if (missingRevisions.isEmpty()) return;
-
-      final Set<String> filteredRemoteRefs = getFilteredRemoteRefs(context, remoteRefs); // unlike remoteRefs, which includes all remote refs, doesn't include tags if not enabled
-      final boolean fetchRemoteRefs = shouldFetchRemoteRefs(context, revisions, filteredRemoteRefs);
-      settings.setFetchAllRefs(fetchRemoteRefs);
-      settings.setFetchAllTags(context.getGitRoot().isReportTags());
-
-      final Collection<RefSpec> refSpecs = getRefSpecForCurrentState(context, missingRevisions, remoteRefs);
-      doFetch(db, fetchURI, refSpecs, settings);
-
-      missingRevisions = findLocallyMissingRevisions(context, db, missingRevisions, false);
-      if (missingRevisions.isEmpty()) return;
-
-      final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
-      if (fetchAllRefsDisabled && missingRevisions.stream().noneMatch(RefCommit::isRefTip)) return;
-
-      if (fetchAllRefsDisabled && !fetchRemoteRefs) {
-        settings.setFetchAllRefs(true);
-        doFetch(db, fetchURI, Collections.singleton(new RefSpec("+refs/*:refs/*")), settings);
-      } else if (!fetchAllRefsDisabled) {
-        doFetch(db, fetchURI, getAllRefSpec(), settings);
-      }
-      findLocallyMissingRevisions(context, db, missingRevisions, true);
-    } finally {
-      lock.unlock();
-    }
   }
 
   private boolean shouldFetchRemoteRefs(@NotNull OperationContext context, @NotNull Collection<RefCommit> revisions, @NotNull Set<String> filteredRemoteRefs) {
@@ -306,9 +264,50 @@ public class CommitLoaderImpl implements CommitLoader {
     return refs.stream().filter(r -> !GitServerUtil.isTag(r) || defaultBranch.equals(r)).collect(Collectors.toSet());
   }
 
-  @NotNull
-  private Set<RefSpec> getAllRefSpec() {
-    return Collections.singleton(new RefSpec("refs/*:refs/*").setForceUpdate(true));
+  public void loadCommits(@NotNull OperationContext context,
+                          @NotNull URIish fetchURI,
+                          @NotNull Collection<RefCommit> revisions,
+                          @NotNull Set<String> remoteRefs) throws IOException, VcsException {
+    if (revisions.isEmpty()) return;
+
+    final Repository db = context.getRepository();
+    final File repositoryDir = db.getDirectory();
+    assert repositoryDir != null : "Non-local repository";
+
+    Collection<RefCommit> missingRevisions = findLocallyMissingRevisions(context, db, revisions, false);
+    if (missingRevisions.isEmpty()) return;
+
+    final long start = System.currentTimeMillis();
+    final ReentrantLock lock = acquireWriteLock(repositoryDir, context.getPluginConfig().repositoryWriteLockTimeout());
+    try {
+      final long finish = System.currentTimeMillis();
+      final long waitTime = finish - start;
+      if (waitTime > 20000) {
+        // if wait time was significant, report it in progress
+        context.getProgress().reportProgress("Waited for exclusive lock in cloned directory, wait time: " + waitTime + "ms");
+      }
+      PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + waitTime + "ms");
+
+      missingRevisions = findLocallyMissingRevisions(context, db, missingRevisions, false);
+      if (missingRevisions.isEmpty()) return;
+
+      final Set<String> filteredRemoteRefs = getFilteredRemoteRefs(context, remoteRefs); // unlike remoteRefs, which includes all remote refs, doesn't include tags if not enabled
+      final boolean fetchRemoteRefs = shouldFetchRemoteRefs(context, revisions, filteredRemoteRefs);
+      final boolean includeTags = context.getGitRoot().isReportTags();
+      final Collection<RefSpec> refSpecs = getRefSpecForCurrentState(context, missingRevisions, remoteRefs);
+      doFetch(db, fetchURI, getFetchSettings(context, refSpecs, fetchRemoteRefs, includeTags));
+
+      missingRevisions = findLocallyMissingRevisions(context, db, missingRevisions, false);
+      if (missingRevisions.isEmpty()) return;
+
+      final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
+      if (fetchAllRefsDisabled && missingRevisions.stream().noneMatch(RefCommit::isRefTip)) return;
+
+      doFetch(db, fetchURI, getFetchSettings(context, getAllRefSpec(), true, includeTags || !fetchAllRefsDisabled));
+      findLocallyMissingRevisions(context, db, missingRevisions, true);
+    } finally {
+      lock.unlock();
+    }
   }
 
   @NotNull
@@ -341,6 +340,6 @@ public class CommitLoaderImpl implements CommitLoader {
     throws VcsException, IOException {
     final String refName = GitUtils.expandRef(root.getRef());
     RefSpec spec = new RefSpec().setSource(refName).setDestination(refName).setForceUpdate(true);
-    fetch(repository, root.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(root.getAuthSettings()));
+    fetch(repository, root.getRepositoryFetchURL().get(), new FetchSettings(root.getAuthSettings(), asList(spec)));
   }
 }

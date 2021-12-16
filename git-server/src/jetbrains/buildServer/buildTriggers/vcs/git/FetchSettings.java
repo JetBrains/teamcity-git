@@ -20,25 +20,38 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.Charset;
+import java.util.Collection;
+import java.util.Collections;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import org.eclipse.jgit.lib.NullProgressMonitor;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.TextProgressMonitor;
+import org.eclipse.jgit.transport.RefSpec;
 import org.jetbrains.annotations.NotNull;
 
 public class FetchSettings {
   private final AuthSettings myAuthSettings;
   private final GitProgress myProgress;
-  private boolean myFetchAllRefs = false;
-  private boolean myFetchAllTags = false;
+  private final Collection<RefSpec> myRefSpecs;
+  private FetchMode myFetchMode;
 
   public FetchSettings(@NotNull AuthSettings authSettings) {
-    this(authSettings, GitProgress.NO_OP);
+    this(authSettings, Collections.emptyList());
+  }
+
+  public FetchSettings(@NotNull AuthSettings authSettings, @NotNull Collection<RefSpec> refSpecs) {
+    this(authSettings, GitProgress.NO_OP, refSpecs);
   }
 
   public FetchSettings(@NotNull AuthSettings authSettings, @NotNull GitProgress progress) {
+    this(authSettings, progress, Collections.emptyList());
+  }
+
+  public FetchSettings(@NotNull AuthSettings authSettings, @NotNull GitProgress progress, @NotNull Collection<RefSpec> refSpecs) {
     myAuthSettings = authSettings;
     myProgress = progress;
+    myRefSpecs = refSpecs;
+    myFetchMode = FetchMode.FETCH_REF_SPECS;
   }
 
   @NotNull
@@ -79,19 +92,30 @@ public class FetchSettings {
     return myProgress;
   }
 
-  public boolean isFetchAllRefs() {
-    return myFetchAllRefs;
+  @NotNull
+  public static FetchMode getFetchMode(boolean fetchAllRefs, boolean includeTags) {
+    if (fetchAllRefs && includeTags) return FetchMode.FETCH_ALL_REFS;
+    if (fetchAllRefs) return FetchMode.FETCH_ALL_REFS_EXCEPT_TAGS;
+    return FetchMode.FETCH_REF_SPECS;
   }
 
-  public void setFetchAllRefs(boolean fetchAllRefs) {
-    myFetchAllRefs = fetchAllRefs;
+  @NotNull
+  public Collection<RefSpec> getRefSpecs() {
+    return myRefSpecs;
   }
 
-  public boolean isFetchAllTags() {
-    return myFetchAllTags;
+  @NotNull
+  public FetchMode getFetchMode() {
+    return myFetchMode;
   }
 
-  public void setFetchAllTags(boolean fetchAllTags) {
-    myFetchAllTags = fetchAllTags;
+  public void setFetchMode(@NotNull FetchMode fetchMode) {
+    myFetchMode = fetchMode;
+  }
+
+  public static enum FetchMode {
+    FETCH_REF_SPECS,
+    FETCH_ALL_REFS,
+    FETCH_ALL_REFS_EXCEPT_TAGS
   }
 }

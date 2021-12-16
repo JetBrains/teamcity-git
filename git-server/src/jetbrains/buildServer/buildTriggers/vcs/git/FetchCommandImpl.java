@@ -81,20 +81,19 @@ public class FetchCommandImpl implements FetchCommand {
 
   public void fetch(@NotNull Repository db,
                     @NotNull URIish fetchURI,
-                    @NotNull Collection<RefSpec> refspecs,
                     @NotNull FetchSettings settings) throws IOException, VcsException {
     GitServerUtil.removeRefLocks(db.getDirectory());
     if (myConfig.isSeparateProcessForFetch()) {
-      fetchInSeparateProcess(db, fetchURI, refspecs, settings);
+      fetchInSeparateProcess(db, fetchURI, settings);
     } else {
-      fetchInSameProcess(db, fetchURI, refspecs, settings);
+      fetchInSameProcess(db, fetchURI, settings);
     }
   }
 
   private void fetchInSeparateProcess(@NotNull Repository repository,
                                       @NotNull URIish uri,
-                                      @NotNull Collection<RefSpec> specs,
                                       @NotNull FetchSettings settings) throws VcsException {
+    final Collection<RefSpec> specs = settings.getRefSpecs();
     final String debugInfo = getDebugInfo(repository, uri, specs);
     final ProcessXmxProvider xmxProvider = new ProcessXmxProvider(new RepositoryXmxStorage(repository, "fetch"), myConfig, "fetch", debugInfo);
     Integer xmx = xmxProvider.getNextXmx();
@@ -288,8 +287,8 @@ public class FetchCommandImpl implements FetchCommand {
 
   private void fetchInSameProcess(@NotNull Repository db,
                                   @NotNull URIish uri,
-                                  @NotNull Collection<RefSpec> refSpecs,
                                   @NotNull FetchSettings settings) throws IOException, VcsException {
+    final Collection<RefSpec> refSpecs = settings.getRefSpecs();
     final String debugInfo = getDebugInfo(db, uri, refSpecs);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Fetch in server process: " + debugInfo);

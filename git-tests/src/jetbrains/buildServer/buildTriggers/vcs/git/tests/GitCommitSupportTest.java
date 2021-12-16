@@ -36,7 +36,6 @@ import jetbrains.buildServer.vcs.*;
 import org.assertj.core.groups.Tuple;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
-import org.eclipse.jgit.transport.RefSpec;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -271,7 +270,7 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     myCommitSupport = new GitCommitSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), new GitRepoOperationsImpl(builder.getPluginConfig(),
                                                                                                                                        builder.getTransportFactory(),
                                                                                                                                        r -> null,
-                                                                                                                                       (a,b, c, d) -> {}));
+                                                                                                                                       (a,b,c) -> {}));
     myRoot = vcsRoot().withFetchUrl(getRemoteRepositoryDir("merge")).build();
   }
 
@@ -291,13 +290,13 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     myCommitSupport = new GitCommitSupport(myGit, builder.getCommitLoader(), repositoryManager, new GitRepoOperationsImpl(config,
                                                                                                                           builder.getTransportFactory(),
                                                                                                                           r -> null,
-                                                                                                                          (a,b, c, d) -> {}) {
+                                                                                                                          (a,b,c) -> {}) {
       @NotNull
       @Override
       public PushCommand pushCommand(@NotNull String repoUrl) {
         return new NativeGitCommands(config, GitCommitSupportTest::detectGitStub, r -> null) {
           @Override
-          protected <R> R executeCommand(@NotNull Context ctx, @NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, RefSpec... refSpecs) throws VcsException {
+          protected <R> R executeCommand(@NotNull Context ctx, @NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd) throws VcsException {
             throw new VcsException("Always fails");
           }
         };

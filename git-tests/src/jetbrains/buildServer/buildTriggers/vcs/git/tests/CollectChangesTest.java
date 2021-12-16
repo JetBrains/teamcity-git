@@ -653,12 +653,12 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     //wrapper for fetch command which will remove ref in remote repository just before fetch
     FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager) {
       @Override
-      public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull FetchSettings settings) throws IOException, VcsException {
+      public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull FetchSettings settings) throws IOException, VcsException {
         if (updateRepo.get()) {
           FileUtil.delete(repo);
           copyRepository(dataFile("repo_for_fetch.3"), repo);
         }
-        super.fetch(db, fetchURI, refspecs, settings);
+        super.fetch(db, fetchURI, settings);
       }
     };
     GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withFetchCommand(fetchCommand).build();
@@ -691,12 +691,12 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     final FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager) {
       final AtomicInteger fetchHappened = new AtomicInteger(0);
       @Override
-      public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull FetchSettings settings) throws IOException, VcsException {
-        final String refSpecStr = refspecs.stream().map(RefSpec::getSource).sorted(Comparator.naturalOrder()).collect(Collectors.joining(";"));
+      public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull FetchSettings settings) throws IOException, VcsException {
+        final String refSpecStr = settings.getRefSpecs().stream().map(RefSpec::getSource).sorted(Comparator.naturalOrder()).collect(Collectors.joining(";"));
         if (!fetchExpected[fetchHappened.getAndIncrement()].equals(refSpecStr)) {
           fail("Unexpected fetch happened: " + refSpecStr);
         }
-        super.fetch(db, fetchURI, refspecs, settings);
+        super.fetch(db, fetchURI, settings);
       }
     };
     final GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withFetchCommand(fetchCommand).build();

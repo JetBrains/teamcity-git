@@ -22,6 +22,7 @@ import com.jcraft.jsch.JSch;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
@@ -354,8 +355,9 @@ public class SshAuthenticationTest extends BaseTestCase {
       assertContains(refs.keySet(), "refs/pull/1");
 
       final StringBuilder progress = new StringBuilder();
-      repoOperations.fetchCommand(repoUrl).fetch(db, fetchUrl, refs.keySet().stream()
-                                                   .map(r -> new RefSpec().setSourceDestination(r, r).setForceUpdate(true)).collect(Collectors.toList()),
+      final List<RefSpec> refSpecs = refs.keySet().stream()
+                                        .map(r -> new RefSpec().setSourceDestination(r, r).setForceUpdate(true)).collect(Collectors.toList());
+      repoOperations.fetchCommand(repoUrl).fetch(db, fetchUrl,
                                                  new FetchSettings(gitRoot.getAuthSettings(), new GitProgress() {
                                                    @Override
                                                    public void reportProgress(@NotNull final String p) {
@@ -371,7 +373,7 @@ public class SshAuthenticationTest extends BaseTestCase {
                                                        progress.append(stage).append(" ").append(percents).append("%");
                                                      }
                                                    }
-                                                 }));
+                                                 }, refSpecs));
       if (nativeOperationsEnabled) {
         assertContains(progress.toString(), "* [new ref]         refs/pull/1               -> refs/pull/1");
       } else {

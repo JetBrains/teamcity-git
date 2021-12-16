@@ -16,16 +16,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.io.IOException;
 import jetbrains.buildServer.metrics.Counter;
 import jetbrains.buildServer.metrics.Stoppable;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.IOException;
-import java.util.Collection;
 
 public class MetricReportingFetchCommand implements FetchCommand {
   private final FetchCommand myDelegate;
@@ -39,10 +36,9 @@ public class MetricReportingFetchCommand implements FetchCommand {
   @Override
   public void fetch(@NotNull final Repository db,
                     @NotNull final URIish fetchURI,
-                    @NotNull final Collection<RefSpec> refspecs,
                     @NotNull final FetchSettings settings) throws IOException, VcsException {
     try (Stoppable ignored = myFetchDurationTimer.startMsecsTimer()) {
-      myDelegate.fetch(db, fetchURI, refspecs, settings);
+      myDelegate.fetch(db, fetchURI, settings);
     }
   }
 }

@@ -279,7 +279,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
       RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(gitRoot.getRef()))
         .setDestination(GitUtils.expandRef(gitRoot.getRef()))
         .setForceUpdate(true);
-      myCommitLoader.fetch(myDb, gitRoot.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(gitRoot.getAuthSettings()));
+      myCommitLoader.fetch(myDb, gitRoot.getRepositoryFetchURL().get(), new FetchSettings(gitRoot.getAuthSettings(), asList(spec)));
       Ref defaultBranch = myDb.exactRef(GitUtils.expandRef(gitRoot.getRef()));
       return myCommitLoader.loadCommit(myContext, gitRoot, defaultBranch.getObjectId().name());
     }

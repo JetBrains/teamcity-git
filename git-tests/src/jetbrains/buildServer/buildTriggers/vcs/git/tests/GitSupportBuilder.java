@@ -22,13 +22,11 @@ import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.ServerPaths;
-import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.vcs.MockVcsOperationProgressProvider;
 import jetbrains.buildServer.vcs.TestConnectionSupport;
-import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
@@ -148,9 +146,9 @@ public class GitSupportBuilder {
         myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
       } else {
         final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
-        myFetchCommand = (db, fetchURI, refspecs, settings) -> {
+        myFetchCommand = (db, fetchURI, settings) -> {
           myBeforeFetchHook.run();
-          originalCommand.fetch(db, fetchURI, refspecs, settings);
+          originalCommand.fetch(db, fetchURI, settings);
         };
       }
     }

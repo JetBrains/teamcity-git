@@ -131,7 +131,7 @@ public class GitClonesUpdater {
   private void runFetch(@NotNull OperationContext context, @NotNull GitVcsRoot gitRoot, @NotNull List<RefSpec> refspecs) throws IOException, VcsException {
     Disposable n = NamedThreadFactory.patchThreadName("Performing fetch for " + refspecs.size() + " ref specs");
     try {
-      myCommitLoader.fetch(context.getRepository(), gitRoot.getRepositoryFetchURL().get(), refspecs, new FetchSettings(gitRoot.getAuthSettings()));
+      myCommitLoader.fetch(context.getRepository(), gitRoot.getRepositoryFetchURL().get(), new FetchSettings(gitRoot.getAuthSettings(), refspecs));
     } finally {
       n.dispose();
     }

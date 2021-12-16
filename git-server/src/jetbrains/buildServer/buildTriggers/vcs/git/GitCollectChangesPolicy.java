@@ -258,14 +258,12 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
 
   private class FetchContext {
     @NotNull private final OperationContext myContext;
-    @NotNull private final FetchSettings myFetchSettings;
     @NotNull private final Set<String> myRemoteRefs;
 
     @NotNull private final Collection<CommitLoader.RefCommit> myRevisions = new ArrayList<>();
 
     public FetchContext(@NotNull final OperationContext context) throws VcsException {
       myContext = context;
-      myFetchSettings = new FetchSettings(context.getGitRoot().getAuthSettings(), context.getProgress());
       myRemoteRefs = myVcs.getRemoteRefs(context.getRoot()).keySet().stream().filter(r -> r.startsWith("refs/")).collect(Collectors.toSet());
     }
 
@@ -308,7 +306,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     }
 
     void fetchIfNoCommitsOrFail() throws VcsException, IOException {
-      myCommitLoader.loadCommits(myContext, myContext.getGitRoot().getRepositoryFetchURL().get(), myRevisions, myRemoteRefs, myFetchSettings);
+      myCommitLoader.loadCommits(myContext, myContext.getGitRoot().getRepositoryFetchURL().get(), myRevisions, myRemoteRefs);
     }
   }
 }

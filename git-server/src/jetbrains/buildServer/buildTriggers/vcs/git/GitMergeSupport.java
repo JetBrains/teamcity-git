@@ -143,7 +143,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
                               @NotNull String message,
                               @NotNull MergeOptions options) throws IOException, VcsException {
     RefSpec spec = new RefSpec().setSource(GitUtils.expandRef(dstBranch)).setDestination(GitUtils.expandRef(dstBranch)).setForceUpdate(true);
-    myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL().get(), asList(spec), new FetchSettings(gitRoot.getAuthSettings()));
+    myCommitLoader.fetch(db, gitRoot.getRepositoryFetchURL().get(), new FetchSettings(gitRoot.getAuthSettings(), asList(spec)));
     RevCommit srcCommit = myCommitLoader.findCommit(db, srcRevision);
     if (srcCommit == null)
       srcCommit = myCommitLoader.loadCommit(context, gitRoot, srcRevision);

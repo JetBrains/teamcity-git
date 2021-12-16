@@ -16,19 +16,17 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Set;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsOperationRejectedException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Set;
 
 /**
  * Encapsulates logic for loading, fetching and finding commits in repository
@@ -41,9 +39,8 @@ public interface CommitLoader {
                        @NotNull String revision) throws VcsException, IOException;
 
   void fetch(@NotNull Repository db,
-                    @NotNull URIish fetchURI,
-                    @NotNull Collection<RefSpec> refspecs,
-                    @NotNull FetchSettings settings) throws IOException, VcsException;
+             @NotNull URIish fetchURI,
+             @NotNull FetchSettings settings) throws IOException, VcsException;
 
   /**
    * Performs fetch only if any of the specified revisions is not in the mirror.
@@ -55,8 +52,7 @@ public interface CommitLoader {
   void loadCommits(@NotNull OperationContext context,
                    @NotNull URIish fetchURI,
                    @NotNull Collection<RefCommit> revisions,
-                   @NotNull Set<String> remoteRefs,
-                   @NotNull FetchSettings settings) throws IOException, VcsException;
+                   @NotNull Set<String> remoteRefs) throws IOException, VcsException;
 
   @NotNull
   RevCommit getCommit(@NotNull Repository repository, @NotNull ObjectId commitId) throws IOException;

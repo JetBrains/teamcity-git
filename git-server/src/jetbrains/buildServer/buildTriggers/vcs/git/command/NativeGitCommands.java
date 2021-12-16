@@ -3,6 +3,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.FetchCommand;
@@ -29,6 +30,9 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(NativeGitCommands.class.getName() + ".Performance");
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
 
+  private static final String ALL_REF_SPEC = "+refs/*:refs/*";
+  private static final String EXCLUDE_TAGS_REF_SPEC = "^refs/tags/*";
+
   private final ServerPluginConfig myConfig;
   private final GitDetector myGitDetector;
   private final VcsRootSshKeyManager mySshKeyManager;
@@ -46,7 +50,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   }
 
   // Visible for testing
-  protected <R> R executeCommand(@NotNull Context ctx, @NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, RefSpec... refSpecs) throws VcsException{
+  protected <R> R executeCommand(@NotNull Context ctx, @NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd) throws VcsException{
     return NamedThreadFactory.executeWithNewThreadNameFuncThrow(
       String.format("Running native git %s process for : %s", action, debugInfo),
       () -> {
@@ -63,7 +67,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   }
 
   @Override
-  public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull Collection<RefSpec> refspecs, @NotNull FetchSettings settings) throws IOException, VcsException {
+  public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull FetchSettings settings) throws IOException, VcsException {
     final GitExec gitExec = myGitDetector.detectGit();
     final Context ctx = new ContextImpl(null, myConfig, gitExec, settings.getProgress());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
@@ -91,15 +95,26 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                .trace(myConfig.getGitTraceEnv())
                .addPreAction(() -> GitServerUtil.removeRefLocks(db.getDirectory()));
 
-    if (settings.isFetchAllRefs() && settings.isFetchAllTags()) {
-      fetch.setRefspec("+refs/*:refs/*");
-    } else if (settings.isFetchAllRefs() && GitVersion.negativeRefSpecSupported(gitExec.getVersion())) {
-      fetch.setRefspec("+refs/*:refs/*");
-      fetch.setRefspec("^refs/tags/*");
-    } else {
-      for (RefSpec refSpec : refspecs) {
-        fetch.setRefspec(refSpec.toString());
-      }
+    final Collection<String> resultRefSpecs = new HashSet<>();
+    switch (settings.getFetchMode()) {
+      case FETCH_ALL_REFS:
+        fetch.setRefspec(ALL_REF_SPEC);
+        resultRefSpecs.add(ALL_REF_SPEC);
+        break;
+      case FETCH_ALL_REFS_EXCEPT_TAGS:
+        fetch.setRefspec(ALL_REF_SPEC);
+        resultRefSpecs.add(ALL_REF_SPEC);
+        fetch.setRefspec(EXCLUDE_TAGS_REF_SPEC);
+        resultRefSpecs.add(EXCLUDE_TAGS_REF_SPEC);
+        break;
+      case FETCH_REF_SPECS:
+      default:
+        for (RefSpec refSpec : settings.getRefSpecs()) {
+          final String refSpecStr = refSpec.toString();
+          fetch.setRefspec(refSpecStr);
+          resultRefSpecs.add(refSpecStr);
+        }
+        break;
     }
 
     if (isSilentFetch(ctx))
@@ -107,7 +122,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     else
       fetch.setShowProgress(true);
 
-    executeCommand(ctx, "fetch", getDebugInfo(db, fetchURI, refspecs), () -> {
+    executeCommand(ctx, "fetch", getDebugInfo(db, fetchURI, resultRefSpecs), () -> {
       fetch.call();
       return true;
     });
@@ -207,12 +222,12 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   }
 
   @NotNull
-  private String getDebugInfo(@NotNull Repository db, @NotNull URIish uri, @NotNull Collection<RefSpec> refSpecs) {
+  private String getDebugInfo(@NotNull Repository db, @NotNull URIish uri, @NotNull Collection<String> refSpecs) {
     final StringBuilder sb = new StringBuilder();
     sb.append("(").append(db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"").append(uri);
     final int size = refSpecs.size();
     int num = 0;
-    for (RefSpec spec : refSpecs) {
+    for (String spec : refSpecs) {
       sb.append(", ").append(spec);
       if (num++ > 10) break;
     }
