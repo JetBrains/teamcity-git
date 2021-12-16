@@ -13,8 +13,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.metrics.Counter;
 import jetbrains.buildServer.metrics.MetricDataType;
-import jetbrains.buildServer.metrics.NoOpCounter;
 import jetbrains.buildServer.metrics.ServerMetrics;
+import jetbrains.buildServer.metrics.Stoppable;
 import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -40,6 +40,16 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendly
 public class GitRepoOperationsImpl implements GitRepoOperations {
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
   private static final String GIT_NATIVE_OPERATIONS_ENABLED = "teamcity.git.nativeOperationsEnabled";
+  private static final Counter EMPTY_COUNTER = new Counter() {
+    @Override
+    public void increment(final double v) {
+    }
+
+    @Override
+    public Stoppable startMsecsTimer() {
+      return null;
+    }
+  };
 
   private final TransportFactory myTransportFactory;
   private final VcsRootSshKeyManager mySshKeyManager;
@@ -53,7 +63,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
                                @NotNull TransportFactory transportFactory,
                                @NotNull VcsRootSshKeyManager sshKeyManager,
                                @NotNull FetchCommand jGitFetchCommand) {
-    this(config, transportFactory, sshKeyManager, jGitFetchCommand, (Function<String, Counter>)repoUrl -> new NoOpCounter());
+    this(config, transportFactory, sshKeyManager, jGitFetchCommand, (Function<String, Counter>)repoUrl -> EMPTY_COUNTER);
   }
 
   public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
