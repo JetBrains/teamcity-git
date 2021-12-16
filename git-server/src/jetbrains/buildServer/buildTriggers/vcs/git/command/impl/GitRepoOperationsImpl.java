@@ -38,7 +38,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendly
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendlyTransportException;
 
 public class GitRepoOperationsImpl implements GitRepoOperations {
-  private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
+  private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitRepoOperationsImpl.class.getName() + ".Performance");
   private static final String GIT_NATIVE_OPERATIONS_ENABLED = "teamcity.git.nativeOperationsEnabled";
   private static final Counter EMPTY_COUNTER = new Counter() {
     @Override

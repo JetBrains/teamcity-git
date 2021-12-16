@@ -26,7 +26,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand, TagCommand {
 
-  private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitVcsSupport.class.getName() + ".Performance");
+  private static final Logger PERFORMANCE_LOG = Logger.getInstance(NativeGitCommands.class.getName() + ".Performance");
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
 
   private final ServerPluginConfig myConfig;
