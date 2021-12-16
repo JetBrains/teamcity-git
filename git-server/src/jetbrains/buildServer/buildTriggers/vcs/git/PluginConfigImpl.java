@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchProcess;
 import jetbrains.buildServer.messages.serviceMessages.ServiceMessage;
+import jetbrains.buildServer.metrics.Counter;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
@@ -244,6 +245,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
     classes.add(org.slf4j.impl.StaticLoggerBinder.class);
     classes.add(EWAHCompressedBitmap.class);
     classes.add(LfsBlobLoader.class);
+    classes.add(Counter.class);
     return ClasspathUtil.composeClasspath(classes.toArray(new Class[classes.size()]), null, null);
   }
 
