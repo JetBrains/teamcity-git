@@ -368,7 +368,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public GitCollectChangesPolicy getCollectChangesPolicy() {
-    return new GitCollectChangesPolicy(this, myProgressProvider, myCommitLoader, myConfig, myRepositoryManager);
+    return new GitCollectChangesPolicy(this, myProgressProvider, myConfig, myRepositoryManager);
   }
 
   @NotNull

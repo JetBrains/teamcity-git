@@ -16,11 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
@@ -32,7 +28,6 @@ import jetbrains.buildServer.util.NamedThreadFactory;
 import jetbrains.buildServer.util.ThreadUtil;
 import jetbrains.buildServer.util.executors.ExecutorsFactory;
 import jetbrains.buildServer.vcs.*;
-import org.eclipse.jgit.transport.RefSpec;
 import org.jetbrains.annotations.NotNull;
 
 public class GitClonesUpdater {
@@ -107,11 +102,9 @@ public class GitClonesUpdater {
               if (!writeLock.tryLock()) return; // do nothing because another process already took a write lock and it's not that important for us to perform this fetch
 
               try {
-                List<RefSpec> refspecs = getRefSpecs(state);
-                runFetch(context, gitRoot, refspecs);
-              } catch (Throwable e) {
-                if (e instanceof VcsException) throw (VcsException)e;
-                throw new VcsException(e);
+                new FetchContext(context, myVcs).withToRevisions(state.getBranchRevisions()).fetchIfNoCommitsOrFail();
+              } catch (Exception e) {
+                throw context.wrapException(e);
               } finally {
                 writeLock.unlock();
               }
@@ -126,24 +119,5 @@ public class GitClonesUpdater {
         context.close();
       }
     }
-  }
-
-  private void runFetch(@NotNull OperationContext context, @NotNull GitVcsRoot gitRoot, @NotNull List<RefSpec> refspecs) throws IOException, VcsException {
-    Disposable n = NamedThreadFactory.patchThreadName("Performing fetch for " + refspecs.size() + " ref specs");
-    try {
-      myCommitLoader.fetch(context.getRepository(), gitRoot.getRepositoryFetchURL().get(), new FetchSettings(gitRoot.getAuthSettings(), refspecs));
-    } finally {
-      n.dispose();
-    }
-  }
-
-  @NotNull
-  private List<RefSpec> getRefSpecs(@NotNull RepositoryStateData state) {
-    List<RefSpec> refspecs = new ArrayList<>();
-    for (String branch: state.getBranchRevisions().keySet()) {
-      final String expandedRef = GitUtils.expandRef(branch);
-      refspecs.add(new RefSpec().setSource(expandedRef).setDestination(expandedRef).setForceUpdate(true));
-    }
-    return refspecs;
   }
 }

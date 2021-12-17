@@ -43,18 +43,15 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
 
   private final GitVcsSupport myVcs;
   private final VcsOperationProgressProvider myProgressProvider;
-  private final CommitLoader myCommitLoader;
   private final ServerPluginConfig myConfig;
   private final RepositoryManager myRepositoryManager;
 
   public GitCollectChangesPolicy(@NotNull GitVcsSupport vcs,
                                  @NotNull VcsOperationProgressProvider progressProvider,
-                                 @NotNull CommitLoader commitLoader,
                                  @NotNull ServerPluginConfig config,
                                  @NotNull RepositoryManager repositoryManager) {
     myVcs = vcs;
     myProgressProvider = progressProvider;
-    myCommitLoader = commitLoader;
     myConfig = config;
     myRepositoryManager = repositoryManager;
   }
@@ -178,7 +175,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   public void ensureRepositoryStateLoadedFor(@NotNull final OperationContext context,
                                              @NotNull final RepositoryStateData state,
                                              boolean throwErrors) throws Exception {
-    new FetchContext(context)
+    new FetchContext(context, myVcs)
       .withRevisions(state.getBranchRevisions(), throwErrors)
       .fetchIfNoCommitsOrFail();
   }
@@ -186,7 +183,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   public void ensureRepositoryStateLoadedFor(@NotNull final OperationContext context,
                                              @NotNull final RepositoryStateData fromState,
                                              @NotNull final RepositoryStateData toState) throws Exception {
-    new FetchContext(context)
+    new FetchContext(context, myVcs)
       .withToRevisions(toState.getBranchRevisions())
       .withFromRevisions(fromState.getBranchRevisions())
       .fetchIfNoCommitsOrFail();
@@ -197,7 +194,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                           @NotNull final GitVcsRoot root) throws VcsException {
     try {
       final RepositoryStateData currentState = myVcs.getCurrentState(root);
-      new FetchContext(context).withFromRevisions(currentState.getBranchRevisions()).fetchIfNoCommitsOrFail();
+      new FetchContext(context, myVcs).withFromRevisions(currentState.getBranchRevisions()).fetchIfNoCommitsOrFail();
       return currentState;
     } catch (Exception e) {
       throw new VcsException(e.getMessage(), e);
@@ -253,60 +250,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       return new GitVcsOperationProgress(myProgressProvider.getProgress());
     } catch (IllegalStateException e) {
       return GitProgress.NO_OP;
-    }
-  }
-
-  private class FetchContext {
-    @NotNull private final OperationContext myContext;
-    @NotNull private final Set<String> myRemoteRefs;
-
-    @NotNull private final Collection<CommitLoader.RefCommit> myRevisions = new ArrayList<>();
-
-    public FetchContext(@NotNull final OperationContext context) throws VcsException {
-      myContext = context;
-      myRemoteRefs = myVcs.getRemoteRefs(context.getRoot()).keySet().stream().filter(r -> r.startsWith("refs/")).collect(Collectors.toSet());
-    }
-
-    @NotNull
-    FetchContext withRevisions(@NotNull Map<String, String> revisions, boolean tips) {
-      myRevisions.addAll(expandRefs(revisions, tips));
-      return this;
-    }
-
-    @NotNull
-    FetchContext withFromRevisions(@NotNull Map<String, String> revisions) {
-      return withRevisions(revisions, false);
-    }
-
-    @NotNull
-    FetchContext withToRevisions(@NotNull Map<String, String> revisions) {
-      return withRevisions(revisions, true);
-    }
-
-    @NotNull
-    private Collection<CommitLoader.RefCommit> expandRefs(@NotNull Map<String, String> revisions, boolean tips) {
-      return revisions.entrySet().stream().filter(e -> !isEmpty(e.getKey())).map(e ->  new CommitLoader.RefCommit() {
-        @NotNull
-        @Override
-        public String getRef() {
-          return GitUtils.expandRef(e.getKey());
-        }
-
-        @NotNull
-        @Override
-        public String getCommit() {
-          return e.getValue();
-        }
-
-        @Override
-        public boolean isRefTip() {
-          return tips;
-        }
-      }).collect(Collectors.toList());
-    }
-
-    void fetchIfNoCommitsOrFail() throws VcsException, IOException {
-      myCommitLoader.loadCommits(myContext, myContext.getGitRoot().getRepositoryFetchURL().get(), myRevisions, myRemoteRefs);
     }
   }
 }
