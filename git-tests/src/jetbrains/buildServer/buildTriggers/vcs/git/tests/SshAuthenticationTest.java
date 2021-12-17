@@ -36,6 +36,7 @@ import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -143,6 +144,7 @@ public class SshAuthenticationTest extends BaseTestCase {
     }
   }
 
+  @TestFor(issues = "TW-73578")
   @Test(dataProvider = "true,false")
   public void ssh_git_password_disabled_local_rsa_encrypted_key(boolean nativeOperationsEnabled) throws Exception {
     withSubstitutedLocalKeys("id_rsa_encrypted", () -> {
@@ -169,6 +171,7 @@ public class SshAuthenticationTest extends BaseTestCase {
     });
   }
 
+  @TestFor(issues = "TW-73578")
   @Test(dataProvider = "true,false")
   public void ssh_git_password_disabled_local_rsa_key(boolean nativeOperationsEnabled) throws Exception {
     withSubstitutedLocalKeys("id_rsa", () -> {
