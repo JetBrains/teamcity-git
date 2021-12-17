@@ -45,7 +45,7 @@ public interface CommitLoader {
   /**
    * Performs fetch only if any of the specified revisions is not in the mirror.
    * First fetches only corresponding branches and, only if there are still any tip revisions missing,
-   * fetches all branches advertised by the remote.
+   * fetches all remote refs including or excluding tags depending on VCS root settings and on fetch command implementation.
    * @throws VcsException if unable to find any of the tip revisions after fetching twice
    * @throws VcsOperationRejectedException if unable to perform the operation straight away (retry later possible)
    */
