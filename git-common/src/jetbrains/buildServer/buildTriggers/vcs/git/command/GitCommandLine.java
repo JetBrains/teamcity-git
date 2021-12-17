@@ -118,7 +118,7 @@ public class GitCommandLine extends GeneralCommandLine {
     //option results in the 'Bad configuration option: keychainintegration' error.
 
     final boolean ignoreKnownHosts = isIgnoreKnownHosts(authSettings);
-    final String sendEnv = myCtx.getSshRequestToken();
+    final String sendEnv = getSshRequestToken();
     File privateKey = null;
     try {
       privateKey = getPrivateKey(authSettings);
@@ -155,6 +155,13 @@ public class GitCommandLine extends GeneralCommandLine {
         throw (VcsException) e;
       throw new VcsException(e);
     }
+  }
+
+  @Nullable
+  private String getSshRequestToken() {
+//    SetEnv was first introduced in OpenSSH 7.8, so disabling this s.d. to avoid errors
+//    return myCtx.getSshRequestToken();
+    return null;
   }
 
   private boolean isIgnoreKnownHosts(@NotNull AuthSettings authSettings) {
