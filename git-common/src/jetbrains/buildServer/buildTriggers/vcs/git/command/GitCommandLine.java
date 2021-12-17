@@ -117,7 +117,7 @@ public class GitCommandLine extends GeneralCommandLine {
     //runs the MacOS graphical keychain helper. Disabling it via the -o "KeychainIntegration=no"
     //option results in the 'Bad configuration option: keychainintegration' error.
 
-    final boolean ignoreKnownHosts = authSettings.isIgnoreKnownHosts();
+    final boolean ignoreKnownHosts = isIgnoreKnownHosts(authSettings);
     final String sendEnv = myCtx.getSshRequestToken();
     File privateKey = null;
     try {
@@ -155,6 +155,14 @@ public class GitCommandLine extends GeneralCommandLine {
         throw (VcsException) e;
       throw new VcsException(e);
     }
+  }
+
+  private boolean isIgnoreKnownHosts(@NotNull AuthSettings authSettings) {
+    // see TW-74389
+    final AuthenticationMethod authMethod = authSettings.getAuthMethod();
+    return authSettings.isIgnoreKnownHosts() ||
+           authMethod == AuthenticationMethod.TEAMCITY_SSH_KEY ||
+           authMethod == AuthenticationMethod.PRIVATE_KEY_FILE;
   }
 
   @Nullable
