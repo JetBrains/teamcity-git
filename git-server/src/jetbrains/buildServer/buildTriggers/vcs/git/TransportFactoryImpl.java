@@ -210,6 +210,7 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     @Override
     protected void configure(OpenSshConfig.Host hc, Session session) {
       super.configure(hc, session);
+      session.setConfig("PreferredAuthentications", "password,keyboard-interactive");
       session.setPassword(myAuthSettings.getPassword());
     }
   }

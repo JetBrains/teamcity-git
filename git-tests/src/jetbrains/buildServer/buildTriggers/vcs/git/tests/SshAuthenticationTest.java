@@ -161,6 +161,76 @@ public class SshAuthenticationTest extends BaseTestCase {
     });
   }
 
+  @TestFor(issues = "TW-73578")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_wrong_password_local_rsa_key(boolean nativeOperationsEnabled) throws Exception {
+    withSubstitutedLocalKeys("id_rsa", () -> {
+      try {
+        do_ssh_test(nativeOperationsEnabled, false, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication yes\nPubkeyAuthentication yes", null, "keys/id_rsa.pub",
+                    b -> b.withAuthMethod(AuthenticationMethod.PASSWORD).withPassword("wrong password")
+        );
+        fail("Exception was expected");
+      } catch (Exception e) {
+        if (e.getMessage().contains("Permission denied") || e.getMessage().contains("Auth fail")) return null;
+        throw e;
+      }
+      return null;
+    });
+  }
+
+  @TestFor(issues = "TW-73578")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_wrong_password_local_rsa_encrypted_key(boolean nativeOperationsEnabled) throws Exception {
+    withSubstitutedLocalKeys("id_rsa_encrypted", () -> {
+      try {
+        do_ssh_test(nativeOperationsEnabled, false, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication yes\nPubkeyAuthentication yes", null, "keys/id_rsa_encrypted.pub",
+                    b -> b.withAuthMethod(AuthenticationMethod.PASSWORD).withPassword("wrong password")
+        );
+        fail("Exception was expected");
+      } catch (Exception e) {
+        if (e.getMessage().contains("Permission denied") || e.getMessage().contains("Auth fail")) return null;
+        throw e;
+      }
+      return null;
+    });
+  }
+
+  @TestFor(issues = "TW-73578")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_wrong_key_file_local_rsa_key(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_ecdsa");
+    withSubstitutedLocalKeys("id_rsa", () -> {
+      try {
+        do_ssh_test(nativeOperationsEnabled, false, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication yes\nPubkeyAuthentication yes\n", null, "keys/id_rsa.pub",
+                    b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(key.getAbsolutePath())
+        );
+        fail("Exception was expected");
+      } catch (Exception e) {
+        if (e.getMessage().contains("Permission denied") || e.getMessage().contains("Auth fail")) return null;
+        throw e;
+      }
+      return null;
+    });
+  }
+
+  @TestFor(issues = "TW-73578")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_wrong_key_file_local_rsa_encrypted_key(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_ecdsa");
+    withSubstitutedLocalKeys("id_rsa_encrypted", () -> {
+      try {
+        do_ssh_test(nativeOperationsEnabled, false, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication yes\nPubkeyAuthentication yes\n", null, "keys/id_rsa_encrypted.pub",
+                    b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(key.getAbsolutePath())
+        );
+        fail("Exception was expected");
+      } catch (Exception e) {
+        if (e.getMessage().contains("Permission denied") || e.getMessage().contains("Auth fail")) return null;
+        throw e;
+      }
+      return null;
+    });
+  }
+
   @Test(dataProvider = "true,false")
   public void ssh_git_local_rsa_key(boolean nativeOperationsEnabled) throws Exception {
     withSubstitutedLocalKeys("id_rsa", () -> {
@@ -211,6 +281,7 @@ public class SshAuthenticationTest extends BaseTestCase {
     );
   }
 
+  @Test(enabled = false)
   public void ssh_git_rsa_key_file_with_request_token() throws Exception {
     final StringBuilder log = enableAndRecordDebugLog();
     setInternalProperty("teamcity.git.sendSshSendEnvRequestToken", "true");
