@@ -558,7 +558,7 @@ public class GitVcsSupport extends ServerVcsSupport
     authProps.put(Constants.PASSWORD, root.getProperty(Constants.PASSWORD));
     authProps.put(Constants.PRIVATE_KEY_PATH, root.getProperty(Constants.PRIVATE_KEY_PATH));
     authProps.put(Constants.FETCH_URL, root.getProperty(Constants.FETCH_URL));
-    return new AuthSettings(authProps, urIishHelper);
+    return new AuthSettingsImpl(authProps, urIishHelper);
   }
 
   @Override
