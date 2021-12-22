@@ -22,5 +22,6 @@
     <orderEntry type="module" module-name="agent" exported="" />
     <orderEntry type="library" name="xmlrpc-2.0" level="project" />
     <orderEntry type="module" module-name="common-impl" />
+    <orderEntry type="module" module-name="oauth-integration-agent" />
   </component>
 </module>

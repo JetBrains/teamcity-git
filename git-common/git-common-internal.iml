@@ -12,5 +12,6 @@
     <orderEntry type="module" module-name="common" exported="" />
     <orderEntry type="library" exported="" name="git-jgit" level="project" />
     <orderEntry type="library" exported="" name="git-jsch" level="project" />
+    <orderEntry type="module" module-name="oauth-integration-common" />
   </component>
 </module>
