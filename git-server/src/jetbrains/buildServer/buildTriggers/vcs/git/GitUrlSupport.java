@@ -255,7 +255,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
 
   private void refineGithubSettings(@NotNull VcsHostingRepo ghRepo, @NotNull Map<String, String> props) throws VcsException {
     GitHubClient client = new GitHubClient();
-    AuthSettings auth = new AuthSettings(props, new URIishHelperImpl());
+    AuthSettings auth = new AuthSettingsImpl(props, new URIishHelperImpl());
     final String password = auth.getPassword();
     if (auth.getAuthMethod() == AuthenticationMethod.PASSWORD && StringUtil.isNotEmpty(password)) {
       if (ReferencesResolverUtil.containsReference(password) || password.length() != 40) return; // we can only proceed with PAT, password auth is no longer supported by github API

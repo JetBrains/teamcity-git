@@ -66,7 +66,7 @@ public class GitVcsRoot {
     myURIishHelper = urIishHelper;
     myUsernameStyle = readUserNameStyle();
     mySubmodulePolicy = readSubmodulesPolicy();
-    myAuthSettings = new AuthSettings(this, urIishHelper);
+    myAuthSettings = createAuthSettings(urIishHelper);
     String rawFetchUrl = getProperty(Constants.FETCH_URL);
     if (rawFetchUrl.contains("\n") || rawFetchUrl.contains("\r"))
       throw new VcsException("Newline in fetch url '" + rawFetchUrl + "'");
@@ -85,6 +85,10 @@ public class GitVcsRoot {
     myIgnoreMissingDefaultBranch = Boolean.valueOf(getProperty(Constants.IGNORE_MISSING_DEFAULT_BRANCH, "false"));
     myIncludeCommitInfoSubmodules = Boolean.valueOf(getProperty(Constants.INCLUDE_COMMIT_INFO_SUBMODULES, "false"));
     myCheckoutPolicy = readCheckoutPolicy();
+  }
+
+  private AuthSettings createAuthSettings(@NotNull URIishHelper urIishHelper) {
+    return new AuthSettingsImpl(this, urIishHelper, null);
   }
 
   public GitVcsRoot getRootForBranch(@NotNull String branch) throws VcsException {

@@ -83,7 +83,7 @@ public class TransportFactoryTest {
       .withUsername("user")
       .withPassword("pwd")
       .build();
-    AuthSettings authSettings = new AuthSettings(root, new URIishHelperImpl());
+    AuthSettings authSettings = new AuthSettingsImpl(root, new URIishHelperImpl());
     TransportFactory factory = new TransportFactoryImpl(myConfigBuilder.build(), new EmptyVcsRootSshKeyManager());
     factory.createTransport(r, new URIishHelperImpl().createAuthURI(authSettings, "git://some.org/repo.git").get(), authSettings);
   }

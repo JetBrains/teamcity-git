@@ -204,7 +204,7 @@ public class FetchCommandImpl implements FetchCommand {
       Map<String, String> properties = settings.getAuthSettings().toMap();
       properties.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.name());
       properties.put(Constants.PRIVATE_KEY_PATH, teamcityPrivateKey.getAbsolutePath());
-      preparedSettings = new AuthSettings(properties, settings.getAuthSettings().getRoot(), new URIishHelperImpl());
+      preparedSettings = new AuthSettingsImpl(properties, settings.getAuthSettings().getRoot(), new URIishHelperImpl());
     }
     return preparedSettings;
   }

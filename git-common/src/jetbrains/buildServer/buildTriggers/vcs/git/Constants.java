@@ -57,6 +57,12 @@ public interface Constants {
    * The user name property
    */
   public static final String PRIVATE_KEY_PATH = "privateKeyPath";
+
+  /**
+   * (Refreshable) token id
+   */
+  public static final String TOKEN_ID = "tokenId";
+
   /**
    * The password property name
    */
