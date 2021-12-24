@@ -35,6 +35,7 @@
     <orderEntry type="module" module-name="patches-impl" exported="" />
     <orderEntry type="module" module-name="usage-statistics-util" exported="" />
     <orderEntry type="module" module-name="web-openapi" />
+    <orderEntry type="module" module-name="oauth-integration-common" />
     <orderEntry type="module" module-name="oauth-integration" />
   </component>
 </module>

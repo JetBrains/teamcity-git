@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchProcess;
 import jetbrains.buildServer.messages.serviceMessages.ServiceMessage;
+import jetbrains.buildServer.oauth.ExpiringAccessToken;
 import jetbrains.buildServer.metrics.Counter;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -291,7 +292,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
       EWAHCompressedBitmap.class,
       JschConfigSessionFactory.class,
       JSchConfigInitializer.class,
-      Pair.class
+      Pair.class,
+      ExpiringAccessToken.class
     ));
     Collections.addAll(result, GitVcsSupport.class.getInterfaces());
     return result;
