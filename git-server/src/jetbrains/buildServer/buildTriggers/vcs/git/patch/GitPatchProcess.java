@@ -56,7 +56,7 @@ public class GitPatchProcess {
     GitRepoOperations repoOperations = new GitRepoOperationsImpl(config, transportFactory, sshKeyManager, fetchCommand);
     CommitLoader commitLoader = new CommitLoaderImpl(repositoryManager, repoOperations, mapFullPath, config);
 
-    OperationContext context = new OperationContext(commitLoader, repositoryManager, settings.getRoot(), "build patch", GitProgress.NO_OP, config);
+    OperationContext context = new OperationContext(commitLoader, repositoryManager, settings.getRoot(), "build patch", GitProgress.NO_OP, config, null);
     OutputStream fos = new BufferedOutputStream(new FileOutputStream(settings.getPatchFile()));
     try {
       PatchBuilderImpl patchBuilder = new PatchBuilderImpl(fos);
