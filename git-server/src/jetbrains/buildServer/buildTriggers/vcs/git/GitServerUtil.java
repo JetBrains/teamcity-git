@@ -434,8 +434,8 @@ public class GitServerUtil {
                                                 @NotNull AuthSettings authSettings) throws Exception {
     return Retry.retry(new Retry.Retryable<Map<String, Ref>>() {
       @Override
-      public boolean requiresRetry(@NotNull final Exception e) {
-        return isRecoverable(e);
+      public boolean requiresRetry(@NotNull final Exception e, int attempt, int maxAttempts) {
+        return isRecoverable(e, authSettings, attempt, maxAttempts);
       }
 
       @Nullable
@@ -622,8 +622,8 @@ public class GitServerUtil {
     try {
       return Retry.retry(new Retry.Retryable<FetchResult>() {
         @Override
-        public boolean requiresRetry(@NotNull final Exception e) {
-          return isRecoverable(e);
+        public boolean requiresRetry(@NotNull final Exception e, int attempt, int maxAttempts) {
+          return isRecoverable(e, authSettings, attempt, maxAttempts);
         }
 
         @Nullable
@@ -719,7 +719,9 @@ public class GitServerUtil {
     return fullRefName.startsWith(org.eclipse.jgit.lib.Constants.R_TAGS);
   }
 
-  public static boolean isRecoverable(@NotNull Exception e) {
+  public static boolean isRecoverable(@NotNull Exception e, AuthSettings authSettings, int attempt, int maxAttempts) {
+    boolean attemptsLeft = attempt < maxAttempts;
+
     if (!(e instanceof TransportException)) return false;
 
     String message = e.getMessage();
@@ -730,19 +732,26 @@ public class GitServerUtil {
         message.contains("Short read of block") || //TW-55869
         message.contains("Read timed out after")) //TW-68453
     {
-      return true;
+      return attemptsLeft;
     }
+
+    if (authSettings.doesTokenNeedRefresh() && attempt == 1)
+      return true;
+
     Throwable cause = e.getCause();
     if (cause instanceof JSchException) {
-      return message.contains("Session.connect: java.net.SocketException: Connection reset") ||
-             message.contains("Session.connect: java.net.SocketException: Software caused connection abort") ||
-             message.contains("Session.connect: java.net.SocketTimeoutException: Read timed out") ||
-             message.contains("connection is closed by foreign host") ||
-             message.contains("timeout: socket is not established") ||
-             message.contains("java.net.UnknownHostException:") || //TW-31027
-             message.contains("com.jcraft.jsch.JSchException: verify: false") || //TW-31175
-             message.contains("channel is not opened.") || //TW-46052
-             message.contains("Connection refused"); // TW-68453
+      return attemptsLeft &&
+             (
+               message.contains("Session.connect: java.net.SocketException: Connection reset") ||
+               message.contains("Session.connect: java.net.SocketException: Software caused connection abort") ||
+               message.contains("Session.connect: java.net.SocketTimeoutException: Read timed out") ||
+               message.contains("connection is closed by foreign host") ||
+               message.contains("timeout: socket is not established") ||
+               message.contains("java.net.UnknownHostException:") || //TW-31027
+               message.contains("com.jcraft.jsch.JSchException: verify: false") || //TW-31175
+               message.contains("channel is not opened.") || //TW-46052
+               message.contains("Connection refused")
+             ); // TW-68453
     }
     return false;
   }

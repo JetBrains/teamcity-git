@@ -38,7 +38,7 @@ public abstract class Retry {
   private static final float BACKOFF_JITTER = 0.1f;
 
   public interface Retryable<V> {
-    boolean requiresRetry(@NotNull Exception e);
+    boolean requiresRetry(@NotNull Exception e, int attempt, int maxAttempts);
     @Nullable V call() throws Exception;
     @NotNull Logger getLogger();
   }
@@ -57,11 +57,10 @@ public abstract class Retry {
       try {
         return operation.call();
       } catch (Exception e) {
-        if (!operation.requiresRetry(e)) {
-          throw e;
-        }
-        if (i == attempts) {
-          operation.getLogger().warnAndDebugDetails("Failed to run operation within " + attempts + StringUtil.pluralize(" attempt", attempts), e);
+        if (!operation.requiresRetry(e, i, attempts)) {
+          if (i >= attempts) {
+            operation.getLogger().warnAndDebugDetails("Failed to run operation within " + attempts + StringUtil.pluralize(" attempt", attempts), e);
+          }
           throw e;
         }
         if (i > 1) {
