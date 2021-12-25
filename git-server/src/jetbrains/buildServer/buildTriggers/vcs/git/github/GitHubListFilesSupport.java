@@ -95,7 +95,7 @@ public class GitHubListFilesSupport implements ListDirectChildrenPolicy {
     GitHubClient client = new GitHubClient();
     GitVcsRoot gitRoot = ctx.getGitRoot(root);
     AuthSettings auth = gitRoot.getAuthSettings();
-    if (auth.getAuthMethod() == AuthenticationMethod.PASSWORD && auth.getUserName() != null && auth.getPassword() != null) {
+    if (auth.getAuthMethod().isPasswordBased() && auth.getUserName() != null && auth.getPassword() != null) {
       client.setCredentials(auth.getUserName(), auth.getPassword());
     }
     Repository r = new RepositoryService(client).getRepository(myOwner, myRepository);

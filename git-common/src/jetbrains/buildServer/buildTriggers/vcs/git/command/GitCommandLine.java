@@ -78,7 +78,7 @@ public class GitCommandLine extends GeneralCommandLine {
     if (authSettings == null) {
       return doRunCommand(settings);
     }
-    if (AuthenticationMethod.PASSWORD == authSettings.getAuthMethod()) {
+    if (authSettings.getAuthMethod().isPasswordBased()) {
       withAskPassScript(authSettings.getPassword(), askPassPath -> {
         getParametersList().addAt(0, "-c");
         getParametersList().addAt(1, "core.askpass=" + askPassPath);
