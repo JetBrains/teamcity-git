@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
+import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleUpdateCommand;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -44,8 +45,9 @@ public class ShallowUpdater extends UpdaterImpl {
                         @NotNull final File targetDir,
                         @NotNull final CheckoutRules rules,
                         @NotNull final CheckoutMode checkoutMode,
-                        final SubmoduleManager submoduleManager) throws VcsException {
-    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, checkoutMode, submoduleManager);
+                        final SubmoduleManager submoduleManager,
+                        @NotNull AgentTokenStorage tokenStorage) throws VcsException {
+    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, checkoutMode, submoduleManager, tokenStorage);
   }
 
   @Override

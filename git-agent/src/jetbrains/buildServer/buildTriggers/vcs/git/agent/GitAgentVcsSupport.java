@@ -29,6 +29,7 @@ import jetbrains.buildServer.agent.AgentLifeCycleAdapter;
 import jetbrains.buildServer.agent.AgentLifeCycleListener;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
+import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.agent.vcs.AgentCheckoutAbility;
 import jetbrains.buildServer.agent.vcs.AgentVcsSupport;
 import jetbrains.buildServer.agent.vcs.UpdateByCheckoutRules2;
@@ -55,6 +56,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private final MirrorManager myMirrorManager;
   private final SubmoduleManager mySubmoduleManager;
   private final GitMetaFactory myGitMetaFactory;
+  private final AgentTokenStorage myTokenStorage;
 
   //The canCheckout() method should check that roots are not checked out in the same dir (TW-49786).
   //To do that we need to create AgentPluginConfig for each VCS root which involves 'git version'
@@ -72,7 +74,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull MirrorManager mirrorManager,
                             final SubmoduleManager submoduleManager,
                             @NotNull GitMetaFactory gitMetaFactory,
-                            @NotNull EventDispatcher<AgentLifeCycleListener> agentEventDispatcher) {
+                            @NotNull EventDispatcher<AgentLifeCycleListener> agentEventDispatcher,
+                            @NotNull AgentTokenStorage tokenStorage) {
     myFS = fs;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
@@ -80,6 +83,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     myMirrorManager = mirrorManager;
     mySubmoduleManager = submoduleManager;
     myGitMetaFactory = gitMetaFactory;
+    myTokenStorage = tokenStorage;
 
     agentEventDispatcher.addListener(new AgentLifeCycleAdapter() {
       @Override
@@ -118,15 +122,15 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     CheckoutMode mode = targetDirAndMode.first;
     File targetDir = targetDirAndMode.second;
     Updater updater;
-    AgentGitVcsRoot gitRoot = new AgentGitVcsRoot(myMirrorManager, targetDir, root);
+    AgentGitVcsRoot gitRoot = new AgentGitVcsRoot(myMirrorManager, targetDir, root, myTokenStorage);
     if (config.isUseShallowClone(gitRoot)) {
-      updater = new ShallowUpdater(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager);
+      updater = new ShallowUpdater(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
     } else if (config.isUseAlternates(gitRoot)) {
-      updater = new UpdaterWithAlternates(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager);
+      updater = new UpdaterWithAlternates(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
     } else if (config.isUseLocalMirrors(gitRoot)) {
-      updater = new UpdaterWithMirror(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager);
+      updater = new UpdaterWithMirror(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
     } else {
-      updater = new UpdaterImpl(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager);
+      updater = new UpdaterImpl(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
     }
     updater.update();
   }
