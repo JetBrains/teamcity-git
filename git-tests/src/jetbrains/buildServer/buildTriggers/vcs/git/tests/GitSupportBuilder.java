@@ -48,10 +48,9 @@ public class GitSupportBuilder {
   private RepositoryManager myRepositoryManager;
   private TransportFactory myTransportFactory;
   private TestConnectionSupport myTestConnectionSupport;
-  private MirrorManager myMirrorManager;
   private GitMapFullPath myMapFullPath;
   private CommitLoader myCommitLoader;
-  private List<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
+  private final List<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
 
   public static GitSupportBuilder gitSupport() {
     return new GitSupportBuilder();
@@ -155,8 +154,8 @@ public class GitSupportBuilder {
         };
       }
     }
-    myMirrorManager = new MirrorManagerImpl(myPluginConfig, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
-    myRepositoryManager = new RepositoryManagerImpl(myPluginConfig, myMirrorManager);
+    MirrorManager mirrorManager = new MirrorManagerImpl(myPluginConfig, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
+    myRepositoryManager = new RepositoryManagerImpl(myPluginConfig, mirrorManager);
     final ResetCacheRegister resetCacheManager;
     if (myResetCacheManager == null) {
       context.setImposteriser(ClassImposteriser.INSTANCE);
