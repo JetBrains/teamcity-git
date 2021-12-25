@@ -57,7 +57,7 @@ public class AuthCredentialsProvider extends CredentialsProvider {
       if (i instanceof CredentialItem.Username && myAuthMethod != AuthenticationMethod.ANONYMOUS) {
         continue;
       }
-      if (i instanceof CredentialItem.Password && myAuthMethod == AuthenticationMethod.PASSWORD && myPassword != null) {
+      if (i instanceof CredentialItem.Password && myAuthMethod.isPasswordBased() && myPassword != null) {
         continue;
       }
       return false;
@@ -100,7 +100,7 @@ public class AuthCredentialsProvider extends CredentialsProvider {
   }
 
   private boolean supplyPassword(CredentialItem.Password item) {
-    if (myAuthMethod != AuthenticationMethod.PASSWORD) {
+    if (!myAuthMethod.isPasswordBased()) {
       return false;
     }
     if (myPassword == null) {

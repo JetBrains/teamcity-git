@@ -72,7 +72,7 @@ public class GitHubRawFileContentProvider extends GitAbstractVcsFileContentProvi
     URL url = new URL("https://raw.github.com/" + myOwner + "/" + myRepository + "/" + version + "/" + filePath);
     URLConnection c = url.openConnection();
     AuthSettings auth = root.getAuthSettings();
-    if (auth.getAuthMethod() == AuthenticationMethod.PASSWORD && auth.getUserName() != null && auth.getPassword() != null) {
+    if (auth.getAuthMethod().isPasswordBased() && auth.getUserName() != null && auth.getPassword() != null) {
       String credentials = auth.getUserName() + ":" + auth.getPassword();
       c.setRequestProperty("Authorization", "Basic " + Base64.encodeBytes(credentials.getBytes("UTF-8")));
     }

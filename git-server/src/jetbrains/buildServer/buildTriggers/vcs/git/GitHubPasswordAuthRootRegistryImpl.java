@@ -14,6 +14,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod.ACCESS_TOKEN;
+import static jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod.PASSWORD;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitHubPasswordAuthRootRegistry.isGitRoot;
 
 public class GitHubPasswordAuthRootRegistryImpl implements GitHubPasswordAuthRootRegistry {
@@ -99,8 +101,9 @@ public class GitHubPasswordAuthRootRegistryImpl implements GitHubPasswordAuthRoo
 
     final String fetchUrl = root.getProperty(Constants.FETCH_URL, "");
     final String pushUrl = root.getProperty(Constants.PUSH_URL, "");
+    String authMethod = root.getProperty(Constants.AUTH_METHOD);
     return (fetchUrl.contains(GITHUB_COM) || pushUrl.contains(GITHUB_COM))
-           && AuthenticationMethod.PASSWORD.name().equals(root.getProperty(Constants.AUTH_METHOD));
+           && (PASSWORD.name().equals(authMethod) || ACCESS_TOKEN.name().equals(authMethod));
   }
 
   @Nullable
