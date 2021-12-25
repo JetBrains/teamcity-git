@@ -66,6 +66,21 @@ public class CommonURIishImpl implements CommonURIish {
   }
 
   @Override
+  public int hashCode() {
+    return myURIish.hashCode();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof CommonURIish))
+      return false;
+    final CommonURIishImpl other = (CommonURIishImpl) obj;
+
+    return myURIish.equals(other.get());
+  }
+
+
+  @Override
   public String toString() {
     return myURIish.toString();
   }
