@@ -34,10 +34,11 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.TestNGUtil;
 import jetbrains.buildServer.agent.*;
+import jetbrains.buildServer.agent.oauth.AgentTokenRetriever;
+import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefResult;
@@ -48,8 +49,11 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.UpdateRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
+import jetbrains.buildServer.oauth.ExpiringAccessToken;
+import jetbrains.buildServer.oauth.InvalidAccessToken;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.CollectionsUtil;
+import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -96,6 +100,7 @@ public class AgentVcsSupportTest {
   private GitAgentVcsSupport myVcsSupport;
   private AgentRunningBuild myBuild;
   private AgentSupportBuilder myBuilder;
+  private AgentTokenStorage myTookenStorage;
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -119,6 +124,14 @@ public class AgentVcsSupportTest {
     myVcsSupport = myBuilder.build();
     myBuild = createRunningBuild(true);
     myRoot = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(GitUtils.toURL(myMainRepo)).build();
+    AgentTokenRetriever tokenRetriever = new AgentTokenRetriever() {
+      @NotNull
+      @Override
+      public ExpiringAccessToken retrieveToken(@NotNull String tokenId) {
+        return new InvalidAccessToken();
+      }
+    };
+    myTookenStorage = new AgentTokenStorage(EventDispatcher.create(AgentLifeCycleListener.class), tokenRetriever);
   }
 
 
@@ -692,7 +705,7 @@ public class AgentVcsSupportTest {
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
-    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
     File bareRepositoryDir = root.getRepositoryDir();
     assertTrue(bareRepositoryDir.exists());
     //check some dirs that should be present in the bare repository:
@@ -719,7 +732,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildBeforeUsingMirrors, false);
     AgentRunningBuild buildWithMirrorsEnabled = createRunningBuild(true);
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
-    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
     String localMirrorUrl = new URIish(root.getRepositoryDir().toURI().toASCIIString()).toString();
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
     assertEquals(root.getRepositoryFetchURL().toString(), r.getConfig().getString("url", localMirrorUrl, "insteadOf"));
@@ -736,7 +749,7 @@ public class AgentVcsSupportTest {
 
   @TestFor(issues = "TW-67736")
   public void delete_url_insteadOf_from_config_when_switching_from_mirrors_to_alternates() throws Exception {
-    final GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
+    final GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
     {
       final AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, "true"));
       myVcsSupport.updateSources(root.getOriginalRoot(), new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
@@ -765,7 +778,7 @@ public class AgentVcsSupportTest {
 
   public void stop_use_any_mirror_if_agent_property_changed_to_false() throws Exception {
     AgentRunningBuild build2 = createRunningBuild(false);
-    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
 
     //add some mirror
@@ -826,7 +839,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
 
     //corrupt local mirror
-    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
     File mirror = myBuilder.getMirrorManager().getMirrorDir(root.getRepositoryFetchURL().toString());
     File[] children = mirror.listFiles();
     if (children != null) {
@@ -1607,7 +1620,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build, true);
 
     //manually create a branch tmp_branch_for_build with, it seems like it wasn't removed due to errors in previous checkouts
-    GitVcsRoot root = new GitVcsRoot(myBuilder.getMirrorManager(), myRoot, new URIishHelperImpl());
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
     File mirror = myBuilder.getMirrorManager().getMirrorDir(root.getRepositoryFetchURL().toString());
     File emptyBranchFile = new File(mirror, "refs" + File.separator + "heads" + File.separator + "tmp_branch_for_build");
     FileUtil.writeToFile(emptyBranchFile, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653\n".getBytes());
