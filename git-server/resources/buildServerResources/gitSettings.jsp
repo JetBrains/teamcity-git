@@ -130,7 +130,8 @@
       <td>
         <props:selectProperty name="authMethod" onchange="gitSelectAuthentication(true)" enableFilter="true" className="mediumField">
           <props:option value="ANONYMOUS">Anonymous</props:option>
-          <props:option value="PASSWORD">Password / access token</props:option>
+          <props:option value="PASSWORD">Password / personal access token</props:option>
+          <props:option value="ACCESS_TOKEN">Refreshable access token</props:option>
           <optgroup label="Private Key">
             <c:if test="${teamcitySshKeysEnabled}">
               <props:option value="TEAMCITY_SSH_KEY">Uploaded Key</props:option>
@@ -144,7 +145,7 @@
         <div id="authMethodCompatNote" class="smallNote" style="margin: 0; display: none;"></div>
       </td>
     </tr>
-    <tr id="gitUsername" class="auth defaultKey customKey password uploadedKey">
+    <tr id="gitUsername" class="auth defaultKey customKey password uploadedKey access_token">
       <th><label for="username">Username:</label></th>
       <td><props:textProperty name="username" className="longField"/>
         <div class="smallNote" style="margin: 0">
@@ -282,8 +283,8 @@
   var Git = {
     compatibleAuthMethods: {//protocol -> compatible auth methods
       'git' : ['ANONYMOUS'],
-      'http' : ['ANONYMOUS', 'PASSWORD'],
-      'https' : ['ANONYMOUS', 'PASSWORD']
+      'http' : ['ANONYMOUS', 'PASSWORD', 'ACCESS_TOKEN'],
+      'https' : ['ANONYMOUS', 'PASSWORD', 'ACCESS_TOKEN']
     },
 
 
@@ -343,7 +344,7 @@
       var that = this;
       $j('#authMethod option').each(function() {
         var method = $j(this).val();
-        if (method == selected || that.contains(fetchCompatible, method) && that.contains(pushCompatible, method)) {
+        if (method == selected || that.isSelectable(method) && that.contains(fetchCompatible, method) && that.contains(pushCompatible, method)) {
           $j(this).attr("disabled", false);
         } else {
           $j(this).attr("disabled", "disabled");
@@ -351,6 +352,9 @@
       });
     },
 
+    isSelectable: function(method) {
+      return method != "ACCESS_TOKEN";
+    },
 
     getLimitingProtocols: function (fetchProto, fetchCompatMethods, pushProto, pushCompatMethods) {
       var allMethods = this.getAllAuthMethods();
@@ -434,6 +438,7 @@
       PRIVATE_KEY_DEFAULT : 'defaultKey',
       PRIVATE_KEY_FILE : 'customKey',
       PASSWORD : 'password',
+      ACCESS_TOKEN: 'access_token',
       ANONYMOUS : 'anonymous',
       TEAMCITY_SSH_KEY : 'uploadedKey'
     });
@@ -482,14 +487,16 @@
       BS.Repositories.installControls($('url'), function (repoInfo, cre) {
         $('url').value = repoInfo.repositoryUrl;
         if (cre != null) {
-          $('authMethod').value = 'PASSWORD';
+          if (cre.permanentToken) {
+            $('authMethod').value = 'PASSWORD';
+            $('secure:password').value = '**************';
+          } else if (cre.tokenType) {
+            $('authMethod').value = 'ACCESS_TOKEN';
+          }
           BS.jQueryDropdown($('authMethod')).ufd("changeOptions");
           $('username').value = cre.oauthLogin;
           $('oauthProviderId').value = cre.oauthProviderId;
           $('tokenType').value = cre.tokenType;
-          if (cre.permanentToken || cre.tokenType) {
-            $('secure:password').value = '**************';
-          }
           gitSelectAuthentication(true);
         }
       });
