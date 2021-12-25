@@ -27,6 +27,7 @@ import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
 import jetbrains.buildServer.agent.BuildProgressLogger;
 import jetbrains.buildServer.agent.SmartDirectoryCleaner;
+import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
@@ -102,7 +103,8 @@ public class UpdaterImpl implements Updater {
                      @NotNull File targetDir,
                      @NotNull CheckoutRules rules,
                      @NotNull CheckoutMode checkoutMode,
-                     final SubmoduleManager submoduleManager) throws VcsException {
+                     final SubmoduleManager submoduleManager,
+                     @NotNull AgentTokenStorage tokenStorage) throws VcsException {
     myFS = fs;
     myPluginConfig = pluginConfig;
     myDirectoryCleaner = directoryCleaner;
@@ -112,7 +114,7 @@ public class UpdaterImpl implements Updater {
     myRevision = GitUtils.versionRevision(version);
     myTargetDirectory = targetDir;
     mySubmoduleManager = submoduleManager;
-    myRoot = new AgentGitVcsRoot(mirrorManager, myTargetDirectory, root);
+    myRoot = new AgentGitVcsRoot(mirrorManager, myTargetDirectory, root, tokenStorage);
     myFullBranchName = getBranch();
     myRules = rules;
     myCheckoutMode = checkoutMode;
@@ -724,7 +726,7 @@ public class UpdaterImpl implements Updater {
       return;//anonymous protocol, don't check anything
     AuthSettings authSettings = root.getAuthSettings();
     switch (authSettings.getAuthMethod()) {
-      case PASSWORD:
+      case PASSWORD: case ACCESS_TOKEN:
         if ("http".equals(root.getRepositoryFetchURL().getScheme()) ||
             "https".equals(root.getRepositoryFetchURL().getScheme())) {
           GitVersion actualVersion = config.getGitVersion();
@@ -1000,7 +1002,7 @@ public class UpdaterImpl implements Updater {
     try {
       URIish uri = new URIish(myRoot.getRepositoryFetchURL().toString());
       String scheme = uri.getScheme();
-      if (myRoot.getAuthSettings().getAuthMethod() == AuthenticationMethod.PASSWORD &&
+      if (myRoot.getAuthSettings().getAuthMethod().isPasswordBased() &&
           ("http".equals(scheme) || "https".equals(scheme))) {
         String lfsUrl = uri.setPass("").setUser("").toASCIIString();
         if (lfsUrl.endsWith(".git")) {

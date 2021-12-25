@@ -20,6 +20,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import jetbrains.buildServer.agent.DirectoryCleanersProvider;
 import jetbrains.buildServer.agent.DirectoryCleanersProviderContext;
 import jetbrains.buildServer.agent.DirectoryCleanersRegistry;
+import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
@@ -39,10 +40,12 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
   private final static Logger LOG = Logger.getInstance(AgentMirrorCleaner.class.getName());
   private final MirrorManager myMirrorManager;
   private final SubmoduleManager mySubmoduleManager;
+  private final AgentTokenStorage myTokenStorage;
 
-  public AgentMirrorCleaner(@NotNull MirrorManager mirrorManager, @NotNull SubmoduleManager submoduleManager) {
+  public AgentMirrorCleaner(@NotNull MirrorManager mirrorManager, @NotNull SubmoduleManager submoduleManager, @NotNull AgentTokenStorage tokenStorage) {
     myMirrorManager = mirrorManager;
     mySubmoduleManager = submoduleManager;
+    myTokenStorage = tokenStorage;
   }
 
   @NotNull
@@ -113,7 +116,7 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
       if (!Constants.VCS_NAME.equals(root.getVcsName()))
         continue;
       try {
-        GitVcsRoot gitRoot = new GitVcsRoot(myMirrorManager, root, new URIishHelperImpl());
+        GitVcsRoot gitRoot = new AgentGitVcsRoot(myMirrorManager, root, myTokenStorage);
         String repositoryUrl = gitRoot.getRepositoryFetchURL().toString();
         LOG.debug("Repository " + repositoryUrl + " is used in the build, its mirror won't be cleaned");
         addRepositoryWithSubmodules(repositories, gitRoot.getRepositoryFetchURL().toString());

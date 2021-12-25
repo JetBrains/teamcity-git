@@ -17,13 +17,19 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.agent.AgentLifeCycleListener;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.DirectoryCleanersProviderContext;
 import jetbrains.buildServer.agent.DirectoryCleanersRegistry;
+import jetbrains.buildServer.agent.oauth.AgentTokenRetriever;
+import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentMirrorCleaner;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.SubmoduleManagerImpl;
+import jetbrains.buildServer.oauth.ExpiringAccessToken;
+import jetbrains.buildServer.oauth.InvalidAccessToken;
 import jetbrains.buildServer.util.Dates;
+import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsRootEntry;
@@ -57,7 +63,15 @@ public class AgentMirrorCleanerTest {
     myContext = new Mockery();
     myMirrorManager = myContext.mock(MirrorManager.class);
     mySubmoduleManager = new SubmoduleManagerImpl(myMirrorManager);
-    myAgentMirrorCleaner = new AgentMirrorCleaner(myMirrorManager, mySubmoduleManager);
+    AgentTokenRetriever tokenRetriever = new AgentTokenRetriever() {
+      @NotNull
+      @Override
+      public ExpiringAccessToken retrieveToken(@NotNull String tokenId) {
+        return new InvalidAccessToken();
+      }
+    };
+    AgentTokenStorage tokenStorage = new AgentTokenStorage(EventDispatcher.create(AgentLifeCycleListener.class), tokenRetriever);
+    myAgentMirrorCleaner = new AgentMirrorCleaner(myMirrorManager, mySubmoduleManager, tokenStorage);
   }
 
   public void should_register_mirrors_not_used_in_current_build() throws IOException {
@@ -93,10 +107,10 @@ public class AgentMirrorCleanerTest {
         one(myMirrorManager).getLastUsedTime(r3mirror); will(returnValue(r3lastAccess.getTime()));
         one(myMirrorManager).getLastUsedTime(r4mirror); will(returnValue(r4lastAccess.getTime()));
 
-        one(myMirrorManager).getMirrorDir("git://some.org/r1"); will(returnValue(r1mirror));
-        one(myMirrorManager).getMirrorDir("git://some.org/r2"); will(returnValue(r2mirror));
-        one(myMirrorManager).getMirrorDir("git://some.org/r3"); will(returnValue(r3mirror));
-        one(myMirrorManager).getMirrorDir("git://some.org/r4"); will(returnValue(r4mirror));
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r1"); will(returnValue(r1mirror));
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r2"); will(returnValue(r2mirror));
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r3"); will(returnValue(r3mirror));
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r4"); will(returnValue(r4mirror));
 
         one(registry).addCleaner(r3mirror, r3lastAccess);
         one(registry).addCleaner(r4mirror, r4lastAccess);
@@ -169,7 +183,7 @@ public class AgentMirrorCleanerTest {
         one(myMirrorManager).getMappings(); will(returnValue(map("git://some.org/r1", invalidMirror)));
         one(myMirrorManager).getBaseMirrorsDir(); will(returnValue(baseMirrorsDir));
         one(myMirrorManager).isInvalidDirName(invalidMirror.getName()); will(returnValue(true));
-        one(myMirrorManager).getMirrorDir("git://some.org/r1"); will(returnValue(invalidMirror));
+        allowing(myMirrorManager).getMirrorDir("git://some.org/r1"); will(returnValue(invalidMirror));
         one(myMirrorManager).removeMirrorDir(invalidMirror);}});
       myAgentMirrorCleaner.registerDirectoryCleaners(createCleanerContext(repositoriesInBuild), registry);
     } finally {
