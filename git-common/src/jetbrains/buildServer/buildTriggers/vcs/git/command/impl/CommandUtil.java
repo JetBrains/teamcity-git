@@ -24,6 +24,7 @@ import java.util.List;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.CheckoutCanceledException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
@@ -205,16 +206,22 @@ public class CommandUtil {
     return isMessageContains(e, "Connection reset");
   }
 
-  public static boolean isRecoverable(@NotNull Exception e) {
-    if (e instanceof ProcessTimeoutException || e instanceof GitExecTimeout) return true;
+  public static boolean isRecoverable(@NotNull Exception e, AuthSettings authSettings, int attempt, int maxAttempts) {
+    boolean attemptsLeft = attempt < maxAttempts;
+
+    if (e instanceof ProcessTimeoutException || e instanceof GitExecTimeout) return attemptsLeft;
+
     if (!(e instanceof VcsException)) return false;
 
     final VcsException ve = (VcsException)e;
-    if (isTimeoutError(ve) || isConnectionRefused(ve) || isConnectionReset(ve)) return true;
+    if (isTimeoutError(ve) || isConnectionRefused(ve) || isConnectionReset(ve)) return attemptsLeft;
     if (isCanceledError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
 
-    return !isRemoteAccessError(ve);
+    if (authSettings.doesTokenNeedRefresh() && attempt == 1)
+      return true;
+
+    return attemptsLeft && !isRemoteAccessError(ve);
   }
 
   @SuppressWarnings("BooleanMethodIsAlwaysInverted")
