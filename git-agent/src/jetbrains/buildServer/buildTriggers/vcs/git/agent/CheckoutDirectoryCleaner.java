@@ -132,18 +132,26 @@ public class CheckoutDirectoryCleaner implements DirectoryCleanersProvider, Posi
 
       final long start = System.currentTimeMillis();
       ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.ProcessRunCallback() {
+        @Override
         public void onProcessStarted(@NotNull Process ps) {
           LOG.debug("Start" + cmd);
         }
+        @Override
         public void onProcessFinished(@NotNull Process ps) {
           final long finish = System.currentTimeMillis();
           LOG.debug("Finish" + cmd + ", duration: " + (finish - start) + "ms");
         }
+        @Override
         public Integer getOutputIdleSecondsTimeout() {
           return timeout;
         }
+        @Override
         public Integer getMaxAcceptedOutputSize() {
           return COMMAND_OUTPUT_THRESHOLD;
+        }
+        @Override
+        public boolean isUseProcessTreeTerminator() {
+          return false;
         }
       });
 

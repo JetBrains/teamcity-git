@@ -44,4 +44,9 @@ public class ProcessTimeoutCallback extends SimpleCommandLineProcessRunner.Proce
   public Integer getMaxAcceptedOutputSize() {
     return myMaxAcceptedOutputSize;
   }
+
+  @Override
+  public boolean isUseProcessTreeTerminator() {
+    return true;
+  }
 }
