@@ -154,9 +154,6 @@ public class FetchCommandImpl implements FetchCommand {
                                                                         result, true, true);
         if (commandError != null) {
 
-          if (attempt == 1 && settings.getAuthSettings().doesTokenNeedRefresh())
-            continue;
-
           commandError.setRecoverable(isRecoverable(commandError));
 
           /* if the process had not enough memory or we killed it because gc */
@@ -168,7 +165,12 @@ public class FetchCommandImpl implements FetchCommand {
               continue;
             }
             commandError = new VcsException("There is not enough memory for git fetch (last attempted -Xmx" + xmx + "M). Please contact your system administrator", commandError);
+          } else if (attempt == 1 && settings.getAuthSettings().doesTokenNeedRefresh()) {
+            LOG.debug("git fetch process failed due to suspected token expiration for \"" + uri + "\" in directory \"" + repository.getDirectory() + "\", took " +
+                     TimePrinter.createMillisecondsFormatter().formatTime(gitResult.getDuration()) + ". Retrying with token refresh.");
+            continue;
           }
+
 
           LOG.info("git fetch process failed for \"" + uri + "\" in directory \"" + repository.getDirectory() + "\", took " +
                    TimePrinter.createMillisecondsFormatter().formatTime(gitResult.getDuration()));
