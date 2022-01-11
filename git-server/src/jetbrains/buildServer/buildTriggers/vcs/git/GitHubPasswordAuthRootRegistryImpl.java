@@ -103,7 +103,7 @@ public class GitHubPasswordAuthRootRegistryImpl implements GitHubPasswordAuthRoo
     final String pushUrl = root.getProperty(Constants.PUSH_URL, "");
     String authMethod = root.getProperty(Constants.AUTH_METHOD);
     return (fetchUrl.contains(GITHUB_COM) || pushUrl.contains(GITHUB_COM))
-           && (PASSWORD.name().equals(authMethod) || ACCESS_TOKEN.name().equals(authMethod));
+           && PASSWORD.name().equals(authMethod);
   }
 
   @Nullable
