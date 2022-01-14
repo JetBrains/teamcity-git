@@ -46,7 +46,7 @@ public class ProcessTimeoutCallback extends SimpleCommandLineProcessRunner.Proce
   }
 
   @Override
-  public boolean isUseProcessTreeTerminator() {
+  public boolean terminateEntireProcessTree() {
     return true;
   }
 }

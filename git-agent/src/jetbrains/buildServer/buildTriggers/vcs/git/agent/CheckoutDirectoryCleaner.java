@@ -150,7 +150,7 @@ public class CheckoutDirectoryCleaner implements DirectoryCleanersProvider, Posi
           return COMMAND_OUTPUT_THRESHOLD;
         }
         @Override
-        public boolean isUseProcessTreeTerminator() {
+        public boolean terminateEntireProcessTree() {
           return false;
         }
       });

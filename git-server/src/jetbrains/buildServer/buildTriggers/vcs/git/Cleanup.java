@@ -613,7 +613,7 @@ public class Cleanup {
           return null;
         }
         @Override
-        public boolean isUseProcessTreeTerminator() {
+        public boolean terminateEntireProcessTree() {
           return true;
         }
       });
