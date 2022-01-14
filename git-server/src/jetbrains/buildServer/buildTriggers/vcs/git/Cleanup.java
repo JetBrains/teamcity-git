@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.execution.configurations.GeneralCommandLine;
-import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import java.io.File;
 import java.io.IOException;
@@ -46,9 +45,10 @@ import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static jetbrains.buildServer.log.Loggers.CLEANUP;
+
 public class Cleanup {
 
-  private static final Logger LOG = Loggers.CLEANUP;
   private static final Pattern PATTERN_LOOSE_OBJECT = Pattern.compile("[0-9a-fA-F]{38}");
   private static final Semaphore ourSemaphore = new Semaphore(1);
 
@@ -69,12 +69,12 @@ public class Cleanup {
 
   public void run() {
     if (!ourSemaphore.tryAcquire()) {
-      LOG.info("Skip git cleanup: another git cleanup process is running");
+      CLEANUP.info("Skip git cleanup: another git cleanup process is running");
       return;
     }
 
     try {
-      LOG.info("Git cleanup started");
+      CLEANUP.info("Git cleanup started");
       myCleanupCallWrapper.accept(() -> {
         removeUnusedRepositories();
         cleanupMonitoringData();
@@ -84,7 +84,7 @@ public class Cleanup {
           runJGitGC();
         }
       });
-      LOG.info("Git cleanup finished");
+      CLEANUP.info("Git cleanup finished");
     } finally {
       ourSemaphore.release();
     }
@@ -96,9 +96,9 @@ public class Cleanup {
 
   private void removeUnusedRepositories() {
     List<File> unusedDirs = getUnusedDirs();
-    LOG.debug("Remove unused git repository clones started");
+    CLEANUP.debug("Remove unused git repository clones started");
     for (File dir : unusedDirs) {
-      LOG.info("Remove unused git repository dir " + dir.getAbsolutePath());
+      CLEANUP.info("Remove unused git repository dir " + dir.getAbsolutePath());
       Lock rmLock = myRepositoryManager.getRmLock(dir).writeLock();
       rmLock.lock();
       boolean deleted;
@@ -109,13 +109,13 @@ public class Cleanup {
       }
       if (deleted) {
         myGcErrors.clearError(dir);
-        LOG.debug("Remove unused git repository dir " + dir.getAbsolutePath() + " finished");
+        CLEANUP.debug("Remove unused git repository dir " + dir.getAbsolutePath() + " finished");
       } else {
-        LOG.error("Cannot delete unused git repository dir " + dir.getAbsolutePath());
+        CLEANUP.error("Cannot delete unused git repository dir " + dir.getAbsolutePath());
         myRepositoryManager.invalidate(dir);
       }
     }
-    LOG.debug("Remove unused git repository clones finished");
+    CLEANUP.debug("Remove unused git repository clones finished");
   }
 
   @NotNull
@@ -146,20 +146,20 @@ public class Cleanup {
   }
 
   private void cleanupMonitoringData() {
-    LOG.debug("Start cleaning git monitoring data");
+    CLEANUP.debug("Start cleaning git monitoring data");
     for (File repository : getAllRepositoryDirs()) {
       File monitoring = new File(repository, myConfig.getMonitoringDirName());
       File[] files = monitoring.listFiles();
       if (files != null) {
         for (File monitoringData : files) {
           if (isExpired(monitoringData)) {
-            LOG.debug("Remove old git monitoring data " + monitoringData.getAbsolutePath());
+            CLEANUP.debug("Remove old git monitoring data " + monitoringData.getAbsolutePath());
             FileUtil.delete(monitoringData);
           }
         }
       }
     }
-    LOG.debug("Finish cleaning git monitoring data");
+    CLEANUP.debug("Finish cleaning git monitoring data");
   }
 
   private boolean isExpired(@NotNull File f) {
@@ -174,7 +174,7 @@ public class Cleanup {
 
     List<File> brokenGcCopyDirs = getRepositoryDirCopiesCreatedByGc();
     if (!brokenGcCopyDirs.isEmpty()) {
-      LOG.info("Found several copies of repositories directories left after the failed GC attempts: " + brokenGcCopyDirs + ", will remove all of them");
+      CLEANUP.info("Found several copies of repositories directories left after the failed GC attempts: " + brokenGcCopyDirs + ", will remove all of them");
     }
     for (File brokenDir: brokenGcCopyDirs) {
       FileUtil.delete(brokenDir);
@@ -183,26 +183,26 @@ public class Cleanup {
     List<File> allDirs = getAllRepositoryDirs();
     myGcErrors.retainErrors(allDirs);
     if (allDirs.isEmpty()) {
-      LOG.debug("No repositories found");
+      CLEANUP.debug("No repositories found");
       //reset error, no reason to show it if there is no repositories
       myNativeGitError.set(null);
       return;
     }
 
     if (!isNativeGitInstalled()) {
-      LOG.info("Cannot find native git, skip running git gc");
+      CLEANUP.info("Cannot find native git, skip running git gc");
       return;
     }
     Long freeDiskSpace = FileUtil.getFreeSpace(myRepositoryManager.getBaseMirrorsDir());
-    LOG.info("Use git at path '" + myConfig.getPathToGit() + "'");
+    CLEANUP.info("Use git at path '" + myConfig.getPathToGit() + "'");
     Collections.shuffle(allDirs);
     int runGCCounter = 0;
-    LOG.info("Git garbage collection started");
+    CLEANUP.info("Git garbage collection started");
     boolean runInPlace = myConfig.runInPlaceGc();
     for (File gitDir : allDirs) {
       String url = myRepositoryManager.getUrl(gitDir.getName());
       if (url != null) {
-        LOG.info("[" + gitDir.getName() + "] repository url: '" + url + "'");
+        CLEANUP.info("[" + gitDir.getName() + "] repository url: '" + url + "'");
       }
       if (enoughDiskSpaceForGC(gitDir, freeDiskSpace)) {
         if (runInPlace) {
@@ -218,21 +218,21 @@ public class Cleanup {
         }
       } else {
         myGcErrors.registerError(gitDir, "Not enough disk space to run git gc");
-        LOG.warn("[" + gitDir.getName() + "] not enough disk space to run git gc (" + String.valueOf(freeDiskSpace) + " " + pluralize("byte", freeDiskSpace) + ")");
+        CLEANUP.warn("[" + gitDir.getName() + "] not enough disk space to run git gc (" + String.valueOf(freeDiskSpace) + " " + pluralize("byte", freeDiskSpace) + ")");
       }
       runGCCounter++;
       final long repositoryFinishNanos = System.nanoTime();
       if ((repositoryFinishNanos - startNanos) > gcTimeQuotaNanos) {
         final int restRepositories = allDirs.size() - runGCCounter;
         if (restRepositories > 0) {
-          LOG.info("Git garbage collection quota exceeded, skip " + restRepositories + " repositories");
+          CLEANUP.info("Git garbage collection quota exceeded, skip " + restRepositories + " repositories");
           break;
         }
       }
     }
     final long finishNanos = System.nanoTime();
     final long deltaMillis = TimeUnit.NANOSECONDS.toMillis(finishNanos - startNanos);
-    LOG.info("Git garbage collection finished, it took " + TimePrinter.createMillisecondsFormatter().formatTime(deltaMillis));
+    CLEANUP.info("Git garbage collection finished, it took " + TimePrinter.createMillisecondsFormatter().formatTime(deltaMillis));
   }
 
 
@@ -242,7 +242,7 @@ public class Cleanup {
     File gcRepo;
     try {
       if (!isGcNeeded(originalRepo)) {
-        LOG.info("[" + originalRepo.getName() + "] no git gc is needed");
+        CLEANUP.info("[" + originalRepo.getName() + "] no git gc is needed");
         myGcErrors.clearError(originalRepo);
         return;
       }
@@ -251,18 +251,18 @@ public class Cleanup {
         gcRepo = setupGcRepo(originalRepo);
       } catch (Exception e) {
         myGcErrors.registerError(originalRepo, "Failed to create temporary repository for garbage collection", e);
-        LOG.warnAndDebugDetails("Failed to create temporary repository for garbage collection, original repository: " + originalRepo.getAbsolutePath(), e);
+        CLEANUP.warnAndDebugDetails("Failed to create temporary repository for garbage collection, original repository: " + originalRepo.getAbsolutePath(), e);
         return;
       }
 
-      LOG.info("[" + originalRepo.getName() + "] run git gc in dedicated dir [" + gcRepo.getName() + "]");
+      CLEANUP.info("[" + originalRepo.getName() + "] run git gc in dedicated dir [" + gcRepo.getName() + "]");
 
       try {
         repack(gcRepo);
         packRefs(gcRepo);
       } catch (Exception e) {
         myGcErrors.registerError(originalRepo, "Error while running garbage collection", e);
-        LOG.warnAndDebugDetails("Error while running garbage collection in " + originalRepo.getAbsolutePath(), e);
+        CLEANUP.warnAndDebugDetails("Error while running garbage collection in " + originalRepo.getAbsolutePath(), e);
         FileUtil.delete(gcRepo);
         return;
       }
@@ -280,7 +280,7 @@ public class Cleanup {
       FileUtil.delete(oldDir);
     } catch (Exception e) {
       myGcErrors.registerError(originalRepo, "Error while creating temporary directory", e);
-      LOG.warnAndDebugDetails("Error while creating temporary directory for " + originalRepo.getAbsolutePath(), e);
+      CLEANUP.warnAndDebugDetails("Error while creating temporary directory for " + originalRepo.getAbsolutePath(), e);
       FileUtil.delete(gcRepo);
       return;
     }
@@ -293,14 +293,14 @@ public class Cleanup {
     try {
       if (!renameDir(originalRepo, oldDir, 5)) {
         myGcErrors.registerError(originalRepo, "Failed to rename " + originalRepo.getName() + " to " + oldDir.getName());
-        LOG.warn("Failed to rename " + originalRepo.getName() + " to " + oldDir.getName() + " after several attempts");
+        CLEANUP.warn("Failed to rename " + originalRepo.getName() + " to " + oldDir.getName() + " after several attempts");
         return;
       }
       if (!renameDir(gcRepo, originalRepo, 5)) {
         myGcErrors.registerError(originalRepo, "Failed to rename " + gcRepo.getName() + " to " + originalRepo.getName());
-        LOG.warn("Failed to rename " + gcRepo.getName() + " to " + originalRepo.getName() + " after several attempts, will try restoring old repository");
+        CLEANUP.warn("Failed to rename " + gcRepo.getName() + " to " + originalRepo.getName() + " after several attempts, will try restoring old repository");
         if (!oldDir.renameTo(originalRepo)) {
-          LOG.warn("Failed to rename " + oldDir.getName() + " to " + originalRepo.getName());
+          CLEANUP.warn("Failed to rename " + oldDir.getName() + " to " + originalRepo.getName());
         }
         return;
       }
@@ -315,7 +315,7 @@ public class Cleanup {
       if (lockDuration > TimeUnit.SECONDS.toMillis(1)) {
         msg += " (lock acquired in " + lockDuration + "ms)";
       }
-      LOG.info(msg);
+      CLEANUP.info(msg);
     }
     myGcErrors.clearError(originalRepo);
   }
@@ -328,7 +328,7 @@ public class Cleanup {
         Thread.sleep(100);
       }
     } catch (InterruptedException e) {
-      LOG.warn("Could not rename directory " + prevDir.getAbsolutePath() + " to " + newDir.getAbsolutePath() + ", operation was interrupted");
+      CLEANUP.warn("Could not rename directory " + prevDir.getAbsolutePath() + " to " + newDir.getAbsolutePath() + ", operation was interrupted");
     }
     return false;
   }
@@ -347,12 +347,12 @@ public class Cleanup {
       }
       @Override
       public void onProcessFinished(@NotNull final Process ps) {
-        LOG.info("[" + gcRepo.getName() + "] \"" + cmd.getCommandLineString() + "\" finished in " + TimePrinter.createMillisecondsFormatter().formatTime((System.currentTimeMillis() - start)));
+        CLEANUP.info("[" + gcRepo.getName() + "] \"" + cmd.getCommandLineString() + "\" finished in " + TimePrinter.createMillisecondsFormatter().formatTime((System.currentTimeMillis() - start)));
       }
     });
     VcsException commandError = CommandLineUtil.getCommandLineError("git repack", result);
     if (commandError != null) {
-      LOG.warnAndDebugDetails("Error while running 'git repack' in \"" + gcRepo.getAbsolutePath() + "\"", commandError);
+      CLEANUP.warnAndDebugDetails("Error while running 'git repack' in \"" + gcRepo.getAbsolutePath() + "\"", commandError);
       throw commandError;
     }
   }
@@ -371,12 +371,12 @@ public class Cleanup {
       }
       @Override
       public void onProcessFinished(@NotNull final Process ps) {
-        LOG.info("[" + gcRepo.getName() + "] 'git pack-refs --all' finished in " + (System.currentTimeMillis() - start) + "ms");
+        CLEANUP.info("[" + gcRepo.getName() + "] 'git pack-refs --all' finished in " + (System.currentTimeMillis() - start) + "ms");
       }
     });
     VcsException commandError = CommandLineUtil.getCommandLineError("git pack-refs", result);
     if (commandError != null) {
-      LOG.warnAndDebugDetails("Error while running 'git pack-refs' in " + gcRepo.getAbsolutePath(), commandError);
+      CLEANUP.warnAndDebugDetails("Error while running 'git pack-refs' in " + gcRepo.getAbsolutePath(), commandError);
       throw commandError;
     }
   }
@@ -389,7 +389,7 @@ public class Cleanup {
       db = (FileRepository) new RepositoryBuilder().setBare().setGitDir(gitDir).build();
       return tooManyPacks(db) || tooManyLooseObjects(db);
     } catch (IOException e) {
-      LOG.warnAndDebugDetails("Error while checking if garbage collection is needed in " + gitDir.getAbsolutePath(), e);
+      CLEANUP.warnAndDebugDetails("Error while checking if garbage collection is needed in " + gitDir.getAbsolutePath(), e);
       return false;
     } finally {
       if (db != null)
@@ -497,7 +497,7 @@ public class Cleanup {
   private void runJGitGC() {
     final long startNanos = System.nanoTime();
     final long gcTimeQuotaNanos = TimeUnit.MINUTES.toNanos(myConfig.getNativeGCQuotaMinutes());
-    LOG.info("Git garbage collection started");
+    CLEANUP.info("Git garbage collection started");
     List<File> allDirs = getAllRepositoryDirs();
     Collections.shuffle(allDirs);
     int runGCCounter = 0;
@@ -508,23 +508,23 @@ public class Cleanup {
       lock.lock();
       try {
         try {
-          LOG.info("Start garbage collection in " + gitDir.getAbsolutePath());
+          CLEANUP.info("Start garbage collection in " + gitDir.getAbsolutePath());
           long repositoryStartNanos = System.nanoTime();
           runJGitGC(gitDir);
-          LOG.info("Garbage collection finished in " + gitDir.getAbsolutePath() + ", duration: " +
-                   TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - repositoryStartNanos) + "ms");
+          CLEANUP.info("Garbage collection finished in " + gitDir.getAbsolutePath() + ", duration: " +
+                               TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - repositoryStartNanos) + "ms");
         } catch (Exception e) {
-          LOG.warnAndDebugDetails("Error while running garbage collection in " + gitDir.getAbsolutePath(), e);
+          CLEANUP.warnAndDebugDetails("Error while running garbage collection in " + gitDir.getAbsolutePath(), e);
           if ((System.nanoTime() - startNanos) < gcTimeQuotaNanos) { //if quota is not exceeded try running a native git
             if (nativeGitInstalled == null) {
-              LOG.info("Check if native git is installed");
+              CLEANUP.info("Check if native git is installed");
               nativeGitInstalled = isNativeGitInstalled();
             }
             if (nativeGitInstalled) {
               runNativeGC(gitDir);
             } else {
               if (!enableNativeGitLogged) {
-                LOG.info("Cannot find a native git, please install it and provide a path to git in the 'teamcity.server.git.executable.path' internal property.");
+                CLEANUP.info("Cannot find a native git, please install it and provide a path to git in the 'teamcity.server.git.executable.path' internal property.");
                 enableNativeGitLogged = true;
               }
             }
@@ -539,13 +539,13 @@ public class Cleanup {
       if ((repositoryFinishNanos - startNanos) > gcTimeQuotaNanos) {
         final int restRepositories = allDirs.size() - runGCCounter;
         if (restRepositories > 0) {
-          LOG.info("Git garbage collection quota exceeded, skip " + restRepositories + " repositories");
+          CLEANUP.info("Git garbage collection quota exceeded, skip " + restRepositories + " repositories");
           break;
         }
       }
     }
     final long finishNanos = System.nanoTime();
-    LOG.info("Git garbage collection finished, it took " + TimeUnit.NANOSECONDS.toMillis(finishNanos - startNanos) + "ms");
+    CLEANUP.info("Git garbage collection finished, it took " + TimeUnit.NANOSECONDS.toMillis(finishNanos - startNanos) + "ms");
   }
 
   private boolean isNativeGitInstalled() {
@@ -558,7 +558,7 @@ public class Cleanup {
     VcsException commandError = CommandLineUtil.getCommandLineError("git version", result);
     if (commandError != null) {
       myNativeGitError.set(new RunGitError(pathToGit, commandError));
-      LOG.warnAndDebugDetails("Failed to run git", commandError);
+      CLEANUP.warnAndDebugDetails("Failed to run git", commandError);
       return false;
     } else {
       myNativeGitError.set(null);
@@ -600,11 +600,11 @@ public class Cleanup {
 
       ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.ProcessRunCallback() {
         public void onProcessStarted(Process ps) {
-          LOG.info("Start 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
+          CLEANUP.info("Start 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
         }
         public void onProcessFinished(Process ps) {
           final long finish = System.currentTimeMillis();
-          LOG.info("Finish 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc', duration: " + (finish - start) + "ms");
+          CLEANUP.info("Finish 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc', duration: " + (finish - start) + "ms");
         }
         public Integer getOutputIdleSecondsTimeout() {
           return 60 * myConfig.getNativeGCQuotaMinutes();
@@ -620,15 +620,15 @@ public class Cleanup {
 
       VcsException commandError = CommandLineUtil.getCommandLineError("'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", result);
       if (commandError != null) {
-        LOG.warnAndDebugDetails("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", commandError);
+        CLEANUP.warnAndDebugDetails("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", commandError);
       }
       if (result.getStderr().length() > 0) {
-        LOG.debug("Output produced by 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
-        LOG.debug(result.getStderr());
+        CLEANUP.debug("Output produced by 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
+        CLEANUP.debug(result.getStderr());
       }
     } catch (Exception e) {
       myGcErrors.registerError(bareGitDir, e);
-      LOG.warnAndDebugDetails("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", e);
+      CLEANUP.warnAndDebugDetails("Error while running 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'", e);
     }
   }
 
