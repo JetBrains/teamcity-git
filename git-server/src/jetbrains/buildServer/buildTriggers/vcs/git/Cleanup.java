@@ -32,7 +32,6 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
-import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
@@ -202,7 +201,7 @@ public class Cleanup {
     for (File gitDir : allDirs) {
       String url = myRepositoryManager.getUrl(gitDir.getName());
       if (url != null) {
-        CLEANUP.info("[" + gitDir.getName() + "] repository url: '" + url + "'");
+        CLEANUP.debug("[" + gitDir.getName() + "] repository url: '" + url + "'");
       }
       if (enoughDiskSpaceForGC(gitDir, freeDiskSpace)) {
         if (runInPlace) {
@@ -242,7 +241,7 @@ public class Cleanup {
     File gcRepo;
     try {
       if (!isGcNeeded(originalRepo)) {
-        CLEANUP.info("[" + originalRepo.getName() + "] no git gc is needed");
+        CLEANUP.debug("[" + originalRepo.getName() + "] no git gc is needed");
         myGcErrors.clearError(originalRepo);
         return;
       }
