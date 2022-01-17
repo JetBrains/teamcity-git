@@ -226,7 +226,7 @@ public class AgentCommitLoaderFactory {
           message("No 'git fetch' required: commit '" + sha + "' is in the local repository clone pointed by '" + remoteRefName + "'.");
           return false;
         }
-        message("'git fetch' required: commit '" + sha + "' is in the local repository clone, but '" + remoteRefName + "' points another commit '" + remoteRefSha + "'.");
+        message("'git fetch' required: commit '" + sha + "' is in the local repository clone, but '" + remoteRefName + "' points to another commit '" + remoteRefSha + "'.");
         return true;
       }
       message("'git fetch' required: commit '" + sha + "' is not found in the local repository clone.");
