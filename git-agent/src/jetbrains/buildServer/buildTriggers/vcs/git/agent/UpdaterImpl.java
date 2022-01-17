@@ -244,6 +244,16 @@ public class UpdaterImpl implements Updater {
     removeUrlSections();
     removeLfsStorage();
     disableAlternates();
+    try {
+      // pack-refs only packages valid refs,
+      // invalid ones remain in refs folder and will be removed during removeOutdatedRefs
+      // see TW-74592
+      myGitFactory.create(myTargetDirectory).packRefs().call();
+    } catch (VcsException e) {
+      final String msg = "Failed to pack refs";
+      myLogger.warning(msg);
+      LOG.debug(msg, e);
+    }
   }
 
 
@@ -844,6 +854,9 @@ public class UpdaterImpl implements Updater {
   protected boolean removeOutdatedRefs(@NotNull File workingDir) throws VcsException {
     boolean outdatedRefsRemoved = false;
     AgentGitFacade git = myGitFactory.create(workingDir);
+
+    recreateRefsFolder(workingDir);
+
     ShowRefResult showRefResult = git.showRef().call();
     Refs localRefs = new Refs(showRefResult.getValidRefs());
     Set<String> invalidRefs = showRefResult.getInvalidRefs();
@@ -862,7 +875,7 @@ public class UpdaterImpl implements Updater {
       String msg = "Failed to list remote repository refs, outdated local refs will not be cleaned";
       LOG.warn(msg);
       myLogger.warning(msg);
-      return false;
+      return outdatedRefsRemoved;
     }
     //We remove both outdated local refs (e.g. refs/heads/topic) and outdated remote
     //tracking branches (refs/remote/origin/topic), while git remote origin prune
@@ -880,6 +893,18 @@ public class UpdaterImpl implements Updater {
       outdatedRefsRemoved = true;
     }
     return outdatedRefsRemoved;
+  }
+
+  private void recreateRefsFolder(@NotNull File workingDir) {
+    // refs are expected to be in packed-refs file,
+    // while refs folder can contain invalid refs, which cause fetch errors, see TW-74592
+    final File refsDir = new File(workingDir, ".git/refs");
+    FileUtil.delete(refsDir);
+    try {
+      FileUtil.createDir(refsDir);
+    } catch (IOException e) {
+      myLogger.warning("Failed to re-create refs folder");
+    }
   }
 
   private void removeRefs(final AgentGitFacade git, final Collection<String> invalidRefs) throws VcsException {
