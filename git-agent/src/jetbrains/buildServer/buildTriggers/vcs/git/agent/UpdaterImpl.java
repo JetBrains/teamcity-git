@@ -901,7 +901,7 @@ public class UpdaterImpl implements Updater {
     final File refsDir = new File(workingDir, ".git/refs");
     FileUtil.delete(refsDir);
     try {
-      FileUtil.createDir(refsDir);
+      FileUtil.createDir(refsDir); // ref folder must be present in a valid .git repo
     } catch (IOException e) {
       myLogger.warning("Failed to re-create refs folder");
     }

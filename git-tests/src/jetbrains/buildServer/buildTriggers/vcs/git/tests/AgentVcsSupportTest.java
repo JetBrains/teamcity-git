@@ -140,7 +140,7 @@ public class AgentVcsSupportTest {
 
     GitAgentVcsSupport git = myBuilder.setSshKeyProvider(provider).setGitMetaFactory(loggingFactory).build();
 
-    AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, useMirrors.toString()));
+    AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_ALTERNATES, useMirrors.toString()));
 
     git.updateSources(myRoot, CheckoutRules.DEFAULT, "465ad9f630e451b9f2b782ffb09804c6a98c4bb9", myCheckoutDir, build, false);
     loggingFactory.clear();
@@ -1391,8 +1391,8 @@ public class AgentVcsSupportTest {
 
     // there should be no non-batch updates in second build
     then(loggingFactory.getNumberOfCalls(UpdateRefCommand.class)).isLessThan(10);
-    // Removed 5k tags, each batch command takes 1k. With mirrors - x2
-    then(loggingFactory.getNumberOfCalls(UpdateRefBatchCommand.class)).isEqualTo(useMirrors ? 10 : 5);
+    // Removed 5k tags, each batch command takes 1k
+    then(loggingFactory.getNumberOfCalls(UpdateRefBatchCommand.class)).isEqualTo(5);
   }
 
 
@@ -1414,6 +1414,10 @@ public class AgentVcsSupportTest {
 
   @TestFor(issues = "TW-47805")
   public void no_redundant_fetches_for_pull_requests() throws Exception {
+   myBuild = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.USE_ALTERNATES, "true");
+    }});
+
     LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
     myVcsSupport = myBuilder.setGitMetaFactory(loggingFactory).setFS(new MockFS()).build();
 
