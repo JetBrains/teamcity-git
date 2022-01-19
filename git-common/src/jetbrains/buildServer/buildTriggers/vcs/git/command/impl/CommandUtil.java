@@ -37,7 +37,7 @@ public class CommandUtil {
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
   private static void checkCommandFailed(@NotNull GitCommandLine cmd, @NotNull String cmdName, @NotNull ExecResult res) throws VcsException {
     if (cmd.isAbnormalExitExpected() && res.getExitCode() != 0 && res.getException() == null) {
-      logMessage(cmdName + " exit code is " + res.getExitCode() + ": it is expected behaviour.", "info");
+      logMessage(cmdName + " exit code is " + res.getExitCode() + ": it is expected behaviour.", "debug");
     } else if (res.getExitCode() != 0 || res.getException() != null) {
       commandFailed(cmdName, res);
     } else if (res.getStderr().length() > 0) {
@@ -130,14 +130,13 @@ public class CommandUtil {
           .runCommandSecure(cli, cli.getCommandLineString(), input, new ProcessTimeoutCallback(timeoutSeconds, cli.getMaxOutputSize()), stdoutBuffer, stderrBuffer);
 
         cli.logFinish(cmdStr);
-        CommandUtil.checkCommandFailed(cli, cmdStr, res);
-
         final String out = res.getStdout().trim();
         if (StringUtil.isNotEmpty(out)) {
           if (cli.getContext().isDebugGitCommands() || out.length() < 1024) {
             Loggers.VCS.debug("Output produced by " + fullCmdStr + ":\n" + out);
           }
         }
+        CommandUtil.checkCommandFailed(cli, cmdStr, res);
         if (!StringUtil.isEmptyOrSpaces(out) || !cli.isRepeatOnEmptyOutput() || attemptsLeft <= 0)
           return res;
         Loggers.VCS.warn("Get an unexpected empty output, will repeat command, attempts left: " + attemptsLeft);

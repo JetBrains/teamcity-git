@@ -25,4 +25,6 @@ public interface BaseCommand {
   void setEnv(@NotNull String name, @NotNull String value);
 
   void addPostAction(@NotNull Runnable action);
+
+  void throwExceptionOnNonZeroExitCode(boolean throwExceptionOnNonZeroExitCode);
 }

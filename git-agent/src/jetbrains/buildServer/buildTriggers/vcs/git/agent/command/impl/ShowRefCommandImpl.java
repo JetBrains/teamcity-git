@@ -63,9 +63,10 @@ public class ShowRefCommandImpl extends BaseCommandImpl implements ShowRefComman
       cmd.addParameter("--tags");
     try {
       ExecResult result = CommandUtil.runCommand(cmd);
-      return new ShowRefResult(parseValidRefs(result.getStdout()), parseInvalidRefs(result.getStderr()));
+      return new ShowRefResult(parseValidRefs(result.getStdout()), parseInvalidRefs(result.getStderr()), result.getExitCode());
     } catch (VcsException e) {
-      return new ShowRefResult(Collections.<String, Ref>emptyMap(), Collections.<String>emptySet());
+      getCmd().getContext().getLogger().warning("show-ref command failed, empty result will be returned: " + e.getMessage());
+      return new ShowRefResult();
     }
   }
 

@@ -40,6 +40,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefBatchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand;
@@ -894,6 +895,11 @@ public class AgentVcsSupportTest {
     File gitDir = new File(myCheckoutDir, ".git");
     String invalidObject = "bba7fbcc200b4968e6abd2f7d475dc15306cafc1";
     FileUtil.writeFile(new File(gitDir, "refs/heads/brokenRef"), invalidObject);
+    FileUtil.writeFile(new File(gitDir, "refs/remotes/origin/brokenRef"), invalidObject);
+
+    final File packedRefs = new File(gitDir, "packed-refs");
+    FileUtil.writeToFile(packedRefs, (invalidObject + " refs/heads/anotherBrokenRef" ).getBytes(), true);
+    FileUtil.writeToFile(packedRefs, (invalidObject + " refs/remotes/origin/anotherBrokenRef" ).getBytes(), true);
 
     //update remote repo
     delete(remoteRepo);
@@ -903,8 +909,25 @@ public class AgentVcsSupportTest {
     //second build
     build = createRunningBuild(map(PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY, PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES));
     myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "bba7fbcc200b4968e6abd2f7d475dc15306cafc6", myCheckoutDir, build, false);
+
     then(new File(gitDir, "refs/heads/brokenRef")).doesNotExist();
+    then(new File(gitDir, "refs/heads/anotherBrokenRef")).doesNotExist();
+
+    then(readText(packedRefs)).doesNotContain("refs/heads/brokenRef");
+    then(readText(packedRefs)).doesNotContain("refs/remotes/origin/brokenRef");
+    then(readText(packedRefs)).doesNotContain("refs/remotes/origin/anotherBrokenRef");
+    then(readText(packedRefs)).doesNotContain("refs/remotes/origin/anotherBrokenRef");
+
+    final ShowRefResult showRefResult = new AgentGitFacadeImpl(getGitPath()).showRef().call();
+    then(showRefResult.getInvalidRefs()).isEmpty();
+    then(showRefResult.getValidRefs()).isNotEmpty();
+    then(showRefResult.isFailed()).isFalse();
   }
+
+  @NotNull
+  private static String readText(@NotNull File f) throws IOException {
+    return f.isFile() ? FileUtil.readText(f) : "";
+   }
 
   @TestFor(issues = "TW-74592")
   public void should_handle_HEAD_pointing_to_invalid_object() throws Exception {
@@ -1390,8 +1413,8 @@ public class AgentVcsSupportTest {
 
     // there should be no non-batch updates in second build
     then(loggingFactory.getNumberOfCalls(UpdateRefCommand.class)).isLessThan(10);
-    // Removed 5k tags, each batch command takes 1k
-    then(loggingFactory.getNumberOfCalls(UpdateRefBatchCommand.class)).isEqualTo(5);
+    // Removed 5k tags, each batch command takes 1k. With mirrors - x2
+    then(loggingFactory.getNumberOfCalls(UpdateRefBatchCommand.class)).isEqualTo(useMirrors ? 10 : 5);
   }
 
 

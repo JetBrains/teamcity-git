@@ -28,9 +28,10 @@ import org.jetbrains.annotations.NotNull;
 public class BaseCommandImpl implements BaseCommand {
 
   private final GitCommandLine myCmd;
-  private final List<Pair<String, String>> myConfigs = new ArrayList<Pair<String, String>>();
-  private final Map<String, String> myEnv = new HashMap<String, String>();
-  private final List<Runnable> myPostActions = new ArrayList<Runnable>();
+  private final List<Pair<String, String>> myConfigs = new ArrayList<>();
+  private final Map<String, String> myEnv = new HashMap<>();
+  private final List<Runnable> myPostActions = new ArrayList<>();
+  private boolean myThrowExceptionOnNonZeroExitCode = true;
 
   public BaseCommandImpl(@NotNull GitCommandLine cmd) {
     myCmd = cmd;
@@ -47,7 +48,7 @@ public class BaseCommandImpl implements BaseCommand {
     for (Runnable action : myPostActions) {
       myCmd.addPostAction(action);
     }
-    return myCmd;
+    return myCmd.abnormalExitExpected(!myThrowExceptionOnNonZeroExitCode);
   }
 
 
@@ -60,6 +61,10 @@ public class BaseCommandImpl implements BaseCommand {
     myEnv.put(name, value);
   }
 
+  @Override
+  public void throwExceptionOnNonZeroExitCode(final boolean throwExceptionOnNonZeroExitCode) {
+    myThrowExceptionOnNonZeroExitCode = throwExceptionOnNonZeroExitCode;
+  }
 
   @Override
   public void addPostAction(@NotNull Runnable action) {
