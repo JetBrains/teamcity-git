@@ -135,14 +135,13 @@ public class CommandUtil {
           .runCommandSecure(cli, cli.getCommandLineString(), input, new ProcessTimeoutCallback(timeoutSeconds, cli.getMaxOutputSize()), stdoutBuffer, stderrBuffer);
 
         cli.logFinish(cmdStr);
-        CommandUtil.checkCommandFailed(cli, cmdStr, res);
-
         final String out = res.getStdout().trim();
         if (StringUtil.isNotEmpty(out)) {
           if (cli.getContext().isDebugGitCommands() || out.length() < 1024) {
             LOG.debug("Output produced by " + fullCmdStr + ":\n" + out);
           }
         }
+        CommandUtil.checkCommandFailed(cli, cmdStr, res);
         if (!StringUtil.isEmptyOrSpaces(out) || !cli.isRepeatOnEmptyOutput() || attemptsLeft <= 0)
           return res;
         LOG.warn("Get an unexpected empty output, will repeat command, attempts left: " + attemptsLeft);
