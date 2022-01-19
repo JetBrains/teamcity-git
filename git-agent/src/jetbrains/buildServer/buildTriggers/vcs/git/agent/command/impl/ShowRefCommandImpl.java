@@ -65,6 +65,7 @@ public class ShowRefCommandImpl extends BaseCommandImpl implements ShowRefComman
       ExecResult result = CommandUtil.runCommand(cmd);
       return new ShowRefResult(parseValidRefs(result.getStdout()), parseInvalidRefs(result.getStderr()));
     } catch (VcsException e) {
+      getCmd().getContext().getLogger().warning("show-ref command failed, empty result will be returned: " + e.getMessage());
       return new ShowRefResult(Collections.<String, Ref>emptyMap(), Collections.<String>emptySet());
     }
   }
