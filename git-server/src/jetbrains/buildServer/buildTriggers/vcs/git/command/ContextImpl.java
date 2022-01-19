@@ -167,6 +167,6 @@ public class ContextImpl implements Context {
 
   @Override
   public boolean isUseSshAskPass() {
-    return TeamCityProperties.getBooleanOrTrue("teamcity.git.useSshAskPas");
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.useSshAskPass");
   }
 }
