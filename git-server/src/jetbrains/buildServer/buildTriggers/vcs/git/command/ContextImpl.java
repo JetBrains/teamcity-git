@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
@@ -173,6 +172,6 @@ public class ContextImpl implements Context {
 
   @Override
   public boolean isUseSshAskPass() {
-    return TeamCityProperties.getBooleanOrTrue("teamcity.git.useSshAskPas");
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.useSshAskPass");
   }
 }
