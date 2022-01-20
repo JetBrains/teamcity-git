@@ -40,6 +40,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.URIishHelperImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefBatchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand;
@@ -895,6 +896,7 @@ public class AgentVcsSupportTest {
     File gitDir = new File(myCheckoutDir, ".git");
     String invalidObject = "bba7fbcc200b4968e6abd2f7d475dc15306cafc1";
     FileUtil.writeFile(new File(gitDir, "refs/heads/brokenRef"), invalidObject);
+    FileUtil.writeFile(new File(gitDir, "refs/remotes/origin/brokenRef"), invalidObject);
 
     //update remote repo
     delete(remoteRepo);
@@ -904,7 +906,14 @@ public class AgentVcsSupportTest {
     //second build
     build = createRunningBuild(map(PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY, PluginConfigImpl.VCS_ROOT_MIRRORS_STRATEGY_ALTERNATES));
     myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "bba7fbcc200b4968e6abd2f7d475dc15306cafc6", myCheckoutDir, build, false);
+
     then(new File(gitDir, "refs/heads/brokenRef")).doesNotExist();
+    then(FileUtil.readText(new File(gitDir, "packed-refs"))).doesNotContain("refs/heads/brokenRef");
+    then(FileUtil.readText(new File(gitDir, "packed-refs"))).doesNotContain("refs/remotes/origin/brokenRef");
+
+    final ShowRefResult showRefResult = new AgentGitFacadeImpl(getGitPath()).showRef().call();
+    then(showRefResult.getInvalidRefs()).isEmpty();
+    then(showRefResult.getValidRefs()).isNotEmpty();
   }
 
   @TestFor(issues = "TW-74592")
