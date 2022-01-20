@@ -77,4 +77,7 @@ public interface Context {
   List<String> getKnownRepoLocations();
 
   boolean isUseSshAskPass();
+
+  @Nullable
+  String getSshCommandOptions();
 }

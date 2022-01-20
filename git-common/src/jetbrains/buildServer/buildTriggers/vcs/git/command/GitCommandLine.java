@@ -143,6 +143,10 @@ public class GitCommandLine extends GeneralCommandLine {
         if (StringUtil.isNotEmpty(sendEnv)) {
           gitSshCommand.append(" -o \"SetEnv TEAMCITY_SSH_REQUEST_TOKEN").append("=").append(sendEnv).append("\"");
         }
+        final String sshCommandOptions = myCtx.getSshCommandOptions();
+        if (StringUtil.isNotEmpty(sshCommandOptions)) {
+          gitSshCommand.append(" ").append(sshCommandOptions);
+        }
         if (myCtx.isDebugSsh() || settings.isTrace()) {
           gitSshCommand.append(" -vvv");
         }

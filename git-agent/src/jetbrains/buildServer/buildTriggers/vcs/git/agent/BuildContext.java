@@ -165,4 +165,10 @@ public class BuildContext implements Context {
     final String p = myBuild.getSharedConfigParameters().get("teamcity.internal.git.useSshAskPas");
     return p == null || Boolean.parseBoolean(p);
   }
+
+  @Nullable
+  @Override
+  public String getSshCommandOptions() {
+    return myBuild.getSharedConfigParameters().get("teamcity.internal.git.sshCommandOptions");
+  }
 }
