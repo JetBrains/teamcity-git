@@ -42,7 +42,7 @@ public class CommandUtil {
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
   private static void checkCommandFailed(@NotNull GitCommandLine cmd, @NotNull String cmdName, @NotNull ExecResult res) throws VcsException {
     if (cmd.isAbnormalExitExpected() && res.getExitCode() != 0 && res.getException() == null) {
-      logMessage(cmdName + " exit code is " + res.getExitCode() + ": it is expected behaviour.", "info");
+      logMessage(cmdName + " exit code is " + res.getExitCode() + ": it is expected behaviour.", "debug");
     } else if (res.getExitCode() != 0 || res.getException() != null) {
       commandFailed(cmdName, res);
     } else if (res.getStderr().length() > 0) {

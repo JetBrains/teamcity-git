@@ -857,7 +857,10 @@ public class UpdaterImpl implements Updater {
 
     recreateRefsFolder(workingDir);
 
-    ShowRefResult showRefResult = git.showRef().call();
+    final ShowRefCommand showRefCommand = git.showRef();
+    showRefCommand.throwExceptionOnNonZeroExitCode(false);
+
+    final ShowRefResult showRefResult = showRefCommand.call();
     Refs localRefs = new Refs(showRefResult.getValidRefs());
     Set<String> invalidRefs = showRefResult.getInvalidRefs();
     if (localRefs.isEmpty() && invalidRefs.isEmpty())
