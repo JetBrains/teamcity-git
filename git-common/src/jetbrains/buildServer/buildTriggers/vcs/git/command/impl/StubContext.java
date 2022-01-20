@@ -159,4 +159,10 @@ public class StubContext implements Context {
   public void setLogger(@NotNull GitProgressLogger logger) {
     myLogger = logger;
   }
+
+  @Nullable
+  @Override
+  public String getSshCommandOptions() {
+    return null;
+  }
 }
