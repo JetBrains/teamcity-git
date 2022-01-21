@@ -288,7 +288,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     authSettings.put(Constants.AUTH_METHOD, getAuthMethod(url, uri).toString());
     Credentials credentials = url.getCredentials();
     if (credentials != null) {
-      credentials.setToPropertyMap(authSettings);
+      credentials.putToPropertyMap(authSettings);
     } else {
       authSettings.put(Constants.USERNAME, uri.getUser());
     }
