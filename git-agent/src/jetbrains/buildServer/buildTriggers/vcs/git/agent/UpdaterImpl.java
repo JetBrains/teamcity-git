@@ -244,16 +244,6 @@ public class UpdaterImpl implements Updater {
     removeUrlSections();
     removeLfsStorage();
     disableAlternates();
-    try {
-      // pack-refs only packages valid refs,
-      // invalid ones remain in refs folder and will be removed during removeOutdatedRefs
-      // see TW-74592
-      myGitFactory.create(myTargetDirectory).packRefs().call();
-    } catch (VcsException e) {
-      final String msg = "Failed to pack refs";
-      myLogger.warning(msg);
-      LOG.debug(msg, e);
-    }
   }
 
 
@@ -853,16 +843,20 @@ public class UpdaterImpl implements Updater {
 
   protected boolean removeOutdatedRefs(@NotNull File workingDir) throws VcsException {
     boolean outdatedRefsRemoved = false;
-    AgentGitFacade git = myGitFactory.create(workingDir);
-
-    recreateRefsFolder(workingDir);
+    final AgentGitFacade git = myGitFactory.create(workingDir);
 
     final ShowRefCommand showRefCommand = git.showRef();
     showRefCommand.throwExceptionOnNonZeroExitCode(false);
 
     final ShowRefResult showRefResult = showRefCommand.call();
-    Refs localRefs = new Refs(showRefResult.getValidRefs());
-    Set<String> invalidRefs = showRefResult.getInvalidRefs();
+    final Set<String> invalidRefs = showRefResult.getInvalidRefs();
+    if (showRefResult.isFailed() && invalidRefs.isEmpty()) {
+      // show-ref command failed, but it reported no invalid refs (or we couldn't parse them),
+      // we suspect, that there are invalid refs though and remove all refs, see TW-74592
+      removeRefs(workingDir);
+      return true;
+    }
+    final Refs localRefs = new Refs(showRefResult.getValidRefs());
     if (localRefs.isEmpty() && invalidRefs.isEmpty())
       return false;
     if (!invalidRefs.isEmpty()) {
@@ -898,9 +892,14 @@ public class UpdaterImpl implements Updater {
     return outdatedRefsRemoved;
   }
 
+  private void removeRefs(@NotNull File workingDir) {
+//    FileUtil.delete(new File(workingDir, ".git/HEAD"));
+    FileUtil.delete(new File(workingDir, ".git/FETCH_HEAD"));
+    FileUtil.delete(new File(workingDir, ".git/packed-refs"));
+    recreateRefsFolder(workingDir);
+  }
+
   private void recreateRefsFolder(@NotNull File workingDir) {
-    // refs are expected to be in packed-refs file,
-    // while refs folder can contain invalid refs, which cause fetch errors, see TW-74592
     final File refsDir = new File(workingDir, ".git/refs");
     FileUtil.delete(refsDir);
     try {
