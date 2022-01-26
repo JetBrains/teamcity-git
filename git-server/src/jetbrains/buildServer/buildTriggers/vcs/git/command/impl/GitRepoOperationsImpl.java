@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitNativeOperationsStatus;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.metrics.Counter;
@@ -58,28 +59,32 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   private final LazyGitExec myGitExec = new LazyGitExec();
 
   private final Function<String, Counter> myFetchDurationTimerProvider;
+  private final GitNativeOperationsStatus myMainConfigSettings;
 
   public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
                                @NotNull TransportFactory transportFactory,
                                @NotNull VcsRootSshKeyManager sshKeyManager,
                                @NotNull FetchCommand jGitFetchCommand) {
-    this(config, transportFactory, sshKeyManager, jGitFetchCommand, (Function<String, Counter>)repoUrl -> EMPTY_COUNTER);
+    this(config, NO_IMPL, transportFactory, sshKeyManager, jGitFetchCommand, (Function<String, Counter>)repoUrl -> EMPTY_COUNTER);
   }
 
   public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
+                               @NotNull GitNativeOperationsStatus nativeOperationsStatus,
                                @NotNull TransportFactory transportFactory,
                                @NotNull VcsRootSshKeyManager sshKeyManager,
                                @NotNull FetchCommand jGitFetchCommand,
                                @NotNull ServerMetrics serverMetrics) {
-    this(config, transportFactory, sshKeyManager, jGitFetchCommand, new FetchDurationTimers(serverMetrics, config));
+    this(config, nativeOperationsStatus, transportFactory, sshKeyManager, jGitFetchCommand, new FetchDurationTimers(serverMetrics, config));
   }
 
   private GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
-                               @NotNull TransportFactory transportFactory,
-                               @NotNull VcsRootSshKeyManager sshKeyManager,
-                               @NotNull FetchCommand jGitFetchCommand,
-                               @NotNull Function<String, Counter> fetchDurationTimerProvider) {
+                                @NotNull GitNativeOperationsStatus nativeOperationsStatus,
+                                @NotNull TransportFactory transportFactory,
+                                @NotNull VcsRootSshKeyManager sshKeyManager,
+                                @NotNull FetchCommand jGitFetchCommand,
+                                @NotNull Function<String, Counter> fetchDurationTimerProvider) {
     myConfig = config;
+    myMainConfigSettings = nativeOperationsStatus;
     myTransportFactory = transportFactory;
     mySshKeyManager = sshKeyManager;
     myJGitFetchCommand = jGitFetchCommand;
@@ -94,7 +99,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
 
   @NotNull
   private Optional<GitCommand> getNativeGitCommandOptional(@NotNull String repoUrl) {
-    if (isNativeGitOperationsEnabled(repoUrl)) {
+    if (isNativeGitOperationsEnabledInternal(repoUrl)) {
       final GitExec gitExec = gitExecInternal();
       if (isNativeGitOperationsSupported(gitExec)) {
         //noinspection ConstantConditions
@@ -106,24 +111,35 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
 
   @Override
   public boolean isNativeGitOperationsEnabled(@NotNull String repoUrl) {
-    final String global = TeamCityProperties.getProperty(GIT_NATIVE_OPERATIONS_ENABLED);
-    if (StringUtil.isNotEmpty(global)) return Boolean.parseBoolean(global);
+    final Optional<GitCommand> optional = getNativeGitCommandOptional(repoUrl);
+    return optional.isPresent() && optional.get() instanceof NativeGitCommands;
+  }
 
+  private boolean isNativeGitOperationsEnabledInternal(@NotNull String repoUrl) {
     for (Map.Entry<String, String> e : TeamCityProperties.getPropertiesWithPrefix(GIT_NATIVE_OPERATIONS_ENABLED).entrySet()) {
+      if (e.getKey().length() == GIT_NATIVE_OPERATIONS_ENABLED.length()) continue;
       final String url = e.getKey().substring(GIT_NATIVE_OPERATIONS_ENABLED.length() + 1);
       if (repoUrl.contains(url)) {
         return Boolean.parseBoolean(e.getValue());
       }
     }
-    return false;
-  }
+    final String fromProperties = TeamCityProperties.getProperty(GIT_NATIVE_OPERATIONS_ENABLED);
+    if (StringUtil.isNotEmpty(fromProperties)) return Boolean.parseBoolean(fromProperties);
+
+    return myMainConfigSettings.isNativeGitOperationsEnabled();
+ }
 
   @Override
   public boolean isNativeGitOperationsEnabled() {
     for (String v : TeamCityProperties.getPropertiesWithPrefix(GIT_NATIVE_OPERATIONS_ENABLED).values()) {
       if (Boolean.parseBoolean(v)) return true;
     }
-    return false;
+    return myMainConfigSettings.isNativeGitOperationsEnabled();
+  }
+
+  @Override
+  public boolean setNativeGitOperationsEnabled(boolean nativeGitOperatoinsEnabled) {
+    return myMainConfigSettings.setNativeGitOperationsEnabled(nativeGitOperatoinsEnabled);
   }
 
   @Override
