@@ -375,7 +375,7 @@
 
 
     applyAuthConstraints: function () {
-      var selectedAuthMethod = $j('#authMethod').val();
+      var selectedAuthMethod = $('authMethod').value;
       var authMethodName = this.getAuthMethodName(selectedAuthMethod);
       var fetchProto = this.getProtocol($j('#url'));
       var pushProto = this.getProtocol($j('#push_url'));
@@ -487,8 +487,8 @@
       BS.Repositories.installControls($('url'), function (repoInfo, cre) {
         $('url').value = repoInfo.repositoryUrl;
         if (cre != null) {
+          $('authMethod').value = 'PASSWORD';
           if (cre.permanentToken) {
-            $('authMethod').value = 'PASSWORD';
             $('secure:password').value = '**************';
           } else if (cre.tokenType) {
             $('authMethod').value = 'ACCESS_TOKEN';
