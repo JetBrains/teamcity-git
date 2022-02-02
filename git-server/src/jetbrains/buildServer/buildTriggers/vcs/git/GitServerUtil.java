@@ -26,14 +26,15 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.stream.Collectors;
+import jetbrains.buildServer.log.LogInitializer;
 import jetbrains.buildServer.serverSide.FileWatchingPropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Level;
-import org.apache.log4j.PatternLayout;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
@@ -502,10 +503,14 @@ public class GitServerUtil {
 
 
   public static void configureExternalProcessLogger(boolean debugEnabled) {
-    org.apache.log4j.Logger.getRootLogger().addAppender(new ConsoleAppender(new PatternLayout("[%d] %6p - %30.30c - %m %n")));
-    org.apache.log4j.Logger.getRootLogger().setLevel(Level.INFO);
-    org.apache.log4j.Logger.getLogger("org.eclipse.jgit").setLevel(debugEnabled ? Level.DEBUG : Level.WARN);
-    org.apache.log4j.Logger.getLogger("jetbrains.buildServer.buildTriggers.vcs.git").setLevel(debugEnabled ? Level.DEBUG : Level.INFO);
+    LogInitializer.reconfigureLog4j((loggerContext, configuration) -> {
+      LoggerConfig rootLogger = configuration.getRootLogger();
+      PatternLayout patternLayout = PatternLayout.newBuilder().withPattern("[%d] %6p - %30.30c - %m %n").build();
+      org.apache.logging.log4j.core.appender.ConsoleAppender consoleAppender = org.apache.logging.log4j.core.appender.ConsoleAppender.newBuilder().setLayout(patternLayout).build();
+      rootLogger.addAppender(consoleAppender, Level.INFO, null);
+    });
+    org.apache.log4j.Logger.getLogger("org.eclipse.jgit").setLevel(debugEnabled ? org.apache.log4j.Level.DEBUG : org.apache.log4j.Level.WARN);
+    org.apache.log4j.Logger.getLogger("jetbrains.buildServer.buildTriggers.vcs.git").setLevel(debugEnabled ? org.apache.log4j.Level.DEBUG : org.apache.log4j.Level.INFO);
 
     JSch.setLogger(debugEnabled ? JSchLoggers.STD_DEBUG_JSCH_LOGGER : JSchLoggers.STD_JSCH_LOGGER);
   }
