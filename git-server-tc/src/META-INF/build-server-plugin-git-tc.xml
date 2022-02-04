@@ -29,7 +29,4 @@
   </bean>
   <bean id="mainConfigProcessor" class="jetbrains.buildServer.buildTriggers.vcs.git.GitMainConfigProcessor"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitDiagnosticsTab"/>
-  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitStatusController">
-    <constructor-arg index="1" ref="mainConfigProcessor"/>
-  </bean>
 </beans>
