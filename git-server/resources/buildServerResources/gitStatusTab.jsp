@@ -101,6 +101,12 @@
         onCompleteSave: function (form, responseXML, err, responseText) {
           that.enable();
           that.setSaving(false);
+          if (responseXML == null) {
+            if (responseText.trim().startsWith('<div class="testConnectionError">')) {
+              BS.TestConnectionDialog.show(false, responseText, $('nativeGitTestConnection'), true);
+            }
+            return;
+          }
           var wereErrors = BS.XMLResponse.processErrors(responseXML, {}, BS.PluginPropertiesForm.propertiesErrorsHandler);
           if (wereErrors) {
             BS.ErrorsAwareListener.onCompleteSave(form, responseXML, false);
@@ -109,13 +115,14 @@
           }
         },
 
-        onFailedTestConnectionError: function(elem) {
-          var text = "";
-          if (elem.firstChild) {
-            text = elem.firstChild.nodeValue;
-          }
-          BS.TestConnectionDialog.show(false, text, $('nativeGitTestConnection'));
-        },
+        // onFailedTestConnectionError: function(elem) {
+        //   var text = "";
+        //   if (elem.firstChild) {
+        //     text = elem.firstChild.nodeValue;
+        //   }
+        //   alert(text);
+        //   BS.TestConnectionDialog.show(false, text, $('nativeGitTestConnection'));
+        // },
 
       }));
       return false;

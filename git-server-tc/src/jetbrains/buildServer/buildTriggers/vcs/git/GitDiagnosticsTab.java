@@ -1,32 +1,32 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.controllers.ActionErrors;
-import jetbrains.buildServer.controllers.BaseFormXmlController;
+import jetbrains.buildServer.controllers.AjaxRequestProcessor;
+import jetbrains.buildServer.controllers.BaseController;
 import jetbrains.buildServer.controllers.XmlResponseUtil;
-import jetbrains.buildServer.controllers.admin.projects.EditVcsRootsController;
 import jetbrains.buildServer.diagnostic.web.DiagnosticTab;
 import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.ProjectManager;
+import jetbrains.buildServer.serverSide.SBuildType;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.auth.Permission;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.TestConnectionSupport;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.web.CSRFFilter;
 import jetbrains.buildServer.web.openapi.PagePlaces;
 import jetbrains.buildServer.web.openapi.PluginDescriptor;
 import jetbrains.buildServer.web.openapi.WebControllerManager;
 import jetbrains.buildServer.web.util.ProjectHierarchyBean;
 import org.jdom.Element;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.web.servlet.ModelAndView;
 
 public class GitDiagnosticsTab extends DiagnosticTab {
@@ -51,21 +51,21 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     setPermission(Permission.MANAGE_SERVER_INSTALLATION);
     setIncludeUrl(pluginDescriptor.getPluginResourcesPath("gitStatusTab.jsp"));
     register();
-    controllerManager.registerController("/admin/diagnostic/nativeGitStatus.html", new BaseFormXmlController() {
+    controllerManager.registerController("/admin/diagnostic/nativeGitStatus.html", new BaseController() {
+      @Nullable
       @Override
-      protected ModelAndView doGet(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response) {
+      protected ModelAndView doHandle(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response) throws Exception {
+        if (isGet(request)) {
+          // TODO: check permissions
+          final Map<String, Object> model = new HashMap<>();
+          model.put("projectGitRoots", getProjectGitRoots(request));
+          return new ModelAndView(pluginDescriptor.getPluginResourcesPath("vcsRootsContainer.jsp"), model);
+        }
+        CSRFFilter.setSessionAttribute(request.getSession(true));
         // TODO: check permissions
-        final Map<String, Object> model = new HashMap<>();
-        model.put("projectGitRoots", getProjectGitRoots(request));
-        return new ModelAndView(pluginDescriptor.getPluginResourcesPath("vcsRootsContainer.jsp"), model);
-      }
-
-      @Override
-      protected void doPost(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull Element xmlResponse) {
-        // TODO: check permissions
-        final ActionErrors errors = new ActionErrors();
         if (request.getParameter("switch") == null) {
-          // test connection
+          // validate parameters
+          final ActionErrors errors = new ActionErrors();
           final String projectExternalId = request.getParameter("testConnectionProject");
           final String vcsRoots = request.getParameter("testConnectionVcsRoots");
           final SProject project = myProjectManager.findProjectByExternalId(projectExternalId);
@@ -76,32 +76,45 @@ public class GitDiagnosticsTab extends DiagnosticTab {
           } else if (StringUtil.isEmpty(vcsRoots)) {
             errors.addError("testConnectionVcsRoots", "Must not be empty");
           }
-          if (errors.hasErrors()) {
-            writeErrors(xmlResponse, errors);
-            return;
+          if (!errors.hasErrors()) {
+            // test connection
+            try {
+              //noinspection ConstantConditions
+              project.getVcsRootInstances().stream().filter(ri -> vcsRoots.equals(ri.getParent().getExternalId())).forEach(ri -> {
+                try {
+                  IOGuard.allowNetworkAndCommandLine(() -> myTestConnectionSupport.testConnection(ri));
+                } catch (Throwable e) {
+                  throw new TestConnectionException(e, ri.getUsages().keySet());
+                }
+              });
+            } catch (TestConnectionException e) {
+              //errors.addError(EditVcsRootsController.FAILED_TEST_CONNECTION_ERR, e.getMessage());
+              final Map<String, Object> model = new HashMap<>();
+              model.put("testConnectionError", e.getCause().getMessage());
+              model.put("affectedBuildTypes", e.getAffectedBuildTypes());
+              return new ModelAndView(pluginDescriptor.getPluginResourcesPath("testConnectionError.jsp"), model);
+            }
           }
-          try {
-            //noinspection ConstantConditions
-            project.getVcsRootInstances().stream().filter(ri -> vcsRoots.equals(ri.getParent().getExternalId())).forEach(ri -> {
-              try {
-                IOGuard.allowNetworkAndCommandLine(() -> myTestConnectionSupport.testConnection(ri));
-              } catch (Throwable e) {
-                throw new TestConnectionException(e);
+          new AjaxRequestProcessor().processRequest(request, response, new AjaxRequestProcessor.RequestHandler() {
+            @Override
+            public void handleRequest(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull Element xmlResponse) {
+              if (errors.hasErrors()) {
+                errors.serialize(xmlResponse);
+              } else {
+                XmlResponseUtil.writeTestResult(xmlResponse, "");
               }
-            });
-          } catch (TestConnectionException e) {
-            final Throwable cause = e.getCause();
-            errors.addError(EditVcsRootsController.FAILED_TEST_CONNECTION_ERR, cause.getMessage());
-          }
-          if (errors.hasErrors()) {
-            writeErrors(xmlResponse, errors);
-          } else {
-            XmlResponseUtil.writeTestResult(xmlResponse, "");
-          }
+            }
+          });
         } else {
-          final boolean enabled = myMainConfigProcessor.setNativeGitOperationsEnabled("enable".equalsIgnoreCase(request.getParameter("switchNativeGit")));
-          xmlResponse.addContent(new Element("nativeGitOperationsEnabled").addContent(String.valueOf(enabled)));
+          new AjaxRequestProcessor().processRequest(request, response, new AjaxRequestProcessor.RequestHandler() {
+            @Override
+            public void handleRequest(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull Element xmlResponse) {
+              final boolean enabled = myMainConfigProcessor.setNativeGitOperationsEnabled("enable".equalsIgnoreCase(request.getParameter("switchNativeGit")));
+              xmlResponse.addContent(new Element("nativeGitOperationsEnabled").addContent(String.valueOf(enabled)));
+            }
+          });
         }
+        return null;
       }
     });
   }
@@ -146,8 +159,16 @@ public class GitDiagnosticsTab extends DiagnosticTab {
   }
 
   private static final class TestConnectionException extends RuntimeException {
-    public TestConnectionException(@NotNull Throwable cause) {
+    private final Collection<SBuildType> myAffectedBuildTypes;
+
+    public TestConnectionException(@NotNull Throwable cause, @NotNull Collection<SBuildType> affectedBuildTypes) {
       super(cause);
+      myAffectedBuildTypes = affectedBuildTypes;
+    }
+
+    @NotNull
+    public Collection<SBuildType> getAffectedBuildTypes() {
+      return myAffectedBuildTypes;
     }
   }
 }
