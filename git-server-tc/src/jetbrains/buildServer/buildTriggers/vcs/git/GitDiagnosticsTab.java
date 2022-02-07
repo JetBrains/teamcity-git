@@ -14,7 +14,9 @@ import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.ProjectManager;
 import jetbrains.buildServer.serverSide.SBuildType;
 import jetbrains.buildServer.serverSide.SProject;
+import jetbrains.buildServer.serverSide.auth.AccessDeniedException;
 import jetbrains.buildServer.serverSide.auth.Permission;
+import jetbrains.buildServer.users.SUser;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.TestConnectionSupport;
@@ -24,6 +26,7 @@ import jetbrains.buildServer.web.openapi.PagePlaces;
 import jetbrains.buildServer.web.openapi.PluginDescriptor;
 import jetbrains.buildServer.web.openapi.WebControllerManager;
 import jetbrains.buildServer.web.util.ProjectHierarchyBean;
+import jetbrains.buildServer.web.util.SessionUser;
 import org.jdom.Element;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -55,6 +58,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
       @Nullable
       @Override
       protected ModelAndView doHandle(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response) throws Exception {
+        checkPermissions(request);
         if (isGet(request)) {
           // TODO: check permissions
           final Map<String, Object> model = new HashMap<>();
@@ -119,6 +123,13 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     });
   }
 
+  private void checkPermissions(@NotNull HttpServletRequest request) {
+    final SUser user = SessionUser.getUser(request);
+    if (!checkUserPermissions(user)) {
+      throw new AccessDeniedException(user, "Not enough permissions");
+    }
+  }
+
   private static boolean isGitRoot(@NotNull SVcsRoot root) {
     return Constants.VCS_NAME.equals(root.getVcsName());
   }
@@ -126,7 +137,6 @@ public class GitDiagnosticsTab extends DiagnosticTab {
   @Override
   public void fillModel(@NotNull Map<String, Object> model, @NotNull HttpServletRequest request) {
     super.fillModel(model, request);
-    // TODO: check permissions
     model.put("nativeGitOperationsEnabled", myMainConfigProcessor.isNativeGitOperationsEnabled());
     try {
       final GitExec gitExec = myOperations.detectGit();
