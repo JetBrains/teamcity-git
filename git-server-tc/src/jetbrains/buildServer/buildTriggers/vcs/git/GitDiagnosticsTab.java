@@ -10,10 +10,7 @@ import jetbrains.buildServer.controllers.AjaxRequestProcessor;
 import jetbrains.buildServer.controllers.BaseController;
 import jetbrains.buildServer.controllers.XmlResponseUtil;
 import jetbrains.buildServer.diagnostic.web.DiagnosticTab;
-import jetbrains.buildServer.serverSide.IOGuard;
-import jetbrains.buildServer.serverSide.ProjectManager;
-import jetbrains.buildServer.serverSide.SBuildType;
-import jetbrains.buildServer.serverSide.SProject;
+import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.auth.AccessDeniedException;
 import jetbrains.buildServer.serverSide.auth.Permission;
 import jetbrains.buildServer.users.SUser;
@@ -60,13 +57,11 @@ public class GitDiagnosticsTab extends DiagnosticTab {
       protected ModelAndView doHandle(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response) throws Exception {
         checkPermissions(request);
         if (isGet(request)) {
-          // TODO: check permissions
           final Map<String, Object> model = new HashMap<>();
           model.put("projectGitRoots", getProjectGitRoots(request));
           return new ModelAndView(pluginDescriptor.getPluginResourcesPath("vcsRootsContainer.jsp"), model);
         }
         CSRFFilter.setSessionAttribute(request.getSession(true));
-        // TODO: check permissions
         if (request.getParameter("switch") == null) {
           // validate parameters
           final ActionErrors errors = new ActionErrors();
@@ -132,6 +127,11 @@ public class GitDiagnosticsTab extends DiagnosticTab {
 
   private static boolean isGitRoot(@NotNull SVcsRoot root) {
     return Constants.VCS_NAME.equals(root.getVcsName());
+  }
+
+  @Override
+  public boolean isAvailable(@NotNull HttpServletRequest request) {
+    return super.isAvailable(request) && TeamCityProperties.getBoolean("teamcity.git.diagnosticsTab.enabled");
   }
 
   @Override
