@@ -129,9 +129,13 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     return Constants.VCS_NAME.equals(root.getVcsName());
   }
 
+  public static boolean isEnabled() {
+    return TeamCityProperties.getBoolean("teamcity.git.diagnosticsTab.enabled");
+  }
+
   @Override
   public boolean isAvailable(@NotNull HttpServletRequest request) {
-    return super.isAvailable(request) && TeamCityProperties.getBoolean("teamcity.git.diagnosticsTab.enabled");
+    return super.isAvailable(request) && isEnabled();
   }
 
   @Override
