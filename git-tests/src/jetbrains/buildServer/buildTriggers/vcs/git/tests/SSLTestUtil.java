@@ -19,12 +19,12 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
-import com.sun.xml.internal.messaging.saaj.util.ByteInputStream;
 import jetbrains.buildServer.NetworkUtil;
 import jetbrains.buildServer.agent.ssl.TrustedCertificatesDirectory;
 import jetbrains.buildServer.util.FileUtil;
 
 import javax.net.ssl.*;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.security.KeyStore;
@@ -110,7 +110,7 @@ class SSLTestUtil {
     final KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
     final byte[] keyStoreData = Base64.getDecoder().decode(SSLTestUtil.KEY_STORE);
     final char[] password = "123456".toCharArray();
-    try (final ByteInputStream in = new ByteInputStream(keyStoreData, keyStoreData.length)) {
+    try (final ByteArrayInputStream in = new ByteArrayInputStream(keyStoreData, keyStoreData.length, 0)) {
       keyStore.load(in, password);
     }
     myServerKeyStore = keyStore;
