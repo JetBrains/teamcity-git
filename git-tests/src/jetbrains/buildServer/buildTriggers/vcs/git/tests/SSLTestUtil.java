@@ -110,7 +110,7 @@ class SSLTestUtil {
     final KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
     final byte[] keyStoreData = Base64.getDecoder().decode(SSLTestUtil.KEY_STORE);
     final char[] password = "123456".toCharArray();
-    try (final ByteArrayInputStream in = new ByteArrayInputStream(keyStoreData, keyStoreData.length, 0)) {
+    try (final ByteArrayInputStream in = new ByteArrayInputStream(keyStoreData, 0, keyStoreData.length)) {
       keyStore.load(in, password);
     }
     myServerKeyStore = keyStore;
