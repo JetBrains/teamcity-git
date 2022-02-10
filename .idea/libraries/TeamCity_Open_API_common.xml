@@ -3,7 +3,7 @@
     <CLASSES>
       <root url="jar://$TeamCityDistribution$/devPackage/common-api.jar!/" />
       <root url="jar://$TeamCityDistribution$/devPackage/serviceMessages.jar!/" />
-      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/log4j-1.2.12.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/tc-log4j.jar!/" />
       <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/xmlrpc-2.0.1.jar!/" />
       <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/trove-3.0.3.jar!/" />
       <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/trove4j.jar!/" />
