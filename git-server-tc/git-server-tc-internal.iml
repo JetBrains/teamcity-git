@@ -30,5 +30,7 @@
     <orderEntry type="module" module-name="web-openapi" />
     <orderEntry type="module" module-name="changeViewers" />
     <orderEntry type="module" module-name="oauth-integration" />
+    <orderEntry type="module" module-name="web-diagnostic" />
+    <orderEntry type="module" module-name="web" />
   </component>
 </module>

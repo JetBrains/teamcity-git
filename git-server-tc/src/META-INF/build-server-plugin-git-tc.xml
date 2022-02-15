@@ -18,6 +18,8 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitHubPasswordAuthHealthPage"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitServerVersionHealthReport"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitServerVersionHealthPage"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.SwitchToNativeGitHealthReport"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.SwitchToNativeGitHealthPage"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitExternalChangeViewerExtension"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.SpaceExternalChangeViewerExtension"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.CleanupCustomizer"/>
@@ -27,4 +29,6 @@
     <constructor-arg index="0" ref="repositoryStateEventDispatcher"/>
     <constructor-arg index="1" ref="serverDispatcher"/>
   </bean>
+  <bean id="mainConfigProcessor" class="jetbrains.buildServer.buildTriggers.vcs.git.GitMainConfigProcessor"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitDiagnosticsTab"/>
 </beans>
