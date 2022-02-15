@@ -14,10 +14,12 @@ import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.auth.AccessDeniedException;
 import jetbrains.buildServer.serverSide.auth.Permission;
 import jetbrains.buildServer.users.SUser;
+import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.SVcsRoot;
-import jetbrains.buildServer.vcs.TestConnectionSupport;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.VcsRootInstance;
 import jetbrains.buildServer.web.CSRFFilter;
 import jetbrains.buildServer.web.openapi.PagePlaces;
 import jetbrains.buildServer.web.openapi.PluginDescriptor;
@@ -31,22 +33,22 @@ import org.springframework.web.servlet.ModelAndView;
 
 public class GitDiagnosticsTab extends DiagnosticTab {
 
+  private final GitVcsSupport myVcsSupport;
   private final GitRepoOperations myOperations;
   private final GitMainConfigProcessor myMainConfigProcessor;
-  private final TestConnectionSupport myTestConnectionSupport;
   private final ProjectManager myProjectManager;
 
   public GitDiagnosticsTab(@NotNull PagePlaces pagePlaces,
                            @NotNull WebControllerManager controllerManager,
                            @NotNull PluginDescriptor pluginDescriptor,
+                           @NotNull GitVcsSupport vcsSupport,
                            @NotNull GitRepoOperations gitOperations,
                            @NotNull GitMainConfigProcessor mainConfigProcessor,
-                           @NotNull GitVcsSupport gitVcsSupport,
                            @NotNull ProjectManager projectManager) {
     super(pagePlaces, "gitStatus", "Git");
+    myVcsSupport = vcsSupport;
     myOperations = gitOperations;
     myMainConfigProcessor = mainConfigProcessor;
-    myTestConnectionSupport = gitVcsSupport;
     myProjectManager = projectManager;
     setPermission(Permission.MANAGE_SERVER_INSTALLATION);
     setIncludeUrl(pluginDescriptor.getPluginResourcesPath("gitStatusTab.jsp"));
@@ -77,21 +79,55 @@ public class GitDiagnosticsTab extends DiagnosticTab {
           }
           if (!errors.hasErrors()) {
             // test connection
-            try {
-              //noinspection ConstantConditions
-              project.getVcsRootInstances().stream().filter(ri -> vcsRoots.equals(ri.getParent().getExternalId())).forEach(ri -> {
+            final boolean isRootProject = project.isRootProject();
+            final Map<SVcsRoot, List<TestConnectionException>> testConnectionErrors = new HashMap<>();
+            if ("ALL".equals(vcsRoots)) {
+              for (VcsRootInstance ri : project.getVcsRootInstances()) {
+                if (!isGitRoot(ri)) continue;
                 try {
-                  IOGuard.allowNetworkAndCommandLine(() -> myTestConnectionSupport.testConnection(ri));
-                } catch (Throwable e) {
-                  throw new TestConnectionException(e, ri.getUsages().keySet());
+                  IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, false));
+                } catch (VcsException e) {
+                  // jgit fails, no need to check native git
+                  continue;
                 }
-              });
-            } catch (TestConnectionException e) {
-              //errors.addError(EditVcsRootsController.FAILED_TEST_CONNECTION_ERR, e.getMessage());
-              final Map<String, Object> model = new HashMap<>();
-              model.put("testConnectionError", e.getCause().getMessage());
-              model.put("affectedBuildTypes", e.getAffectedBuildTypes());
-              return new ModelAndView(pluginDescriptor.getPluginResourcesPath("testConnectionError.jsp"), model);
+                try {
+                  IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, true));
+                } catch (Throwable e) {
+                  List<TestConnectionException> rootErrors = testConnectionErrors.get(ri.getParent());
+                  if (rootErrors == null) {
+                    rootErrors = new ArrayList<>();
+                    testConnectionErrors.put(ri.getParent(), rootErrors);
+                  }
+                  rootErrors.add(new TestConnectionException(e, ri.getUsages().keySet()));
+                }
+              }
+              if (!testConnectionErrors.isEmpty()) {
+                final Map<String, Object> model = new HashMap<>();
+                model.put("testConnectionErrors", testConnectionErrors);
+                model.put("testConnectionProject", project);
+                model.put("testConnectionTimestamp", Dates.now().toString());
+                return new ModelAndView(pluginDescriptor.getPluginResourcesPath("testConnectionErrors.jsp"), model);
+              }
+            } else {
+              if (myProjectManager.findVcsRootByExternalId(vcsRoots) == null) {
+                errors.addError("testConnectionVcsRoots", "No VCS root found");
+              } else {
+                try {
+                  project.getVcsRootInstances().stream().filter(ri -> isGitRoot(ri) && vcsRoots.equals(ri.getParent().getExternalId())).forEach(ri -> {
+                    try {
+                      IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, true));
+                    } catch (Throwable e) {
+                      throw new TestConnectionException(e, ri.getUsages().keySet());
+                    }
+                  });
+                } catch (TestConnectionException e) {
+                  final Map<String, Object> model = new HashMap<>();
+                  model.put("testConnectionError", e.getCause().getMessage());
+                  model.put("affectedBuildTypes", e.getAffectedBuildTypes());
+                  model.put("isRootProject", isRootProject);
+                  return new ModelAndView(pluginDescriptor.getPluginResourcesPath("testConnectionError.jsp"), model);
+                }
+              }
             }
           }
           new AjaxRequestProcessor().processRequest(request, response, new AjaxRequestProcessor.RequestHandler() {
@@ -125,7 +161,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     }
   }
 
-  private static boolean isGitRoot(@NotNull SVcsRoot root) {
+  private static boolean isGitRoot(@NotNull VcsRoot root) {
     return Constants.VCS_NAME.equals(root.getVcsName());
   }
 
@@ -172,7 +208,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     return ProjectHierarchyBean.getProjectsFor(projects, true);
   }
 
-  private static final class TestConnectionException extends RuntimeException {
+  public static final class TestConnectionException extends RuntimeException {
     private final Collection<SBuildType> myAffectedBuildTypes;
 
     public TestConnectionException(@NotNull Throwable cause, @NotNull Collection<SBuildType> affectedBuildTypes) {

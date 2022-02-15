@@ -1,6 +1,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.health;
 
 import javax.servlet.http.HttpServletRequest;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitDiagnosticsTab;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitMainConfigProcessor;
 import jetbrains.buildServer.serverSide.auth.Permission;
 import jetbrains.buildServer.web.openapi.PagePlaces;
@@ -26,7 +27,7 @@ public class SwitchToNativeGitHealthPage extends HealthStatusItemPageExtension {
 
   @Override
   public boolean isAvailable(@NotNull HttpServletRequest request) {
-    if (!super.isAvailable(request)) return false;
+    if (!super.isAvailable(request) || !GitDiagnosticsTab.isEnabled()) return false;
     if (!SessionUser.getUser(request).isPermissionGrantedGlobally(Permission.MANAGE_SERVER_INSTALLATION)) return false;
     return !myMainConfigProcessor.isNativeGitOperationsEnabled();
   }

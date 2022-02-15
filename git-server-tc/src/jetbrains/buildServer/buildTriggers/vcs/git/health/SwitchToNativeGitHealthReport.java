@@ -10,7 +10,7 @@ import org.jetbrains.annotations.NotNull;
 public class SwitchToNativeGitHealthReport extends HealthStatusReport {
   public static final String TYPE = "SwitchToNativeGitHealthReport";
   private static final String DESCRIPTION = "Switch to native git";
-  private static final ItemCategory CATEGORY = new ItemCategory( "SwitchToNativeGitHealthCategory", DESCRIPTION, ItemSeverity.INFO);
+  private static final ItemCategory CATEGORY = new ItemCategory( "SwitchToNativeGitHealthCategory", DESCRIPTION, ItemSeverity.WARN);
 
   private final GitMainConfigProcessor myMainConfigProcessor;
 
@@ -38,7 +38,7 @@ public class SwitchToNativeGitHealthReport extends HealthStatusReport {
 
   @Override
   public boolean canReportItemsFor(@NotNull HealthStatusScope scope) {
-    return scope.globalItems() && scope.isItemWithSeverityAccepted(ItemSeverity.INFO);
+    return scope.globalItems() && scope.isItemWithSeverityAccepted(ItemSeverity.WARN);
   }
 
   @Override

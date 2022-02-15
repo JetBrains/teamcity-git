@@ -9,12 +9,41 @@
   .runnerFormTable .longField {
     margin-bottom: 6px;
   }
+  .runnerFormTable .smallNote {
+    max-width: none;
+  }
+
+  .testConnectionErrorsTable {
+    margin-top: 1em;
+  }
+
+  .testConnectionErrorsTable th,
+  .testConnectionErrorsTable td {
+    border-top: none;
+  }
+
+  .testConnectionErrorsTable td.testConnectionErrorMessageRow {
+    border-bottom: 1px solid #dfe5eb;
+  }
+
+  .testConnectionErrorsTable tr:last-child td.testConnectionErrorMessageRow{
+    border-bottom: none;
+  }
+
+  .testConnectionErrorsTable pre.errorMessage {
+    white-space: pre-wrap;
+    white-space: -moz-pre-wrap;
+    white-space: -pre-wrap;
+    white-space: -o-pre-wrap;
+    word-wrap: break-word;
+    color: #a90f1a;
+  }
 </style>
 <c:set var="controllerUrl"><c:url value="/admin/diagnostic/nativeGitStatus.html"/></c:set>
 <form id="nativeGitStatusForm" method="post" onsubmit="return BS.NativeGitStatusForm.submit()" style="margin-top: 0.5em;">
   <table class="runnerFormTable" style="width: 100%;">
     <tr class="groupingTitle">
-      <td colspan="2">Native Git Operations</td>
+      <td colspan="2">Native Git</td>
     </tr>
     <jsp:useBean id="isGitExecError" type="java.lang.Boolean" scope="request"/>
     <c:choose>
@@ -59,24 +88,39 @@
         </div>
       </td>
     </tr>
-    <c:if test="${!isGitExecError && nativeGitOperationsSupported}">
-      <tr>
-        <th><label for="vcsRootIds">Native Git Test Connection:</label></th>
-        <td>
-          <jsp:useBean id="projectsWithGitRoots" type="java.util.List" scope="request"/>
-          <span style="float: right;">
-            <forms:saving className="progressRingInline" id="saving"/>
-           <input class="btn" type="button" id="nativeGitTestConnection" name="nativeGitTestConnection" value="Test Connection" onclick="BS.NativeGitStatusForm.testConnection();"/>
-          </span>
-
-          <bs:projectsFilter name="testConnectionProject" id="testConnectionProject" className="longField" defaultOption="true" projectBeans="${projectsWithGitRoots}" onchange="BS.NativeGitStatusForm.refreshProjectVcsRoots();"/>
-          <span id="error_testConnectionProject" class="error"></span>
-          <%@include file="vcsRootsContainer.jsp" %>
-          <span id="error_testConnectionVcsRoots" class="error"></span>
-        </td>
-      </tr>
-    </c:if>
   </table>
+  <c:if test="${!isGitExecError && nativeGitOperationsSupported}">
+    <bs:_collapsibleBlock title="Native Git Test Connection" id="testConnection" collapsedByDefault="true" saveState="true">
+      <table class="runnerFormTable" style="width: 100%;">
+        <tr>
+          <td colspan="2">
+            <div class="smallNote" style="margin-left:0">TeamCity supports official native git versions 2.29+ installed per <a
+                href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">this guide</a> with latest OpenSSH as ssh client. <bs:help file=""/><br/>
+              You can run Test Connection with native git to ensure your VCS roots will continue working with native git before enabling this feature.<br/>
+              Test Connection will not show existing VCS errors, only errors which will arise after enabling native git operations. It may be time-consuming if your server has many VCS roots.
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <th><label for="vcsRootIds">Native Git Test Connection:</label></th>
+          <td>
+            <jsp:useBean id="projectsWithGitRoots" type="java.util.List" scope="request"/>
+            <span style="float: right;">
+              <forms:saving className="progressRingInline" id="saving"/>
+              <input class="btn" type="button" id="nativeGitTestConnection" name="nativeGitTestConnection" value="Test Connection" onclick="BS.NativeGitStatusForm.testConnection();"/>
+            </span>
+
+            <bs:projectsFilter name="testConnectionProject" id="testConnectionProject" className="longField" defaultOption="true" projectBeans="${projectsWithGitRoots}"
+                               onchange="BS.NativeGitStatusForm.refreshProjectVcsRoots();"/>
+            <span id="error_testConnectionProject" class="error"></span>
+            <%@include file="vcsRootsContainer.jsp" %>
+            <span id="error_testConnectionVcsRoots" class="error"></span>
+          </td>
+        </tr>
+      </table>
+      <div id="testConnectionResults"/>
+    </bs:_collapsibleBlock>
+  </c:if>
 </form>
 <bs:dialog dialogId="testConnectionDialog" dialogClass="vcsRootTestConnectionDialog" title="Test Connection" closeCommand="BS.TestConnectionDialog.close();"
            closeAttrs="showdiscardchangesmessage='false'">
@@ -104,6 +148,8 @@
           if (responseXML == null) {
             if (responseText.trim().startsWith('<div class="testConnectionError">')) {
               BS.TestConnectionDialog.show(false, responseText, $('nativeGitTestConnection'), true);
+            } else if (responseText.trim().startsWith('<div class="testConnectionErrors">')) {
+              $j('#testConnectionResults').html(responseText);
             }
             return;
           }
@@ -114,16 +160,6 @@
             BS.TestConnectionDialog.show(true, '', $('nativeGitTestConnection'));
           }
         },
-
-        // onFailedTestConnectionError: function(elem) {
-        //   var text = "";
-        //   if (elem.firstChild) {
-        //     text = elem.firstChild.nodeValue;
-        //   }
-        //   alert(text);
-        //   BS.TestConnectionDialog.show(false, text, $('nativeGitTestConnection'));
-        // },
-
       }));
       return false;
     },

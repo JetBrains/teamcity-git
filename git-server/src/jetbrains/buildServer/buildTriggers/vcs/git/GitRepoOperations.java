@@ -13,6 +13,9 @@ public interface GitRepoOperations extends GitNativeOperationsStatus {
   LsRemoteCommand lsRemoteCommand(@NotNull String repoUrl);
 
   @NotNull
+  LsRemoteCommand lsRemoteCommand(boolean nativeOperations);
+
+  @NotNull
   PushCommand pushCommand(@NotNull String repoUrl);
 
   @NotNull

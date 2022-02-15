@@ -155,6 +155,20 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   }
 
   @NotNull
+  @Override
+  public LsRemoteCommand lsRemoteCommand(boolean nativeOperations) {
+    if (nativeOperations) {
+      final GitExec gitExec = gitExecInternal();
+      if (isNativeGitOperationsSupported(gitExec)) {
+        return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager);
+      } else {
+        throw new UnsupportedOperationException("git executable " + gitExec.getPath() + " version " + gitExec.getVersion() + " is not supported for runninf native git commands on server-side");
+      }
+    }
+    return (db, gitRoot, settings) -> getRemoteRefsJGit(db, gitRoot);
+  }
+
+  @NotNull
   private Map<String, Ref> getRemoteRefsJGit(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws VcsException {
     try {
       return IOGuard.allowNetworkCall(() -> {
