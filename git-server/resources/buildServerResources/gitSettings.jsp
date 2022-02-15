@@ -153,6 +153,7 @@
         </div>
         <props:hiddenProperty name="oauthProviderId" />
         <props:hiddenProperty name="tokenType" />
+        <props:hiddenProperty name="tokenId" />
       </td>
     </tr>
     <tr id="gitPasswordRow" class="auth password">
