@@ -16,17 +16,14 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.util.HashMap;
+import java.util.Map;
 import jetbrains.buildServer.serverSide.BuildRevision;
 import jetbrains.buildServer.serverSide.RepositoryVersion;
 import jetbrains.buildServer.serverSide.SBuild;
 import jetbrains.buildServer.serverSide.parameters.AbstractBuildParametersProvider;
-import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootInstance;
-import jetbrains.buildServer.vcs.VcsUtil;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Adds parameters to the build which can be used during agent-side checkout
@@ -48,5 +45,11 @@ public class GitBuildParametersProvider extends AbstractBuildParametersProvider 
         params.put(GitUtils.getGitRootBranchParamName(root), vcsBranch);
     }
     return params;
+  }
+
+  @NotNull
+  @Override
+  public String getPrefix() {
+    return Constants.GIT_ROOT_BUILD_BRANCH_PREFIX;
   }
 }
