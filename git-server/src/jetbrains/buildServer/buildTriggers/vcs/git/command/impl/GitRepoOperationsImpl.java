@@ -223,7 +223,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     }
     GitVersion gitVersion;
     try {
-      gitVersion = new GitFacadeImpl(new File("."), new StubContext(gitPath)).version().call();
+      gitVersion = IOGuard.allowCommandLine(() -> new GitFacadeImpl(new File("."), new StubContext(gitPath)).version().call());
     } catch (VcsException e) {
       throw new VcsException("Unable to run git at path \"" + gitPath + "\": please specify correct path to git executable using \"teamcity.server.git.executable.path\" server startup property, error: " + e.getMessage(), e);
     }
