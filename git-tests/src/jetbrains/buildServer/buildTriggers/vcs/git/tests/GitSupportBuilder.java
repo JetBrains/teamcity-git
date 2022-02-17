@@ -51,14 +51,10 @@ public class GitSupportBuilder {
   private GitMapFullPath myMapFullPath;
   private CommitLoader myCommitLoader;
   private final List<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
+  private VcsRootSshKeyManager myVcsRootSSHKeyManager = new EmptyVcsRootSshKeyManager();
 
   public static GitSupportBuilder gitSupport() {
     return new GitSupportBuilder();
-  }
-
-  @NotNull
-  private static VcsRootSshKeyManager getSshKeyManager() {
-    return root -> null;
   }
 
   @NotNull
@@ -107,6 +103,11 @@ public class GitSupportBuilder {
     return this;
   }
 
+  public GitSupportBuilder withSSHKeyManager(@NotNull VcsRootSshKeyManager sshKeyManager) {
+    myVcsRootSSHKeyManager = sshKeyManager;
+    return this;
+  }
+
   public GitSupportBuilder withBeforeFetchHook(@NotNull Runnable beforeFetchHook) {
     myBeforeFetchHook = beforeFetchHook;
     return this;
@@ -140,14 +141,14 @@ public class GitSupportBuilder {
     if (myPluginConfig == null)
       myPluginConfig = myPluginConfigBuilder != null ? myPluginConfigBuilder.build() : new PluginConfigImpl(myServerPaths);
     if (myTransportFactory == null)
-      myTransportFactory = new TransportFactoryImpl(myPluginConfig, new EmptyVcsRootSshKeyManager());
+      myTransportFactory = new TransportFactoryImpl(myPluginConfig, myVcsRootSSHKeyManager);
 
     Mockery context = new Mockery();
     if (myFetchCommand == null) {
       if (myBeforeFetchHook == null) {
-        myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
+        myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), myVcsRootSSHKeyManager);
       } else {
-        final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), new EmptyVcsRootSshKeyManager());
+        final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), myVcsRootSSHKeyManager);
         myFetchCommand = (db, fetchURI, settings) -> {
           myBeforeFetchHook.run();
           originalCommand.fetch(db, fetchURI, settings);
@@ -168,7 +169,7 @@ public class GitSupportBuilder {
     }
     RevisionsCache revisionsCache = new RevisionsCache(myPluginConfig);
     myMapFullPath = new GitMapFullPath(myPluginConfig, revisionsCache);
-    final GitRepoOperationsImpl gitRepoOperations = new GitRepoOperationsImpl(myPluginConfig, myTransportFactory, getSshKeyManager(), myFetchCommand);
+    final GitRepoOperationsImpl gitRepoOperations = new GitRepoOperationsImpl(myPluginConfig, myTransportFactory, myVcsRootSSHKeyManager, myFetchCommand);
     myCommitLoader = new CommitLoaderImpl(myRepositoryManager, gitRepoOperations, myMapFullPath, myPluginConfig);
     GitResetCacheHandler resetCacheHandler = new GitResetCacheHandler(myRepositoryManager, new GcErrors());
     ResetRevisionsCacheHandler resetRevisionsCacheHandler = new ResetRevisionsCacheHandler(revisionsCache);
@@ -188,7 +189,7 @@ public class GitSupportBuilder {
     };
 
     GitVcsSupport git = new GitVcsSupport(gitRepoOperations, myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
-                                          new EmptyVcsRootSshKeyManager(), new MockVcsOperationProgressProvider(),
+                                          myVcsRootSSHKeyManager, new MockVcsOperationProgressProvider(),
                                           resetCacheHandler, resetRevisionsCacheHandler, tokenRefresher, myTestConnectionSupport);
     git.addExtensions(myExtensions);
     git.setExtensionHolder(myExtensionHolder);
