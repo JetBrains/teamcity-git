@@ -53,7 +53,7 @@ public class GitServerVersionHealthReport extends HealthStatusReport {
     final Ref<GitExec> gitExec = new Ref<>(null);
     String reason = null;
     try {
-      IOGuard.allowCommandLine(() -> {gitExec.set(myGitOperations.detectGit());});
+      IOGuard.allowCommandLine(() -> gitExec.set(myGitOperations.detectGit()));
       if (myGitOperations.isNativeGitOperationsSupported(gitExec.get())) return;
     } catch (Exception e) {
       reason = e.getMessage();
