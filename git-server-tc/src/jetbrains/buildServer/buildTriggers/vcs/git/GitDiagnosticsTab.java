@@ -1,9 +1,16 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.intellij.openapi.diagnostic.Logger;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import jetbrains.buildServer.BuildProject;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.controllers.ActionErrors;
 import jetbrains.buildServer.controllers.AjaxRequestProcessor;
@@ -15,6 +22,7 @@ import jetbrains.buildServer.serverSide.auth.AccessDeniedException;
 import jetbrains.buildServer.serverSide.auth.Permission;
 import jetbrains.buildServer.users.SUser;
 import jetbrains.buildServer.util.Dates;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
@@ -32,6 +40,10 @@ import org.jetbrains.annotations.Nullable;
 import org.springframework.web.servlet.ModelAndView;
 
 public class GitDiagnosticsTab extends DiagnosticTab {
+
+  private static final String FILENAME_PREFIX = "testConnection_" + BuildProject.ROOT_PROJECT_ID + "_";
+  private static final Gson GSON = new GsonBuilder().setPrettyPrinting().enableComplexMapKeySerialization().create();
+  private static final Logger LOG = Logger.getInstance(GitDiagnosticsTab.class.getName());
 
   private final GitVcsSupport myVcsSupport;
   private final GitRepoOperations myOperations;
@@ -80,32 +92,66 @@ public class GitDiagnosticsTab extends DiagnosticTab {
           if (!errors.hasErrors()) {
             // test connection
             final boolean isRootProject = project.isRootProject();
-            final Map<SVcsRoot, List<TestConnectionException>> testConnectionErrors = new HashMap<>();
             if ("ALL".equals(vcsRoots)) {
-              for (VcsRootInstance ri : project.getVcsRootInstances()) {
-                if (!isGitRoot(ri)) continue;
-                try {
-                  IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, false));
-                } catch (VcsException e) {
-                  // jgit fails, no need to check native git
-                  continue;
-                }
-                try {
-                  IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, true));
-                } catch (Throwable e) {
-                  List<TestConnectionException> rootErrors = testConnectionErrors.get(ri.getParent());
-                  if (rootErrors == null) {
-                    rootErrors = new ArrayList<>();
-                    testConnectionErrors.put(ri.getParent(), rootErrors);
+              Map<VcsRootLink, List<TestConnectionError>> testConnectionErrors = null;
+              Date timestamp = Dates.now();
+              if (isRootProject) {
+                final File storedFile = getExitingStoredTestConnectionErrorsFile();
+                if (request.getParameter("loadStored") == null) {
+                  deleteFile(storedFile);
+                } else if (storedFile == null) {
+                  return null;
+                } else {
+                  testConnectionErrors = getStoredTestConnectionErrors(storedFile);
+                  if (testConnectionErrors != null) {
+                    timestamp = getTimestampFromStoredFile(storedFile);
                   }
-                  rootErrors.add(new TestConnectionException(e, ri.getUsages().keySet()));
                 }
               }
+              if (testConnectionErrors == null) {
+                testConnectionErrors = new HashMap<>();
+                for (VcsRootInstance ri : project.getVcsRootInstances()) {
+                  if (!isGitRoot(ri)) continue;
+                  try {
+                    IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, false));
+                  } catch (VcsException e) {
+                    // jgit fails, no need to check native git
+                    continue;
+                  }
+                  try {
+                    IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, true));
+                  } catch (Throwable e) {
+                    final VcsRootLink vcsRootLink = new VcsRootLink(ri.getParent());
+                    List<TestConnectionError> rootErrors = testConnectionErrors.get(vcsRootLink);
+                    if (rootErrors == null) {
+                      rootErrors = new ArrayList<>();
+                      testConnectionErrors.put(vcsRootLink, rootErrors);
+                    }
+                    rootErrors.add(new TestConnectionError(e.getMessage(), ri.getUsages().keySet().stream().map(bt -> new BuildTypeLink(bt)).collect(Collectors.toSet())));
+                  }
+                }
+                if (isRootProject) {
+                  final File storedFile = getStoredTestConnectionErrorsFile(timestamp);
+                  deleteFile(storedFile);
+                  FileUtil.createParentDirs(storedFile);
+                  FileWriter writer = null;
+                  try {
+                    writer = new FileWriter(storedFile);
+                    GSON.toJson(testConnectionErrors, Map.class, writer);
+                  } catch (Throwable e) {
+                    LOG.warnAndDebugDetails("Exception while saving native git Test Connection results to " + storedFile, e);
+                    deleteFile(storedFile);
+                  } finally {
+                    FileUtil.close(writer);
+                  }
+                }
+              }
+
               if (!testConnectionErrors.isEmpty()) {
                 final Map<String, Object> model = new HashMap<>();
                 model.put("testConnectionErrors", testConnectionErrors);
                 model.put("testConnectionProject", project);
-                model.put("testConnectionTimestamp", Dates.now().toString());
+                model.put("testConnectionTimestamp", timestamp.toString());
                 return new ModelAndView(pluginDescriptor.getPluginResourcesPath("testConnectionErrors.jsp"), model);
               }
             } else {
@@ -124,7 +170,6 @@ public class GitDiagnosticsTab extends DiagnosticTab {
                   final Map<String, Object> model = new HashMap<>();
                   model.put("testConnectionError", e.getCause().getMessage());
                   model.put("affectedBuildTypes", e.getAffectedBuildTypes());
-                  model.put("isRootProject", isRootProject);
                   return new ModelAndView(pluginDescriptor.getPluginResourcesPath("testConnectionError.jsp"), model);
                 }
               }
@@ -152,6 +197,50 @@ public class GitDiagnosticsTab extends DiagnosticTab {
         return null;
       }
     });
+  }
+
+  private static void deleteFile(@Nullable File file) {
+    if (file != null) FileUtil.delete(file);
+  }
+
+  @Nullable
+  private File getExitingStoredTestConnectionErrorsFile() {
+    final File tmpDir = new File(FileUtil.getTempDirectory() + "/git");
+    final File[] files = FileUtil.listFiles(tmpDir, (d, n) -> n.startsWith(FILENAME_PREFIX) && n.endsWith(".json"));
+    return files.length == 0 ? null : files[0];
+  }
+
+  @NotNull
+  private File getStoredTestConnectionErrorsFile(@NotNull Date timestamp) {
+    final File tmpDir = new File(FileUtil.getTempDirectory() + "/git");
+    return new File(tmpDir, FILENAME_PREFIX + timestamp.getTime() + ".json");
+  }
+
+  @NotNull
+  private Date getTimestampFromStoredFile(@NotNull File file) {
+    final String name = file.getName();
+    try {
+      return new Date(Long.parseLong(name.substring(FILENAME_PREFIX.length(), name.length() - 5)));
+    } catch (Throwable e) {
+      LOG.warnAndDebugDetails("Failed to parse timestamp from stored native git Test Connection results file name " + name + ", will remove file", e);
+      deleteFile(file);
+      return Dates.now();
+    }
+  }
+
+  @Nullable
+  private Map<VcsRootLink, List<TestConnectionError>> getStoredTestConnectionErrors(@NotNull File file) {
+    if (!file.isFile()) {
+      return null;
+    }
+    LOG.debug("Loading native git Test Connection results for root project from " + file);
+    try {
+      return GSON.fromJson(new FileReader(file), Map.class);
+    } catch (Throwable e) {
+      LOG.warnAndDebugDetails("Exception while parsing stored native git Test Connection results from " + file + ", will remove the file", e);
+      deleteFile(file);
+      return null;
+    }
   }
 
   private void checkPermissions(@NotNull HttpServletRequest request) {
@@ -219,6 +308,139 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     @NotNull
     public Collection<SBuildType> getAffectedBuildTypes() {
       return myAffectedBuildTypes;
+    }
+  }
+
+  public static final class TestConnectionError {
+    private String message;
+    private Collection<BuildTypeLink> affectedBuildTypes;
+
+    public TestConnectionError(@NotNull String message, @NotNull Collection<BuildTypeLink> affectedBuildTypes) {
+      this.message = message;
+      this.affectedBuildTypes = affectedBuildTypes;
+    }
+
+    @NotNull
+    public String getMessage() {
+      return message;
+    }
+
+    public void setMessage(@NotNull String message) {
+      this.message = message;
+    }
+
+    @NotNull
+    public Collection<BuildTypeLink> getAffectedBuildTypes() {
+      return affectedBuildTypes;
+    }
+
+    public void setAffectedBuildTypes(@NotNull Collection<BuildTypeLink> affectedBuildTypes) {
+      this.affectedBuildTypes = affectedBuildTypes;
+    }
+  }
+
+  public static final class BuildTypeLink {
+    private String name;
+    private String externalId;
+
+    public BuildTypeLink(@NotNull SBuildType buildType) {
+      this(buildType.getName(), buildType.getExternalId());
+    }
+
+    public BuildTypeLink(@NotNull String name, @NotNull String externalId) {
+      this.name = name;
+      this.externalId = externalId;
+    }
+
+    @NotNull
+    public String getName() {
+      return name;
+    }
+
+    public void setName(@NotNull String name) {
+      this.name = name;
+    }
+
+    @NotNull
+    public String getExternalId() {
+      return externalId;
+    }
+
+    public void setExternalId(@NotNull String externalId) {
+      this.externalId = externalId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      BuildTypeLink that = (BuildTypeLink)o;
+
+      return externalId.equals(that.externalId);
+    }
+
+    @Override
+    public int hashCode() {
+      return externalId.hashCode();
+    }
+  }
+
+  public static final class VcsRootLink {
+    private String name;
+    private String vcsName;
+    private String externalId;
+
+    public VcsRootLink(@NotNull VcsRoot vcsRoot) {
+      this(vcsRoot.getName(), vcsRoot.getVcsName(), vcsRoot.getExternalId());
+    }
+
+    public VcsRootLink(@NotNull String name, @NotNull String vcsName, @NotNull String externalId) {
+      this.name = name;
+      this.vcsName = vcsName;
+      this.externalId = externalId;
+    }
+
+    @NotNull
+    public String getName() {
+      return name;
+    }
+
+    public void setName(@NotNull String name) {
+      this.name = name;
+    }
+
+    @NotNull
+    public String getVcsName() {
+      return vcsName;
+    }
+
+    public void setVcsName(@NotNull String vcsName) {
+      this.vcsName = vcsName;
+    }
+
+    @NotNull
+    public String getExternalId() {
+      return externalId;
+    }
+
+    public void setExternalId(@NotNull String externalId) {
+      this.externalId = externalId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      VcsRootLink that = (VcsRootLink)o;
+
+      return externalId.equals(that.externalId);
+    }
+
+    @Override
+    public int hashCode() {
+      return externalId.hashCode();
     }
   }
 }

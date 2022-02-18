@@ -157,10 +157,35 @@
           if (wereErrors) {
             BS.ErrorsAwareListener.onCompleteSave(form, responseXML, false);
           } else {
+            if ('_Root' == $('testConnectionProject').getValue() && 'ALL' == $('testConnectionVcsRoots').getValue()) {
+              $j('#testConnectionResults').html('');
+            }
             BS.TestConnectionDialog.show(true, '', $('nativeGitTestConnection'));
           }
         },
       }));
+      return false;
+    },
+
+    loadExistingTestConnectionResults: function () {
+      var that = this;
+      that.disable();
+      that.setSaving(true);
+      BS.ajaxRequest('${controllerUrl}', {
+        parameters: {
+          testConnectionProject: '_Root',
+          testConnectionVcsRoots: 'ALL',
+          loadStored: 'true'
+        },
+        onComplete: function(transport) {
+          let res = transport.responseText.trim();
+          if (res.startsWith('<div class="testConnectionErrors">')) {
+            $j('#testConnectionResults').html(res);
+          }
+          that.enable();
+          that.setSaving(false);
+        }
+      });
       return false;
     },
 
@@ -199,5 +224,6 @@
     } else {
       $('testConnectionVcsRoots').disable();
     }
+    BS.NativeGitStatusForm.loadExistingTestConnectionResults();
   });
 </script>
