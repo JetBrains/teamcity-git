@@ -6,8 +6,10 @@ import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 
 public class SshPubkeyAcceptedAlgorithms {
+  public static final String DOMAINS_WITH_ENFORCED_SHA_1_SIGNATURE = "teamcity.git.ssh.domainsWithEnforcedSha1Signature";
+
   public static void configureSession(@NotNull Session session) {
-    String sha1SignatureEnforcedDomains = TeamCityProperties.getProperty("teamcity.git.ssh.domainsWithEnforcedSha1Signature", ".azure.com,.visualstudio.com");
+    String sha1SignatureEnforcedDomains = TeamCityProperties.getProperty(DOMAINS_WITH_ENFORCED_SHA_1_SIGNATURE, ".azure.com,.visualstudio.com");
     String host = session.getHost();
     if (host != null) {
       boolean enforceSha1 = false;
