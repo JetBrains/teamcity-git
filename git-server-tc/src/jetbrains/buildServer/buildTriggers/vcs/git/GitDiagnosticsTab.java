@@ -22,10 +22,12 @@ import jetbrains.buildServer.controllers.AjaxRequestProcessor;
 import jetbrains.buildServer.controllers.BaseController;
 import jetbrains.buildServer.controllers.XmlResponseUtil;
 import jetbrains.buildServer.diagnostic.web.DiagnosticTab;
+import jetbrains.buildServer.log.LogUtil;
 import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.auth.AccessDeniedException;
 import jetbrains.buildServer.serverSide.auth.Permission;
 import jetbrains.buildServer.serverSide.executors.ExecutorServices;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.users.SUser;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.FileUtil;
@@ -205,37 +207,85 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     });
   }
 
+  @NotNull
+  private static Integer getKey(@NotNull VcsRootInstance root) {
+    final StringBuilder res = new StringBuilder(root.getProperty(Constants.FETCH_URL, ""))
+      .append(root.getProperty(Constants.USERNAME));
+
+    final AuthenticationMethod authMethod = Enum.valueOf(AuthenticationMethod.class, root.getProperty(Constants.AUTH_METHOD, AuthenticationMethod.ANONYMOUS.name()));
+    res.append(authMethod.name());
+    switch (authMethod) {
+      case PASSWORD:
+        res.append(root.getProperty(Constants.PASSWORD));
+        break;
+      case ACCESS_TOKEN: {
+        res.append(root.getProperty(Constants.TOKEN_ID));
+        break;
+      }
+      case TEAMCITY_SSH_KEY:
+        res.append(root.getProperty(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME));
+        break;
+      case PRIVATE_KEY_FILE:
+        res.append(root.getProperty(Constants.PRIVATE_KEY_PATH));
+        break;
+    }
+    return res.toString().hashCode();
+  }
+
   private void runTestConnectionForAllProjectRoots(@NotNull SProject project, @NotNull Date timestamp) {
     final String externalId = project.getExternalId();
     try {
+      final Map<Integer, String> cachedResults = new HashMap<>();
+      final long start = System.currentTimeMillis();
+      int cacheHits = 0;
       for (VcsRootInstance ri : project.getVcsRootInstances()) {
-        if (!isGitRoot(ri)) continue;
-        try {
-          IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, false));
-        } catch (VcsException e) {
-          // jgit fails, no need to check native git
-          continue;
-        }
-        try {
-          IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, true));
-        } catch (Throwable e) {
-          final Lock lock = myLocks.get(externalId);
-          lock.lock();
+        if (!isGitRoot(ri) || ri.getUsages().isEmpty()) continue;
+
+        String error = null;
+        final Integer key = getKey(ri);
+        if (cachedResults.containsKey(key)) {
+          ++cacheHits;
+          error = cachedResults.get(key);
+          if (error == null) continue; // cached success
+        } else {
           try {
-            final VcsRootLink vcsRootLink = new VcsRootLink(ri.getParent());
-            final List<TestConnectionError> rootErrors = myTestConnectionsInProgress.get(externalId).getRootErrors(vcsRootLink);
-            rootErrors.add(new TestConnectionError(e.getMessage(), ri.getUsages().keySet().stream().map(bt -> new BuildTypeLink(bt)).collect(Collectors.toSet())));
-          } finally {
-            lock.unlock();
+            IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, false));
+          } catch (VcsException e) {
+            // jgit fails, no need to check native git
+            cachedResults.put(key, null);
+            continue;
+          }
+          try {
+            IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, true));
+            cachedResults.put(key, null);
+          } catch (Throwable e) {
+            error = e.getMessage();
+            cachedResults.put(key, error);
           }
         }
+        if (error == null) continue;
+
+        final Lock lock = myLocks.get(externalId);
+        lock.lock();
+        try {
+          final VcsRootLink vcsRootLink = new VcsRootLink(ri.getParent());
+          final List<TestConnectionError> rootErrors = myTestConnectionsInProgress.get(externalId).getRootErrors(vcsRootLink);
+          rootErrors.add(new TestConnectionError(error, ri.getUsages().keySet().stream().map(bt -> new BuildTypeLink(bt)).collect(Collectors.toSet())));
+        } finally {
+          lock.unlock();
+        }
       }
+
+      final long duration = System.currentTimeMillis() - start;
+      LOG.info("Native git TestConnection for " + LogUtil.describe(project) + " took " + TimeUnit.MILLISECONDS.toSeconds(duration) + "sec, cache size: " + cachedResults.size() + ", cache hits: " + cacheHits);
+
       if (project.isRootProject()) {
         FileUtil.delete(getTestConnectionResultsFolder());
 
         final File storedFile = getStoredTestConnectionErrorsFile(timestamp);
         deleteFile(storedFile);
         FileUtil.createParentDirs(storedFile);
+
         FileWriter writer = null;
         try {
           final Map<VcsRootLink, List<TestConnectionError>> errors;
@@ -249,7 +299,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
           writer = new FileWriter(storedFile);
           GSON.toJson(errors, Map.class, writer);
         } catch (Throwable e) {
-          LOG.warnAndDebugDetails("Exception while saving native git Test Connection results to " + storedFile, e);
+          LOG.warnAndDebugDetails("Exception while saving native git Test Connection results for " + LogUtil.describe(project) + " to " + storedFile, e);
           deleteFile(storedFile);
         } finally {
           FileUtil.close(writer);
