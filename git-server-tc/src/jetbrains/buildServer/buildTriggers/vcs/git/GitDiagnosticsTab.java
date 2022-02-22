@@ -110,16 +110,17 @@ public class GitDiagnosticsTab extends DiagnosticTab {
               Date timestamp = Dates.now();
               if (project.isRootProject()) {
                 // on page load we first try to load saved previous results for root project
-                final File storedFile = getExitingStoredTestConnectionErrorsFile();
-                final String loadStoredStr = request.getParameter("loadStored");
-                final boolean loadStored = "true".equals(loadStoredStr);
-                if (loadStored && storedFile == null) {
-                  // this request tries to load previous results for root project, but there is nothing found
-                  return null;
-                } else if (loadStored) {
-                  testConnectionErrors = getStoredTestConnectionErrors(storedFile);
-                  if (testConnectionErrors != null) {
-                    timestamp = getTimestampFromStoredFile(storedFile);
+                final boolean loadStored = "true".equals(request.getParameter("loadStored"));
+                if (loadStored) {
+                  final File storedFile = getExitingStoredTestConnectionErrorsFile();
+                  if (storedFile == null) {
+                    // this request tries to load previous results for root project, but there is nothing found
+                    return null;
+                  } else {
+                    testConnectionErrors = getStoredTestConnectionErrors(storedFile);
+                    if (testConnectionErrors != null) {
+                      timestamp = getTimestampFromStoredFile(storedFile);
+                    }
                   }
                 }
               }
