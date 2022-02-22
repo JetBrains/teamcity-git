@@ -96,7 +96,7 @@
           <td colspan="2">
             <div class="smallNote" style="margin-left:0">TeamCity supports official native git versions 2.29+ installed per <a
                 href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">this guide</a> with latest OpenSSH as ssh client. <bs:help file=""/><br/>
-              You can run Test Connection with native git to ensure your VCS roots will continue working with native git before enabling this feature.<br/>
+              Before enabling this feature you can run Test Connection with native git to ensure your VCS roots will continue working with native git.<br/>
               Test Connection will not show existing VCS errors, only errors which will arise after enabling native git operations. It may be time-consuming if your server has many VCS roots.
             </div>
           </td>
@@ -143,16 +143,18 @@
         },
 
         onCompleteSave: function (form, responseXML, err, responseText) {
-          that.enable();
-          that.setSaving(false);
           if (responseXML == null) {
             if (responseText.trim().startsWith('<div class="testConnectionError">')) {
+              that.enable();
+              that.setSaving(false);
               BS.TestConnectionDialog.show(false, responseText, $('nativeGitTestConnection'), true);
             } else if (responseText.trim().startsWith('<div class="testConnectionErrors">')) {
               $j('#testConnectionResults').html(responseText);
             }
             return;
           }
+          that.enable();
+          that.setSaving(false);
           var wereErrors = BS.XMLResponse.processErrors(responseXML, {}, BS.PluginPropertiesForm.propertiesErrorsHandler);
           if (wereErrors) {
             BS.ErrorsAwareListener.onCompleteSave(form, responseXML, false);
@@ -167,23 +169,24 @@
       return false;
     },
 
-    loadExistingTestConnectionResults: function () {
+    loadExistingTestConnectionResults: function (projectExternalId, fromFile) {
       var that = this;
       that.disable();
       that.setSaving(true);
       BS.ajaxRequest('${controllerUrl}', {
         parameters: {
-          testConnectionProject: '_Root',
+          testConnectionProject: projectExternalId,
           testConnectionVcsRoots: 'ALL',
-          loadStored: 'true'
+          loadStored: fromFile
         },
         onComplete: function(transport) {
           let res = transport.responseText.trim();
           if (res.startsWith('<div class="testConnectionErrors">')) {
             $j('#testConnectionResults').html(res);
+          } else {
+            that.enable();
+            that.setSaving(false);
           }
-          that.enable();
-          that.setSaving(false);
         }
       });
       return false;
@@ -224,6 +227,6 @@
     } else {
       $('testConnectionVcsRoots').disable();
     }
-    BS.NativeGitStatusForm.loadExistingTestConnectionResults();
+    BS.NativeGitStatusForm.loadExistingTestConnectionResults('_Root', true);
   });
 </script>

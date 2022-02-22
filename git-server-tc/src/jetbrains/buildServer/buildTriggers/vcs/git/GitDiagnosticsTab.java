@@ -1,5 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.google.common.util.concurrent.Striped;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.intellij.openapi.diagnostic.Logger;
@@ -7,6 +8,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -20,6 +25,7 @@ import jetbrains.buildServer.diagnostic.web.DiagnosticTab;
 import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.auth.AccessDeniedException;
 import jetbrains.buildServer.serverSide.auth.Permission;
+import jetbrains.buildServer.serverSide.executors.ExecutorServices;
 import jetbrains.buildServer.users.SUser;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.FileUtil;
@@ -49,6 +55,11 @@ public class GitDiagnosticsTab extends DiagnosticTab {
   private final GitRepoOperations myOperations;
   private final GitMainConfigProcessor myMainConfigProcessor;
   private final ProjectManager myProjectManager;
+  private final ExecutorServices myExecutors;
+
+  private final Striped<Lock> myLocks = Striped.lazyWeakLock(24);
+  private final Map<String, TestConnectionTask> myTestConnectionsInProgress = new HashMap<>();
+  private final Map<String, TestConnectionTask> myTestConnectionsFinished = new HashMap<>();
 
   public GitDiagnosticsTab(@NotNull PagePlaces pagePlaces,
                            @NotNull WebControllerManager controllerManager,
@@ -56,12 +67,15 @@ public class GitDiagnosticsTab extends DiagnosticTab {
                            @NotNull GitVcsSupport vcsSupport,
                            @NotNull GitRepoOperations gitOperations,
                            @NotNull GitMainConfigProcessor mainConfigProcessor,
-                           @NotNull ProjectManager projectManager) {
+                           @NotNull ProjectManager projectManager,
+                           @NotNull ExecutorServices executorServices) {
     super(pagePlaces, "gitStatus", "Git");
     myVcsSupport = vcsSupport;
     myOperations = gitOperations;
     myMainConfigProcessor = mainConfigProcessor;
     myProjectManager = projectManager;
+    myExecutors = executorServices;
+
     setPermission(Permission.MANAGE_SERVER_INSTALLATION);
     setIncludeUrl(pluginDescriptor.getPluginResourcesPath("gitStatusTab.jsp"));
     register();
@@ -91,69 +105,60 @@ public class GitDiagnosticsTab extends DiagnosticTab {
           }
           if (!errors.hasErrors()) {
             // test connection
-            final boolean isRootProject = project.isRootProject();
             if ("ALL".equals(vcsRoots)) {
               Map<VcsRootLink, List<TestConnectionError>> testConnectionErrors = null;
               Date timestamp = Dates.now();
-              if (isRootProject) {
+              if (project.isRootProject()) {
+                // on page load we first try to load saved previous results for root project
                 final File storedFile = getExitingStoredTestConnectionErrorsFile();
-                if (request.getParameter("loadStored") == null) {
-                  deleteFile(storedFile);
-                } else if (storedFile == null) {
+                final String loadStoredStr = request.getParameter("loadStored");
+                final boolean loadStored = "true".equals(loadStoredStr);
+                if (loadStored && storedFile == null) {
+                  // this request tries to load previous results for root project, but there is nothing found
                   return null;
-                } else {
+                } else if (loadStored) {
                   testConnectionErrors = getStoredTestConnectionErrors(storedFile);
                   if (testConnectionErrors != null) {
                     timestamp = getTimestampFromStoredFile(storedFile);
                   }
                 }
               }
+              final boolean testConnectionInProgress;
               if (testConnectionErrors == null) {
-                testConnectionErrors = new HashMap<>();
-                for (VcsRootInstance ri : project.getVcsRootInstances()) {
-                  if (!isGitRoot(ri)) continue;
-                  try {
-                    IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, false));
-                  } catch (VcsException e) {
-                    // jgit fails, no need to check native git
-                    continue;
-                  }
-                  try {
-                    IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, true));
-                  } catch (Throwable e) {
-                    final VcsRootLink vcsRootLink = new VcsRootLink(ri.getParent());
-                    List<TestConnectionError> rootErrors = testConnectionErrors.get(vcsRootLink);
-                    if (rootErrors == null) {
-                      rootErrors = new ArrayList<>();
-                      testConnectionErrors.put(vcsRootLink, rootErrors);
+                final Lock lock = myLocks.get(projectExternalId);
+                lock.lock();
+                try {
+                  TestConnectionTask task;
+                  task = myTestConnectionsFinished.get(projectExternalId);
+                  if (task == null) {
+                    testConnectionInProgress = true;
+
+                    task = myTestConnectionsInProgress.get(projectExternalId);
+                    if (task == null) {
+                      final Date taskTimestamp = timestamp;
+                      task = new TestConnectionTask(timestamp);
+                      myTestConnectionsInProgress.put(projectExternalId, task);
+
+                      executorServices.getLowPriorityExecutorService().execute(() -> runTestConnectionForAllProjectRoots(project, taskTimestamp));
                     }
-                    rootErrors.add(new TestConnectionError(e.getMessage(), ri.getUsages().keySet().stream().map(bt -> new BuildTypeLink(bt)).collect(Collectors.toSet())));
+                  } else {
+                    testConnectionInProgress = false;
                   }
+                  timestamp = task.getTimestamp();
+                  testConnectionErrors = new LinkedHashMap<>(task.getErrors());
+                } finally {
+                  lock.unlock();
                 }
-                if (isRootProject) {
-                  final File storedFile = getStoredTestConnectionErrorsFile(timestamp);
-                  deleteFile(storedFile);
-                  FileUtil.createParentDirs(storedFile);
-                  FileWriter writer = null;
-                  try {
-                    writer = new FileWriter(storedFile);
-                    GSON.toJson(testConnectionErrors, Map.class, writer);
-                  } catch (Throwable e) {
-                    LOG.warnAndDebugDetails("Exception while saving native git Test Connection results to " + storedFile, e);
-                    deleteFile(storedFile);
-                  } finally {
-                    FileUtil.close(writer);
-                  }
-                }
+              } else {
+                testConnectionInProgress = false;
               }
 
-              if (!testConnectionErrors.isEmpty()) {
-                final Map<String, Object> model = new HashMap<>();
-                model.put("testConnectionErrors", testConnectionErrors);
-                model.put("testConnectionProject", project);
-                model.put("testConnectionTimestamp", timestamp.toString());
-                return new ModelAndView(pluginDescriptor.getPluginResourcesPath("testConnectionErrors.jsp"), model);
-              }
+              final Map<String, Object> model = new HashMap<>();
+              model.put("testConnectionErrors", testConnectionErrors);
+              model.put("testConnectionProject", project);
+              model.put("testConnectionTimestamp", timestamp.toString());
+              model.put("testConnectionInProgress", testConnectionInProgress);
+              return new ModelAndView(pluginDescriptor.getPluginResourcesPath("testConnectionErrors.jsp"), model);
             } else {
               if (myProjectManager.findVcsRootByExternalId(vcsRoots) == null) {
                 errors.addError("testConnectionVcsRoots", "No VCS root found");
@@ -199,21 +204,95 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     });
   }
 
+  private void runTestConnectionForAllProjectRoots(@NotNull SProject project, @NotNull Date timestamp) {
+    final String externalId = project.getExternalId();
+    try {
+      for (VcsRootInstance ri : project.getVcsRootInstances()) {
+        if (!isGitRoot(ri)) continue;
+        try {
+          IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, false));
+        } catch (VcsException e) {
+          // jgit fails, no need to check native git
+          continue;
+        }
+        try {
+          IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, true));
+        } catch (Throwable e) {
+          final Lock lock = myLocks.get(externalId);
+          lock.lock();
+          try {
+            final VcsRootLink vcsRootLink = new VcsRootLink(ri.getParent());
+            final List<TestConnectionError> rootErrors = myTestConnectionsInProgress.get(externalId).getRootErrors(vcsRootLink);
+            rootErrors.add(new TestConnectionError(e.getMessage(), ri.getUsages().keySet().stream().map(bt -> new BuildTypeLink(bt)).collect(Collectors.toSet())));
+          } finally {
+            lock.unlock();
+          }
+        }
+      }
+      if (project.isRootProject()) {
+        FileUtil.delete(getTestConnectionResultsFolder());
+
+        final File storedFile = getStoredTestConnectionErrorsFile(timestamp);
+        deleteFile(storedFile);
+        FileUtil.createParentDirs(storedFile);
+        FileWriter writer = null;
+        try {
+          final Map<VcsRootLink, List<TestConnectionError>> errors;
+          final Lock lock = myLocks.get(externalId);
+          lock.lock();
+          try {
+            errors = myTestConnectionsInProgress.get(externalId).getErrors();
+          } finally {
+            lock.unlock();
+          }
+          writer = new FileWriter(storedFile);
+          GSON.toJson(errors, Map.class, writer);
+        } catch (Throwable e) {
+          LOG.warnAndDebugDetails("Exception while saving native git Test Connection results to " + storedFile, e);
+          deleteFile(storedFile);
+        } finally {
+          FileUtil.close(writer);
+        }
+      }
+    } finally {
+      final Lock lock = myLocks.get(externalId);
+      lock.lock();
+      try {
+        myTestConnectionsFinished.put(externalId, myTestConnectionsInProgress.remove(externalId));
+        myExecutors.getNormalExecutorService().schedule(() -> {
+          final Lock l = myLocks.get(externalId);
+          try {
+            myTestConnectionsFinished.remove(externalId);
+          } finally {
+            l.unlock();
+          }
+        }, 30, TimeUnit.SECONDS);
+      } catch (RejectedExecutionException e) {
+        LOG.warnAndDebugDetails("Failed to schedule native git TestConnection results remove task", e);
+      } finally {
+        lock.unlock();
+      }
+    }
+  }
+
   private static void deleteFile(@Nullable File file) {
     if (file != null) FileUtil.delete(file);
   }
 
   @Nullable
   private File getExitingStoredTestConnectionErrorsFile() {
-    final File tmpDir = new File(FileUtil.getTempDirectory() + "/git");
-    final File[] files = FileUtil.listFiles(tmpDir, (d, n) -> n.startsWith(FILENAME_PREFIX) && n.endsWith(".json"));
+    final File[] files = FileUtil.listFiles(getTestConnectionResultsFolder(), (d, n) -> n.startsWith(FILENAME_PREFIX) && n.endsWith(".json"));
     return files.length == 0 ? null : files[0];
   }
 
   @NotNull
+  private File getTestConnectionResultsFolder() {
+    return new File(FileUtil.getTempDirectory() + "/gitTestConnection");
+  }
+
+  @NotNull
   private File getStoredTestConnectionErrorsFile(@NotNull Date timestamp) {
-    final File tmpDir = new File(FileUtil.getTempDirectory() + "/git");
-    return new File(tmpDir, FILENAME_PREFIX + timestamp.getTime() + ".json");
+    return new File(getTestConnectionResultsFolder(), FILENAME_PREFIX + timestamp.getTime() + ".json");
   }
 
   @NotNull
@@ -441,6 +520,36 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     @Override
     public int hashCode() {
       return externalId.hashCode();
+    }
+  }
+
+  private static final class TestConnectionTask {
+    private final Date myTimestamp;
+    private final Map<VcsRootLink, List<TestConnectionError>> myErrors = new LinkedHashMap<>();
+
+
+    private TestConnectionTask(@NotNull Date timestamp) {
+      myTimestamp = timestamp;
+    }
+
+    @NotNull
+    public Date getTimestamp() {
+      return myTimestamp;
+    }
+
+    @NotNull
+    public Map<VcsRootLink, List<TestConnectionError>> getErrors() {
+      return myErrors;
+    }
+
+    @NotNull
+    public List<TestConnectionError> getRootErrors(@NotNull VcsRootLink vcsRootLink) {
+      List<TestConnectionError> rootErrors = myErrors.get(vcsRootLink);
+      if (rootErrors == null) {
+        rootErrors = new CopyOnWriteArrayList<>();
+        myErrors.put(vcsRootLink, rootErrors);
+      }
+      return rootErrors;
     }
   }
 }

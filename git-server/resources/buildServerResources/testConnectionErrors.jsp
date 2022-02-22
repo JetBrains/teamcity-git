@@ -2,12 +2,14 @@
 <jsp:useBean id="testConnectionProject" type="jetbrains.buildServer.serverSide.SProject" scope="request"/>
 <jsp:useBean id="testConnectionErrors" type="java.util.Map" scope="request"/>
 <jsp:useBean id="testConnectionTimestamp" type="java.lang.String" scope="request"/>
+<jsp:useBean id="testConnectionInProgress" type="java.lang.Boolean" scope="request"/>
 <jsp:useBean id="pageUrl" scope="request" type="java.lang.String"/>
 <div class="testConnectionErrors">
   <table class="runnerFormTable testConnectionErrorsTable fixedWidth" style="overflow: hidden">
     <tr class="groupingTitle">
-      <td colspan="2">Native Git Test Connection Errors for <bs:projectLink project="${testConnectionProject}"/> project on ${testConnectionTimestamp}</td>
+      <td colspan="2">Native Git Test Connection Errors for <bs:projectLink project="${testConnectionProject}"/> project started on ${testConnectionTimestamp}</td>
     </tr>
+    <c:if test="${empty testConnectionErrors}"><tr><td colspan="2"><span style="font-style: italic; color: #737577;">${testConnectionInProgress ? 'Calculating' : 'No errors'}</span></td></tr></c:if>
     <c:forEach items="${testConnectionErrors}" var="item">
       <c:forEach items="${item.value}" var="error">
         <tr>
@@ -30,3 +32,14 @@
     </c:forEach>
   </table>
 </div>
+<script type="text/javascript">
+  <c:choose>
+    <c:when test="${testConnectionInProgress}">
+        setTimeout(function() { BS.NativeGitStatusForm.loadExistingTestConnectionResults('${testConnectionProject.externalId}', false); }, 2000);
+    </c:when>
+    <c:otherwise>
+      BS.NativeGitStatusForm.enable();
+      BS.NativeGitStatusForm.setSaving(false);
+  </c:otherwise>
+  </c:choose>
+</script>
