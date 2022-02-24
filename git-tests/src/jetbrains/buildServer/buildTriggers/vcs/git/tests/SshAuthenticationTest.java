@@ -275,6 +275,56 @@ public class SshAuthenticationTest extends BaseTestCase {
     );
   }
 
+  @TestFor(issues = "TW-75138")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_rsa_key_file_with_cr_lf(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_rsa");
+    final File wrong_key = myTempFiles.createTempFile(FileUtil.readText(key, "UTF-8").replace("\n", "\r\n"));
+    do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", null, "keys/id_rsa.pub",
+                b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(wrong_key.getAbsolutePath())
+    );
+  }
+
+  @TestFor(issues = "TW-75138")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_rsa_key_file_with_extra_cr_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_rsa");
+    final File wrong_key = myTempFiles.createTempFile((FileUtil.readText(key, "UTF-8") + "\n").replace("\n", "\r\n"));
+    do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", null, "keys/id_rsa.pub",
+                b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(wrong_key.getAbsolutePath())
+    );
+  }
+
+  @TestFor(issues = "TW-75138")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_rsa_key_file_with_extra_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_rsa");
+    final File wrong_key = myTempFiles.createTempFile((FileUtil.readText(key, "UTF-8") + "\n"));
+    do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", null, "keys/id_rsa.pub",
+                b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(wrong_key.getAbsolutePath())
+    );
+  }
+
+  @TestFor(issues = "TW-75138")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_rsa_key_file_with_no_cr_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_rsa");
+    final File wrong_key = myTempFiles.createTempFile((FileUtil.readText(key, "UTF-8").trim()).replace("\n", "\r\n"));
+    do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", null, "keys/id_rsa.pub",
+                b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(wrong_key.getAbsolutePath())
+    );
+  }
+
+  @TestFor(issues = "TW-75138")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_rsa_key_file_with_no_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_rsa");
+    final File wrong_key = myTempFiles.createTempFile((FileUtil.readText(key, "UTF-8").trim()));
+    do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", null, "keys/id_rsa.pub",
+                b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(wrong_key.getAbsolutePath())
+    );
+  }
+
   @Test(dataProvider = "true,false")
   public void ssh_git_rsa_key_file(boolean nativeOperationsEnabled) throws Exception {
     final File key = dataFile("keys/id_rsa");
