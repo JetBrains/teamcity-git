@@ -126,7 +126,8 @@ public class GitDiagnosticsTab extends DiagnosticTab {
                   }
                 }
               }
-              final boolean testConnectionInProgress;
+              boolean testConnectionInProgress = false;
+              String testConnectionStatus = "";
               if (testConnectionErrors == null) {
                 final Lock lock = myLocks.get(projectExternalId);
                 lock.lock();
@@ -135,25 +136,23 @@ public class GitDiagnosticsTab extends DiagnosticTab {
                   task = myTestConnectionsFinished.get(projectExternalId);
                   if (task == null) {
                     testConnectionInProgress = true;
-
                     task = myTestConnectionsInProgress.get(projectExternalId);
                     if (task == null) {
                       final Date taskTimestamp = timestamp;
-                      task = new TestConnectionTask(timestamp);
+                      final List<VcsRootInstance> vcsRootInstances = project.getVcsRootInstances();
+                      task = new TestConnectionTask(timestamp, vcsRootInstances.size());
                       myTestConnectionsInProgress.put(projectExternalId, task);
 
-                      executorServices.getLowPriorityExecutorService().execute(() -> runTestConnectionForAllProjectRoots(project, taskTimestamp));
+                      executorServices.getLowPriorityExecutorService().execute(() -> runTestConnectionForAllProjectRoots(project, vcsRootInstances, taskTimestamp));
+                    } else {
+                      testConnectionStatus = task.getStatusString();
                     }
-                  } else {
-                    testConnectionInProgress = false;
                   }
                   timestamp = task.getTimestamp();
                   testConnectionErrors = new LinkedHashMap<>(task.getErrors());
                 } finally {
                   lock.unlock();
                 }
-              } else {
-                testConnectionInProgress = false;
               }
 
               final Map<String, Object> model = new HashMap<>();
@@ -161,6 +160,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
               model.put("testConnectionProject", project);
               model.put("testConnectionTimestamp", timestamp.toString());
               model.put("testConnectionInProgress", testConnectionInProgress);
+              model.put("testConnectionStatus", testConnectionStatus);
               return new ModelAndView(pluginDescriptor.getPluginResourcesPath("testConnectionErrors.jsp"), model);
             } else {
               if (myProjectManager.findVcsRootByExternalId(vcsRoots) == null) {
@@ -232,14 +232,18 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     return res.toString().hashCode();
   }
 
-  private void runTestConnectionForAllProjectRoots(@NotNull SProject project, @NotNull Date timestamp) {
+  private void runTestConnectionForAllProjectRoots(@NotNull SProject project, @NotNull List<VcsRootInstance> vcsRootInstances, @NotNull Date timestamp) {
     final String externalId = project.getExternalId();
     try {
       final Map<Integer, String> cachedResults = new HashMap<>();
       final long start = System.currentTimeMillis();
+      int processed = 0;
       int cacheHits = 0;
-      for (VcsRootInstance ri : project.getVcsRootInstances()) {
-        if (!isGitRoot(ri) || ri.getUsages().isEmpty()) continue;
+      for (VcsRootInstance ri : vcsRootInstances) {
+        ++processed;
+        if (!isGitRoot(ri) || ri.getUsages().isEmpty()) {
+          continue;
+        }
 
         String error = null;
         final Integer key = getKey(ri);
@@ -248,28 +252,36 @@ public class GitDiagnosticsTab extends DiagnosticTab {
           error = cachedResults.get(key);
           if (error == null) continue; // cached success
         } else {
+          boolean jGitSucceeded = true;
           try {
             IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, false));
           } catch (VcsException e) {
-            // jgit fails, no need to check native git
+            jGitSucceeded = false;
             cachedResults.put(key, null);
-            continue;
           }
-          try {
-            IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, true));
-            cachedResults.put(key, null);
-          } catch (Throwable e) {
-            error = e.getMessage();
-            cachedResults.put(key, error);
+
+          // if jgit fails, no need to check native git
+          if (jGitSucceeded) {
+            try {
+              IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, true));
+              cachedResults.put(key, null);
+            } catch (Throwable e) {
+              error = e.getMessage();
+              cachedResults.put(key, error);
+            }
           }
         }
-        if (error == null) continue;
+        if (processed%5 > 0 && error == null) continue;
 
         final Lock lock = myLocks.get(externalId);
         lock.lock();
         try {
           final VcsRootLink vcsRootLink = new VcsRootLink(ri.getParent());
-          final List<TestConnectionError> rootErrors = myTestConnectionsInProgress.get(externalId).getRootErrors(vcsRootLink);
+          final TestConnectionTask task = myTestConnectionsInProgress.get(externalId);
+          task.setRootsProcessed(processed);
+          if (error == null) continue;
+
+          final List<TestConnectionError> rootErrors = task.getRootErrors(vcsRootLink);
           rootErrors.add(new TestConnectionError(error, ri.getUsages().keySet().stream().map(bt -> new BuildTypeLink(bt)).collect(Collectors.toSet())));
         } finally {
           lock.unlock();
@@ -576,11 +588,15 @@ public class GitDiagnosticsTab extends DiagnosticTab {
 
   private static final class TestConnectionTask {
     private final Date myTimestamp;
+    private final int myRootsToProcess;
+    private int myRootsProcessed;
     private final Map<VcsRootLink, List<TestConnectionError>> myErrors = new LinkedHashMap<>();
 
 
-    private TestConnectionTask(@NotNull Date timestamp) {
+    private TestConnectionTask(@NotNull Date timestamp, int rootsToProcess) {
       myTimestamp = timestamp;
+      myRootsToProcess = rootsToProcess;
+      myRootsProcessed = 0;
     }
 
     @NotNull
@@ -601,6 +617,15 @@ public class GitDiagnosticsTab extends DiagnosticTab {
         myErrors.put(vcsRootLink, rootErrors);
       }
       return rootErrors;
+    }
+
+    @NotNull
+    public String getStatusString() {
+      return myRootsToProcess > 0 && myRootsProcessed > 0 ? "Processed " + myRootsProcessed + " VCS root instances from " + myRootsToProcess + "..." : "";
+    }
+
+    public void setRootsProcessed(int rootsProcessed) {
+      myRootsProcessed = rootsProcessed;
     }
   }
 }

@@ -3,13 +3,24 @@
 <jsp:useBean id="testConnectionErrors" type="java.util.Map" scope="request"/>
 <jsp:useBean id="testConnectionTimestamp" type="java.lang.String" scope="request"/>
 <jsp:useBean id="testConnectionInProgress" type="java.lang.Boolean" scope="request"/>
+<jsp:useBean id="testConnectionStatus" type="java.lang.String" scope="request"/>
 <jsp:useBean id="pageUrl" scope="request" type="java.lang.String"/>
 <div class="testConnectionErrors">
   <table class="runnerFormTable testConnectionErrorsTable fixedWidth" style="overflow: hidden">
     <tr class="groupingTitle">
       <td colspan="2">Native Git Test Connection Errors for <bs:projectLink project="${testConnectionProject}"/> project started on ${testConnectionTimestamp}</td>
     </tr>
-    <c:if test="${empty testConnectionErrors}"><tr><td colspan="2"><span style="font-style: italic; color: #737577;">${testConnectionInProgress ? 'Calculating' : 'No errors'}</span></td></tr></c:if>
+    <tr><td colspan="2">
+      <c:if test="${empty testConnectionStatus}">
+        <c:if test="${empty testConnectionErrors}">
+          <c:if test="${testConnectionInProgress}"><forms:saving style="display:block" className="progressRingInline"/></c:if>
+          <c:if test="${not testConnectionInProgress}"><div class="testConnectionSuccess">Connection successful!</div></c:if>
+        </c:if>
+      </c:if>
+      <c:if test="${not empty testConnectionStatus}">
+        <span style="font-style: italic; color: #737577;">${testConnectionStatus}</span>
+      </c:if>
+    </td></tr>
     <c:forEach items="${testConnectionErrors}" var="item">
       <c:forEach items="${item.value}" var="error">
         <tr>
