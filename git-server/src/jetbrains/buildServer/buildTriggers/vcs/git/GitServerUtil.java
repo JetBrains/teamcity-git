@@ -506,7 +506,7 @@ public class GitServerUtil {
     LogInitializer.reconfigureLog4j((loggerContext, configuration) -> {
       LoggerConfig rootLogger = configuration.getRootLogger();
       PatternLayout patternLayout = PatternLayout.newBuilder().withPattern("[%d] %6p - %30.30c - %m %n").build();
-      org.apache.logging.log4j.core.appender.ConsoleAppender consoleAppender = org.apache.logging.log4j.core.appender.ConsoleAppender.newBuilder().setLayout(patternLayout).build();
+      org.apache.logging.log4j.core.appender.ConsoleAppender consoleAppender = org.apache.logging.log4j.core.appender.ConsoleAppender.newBuilder().setName("console").setLayout(patternLayout).build();
       rootLogger.addAppender(consoleAppender, Level.INFO, null);
     });
     org.apache.log4j.Logger.getLogger("org.eclipse.jgit").setLevel(debugEnabled ? org.apache.log4j.Level.DEBUG : org.apache.log4j.Level.WARN);
