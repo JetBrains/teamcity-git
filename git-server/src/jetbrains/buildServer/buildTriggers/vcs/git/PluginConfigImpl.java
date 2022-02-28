@@ -35,8 +35,8 @@ import java.util.concurrent.TimeUnit;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchProcess;
 import jetbrains.buildServer.messages.serviceMessages.ServiceMessage;
-import jetbrains.buildServer.oauth.ExpiringAccessToken;
 import jetbrains.buildServer.metrics.Counter;
+import jetbrains.buildServer.oauth.ExpiringAccessToken;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
@@ -50,7 +50,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.HttpClient;
 import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.Layout;
 import org.bouncycastle.asn1.smime.SMIMEAttributes;
 import org.bouncycastle.crypto.CipherParameters;
 import org.eclipse.jgit.lfs.LfsBlobLoader;
@@ -277,7 +276,9 @@ public class PluginConfigImpl implements ServerPluginConfig {
       DiagnosticUtil.class,
       FileUtil.class,
       Element.class,
-      Layout.class,
+      org.apache.log4j.Logger.class,
+      org.apache.logging.log4j.core.Logger.class,
+      org.apache.logging.log4j.Logger.class,
       VcsException.class,
       VcsOperationRejectedException.class,
       BasicConfigurator.class,
