@@ -52,6 +52,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
   private static final String FILENAME_PREFIX = "testConnection_" + BuildProject.ROOT_PROJECT_ID + "_";
   private static final Gson GSON = new GsonBuilder().setPrettyPrinting().enableComplexMapKeySerialization().create();
   private static final Logger LOG = Logger.getInstance(GitDiagnosticsTab.class.getName());
+  private static final String CONNECTION_SUCCESSFUL = "No git connection errors will arise after enabling native git operations in this project";
 
   private final GitVcsSupport myVcsSupport;
   private final GitRepoOperations myOperations;
@@ -108,51 +109,64 @@ public class GitDiagnosticsTab extends DiagnosticTab {
           if (!errors.hasErrors()) {
             // test connection
             if ("ALL".equals(vcsRoots)) {
-              Map<VcsRootLink, List<TestConnectionError>> testConnectionErrors = null;
-              Date timestamp = Dates.now();
-              if (project.isRootProject()) {
-                // on page load we first try to load saved previous results for root project
-                final boolean loadStored = "true".equals(request.getParameter("loadStored"));
-                if (loadStored) {
-                  final File storedFile = getExitingStoredTestConnectionErrorsFile();
-                  if (storedFile == null) {
-                    // this request tries to load previous results for root project, but there is nothing found
+              // on page load we first try to load saved previous results for root project
+              if (project.isRootProject() && "true".equals(request.getParameter("loadStored"))) {
+                final File storedFile = getExitingStoredTestConnectionErrorsFile();
+                if (storedFile == null) {
+                  // this request tries to load previous results for root project, but there is nothing found
+                  return null;
+                } else {
+                  final Map<VcsRootLink, List<TestConnectionError>> testConnectionErrors = getStoredTestConnectionErrors(storedFile);
+                  if (testConnectionErrors == null) {
+                    // this request tries to load previous results for root project, but we failed to read from file
                     return null;
                   } else {
-                    testConnectionErrors = getStoredTestConnectionErrors(storedFile);
-                    if (testConnectionErrors != null) {
-                      timestamp = getTimestampFromStoredFile(storedFile);
-                    }
+                    final Map<String, Object> model = new HashMap<>();
+                    model.put("testConnectionErrors", testConnectionErrors);
+                    model.put("testConnectionProject", project);
+                    model.put("testConnectionTimestamp", getTimestampFromStoredFile(storedFile).toString());
+                    model.put("testConnectionInProgress", false);
+                    model.put("testConnectionStopped", false);
+                    model.put("testConnectionStatus", testConnectionErrors.isEmpty() ? CONNECTION_SUCCESSFUL : "");
+                    return new ModelAndView(pluginDescriptor.getPluginResourcesPath("testConnectionErrors.jsp"), model);
                   }
                 }
               }
+
+              Map<VcsRootLink, List<TestConnectionError>> testConnectionErrors = null;
               boolean testConnectionInProgress = false;
+              boolean testConnectionStopped = Boolean.parseBoolean(request.getParameter("stopTestConnection"));
               String testConnectionStatus = "";
-              if (testConnectionErrors == null) {
-                final Lock lock = myLocks.get(projectExternalId);
-                lock.lock();
-                try {
-                  TestConnectionTask task;
-                  task = myTestConnectionsFinished.get(projectExternalId);
+              Date timestamp = Dates.now();
+
+              final Lock lock = myLocks.get(projectExternalId);
+              lock.lock();
+              try {
+                TestConnectionTask task = myTestConnectionsFinished.get(projectExternalId);
+                if (task == null) {
+                  testConnectionInProgress = !testConnectionStopped;
+                  task = myTestConnectionsInProgress.get(projectExternalId);
                   if (task == null) {
-                    testConnectionInProgress = true;
-                    task = myTestConnectionsInProgress.get(projectExternalId);
-                    if (task == null) {
-                      final Date taskTimestamp = timestamp;
+                    if (testConnectionInProgress) {
                       final List<VcsRootInstance> vcsRootInstances = project.getVcsRootInstances();
                       task = new TestConnectionTask(timestamp, vcsRootInstances.size());
                       myTestConnectionsInProgress.put(projectExternalId, task);
 
-                      executorServices.getLowPriorityExecutorService().execute(() -> runTestConnectionForAllProjectRoots(project, vcsRootInstances, taskTimestamp));
-                    } else {
-                      testConnectionStatus = task.getStatusString();
+                      executorServices.getLowPriorityExecutorService().execute(() -> runTestConnectionForAllProjectRoots(project, vcsRootInstances, Dates.now()));
                     }
+                  } else if (testConnectionStopped) {
+                    task.markCanceled();
+                    finishTask(projectExternalId);
                   }
-                  timestamp = task.getTimestamp();
-                  testConnectionErrors = new LinkedHashMap<>(task.getErrors());
-                } finally {
-                  lock.unlock();
                 }
+                if (task != null) {
+                  testConnectionErrors = new LinkedHashMap<>(task.getErrors());
+                  testConnectionStatus = task.getStatusString();
+                  timestamp = task.getTimestamp();
+                  testConnectionStopped = task.isCanceled();
+                }
+              } finally {
+                lock.unlock();
               }
 
               final Map<String, Object> model = new HashMap<>();
@@ -160,6 +174,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
               model.put("testConnectionProject", project);
               model.put("testConnectionTimestamp", timestamp.toString());
               model.put("testConnectionInProgress", testConnectionInProgress);
+              model.put("testConnectionStopped", testConnectionStopped);
               model.put("testConnectionStatus", testConnectionStatus);
               return new ModelAndView(pluginDescriptor.getPluginResourcesPath("testConnectionErrors.jsp"), model);
             } else {
@@ -234,6 +249,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
 
   private void runTestConnectionForAllProjectRoots(@NotNull SProject project, @NotNull List<VcsRootInstance> vcsRootInstances, @NotNull Date timestamp) {
     final String externalId = project.getExternalId();
+    boolean canceled = false;
     try {
       final Map<Integer, String> cachedResults = new HashMap<>();
       final long start = System.currentTimeMillis();
@@ -271,13 +287,15 @@ public class GitDiagnosticsTab extends DiagnosticTab {
             }
           }
         }
-        if (processed%5 > 0 && error == null) continue;
-
         final Lock lock = myLocks.get(externalId);
         lock.lock();
         try {
           final VcsRootLink vcsRootLink = new VcsRootLink(ri.getParent());
           final TestConnectionTask task = myTestConnectionsInProgress.get(externalId);
+          if (task == null) {
+            canceled = true;
+            break;
+          }
           task.setRootsProcessed(processed);
           if (error == null) continue;
 
@@ -289,8 +307,9 @@ public class GitDiagnosticsTab extends DiagnosticTab {
       }
 
       final long duration = System.currentTimeMillis() - start;
-      LOG.info("Native git TestConnection for " + LogUtil.describe(project) + " took " + TimeUnit.MILLISECONDS.toSeconds(duration) + "sec, cache size: " + cachedResults.size() + ", cache hits: " + cacheHits);
+      LOG.info("Native git TestConnection for " + LogUtil.describe(project) + (canceled ? " was canceled," : " finished") + " took " + TimeUnit.MILLISECONDS.toSeconds(duration) + "sec, cache size: " + cachedResults.size() + ", cache hits: " + cacheHits);
 
+      if (canceled) return;
       if (project.isRootProject()) {
         FileUtil.delete(getTestConnectionResultsFolder());
 
@@ -321,20 +340,32 @@ public class GitDiagnosticsTab extends DiagnosticTab {
       final Lock lock = myLocks.get(externalId);
       lock.lock();
       try {
-        myTestConnectionsFinished.put(externalId, myTestConnectionsInProgress.remove(externalId));
-        myExecutors.getNormalExecutorService().schedule(() -> {
-          final Lock l = myLocks.get(externalId);
-          try {
-            myTestConnectionsFinished.remove(externalId);
-          } finally {
-            l.unlock();
-          }
-        }, 30, TimeUnit.SECONDS);
-      } catch (RejectedExecutionException e) {
-        LOG.warnAndDebugDetails("Failed to schedule native git TestConnection results remove task", e);
+        finishTask(externalId);
       } finally {
         lock.unlock();
       }
+    }
+  }
+
+  private void finishTask(@NotNull String externalId) {
+    try {
+      final TestConnectionTask task = myTestConnectionsInProgress.remove(externalId);
+      if (task == null) return;
+
+      task.markFinished();
+
+      myTestConnectionsFinished.put(externalId, task);
+      myExecutors.getNormalExecutorService().schedule(() -> {
+        final Lock l = myLocks.get(externalId);
+        try {
+          myTestConnectionsFinished.remove(externalId);
+        } finally {
+          l.unlock();
+        }
+      }, 30, TimeUnit.SECONDS);
+    } catch (RejectedExecutionException e) {
+      LOG.warnAndDebugDetails("Failed to schedule native git TestConnection results remove task", e);
+      myTestConnectionsFinished.remove(externalId);
     }
   }
 
@@ -455,7 +486,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
 
   public static final class TestConnectionError {
     private String message;
-    private Collection<BuildTypeLink> affectedBuildTypes;
+    private final Collection<BuildTypeLink> affectedBuildTypes;
 
     public TestConnectionError(@NotNull String message, @NotNull Collection<BuildTypeLink> affectedBuildTypes) {
       this.message = message;
@@ -474,10 +505,6 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     @NotNull
     public Collection<BuildTypeLink> getAffectedBuildTypes() {
       return affectedBuildTypes;
-    }
-
-    public void setAffectedBuildTypes(@NotNull Collection<BuildTypeLink> affectedBuildTypes) {
-      this.affectedBuildTypes = affectedBuildTypes;
     }
   }
 
@@ -590,6 +617,8 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     private final Date myTimestamp;
     private final int myRootsToProcess;
     private int myRootsProcessed;
+    private boolean myFinished;
+    private boolean myCanceled;
     private final Map<VcsRootLink, List<TestConnectionError>> myErrors = new LinkedHashMap<>();
 
 
@@ -621,11 +650,37 @@ public class GitDiagnosticsTab extends DiagnosticTab {
 
     @NotNull
     public String getStatusString() {
-      return myRootsToProcess > 0 && myRootsProcessed > 0 ? "Processed " + myRootsProcessed + " VCS root instances from " + myRootsToProcess + "..." : "";
+      final String status = myRootsToProcess > 0 && myRootsProcessed > 0 ? Math.round((1.0 * myRootsProcessed / myRootsToProcess) * 100) + "% (processed " + myRootsProcessed +
+                                                                           " VCS root instances from " + myRootsToProcess + "...)" : "";
+      if (myFinished) {
+        if (myCanceled) {
+          return status.isEmpty() ? "Cancelled" : "Cancelled: " + status;
+        } else if (myErrors.isEmpty()) {
+          return CONNECTION_SUCCESSFUL;
+        }
+        return myRootsProcessed > 0 ? "Processed " + myRootsProcessed + " VCS root instances and detected " + myErrors.size() + " errors" : "Detected " + myErrors.size() + " errors";
+      }
+      return "In progress" + (status.isEmpty() ? "" : ": " + status);
     }
 
     public void setRootsProcessed(int rootsProcessed) {
       myRootsProcessed = rootsProcessed;
+    }
+
+    public void markCanceled() {
+      myCanceled = true;
+    }
+
+    public boolean isCanceled() {
+      return myCanceled;
+    }
+
+    public boolean isFinished() {
+      return myFinished;
+    }
+
+    public void markFinished() {
+      myFinished = true;
     }
   }
 }

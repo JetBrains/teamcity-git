@@ -169,6 +169,28 @@
       return false;
     },
 
+    stopTestConnection: function (projectExternalId) {
+      var that = this;
+      that.disable();
+      that.setSaving(true);
+      BS.ajaxRequest('${controllerUrl}', {
+        parameters: {
+          testConnectionProject: projectExternalId,
+          testConnectionVcsRoots: 'ALL',
+          stopTestConnection: true
+        },
+        onComplete: function(transport) {
+          let res = transport.responseText.trim();
+          if (res.startsWith('<div class="testConnectionErrors">')) {
+            $j('#testConnectionResults').html(res);
+          }
+          that.enable();
+          that.setSaving(false);
+        }
+      });
+      return false;
+    },
+
     loadExistingTestConnectionResults: function (projectExternalId, fromFile) {
       var that = this;
       that.disable();

@@ -3,19 +3,17 @@
 <jsp:useBean id="testConnectionErrors" type="java.util.Map" scope="request"/>
 <jsp:useBean id="testConnectionTimestamp" type="java.lang.String" scope="request"/>
 <jsp:useBean id="testConnectionInProgress" type="java.lang.Boolean" scope="request"/>
+<jsp:useBean id="testConnectionStopped" type="java.lang.Boolean" scope="request"/>
 <jsp:useBean id="testConnectionStatus" type="java.lang.String" scope="request"/>
 <jsp:useBean id="pageUrl" scope="request" type="java.lang.String"/>
 <div class="testConnectionErrors">
   <table class="runnerFormTable testConnectionErrorsTable fixedWidth" style="overflow: hidden">
     <tr class="groupingTitle">
-      <td colspan="2">Native Git Test Connection Errors for <bs:projectLink project="${testConnectionProject}"/> project started on ${testConnectionTimestamp}</td>
+      <td colspan="2">Native Git Test Connection Errors for <bs:projectLink project="${testConnectionProject}"/> project started on ${testConnectionTimestamp}<span style="float: right; padding-right: 1em; cursor: pointer;"><c:if test="${testConnectionInProgress}"><a onclick="return BS.NativeGitStatusForm.stopTestConnection('${testConnectionProject.externalId}')">Stop</a></c:if></span></td>
     </tr>
     <tr><td colspan="2">
       <c:if test="${empty testConnectionStatus}">
-        <c:if test="${empty testConnectionErrors}">
-          <c:if test="${testConnectionInProgress}"><forms:saving style="display:block" className="progressRingInline"/></c:if>
-          <c:if test="${not testConnectionInProgress}"><div class="testConnectionSuccess">Connection successful!</div></c:if>
-        </c:if>
+        <c:if test="${testConnectionInProgress}"><forms:saving style="display:block" className="progressRingInline"/></c:if>
       </c:if>
       <c:if test="${not empty testConnectionStatus}">
         <span style="font-style: italic; color: #737577;">${testConnectionStatus}</span>
