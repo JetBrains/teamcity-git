@@ -59,6 +59,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
   private final GitMainConfigProcessor myMainConfigProcessor;
   private final ProjectManager myProjectManager;
   private final ExecutorServices myExecutors;
+  private final TeamCityNodes myNodes;
 
   private final Striped<Lock> myLocks = Striped.lazyWeakLock(24);
   private final Map<String, TestConnectionTask> myTestConnectionsInProgress = new HashMap<>();
@@ -71,13 +72,15 @@ public class GitDiagnosticsTab extends DiagnosticTab {
                            @NotNull GitRepoOperations gitOperations,
                            @NotNull GitMainConfigProcessor mainConfigProcessor,
                            @NotNull ProjectManager projectManager,
-                           @NotNull ExecutorServices executorServices) {
+                           @NotNull ExecutorServices executorServices,
+                           @NotNull TeamCityNodes nodes) {
     super(pagePlaces, "gitStatus", "Git");
     myVcsSupport = vcsSupport;
     myOperations = gitOperations;
     myMainConfigProcessor = mainConfigProcessor;
     myProjectManager = projectManager;
     myExecutors = executorServices;
+    myNodes = nodes;
 
     setPermission(Permission.MANAGE_SERVER_INSTALLATION);
     setIncludeUrl(pluginDescriptor.getPluginResourcesPath("gitStatusTab.jsp"));
@@ -440,6 +443,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
   public void fillModel(@NotNull Map<String, Object> model, @NotNull HttpServletRequest request) {
     super.fillModel(model, request);
     model.put("nativeGitOperationsEnabled", myMainConfigProcessor.isNativeGitOperationsEnabled());
+    model.put("isMultinodeSetup", myNodes.getNodes().size() > 1);
     try {
       final GitExec gitExec = myOperations.detectGit();
       model.put("gitExec", gitExec);

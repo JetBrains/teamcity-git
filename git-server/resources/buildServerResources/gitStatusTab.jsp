@@ -40,6 +40,9 @@
   }
 </style>
 <c:set var="controllerUrl"><c:url value="/admin/diagnostic/nativeGitStatus.html"/></c:set>
+<jsp:useBean id="isMultinodeSetup" type="java.lang.Boolean" scope="request"/>
+<c:set var="enableText" value="${isMultinodeSetup ? 'Enable on all nodes' : 'Enable'}"/>
+<c:set var="disableText" value="${isMultinodeSetup ? 'Disable on all nodes' : 'Disable'}"/>
 <form id="nativeGitStatusForm" method="post" onsubmit="return BS.NativeGitStatusForm.submit()" style="margin-top: 0.5em;">
   <table class="runnerFormTable" style="width: 100%;">
     <tr class="groupingTitle">
@@ -83,7 +86,7 @@
     <tr>
       <th><label for="switchNativeGitLabel">Native git operations:</label></th>
       <td><div>
-          <input class="btn" type="button" id="switchNativeGit" name="switchNativeGit" value="${nativeGitOperationsEnabled ? "Disable" : "Enable"}" onclick="BS.NativeGitStatusForm.switchNativeGit();" style="float: right;"/>
+        <button class="btn" type="submit" id="switchNativeGit" name="switchNativeGit" value="${nativeGitOperationsEnabled ? "Disable" : "Enable"}" onclick="BS.NativeGitStatusForm.switchNativeGit();" style="float: right;">${nativeGitOperationsEnabled ? disableText : enableText}</button>
           <span id="switchNativeGitLabel">${nativeGitOperationsEnabled ? "enabled" : "disabled"}</span>
         </div>
       </td>
@@ -107,7 +110,7 @@
             <jsp:useBean id="projectsWithGitRoots" type="java.util.List" scope="request"/>
             <span style="float: right;">
               <forms:saving className="progressRingInline" id="saving"/>
-              <input class="btn" type="button" id="nativeGitTestConnection" name="nativeGitTestConnection" value="Test Connection" onclick="BS.NativeGitStatusForm.testConnection();"/>
+              <input class="btn" type="button" id="nativeGitTestConnection" name="nativeGitTestConnection" value="Test connection" onclick="BS.NativeGitStatusForm.testConnection();"/>
             </span>
 
             <bs:projectsFilter name="testConnectionProject" id="testConnectionProject" className="longField" defaultOption="true" projectBeans="${projectsWithGitRoots}"
@@ -225,6 +228,7 @@
         onCompleteSave: function (form, responseXML, err, responseText) {
           var enabled = "true" == responseXML.documentElement.getElementsByTagName("nativeGitOperationsEnabled").item(0).textContent;
           $j("#switchNativeGit").val(enabled ? "Disable" : "Enable");
+          $j("#switchNativeGit").html(enabled ? "${disableText}" : "${enableText}");
           $j("#switchNativeGitLabel").text(enabled ? "enabled" : "disabled");
           form.setSaving(false);
           that.enable();
