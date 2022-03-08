@@ -280,7 +280,8 @@ public class GitCommandLine extends GeneralCommandLine {
     final File privateKey = createTmpKeyFile();
     addPostAction(() -> FileUtil.delete(privateKey));
 
-    FileUtil.writeFileAndReportErrors(privateKey, new String(key.getPrivateKey()));
+    final String keyStr = new String(key.getPrivateKey());
+    FileUtil.writeFileAndReportErrors(privateKey, keyStr.trim().replace("\r\n", "\n") + "\n");
 
     return privateKey;
   }
