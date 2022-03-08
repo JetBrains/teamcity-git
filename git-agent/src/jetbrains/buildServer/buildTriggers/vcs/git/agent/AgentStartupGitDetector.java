@@ -73,6 +73,7 @@ public class AgentStartupGitDetector extends AgentLifeCycleAdapter {
       }
     }
     detectGitLfs(agent);
+    detectSSH(agent);
   }
 
   private boolean pathToGitConfigured(@NotNull BuildAgent agent) {
@@ -131,6 +132,25 @@ public class AgentStartupGitDetector extends AgentLifeCycleAdapter {
       }
     } catch (Exception e) {
       LOG.debug("Cannot detect git-lfs", e);
+    }
+  }
+
+  private void detectSSH(@NotNull BuildAgent agent) {
+    try {
+      final GeneralCommandLine cmd = new GeneralCommandLine();
+      cmd.setExePath("ssh");
+      cmd.addParameter("-V");
+
+      final ExecResult result = SimpleCommandLineProcessRunner.runCommand(cmd, new byte[0]);
+      if (result.getExitCode() == 0) {
+        final String line = result.getStderr();
+        if (line.startsWith("OpenSSH_") && line.contains(",")) {
+          final String version = line.substring(0, line.indexOf(",") - 1);
+          agent.getConfiguration().addConfigurationParameter("teamcity.git.ssh.version", version);
+        }
+      }
+    } catch (Throwable t) {
+      LOG.debug("Cannot detect ssh", t);
     }
   }
 }
