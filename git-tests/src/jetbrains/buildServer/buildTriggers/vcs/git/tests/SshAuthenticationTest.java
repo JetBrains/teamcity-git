@@ -286,7 +286,7 @@ public class SshAuthenticationTest extends BaseTestCase {
 
   @TestFor(issues = "TW-75138")
   @Test(dataProvider = "true,false")
-  public void ssh_git_rsa_key_file_with_extra_cr_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
+  public void ssh_git_rsa_key_with_extra_cr_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
     final File key = dataFile("keys/id_rsa");
     do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", (FileUtil.readText(key, "UTF-8") + "\n").replace("\n", "\r\n").getBytes(), false), "keys/id_rsa.pub",
                 b -> b.withAuthMethod(AuthenticationMethod.TEAMCITY_SSH_KEY).withTeamCitySshKey("test_key")
@@ -295,7 +295,7 @@ public class SshAuthenticationTest extends BaseTestCase {
 
   @TestFor(issues = "TW-75138")
   @Test(dataProvider = "true,false")
-  public void ssh_git_rsa_key_file_with_extra_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
+  public void ssh_git_rsa_key_with_extra_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
     final File key = dataFile("keys/id_rsa");
     final File wrong_key = myTempFiles.createTempFile((FileUtil.readText(key, "UTF-8") + "\n"));
     do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", null, "keys/id_rsa.pub",
@@ -305,7 +305,7 @@ public class SshAuthenticationTest extends BaseTestCase {
 
   @TestFor(issues = "TW-75138")
   @Test(dataProvider = "true,false")
-  public void ssh_git_rsa_key_file_with_no_cr_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
+  public void ssh_git_rsa_key_with_no_cr_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
     final File key = dataFile("keys/id_rsa");
     do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", FileUtil.readText(key, "UTF-8").trim().replace("\n", "\r\n").getBytes(), false), "keys/id_rsa.pub",
                 b -> b.withAuthMethod(AuthenticationMethod.TEAMCITY_SSH_KEY).withTeamCitySshKey("test_key"));
@@ -313,7 +313,7 @@ public class SshAuthenticationTest extends BaseTestCase {
 
   @TestFor(issues = "TW-75138")
   @Test(dataProvider = "true,false")
-  public void ssh_git_rsa_key_file_with_no_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
+  public void ssh_git_rsa_key_with_no_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
     final File key = dataFile("keys/id_rsa");
     do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", FileUtil.readText(key, "UTF-8").trim().getBytes(), false), "keys/id_rsa.pub",
                 b -> b.withAuthMethod(AuthenticationMethod.TEAMCITY_SSH_KEY).withTeamCitySshKey("test_key"));
