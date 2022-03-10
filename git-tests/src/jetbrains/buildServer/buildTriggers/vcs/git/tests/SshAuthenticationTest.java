@@ -206,9 +206,7 @@ public class SshAuthenticationTest extends BaseTestCase {
         );
         fail("Exception was expected");
       } catch (Exception e) {
-        final String msg = e.getMessage();
-        if (msg.contains("Permission denied") || msg.contains("Auth fail") || msg.contains("Too many authentication failures")) return null;
-        throw e;
+        assertContainsAny(e.getMessage(), "Permission denied", "Auth fail", "Too many authentication failures", "Auth cancel");
       }
       return null;
     });
@@ -225,9 +223,7 @@ public class SshAuthenticationTest extends BaseTestCase {
         );
         fail("Exception was expected");
       } catch (Exception e) {
-        final String msg = e.getMessage();
-        if (msg.contains("Permission denied") || msg.contains("Auth fail") || msg.contains("Too many authentication failures")) return null;
-        throw e;
+        assertContainsAny(e.getMessage(), "Permission denied", "Auth fail", "Too many authentication failures", "Auth cancel");
       }
       return null;
     });
