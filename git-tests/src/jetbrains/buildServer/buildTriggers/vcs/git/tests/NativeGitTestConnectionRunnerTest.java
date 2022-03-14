@@ -92,6 +92,63 @@ public class NativeGitTestConnectionRunnerTest extends BaseTestCase {
     assertNull(new CachingNativeGitTestConnectionRunner(builder.build()).testConnection(new VcsRootBuilder().withFetchUrl("some/url").build()));
   }
 
+  @Test
+  public void testSuccessCaching() {
+    final GitRepoOperations operations = myMockery.mock(GitRepoOperations.class);
+    myMockery.checking(new Expectations() {{
+      one(operations).lsRemoteCommand(false);
+      will(returnValue(succeedingLsRemoteCommand()));
+      one(operations).lsRemoteCommand(true);
+      will(returnValue(succeedingLsRemoteCommand()));
+    }});
+    final GitSupportBuilder builder = new GitSupportBuilder().withPluginConfig(myConfig).withGitRepoOperations(operations);
+    final CachingNativeGitTestConnectionRunner runner = new CachingNativeGitTestConnectionRunner(builder.build());
+    for (int i = 0; i < 10; ++i) {
+      assertNull(runner.testConnection(new VcsRootBuilder().withFetchUrl("some/url").withTeamCitySshKey("ssh_key").build()));
+    }
+    assertEquals(9, runner.getCacheHits());
+    assertEquals(1, runner.getCacheSize());
+    assertEquals(10, runner.getProcessed());
+  }
+
+  @Test
+  public void testJGitFailureCaching() {
+    final GitRepoOperations operations = myMockery.mock(GitRepoOperations.class);
+    myMockery.checking(new Expectations() {{
+      one(operations).lsRemoteCommand(false);
+      will(returnValue(failingLsRemoteCommand()));
+      one(operations).lsRemoteCommand(true);
+      will(returnValue(succeedingLsRemoteCommand()));
+    }});
+    final GitSupportBuilder builder = new GitSupportBuilder().withPluginConfig(myConfig).withGitRepoOperations(operations);
+    final CachingNativeGitTestConnectionRunner runner = new CachingNativeGitTestConnectionRunner(builder.build());
+    for (int i = 0; i < 10; ++i) {
+      assertNull(runner.testConnection(new VcsRootBuilder().withFetchUrl("some/url").withTeamCitySshKey("ssh_key").build()));
+    }
+    assertEquals(9, runner.getCacheHits());
+    assertEquals(1, runner.getCacheSize());
+    assertEquals(10, runner.getProcessed());
+  }
+
+  @Test
+  public void testFailureCaching() {
+    final GitRepoOperations operations = myMockery.mock(GitRepoOperations.class);
+    myMockery.checking(new Expectations() {{
+      one(operations).lsRemoteCommand(false);
+      will(returnValue(succeedingLsRemoteCommand()));
+      one(operations).lsRemoteCommand(true);
+      will(returnValue(failingLsRemoteCommand()));
+    }});
+    final GitSupportBuilder builder = new GitSupportBuilder().withPluginConfig(myConfig).withGitRepoOperations(operations);
+    final CachingNativeGitTestConnectionRunner runner = new CachingNativeGitTestConnectionRunner(builder.build());
+    for (int i = 0; i < 10; ++i) {
+      assertContains(runner.testConnection(new VcsRootBuilder().withFetchUrl("some/url").withTeamCitySshKey("ssh_key").build()), "Test connection fails");
+    }
+    assertEquals(9, runner.getCacheHits());
+    assertEquals(1, runner.getCacheSize());
+    assertEquals(10, runner.getProcessed());
+  }
+
   @NotNull
   private LsRemoteCommand succeedingLsRemoteCommand() {
     return new LsRemoteCommand() {
