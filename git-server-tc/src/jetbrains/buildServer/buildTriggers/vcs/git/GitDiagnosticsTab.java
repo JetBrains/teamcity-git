@@ -27,7 +27,6 @@ import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.auth.AccessDeniedException;
 import jetbrains.buildServer.serverSide.auth.Permission;
 import jetbrains.buildServer.serverSide.executors.ExecutorServices;
-import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.users.SUser;
 import jetbrains.buildServer.util.Dates;
 import jetbrains.buildServer.util.FileUtil;
@@ -52,7 +51,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
   private static final String FILENAME_PREFIX = "testConnection_" + BuildProject.ROOT_PROJECT_ID + "_";
   private static final Gson GSON = new GsonBuilder().setPrettyPrinting().enableComplexMapKeySerialization().create();
   private static final Logger LOG = Logger.getInstance(GitDiagnosticsTab.class.getName());
-  private static final String CONNECTION_SUCCESSFUL = "No git connection errors will arise after enabling native git operations in this project";
+  private static final String CONNECTION_SUCCESSFUL = "No native Git connection errors found";
 
   private final GitVcsSupport myVcsSupport;
   private final GitRepoOperations myOperations;
@@ -225,71 +224,24 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     });
   }
 
-  @NotNull
-  private static Integer getKey(@NotNull VcsRootInstance root) {
-    final StringBuilder res = new StringBuilder(root.getProperty(Constants.FETCH_URL, ""))
-      .append(root.getProperty(Constants.USERNAME));
-
-    final AuthenticationMethod authMethod = Enum.valueOf(AuthenticationMethod.class, root.getProperty(Constants.AUTH_METHOD, AuthenticationMethod.ANONYMOUS.name()));
-    res.append(authMethod.name());
-    switch (authMethod) {
-      case PASSWORD:
-        res.append(root.getProperty(Constants.PASSWORD));
-        break;
-      case ACCESS_TOKEN: {
-        res.append(root.getProperty(Constants.TOKEN_ID));
-        break;
-      }
-      case TEAMCITY_SSH_KEY:
-        res.append(root.getProperty(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME));
-        break;
-      case PRIVATE_KEY_FILE:
-        res.append(root.getProperty(Constants.PRIVATE_KEY_PATH));
-        break;
-    }
-    return res.toString().hashCode();
+  public static boolean isEnabled() {
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.diagnosticsTab.enabled");
   }
 
   private void runTestConnectionForAllProjectRoots(@NotNull SProject project, @NotNull List<VcsRootInstance> vcsRootInstances, @NotNull Date timestamp) {
     final String externalId = project.getExternalId();
     boolean canceled = false;
     try {
-      final Map<Integer, String> cachedResults = new HashMap<>();
       final long start = System.currentTimeMillis();
       int processed = 0;
-      int cacheHits = 0;
+
+      final CachingNativeGitTestConnectionRunner testConnectionRunner = new CachingNativeGitTestConnectionRunner(myVcsSupport);
       for (VcsRootInstance ri : vcsRootInstances) {
         ++processed;
         if (!isGitRoot(ri) || ri.getUsages().isEmpty()) {
           continue;
         }
-
-        String error = null;
-        final Integer key = getKey(ri);
-        if (cachedResults.containsKey(key)) {
-          ++cacheHits;
-          error = cachedResults.get(key);
-          if (error == null) continue; // cached success
-        } else {
-          boolean jGitSucceeded = true;
-          try {
-            IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, false));
-          } catch (VcsException e) {
-            jGitSucceeded = false;
-            cachedResults.put(key, null);
-          }
-
-          // if jgit fails, no need to check native git
-          if (jGitSucceeded) {
-            try {
-              IOGuard.allowNetworkAndCommandLine(() -> myVcsSupport.getRemoteRefs(ri, true));
-              cachedResults.put(key, null);
-            } catch (Throwable e) {
-              error = e.getMessage();
-              cachedResults.put(key, error);
-            }
-          }
-        }
+        final String error = testConnectionRunner.testConnection(ri);
         final Lock lock = myLocks.get(externalId);
         lock.lock();
         try {
@@ -310,7 +262,8 @@ public class GitDiagnosticsTab extends DiagnosticTab {
       }
 
       final long duration = System.currentTimeMillis() - start;
-      LOG.info("Native git TestConnection for " + LogUtil.describe(project) + (canceled ? " was canceled," : " finished") + " took " + TimeUnit.MILLISECONDS.toSeconds(duration) + "sec, cache size: " + cachedResults.size() + ", cache hits: " + cacheHits);
+      LOG.info("Native Git TestConnection for " + LogUtil.describe(project) + (canceled ? " was canceled," : " finished,") + " took " + TimeUnit.MILLISECONDS.toSeconds(duration) + " sec, processed " + testConnectionRunner.getProcessed() + " Git VCS root instances, cache size: " + testConnectionRunner.getCacheSize() + ", cache hits: " + testConnectionRunner.getCacheHits());
+      testConnectionRunner.dispose();
 
       if (canceled) return;
       if (project.isRootProject()) {
@@ -326,14 +279,16 @@ public class GitDiagnosticsTab extends DiagnosticTab {
           final Lock lock = myLocks.get(externalId);
           lock.lock();
           try {
-            errors = myTestConnectionsInProgress.get(externalId).getErrors();
+            final TestConnectionTask task = myTestConnectionsInProgress.get(externalId);
+            if (task == null) return;
+            errors = task.getErrors();
           } finally {
             lock.unlock();
           }
           writer = new FileWriter(storedFile);
           GSON.toJson(errors, Map.class, writer);
         } catch (Throwable e) {
-          LOG.warnAndDebugDetails("Exception while saving native git Test Connection results for " + LogUtil.describe(project) + " to " + storedFile, e);
+          LOG.warnAndDebugDetails("Exception while saving native Git Test Connection results for " + LogUtil.describe(project) + " to " + storedFile, e);
           deleteFile(storedFile);
         } finally {
           FileUtil.close(writer);
@@ -347,28 +302,6 @@ public class GitDiagnosticsTab extends DiagnosticTab {
       } finally {
         lock.unlock();
       }
-    }
-  }
-
-  private void finishTask(@NotNull String externalId) {
-    try {
-      final TestConnectionTask task = myTestConnectionsInProgress.remove(externalId);
-      if (task == null) return;
-
-      task.markFinished();
-
-      myTestConnectionsFinished.put(externalId, task);
-      myExecutors.getNormalExecutorService().schedule(() -> {
-        final Lock l = myLocks.get(externalId);
-        try {
-          myTestConnectionsFinished.remove(externalId);
-        } finally {
-          l.unlock();
-        }
-      }, 30, TimeUnit.SECONDS);
-    } catch (RejectedExecutionException e) {
-      LOG.warnAndDebugDetails("Failed to schedule native git TestConnection results remove task", e);
-      myTestConnectionsFinished.remove(externalId);
     }
   }
 
@@ -392,30 +325,37 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     return new File(getTestConnectionResultsFolder(), FILENAME_PREFIX + timestamp.getTime() + ".json");
   }
 
+  private void finishTask(@NotNull String externalId) {
+    try {
+      final TestConnectionTask task = myTestConnectionsInProgress.remove(externalId);
+      if (task == null) return;
+
+      task.markFinished();
+
+      myTestConnectionsFinished.put(externalId, task);
+      myExecutors.getNormalExecutorService().schedule(() -> {
+        final Lock l = myLocks.get(externalId);
+        try {
+          myTestConnectionsFinished.remove(externalId);
+        } finally {
+          l.unlock();
+        }
+      }, 30, TimeUnit.SECONDS);
+    } catch (RejectedExecutionException e) {
+      LOG.warnAndDebugDetails("Failed to schedule native Git TestConnection results remove task", e);
+      myTestConnectionsFinished.remove(externalId);
+    }
+  }
+
   @NotNull
   private Date getTimestampFromStoredFile(@NotNull File file) {
     final String name = file.getName();
     try {
       return new Date(Long.parseLong(name.substring(FILENAME_PREFIX.length(), name.length() - 5)));
     } catch (Throwable e) {
-      LOG.warnAndDebugDetails("Failed to parse timestamp from stored native git Test Connection results file name " + name + ", will remove file", e);
+      LOG.warnAndDebugDetails("Failed to parse timestamp from stored native Git Test Connection results file name " + name + ", will remove file", e);
       deleteFile(file);
       return Dates.now();
-    }
-  }
-
-  @Nullable
-  private Map<VcsRootLink, List<TestConnectionError>> getStoredTestConnectionErrors(@NotNull File file) {
-    if (!file.isFile()) {
-      return null;
-    }
-    LOG.debug("Loading native git Test Connection results for root project from " + file);
-    try {
-      return GSON.fromJson(new FileReader(file), Map.class);
-    } catch (Throwable e) {
-      LOG.warnAndDebugDetails("Exception while parsing stored native git Test Connection results from " + file + ", will remove the file", e);
-      deleteFile(file);
-      return null;
     }
   }
 
@@ -430,8 +370,19 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     return Constants.VCS_NAME.equals(root.getVcsName());
   }
 
-  public static boolean isEnabled() {
-    return TeamCityProperties.getBoolean("teamcity.git.diagnosticsTab.enabled");
+  @Nullable
+  private Map<VcsRootLink, List<TestConnectionError>> getStoredTestConnectionErrors(@NotNull File file) {
+    if (!file.isFile()) {
+      return null;
+    }
+    LOG.debug("Loading native Git Test Connection results for root project from " + file);
+    try {
+      return GSON.fromJson(new FileReader(file), Map.class);
+    } catch (Throwable e) {
+      LOG.warnAndDebugDetails("Exception while parsing stored native Git Test Connection results from " + file + ", will remove the file", e);
+      deleteFile(file);
+      return null;
+    }
   }
 
   @Override
@@ -654,8 +605,8 @@ public class GitDiagnosticsTab extends DiagnosticTab {
 
     @NotNull
     public String getStatusString() {
-      final String status = myRootsToProcess > 0 && myRootsProcessed > 0 ? Math.round((1.0 * myRootsProcessed / myRootsToProcess) * 100) + "% (processed " + myRootsProcessed +
-                                                                           " VCS root instances from " + myRootsToProcess + "...)" : "";
+      final long percent = Math.round((1.0 * myRootsProcessed / myRootsToProcess) * 100);
+      final String status = myRootsToProcess > 0 && myRootsProcessed > 0 ? (percent == 0 ? "<1" : percent) + "% (processed " + myRootsProcessed + " VCS root instances out of " + myRootsToProcess + ")" : "";
       if (myFinished) {
         if (myCanceled) {
           return status.isEmpty() ? "Cancelled" : "Cancelled: " + status;

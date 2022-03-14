@@ -52,6 +52,7 @@ public class GitSupportBuilder {
   private CommitLoader myCommitLoader;
   private final List<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
   private VcsRootSshKeyManager myVcsRootSSHKeyManager = new EmptyVcsRootSshKeyManager();
+  private GitRepoOperations myGitRepoOperations;
 
   public static GitSupportBuilder gitSupport() {
     return new GitSupportBuilder();
@@ -118,6 +119,11 @@ public class GitSupportBuilder {
     return this;
   }
 
+  public GitSupportBuilder withGitRepoOperations(@NotNull GitRepoOperations gitRepoOperations) {
+    myGitRepoOperations = gitRepoOperations;
+    return this;
+  }
+
   public RepositoryManager getRepositoryManager() {
     return myRepositoryManager;
   }
@@ -169,7 +175,7 @@ public class GitSupportBuilder {
     }
     RevisionsCache revisionsCache = new RevisionsCache(myPluginConfig);
     myMapFullPath = new GitMapFullPath(myPluginConfig, revisionsCache);
-    final GitRepoOperationsImpl gitRepoOperations = new GitRepoOperationsImpl(myPluginConfig, myTransportFactory, myVcsRootSSHKeyManager, myFetchCommand);
+    final GitRepoOperations gitRepoOperations = myGitRepoOperations == null ? new GitRepoOperationsImpl(myPluginConfig, myTransportFactory, myVcsRootSSHKeyManager, myFetchCommand) : myGitRepoOperations;
     myCommitLoader = new CommitLoaderImpl(myRepositoryManager, gitRepoOperations, myMapFullPath, myPluginConfig);
     GitResetCacheHandler resetCacheHandler = new GitResetCacheHandler(myRepositoryManager, new GcErrors());
     ResetRevisionsCacheHandler resetRevisionsCacheHandler = new ResetRevisionsCacheHandler(revisionsCache);

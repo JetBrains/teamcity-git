@@ -9,7 +9,7 @@
 <div class="testConnectionErrors">
   <table class="runnerFormTable testConnectionErrorsTable fixedWidth" style="overflow: hidden">
     <tr class="groupingTitle">
-      <td colspan="2">Native Git Test Connection Errors for <bs:projectLink project="${testConnectionProject}"/> project started on ${testConnectionTimestamp}<span style="float: right; padding-right: 1em; cursor: pointer;"><c:if test="${testConnectionInProgress}"><a onclick="return BS.NativeGitStatusForm.stopTestConnection('${testConnectionProject.externalId}')">Stop</a></c:if></span></td>
+      <td colspan="2">Native Git connection for all Git VCS roots in <bs:projectLink project="${testConnectionProject}"/> project (started on ${testConnectionTimestamp})<span style="float: right; padding-right: 1em; cursor: pointer;"><c:if test="${testConnectionInProgress}"><a onclick="return BS.NativeGitStatusForm.stopTestConnection('${testConnectionProject.externalId}')">Stop</a></c:if></span></td>
     </tr>
     <tr><td colspan="2">
       <c:if test="${empty testConnectionStatus}">
