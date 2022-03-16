@@ -214,11 +214,6 @@ public class GitHubPasswordAuthRootRegistryImplTest extends BaseTestCase {
       }
 
       @Override
-      public void ensureEventProcessed(@NotNull EventData eventData) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
       public void ensureEventsProcessed(@NotNull Filter<EventData> eventsFilter) {
         throw new UnsupportedOperationException();
       }

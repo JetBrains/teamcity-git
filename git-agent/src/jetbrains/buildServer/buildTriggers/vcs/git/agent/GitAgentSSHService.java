@@ -25,13 +25,13 @@ import java.io.IOException;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.plugins.beans.PluginDescriptor;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.messages.serviceMessages.MapSerializerUtil;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import jetbrains.buildServer.vcs.VcsException;
 import org.apache.log4j.Logger;
-import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.asn1.smime.SMIMEAttributes;
 import org.bouncycastle.crypto.CipherParameters;
 import org.jetbrains.annotations.NotNull;
@@ -99,6 +99,7 @@ public class GitAgentSSHService extends GitSSHService {
         generator.addClasses(VcsException.class);
         generator.addClasses(JSchConfigInitializer.class);
         generator.addClasses(Pair.class); // JSchConfigInitializer depends on it
+        generator.addClasses(MapSerializerUtil.class); // SshPubkeyAcceptedAlgorithms depends on it via StringUtil
         myScript = generator.generate();
         myScriptPath = myScript.getCanonicalPath();
         if (SystemInfo.isWindows && myScriptPath.contains(" ")) {

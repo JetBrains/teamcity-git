@@ -206,9 +206,7 @@ public class SshAuthenticationTest extends BaseTestCase {
         );
         fail("Exception was expected");
       } catch (Exception e) {
-        final String msg = e.getMessage();
-        if (msg.contains("Permission denied") || msg.contains("Auth fail") || msg.contains("Too many authentication failures")) return null;
-        throw e;
+        assertContainsAny(e.getMessage(), "Permission denied", "Auth fail", "Too many authentication failures", "Auth cancel");
       }
       return null;
     });
@@ -225,9 +223,7 @@ public class SshAuthenticationTest extends BaseTestCase {
         );
         fail("Exception was expected");
       } catch (Exception e) {
-        final String msg = e.getMessage();
-        if (msg.contains("Permission denied") || msg.contains("Auth fail") || msg.contains("Too many authentication failures")) return null;
-        throw e;
+        assertContainsAny(e.getMessage(), "Permission denied", "Auth fail", "Too many authentication failures", "Auth cancel");
       }
       return null;
     });
@@ -275,10 +271,62 @@ public class SshAuthenticationTest extends BaseTestCase {
     );
   }
 
+  @TestFor(issues = "TW-75138")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_rsa_key_with_cr_lf(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_rsa");
+    do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", FileUtil.readText(key, "UTF-8").replace("\n", "\r\n").getBytes(), false), "keys/id_rsa.pub",
+                b -> b.withAuthMethod(AuthenticationMethod.TEAMCITY_SSH_KEY).withTeamCitySshKey("test_key")
+    );
+  }
+
+  @TestFor(issues = "TW-75138")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_rsa_key_with_extra_cr_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_rsa");
+    do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", (FileUtil.readText(key, "UTF-8") + "\n").replace("\n", "\r\n").getBytes(), false), "keys/id_rsa.pub",
+                b -> b.withAuthMethod(AuthenticationMethod.TEAMCITY_SSH_KEY).withTeamCitySshKey("test_key")
+    );
+  }
+
+  @TestFor(issues = "TW-75138")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_rsa_key_with_extra_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_rsa");
+    final File wrong_key = myTempFiles.createTempFile((FileUtil.readText(key, "UTF-8") + "\n"));
+    do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", null, "keys/id_rsa.pub",
+                b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(wrong_key.getAbsolutePath())
+    );
+  }
+
+  @TestFor(issues = "TW-75138")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_rsa_key_with_no_cr_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_rsa");
+    do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", FileUtil.readText(key, "UTF-8").trim().replace("\n", "\r\n").getBytes(), false), "keys/id_rsa.pub",
+                b -> b.withAuthMethod(AuthenticationMethod.TEAMCITY_SSH_KEY).withTeamCitySshKey("test_key"));
+  }
+
+  @TestFor(issues = "TW-75138")
+  @Test(dataProvider = "true,false")
+  public void ssh_git_rsa_key_with_no_lf_on_end(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_rsa");
+    do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", FileUtil.readText(key, "UTF-8").trim().getBytes(), false), "keys/id_rsa.pub",
+                b -> b.withAuthMethod(AuthenticationMethod.TEAMCITY_SSH_KEY).withTeamCitySshKey("test_key"));
+  }
+
   @Test(dataProvider = "true,false")
   public void ssh_git_rsa_key_file(boolean nativeOperationsEnabled) throws Exception {
     final File key = dataFile("keys/id_rsa");
     do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", null, "keys/id_rsa.pub",
+                b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(key.getAbsolutePath())
+    );
+  }
+
+  @Test(dataProvider = "true,false")
+  public void ssh_git_rsa_key_file_custom_kex_on_server(boolean nativeOperationsEnabled) throws Exception {
+    final File key = dataFile("keys/id_rsa");
+    do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "KexAlgorithms ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256,diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1", null, "keys/id_rsa.pub",
                 b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(key.getAbsolutePath())
     );
   }
@@ -400,6 +448,7 @@ public class SshAuthenticationTest extends BaseTestCase {
     if (!nativeOperationsEnabled) {
       JSchConfigInitializer.initJSchConfig(JSch.class);
     }
+    enableDebug();
 
     final File pub_key = publicKey == null ? null : dataFile(publicKey);
     ssh_test(pub_key, sshdConfig, container -> {
@@ -498,7 +547,6 @@ public class SshAuthenticationTest extends BaseTestCase {
       .withFileSystemBind(dataFile("repo.git").getAbsolutePath(), "/git-server/repos/repo.git", BindMode.READ_ONLY)
       .withLogConsumer(l -> {
         final String msg = "DOCKER: " + l.getUtf8String();
-        System.out.println(msg);
         if (myTestLogger != null) myTestLogger.log(msg);
       });
 
@@ -541,19 +589,21 @@ public class SshAuthenticationTest extends BaseTestCase {
       if (localKey != null) {
         FileUtil.delete(localKey);
       }
-      if (savedLocalKeys != null && !FileUtil.isEmptyDir(savedLocalKeys)) {
-        FileUtil.copyDir(savedLocalKeys, localKeys);
-        chmod(localKeys, "700");
-        final File[] files = localKeys.listFiles();
-        if (files != null) {
-          for (File f : files) {
-            final String name = f.getName();
-            if (name.endsWith(".pub") || "known_hosts".equals(name)) continue;
-            chmod(f, "600");
+      if (savedLocalKeys != null) {
+        if (!FileUtil.isEmptyDir(savedLocalKeys)) {
+          FileUtil.copyDir(savedLocalKeys, localKeys);
+          chmod(localKeys, "700");
+          final File[] files = localKeys.listFiles();
+          if (files != null) {
+            for (File f : files) {
+              final String name = f.getName();
+              if (name.endsWith(".pub") || "known_hosts".equals(name)) continue;
+              chmod(f, "600");
+            }
           }
         }
+        FileUtil.delete(savedLocalKeys);
       }
-      FileUtil.delete(savedLocalKeys);
     }
   }
 

@@ -24,6 +24,7 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import java.io.File;
 import java.util.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.jsch.SshPubkeyAcceptedAlgorithms;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsException;
@@ -196,6 +197,8 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
         for (Map.Entry<String, String> entry : myJschOptions.entrySet())
           session.setConfig(entry.getKey(), entry.getValue());
       }
+
+      SshPubkeyAcceptedAlgorithms.configureSession(session);
     }
   }
 
@@ -240,6 +243,7 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     protected void configure(OpenSshConfig.Host hc, Session session) {
       super.configure(hc, session);
       session.setConfig("StrictHostKeyChecking", "no");
+      SshPubkeyAcceptedAlgorithms.configureSession(session);
     }
   }
 
@@ -302,6 +306,7 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     protected void configure(OpenSshConfig.Host hc, Session session) {
       super.configure(hc, session);
       session.setConfig("StrictHostKeyChecking", "no");
+      SshPubkeyAcceptedAlgorithms.configureSession(session);
     }
   }
 

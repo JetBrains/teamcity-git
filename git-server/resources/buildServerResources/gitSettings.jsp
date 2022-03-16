@@ -153,6 +153,7 @@
         </div>
         <props:hiddenProperty name="oauthProviderId" />
         <props:hiddenProperty name="tokenType" />
+        <props:hiddenProperty name="tokenId" />
       </td>
     </tr>
     <tr id="gitPasswordRow" class="auth password">
@@ -287,6 +288,7 @@
       'https' : ['ANONYMOUS', 'PASSWORD', 'ACCESS_TOKEN']
     },
 
+    detachedAuthOptions: new Set(),
 
     getProtocol: function($element) {
       var url = $element.val();
@@ -344,16 +346,33 @@
       var that = this;
       $j('#authMethod option').each(function() {
         var method = $j(this).val();
-        if (method == selected || that.isSelectable(method) && that.contains(fetchCompatible, method) && that.contains(pushCompatible, method)) {
+        if (method == selected || that.contains(fetchCompatible, method) && that.contains(pushCompatible, method)) {
           $j(this).attr("disabled", false);
         } else {
           $j(this).attr("disabled", "disabled");
         }
+        if (that.isHiddenIfNotSelected(method)) {
+          if (method != selected) {
+            that.detachedAuthOptions.add($j(this).detach());
+          } else {
+            that.attachAllAuthOptions();
+          }
+        }
       });
     },
 
-    isSelectable: function(method) {
-      return method != "ACCESS_TOKEN";
+    attachAllAuthOptions: function() {
+      if (this.detachedAuthOptions.size > 0) {
+        var select = $j('#authMethod');
+        this.detachedAuthOptions.forEach(function(option) {
+          select.append(option);
+        });
+        this.detachedAuthOptions.clear();
+      }
+    },
+
+    isHiddenIfNotSelected: function(method) {
+      return method == "ACCESS_TOKEN";
     },
 
     getLimitingProtocols: function (fetchProto, fetchCompatMethods, pushProto, pushCompatMethods) {
@@ -491,12 +510,14 @@
           if (cre.permanentToken) {
             $('secure:password').value = '**************';
           } else if (cre.tokenType) {
+            Git.attachAllAuthOptions();
             $('authMethod').value = 'ACCESS_TOKEN';
           }
           BS.jQueryDropdown($('authMethod')).ufd("changeOptions");
           $('username').value = cre.oauthLogin;
           $('oauthProviderId').value = cre.oauthProviderId;
           $('tokenType').value = cre.tokenType;
+          $('tokenId').value = '';
           gitSelectAuthentication(true);
         }
       });

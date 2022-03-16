@@ -511,12 +511,24 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   @NotNull
+  public Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root, boolean useNativeGit) throws VcsException {
+    return doGetRemoteRefs(root, useNativeGit);
+  }
+
+  @NotNull
   public Map<String, Ref> getRemoteRefs(@NotNull final VcsRoot root) throws VcsException {
+    return doGetRemoteRefs(root, null);
+  }
+
+  @NotNull
+  private Map<String, Ref> doGetRemoteRefs(@NotNull final VcsRoot root, @Nullable Boolean useNativeGit) throws VcsException {
     OperationContext context = createContext(root, "list remote refs");
     GitVcsRoot gitRoot = context.getGitRoot();
     try {
       Repository db = context.getRepository();
-      Map<String, Ref> remoteRefs = getRemoteRefs(db, gitRoot);
+      Map<String, Ref> remoteRefs = doGetRemoteRefs(db, gitRoot, useNativeGit == null
+                                                                 ? myGitRepoOperations.lsRemoteCommand(gitRoot.getRepositoryFetchURL().toString())
+                                                                 : myGitRepoOperations.lsRemoteCommand(useNativeGit));
       if (LOG.isDebugEnabled() && myConfig.logRemoteRefs())
         LOG.debug("Remote refs for VCS root " + LogUtil.describe(root) + ": " + remoteRefs);
       return remoteRefs;
@@ -529,8 +541,8 @@ public class GitVcsSupport extends ServerVcsSupport
 
 
   @NotNull
-  private Map<String, Ref> getRemoteRefs(@NotNull Repository db, @NotNull GitVcsRoot gitRoot) throws Exception {
-    return myGitRepoOperations.lsRemoteCommand(gitRoot.getRepositoryFetchURL().toString()).lsRemote(db, gitRoot, new FetchSettings(gitRoot.getAuthSettings(), createProgress()));
+  private Map<String, Ref> doGetRemoteRefs(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull LsRemoteCommand command) throws Exception {
+    return command.lsRemote(db, gitRoot, new FetchSettings(gitRoot.getAuthSettings(), createProgress()));
   }
 
   @NotNull

@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.SystemInfo;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import java.io.*;
@@ -50,7 +51,6 @@ import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.util.FS;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import sun.awt.OSInfo;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
@@ -347,8 +347,7 @@ public class GitServerUtil {
           TreeSet<String> caseSensitiveConflicts = new TreeSet<>();
           TreeSet<String> conflicts = new TreeSet<>();
           try {
-            OSInfo.OSType os = OSInfo.getOSType();
-            if (os == OSInfo.OSType.WINDOWS || os == OSInfo.OSType.MACOSX) {
+            if (SystemInfo.isWindows || SystemInfo.isMac) {
               // here we need to check ref names before the fetch, otherwise they can be corrupted after an unsuccessful fetch (bug in jgit)
               for (String ref : refNamesLocal) {
                 if (!localRefName.equals(ref) && localRefName.equalsIgnoreCase(ref))

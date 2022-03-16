@@ -23,12 +23,11 @@ import org.eclipse.jgit.lib.AnyObjectId;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.util.NB;
 import org.jetbrains.annotations.NotNull;
-import sun.misc.Cleaner;
-import sun.nio.ch.DirectBuffer;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
@@ -140,19 +139,19 @@ public class MemoryMappedPackIndex extends PackIndex.PackIndexFactory {
       }
     }
 
-    /**
-     * Since mmaped buffer is always {@link DirectBuffer},
-     * use cleaner to help jvm to clean it
-     */
     @Override
     public void close() {
+      myBuffer.clear();
+
       try {
-        final Cleaner cleaner = ((DirectBuffer)myBuffer).cleaner();
-        if (cleaner != null) {
-          cleaner.clean();
-        }
+        // clean buffer using cleaner to free memory
+        final Field field = myBuffer.getClass().getDeclaredField("cleaner");
+        field.setAccessible(true);
+        final Object cleaner = field.get(myBuffer);
+        final Method cleanMethod = cleaner.getClass().getMethod("clean");
+        cleanMethod.invoke(cleaner);
       } catch (Throwable e) {
-        LOG.info("Exception while cleaning memory pack index", e);
+        LOG.warnAndDebugDetails("Exception while cleaning memory pack index", e);
       }
 
       isClosed = true;
@@ -261,7 +260,7 @@ public class MemoryMappedPackIndex extends PackIndex.PackIndexFactory {
     @Override
     public long getOffset64Count() {
       // actually, it is quite expensive to calculate this
-      throw new NotImplementedException();
+      throw new UnsupportedOperationException();
     }
 
     @Override

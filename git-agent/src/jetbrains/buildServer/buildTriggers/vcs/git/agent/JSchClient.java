@@ -30,6 +30,7 @@ import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.UnsupportedCallbackException;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.jsch.SshPubkeyAcceptedAlgorithms;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
@@ -149,6 +150,7 @@ public class JSchClient {
         }
       }
       session = jsch.getSession(myUsername, myHost, myPort != null ? myPort : 22);
+      SshPubkeyAcceptedAlgorithms.configureSession(session);
 
       String teamCityVersion = System.getenv(GitSSHHandler.TEAMCITY_VERSION);
       if (teamCityVersion != null) {

@@ -33,6 +33,7 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import jetbrains.buildServer.agent.ClasspathUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.jsch.SshPubkeyAcceptedAlgorithms;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchProcess;
 import jetbrains.buildServer.messages.serviceMessages.ServiceMessage;
 import jetbrains.buildServer.metrics.Counter;
@@ -114,7 +115,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
                                                            IGNORE_MISSING_REMOTE_REF,
                                                            CONNECTION_RETRY_INTERVAL_SECONDS,
                                                            CONNECTION_RETRY_ATTEMPTS,
-                                                           JSchConfigInitializer.JSCH_CONFIG_INT_PROPERTY_PREFIX);
+                                                           JSchConfigInitializer.JSCH_CONFIG_INT_PROPERTY_PREFIX,
+                                                           SshPubkeyAcceptedAlgorithms.DOMAINS_WITH_ENFORCED_SHA_1_SIGNATURE);
 
   public PluginConfigImpl() {
     myCachesDir = null;
