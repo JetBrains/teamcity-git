@@ -208,6 +208,7 @@ public class GitCommandLine extends GeneralCommandLine {
       if (useSshAskPass) {
         withAskPassScript(passphrase, askPassPath -> {
           addEnvParam("SSH_ASKPASS", askPassPath);
+          addEnvParam("SSH_ASKPASS_REQUIRE", "force");
           addEnvParam("DISPLAY", ":0.0");
         });
       } else {
