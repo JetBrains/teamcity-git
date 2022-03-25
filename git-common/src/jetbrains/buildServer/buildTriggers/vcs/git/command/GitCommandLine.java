@@ -241,7 +241,7 @@ public class GitCommandLine extends GeneralCommandLine {
   }
 
   private void writeSshPrivateKeyToFile(@NotNull byte[] privateKey, @NotNull File file) throws IOException {
-    FileUtil.writeFileAndReportErrors(file, Base64.getEncoder().encodeToString(privateKey).trim().replace("\r\n", "\n") + "\n");
+    FileUtil.writeFileAndReportErrors(file, new String(privateKey).trim().replace("\r\n", "\n") + "\n");
   }
 
   private void withAskPassScript(@Nullable String pass, @NotNull Consumer<String> action) throws VcsException {
