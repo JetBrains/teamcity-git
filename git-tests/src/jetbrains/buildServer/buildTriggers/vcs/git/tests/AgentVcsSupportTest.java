@@ -49,6 +49,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.UpdateRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
+import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.oauth.ExpiringAccessToken;
 import jetbrains.buildServer.oauth.InvalidAccessToken;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -60,6 +61,7 @@ import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsUtil;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
+import org.apache.log4j.Level;
 import org.assertj.core.api.Assertions;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.*;
@@ -1818,6 +1820,7 @@ public class AgentVcsSupportTest {
   @Test
   @TestFor(issues = "TW-65321")
   public void username_for_submodule_ssh() {
+    Loggers.VCS.setLevel(Level.DEBUG);
     VcsRootImpl root = vcsRoot()
       .withAgentGitPath(getGitPath())
       .withFetchUrl(GitUtils.toURL(dataFile("TW-65321")))
