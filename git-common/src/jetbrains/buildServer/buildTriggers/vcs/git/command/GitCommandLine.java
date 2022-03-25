@@ -6,10 +6,9 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.KeyPair;
 import java.io.*;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.function.Consumer;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
@@ -195,7 +194,7 @@ public class GitCommandLine extends GeneralCommandLine {
           addPostAction(() -> FileUtil.delete(finalPrivateKey));
           privateKey = finalPrivateKey;
 
-          FileUtil.copy(new File(keyPath), privateKey);
+          writeSshPrivateKeyToFile(Files.readAllBytes(Paths.get(keyPath)), privateKey);
           break;
         case PRIVATE_KEY_DEFAULT:
           // we do not decrypt default ssh keys
@@ -241,6 +240,10 @@ public class GitCommandLine extends GeneralCommandLine {
     }
   }
 
+  private void writeSshPrivateKeyToFile(@NotNull byte[] privateKey, @NotNull File file) throws IOException {
+    FileUtil.writeFileAndReportErrors(file, Base64.getEncoder().encodeToString(privateKey).trim().replace("\r\n", "\n") + "\n");
+  }
+
   private void withAskPassScript(@Nullable String pass, @NotNull Consumer<String> action) throws VcsException {
     File askPass = null;
     String askPassPath;
@@ -281,9 +284,7 @@ public class GitCommandLine extends GeneralCommandLine {
     final File privateKey = createTmpKeyFile();
     addPostAction(() -> FileUtil.delete(privateKey));
 
-    final String keyStr = new String(key.getPrivateKey());
-    FileUtil.writeFileAndReportErrors(privateKey, keyStr.trim().replace("\r\n", "\n") + "\n");
-
+    writeSshPrivateKeyToFile(key.getPrivateKey(), privateKey);
     return privateKey;
   }
 
