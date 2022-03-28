@@ -59,6 +59,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
   private final ProjectManager myProjectManager;
   private final ExecutorServices myExecutors;
   private final TeamCityNodes myNodes;
+  private final File myTestConnectionResultsFolder;
 
   private final Striped<Lock> myLocks = Striped.lazyWeakLock(24);
   private final Map<String, TestConnectionTask> myTestConnectionsInProgress = new HashMap<>();
@@ -72,7 +73,8 @@ public class GitDiagnosticsTab extends DiagnosticTab {
                            @NotNull GitMainConfigProcessor mainConfigProcessor,
                            @NotNull ProjectManager projectManager,
                            @NotNull ExecutorServices executorServices,
-                           @NotNull TeamCityNodes nodes) {
+                           @NotNull TeamCityNodes nodes,
+                           @NotNull ServerPaths serverPaths) {
     super(pagePlaces, "gitStatus", "Git");
     myVcsSupport = vcsSupport;
     myOperations = gitOperations;
@@ -80,6 +82,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     myProjectManager = projectManager;
     myExecutors = executorServices;
     myNodes = nodes;
+    myTestConnectionResultsFolder = serverPaths.getCacheDirectory("git/testConnectionResults");
 
     setPermission(Permission.MANAGE_SERVER_INSTALLATION);
     setIncludeUrl(pluginDescriptor.getPluginResourcesPath("gitStatusTab.jsp"));
@@ -267,7 +270,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
 
       if (canceled) return;
       if (project.isRootProject()) {
-        FileUtil.delete(getTestConnectionResultsFolder());
+        FileUtil.delete(myTestConnectionResultsFolder);
 
         final File storedFile = getStoredTestConnectionErrorsFile(timestamp);
         deleteFile(storedFile);
@@ -311,18 +314,13 @@ public class GitDiagnosticsTab extends DiagnosticTab {
 
   @Nullable
   private File getExitingStoredTestConnectionErrorsFile() {
-    final File[] files = FileUtil.listFiles(getTestConnectionResultsFolder(), (d, n) -> n.startsWith(FILENAME_PREFIX) && n.endsWith(".json"));
+    final File[] files = FileUtil.listFiles(myTestConnectionResultsFolder, (d, n) -> n.startsWith(FILENAME_PREFIX) && n.endsWith(".json"));
     return files.length == 0 ? null : files[0];
   }
 
   @NotNull
-  private File getTestConnectionResultsFolder() {
-    return new File(FileUtil.getTempDirectory() + "/gitTestConnection");
-  }
-
-  @NotNull
   private File getStoredTestConnectionErrorsFile(@NotNull Date timestamp) {
-    return new File(getTestConnectionResultsFolder(), FILENAME_PREFIX + timestamp.getTime() + ".json");
+    return new File(myTestConnectionResultsFolder, FILENAME_PREFIX + timestamp.getTime() + ".json");
   }
 
   private void finishTask(@NotNull String externalId) {
