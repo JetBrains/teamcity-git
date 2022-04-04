@@ -238,11 +238,14 @@
     },
 
     refreshProjectVcsRoots: function() {
-      $('testConnectionVcsRoots').disable();
       var selected = $('testConnectionProject').getValue();
       if (selected) {
+        var that = this;
+        that.setSaving(true);
+        that.disable();
         $('testConnectionVcsRootsContainer').refresh("saving", "selectedProject=" + selected, function () {
-          $('testConnectionVcsRoots').enable();
+          that.setSaving(false);
+          that.enable();
         });
       }
     }
