@@ -32,8 +32,6 @@ import org.jetbrains.annotations.NotNull;
 
 public class ShallowUpdater extends UpdaterImpl {
 
-  public static final String REQUEST_UNADVERTISED_OBJECT_NOT_ALLOWED = "server does not allow request for unadvertised object";
-
   public ShallowUpdater(@NotNull final FS fs,
                         @NotNull final AgentPluginConfig pluginConfig,
                         @NotNull final MirrorManager mirrorManager,
