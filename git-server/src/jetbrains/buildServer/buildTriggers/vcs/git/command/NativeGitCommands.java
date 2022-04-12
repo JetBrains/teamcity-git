@@ -79,6 +79,8 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
       gitFacade.remote()
                .setCommand("prune").setRemote("origin")
                .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
+               .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+               .setRepoUrl(fetchURI)
                .trace(myConfig.getGitTraceEnv())
                .call();
     } catch (VcsException e) {
@@ -92,6 +94,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
                .setTimeout(myConfig.getFetchTimeout())
                .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+               .setRepoUrl(fetchURI)
                .trace(myConfig.getGitTraceEnv())
                .addPreAction(() -> GitServerUtil.removeRefLocks(db.getDirectory()));
 
@@ -141,6 +144,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
                .setTimeout(myConfig.getRepositoryStateTimeoutSeconds())
                .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+               .setRepoUrl(gitRoot.getRepositoryFetchURL().get())
                .trace(myConfig.getGitTraceEnv());
 
     return executeCommand(ctx, "ls-remote", LogUtil.describe(gitRoot), () -> {
@@ -168,6 +172,8 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                  .setRefspec(fullRef)
                  .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
                  .setTimeout(myConfig.getPushTimeoutSeconds())
+                 .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+                 .setRepoUrl(gitRoot.getRepositoryPushURL().get())
                  .trace(myConfig.getGitTraceEnv())
                  .call();
         return CommitResult.createSuccessResult(commit);
@@ -205,6 +211,8 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                  .setRefspec(tag)
                  .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
                  .setTimeout(myConfig.getPushTimeoutSeconds())
+                 .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+                 .setRepoUrl(gitRoot.getRepositoryPushURL().get())
                  .trace(myConfig.getGitTraceEnv())
                  .call();
         Loggers.VCS.info("Tag '" + tag + "' was successfully pushed for " + debugInfo);

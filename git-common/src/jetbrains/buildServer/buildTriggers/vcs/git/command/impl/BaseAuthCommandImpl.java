@@ -18,6 +18,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorrup
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitOutdatedIndexException;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings.with;
@@ -26,6 +27,7 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
   private boolean myUseNativeSsh;
   private int myTimeout = CommandUtil.DEFAULT_COMMAND_TIMEOUT_SEC;
   private AuthSettings myAuthSettings;
+  private URIish myRepoUrl;
   private final List<Runnable> myPreActions = new ArrayList<Runnable>();
   private int myRetryAttempts = 1;
   private Map<String, String> myTraceEnv = Collections.emptyMap();
@@ -71,6 +73,12 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
     return (T)this;
   }
 
+  @Override
+  public T setRepoUrl(@NotNull URIish repoUrl) {
+    myRepoUrl = repoUrl;
+    return (T)this;
+  }
+
   @NotNull
   protected ExecResult runCmd(@NotNull GitCommandLine cmd) throws VcsException {
     return runCmd(cmd, new byte[0]);
@@ -78,6 +86,7 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
 
   @NotNull
   protected ExecResult runCmd(@NotNull GitCommandLine cmd, @NotNull byte[] input) throws VcsException {
+    if (myAuthSettings == null) throw new VcsException("Authentication settings must be specified before calling this command");
     try {
       return Retry.retry(new Retry.Retryable<ExecResult>() {
         @Override
