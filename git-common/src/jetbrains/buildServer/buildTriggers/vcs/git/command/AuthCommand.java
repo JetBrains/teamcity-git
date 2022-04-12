@@ -18,6 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
 public interface AuthCommand<T extends BaseCommand> {
@@ -36,4 +37,6 @@ public interface AuthCommand<T extends BaseCommand> {
   T setRetryAttempts(int num);
 
   T trace(@NotNull Map<String, String> gitTraceEnv);
+
+  T setRepoUrl(@NotNull URIish repoUrl);
 }

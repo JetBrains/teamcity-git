@@ -205,7 +205,7 @@ public class CommandUtil {
     return isMessageContains(e, "Connection reset");
   }
 
-  public static boolean isRecoverable(@NotNull Exception e, AuthSettings authSettings, int attempt, int maxAttempts) {
+  public static boolean isRecoverable(@NotNull Exception e, @NotNull AuthSettings authSettings, int attempt, int maxAttempts) {
     boolean attemptsLeft = attempt < maxAttempts;
 
     if (e instanceof ProcessTimeoutException || e instanceof GitExecTimeout) return attemptsLeft;
