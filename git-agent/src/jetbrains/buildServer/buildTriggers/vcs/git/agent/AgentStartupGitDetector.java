@@ -34,6 +34,7 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * @author dmitry.neverov
@@ -53,32 +54,40 @@ public class AgentStartupGitDetector extends AgentLifeCycleAdapter {
   }
   @Override
   public void afterAgentConfigurationLoaded(@NotNull BuildAgent agent) {
-    if (pathToGitConfigured(agent)) {
-      LOG.debug("Path to git configured, will not try to detect git");
-      return;
-    }
-    for (String path : getCandidatePaths()) {
-      try {
-        final GitVersion version = new AgentGitFacadeImpl(path).version().call();
-        agent.getConfiguration().addEnvironmentVariable(Constants.TEAMCITY_AGENT_GIT_VERSION, version.toString());
-        if (version.isSupported()) {
-          LOG.info("Detect git at " + path);
-          setPathToGit(agent, path);
-          break;
-        } else {
-          LOG.debug("TeamCity supports Git version " + GitVersion.MIN + " or higher, git at " + path + " has version " + version + " and will not be used");
+    String configuredGitPath = getConfiguredGitPath(agent);
+    if (configuredGitPath == null) {
+      for (String path : getCandidatePaths()) {
+        try {
+          final GitVersion version = new AgentGitFacadeImpl(path).version().call();
+          agent.getConfiguration().addEnvironmentVariable(Constants.TEAMCITY_AGENT_GIT_VERSION, version.toString());
+          if (version.isSupported()) {
+            LOG.info("Detected git at " + path);
+            setPathToGit(agent, path);
+            break;
+          } else {
+            LOG.debug("TeamCity supports Git version " + GitVersion.MIN + " or higher, git at " + path + " has version " + version + " and will not be used");
+          }
+        } catch (VcsException e) {
+          LOG.debug("Cannot run git at " + path, e);
         }
+      }
+    } else {
+      LOG.debug("Path to git configured: " + configuredGitPath + ", will not try to detect git");
+      try {
+        final GitVersion version = new AgentGitFacadeImpl(configuredGitPath).version().call();
+        agent.getConfiguration().addEnvironmentVariable(Constants.TEAMCITY_AGENT_GIT_VERSION, version.toString());
       } catch (VcsException e) {
-        LOG.debug("Cannot run git at " + path, e);
+        LOG.debug("Cannot run git at " + configuredGitPath, e);
       }
     }
     detectGitLfs(agent);
     detectSSH(agent);
   }
 
-  private boolean pathToGitConfigured(@NotNull BuildAgent agent) {
+  @Nullable
+  private String getConfiguredGitPath(@NotNull BuildAgent agent) {
     Map<String, String> envVars = getEnvironmentVariables(agent);
-    return envVars.get(Constants.TEAMCITY_AGENT_GIT_PATH) != null;
+    return envVars.get(Constants.TEAMCITY_AGENT_GIT_PATH);
   }
 
   private void setPathToGit(@NotNull BuildAgent agent, String path) {
@@ -130,7 +139,7 @@ public class AgentStartupGitDetector extends AgentLifeCycleAdapter {
           }
         }
       }
-    } catch (Exception e) {
+    } catch (Throwable e) {
       LOG.debug("Cannot detect git-lfs", e);
     }
   }
