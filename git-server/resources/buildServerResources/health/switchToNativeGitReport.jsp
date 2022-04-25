@@ -1,3 +1,3 @@
 <%@include file="/include.jsp" %>
 <c:set var="ref"><c:url value="/admin/admin.html?item=diagnostics&tab=gitStatus"/></c:set>
-Starting from version 2022.04 TeamCity supports <a href="https://git-scm.com/">native git</a> to communicate with remote repositories on server-side. For performance reasons it's recommended to switch to the native implementation - please use <a href="${ref}">Git Diagnostics</a> page to change native git status.<br/>
+Since version 2022.04, TeamCity supports <a href="https://git-scm.com/">native Git</a> to communicate with remote repositories on the server side. To improve performance and make Git operations more straightforward, enable native Git operations on the <a href="${ref}">Diagnostics | Git</a> page.<br/>
