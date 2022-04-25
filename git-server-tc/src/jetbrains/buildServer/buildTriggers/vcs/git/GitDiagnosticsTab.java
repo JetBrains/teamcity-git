@@ -59,6 +59,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
   private final ProjectManager myProjectManager;
   private final ExecutorServices myExecutors;
   private final TeamCityNodes myNodes;
+  private final ServerResponsibility myServerResponsibility;
   private final File myTestConnectionResultsFolder;
 
   private final Striped<Lock> myLocks = Striped.lazyWeakLock(24);
@@ -74,7 +75,8 @@ public class GitDiagnosticsTab extends DiagnosticTab {
                            @NotNull ProjectManager projectManager,
                            @NotNull ExecutorServices executorServices,
                            @NotNull TeamCityNodes nodes,
-                           @NotNull ServerPaths serverPaths) {
+                           @NotNull ServerPaths serverPaths,
+                           @NotNull BuildServerEx server) {
     super(pagePlaces, "gitStatus", "Git");
     myVcsSupport = vcsSupport;
     myOperations = gitOperations;
@@ -82,6 +84,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     myProjectManager = projectManager;
     myExecutors = executorServices;
     myNodes = nodes;
+    myServerResponsibility = server.getServerResponsibility();
     myTestConnectionResultsFolder = serverPaths.getCacheDirectory("git/testConnectionResults");
 
     setPermission(Permission.MANAGE_SERVER_INSTALLATION);
@@ -393,6 +396,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     super.fillModel(model, request);
     model.put("nativeGitOperationsEnabled", myMainConfigProcessor.isNativeGitOperationsEnabled());
     model.put("isMultinodeSetup", myNodes.getNodes().size() > 1);
+    model.put("canManageServerConfiguration", myServerResponsibility.canManageServerConfiguration());
     try {
       final GitExec gitExec = myOperations.detectGit();
       model.put("gitExec", gitExec);

@@ -86,7 +86,11 @@
     <tr>
       <th><label for="switchNativeGitLabel">Native git operations:</label></th>
       <td><div>
-        <button class="btn" type="submit" id="switchNativeGit" name="switchNativeGit" value="${nativeGitOperationsEnabled ? "Disable" : "Enable"}" onclick="BS.NativeGitStatusForm.switchNativeGit();" style="float: right;">${nativeGitOperationsEnabled ? disableText : enableText}</button>
+        <jsp:useBean id="canManageServerConfiguration" type="java.lang.Boolean" scope="request"/>
+        <button class="btn" type="submit" id="switchNativeGit" name="switchNativeGit"
+                <c:if test="${!canManageServerConfiguration}">disabled title="Not available on read-only node"</c:if>
+                value="${nativeGitOperationsEnabled ? "Disable" : "Enable"}"
+                onclick="BS.NativeGitStatusForm.switchNativeGit();" style="float: right;">${nativeGitOperationsEnabled ? disableText : enableText}</button>
           <span id="switchNativeGitLabel">${nativeGitOperationsEnabled ? "enabled" : "disabled"}</span>
         </div>
       </td>
