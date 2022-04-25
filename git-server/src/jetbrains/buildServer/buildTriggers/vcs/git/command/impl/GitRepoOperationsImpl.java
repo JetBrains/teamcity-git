@@ -162,7 +162,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
       if (isNativeGitOperationsSupported(gitExec)) {
         return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager);
       } else {
-        throw new UnsupportedOperationException("git executable " + gitExec.getPath() + " version " + gitExec.getVersion() + " is not supported for runninf native git commands on server-side");
+        throw new UnsupportedOperationException("git executable " + gitExec.getPath() + " version " + gitExec.getVersion() + " is not supported for running native Git commands on server-side");
       }
     }
     return (db, gitRoot, settings) -> getRemoteRefsJGit(db, gitRoot);
@@ -219,18 +219,18 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   private GitExec detectGitInternal() throws VcsException {
     final String gitPath = myConfig.getPathToGit();
     if (StringUtil.isEmpty(gitPath)) {
-      throw new VcsException("No path to git provided: please specify path to git executable using \"teamcity.server.git.executable.path\" server startup property");
+      throw new VcsException("No path to Git provided: please specify path to Git executable using \"teamcity.server.git.executable.path\" server startup property");
     }
     GitVersion gitVersion;
     try {
       gitVersion = IOGuard.allowCommandLine(() -> new GitFacadeImpl(new File("."), new StubContext(gitPath)).version().call());
     } catch (VcsException e) {
-      throw new VcsException("Unable to run git at path \"" + gitPath + "\": please specify correct path to git executable using \"teamcity.server.git.executable.path\" server startup property, error: " + e.getMessage(), e);
+      throw new VcsException("Unable to run Git at path \"" + gitPath + "\": please specify correct path to Git executable using \"teamcity.server.git.executable.path\" server startup property, error: " + e.getMessage(), e);
     }
     if (gitVersion.isSupported()) {
       return new GitExec(gitPath, gitVersion, null);
     }
-    throw new VcsException("TeamCity supports git version " + GitVersion.DEPRECATED + " or higher, detected git (path \""+ gitPath +"\") has version " + gitVersion + ".\n" + "Please install the latest git version");
+    throw new VcsException("TeamCity supports Git version " + GitVersion.DEPRECATED + " or higher, detected Git (path \""+ gitPath +"\") has version " + gitVersion + ".\n" + "Please install the latest Git version");
   }
 
 
