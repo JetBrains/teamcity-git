@@ -67,21 +67,19 @@
     </c:choose>
     <jsp:useBean id="nativeGitOperationsEnabled" type="java.lang.Boolean" scope="request"/>
     <jsp:useBean id="nativeGitOperationsSupported" type="java.lang.Boolean" scope="request"/>
-    <c:if test="${nativeGitOperationsEnabled || isGitExecError}">
-      <c:choose>
-        <c:when test="${isGitExecError}"><c:set var="warn"><c:out value="${gitExecError.message}"/></c:set></c:when>
-        <c:when test="${nativeGitOperationsSupported}"><c:set var="warn"/></c:when>
-        <c:otherwise>
-          <c:set var="warn">
-            Git executable
-            <c:out value="${gitExec.path}"/> version <strong><c:out value="${gitExec.version.toString()}"/></strong> is not supported for running native commands on TeamCity
-            server side.<br/>To enable native Git on server side, please install the latest Git version.
-          </c:set>
-        </c:otherwise>
-      </c:choose>
-      <c:if test="${not empty warn}">
-        <tr class="noBorder"><td colspan="2"><forms:attentionComment>${warn}</forms:attentionComment></td></tr>
-      </c:if>
+    <c:choose>
+      <c:when test="${isGitExecError}"><c:set var="warn"><c:out value="${gitExecError.message}"/></c:set></c:when>
+      <c:when test="${nativeGitOperationsSupported}"><c:set var="warn"/></c:when>
+      <c:otherwise>
+        <c:set var="warn">
+          Git executable
+          <c:out value="${gitExec.path}"/> version <strong><c:out value="${gitExec.version.toString()}"/></strong> is not supported for running native commands on TeamCity
+          server side.<br/>To enable native Git on server side, please install the latest Git version.
+        </c:set>
+      </c:otherwise>
+    </c:choose>
+    <c:if test="${not empty warn}">
+      <tr class="noBorder"><td colspan="2"><forms:attentionComment>${warn}</forms:attentionComment></td></tr>
     </c:if>
     <tr>
       <th><label for="switchNativeGitLabel">Native Git operations:</label></th>
