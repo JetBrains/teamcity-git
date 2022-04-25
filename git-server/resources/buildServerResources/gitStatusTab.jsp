@@ -56,7 +56,7 @@
       <c:otherwise>
         <jsp:useBean id="gitExec" type="jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec" scope="request"/>
         <tr>
-          <th><label for="gitExecPath">Path to git executable:</label></th>
+          <th><label for="gitExecPath">Path to Git executable:</label></th>
           <td><div><c:out value="${gitExec.path}"/></div></td>
         </tr>
         <tr>
@@ -75,7 +75,7 @@
           <c:set var="warn">
             Git executable
             <c:out value="${gitExec.path}"/> version <strong><c:out value="${gitExec.version.toString()}"/></strong> is not supported for running native commands on TeamCity
-            server-side.<br/>To enable running native commands on server please install the latest git version.
+            server side.<br/>To enable native Git on server side, please install the latest Git version.
           </c:set>
         </c:otherwise>
       </c:choose>
@@ -84,7 +84,7 @@
       </c:if>
     </c:if>
     <tr>
-      <th><label for="switchNativeGitLabel">Native git operations:</label></th>
+      <th><label for="switchNativeGitLabel">Native Git operations:</label></th>
       <td><div>
         <jsp:useBean id="canManageServerConfiguration" type="java.lang.Boolean" scope="request"/>
         <button class="btn" type="submit" id="switchNativeGit" name="switchNativeGit"
@@ -101,15 +101,15 @@
       <table class="runnerFormTable" style="width: 100%;">
         <tr>
           <td colspan="2">
-            <div class="smallNote" style="margin-left:0">TeamCity supports official native git versions 2.29+ installed per <a
-                href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">this guide</a> with latest OpenSSH as ssh client. <bs:help file=""/><br/>
-              Before enabling this feature you can run Test Connection with native git to ensure your VCS roots will continue working with native git.<br/>
-              Test Connection will not show existing VCS errors, only errors which will arise after enabling native git operations. It may be time-consuming if your server has many VCS roots.
+            <div class="smallNote" style="margin-left:0">
+              TeamCity supports official native Git versions 2.29+ installed as per <a href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">this guide</a> with the latest OpenSSH as an SSH client. <bs:help file="Git" anchor="nativeGitDefaultMode"/><br/>
+              Before enabling this feature, it is recommended to test the connection via native Git to ensure your VCS roots can be successfully switched to it.<br/>
+              The connection test will not show the existing VCS errors, only the errors which will arise after enabling native Git operations. Note that the test might be time-consuming on servers with many VCS roots.
             </div>
           </td>
         </tr>
         <tr>
-          <th><label for="vcsRootIds">Native Git Test Connection:</label></th>
+          <th><label for="vcsRootIds">Test Connection via native Git:</label></th>
           <td>
             <jsp:useBean id="projectsWithGitRoots" type="java.util.List" scope="request"/>
             <span style="float: right;">
