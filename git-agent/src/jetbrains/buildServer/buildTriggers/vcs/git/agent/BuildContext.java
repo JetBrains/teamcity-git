@@ -162,7 +162,7 @@ public class BuildContext implements Context {
 
   @Override
   public boolean isUseSshAskPass() {
-    final String p = myBuild.getSharedConfigParameters().get("teamcity.internal.git.useSshAskPas");
+    final String p = myBuild.getSharedConfigParameters().get("teamcity.internal.git.useSshAskPass");
     return p == null || Boolean.parseBoolean(p);
   }
 
