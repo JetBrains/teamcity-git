@@ -91,7 +91,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
 
     AgentCheckoutAbility canCheckout = myVcsSupport.canCheckout(vcsRoot, CheckoutRules.DEFAULT, runningBuild().addRoot(vcsRoot).build());
     then(canCheckout.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.NO_VCS_CLIENT);
-    then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Unable to run git at path gitt");
+    then(canCheckout.getCanNotCheckoutReason().getDetails()).contains("Unable to run Git at path gitt");
   }
 
   public void exclude_rules_are_used_without_sparse_checkout() throws IOException, VcsException {
@@ -256,7 +256,7 @@ public class AutoCheckoutTest extends BaseRemoteRepositoryTest {
     AgentCheckoutAbility canCheckout2 = myVcsSupport.canCheckout(root2, new CheckoutRules("+:dir2"), build);
     then(canCheckout1.getCanNotCheckoutReason()).isNull();
     then(canCheckout2.getCanNotCheckoutReason().getType()).isEqualTo(AgentCanNotCheckoutReason.NO_VCS_CLIENT);
-    then(canCheckout2.getCanNotCheckoutReason().getDetails()).contains("Unable to run git at path wrongGitPath");
+    then(canCheckout2.getCanNotCheckoutReason().getDetails()).contains("Unable to run Git at path wrongGitPath");
   }
 
 
