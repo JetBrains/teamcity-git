@@ -73,7 +73,7 @@
       <c:otherwise>
         <c:set var="warn">
           Git executable
-          <c:out value="${gitExec.path}"/> version <strong><c:out value="${gitExec.version.toString()}"/></strong> is not supported for running native commands on TeamCity
+          <strong><c:out value="${gitExec.path}"/></strong> version <strong><c:out value="${gitExec.version.toString()}"/></strong> is not supported for running native commands on TeamCity
           server side.<br/>To enable native Git on server side, please install the latest Git version.
         </c:set>
       </c:otherwise>
