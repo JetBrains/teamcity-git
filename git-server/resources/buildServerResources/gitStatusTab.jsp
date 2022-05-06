@@ -43,7 +43,7 @@
 <jsp:useBean id="isMultinodeSetup" type="java.lang.Boolean" scope="request"/>
 <c:set var="enableText" value="${isMultinodeSetup ? 'Enable on all nodes' : 'Enable'}"/>
 <c:set var="disableText" value="${isMultinodeSetup ? 'Disable on all nodes' : 'Disable'}"/>
-<form id="nativeGitStatusForm" method="post" onsubmit="return BS.NativeGitStatusForm.submit()" style="margin-top: 0.5em;">
+<form id="nativeGitStatusForm" method="post" onsubmit="return false;" style="margin-top: 0.5em;">
   <table class="runnerFormTable" style="width: 100%;">
     <tr class="groupingTitle">
       <td colspan="2">Native Git</td>
