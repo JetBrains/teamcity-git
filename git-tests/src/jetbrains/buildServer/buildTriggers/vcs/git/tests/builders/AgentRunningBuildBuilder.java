@@ -364,7 +364,6 @@ public class AgentRunningBuildBuilder {
       }
 
       @NotNull
-      @Override
       public NodeIdHolder getNodeIdHolder() {
         return new BuildNodeIdHolder("main");
       }
