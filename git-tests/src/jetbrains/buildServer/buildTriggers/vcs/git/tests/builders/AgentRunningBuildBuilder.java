@@ -16,7 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests.builders;
 
+import java.io.File;
+import java.util.*;
 import jetbrains.buildServer.agent.*;
+import jetbrains.buildServer.agent.impl.BuildNodeIdHolder;
 import jetbrains.buildServer.agent.impl.BuildParametersMapImpl;
 import jetbrains.buildServer.agentServer.AgentBuild;
 import jetbrains.buildServer.artifacts.ArtifactDependencyInfo;
@@ -29,11 +32,9 @@ import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsChangeInfo;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsRootEntry;
+import jetbrains.buildServer.xmlrpc.NodeIdHolder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.File;
-import java.util.*;
 
 import static jetbrains.buildServer.util.Util.map;
 
@@ -360,6 +361,12 @@ public class AgentRunningBuildBuilder {
       @Override
       public Map<String, String> getArtifactStorageSettings() {
         throw new UnsupportedOperationException();
+      }
+
+      @NotNull
+      @Override
+      public NodeIdHolder getNodeIdHolder() {
+        return new BuildNodeIdHolder("main");
       }
 
       @NotNull
