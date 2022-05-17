@@ -32,6 +32,10 @@ public interface AgentGitFacade extends GitFacade {
   InitCommand init();
 
   @NotNull
+  CloneCommand clone();
+
+
+  @NotNull
   CreateBranchCommand createBranch();
 
   @NotNull

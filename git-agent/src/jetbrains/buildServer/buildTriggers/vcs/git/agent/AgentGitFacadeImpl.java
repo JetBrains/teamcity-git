@@ -67,6 +67,11 @@ public class AgentGitFacadeImpl extends GitFacadeImpl implements AgentGitFacade 
   }
 
   @NotNull
+  public CloneCommand clone() {
+    return new CloneCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   public CreateBranchCommand createBranch() {
     return new CreateBranchCommandImpl(createCommandLine());
   }
