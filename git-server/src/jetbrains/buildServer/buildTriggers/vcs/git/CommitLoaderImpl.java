@@ -173,19 +173,32 @@ public class CommitLoaderImpl implements CommitLoader {
   }
 
   @NotNull
-  private Collection<RefCommit> findLocallyMissingRevisions(@NotNull OperationContext context,
-                                                            @NotNull Repository db,
-                                                            @NotNull Collection<RefCommit> revisions,
-                                                            boolean throwErrors) throws VcsException {
+  private static Collection<RefCommit> findRefsToFetch(@NotNull OperationContext context,
+                                                       @NotNull Repository db,
+                                                       @NotNull Collection<RefCommit> revisions,
+                                                       boolean checkTipRefs,
+                                                       boolean throwErrors) throws VcsException {
     final Set<RefCommit> locallyMissing = new HashSet<>();
 
     try (RevWalk walk = new RevWalk(db)) {
       for (RefCommit r : revisions) {
         final String ref = GitUtils.expandRef(r.getRef());
-        final String rev = r.getCommit();
-        final String revNumber = GitUtils.versionRevision(rev);
+        final String revNumber = GitUtils.versionRevision(r.getCommit());
         try {
-          walk.parseCommit(ObjectId.fromString(revNumber));
+          if (checkTipRefs && r.isRefTip()) {
+            String localRev = null;
+            Ref localRef = db.getRefDatabase().findRef(ref);
+            if (localRef != null) {
+              ObjectId localRevId = localRef.getObjectId();
+              if (localRevId != null) {
+                localRev = localRevId.getName();
+              }
+            }
+            if (localRev == null || !localRev.equals(revNumber))
+              locallyMissing.add(r);
+          } else {
+            walk.parseCommit(ObjectId.fromString(revNumber));
+          }
         } catch (IncorrectObjectTypeException e) {
           LOG.warn("Ref " + ref + " points to a non-commit " + revNumber + " for " + context.getGitRoot().debugInfo());
         } catch (MissingObjectException e) {
@@ -274,8 +287,8 @@ public class CommitLoaderImpl implements CommitLoader {
     final File repositoryDir = db.getDirectory();
     assert repositoryDir != null : "Non-local repository";
 
-    Collection<RefCommit> missingRevisions = findLocallyMissingRevisions(context, db, revisions, false);
-    if (missingRevisions.isEmpty()) return;
+    Collection<RefCommit> refsToFetch = findRefsToFetch(context, db, revisions, true, false);
+    if (refsToFetch.isEmpty()) return;
 
     final long start = System.currentTimeMillis();
     final ReentrantLock lock = acquireWriteLock(repositoryDir, context.getPluginConfig().repositoryWriteLockTimeout());
@@ -288,23 +301,23 @@ public class CommitLoaderImpl implements CommitLoader {
       }
       PERFORMANCE_LOG.debug("[waitForWriteLock] repository: " + repositoryDir.getAbsolutePath() + ", took " + waitTime + "ms");
 
-      missingRevisions = findLocallyMissingRevisions(context, db, missingRevisions, false);
-      if (missingRevisions.isEmpty()) return;
+      refsToFetch = findRefsToFetch(context, db, refsToFetch, true, false);
+      if (refsToFetch.isEmpty()) return;
 
       final Set<String> filteredRemoteRefs = getFilteredRemoteRefs(context, remoteRefs); // unlike remoteRefs, which includes all remote refs, doesn't include tags if not enabled
       final boolean fetchRemoteRefs = shouldFetchRemoteRefs(context, revisions, filteredRemoteRefs);
       final boolean includeTags = context.getGitRoot().isReportTags();
-      final Collection<RefSpec> refSpecs = getRefSpecForCurrentState(context, missingRevisions, remoteRefs);
+      final Collection<RefSpec> refSpecs = getRefSpecForCurrentState(context, refsToFetch, remoteRefs);
       doFetch(db, fetchURI, getFetchSettings(context, refSpecs, fetchRemoteRefs, includeTags));
 
-      missingRevisions = findLocallyMissingRevisions(context, db, missingRevisions, false);
-      if (missingRevisions.isEmpty()) return;
+      refsToFetch = findRefsToFetch(context, db, refsToFetch, false, false);
+      if (refsToFetch.isEmpty()) return;
 
       final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
-      if (fetchAllRefsDisabled && missingRevisions.stream().noneMatch(RefCommit::isRefTip)) return;
+      if (fetchAllRefsDisabled && refsToFetch.stream().noneMatch(RefCommit::isRefTip)) return;
 
       doFetch(db, fetchURI, getFetchSettings(context, getAllRefSpec(), true, includeTags || !fetchAllRefsDisabled));
-      findLocallyMissingRevisions(context, db, missingRevisions, true);
+      findRefsToFetch(context, db, refsToFetch, false, true);
     } finally {
       lock.unlock();
     }
