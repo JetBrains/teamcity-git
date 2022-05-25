@@ -178,7 +178,7 @@ public class CommitLoaderImpl implements CommitLoader {
                                                        @NotNull Collection<RefCommit> revisions,
                                                        boolean checkTipRefs,
                                                        boolean throwErrors) throws VcsException {
-    final Set<RefCommit> locallyMissing = new HashSet<>();
+    final Set<RefCommit> refsToFetch = new HashSet<>();
 
     try (RevWalk walk = new RevWalk(db)) {
       for (RefCommit r : revisions) {
@@ -186,6 +186,8 @@ public class CommitLoaderImpl implements CommitLoader {
         final String revNumber = GitUtils.versionRevision(r.getCommit());
         try {
           if (checkTipRefs && r.isRefTip()) {
+            // For the refs from the new ("to") state we check if these refs in the local clone point to the same revisions
+            // this is only done prior to determining if we need to fetch these refs selectively (hence checkTipRefs argument)
             String localRev = null;
             Ref localRef = db.getRefDatabase().findRef(ref);
             if (localRef != null) {
@@ -195,32 +197,36 @@ public class CommitLoaderImpl implements CommitLoader {
               }
             }
             if (localRev == null || !localRev.equals(revNumber))
-              locallyMissing.add(r);
+              refsToFetch.add(r);
           } else {
+            // In all other cases we just check if revisions exist in the local clone
+            // This is done for all refs from the old ("from") state and also for all refs from the "to" state
+            // after selective fetch was done - as a last resort we will attempt to fetch all refs (not selectively)
+            // to obtain revisions that are still missing
             walk.parseCommit(ObjectId.fromString(revNumber));
           }
         } catch (IncorrectObjectTypeException e) {
           LOG.warn("Ref " + ref + " points to a non-commit " + revNumber + " for " + context.getGitRoot().debugInfo());
         } catch (MissingObjectException e) {
-          locallyMissing.add(r);
+          refsToFetch.add(r);
         } catch (Exception e) {
           LOG.warnAndDebugDetails("Unexpected exception while trying to parse commit " + revNumber,  e);
-          locallyMissing.add(r);
+          refsToFetch.add(r);
         }
       }
 
-      if (locallyMissing.isEmpty()) {
-        return locallyMissing;
+      if (refsToFetch.isEmpty()) {
+        return refsToFetch;
       }
 
 
       LOG.debug("Revisions missing in the local repository: " +
-                locallyMissing.stream().map(e -> e.getRef() + ": " + e.getCommit()).collect(Collectors.joining(", ")) + " for " +
+                refsToFetch.stream().map(e -> e.getRef() + ": " + e.getCommit()).collect(Collectors.joining(", ")) + " for " +
                 context.getGitRoot().debugInfo());
 
       if (throwErrors) {
         final Set<String> missingTips =
-          locallyMissing.stream().filter(RefCommit::isRefTip).map(e -> e.getRef() + ": " + e.getCommit()).collect(Collectors.toSet());
+          refsToFetch.stream().filter(RefCommit::isRefTip).map(e -> e.getRef() + ": " + e.getCommit()).collect(Collectors.toSet());
 
         if (missingTips.size() > 0) {
           final VcsException error = new VcsException("Revisions missing in the local repository: " + StringUtil.join(missingTips, ", "));
@@ -228,7 +234,7 @@ public class CommitLoaderImpl implements CommitLoader {
           throw error;
         }
       }
-      return locallyMissing;
+      return refsToFetch;
     }
   }
 
