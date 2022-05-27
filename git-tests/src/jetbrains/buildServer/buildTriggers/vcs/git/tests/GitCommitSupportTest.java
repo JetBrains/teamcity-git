@@ -31,6 +31,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.util.FuncThrow;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.*;
 import org.assertj.core.groups.Tuple;
@@ -89,6 +90,35 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     assertEquals("Commit description", m.getDescription());
     assertEquals("file-to-commit", m.getChanges().get(0).getFileName());
   }
+
+  public void test_fetch_updates_local_clone() throws Exception {
+    RepositoryStateData state1 = myGit.getCurrentState(myRoot);
+
+    CommitPatchBuilder patchBuilder = myCommitSupport.getCommitPatchBuilder(myRoot);
+    byte[] bytes = "test-content".getBytes();
+    patchBuilder.createFile("file-to-commit", new ByteArrayInputStream(bytes));
+    String createdRevision = patchBuilder.commit(new CommitSettingsImpl("user", "Commit description")).getCreatedRevision();
+    patchBuilder.dispose();
+
+    assertFalse(StringUtil.isEmpty(createdRevision));
+
+
+    RepositoryStateData state2 = myGit.getCurrentState(myRoot);
+    final File mirror = myGit.getRepositoryManager()
+                             .getMirrorDir(getRemoteRepositoryDir("merge").getAbsolutePath());
+
+    String ref = showRef(mirror, "refs/heads/master");
+
+    assertFalse(StringUtil.isEmpty(ref));
+    assertFalse(ref.startsWith(createdRevision));
+
+    myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);
+
+    ref = showRef(mirror, "refs/heads/master");
+
+    assertTrue(ref.startsWith(createdRevision));
+  }
+
 
   public void test_short_branch_name() throws Exception {
     RepositoryStateData state1 = myGit.getCurrentState(myRoot);
