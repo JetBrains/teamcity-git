@@ -7,7 +7,7 @@
       <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/util.jar!/" />
       <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/spring-webmvc.jar!/" />
       <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/guava-18.0.jar!/" />
-      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/gson-2.8.9.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/gson-2.9.0.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
