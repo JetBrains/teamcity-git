@@ -49,7 +49,10 @@ public class GitUtilsTest extends BaseTestCase {
   }
 
 
-  @Test
+  // This test fails on Windows if 8.3 (short) names are disabled. All ways to check if they are enabled either require administrative privileges
+  // or are equivalent to the code that is tested. We probably need to investigate it further, but at least on Windows 10 (Version 10.0.19043.1706)
+  // with Git version 2.23.0.windows.1 and short names disabled TeamCity agent works fine with SSH URLs even if temporary directory path contains spaces
+  @Test(enabled = false)
   public void short_file_name_should_not_contain_spaces() throws Exception {
     if (!SystemInfo.isWindows)
       throw new SkipException("Windows only test");
