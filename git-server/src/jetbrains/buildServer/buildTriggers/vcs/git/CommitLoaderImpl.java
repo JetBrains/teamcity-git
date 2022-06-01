@@ -185,7 +185,7 @@ public class CommitLoaderImpl implements CommitLoader {
         final String ref = GitUtils.expandRef(r.getRef());
         final String revNumber = GitUtils.versionRevision(r.getCommit());
         try {
-          if (checkTipRefs && r.isRefTip()) {
+          if (checkTipRefs && r.isRefTip() && !GitServerUtil.isTag(ref)) {
             // For the refs from the new ("to") state we check if these refs in the local clone point to the same revisions
             // this is only done prior to determining if we need to fetch these refs selectively (hence checkTipRefs argument)
             String localRev = null;
