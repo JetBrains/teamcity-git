@@ -22,6 +22,8 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.Optional;
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.agent.BuildAgentConfiguration;
+import jetbrains.buildServer.agent.ssl.TrustedCertificatesDirectory;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
@@ -177,7 +179,16 @@ public class SSLInvestigatorTest {
   }
 
   private SSLInvestigator createInstance() throws Exception {
-    return new SSLInvestigator(new URIish(new URL("https://localhost:" + myServerPort)), myTempDirectory.getPath(), myHomeDirectory.getPath());
+    BuildAgentConfiguration buildAgentConfiguration = myMockery.mock(BuildAgentConfiguration.class);
+    File systemDir = new File(myHomeDirectory, "system");
+    myMockery.checking(new Expectations() {{
+      allowing(buildAgentConfiguration).getCacheDirectory(with(TrustedCertificatesDirectory.SERVER_CERTIFICATES_DIRECTORY));
+      will(returnValue(new File(systemDir, TrustedCertificatesDirectory.SERVER_CERTIFICATES_DIRECTORY)));
+      allowing(buildAgentConfiguration).getCacheDirectory(with(TrustedCertificatesDirectory.ALL_CERTIFICATES_DIRECTORY));
+      will(returnValue(new File(systemDir, TrustedCertificatesDirectory.ALL_CERTIFICATES_DIRECTORY)));
+    }});
+
+    return new SSLInvestigator(new URIish(new URL("https://localhost:" + myServerPort)), myTempDirectory.getPath(), buildAgentConfiguration);
   }
 
   private GitFactory createFactory() {

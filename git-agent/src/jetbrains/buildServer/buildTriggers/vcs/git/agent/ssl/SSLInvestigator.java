@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.security.*;
 import javax.net.ssl.*;
+import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.ssl.TrustedCertificatesDirectory;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitFacade;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -46,22 +47,22 @@ public class SSLInvestigator {
 
   private final URIish myFetchURL;
   private final String myTempDirectory;
-  private final String myHomeDirectory;
+  private final BuildAgentConfiguration myAgentConfiguration;
   private final SSLChecker mySSLChecker;
   private final SSLContextRetriever mySSLContextRetriever;
 
   private volatile Boolean myNeedCustomCertificate = null;
   private volatile String myCAInfoPath = null;
 
-  public SSLInvestigator(@NotNull final URIish fetchURL, @NotNull final String tempDirectory, @NotNull final String homeDirectory) {
-    this(fetchURL, tempDirectory, homeDirectory, new SSLCheckerImpl(), new SSLContextRetrieverImpl());
+  public SSLInvestigator(@NotNull final URIish fetchURL, @NotNull final String tempDirectory, @NotNull final BuildAgentConfiguration agentConfiguration) {
+    this(fetchURL, tempDirectory, agentConfiguration, new SSLCheckerImpl(), new SSLContextRetrieverImpl());
   }
 
-  public SSLInvestigator(@NotNull final URIish fetchURL, @NotNull final String tempDirectory, @NotNull final String homeDirectory,
+  public SSLInvestigator(@NotNull final URIish fetchURL, @NotNull final String tempDirectory, @NotNull final BuildAgentConfiguration agentConfiguration,
                          @NotNull final SSLChecker sslChecker, @NotNull final SSLContextRetriever sslContextRetriever) {
     myFetchURL = fetchURL;
     myTempDirectory = tempDirectory;
-    myHomeDirectory = homeDirectory;
+    myAgentConfiguration = agentConfiguration;
     mySSLChecker = sslChecker;
     mySSLContextRetriever = sslContextRetriever;
 
@@ -105,7 +106,7 @@ public class SSLInvestigator {
   @Nullable
   private String generateCertificateFile() {
     try {
-      final String certDirectory = TrustedCertificatesDirectory.getAllCertificatesDirectoryFromHome(myHomeDirectory);
+      final String certDirectory = TrustedCertificatesDirectory.getAllCertificatesDirectory(myAgentConfiguration);
       final String pemContent = TrustStoreIO.pemContentFromDirectory(certDirectory);
       if (!pemContent.isEmpty()) {
         final File file = new File(myTempDirectory, CERT_FILE);
@@ -136,7 +137,7 @@ public class SSLInvestigator {
 
   private boolean doesCanConnectWithCustomCertificate() {
     try {
-      final SSLContext sslContext = mySSLContextRetriever.retrieve(myHomeDirectory);
+      final SSLContext sslContext = mySSLContextRetriever.retrieve(myAgentConfiguration);
       if (sslContext == null) {
         /* there are no custom certificate */
         return false;
@@ -175,16 +176,16 @@ public class SSLInvestigator {
 
   public interface SSLContextRetriever {
     @Nullable
-    SSLContext retrieve(@NotNull String homeDirectory) throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException;
+    SSLContext retrieve(@NotNull final BuildAgentConfiguration agentConfiguration) throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException;
   }
 
   public static class SSLContextRetrieverImpl implements SSLContextRetriever {
 
     @Override
     @Nullable
-    public SSLContext retrieve(@NotNull final String homeDirectory)
+    public SSLContext retrieve(@NotNull final BuildAgentConfiguration agentConfiguration)
       throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
-      final X509TrustManager manager = trustManager(homeDirectory);
+      final X509TrustManager manager = trustManager(agentConfiguration);
       if (manager == null) {
         return null;
       }
@@ -196,8 +197,8 @@ public class SSLInvestigator {
     }
 
     @Nullable
-    private X509TrustManager trustManager(@NotNull final String homeDirectory) throws NoSuchAlgorithmException, KeyStoreException {
-      final KeyStore trustStore = trustStore(homeDirectory);
+    private X509TrustManager trustManager(@NotNull final BuildAgentConfiguration agentConfiguration) throws NoSuchAlgorithmException, KeyStoreException {
+      final KeyStore trustStore = trustStore(agentConfiguration);
       if (trustStore == null) {
         return null;
       }
@@ -209,8 +210,8 @@ public class SSLInvestigator {
     }
 
     @Nullable
-    private KeyStore trustStore(@NotNull final String homeDirectory) {
-      final String certDirectory = TrustedCertificatesDirectory.getAllCertificatesDirectoryFromHome(homeDirectory);
+    private KeyStore trustStore(@NotNull final BuildAgentConfiguration agentConfiguration) {
+      final String certDirectory = TrustedCertificatesDirectory.getAllCertificatesDirectory(agentConfiguration);
       return TrustStoreIO.readTrustStoreFromDirectory(certDirectory);
     }
   }

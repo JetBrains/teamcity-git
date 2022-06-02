@@ -224,7 +224,7 @@ public class UpdaterImpl implements Updater {
   @NotNull
   protected SSLInvestigator getSSLInvestigator(@NotNull CommonURIish remoteUrl) {
     return new SSLInvestigator(remoteUrl.<URIish>get(), myBuild.getAgentTempDirectory().getPath(),
-                               myBuild.getAgentConfiguration().getAgentHomeDirectory().getPath());
+                               myBuild.getAgentConfiguration());
   }
 
   private boolean isShallowRepository(@NotNull File gitDir) {
