@@ -44,11 +44,11 @@ public interface AuthSettings {
   String getPassword();
 
   @Nullable
-  public String getTeamCitySshKeyId();
+  String getTeamCitySshKeyId();
 
   @NotNull
-  public Map<String, String> toMap();
+  Map<String, String> toMap();
 
-  public boolean doesTokenNeedRefresh();
+  boolean doesTokenNeedRefresh();
 
 }
