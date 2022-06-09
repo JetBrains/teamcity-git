@@ -13,13 +13,24 @@ public class SGitVcsRoot extends GitVcsRoot {
 
   @Nullable
   private final TokenRefresher myTokenRefresher;
+  private final boolean myCheckProjectScope;
 
   public SGitVcsRoot(@NotNull MirrorManager mirrorManager,
                      @NotNull VcsRoot root,
                      @NotNull URIishHelper urIishHelper,
                      @Nullable TokenRefresher tokenRefresher) throws VcsException {
+    this(mirrorManager, root, urIishHelper, tokenRefresher, true);
+  }
+
+
+  public SGitVcsRoot(@NotNull MirrorManager mirrorManager,
+                     @NotNull VcsRoot root,
+                     @NotNull URIishHelper urIishHelper,
+                     @Nullable TokenRefresher tokenRefresher,
+                     boolean checkProjectScope) throws VcsException {
     super(mirrorManager, root, urIishHelper, tokenRefresher != null);
     myTokenRefresher = tokenRefresher;
+    myCheckProjectScope = checkProjectScope;
   }
 
   @Nullable
@@ -31,9 +42,9 @@ public class SGitVcsRoot extends GitVcsRoot {
     SVcsRoot parentRoot = vcsRoot instanceof SVcsRoot ? (SVcsRoot)vcsRoot
                                                       : vcsRoot instanceof VcsRootInstance ? ((VcsRootInstance)vcsRoot).getParent() : null;
     if (parentRoot == null) {
-      return myTokenRefresher.getRefreshableToken(vcsRoot.getExternalId(), tokenId);
+      return myTokenRefresher.getRefreshableToken(vcsRoot.getExternalId(), tokenId, myCheckProjectScope);
     } else {
-      return myTokenRefresher.getRefreshableToken(parentRoot.getProject(), tokenId);
+      return myTokenRefresher.getRefreshableToken(parentRoot.getProject(), tokenId, myCheckProjectScope);
     }
   }
 }

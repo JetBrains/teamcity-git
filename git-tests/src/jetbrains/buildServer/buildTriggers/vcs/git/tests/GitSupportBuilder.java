@@ -192,6 +192,18 @@ public class GitSupportBuilder {
       public OAuthToken getRefreshableToken(@NotNull SProject project, @NotNull String tokenFullId) {
         return null;
       }
+
+      @Nullable
+      @Override
+      public OAuthToken getRefreshableToken(@NotNull String vcsRootExtId, @NotNull String tokenFullId, boolean checkProjectScope) {
+        return null;
+      }
+
+      @Nullable
+      @Override
+      public OAuthToken getRefreshableToken(@Nullable SProject project, @NotNull String tokenFullId, boolean checkProjectScope) {
+        return null;
+      }
     };
 
     GitVcsSupport git = new GitVcsSupport(gitRepoOperations, myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,

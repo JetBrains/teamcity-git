@@ -118,7 +118,7 @@ public class OperationContext {
   }
 
   public GitVcsRoot getGitRoot(@NotNull VcsRoot root) throws VcsException {
-    return new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), myTokenRefresher);
+    return new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), myTokenRefresher, root.getId() >= 0);
   }
 
   @NotNull
