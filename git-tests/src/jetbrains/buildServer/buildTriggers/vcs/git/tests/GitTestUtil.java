@@ -42,7 +42,13 @@ public class GitTestUtil {
    * @return the IO file object (the file is absolute)
    */
   public static File dataFile(String... path) {
-    File f = new File("git-tests", "data");
+    File base = new File("git-tests");
+    File f = null;
+    if (base.exists()) {
+      f = new File(base, "data");
+    } else {
+      f = new File("data");
+    }
     for (String p : path) {
       f = new File(f, p);
     }
