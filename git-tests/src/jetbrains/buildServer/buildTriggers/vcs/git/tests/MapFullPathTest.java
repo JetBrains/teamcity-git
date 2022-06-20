@@ -16,39 +16,33 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitMapFullPath;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
-import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.log.LogInitializer;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
-import jetbrains.buildServer.vcs.CheckoutRules;
-import jetbrains.buildServer.vcs.RepositoryStateData;
-import jetbrains.buildServer.vcs.VcsRoot;
-import jetbrains.buildServer.vcs.VcsRootEntry;
+import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilderImpl;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.transport.URIish;
 import org.hamcrest.Description;
 import org.hamcrest.TypeSafeMatcher;
 import org.jetbrains.annotations.NotNull;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.jmock.lib.legacy.ClassImposteriser;
+import org.testng.Assert;
 import org.testng.annotations.*;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 import static java.util.Arrays.asList;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
@@ -71,6 +65,7 @@ public class MapFullPathTest {
   private VcsRootEntry myRootEntry;
   private VcsRoot myRoot2;
   private VcsRootEntry myRootEntry2;
+  private ServerPaths myServerPaths;
 
   @BeforeClass
   public void setUpClass() {
@@ -91,8 +86,8 @@ public class MapFullPathTest {
     myRemoteRepositoryDir2 = myTempFiles.createTempDir();
     copyRepository(dataFile("repo.git"), myRemoteRepositoryDir2);
 
-    ServerPaths paths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    GitSupportBuilder gitBuilder = gitSupport().withServerPaths(paths);
+    myServerPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
+    GitSupportBuilder gitBuilder = gitSupport().withServerPaths(myServerPaths);
     myGit = gitBuilder.build();
     myMapFullPath = gitBuilder.getMapFullPath();
     myRoot = vcsRoot().withId(1).withFetchUrl(myRemoteRepositoryDir.getAbsolutePath()).build();
@@ -139,8 +134,8 @@ public class MapFullPathTest {
     myMapFullPath.setCommitLoader(commitLoader);
     myContext.checking(new Expectations() {{
       //ask for existing commit only once:
-      one(commitLoader).findCommit(with(any(Repository.class)), with(existingCommit)); will(returnValue(commit));
-      one(commitLoader).findCommit(with(any(Repository.class)), with(nonExistingCommit)); will(returnValue(null));
+      one(commitLoader).loadCommit(with(any(OperationContext.class)), with(any(GitVcsRoot.class)), with(existingCommit)); will(returnValue(commit));
+      one(commitLoader).loadCommit(with(any(OperationContext.class)), with(any(GitVcsRoot.class)), with(nonExistingCommit)); will(throwException(new RevisionNotFoundException()));
     }});
 
     RepositoryStateData state0 = RepositoryStateData.createSingleVersionState("a7274ca8e024d98c7d59874f19f21d26ee31d41d");
@@ -174,9 +169,9 @@ public class MapFullPathTest {
     final String remoteUrl1 = myRemoteRepositoryDir.getAbsolutePath();
     final String remoteUrl2 = myRemoteRepositoryDir2.getAbsolutePath();
     myContext.checking(new Expectations() {{
-      one(commitLoader).findCommit(with(repositoryWithUrl(remoteUrl1)), with(hintCommit)); will(returnValue(commit));
+      one(commitLoader).loadCommit(with(any(OperationContext.class)), with(rootWithUrl(remoteUrl1)), with(hintCommit)); will(returnValue(commit));
       //only single check for repository which doesn't contain a hint commit:
-      one(commitLoader).findCommit(with(repositoryWithUrl(remoteUrl2)), with(hintCommit)); will(returnValue(null));
+      one(commitLoader).loadCommit(with(any(OperationContext.class)), with(rootWithUrl(remoteUrl2)), with(hintCommit)); will(throwException(new RevisionNotFoundException()));
     }});
 
     String fullPath1 = hintCommit + "-" + lastCommonCommit1 + "||.";
@@ -272,11 +267,19 @@ public class MapFullPathTest {
     //run map full path before fetch
     final String existingCommit = "a7274ca8e024d98c7d59874f19f21d26ee31d41d";
     OperationContext context = myGit.createContext(myRoot, "map full path");
-    then(myMapFullPath.mapFullPath(context, myRootEntry, existingCommit + "||.")).isEmpty();//will not find revision in empty repo
+
+    assertFalse(context.getRepository().getObjectDatabase().has(ObjectId.fromString(existingCommit)));
 
     fetchAction.run();
 
-    then(myMapFullPath.mapFullPath(context, myRootEntry, existingCommit + "||.")).isNotEmpty();
+    final GitSupportBuilder gitBuilder = gitSupport().withServerPaths(myServerPaths).withFetchCommand(new FetchCommand() {
+      @Override
+      public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull FetchSettings settings) throws IOException, VcsException {
+        Assert.fail(); // no fetch expected
+      }
+    });
+    gitBuilder.build();
+    then(gitBuilder.getMapFullPath().mapFullPath(context, myRootEntry, existingCommit + "||.")).isNotEmpty();
   }
 
 
@@ -286,20 +289,19 @@ public class MapFullPathTest {
   }
 
 
-  private RepositoryMatcher repositoryWithUrl(@NotNull String remoteUrl) {
-    return new RepositoryMatcher(remoteUrl);
+  private GitVcsRootMatcher rootWithUrl(@NotNull String remoteUrl) {
+    return new GitVcsRootMatcher(remoteUrl);
   }
 
-  private class RepositoryMatcher extends TypeSafeMatcher<Repository> {
+  private class GitVcsRootMatcher extends TypeSafeMatcher<GitVcsRoot> {
     private final String myExpectedUrl;
-    private RepositoryMatcher(@NotNull String remoteRepositoryUrl) {
+    private GitVcsRootMatcher(@NotNull String remoteRepositoryUrl) {
       myExpectedUrl = remoteRepositoryUrl;
     }
 
     @Override
-    public boolean matchesSafely(Repository repository) {
-      String actualUrl = repository.getConfig().getString("teamcity", null, "remote");
-      return myExpectedUrl.equals(actualUrl);
+    public boolean matchesSafely(GitVcsRoot root) {
+      return myExpectedUrl.equals(root.getRepositoryFetchURL().toString());
     }
 
     public void describeTo(Description description) {
