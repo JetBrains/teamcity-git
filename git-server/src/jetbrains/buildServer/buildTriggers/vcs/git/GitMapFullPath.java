@@ -26,7 +26,6 @@ import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.impl.personal.PersonalPatchUtil;
 import jetbrains.buildServer.util.Disposable;
 import jetbrains.buildServer.util.NamedDaemonThreadFactory;
-import jetbrains.buildServer.vcs.RevisionNotFoundException;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRootEntry;
 import org.eclipse.jgit.lib.Constants;
@@ -128,7 +127,6 @@ public class GitMapFullPath {
                                              @NotNull RevisionCacheType type) throws VcsException, IOException {
     Disposable threadName = NamedDaemonThreadFactory.patchThreadName("Looking for revision " + revision + " in repository: " + root.getRepositoryDir().getAbsolutePath());
     try {
-
       RepositoryRevisionCache repositoryCache = myCache.getRepositoryCache(root.getRepositoryDir(), type);
       long resetCounter = repositoryCache.getResetCounter();
       Boolean hasRevision = repositoryCache.hasRevision(revision);
@@ -139,18 +137,12 @@ public class GitMapFullPath {
       } else {
         if (LOG.isDebugEnabled())
           LOG.debug("RevisionCache miss: root " + LogUtil.describe(root) + ", revision " + revision + ", lookup commit in repository");
-        try {
-          myCommitLoader.loadCommit(context, root, revision);
-          hasRevision = true;
-        } catch (RevisionNotFoundException e) {
-          hasRevision = false;
-        }
+        hasRevision = myCommitLoader.findCommit(context.getRepository(root), revision) != null;
         if (LOG.isDebugEnabled())
           LOG.debug("Root " + LogUtil.describe(root) + ", revision " + revision + (hasRevision ? " was found" : " wasn't found") + ", cache the result");
         repositoryCache.saveRevision(revision, hasRevision, resetCounter);
         return hasRevision;
       }
-
     } finally {
       threadName.dispose();
     }
