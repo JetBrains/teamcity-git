@@ -34,7 +34,6 @@ public class GitClonesUpdater {
   private final ConcurrentHashMap<VcsRoot, RepositoryStateData> myScheduledForUpdate = new ConcurrentHashMap<>();
   private final GitVcsSupport myVcs;
   private final RepositoryManager myRepositoryManager;
-  private final CommitLoader myCommitLoader;
   private final ServerResponsibility myServerResponsibility;
   private volatile ExecutorService myExecutor;
 
@@ -42,11 +41,9 @@ public class GitClonesUpdater {
                           @NotNull EventDispatcher<BuildServerListener> serverEventDispatcher,
                           @NotNull ServerResponsibility serverResponsibility,
                           @NotNull GitVcsSupport gitVcsSupport,
-                          @NotNull RepositoryManager repositoryManager,
-                          @NotNull CommitLoader commitLoader) {
+                          @NotNull RepositoryManager repositoryManager) {
     myVcs = gitVcsSupport;
     myRepositoryManager = repositoryManager;
-    myCommitLoader = commitLoader;
     myServerResponsibility = serverResponsibility;
 
     eventDispatcher.addListener(new RepositoryStateListenerAdapter() {
