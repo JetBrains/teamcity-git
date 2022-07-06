@@ -148,8 +148,18 @@
           </description>
         </param>
       </option>
+      <option name="token" value="ACCESS_TOKEN">
+        <description>Authentication with a refreshable token stored in TeamCity token storage</description>
+        <param name="username" dslName="userName">
+          <description>Username to use with the token</description>
+        </param>
+        <param name="tokenId" mandatory="true">
+          <description>Compound id of a token in the token storage</description>
+        </param>
+      </option>
     </param>
 <!-- Disable until decide whether to keep these params
+
     <param name="oauthProviderId">
       <description>
         OAuth connection project feature ID used for providing credentials for repository
