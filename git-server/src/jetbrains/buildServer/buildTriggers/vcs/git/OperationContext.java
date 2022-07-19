@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
-import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -48,7 +47,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAw
  */
 public class OperationContext {
 
-  private static Logger LOG = Logger.getInstance(OperationContext.class.getName());
+  private static final Logger LOG = Logger.getInstance(OperationContext.class.getName());
 
   private final CommitLoader myCommitLoader;
   private final RepositoryManager myRepositoryManager;
@@ -215,7 +214,7 @@ public class OperationContext {
                       @NotNull TreeWalk tw,
                       @NotNull Repository db,
                       @NotNull RevCommit commit,
-                      boolean ignoreSubmodulesErrors) throws IOException, VcsException {
+                      boolean ignoreSubmodulesErrors) throws IOException {
     addTree(root, tw, db, commit, ignoreSubmodulesErrors, true, null);
   }
 
@@ -225,7 +224,7 @@ public class OperationContext {
                       @NotNull RevCommit commit,
                       boolean ignoreSubmodulesErrors,
                       boolean logSubmoduleErrors,
-                      @Nullable CheckoutRules rules) throws IOException, VcsException {
+                      @Nullable CheckoutRules rules) throws IOException {
     if (root.isCheckoutSubmodules()) {
       SubmoduleResolverImpl submoduleResolver = new SubmoduleResolverImpl(this, myCommitLoader, db, commit, "");
       SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(root.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
