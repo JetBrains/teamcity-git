@@ -19,18 +19,9 @@ public class SGitVcsRoot extends GitVcsRoot {
                      @NotNull VcsRoot root,
                      @NotNull URIishHelper urIishHelper,
                      @Nullable TokenRefresher tokenRefresher) throws VcsException {
-    this(mirrorManager, root, urIishHelper, tokenRefresher, true);
-  }
-
-
-  public SGitVcsRoot(@NotNull MirrorManager mirrorManager,
-                     @NotNull VcsRoot root,
-                     @NotNull URIishHelper urIishHelper,
-                     @Nullable TokenRefresher tokenRefresher,
-                     boolean checkProjectScope) throws VcsException {
     super(mirrorManager, root, urIishHelper, tokenRefresher != null);
     myTokenRefresher = tokenRefresher;
-    myCheckProjectScope = checkProjectScope;
+    myCheckProjectScope = (root.getId() >= 0);
   }
 
   @Nullable
