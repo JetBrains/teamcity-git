@@ -335,15 +335,11 @@ public class GitVcsSupport extends ServerVcsSupport
     return myTestConnection;
   }
 
-  public OperationContext createContext(@NotNull String operation) {
-    return createContext(null, operation);
-  }
-
-  public OperationContext createContext(VcsRoot root, String operation) {
+  public OperationContext createContext(@NotNull VcsRoot root, String operation) {
     return createContext(root, operation, GitProgress.NO_OP);
   }
 
-  public OperationContext createContext(@Nullable VcsRoot root, @NotNull String operation, @NotNull GitProgress progress) {
+  public OperationContext createContext(@NotNull VcsRoot root, @NotNull String operation, @NotNull GitProgress progress) {
     return new OperationContext(myCommitLoader, myRepositoryManager, root, operation, progress, myConfig, myTokenRefresher);
   }
 

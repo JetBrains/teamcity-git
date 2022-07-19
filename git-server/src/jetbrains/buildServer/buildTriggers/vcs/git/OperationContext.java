@@ -62,7 +62,7 @@ public class OperationContext {
 
   public OperationContext(@NotNull final CommitLoader commitLoader,
                           @NotNull final RepositoryManager repositoryManager,
-                          @Nullable final VcsRoot root,
+                          @NotNull final VcsRoot root,
                           @NotNull final String operation,
                           @NotNull final GitProgress progress,
                           @NotNull final ServerPluginConfig pluginConfig,
