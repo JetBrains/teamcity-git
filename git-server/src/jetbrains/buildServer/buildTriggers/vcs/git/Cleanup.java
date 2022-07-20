@@ -478,7 +478,7 @@ public class Cleanup {
   }
 
   @NotNull
-  private File createTempDir(@NotNull final File parentDir, @NotNull String name) throws IOException {
+  private File createTempDir(@NotNull final File parentDir, @NotNull String name) {
     File dir = new File(parentDir, name);
     if (dir.mkdir())
       return dir;
@@ -574,7 +574,7 @@ public class Cleanup {
                       GitGcProcess.class.getName(),
                       bareGitDir.getCanonicalPath());
     ExecResult result = SimpleCommandLineProcessRunner.runCommand(cmd, null, new SimpleCommandLineProcessRunner.RunCommandEventsAdapter() {
-      @Nullable
+      @NotNull
       @Override
       public Integer getOutputIdleSecondsTimeout() {
         return 60 * myConfig.getNativeGCQuotaMinutes();
@@ -598,10 +598,10 @@ public class Cleanup {
       cl.addParameter("--quiet");
 
       ExecResult result = SimpleCommandLineProcessRunner.runCommand(cl, null, new SimpleCommandLineProcessRunner.ProcessRunCallback() {
-        public void onProcessStarted(Process ps) {
+        public void onProcessStarted(@NotNull Process ps) {
           CLEANUP.info("Start 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc'");
         }
-        public void onProcessFinished(Process ps) {
+        public void onProcessFinished(@NotNull Process ps) {
           final long finish = System.currentTimeMillis();
           CLEANUP.info("Finish 'git --git-dir=" + bareGitDir.getAbsolutePath() + " gc', duration: " + (finish - start) + "ms");
         }

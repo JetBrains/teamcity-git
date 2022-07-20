@@ -186,7 +186,7 @@ public class GitCommitSupport implements CommitSupport, GitServerExtension {
                                   @NotNull RevCommit parentCommit,
                                   @NotNull ObjectId treeId,
                                   @NotNull String userName,
-                                  @NotNull String description) throws IOException, VcsException {
+                                  @NotNull String description) throws IOException {
       CommitBuilder commit = new CommitBuilder();
       commit.setTreeId(treeId);
       if (!ObjectId.zeroId().equals(parentCommit.getId()))

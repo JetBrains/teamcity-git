@@ -272,7 +272,7 @@ public class Fetcher {
     }
 
     private Object getGcInfo(final CompositeData userData) throws IllegalAccessException, InvocationTargetException {
-      final Object notificationInfo = ourGarbageCollectionNotificationInfo_from.invoke(null, (CompositeData)userData);
+      final Object notificationInfo = ourGarbageCollectionNotificationInfo_from.invoke(null, userData);
       return ourGarbageCollectionNotificationInfo_getGcInfo.invoke(notificationInfo);
     }
 

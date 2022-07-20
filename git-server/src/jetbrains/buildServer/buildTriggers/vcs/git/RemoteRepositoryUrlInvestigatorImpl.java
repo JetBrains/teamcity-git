@@ -35,7 +35,7 @@ import java.io.File;
  */
 public class RemoteRepositoryUrlInvestigatorImpl implements RemoteRepositoryUrlInvestigator {
 
-  private static Logger LOG = Logger.getInstance(RemoteRepositoryUrlInvestigatorImpl.class.getName());
+  private final static Logger LOG = Logger.getInstance(RemoteRepositoryUrlInvestigatorImpl.class.getName());
 
   @Override
   @Nullable

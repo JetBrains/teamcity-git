@@ -41,7 +41,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.isAnonym
  */
 public class TestConnectionCommand {
 
-  private static Logger LOG = Logger.getInstance(TestConnectionCommand.class.getName());
+  private final static Logger LOG = Logger.getInstance(TestConnectionCommand.class.getName());
 
   private final GitVcsSupport myGit;
   private final TransportFactory myTransportFactory;

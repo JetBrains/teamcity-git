@@ -377,7 +377,7 @@ public class GitMergeSupport implements MergeSupport, GitServerExtension {
 
 
   private static class MergeFailedException extends Exception {
-    private List<String> myConflicts;
+    private final List<String> myConflicts;
 
     private MergeFailedException(@NotNull List<String> conflicts) {
       myConflicts = conflicts;

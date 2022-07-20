@@ -48,7 +48,7 @@ import static java.util.Collections.emptySet;
 */
 public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFactory {
 
-  private static Logger LOG = Logger.getInstance(TransportFactoryImpl.class.getName());
+  private final static Logger LOG = Logger.getInstance(TransportFactoryImpl.class.getName());
 
   private final ServerPluginConfig myConfig;
   private final Map<String,String> myJSchOptions;

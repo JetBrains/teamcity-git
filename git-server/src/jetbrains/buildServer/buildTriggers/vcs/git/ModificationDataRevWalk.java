@@ -20,17 +20,14 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
-import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
-import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
@@ -52,7 +49,7 @@ class ModificationDataRevWalk extends LimitingRevWalk {
   }
 
   @NotNull
-  public ModificationData createModificationData() throws IOException, VcsException {
+  public ModificationData createModificationData() throws IOException {
     checkCurrentCommit();
 
     final String commitId = getCurrentCommit().getId().name();
@@ -155,7 +152,7 @@ class ModificationDataRevWalk extends LimitingRevWalk {
     /**
      * collect changes for the commit
      */
-    public void collectCommitChanges() throws IOException, VcsException {
+    public void collectCommitChanges() throws IOException {
       try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(getRepository(), repositoryDebugInfo, getConfig().verboseTreeWalkLog())) {
         tw.setFilter(filter);
         tw.setRecursive(true);
@@ -188,7 +185,7 @@ class ModificationDataRevWalk extends LimitingRevWalk {
         this.tw = tw;
       }
 
-      private void walk() throws IOException, VcsException {
+      private void walk() throws IOException {
         while (tw.next()) {
           final String path = tw.getPathString();
 
@@ -196,7 +193,7 @@ class ModificationDataRevWalk extends LimitingRevWalk {
         }
       }
 
-      private void processChange(@NotNull final String path) throws IOException, VcsException {
+      private void processChange(@NotNull final String path) throws IOException {
         if (!getGitRoot().isCheckoutSubmodules()) {
           addVcsChange();
           return;
@@ -222,7 +219,7 @@ class ModificationDataRevWalk extends LimitingRevWalk {
         addVcsChange();
       }
 
-      private void subWalk(@NotNull final String path, @NotNull final RevCommit commitWithFix) throws IOException, VcsException {
+      private void subWalk(@NotNull final String path, @NotNull final RevCommit commitWithFix) throws IOException {
         try (VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(getRepository(), repositoryDebugInfo, getConfig().verboseTreeWalkLog())) {
           tw2.setFilter(TreeFilter.ANY_DIFF);
           tw2.setRecursive(true);
@@ -250,7 +247,7 @@ class ModificationDataRevWalk extends LimitingRevWalk {
 
     @Nullable
     private RevCommit getPreviousCommitWithFixedSubmodule(@NotNull final RevCommit fromCommit, @NotNull final String submodulePath)
-      throws IOException, VcsException {
+      throws IOException {
       if (mySearchDepth == 0)
         return null;
 

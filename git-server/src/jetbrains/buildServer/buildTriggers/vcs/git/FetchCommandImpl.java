@@ -315,7 +315,7 @@ public class FetchCommandImpl implements FetchCommand {
     }
   }
 
-  private void pruneRemovedBranches(@NotNull Repository db, @NotNull URIish uri, @NotNull AuthSettings authSettings) throws IOException, VcsException {
+  private void pruneRemovedBranches(@NotNull Repository db, @NotNull URIish uri, @NotNull AuthSettings authSettings) {
     try {
       GitServerUtil.pruneRemovedBranches(myConfig, myTransportFactory, db, uri, authSettings);
     } catch (Exception e) {

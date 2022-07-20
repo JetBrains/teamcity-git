@@ -16,7 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;

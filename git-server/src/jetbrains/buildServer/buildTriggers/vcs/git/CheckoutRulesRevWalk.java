@@ -239,7 +239,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     return mergeBases;
   }
 
-  private boolean hasInterestingCommitsSinceMergeBase() throws IOException, VcsException {
+  private boolean hasInterestingCommitsSinceMergeBase() throws IOException {
     List<ObjectId> mergeBases = findCurrentCommitMergeBases();
     for (ObjectId mergeBaseId: mergeBases) {
       try (VcsChangeTreeWalk tw = newVcsChangeTreeWalk()) {

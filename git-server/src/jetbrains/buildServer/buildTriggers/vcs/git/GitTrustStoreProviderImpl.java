@@ -16,9 +16,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.ServiceLocator;
-import jetbrains.buildServer.serverSide.ServerPaths;
-import jetbrains.buildServer.serverSide.TrustedCertificatesDirectory;
 import jetbrains.buildServer.util.ssl.SSLTrustStoreProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

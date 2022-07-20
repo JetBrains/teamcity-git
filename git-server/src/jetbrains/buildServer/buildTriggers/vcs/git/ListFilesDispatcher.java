@@ -49,7 +49,7 @@ public class ListFilesDispatcher implements ListDirectChildrenPolicy {
     return myImplementation.listFiles(root, directoryPath);
   }
 
-  private ListDirectChildrenPolicy getPolicy(@NotNull VcsRoot root) throws VcsException {
+  private ListDirectChildrenPolicy getPolicy(@NotNull VcsRoot root) {
     OperationContext ctx = myVcs.createContext(root, "list files dispatch");
     GitListFilesSupport genericListFiles = new GitListFilesSupport(myVcs, myCommitLoader, myConfig);
     try {

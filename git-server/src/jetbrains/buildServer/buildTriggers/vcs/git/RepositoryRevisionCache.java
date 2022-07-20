@@ -72,7 +72,7 @@ public final class RepositoryRevisionCache {
   }
 
 
-  private void saveRevision(@NotNull String revision, boolean has) throws IOException {
+  private void saveRevision(@NotNull String revision, boolean has) {
     myCache.put(StringPool.getFromPool(revision), has);
   }
 

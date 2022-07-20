@@ -26,7 +26,7 @@ import static java.util.Collections.singletonList;
 
 public class ResetRevisionsCacheHandler implements ResetCacheHandler {
 
-  private static Logger LOG = Logger.getInstance(ResetRevisionsCacheHandler.class.getName());
+  private final static Logger LOG = Logger.getInstance(ResetRevisionsCacheHandler.class.getName());
   private final static String CACHE_NAME = "git revisions cache";
   private final RevisionsCache myCache;
 

@@ -18,29 +18,23 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
-import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
 import org.eclipse.jgit.transport.http.HttpConnection;
 import org.eclipse.jgit.transport.http.HttpConnectionFactory;
 import org.jetbrains.annotations.NotNull;
 
-import javax.net.ssl.HostnameVerifier;
 import java.io.IOException;
 import java.net.Proxy;
 import java.net.URL;
 import java.security.KeyStore;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class SNIHttpClientConnectionFactory implements HttpConnectionFactory {
 
-  private Supplier<KeyStore> myTrustStoreGetter;
+  private final Supplier<KeyStore> myTrustStoreGetter;
   private final SSLSchemePatcher mySSLSchemePatcher = (clientBuilder, sslContext, hostnameVerifier) -> {
     SSLConnectionSocketFactory cf = hostnameVerifier != null
                                     ? new SSLConnectionSocketFactory(sslContext, hostnameVerifier)

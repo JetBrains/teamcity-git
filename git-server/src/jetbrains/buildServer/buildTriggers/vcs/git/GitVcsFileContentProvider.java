@@ -85,7 +85,7 @@ public class GitVcsFileContentProvider extends GitAbstractVcsFileContentProvider
     }
   }
 
-  private void logStartProcessingFile(@NotNull GitVcsRoot root, @NotNull String version, @NotNull String filePath) throws VcsException {
+  private void logStartProcessingFile(@NotNull GitVcsRoot root, @NotNull String version, @NotNull String filePath) {
     if (LOG.isDebugEnabled() && myConfig.verboseGetContentLog()) {
       LOG.debug("Getting data from " + version + ":" + filePath + " for " + root.debugInfo());
     }

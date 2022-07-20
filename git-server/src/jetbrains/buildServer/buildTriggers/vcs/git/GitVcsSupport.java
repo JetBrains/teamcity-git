@@ -20,7 +20,6 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import com.jcraft.jsch.JSch;
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.ExtensionHolder;
@@ -202,7 +201,7 @@ public class GitVcsSupport extends ServerVcsSupport
                          @Nullable String fromVersion,
                          @NotNull String toVersion,
                          @NotNull PatchBuilder builder,
-                         @NotNull CheckoutRules checkoutRules) throws IOException, VcsException {
+                         @NotNull CheckoutRules checkoutRules) throws VcsException {
     OperationContext context = createContext(root, "patch building");
     String fromRevision = fromVersion != null ? GitUtils.versionRevision(fromVersion) : null;
     String toRevision = GitUtils.versionRevision(toVersion);
@@ -300,7 +299,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   @NotNull
-  public String getVersionDisplayName(@NotNull String version, @NotNull VcsRoot root) throws VcsException {
+  public String getVersionDisplayName(@NotNull String version, @NotNull VcsRoot root) {
     return GitServerUtil.displayVersion(version);
   }
 
@@ -350,7 +349,7 @@ public class GitVcsSupport extends ServerVcsSupport
       try {
         final GitVcsRoot gitRoot = context.getGitRoot();
         myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-          myGitRepoOperations.tagCommand(GitVcsSupport.this, gitRoot.getRepositoryFetchURL().toString()).tag(context, label, version);
+          myGitRepoOperations.tagCommand(this, gitRoot.getRepositoryFetchURL().toString()).tag(context, label, version);
         });
       } catch (Exception e) {
         throw context.wrapException(e);
@@ -585,7 +584,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   @Override
-  public Map<String, String> getCheckoutProperties(@NotNull VcsRoot root) throws VcsException {
+  public Map<String, String> getCheckoutProperties(@NotNull VcsRoot root) {
     Map<String, String> defaults = getDefaultVcsProperties();
     Set<String> significantProps = setOf(Constants.FETCH_URL,
                                          Constants.SUBMODULES_CHECKOUT,
@@ -614,11 +613,9 @@ public class GitVcsSupport extends ServerVcsSupport
       return extensionClass.cast(getCollectChangesPolicy());
     }
 
-    if (myExtensions != null) {
-      for (GitServerExtension e : myExtensions) {
-        if (extensionClass.isInstance(e))
-          return extensionClass.cast(e);
-      }
+    for (GitServerExtension e : myExtensions) {
+      if (extensionClass.isInstance(e))
+        return extensionClass.cast(e);
     }
     return super.getVcsCustomExtension(extensionClass);
   }

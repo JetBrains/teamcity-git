@@ -31,7 +31,7 @@ import java.security.KeyStore;
 public class GitTrustStoreProviderStatic implements GitTrustStoreProvider {
 
   @Nullable
-  private String myTrustedCertificatesDir;
+  private final String myTrustedCertificatesDir;
 
   public GitTrustStoreProviderStatic(@Nullable final String trustedCertificatesDir) {
     myTrustedCertificatesDir = trustedCertificatesDir;

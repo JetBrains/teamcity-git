@@ -188,7 +188,7 @@ public class GitMapFullPath {
     return (branchSeparatorIndex > 0) ? url.substring(0, branchSeparatorIndex) : url;
   }
 
-  public void invalidateRevisionsCache(@NotNull Repository db, @NotNull Map<String, Ref> oldRefs, @NotNull Map<String, Ref> newRefs) throws IOException {
+  public void invalidateRevisionsCache(@NotNull Repository db, @NotNull Map<String, Ref> oldRefs, @NotNull Map<String, Ref> newRefs) {
     try {
       if (myConfig.ignoreFetchedCommits()) {
         myCache.resetNegativeEntries(db.getDirectory());
@@ -272,7 +272,7 @@ public class GitMapFullPath {
       int idx = revisions.indexOf("-");
       if (idx <= 0)
         return Pair.create(null, revisions);
-      return Pair.create(revisions.substring(0, idx), revisions.substring(idx + 1, revisions.length()));
+      return Pair.create(revisions.substring(0, idx), revisions.substring(idx + 1));
     }
 
     boolean isValid() {

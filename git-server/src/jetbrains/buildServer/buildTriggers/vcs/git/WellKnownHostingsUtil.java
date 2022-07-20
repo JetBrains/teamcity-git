@@ -117,7 +117,7 @@ public final class WellKnownHostingsUtil {
     if (idx <= 0)
       return null;
     String owner = path.substring(0, idx);
-    String repo = path.substring(idx + 1, path.length());
+    String repo = path.substring(idx + 1);
     if (repo.endsWith(".git"))
       repo = repo.substring(0, repo.length() - 4);
     return new VcsHostingRepo(hostingUrl + owner + "/" + repo, owner, repo);

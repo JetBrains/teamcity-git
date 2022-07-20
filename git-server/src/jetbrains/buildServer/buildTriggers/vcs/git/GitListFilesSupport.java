@@ -114,7 +114,7 @@ public class GitListFilesSupport implements ListDirectChildrenPolicy {
   private boolean isOutOfDate() {
     return myLastSyncTime == -1 ||
            myCurrentRevision == null ||
-           System.currentTimeMillis() - myLastSyncTime > myConfig.getListFilesTTLSeconds() * 1000;
+           System.currentTimeMillis() - myLastSyncTime > myConfig.getListFilesTTLSeconds() * 1000L;
   }
 
   private boolean isRootPath(@Nullable String path) {

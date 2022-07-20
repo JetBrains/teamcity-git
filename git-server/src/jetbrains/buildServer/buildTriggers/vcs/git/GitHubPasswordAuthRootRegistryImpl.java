@@ -14,7 +14,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod.ACCESS_TOKEN;
 import static jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod.PASSWORD;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitHubPasswordAuthRootRegistry.isGitRoot;
 

@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentMap;
 public final class RevisionsCache {
   private static final Logger LOG = Logger.getInstance(RevisionsCache.class.getName());
 
-  private ServerPluginConfig myConfig;
+  private final ServerPluginConfig myConfig;
   //repositoryId -> per repository cache
   private final ConcurrentMap<String, RepositoryRevisionCache> myCache = new ConcurrentHashMap<>();
   private volatile int myRepositoriesCount;
@@ -118,7 +118,7 @@ public final class RevisionsCache {
 
 
   @NotNull
-  private String getRepositoryId(@NotNull File repositoryDir, @NotNull RevisionCacheType type) throws IOException {
+  private String getRepositoryId(@NotNull File repositoryDir, @NotNull RevisionCacheType type) {
     return repositoryDir.getAbsolutePath() + "_" + type.name();
   }
 }

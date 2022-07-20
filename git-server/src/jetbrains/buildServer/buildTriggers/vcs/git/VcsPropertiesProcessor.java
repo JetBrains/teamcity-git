@@ -119,7 +119,7 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
   public Collection<InvalidProperty> validateBranchSpec(@NotNull Map<String, String> properties) {
     String branchSpec = properties.get(Constants.BRANCH_SPEC);
     InvalidProperty error = validateBranchSpec(branchSpec);
-    return error != null ? singleton(error) : Collections.<InvalidProperty>emptySet();
+    return error != null ? singleton(error) : Collections.emptySet();
   }
 
 

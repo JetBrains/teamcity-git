@@ -32,7 +32,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.MB;
  */
 public class ProcessXmxProvider {
 
-  private static Logger LOG = Logger.getInstance(ProcessXmxProvider.class.getName());
+  private final static Logger LOG = Logger.getInstance(ProcessXmxProvider.class.getName());
 
   @NotNull private final XmxStorage myStorage;
   @NotNull private final String myDebugInfo;

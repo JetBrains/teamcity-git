@@ -19,7 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
 import jetbrains.buildServer.util.Disposable;
 import jetbrains.buildServer.util.NamedDaemonThreadFactory;

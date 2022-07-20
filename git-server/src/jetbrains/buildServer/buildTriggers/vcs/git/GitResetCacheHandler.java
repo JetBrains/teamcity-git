@@ -34,12 +34,12 @@ import static java.util.Collections.singletonList;
  */
 public class GitResetCacheHandler implements ResetCacheHandler {
 
-  private static Logger LOG = Logger.getInstance(GitResetCacheHandler.class.getName());
+  private final static Logger LOG = Logger.getInstance(GitResetCacheHandler.class.getName());
   private final static String GIT_CACHE_NAME = "git";
 
   private final RepositoryManager myRepositoryManager;
   private final GcErrors myGcErrors;
-  private AtomicBoolean myResetRunning = new AtomicBoolean(false);
+  private final AtomicBoolean myResetRunning = new AtomicBoolean(false);
 
   public GitResetCacheHandler(@NotNull RepositoryManager repositoryManager,
                               @NotNull GcErrors gcErrors) {

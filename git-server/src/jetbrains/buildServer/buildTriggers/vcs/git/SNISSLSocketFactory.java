@@ -15,7 +15,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 
 public class SNISSLSocketFactory extends SSLSocketFactory {
-  private static Logger LOG = Logger.getInstance(SSLHttpClientConnection.class.getName());
+  private static final Logger LOG = Logger.getInstance(SSLHttpClientConnection.class.getName());
 
   public SNISSLSocketFactory(final SSLContext sslContext) {
     super(sslContext);

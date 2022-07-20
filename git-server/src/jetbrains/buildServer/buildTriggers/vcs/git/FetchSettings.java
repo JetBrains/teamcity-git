@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.Charset;
 import java.util.Collection;
@@ -76,12 +75,12 @@ public class FetchSettings {
       return NullProgressMonitor.INSTANCE;
     Writer w = new Writer() {
       @Override
-      public void write(final String str) throws IOException {
+      public void write(final String str) {
         myProgress.reportProgress(str.trim());
       }
-      @Override public void write(final char[] cbuf, final int off, final int len) throws IOException {}
-      @Override public void flush() throws IOException {}
-      @Override public void close() throws IOException {}
+      @Override public void write(@NotNull final char[] cbuf, final int off, final int len) {}
+      @Override public void flush() {}
+      @Override public void close() {}
     };
 
     return new TextProgressMonitor(w);

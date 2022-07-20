@@ -17,7 +17,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.util.ssl.SSLContextUtil;
-import org.apache.http.Header;
 import org.eclipse.jgit.annotations.NonNull;
 import org.eclipse.jgit.transport.http.HttpConnection;
 import org.eclipse.jgit.transport.http.HttpConnectionFactory;
@@ -32,12 +31,10 @@ import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 /**
  * Basically a copy of org.eclipse.jgit.transport.http.JDKHttpConnectionFactory
@@ -46,7 +43,7 @@ import java.util.stream.Collectors;
 public class TeamCityJDKHttpConnectionFactory implements HttpConnectionFactory {
 
   private final ServerPluginConfig myConfig;
-  private Supplier<KeyStore> myTrustStoreGetter;
+  private final Supplier<KeyStore> myTrustStoreGetter;
 
   public TeamCityJDKHttpConnectionFactory(@NotNull ServerPluginConfig config, @NotNull Supplier<KeyStore> trustStoreGetter) {
     myConfig = config;
@@ -63,17 +60,17 @@ public class TeamCityJDKHttpConnectionFactory implements HttpConnectionFactory {
 
 
   private class TeamCityJDKHttpConnection implements HttpConnection {
-    private HttpURLConnection wrappedUrlConnection;
+    private final HttpURLConnection wrappedUrlConnection;
 
-    protected TeamCityJDKHttpConnection(URL url) throws MalformedURLException, IOException {
-      this.wrappedUrlConnection = (HttpURLConnection) url.openConnection();
+    protected TeamCityJDKHttpConnection(URL url) throws IOException {
+      wrappedUrlConnection = (HttpURLConnection) url.openConnection();
       if ("https".equals(url.getProtocol())) {
         workaroundSslDeadlock();
       }
     }
 
-    protected TeamCityJDKHttpConnection(URL url, Proxy proxy) throws MalformedURLException, IOException {
-      this.wrappedUrlConnection = (HttpURLConnection) url.openConnection(proxy);
+    protected TeamCityJDKHttpConnection(URL url, Proxy proxy) throws IOException {
+      wrappedUrlConnection = (HttpURLConnection) url.openConnection(proxy);
       if ("https".equals(url.getProtocol())) {
         workaroundSslDeadlock();
       }
@@ -177,7 +174,7 @@ public class TeamCityJDKHttpConnectionFactory implements HttpConnectionFactory {
       ((HttpsURLConnection) wrappedUrlConnection).setSSLSocketFactory(createSSLSocketFactory(ctx.getSocketFactory()));
     }
 
-    private void workaroundSslDeadlock() throws IOException {
+    private void workaroundSslDeadlock() {
       ((HttpsURLConnection) wrappedUrlConnection).setSSLSocketFactory(createSSLSocketFactory());
     }
 
@@ -228,14 +225,14 @@ public class TeamCityJDKHttpConnectionFactory implements HttpConnectionFactory {
     }
 
     @Override
-    public Socket createSocket(String host, int port) throws IOException, UnknownHostException {
+    public Socket createSocket(String host, int port) throws IOException {
       final Socket socket = delegate.createSocket(host, port);
       setSoLinger(socket);
       return socket;
     }
 
     @Override
-    public Socket createSocket(String host, int port, InetAddress localHost, int localPort) throws IOException, UnknownHostException {
+    public Socket createSocket(String host, int port, InetAddress localHost, int localPort) throws IOException {
       final Socket socket = delegate.createSocket(host, port, localHost, localPort);
       setSoLinger(socket);
       return socket;
