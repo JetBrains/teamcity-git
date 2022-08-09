@@ -2,9 +2,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.LsRemoteCommand;
@@ -204,6 +202,45 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
              .setTagger(tagger.getName(), tagger.getEmailAddress()).setMessage("automatically created by TeamCity VCS labeling build feature").call();
 
     final String debugInfo = LogUtil.describe(gitRoot);
+    List<Ref> currentTags;
+    try {
+      currentTags = executeCommand(ctx, "ls-remote", debugInfo, () -> {
+        return gitFacade.lsRemote()
+                        .setTags()
+                        .setBranches(tag)
+                        .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
+                        .setTimeout(myConfig.getPushTimeoutSeconds())
+                        .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+                        .setRepoUrl(gitRoot.getRepositoryPushURL().get())
+                        .trace(myConfig.getGitTraceEnv())
+                        .call();
+      });
+    } catch (VcsException v) {
+      Loggers.VCS.warn("Failed to get information about remote tag: " + tag + " for " + debugInfo, v);
+      throw v;
+    }
+
+    if (!currentTags.isEmpty()) {
+      try {
+        executeCommand(ctx, "push", debugInfo, () -> {
+          gitFacade.push()
+                   .setRemote(gitRoot.getRepositoryPushURL().toString())
+                   .setRefspec(":" + tag)
+                   .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
+                   .setTimeout(myConfig.getPushTimeoutSeconds())
+                   .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+                   .setRepoUrl(gitRoot.getRepositoryPushURL().get())
+                   .trace(myConfig.getGitTraceEnv())
+                   .call();
+          Loggers.VCS.info("Tag '" + tag + "' was successfully removed from " + debugInfo);
+          return tag;
+        });
+      } catch (VcsException v) {
+        Loggers.VCS.warn("Failed to remove remote tag: " + tag + " for " + debugInfo, v);
+        throw v;
+      }
+    }
+
     try {
       return executeCommand(ctx, "push", debugInfo, () -> {
         gitFacade.push()

@@ -29,6 +29,9 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUt
 public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> implements LsRemoteCommand {
 
   private boolean myPeelRefs = false;
+  private boolean myTags = false;
+
+  private final List<String> myLsRemoteBranches = new ArrayList<>();
 
   public LsRemoteCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -41,10 +44,32 @@ public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> im
   }
 
   @NotNull
+  @Override
+  public LsRemoteCommand setTags() {
+    myTags = true;
+    return this;
+  }
+
+  @NotNull
+  @Override
+  public LsRemoteCommand setBranches(String... lsRemoteBranches) {
+    myLsRemoteBranches.addAll(Arrays.asList(lsRemoteBranches));
+    return this;
+  }
+
+  @NotNull
   public List<Ref> call() throws VcsException {
     GitCommandLine cmd = getCmd();
     cmd.addParameter("ls-remote");
+    if (myTags) {
+      cmd.addParameter("--tags");
+    }
     cmd.addParameter("origin");
+
+    if (!myLsRemoteBranches.isEmpty()) {
+      cmd.addParameters(myLsRemoteBranches);
+    }
+
     return parse(runCmd(cmd.stdErrLogLevel("debug")).getStdout());
   }
 

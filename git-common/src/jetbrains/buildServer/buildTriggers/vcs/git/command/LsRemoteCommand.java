@@ -27,6 +27,12 @@ public interface LsRemoteCommand extends BaseCommand, AuthCommand<LsRemoteComman
   LsRemoteCommand peelRefs();
 
   @NotNull
+  LsRemoteCommand setTags();
+
+  @NotNull
+  LsRemoteCommand setBranches(String ... branches);
+
+  @NotNull
   List<Ref> call() throws VcsException;
 
 }
