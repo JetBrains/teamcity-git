@@ -219,13 +219,13 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   private GitExec detectGitInternal() throws VcsException {
     final String gitPath = myConfig.getPathToGit();
     if (StringUtil.isEmpty(gitPath)) {
-      throw new VcsException("No path to Git provided: please specify path to Git executable using \"teamcity.server.git.executable.path\" server startup property");
+      throw new VcsException("No path to Git provided: please specify path to Git executable using \"teamcity.server.git.executable.path\" server startup property or or add it to the PATH environment variable");
     }
     GitVersion gitVersion;
     try {
       gitVersion = IOGuard.allowCommandLine(() -> new GitFacadeImpl(new File("."), new StubContext(gitPath)).version().call());
     } catch (VcsException e) {
-      throw new VcsException("Unable to run Git at path \"" + gitPath + "\": please specify correct path to Git executable using \"teamcity.server.git.executable.path\" server startup property, error: " + e.getMessage(), e);
+      throw new VcsException("Unable to run Git at path \"" + gitPath + "\": Install Git (version " + GitVersion.DEPRECATED + " or higher) on your system, specify correct path to Git executable using \"teamcity.server.git.executable.path\" server startup property or add it to the PATH environment variable");
     }
     if (gitVersion.isSupported()) {
       return new GitExec(gitPath, gitVersion, null);
