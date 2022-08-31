@@ -54,7 +54,7 @@ public class RetryTest extends BaseTestCase {
     //check count of attempts
   }
 
-  public void testAlwaysRetryable() throws Exception {
+  public void test_always_retryable() throws Exception {
     StringBuilder result = new StringBuilder();
 
     final int attempts = 1;
@@ -66,6 +66,20 @@ public class RetryTest extends BaseTestCase {
       Assert.assertEquals(e.getMessage(), "At least one retry attempt expected");
     }
     Assert.assertEquals((int)attemptNum.get(), 4);
+  }
+
+  public void test_always_retryable_more_times() throws Exception {
+    StringBuilder result = new StringBuilder();
+
+    final int attempts = 11;
+    final Ref<Integer> attemptNum = new Ref(1);
+    try {
+      Retry.retry(new AlwaysRetryable(attemptNum, attempts, result), 0, attempts);
+      Assert.fail();
+    } catch (IllegalArgumentException e) {
+      Assert.assertEquals(e.getMessage(), "At least one retry attempt expected");
+    }
+    Assert.assertEquals((int)attemptNum.get(), 12);
   }
 
   @NotNull

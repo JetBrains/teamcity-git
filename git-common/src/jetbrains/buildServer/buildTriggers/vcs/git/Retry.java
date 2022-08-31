@@ -53,7 +53,7 @@ public abstract class Retry {
 
   public static <V> V retry(@NotNull Retryable<V> operation, long initialDelay, int attempts) throws Exception {
     long effectiveDelay = initialDelay;
-    for (int i = 1; i <= DEFAULT_MAX_ATTEMPTS; ++i) {
+    for (int i = 1; i <= Math.max(DEFAULT_MAX_ATTEMPTS, attempts); ++i) {
       try {
         return operation.call();
       } catch (Exception e) {
