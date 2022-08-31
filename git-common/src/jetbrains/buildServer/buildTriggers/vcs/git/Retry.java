@@ -32,7 +32,7 @@ public abstract class Retry {
   private static final long INITIAL_DELAY_MS = TimeUnit.SECONDS.toMillis(5);
 //  private static final long BACKOFF_LIMIT_MS = TimeUnit.MINUTES.toMillis(5);
 
-  private static final int DEFAULT_MAX_ATTEMPTS = 10;
+  private static final int DEFAULT_MAX_ATTEMPTS = 3;
 
   private static final int BACKOFF_FACTOR = 2;
   private static final float BACKOFF_JITTER = 0.1f;
@@ -53,7 +53,7 @@ public abstract class Retry {
 
   public static <V> V retry(@NotNull Retryable<V> operation, long initialDelay, int attempts) throws Exception {
     long effectiveDelay = initialDelay;
-    for (int i = 1; i <= attempts; ++i) {
+    for (int i = 1; i <= DEFAULT_MAX_ATTEMPTS; ++i) {
       try {
         return operation.call();
       } catch (Exception e) {

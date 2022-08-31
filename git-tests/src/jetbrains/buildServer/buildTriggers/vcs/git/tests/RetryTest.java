@@ -24,6 +24,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Retry;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 @Test
@@ -32,14 +33,16 @@ public class RetryTest extends BaseTestCase {
   public void test_always_fail() {
     final StringBuilder result = new StringBuilder();
 
-    final int attempts = 3;
+    final int attempts = 2;
+    final Ref<Integer> attemptNum = new Ref(1);
     try {
-      Retry.retry(retryable(result, attempts + 1), attempts);
+      Retry.retry(new CommonRetryable(attemptNum, attempts + 1, result), attempts);
       fail("retry must fail");
     } catch (Throwable throwable) {
       //expected
     }
-    assertContains(result.toString(), "WARN Failed to run operation within 3 attempts: jetbrains.buildServer.vcs.VcsException: the exception");
+    assertContains(result.toString(), "WARN Failed to run operation within 2 attempts: jetbrains.buildServer.vcs.VcsException: the exception");
+    assertEquals((int)attemptNum.get(), 3);
   }
 
   public void test_succeed() throws Throwable {
@@ -48,82 +51,131 @@ public class RetryTest extends BaseTestCase {
     final int attempts = 3;
     Retry.retry(retryable(result, attempts - 1), attempts);
     assertContains(result.toString(), "INFO Exception occurred, will repeat operation in");
+    //check count of attempts
+  }
+
+  public void testAlwaysRetryable() throws Exception {
+    StringBuilder result = new StringBuilder();
+
+    final int attempts = 1;
+    final Ref<Integer> attemptNum = new Ref(1);
+    try {
+      Retry.retry(new AlwaysRetryable(attemptNum, attempts, result), 0, attempts);
+      Assert.fail();
+    } catch (IllegalArgumentException e) {
+      Assert.assertEquals(e.getMessage(), "At least one retry attempt expected");
+    }
+    Assert.assertEquals((int)attemptNum.get(), 4);
   }
 
   @NotNull
   private Retry.Retryable<Void> retryable(@NotNull final StringBuilder result, int failAttempts) {
     final Ref<Integer> attemptNum = new Ref(1);
-    return new Retry.Retryable<Void>() {
-      @Override
-      public boolean requiresRetry(@NotNull final Exception e, int attempt, int maxAttempts) {
-        return attempt < maxAttempts;
-      }
+    return new CommonRetryable(attemptNum, failAttempts, result);
+  }
 
-      @Nullable
-      @Override
-      public Void call() throws VcsException {
-        int num = attemptNum.get();
-        try {
-          if (num <= failAttempts) throw new VcsException("the exception");
-          return null;
-        } finally {
-          attemptNum.set(num + 1);
+  class CommonRetryable implements Retry.Retryable<Void> {
+    Ref<Integer> myAttemptNum;
+    int myFailAttempts;
+    StringBuilder myResult;
+
+    CommonRetryable(Ref<Integer> attemptNum, int failAttempts, StringBuilder result) {
+      myAttemptNum = attemptNum;
+      myFailAttempts = failAttempts;
+      myResult = result;
+    }
+
+    @Override
+    public boolean requiresRetry(@NotNull final Exception e, int attempt, int maxAttempts) {
+      return attempt < maxAttempts;
+    }
+
+    @Nullable
+    @Override
+    public Void call() throws VcsException {
+      int num = myAttemptNum.get();
+      try {
+        if (num <= myFailAttempts) throw new VcsException("the exception");
+        return null;
+      } finally {
+        myAttemptNum.set(num + 1);
+      }
+    }
+
+    @NotNull
+    @Override
+    public Logger getLogger() {
+      return new DefaultLogger() {
+        @Override
+        public void debug(final String message) {
+          throw new UnsupportedOperationException();
         }
+
+        @Override
+        public void debug(final Throwable t) {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void debug(final String message, final Throwable t) {
+          append("DEBUG", message, t);
+        }
+
+        private void append(final String category, final String message, final Throwable t) {
+          myResult.append(category).append(" ").append(message);
+          if (t != null) {
+            myResult.append(": ").append(t.getMessage());
+          }
+          myResult.append("\n");
+        }
+
+        @Override
+        public void error(final String message, final Throwable t, final String... details) {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void info(final String message) {
+          append("INFO", message, null);
+        }
+
+        @Override
+        public void info(final String message, final Throwable t) {
+          append("INFO", message, t);
+        }
+
+        @Override
+        public void warn(final String message, final Throwable t) {
+          append("WARN", message, t);
+        }
+
+        @Override
+        public boolean isDebugEnabled() {
+          return true;
+        }
+      };
+    }
+  }
+
+  class AlwaysRetryable extends CommonRetryable {
+
+    AlwaysRetryable(Ref<Integer> attemptNum, int failAttempts, StringBuilder result) {
+      super(attemptNum, failAttempts, result);
+    }
+
+    @Override
+    public boolean requiresRetry(@NotNull Exception e, int attempt, int maxAttempts) {
+      return "must retry".equals(e.getMessage());
+    }
+
+    @Nullable
+    @Override
+    public Void call() throws VcsException {
+      try {
+        throw new VcsException("must retry");
+      } finally {
+        myAttemptNum.set(myAttemptNum.get()+1);
       }
-
-      @NotNull
-      @Override
-      public Logger getLogger() {
-        return new DefaultLogger() {
-          @Override
-          public void debug(final String message) {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public void debug(final Throwable t) {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public void debug(final String message, final Throwable t) {
-            append("DEBUG", message, t);
-          }
-
-          private void append(final String category, final String message, final Throwable t) {
-            result.append(category).append(" ").append(message);
-            if (t != null) {
-              result.append(": ").append(t.getMessage());
-            }
-            result.append("\n");
-          }
-
-          @Override
-          public void error(final String message, final Throwable t, final String... details) {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public void info(final String message) {
-            append("INFO", message, null);
-          }
-
-          @Override
-          public void info(final String message, final Throwable t) {
-            append("INFO", message, t);
-          }
-
-          @Override
-          public void warn(final String message, final Throwable t) {
-            append("WARN", message, t);
-          }
-
-          @Override
-          public boolean isDebugEnabled() {
-            return true;
-          }
-        };
-      }
-    };
+    }
   }
 }
