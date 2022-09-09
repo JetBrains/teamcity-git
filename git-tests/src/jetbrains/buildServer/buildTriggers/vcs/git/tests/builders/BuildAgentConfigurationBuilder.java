@@ -20,6 +20,7 @@ import java.io.File;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import jetbrains.buildServer.agent.AgentOperationMode;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.BuildAgentSystemInfo;
 import jetbrains.buildServer.agent.BuildParametersMap;
@@ -189,6 +190,12 @@ public class BuildAgentConfigurationBuilder {
 
       @NotNull
       public ValueResolver getParametersResolver() {
+        throw new UnsupportedOperationException();
+      }
+
+      @NotNull
+      @Override
+      public AgentOperationMode getOperationMode() {
         throw new UnsupportedOperationException();
       }
 
