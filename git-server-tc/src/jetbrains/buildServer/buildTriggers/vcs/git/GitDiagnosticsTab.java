@@ -24,6 +24,8 @@ import jetbrains.buildServer.controllers.XmlResponseUtil;
 import jetbrains.buildServer.diagnostic.web.DiagnosticTab;
 import jetbrains.buildServer.log.LogUtil;
 import jetbrains.buildServer.serverSide.*;
+import jetbrains.buildServer.serverSide.audit.ActionType;
+import jetbrains.buildServer.serverSide.audit.AuditLogFactory;
 import jetbrains.buildServer.serverSide.auth.AccessDeniedException;
 import jetbrains.buildServer.serverSide.auth.Permission;
 import jetbrains.buildServer.serverSide.executors.ExecutorServices;
@@ -65,6 +67,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
   private final Striped<Lock> myLocks = Striped.lazyWeakLock(24);
   private final Map<String, TestConnectionTask> myTestConnectionsInProgress = new HashMap<>();
   private final Map<String, TestConnectionTask> myTestConnectionsFinished = new HashMap<>();
+  private final AuditLogFactory myAuditLogFactory;
 
   public GitDiagnosticsTab(@NotNull PagePlaces pagePlaces,
                            @NotNull WebControllerManager controllerManager,
@@ -76,7 +79,8 @@ public class GitDiagnosticsTab extends DiagnosticTab {
                            @NotNull ExecutorServices executorServices,
                            @NotNull TeamCityNodes nodes,
                            @NotNull ServerPaths serverPaths,
-                           @NotNull BuildServerEx server) {
+                           @NotNull BuildServerEx server,
+                           AuditLogFactory auditLogFactory) {
     super(pagePlaces, "gitStatus", "Git");
     myVcsSupport = vcsSupport;
     myOperations = gitOperations;
@@ -86,6 +90,7 @@ public class GitDiagnosticsTab extends DiagnosticTab {
     myNodes = nodes;
     myServerResponsibility = server.getServerResponsibility();
     myTestConnectionResultsFolder = serverPaths.getCacheDirectory("git/testConnectionResults");
+    myAuditLogFactory = auditLogFactory;
 
     setPermission(Permission.MANAGE_SERVER_INSTALLATION);
     setIncludeUrl(pluginDescriptor.getPluginResourcesPath("gitStatusTab.jsp"));
@@ -220,8 +225,13 @@ public class GitDiagnosticsTab extends DiagnosticTab {
           new AjaxRequestProcessor().processRequest(request, response, new AjaxRequestProcessor.RequestHandler() {
             @Override
             public void handleRequest(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull Element xmlResponse) {
-              final boolean enabled = myMainConfigProcessor.setNativeGitOperationsEnabled("enable".equalsIgnoreCase(request.getParameter("switchNativeGit")));
+              boolean nativeGitOperationsEnabled = "enable".equalsIgnoreCase(request.getParameter("switchNativeGit"));
+              final boolean enabled = myMainConfigProcessor.setNativeGitOperationsEnabled(nativeGitOperationsEnabled);
               xmlResponse.addContent(new Element("nativeGitOperationsEnabled").addContent(String.valueOf(enabled)));
+              if (enabled)
+                myAuditLogFactory.createForServer().log(ActionType.NATIVE_GIT_ENABLED, null, null, SessionUser.getUser(request));
+              else
+                myAuditLogFactory.createForServer().log(ActionType.NATIVE_GIT_DISABLED, null, null, SessionUser.getUser(request));
             }
           });
         }
