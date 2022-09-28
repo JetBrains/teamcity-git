@@ -172,6 +172,10 @@
         <props:hiddenProperty name="tokenId" />
       </td>
     </tr>
+    <tr id="gitConnectionNameRow" class="auth access_token">
+      <th>Token:</th>
+      <td><span title="<c:out value='${vcsPropertiesBean.tokenId}' />">Issued for <strong><c:out value="${vcsPropertiesBean.tokenUserName}" /></strong> via <strong><c:out value="${vcsPropertiesBean.connectionDisplayName}" /></strong></span></td>
+    </tr>
     <tr id="gitPasswordRow" class="auth password">
       <th><label for="secure:password">Password / access token:</label></th>
       <td><props:passwordProperty name="secure:password" className="longField"/></td>
