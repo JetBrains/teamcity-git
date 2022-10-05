@@ -143,6 +143,22 @@
         <div id="defaultPrivateKeyNote" class="smallNote auth defaultKey" style="margin: 0">Uses mapping specified in the default location on the server or the agent if that file exists (server&apos;s file location is &quot;<c:out value="${userHome}"/>&quot;).  <%-- This exposes user under whom the server runs, so absolute path should probbaly only be present for sys admins --%>
         </div>
         <div id="authMethodCompatNote" class="smallNote" style="margin: 0; display: none;"></div>
+        <div id="uploadedPrivateKeyNote" class="smallNote auth uploadedKey" style="margin: 0">
+          Keys uploaded via UI in
+          <c:choose>
+            <c:when test="${not empty vcsPropertiesBean.belongsToProject}">
+              <c:url var="sshKeysUrl" value="/admin/editProject.html?projectId=${vcsPropertiesBean.belongsToProject.externalId}&tab=ssh-manager"/>
+              <a href="${sshKeysUrl}" target="_blank" rel="noreferrer">Project Settings > SSH Keys</a>.
+            </c:when>
+            <c:otherwise>
+              Project Settings > SSH Keys.
+            </c:otherwise>
+          </c:choose>
+          <bs:help urlPrefix="https://www.jetbrains.com/help/teamcity/" file="ssh-keys-management.html"/>
+        </div>
+        <div id="customKeyNote" class="smallNote auth customKey" style="margin: 0">
+          Custom keys work only with server-side checkout. <bs:help urlPrefix="https://www.jetbrains.com/help/teamcity/" file="ssh-keys-management.html#SSH+Key+Usage"/>
+        </div>
       </td>
     </tr>
     <tr id="gitUsername" class="auth defaultKey customKey password uploadedKey access_token">
@@ -435,9 +451,12 @@
         var limitingProtocols = this.getLimitingProtocols(fetchProto, fetchCompatMethods, pushProto, pushCompatMethods);
         if (limitingProtocols) {
           //there are incompatible methods, show note
-          $j('#authMethodCompatNote').text("Authentication methods incompatible with " + limitingProtocols + " are disabled")
-              .removeClass('error')
-              .show();
+          var compatibleMethods = fetchCompatMethods.filter(fm => pushCompatMethods.includes(fm));
+          $j('#authMethodCompatNote').text("Authentication methods " +
+                                            Object.keys(authTypesForPrint).filter(t => !compatibleMethods.includes(t)).map(x => authTypesForPrint[x]).join(', ') +
+                                            " are incompatible with " + limitingProtocols + " (set in Fetch URL/Push URL). These method are disabled.")
+                                     .removeClass('error')
+                                     .show();
         } else {
           //all methods are compatible, hide note
           $j('#authMethodCompatNote').hide();
@@ -452,15 +471,25 @@
   $j('#url').keyup(function() {Git.applyAuthConstraints();});
   $j('#push_url').keyup(function() {Git.applyAuthConstraints();});
 
+  var authTypesForPrint = {
+    ANONYMOUS : 'Anonymous',
+    PASSWORD : 'Password / access token',
+    TEAMCITY_SSH_KEY : 'Uploaded Key',
+    PRIVATE_KEY_DEFAULT : 'Default Private Key',
+    PRIVATE_KEY_FILE : 'Custom Private Key',
+  };
+
+  var authTypes = {
+    PRIVATE_KEY_DEFAULT : 'defaultKey',
+    PRIVATE_KEY_FILE : 'customKey',
+    PASSWORD : 'password',
+    ACCESS_TOKEN: 'access_token',
+    ANONYMOUS : 'anonymous',
+    TEAMCITY_SSH_KEY : 'uploadedKey'
+  };
+
   gitSelectAuthentication = function(resetHiddenFields) {
-    BS.Util.toggleDependentElements($('authMethod').value, 'auth', resetHiddenFields, {
-      PRIVATE_KEY_DEFAULT : 'defaultKey',
-      PRIVATE_KEY_FILE : 'customKey',
-      PASSWORD : 'password',
-      ACCESS_TOKEN: 'access_token',
-      ANONYMOUS : 'anonymous',
-      TEAMCITY_SSH_KEY : 'uploadedKey'
-    });
+    BS.Util.toggleDependentElements($('authMethod').value, 'auth', resetHiddenFields, authTypes);
     Git.applyAuthConstraints();
     BS.VisibilityHandlers.updateVisibility($('vcsRootProperties'));
   };
