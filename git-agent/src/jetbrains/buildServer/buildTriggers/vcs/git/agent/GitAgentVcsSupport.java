@@ -19,9 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 import com.intellij.openapi.util.Pair;
 import com.jcraft.jsch.JSch;
 import java.io.File;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -42,7 +40,6 @@ import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import jetbrains.buildServer.vcs.*;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * The agent support for VCS.
@@ -66,6 +63,14 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private final AtomicLong myConfigsCacheBuildId = new AtomicLong(-1); //buildId for which configs are cached
   private final ConcurrentMap<VcsRoot, AgentPluginConfig> myConfigsCache = new ConcurrentHashMap<VcsRoot, AgentPluginConfig>();//cached config per root
   private final ConcurrentMap<VcsRoot, VcsException> myConfigErrorsCache = new ConcurrentHashMap<VcsRoot, VcsException>();//cached error thrown during config creation per root
+
+  final static String switchCheckoutModeMessage = "You should fix checkout rules to use it with agent-side checkout or switch on \"Auto\" VCS checkout mode.";
+
+  final static String differentParentErrorMessage = "Checkout rules '%s' are incompatible. Checkout directories (right parts) have different parent directories (%s and %s). Multiple rules like 'a/b=>c/a/b d/e=>c/f/d/e' are unsupported for agent-side checkout, " +
+                                                    "checkout directories must have a common parent directory, e.g. 'a/b=>c/a/b d/e=>c/d/e'. " + switchCheckoutModeMessage;
+
+  final static String remapErrorMessage = "Checkout rule '%s' is unsupported for agent-side checkout mode. Include Rules should not remap files: VCS Path (left side of rule) must be a right part of Agent Path (right side). " +
+                                          "Rules like 'a=>b', 'c/d=>c/e' are unsupported. Correct form for agent-side checkout are: 'a[=>a]', '.=>a', 'a=>b/a', 'a=>b/a/c'. " + switchCheckoutModeMessage;
 
   public GitAgentVcsSupport(@NotNull FS fs,
                             @NotNull SmartDirectoryCleaner directoryCleaner,
@@ -213,11 +218,13 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private Pair<CheckoutMode, File> getTargetDirAndMode(@NotNull AgentPluginConfig config,
                                                        @NotNull CheckoutRules rules,
                                                        @NotNull File checkoutDir) throws VcsException {
-    Pair<CheckoutMode, String> pathAndMode = getTargetPathAndMode(rules);
-    String path = pathAndMode.second;
-    if (path == null) {
-      throw new VcsException("Unsupported checkout rules for agent-side checkout: " + rules.getAsString());
+    Pair<CheckoutMode, String> pathAndMode;
+    try {
+      pathAndMode = getTargetPathAndModeForAgentSideCheckout(rules);
+    } catch (VcsException e) {
+      throw new VcsException("Unsupported checkout rules for agent-side checkout: '" + rules.getAsString() + "'\n " + e.getMessage());
     }
+    String path = pathAndMode.second;
 
     boolean canUseSparseCheckout = canUseSparseCheckout(config);
     if (pathAndMode.first == CheckoutMode.SPARSE_CHECKOUT && !canUseSparseCheckout) {
@@ -274,7 +281,20 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   @NotNull
   private Pair<CheckoutMode, String> getTargetPathAndMode(@NotNull CheckoutRules rules) {
     if (isRequireSparseCheckout(rules)) {
-      return Pair.create(CheckoutMode.SPARSE_CHECKOUT, getSingleTargetDirForSparseCheckout(rules));
+      String targetPath = null;
+      try {
+        targetPath = processCheckoutRulesForAgentSideCheckout(rules);
+      } catch (VcsException ignored) { }
+      return Pair.create(CheckoutMode.SPARSE_CHECKOUT, targetPath);
+    } else {
+      return Pair.create(CheckoutMode.MAP_REPO_TO_DIR, rules.map(""));
+    }
+  }
+
+  @NotNull
+  private Pair<CheckoutMode, String> getTargetPathAndModeForAgentSideCheckout(@NotNull CheckoutRules rules) throws VcsException {
+    if (isRequireSparseCheckout(rules)) {
+      return Pair.create(CheckoutMode.SPARSE_CHECKOUT, processCheckoutRulesForAgentSideCheckout(rules));
     } else {
       return Pair.create(CheckoutMode.MAP_REPO_TO_DIR, rules.map(""));
     }
@@ -285,33 +305,44 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
            !config.getGitVersion().equals(UpdaterImpl.BROKEN_SPARSE_CHECKOUT);
   }
 
-  @Nullable
-  private String getSingleTargetDirForSparseCheckout(@NotNull CheckoutRules rules) {
-    Set<String> targetDirs = new HashSet<String>();
+  private String processCheckoutRulesForAgentSideCheckout(@NotNull CheckoutRules rules) throws VcsException {
+    String targetDir = null;
+    IncludeRule previousRule = null;
     for (IncludeRule rule : rules.getRootIncludeRules()) {
       String from = rule.getFrom();
       String to = rule.getTo();
       if (from.equals("")) {
-        targetDirs.add(to);
-        continue;
+        targetDir = assignTargetDir(targetDir, to, rule, previousRule);
       }
-      if (from.equals(to)) {
-        targetDirs.add("");
-        continue;
+      else if (from.equals(to)) {
+        targetDir = assignTargetDir(targetDir, "", rule, previousRule);
       }
-      int prefixEnd = to.lastIndexOf(from);
-      if (prefixEnd == -1) // rule of form +:a=>b, but we don't support such mapping
-        return null;
-      String prefix = to.substring(0, prefixEnd);
-      if (!prefix.endsWith("/")) //rule of form +:a=>ab, but we don't support such mapping
-        return null;
-      prefix = prefix.substring(0, prefix.length() - 1);
-      targetDirs.add(prefix);
+      else {
+        int prefixEnd = to.lastIndexOf(from);
+        if (prefixEnd == -1) { // rule of form +:a=>b, but we don't support such mapping
+          throw new VcsException(String.format(remapErrorMessage, rule));
+        }
+        String prefix = to.substring(0, prefixEnd);
+        if (!prefix.endsWith("/")) { //rule of form +:a=>ab, but we don't support such mapping
+          throw new VcsException(String.format(remapErrorMessage, rule));
+        }
+        prefix = prefix.substring(0, prefix.length() - 1);
+
+        targetDir = assignTargetDir(targetDir, prefix, rule, previousRule);
+      }
+
+      previousRule = rule;
     }
-    if (targetDirs.isEmpty())
+    if (targetDir == null)
       return "";
-    if (targetDirs.size() > 1) //no single target dir
-      return null;
-    return targetDirs.iterator().next();
+    return targetDir;
+  }
+
+  private String assignTargetDir(String currectTargetDir, String newTargetDir, IncludeRule currentRule, IncludeRule prevRule) throws VcsException{
+    if (currectTargetDir == null)
+      return newTargetDir;
+    else if (!currectTargetDir.equals(newTargetDir))
+      throw new VcsException(String.format(differentParentErrorMessage, prevRule + " " + currentRule, currectTargetDir, newTargetDir)); //prevRul is not null because currentTargetDir is set
+    return currectTargetDir;
   }
 }
