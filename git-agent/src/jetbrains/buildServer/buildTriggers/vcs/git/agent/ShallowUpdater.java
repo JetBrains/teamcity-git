@@ -62,6 +62,7 @@ public class ShallowUpdater extends UpdaterImpl {
                                                 .setTimeout(myPluginConfig.getSubmoduleUpdateTimeoutSeconds())
                                                 .setForce(isForceUpdateSupported())
                                                 .setDepth(1);
+    submoduleUpdate.addConfig("protocol.file.allow", "always");
     configureLFS(submoduleUpdate);
     submoduleUpdate.call();
   }
