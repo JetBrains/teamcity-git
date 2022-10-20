@@ -364,6 +364,7 @@ public class UpdaterImpl implements Updater {
             .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
             .setTimeout(myPluginConfig.getSubmoduleUpdateTimeoutSeconds())
             .setForce(isForceUpdateSupported());
+    submoduleUpdate.addConfig("protocol.file.allow", "always");
     configureLFS(submoduleUpdate);
     submoduleUpdate.call();
   }
