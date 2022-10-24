@@ -102,6 +102,8 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isNoFetchRequiredIfRevisionInRepo();
 
+  boolean shouldIgnoreCheckoutRulesPostfixCheck();
+
   @NotNull
   Map<String, String> getGitTraceEnv();
 

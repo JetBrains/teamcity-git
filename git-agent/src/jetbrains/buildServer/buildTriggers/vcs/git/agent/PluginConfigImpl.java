@@ -83,6 +83,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String CUSTOM_GIT_CONFIG = "teamcity.internal.git.customConfig";
   public static final String REMOTE_OPERATION_ATTEMPTS = "teamcity.internal.git.remoteOperationAttempts";
   public static final String TEAMCITY_GIT_SSH_DEBUG = "teamcity.internal.git.sshDebug";
+
+  public static final String IGNORE_CHECKOUT_RULES_POSIFIX_CHECK_PARAMETER = "teamcity.internal.git.agent.ignoreCheckoutRulesPostfixCheck";
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class);
 
   private static final Pattern NEW_LINE = Pattern.compile("(\r\n|\r|\n)");
@@ -474,5 +476,10 @@ public class PluginConfigImpl implements AgentPluginConfig {
       LOG.warnAndDebugDetails("Failed to parse \"" + GIT_TRACE_ENV + "\" property value \"" + prop + "\", git trace won't be enabled", e);
       return Collections.emptyMap();
     }
+  }
+
+  @Override
+  public boolean shouldIgnoreCheckoutRulesPostfixCheck() {
+    return Boolean.parseBoolean(myBuild.getSharedConfigParameters().get(IGNORE_CHECKOUT_RULES_POSIFIX_CHECK_PARAMETER));
   }
 }

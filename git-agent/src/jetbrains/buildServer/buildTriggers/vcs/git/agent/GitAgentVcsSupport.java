@@ -69,8 +69,12 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   final static String differentParentErrorMessage = "Checkout rules '%s' are incompatible. Checkout directories (right parts) have different parent directories (%s and %s). Multiple rules like 'a/b=>c/a/b d/e=>c/f/d/e' are unsupported for agent-side checkout, " +
                                                     "checkout directories must have a common parent directory, e.g. 'a/b=>c/a/b d/e=>c/d/e'. " + switchCheckoutModeMessage;
 
-  final static String remapErrorMessage = "Checkout rule '%s' is unsupported for agent-side checkout mode. Include Rules should not remap files: VCS Path (left side of rule) must be a right part of Agent Path (right side). " +
-                                          "Rules like 'a=>b', 'c/d=>c/e' are unsupported. Correct form for agent-side checkout are: 'a[=>a]', '.=>a', 'a=>b/a', 'a=>b/a/c'. " + switchCheckoutModeMessage;
+  final static String remapErrorMessage = "Checkout rule '%s' is unsupported for agent-side checkout mode. Include Rules should not remap files or directories: VCS Path (left side of rule) must be a right part of Agent Path (right side). " +
+                                          "Rules like 'a=>b', 'c/d=>c/e' are unsupported. Correct form for agent-side checkout are: 'a[=>a]', '.=>a', 'a=>b/a'. " + switchCheckoutModeMessage;
+
+  final static String agentDirectoryPostfixErrorMessage = "Checkout rule '%s' is unsupported for agent-side checkout mode. " +
+                                                          "Rules like 'a=>[prefix/]a/postfix' are unsupported, only a=>[prefix/]a are supported for agent-side checkout with common [prefix/] for all rules. " + switchCheckoutModeMessage +
+                                                          " You can also set " + PluginConfigImpl.IGNORE_CHECKOUT_RULES_POSIFIX_CHECK_PARAMETER + " configuration parameter to ignore this verification but checking out on agent side will have unpredictable behavior.";
 
   public GitAgentVcsSupport(@NotNull FS fs,
                             @NotNull SmartDirectoryCleaner directoryCleaner,
@@ -220,7 +224,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                                                        @NotNull File checkoutDir) throws VcsException {
     Pair<CheckoutMode, String> pathAndMode;
     try {
-      pathAndMode = getTargetPathAndModeForAgentSideCheckout(rules);
+      pathAndMode = getTargetPathAndModeForAgentSideCheckout(rules, config.shouldIgnoreCheckoutRulesPostfixCheck());
     } catch (VcsException e) {
       throw new VcsException("Unsupported checkout rules for agent-side checkout: '" + rules.getAsString() + "'\n " + e.getMessage());
     }
@@ -283,7 +287,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     if (isRequireSparseCheckout(rules)) {
       String targetPath = null;
       try {
-        targetPath = processCheckoutRulesForAgentSideCheckout(rules);
+        targetPath = processCheckoutRulesForAgentSideCheckout(rules, false);
       } catch (VcsException ignored) { }
       return Pair.create(CheckoutMode.SPARSE_CHECKOUT, targetPath);
     } else {
@@ -292,9 +296,9 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   }
 
   @NotNull
-  private Pair<CheckoutMode, String> getTargetPathAndModeForAgentSideCheckout(@NotNull CheckoutRules rules) throws VcsException {
+  private Pair<CheckoutMode, String> getTargetPathAndModeForAgentSideCheckout(@NotNull CheckoutRules rules, boolean ignorePostfixInRules) throws VcsException {
     if (isRequireSparseCheckout(rules)) {
-      return Pair.create(CheckoutMode.SPARSE_CHECKOUT, processCheckoutRulesForAgentSideCheckout(rules));
+      return Pair.create(CheckoutMode.SPARSE_CHECKOUT, processCheckoutRulesForAgentSideCheckout(rules, ignorePostfixInRules));
     } else {
       return Pair.create(CheckoutMode.MAP_REPO_TO_DIR, rules.map(""));
     }
@@ -305,7 +309,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
            !config.getGitVersion().equals(UpdaterImpl.BROKEN_SPARSE_CHECKOUT);
   }
 
-  private String processCheckoutRulesForAgentSideCheckout(@NotNull CheckoutRules rules) throws VcsException {
+  private static String processCheckoutRulesForAgentSideCheckout(@NotNull CheckoutRules rules, boolean ignorePostfixInRules) throws VcsException {
     String targetDir = null;
     IncludeRule previousRule = null;
     for (IncludeRule rule : rules.getRootIncludeRules()) {
@@ -321,6 +325,9 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
         int prefixEnd = to.lastIndexOf(from);
         if (prefixEnd == -1) { // rule of form +:a=>b, but we don't support such mapping
           throw new VcsException(String.format(remapErrorMessage, rule));
+        }
+        if (!ignorePostfixInRules && to.length() != prefixEnd + from.length()) {
+          throw new VcsException(String.format(agentDirectoryPostfixErrorMessage, rule)); ////rule of form +:a=>b/a/c, but we don't support mapping with postfix
         }
         String prefix = to.substring(0, prefixEnd);
         if (!prefix.endsWith("/")) { //rule of form +:a=>ab, but we don't support such mapping
@@ -338,7 +345,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     return targetDir;
   }
 
-  private String assignTargetDir(String currectTargetDir, String newTargetDir, IncludeRule currentRule, IncludeRule prevRule) throws VcsException{
+  private static String assignTargetDir(String currectTargetDir, String newTargetDir, IncludeRule currentRule, IncludeRule prevRule) throws VcsException{
     if (currectTargetDir == null)
       return newTargetDir;
     else if (!currectTargetDir.equals(newTargetDir))

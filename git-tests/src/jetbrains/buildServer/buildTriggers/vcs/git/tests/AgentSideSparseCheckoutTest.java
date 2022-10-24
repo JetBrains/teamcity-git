@@ -16,6 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
@@ -27,6 +29,7 @@ import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
+import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -45,6 +48,8 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
   private GitAgentVcsSupport myVcsSupport;
   private File myCheckoutDir;
   private VcsRoot myRoot;
+
+  private Pattern quotesPattern = Pattern.compile("\\'[a-zA-Z0-9\\/\\s\\+=>:\\._]*\\'");
 
   public AgentSideSparseCheckoutTest() {
     super("repo.git");
@@ -167,6 +172,104 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
                "Folder2/SubFolder1/f4");
   }
 
+  @TestFor(issues = "TW-53732")
+  public void remap_directory_error() throws Exception {
+    String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
+    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true")
+                                            .withAgentConfiguration(myAgentConfiguration).build();
+    CheckoutRules rules = rules("dir1 => dir2", "+:dirA => dirB", "dirC/dirD => dirC/dirD");
+    try {
+      myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
+      Assert.fail("Checking rules should be failed");
+    } catch (VcsException ve) {
+      Assert.assertEquals(extractRules(ve.getMessage()).get(1), "'dir1=>dir2'");
+    }
+  }
+
+  @TestFor(issues = "TW-53732")
+  public void remap_directory_error2() throws Exception {
+    String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
+    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true")
+                                            .withAgentConfiguration(myAgentConfiguration).build();
+    CheckoutRules rules = rules("dir1", "+:dirA => dirB", "dirC/dirD => dirC/dirD");
+    try {
+      myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
+      Assert.fail("Checking rules should be failed");
+    } catch (VcsException ve) {
+      Assert.assertEquals(extractRules(ve.getMessage()).get(1), "'dirA=>dirB'");
+    }
+  }
+
+  @TestFor(issues = "TW-53732")
+  public void different_prefix_error() throws Exception {
+    String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
+    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true")
+                                            .withAgentConfiguration(myAgentConfiguration).build();
+    CheckoutRules rules = rules("dir1", "+:dirA => dirB/dirA", "dirC/dirD => dirC/dirD");
+    try {
+      myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
+      Assert.fail("Checking rules should be failed");
+    } catch (VcsException ve) {
+      Assert.assertEquals(extractRules(ve.getMessage()).get(1), "'dir1=>dir1 dirA=>dirB/dirA'");
+    }
+  }
+
+  @TestFor(issues = "TW-77887")
+  public void postfix_error() throws Exception {
+    String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
+    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true")
+                                            .withAgentConfiguration(myAgentConfiguration).build();
+    CheckoutRules rules = rules("dir1 => dirB/dir1", "+:dirA => dirB/dirA", "dirC/dirD => dirB/dirC/dirD/dirE");
+    try {
+      myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
+      Assert.fail("Checking rules should be failed");
+    } catch (VcsException ve) {
+      Assert.assertEquals(extractRules(ve.getMessage()).get(1), "'dirC/dirD=>dirB/dirC/dirD/dirE'");
+    }
+  }
+
+  @TestFor(issues = "TW-53732")
+  public void prefix_substring_error() throws Exception {
+    String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
+    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true")
+                                            .withAgentConfiguration(myAgentConfiguration).build();
+    CheckoutRules rules = rules("dir1 => dirB/dir1", "+:dirA => dirB/dirA", "dirC/dirD => dirBx/dirC/dirD");
+    try {
+      myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
+      Assert.fail("Checking rules should be failed");
+    } catch (VcsException ve) {
+      Assert.assertEquals(extractRules(ve.getMessage()).get(1), "'dirA=>dirB/dirA dirC/dirD=>dirBx/dirC/dirD'");
+    }
+  }
+
+  @TestFor(issues = "TW-77887")
+  public void postfix_substring_error() throws Exception {
+    String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
+    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true")
+                                            .withAgentConfiguration(myAgentConfiguration).build();
+    CheckoutRules rules = rules("dir1 => dirB/dir1", "+:dirA => dirB/dirA", "dirC/dirD => dirB/dirC/dirDx");
+    try {
+      myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
+      Assert.fail("Checking rules should be failed");
+    } catch (VcsException ve) {
+      Assert.assertEquals(extractRules(ve.getMessage()).get(1), "'dirC/dirD=>dirB/dirC/dirDx'");
+    }
+  }
+
+  @TestFor(issues = "TW-77887")
+  public void postfix_ignore_substring_error() throws Exception {
+    String version = "465ad9f630e451b9f2b782ffb09804c6a98c4bb9";
+    AgentRunningBuild build = runningBuild().sharedConfigParams(PluginConfigImpl.USE_SPARSE_CHECKOUT, "true",
+                                                                PluginConfigImpl.IGNORE_CHECKOUT_RULES_POSIFIX_CHECK_PARAMETER, "true")
+                                            .withAgentConfiguration(myAgentConfiguration).build();
+    CheckoutRules rules = rules("dir1 => dirB/dir1", "+:dirA => dirB/dirA", "dirC/dirD => dirB/dirC/dirD/dirE");
+    try {
+      myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
+      Assert.assertTrue(true);
+    } catch (VcsException ve) {
+      Assert.fail("Should not be failed");
+    }
+  }
 
   private void checkRules(@NotNull String version, @NotNull CheckoutRules rules, String... files) throws VcsException {
     FileUtil.delete(myCheckoutDir);
@@ -198,5 +301,15 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
   @NotNull
   public AgentRunningBuildBuilder runningBuild() {
     return AgentRunningBuildBuilder.runningBuild().addRoot(myRoot).withCheckoutDir(myCheckoutDir);
+  }
+
+  @NotNull
+  public List<String> extractRules(String errorMessaage) {
+    List<String> checkoutRules = new ArrayList<>();
+    Matcher m = quotesPattern.matcher(errorMessaage);
+    while (m.find()) {
+      checkoutRules.add(m.group());
+    }
+    return  checkoutRules;
   }
 }
