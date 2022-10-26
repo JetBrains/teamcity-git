@@ -270,4 +270,38 @@
       <option name="REFRESHABLE" value="refreshable" description="Refreshable token type"/>
     </enum>-->
   </types>
+  <examples>
+    <example>
+      <description>
+        Defines a VCS root MyVcsRoot with authentication by an SSH key and registers it in the project and a build configuration.
+      </description>
+      <code>
+        project {
+          ...
+          vcsRoot(MyVcsRoot)
+
+          buildType{
+            id = "MyBuild"
+            name = "MyBuild"
+
+            vcs {
+              root(MyVcsRoot)
+            }
+            ...
+          }
+          ...
+        }
+
+        object MyVcsRoot: GitVcsRoot({
+          name = "My project main repository"
+          url = "&lt;repository URL>"
+          branch = "refs/heads/main"
+          checkoutPolicy = AgentCheckoutPolicy.USE_MIRRORS
+          authMethod = uploadedKey {
+            uploadedKey = "&lt;SSH key name>"
+          }
+        })
+      </code>
+    </example>
+  </examples>
 </dsl-extension>
