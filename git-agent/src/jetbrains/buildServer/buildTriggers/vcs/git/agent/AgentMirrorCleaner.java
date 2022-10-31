@@ -24,6 +24,7 @@ import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -55,6 +56,57 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
 
   public void registerDirectoryCleaners(@NotNull DirectoryCleanersProviderContext context,
                                         @NotNull DirectoryCleanersRegistry registry) {
+    if (TeamCityProperties.getBoolean("teamcity.git.mirrorsCleaner.useOldImplementation")) {//feature toggle, may be removed after testing new code
+      oldImplementation(context, registry);
+      return;
+    }
+
+    final Set<String> repositoriesUsedInBuild = getRunningBuildRepositories(context);
+
+    final Set<File> mirrors = new HashSet<>(myMirrorManager.getMappings().values());
+
+    for (File mirror : listFiles(myMirrorManager.getBaseMirrorsDir())) {
+      if (!mirror.isDirectory()) {
+        LOG.debug("Skipping non-mirror file: " + mirror.getAbsolutePath());
+        continue;
+      }
+
+      registry.addCleaner(mirror, new Date(myMirrorManager.getLastUsedTime(mirror)), () -> {
+        final String name = mirror.getName();
+        if (myMirrorManager.isInvalidDirName(name)) {
+          myMirrorManager.removeMirrorDir(mirror);
+          FileUtil.delete(mirror); // make sure mirror is deleted
+          LOG.info("Found invalid mirror directory: " + mirror.getAbsolutePath() + ", removed it straight away");
+          return;
+        }
+
+        final String repository = myMirrorManager.getUrl(mirror.getName());
+        if (repository == null) {
+          myMirrorManager.removeMirrorDir(mirror);
+          FileUtil.delete(mirror); // make sure mirror is deleted
+          LOG.info("Found unused mirror directory: " + mirror.getAbsolutePath() + ", removed it straight away");
+          return;
+        }
+
+        if (!repositoriesUsedInBuild.contains(repository)) {
+          if (isCleanupEnabled(mirror)) {
+            LOG.debug("Register cleaner for mirror " + mirror.getAbsolutePath());
+            registry.addCleaner(mirror, new Date(myMirrorManager.getLastUsedTime(mirror)));
+          } else {
+            LOG.debug("Clean-up is disabled in " + repository + " (" + mirror.getName() + ")");
+          }
+        }
+      });
+      mirrors.remove(mirror);
+    }
+
+    for (File mirror : mirrors) {
+      myMirrorManager.removeMirrorDir(mirror);
+      LOG.debug("Found non existing mirror directory: " + mirror.getAbsolutePath() + ", removed it from the list of mirrors");
+    }
+  }
+
+  private void oldImplementation(@NotNull DirectoryCleanersProviderContext context, @NotNull DirectoryCleanersRegistry registry) {
     final Set<String> repositoriesUsedInBuild = getRunningBuildRepositories(context);
     final Set<File> mirrors = new HashSet<File>(myMirrorManager.getMappings().values());
 
