@@ -70,6 +70,18 @@ public class GitFacadeImpl implements GitFacade {
   }
 
   @NotNull
+  @Override
+  public GetConfigCommand getConfigParameter() {
+    return new GetConfigCommandImpl(createCommandLine());
+  }
+
+  @NotNull
+  @Override
+  public SetConfigCommand setConfigParamter() {
+    return new SetConfigCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   protected GitCommandLine createCommandLine() {
     final GitCommandLine cmd = makeCommandLine();
     cmd.setExePath(myCtx.getGitExec().getPath());

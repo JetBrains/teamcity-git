@@ -24,4 +24,10 @@ public interface GitFacade {
 
   @NotNull
   TagCommand tag();
+
+  @NotNull
+  GetConfigCommand getConfigParameter();
+
+  @NotNull
+  SetConfigCommand setConfigParamter();
 }

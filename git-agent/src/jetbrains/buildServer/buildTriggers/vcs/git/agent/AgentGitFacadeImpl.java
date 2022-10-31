@@ -25,14 +25,19 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.ListConfigCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.SetConfigCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.ListConfigCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.ProcessTimeoutCallback;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.SetConfigCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GetConfigCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GetConfigCommandImpl;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
-
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 
 public class AgentGitFacadeImpl extends GitFacadeImpl implements AgentGitFacade {
