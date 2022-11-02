@@ -106,14 +106,16 @@ public class AgentMirrorCleanerTest {
 
         one(myMirrorManager).getLastUsedTime(r3mirror); will(returnValue(r3lastAccess.getTime()));
         one(myMirrorManager).getLastUsedTime(r4mirror); will(returnValue(r4lastAccess.getTime()));
+        //one(myMirrorManager).getLastUsedTime(r1mirror); will(returnValue(1234567L));
+        //one(myMirrorManager).getLastUsedTime(r2mirror); will(returnValue(1234567L));
 
         allowing(myMirrorManager).getMirrorDir("git://some.org/r1"); will(returnValue(r1mirror));
         allowing(myMirrorManager).getMirrorDir("git://some.org/r2"); will(returnValue(r2mirror));
         allowing(myMirrorManager).getMirrorDir("git://some.org/r3"); will(returnValue(r3mirror));
         allowing(myMirrorManager).getMirrorDir("git://some.org/r4"); will(returnValue(r4mirror));
 
-        one(registry).addCleaner(r3mirror, r3lastAccess);
-        one(registry).addCleaner(r4mirror, r4lastAccess);
+        one(registry).addCleaner(with(r3mirror), with(r3lastAccess), with(any(Runnable.class)));
+        one(registry).addCleaner(with(r4mirror), with(r4lastAccess), with(any(Runnable.class)));
       }});
       myAgentMirrorCleaner.registerDirectoryCleaners(createCleanerContext(repositoriesInBuild), registry);
     } finally {
@@ -162,6 +164,7 @@ public class AgentMirrorCleanerTest {
         allowing(myMirrorManager).getMirrorDir("git://some.org/r2"); will(returnValue(r2mirror));
         allowing(myMirrorManager).getMirrorDir("git://some.org/r3"); will(returnValue(r3mirror));
         allowing(myMirrorManager).getMirrorDir("git://some.org/r4"); will(returnValue(r4mirror));
+        allowing(myMirrorManager).getLastUsedTime(with(any(File.class))); will(returnValue(1234567L));
       }});
       mySubmoduleManager.persistSubmodules("git://some.org/r1", asList("git://some.org/r2", "git://some.org/r3"));
       mySubmoduleManager.persistSubmodules("git://some.org/r2", Collections.singletonList("git://some.org/r4"));
@@ -181,10 +184,11 @@ public class AgentMirrorCleanerTest {
       List<String> repositoriesInBuild = Collections.singletonList("git://some.org/r1");
       myContext.checking(new Expectations() {{
         one(myMirrorManager).getMappings(); will(returnValue(map("git://some.org/r1", invalidMirror)));
+        allowing(myMirrorManager).getLastUsedTime(with(any(File.class))); will(returnValue(1234567L));
         one(myMirrorManager).getBaseMirrorsDir(); will(returnValue(baseMirrorsDir));
         one(myMirrorManager).isInvalidDirName(invalidMirror.getName()); will(returnValue(true));
         allowing(myMirrorManager).getMirrorDir("git://some.org/r1"); will(returnValue(invalidMirror));
-        one(myMirrorManager).removeMirrorDir(invalidMirror);}});
+        one(registry).addCleaner(with(invalidMirror), with(any(Date.class)), with(any(Runnable.class)));}});
       myAgentMirrorCleaner.registerDirectoryCleaners(createCleanerContext(repositoriesInBuild), registry);
     } finally {
       tmpFiles.cleanup();

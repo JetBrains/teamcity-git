@@ -70,9 +70,15 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
         LOG.debug("Skipping non-mirror file: " + mirror.getAbsolutePath());
         continue;
       }
+      final String name = mirror.getName();
+      if (!myMirrorManager.isInvalidDirName(name)) {
+        final String repository = myMirrorManager.getUrl(mirror.getName());
+        if (repository != null && repositoriesUsedInBuild.contains(repository)) {
+          return;
+        }
+      }
 
       registry.addCleaner(mirror, new Date(myMirrorManager.getLastUsedTime(mirror)), () -> {
-        final String name = mirror.getName();
         if (myMirrorManager.isInvalidDirName(name)) {
           myMirrorManager.removeMirrorDir(mirror);
           FileUtil.delete(mirror); // make sure mirror is deleted
