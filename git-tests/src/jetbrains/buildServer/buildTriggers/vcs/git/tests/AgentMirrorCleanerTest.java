@@ -200,6 +200,7 @@ public class AgentMirrorCleanerTest {
     final AgentRunningBuild build = myContext.mock(AgentRunningBuild.class);
     myContext.checking(new Expectations() {{
       allowing(context).getRunningBuild(); will(returnValue(build));
+      allowing(build).getSharedConfigParameters(); will(returnValue(Collections.emptyMap()));
       allowing(build).getVcsRootEntries(); will(returnValue(createVcsRootEntries(repositoriesInBuild)));
     }});
     return context;

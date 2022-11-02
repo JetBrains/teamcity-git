@@ -56,7 +56,9 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
 
   public void registerDirectoryCleaners(@NotNull DirectoryCleanersProviderContext context,
                                         @NotNull DirectoryCleanersRegistry registry) {
-    if (TeamCityProperties.getBoolean("teamcity.git.mirrorsCleaner.useOldImplementation")) {//feature toggle, may be removed after testing new code
+    //feature toggle, may be removed after testing new code
+    if (Boolean.parseBoolean(
+      context.getRunningBuild().getSharedConfigParameters().getOrDefault("teamcity.git.mirrorsCleaner.useOldImplementation", "false"))) {
       oldImplementation(context, registry);
       return;
     }
