@@ -58,7 +58,7 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
                                         @NotNull DirectoryCleanersRegistry registry) {
     //feature toggle, may be removed after testing new code
     if (Boolean.parseBoolean(
-      context.getRunningBuild().getSharedConfigParameters().getOrDefault("teamcity.git.mirrorsCleaner.useOldImplementation", "false"))) {
+      context.getRunningBuild().getSharedConfigParameters().getOrDefault("teamcity.internal.git.mirrorsCleaner.useOldImplementation", "false"))) {
       oldImplementation(context, registry);
       return;
     }
