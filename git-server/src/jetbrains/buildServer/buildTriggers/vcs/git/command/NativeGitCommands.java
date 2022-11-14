@@ -107,6 +107,8 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
           final File cacheCertDirectory = new File(myConfig.getCachesDir(), CERT_DIR);
           final String pemContent = TrustStoreIO.pemContentFromDirectory(myTrustedCertificatesDir.getAbsolutePath());
+          final String mergedCertificatePath = new File(cacheCertDirectory, CERT_FILE).getAbsolutePath();
+
           if (shouldGenerateMergedSslCertificate(pemContent, cacheCertDirectory)) {
             if (lock.tryLock()) {
               try {
@@ -118,14 +120,14 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
               lock.lock();
               lock.unlock();
             }
-
-            String mergedCertificatePath = new File(cacheCertDirectory, CERT_FILE).getAbsolutePath();
-            SslOperations.deleteSslOption(gitFacade);
-            if (new File(mergedCertificatePath).exists())
-              SslOperations.setSslOption(gitFacade, mergedCertificatePath);
-          } else {
+          } else if (mergedCertificatePath.equals(SslOperations.getCertPath(gitFacade))) {
             throw e;
           }
+
+          SslOperations.deleteSslOption(gitFacade);
+          if (new File(mergedCertificatePath).exists())
+            SslOperations.setSslOption(gitFacade, mergedCertificatePath);
+
 
         } else {
           throw e;

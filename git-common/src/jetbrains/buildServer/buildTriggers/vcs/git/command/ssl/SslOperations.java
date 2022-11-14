@@ -1,12 +1,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command.ssl;
 
-import java.io.File;
-import java.io.IOException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitFacade;
-import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
-import jetbrains.buildServer.util.ssl.TrustStoreIO;
-import org.apache.commons.codec.CharEncoding;
+import jetbrains.buildServer.vcs.VcsException;
 import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
@@ -16,9 +12,14 @@ public class SslOperations {
 
   private final static Logger LOG = Logger.getLogger(SslOperations.class);
 
+  @NotNull
+  public static String getCertPath(@NotNull final GitFacade gitFacade) throws VcsException {
+    return gitFacade.getConfig().setPropertyName("http.sslCAInfo").callWithIgnoreExitCode();
+  }
+
   public static void deleteSslOption(@NotNull final GitFacade gitFacade) {
     try {
-      final String previous = gitFacade.getConfig().setPropertyName("http.sslCAInfo").callWithIgnoreExitCode();
+      final String previous = getCertPath(gitFacade);
       if (!StringUtil.isEmptyOrSpaces(previous)) {
         /* do not need custom certificate then remove corresponding options if exists */
         gitFacade.setConfig().setPropertyName("http.sslCAInfo").unSet().call();
