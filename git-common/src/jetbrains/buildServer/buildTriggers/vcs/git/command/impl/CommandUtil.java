@@ -184,6 +184,10 @@ public class CommandUtil {
     return e instanceof CheckoutCanceledException || e.getCause() instanceof InterruptedException;
   }
 
+  public static boolean isSslError(@NotNull VcsException e) {
+    return isMessageContains(e, "SSL certificate problem") || isMessageContains(e, "error setting certificate verify locations");
+  }
+
   public static boolean isNoSuchFileOrDirError(@NotNull VcsException e) {
     return isMessageContains(e, "No such file or directory");
   }
@@ -215,6 +219,7 @@ public class CommandUtil {
     final VcsException ve = (VcsException)e;
     if (isTimeoutError(ve) || isConnectionRefused(ve) || isConnectionReset(ve)) return attemptsLeft;
     if (isCanceledError(ve)) return false;
+    if (isSslError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
 
     if (authSettings.doesTokenNeedRefresh() && attempt == 1)

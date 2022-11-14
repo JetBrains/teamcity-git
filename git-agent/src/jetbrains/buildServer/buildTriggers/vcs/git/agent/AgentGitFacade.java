@@ -63,12 +63,6 @@ public interface AgentGitFacade extends GitFacade {
   CheckoutCommand checkout();
 
   @NotNull
-  GetConfigCommand getConfig();
-
-  @NotNull
-  SetConfigCommand setConfig();
-
-  @NotNull
   ListConfigCommand listConfig();
 
   @NotNull

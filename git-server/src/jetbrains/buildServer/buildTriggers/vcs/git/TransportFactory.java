@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.io.File;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.NotSupportedException;
 import org.eclipse.jgit.errors.TransportException;
@@ -23,6 +24,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * @author dmitry.neverov
@@ -44,4 +46,7 @@ public interface TransportFactory extends SshSessionMetaFactory {
 
   Transport createTransport(@NotNull Repository r, @NotNull URIish url, @NotNull AuthSettings authSettings, int timeoutSeconds)
     throws NotSupportedException, VcsException, TransportException;
+
+  @Nullable
+  File getCertificatesDir();
 }

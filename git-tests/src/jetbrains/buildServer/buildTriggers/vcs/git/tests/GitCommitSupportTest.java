@@ -27,6 +27,7 @@ import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitFacade;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -324,9 +325,9 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
       @NotNull
       @Override
       public PushCommand pushCommand(@NotNull String repoUrl) {
-        return new NativeGitCommands(config, GitCommitSupportTest::detectGitStub, r -> null) {
+        return new NativeGitCommands(config, GitCommitSupportTest::detectGitStub, r -> null, null) {
           @Override
-          protected <R> R executeCommand(@NotNull Context ctx, @NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd) throws VcsException {
+          protected <R> R executeCommand(@NotNull Context ctx, @NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, @NotNull GitFacade gitFacade) throws VcsException {
             throw new VcsException("Always fails");
           }
         };

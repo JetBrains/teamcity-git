@@ -35,6 +35,7 @@ import org.eclipse.jgit.transport.SshSessionFactory;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -198,6 +199,12 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
                                        @NotNull AuthSettings authSettings,
                                        int timeoutSeconds) throws NotSupportedException, VcsException, TransportException {
         throw new TransportException(url.toString() + ": " + error, new JSchException(error));
+      }
+
+      @Nullable
+      @Override
+      public File getCertificatesDir() {
+        return null;
       }
 
       @NotNull

@@ -17,6 +17,9 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.vcs.VcsRoot;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.transport.URIish;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -38,5 +41,9 @@ public class LogUtil {
 
   public static String describe(@Nullable final GitVcsRoot root) {
     return root == null ? NULL_OBJECT : root.toString();
+  }
+
+  public static String describe(@NotNull Repository db, @NotNull URIish uri) {
+    return db.getDirectory() != null ? db.getDirectory().getAbsolutePath() + ", " : "" + uri;
   }
 }

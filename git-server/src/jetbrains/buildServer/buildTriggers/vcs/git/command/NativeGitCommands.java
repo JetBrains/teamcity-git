@@ -1,27 +1,39 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.LsRemoteCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.PushCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.TagCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.FuncThrow;
 import jetbrains.buildServer.util.NamedThreadFactory;
+import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.util.ssl.TrustStoreIO;
 import jetbrains.buildServer.vcs.CommitResult;
 import jetbrains.buildServer.vcs.VcsException;
+import org.apache.commons.codec.CharEncoding;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations.CERT_DIR;
+import static jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations.CERT_FILE;
 
 public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand, TagCommand {
 
@@ -35,52 +47,135 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   private final GitDetector myGitDetector;
   private final VcsRootSshKeyManager mySshKeyManager;
 
+  private final File myTrustedCertificatesDir;
+
+  private static final ReentrantLock lock = new ReentrantLock();
+
   public NativeGitCommands(@NotNull ServerPluginConfig config,
                            @NotNull GitDetector gitDetector,
-                           @NotNull VcsRootSshKeyManager sshKeyManager) {
+                           @NotNull VcsRootSshKeyManager sshKeyManager,
+                           @Nullable File trustedCertificatesDir) {
     myConfig = config;
     myGitDetector = gitDetector;
     mySshKeyManager = sshKeyManager;
+    myTrustedCertificatesDir = trustedCertificatesDir;
+  }
+
+  private boolean shouldGenerateMergedSslCertificate(@NotNull String pemContent, @NotNull File cachedSslDirectory) throws VcsException {
+    if (StringUtil.isEmptyOrSpaces(pemContent)) {
+      if (cachedSslDirectory.exists()) {
+        FileUtil.delete(cachedSslDirectory);
+      }
+      return false;
+    }
+
+    File certFile = new File(cachedSslDirectory, CERT_FILE);
+    try {
+      return !certFile.exists() || certFile.exists() && !pemContent.equals(FileUtil.readText(certFile));
+    } catch (IOException ioe) {
+      throw new VcsException(ioe);
+    }
+  }
+
+  private void generateMergedCertificateFile(@NotNull String pemContent, File cachedSslDirectory) throws VcsException {
+    try {
+      if (!cachedSslDirectory.exists() && !cachedSslDirectory.mkdir()) {
+        throw new VcsException("Can not create directory for certificates: " + cachedSslDirectory.getPath());
+      }
+
+      final File file = new File(cachedSslDirectory.getPath(), CERT_FILE);
+      FileUtil.writeFile(file, pemContent, CharEncoding.UTF_8);
+    } catch (IOException e) {
+      throw new VcsException("Can not write file with certificates", e);
+    }
   }
 
   private static boolean isSilentFetch(@NotNull Context ctx) {
     return ctx.getGitVersion().isLessThan(GIT_WITH_PROGRESS_VERSION);
   }
 
-  // Visible for testing
-  protected <R> R executeCommand(@NotNull Context ctx, @NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd) throws VcsException{
-    return NamedThreadFactory.executeWithNewThreadNameFuncThrow(
-      String.format("Running native git %s process for : %s", action, debugInfo),
-      () -> {
-        final long start = System.currentTimeMillis();
-        try {
-          return cmd.apply();
-        } finally {
-          final long finish = System.currentTimeMillis();
-          final String msg = "[git " + action + "] repository: " + debugInfo + " took " + (finish - start) + "ms";
-          if (ctx.isDebugGitCommands()) PERFORMANCE_LOG.info(msg);
-          else PERFORMANCE_LOG.debug(msg);
+  private <R> R executeWithSslHandling(@NotNull FuncThrow<R, VcsException> executedCmd, @NotNull GitFacade gitFacade)
+    throws VcsException {
+    int attemptsLeft = 2;
+    for (int i = 0; i < attemptsLeft; ++i) {
+      try {
+        return executedCmd.apply();
+      } catch (VcsException e) {
+        if (i < attemptsLeft-1 &&
+            CommandUtil.isSslError(e) &&
+            myTrustedCertificatesDir != null) {
+
+          final File cacheCertDirectory = new File(myConfig.getCachesDir(), CERT_DIR);
+          final String pemContent = TrustStoreIO.pemContentFromDirectory(myTrustedCertificatesDir.getAbsolutePath());
+          if (shouldGenerateMergedSslCertificate(pemContent, cacheCertDirectory)) {
+            if (lock.tryLock()) {
+              try {
+                generateMergedCertificateFile(pemContent, cacheCertDirectory);
+              } finally {
+                lock.unlock();
+              }
+            } else {
+              lock.lock();
+              lock.unlock();
+            }
+
+            String mergedCertificatePath = new File(cacheCertDirectory, CERT_FILE).getAbsolutePath();
+            SslOperations.deleteSslOption(gitFacade);
+            if (new File(mergedCertificatePath).exists())
+              SslOperations.setSslOption(gitFacade, mergedCertificatePath);
+          } else {
+            throw e;
+          }
+
+        } else {
+          throw e;
         }
-      });
+
+      }
+    }
+    return null; //never executes
   }
 
-  @Override
-  public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull FetchSettings settings) throws IOException, VcsException {
-    final GitExec gitExec = myGitDetector.detectGit();
-    final Context ctx = new ContextImpl(null, myConfig, gitExec, settings.getProgress());
-    final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
-    gitFacade.setSshKeyManager(mySshKeyManager);
+  // Visible for testing
+  protected <R> R executeCommand(@NotNull Context ctx, @NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, @NotNull GitFacade gitFacade) throws VcsException{
+    return executeWithSslHandling(() ->  {
+      return NamedThreadFactory.executeWithNewThreadNameFuncThrow(
+        String.format("Running native git %s process for : %s", action, debugInfo),
+        () -> {
+          final long start = System.currentTimeMillis();
+          try {
+            return cmd.apply();
+          } finally {
+            final long finish = System.currentTimeMillis();
+            final String msg = "[git " + action + "] repository: " + debugInfo + " took " + (finish - start) + "ms";
+            if (ctx.isDebugGitCommands()) PERFORMANCE_LOG.info(msg);
+            else PERFORMANCE_LOG.debug(msg);
+          }
+        });
+      }, gitFacade);
+  }
 
+  @NotNull
+  private jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand createFetchCommand(@NotNull Repository db,
+                                                                                              @NotNull URIish fetchURI,
+                                                                                              @NotNull FetchSettings settings,
+                                                                                              @NotNull GitFacade gitFacade,
+                                                                                              @NotNull Context ctx,
+                                                                                              @NotNull Collection<String> refSpecs) {
     // Before running fetch we need to prune branches which no longer exist in the remote,
     // otherwise git fails to update local branches which were e.g. renamed.
     try {
-      gitFacade.remote()
-               .setCommand("prune").setRemote("origin")
-               .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
-               .setRetryAttempts(myConfig.getConnectionRetryAttempts())
-               .setRepoUrl(fetchURI)
-               .trace(myConfig.getGitTraceEnv())
-               .call();
+      executeCommand(ctx, "prune", LogUtil.describe(db, fetchURI), () -> {
+        gitFacade.remote()
+                 .setCommand("prune").setRemote("origin")
+                 .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
+                 .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+                 .setRepoUrl(fetchURI)
+                 .trace(myConfig.getGitTraceEnv())
+                 .call();
+        return null;
+      }, gitFacade);
+
     } catch (VcsException e) {
       Loggers.VCS.warnAndDebugDetails("Error while pruning removed branches in " + db, e);
     }
@@ -96,26 +191,8 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                .trace(myConfig.getGitTraceEnv())
                .addPreAction(() -> GitServerUtil.removeRefLocks(db.getDirectory()));
 
-    final Collection<String> resultRefSpecs = new HashSet<>();
-    switch (settings.getFetchMode()) {
-      case FETCH_ALL_REFS:
-        fetch.setRefspec(ALL_REF_SPEC);
-        resultRefSpecs.add(ALL_REF_SPEC);
-        break;
-      case FETCH_ALL_REFS_EXCEPT_TAGS:
-        fetch.setRefspec(ALL_REF_SPEC);
-        resultRefSpecs.add(ALL_REF_SPEC);
-        fetch.setRefspec(EXCLUDE_TAGS_REF_SPEC);
-        resultRefSpecs.add(EXCLUDE_TAGS_REF_SPEC);
-        break;
-      case FETCH_REF_SPECS:
-      default:
-        for (RefSpec refSpec : settings.getRefSpecs()) {
-          final String refSpecStr = refSpec.toString();
-          fetch.setRefspec(refSpecStr);
-          resultRefSpecs.add(refSpecStr);
-        }
-        break;
+    for (String spec : refSpecs) {
+      fetch.setRefspec(spec);
     }
 
     if (isSilentFetch(ctx))
@@ -123,10 +200,43 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     else
       fetch.setShowProgress(true);
 
+    return fetch;
+  }
+
+  private Collection<String> defineRefSpecsForFetch(@NotNull FetchSettings settings) {
+    final Collection<String> resultRefSpecs = new HashSet<>();
+    switch (settings.getFetchMode()) {
+      case FETCH_ALL_REFS:
+        resultRefSpecs.add(ALL_REF_SPEC);
+        break;
+      case FETCH_ALL_REFS_EXCEPT_TAGS:
+        resultRefSpecs.add(ALL_REF_SPEC);
+        resultRefSpecs.add(EXCLUDE_TAGS_REF_SPEC);
+        break;
+      case FETCH_REF_SPECS:
+      default:
+        for (RefSpec refSpec : settings.getRefSpecs()) {
+          final String refSpecStr = refSpec.toString();
+          resultRefSpecs.add(refSpecStr);
+        }
+        break;
+    }
+    return resultRefSpecs;
+  }
+
+  @Override
+  public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull FetchSettings settings) throws IOException, VcsException {
+    final GitExec gitExec = myGitDetector.detectGit();
+    final Context ctx = new ContextImpl(null, myConfig, gitExec, settings.getProgress());
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
+    gitFacade.setSshKeyManager(mySshKeyManager);
+    Collection<String> resultRefSpecs = defineRefSpecsForFetch(settings);
+
     executeCommand(ctx, "fetch", getDebugInfo(db, fetchURI, resultRefSpecs), () -> {
+      jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand fetch = createFetchCommand(db, fetchURI, settings, gitFacade, ctx, resultRefSpecs);
       fetch.call();
       return true;
-    });
+    }, gitFacade);
   }
 
   @NotNull
@@ -136,18 +246,17 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
-    final jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand lsRemote =
-      gitFacade.lsRemote()
-               .peelRefs()
-               .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
-               .setTimeout(myConfig.getRepositoryStateTimeoutSeconds())
-               .setRetryAttempts(myConfig.getConnectionRetryAttempts())
-               .setRepoUrl(gitRoot.getRepositoryFetchURL().get())
-               .trace(myConfig.getGitTraceEnv());
-
     return executeCommand(ctx, "ls-remote", LogUtil.describe(gitRoot), () -> {
+      final jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand lsRemote =
+        gitFacade.lsRemote()
+                 .peelRefs()
+                 .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
+                 .setTimeout(myConfig.getRepositoryStateTimeoutSeconds())
+                 .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+                 .setRepoUrl(gitRoot.getRepositoryFetchURL().get())
+                 .trace(myConfig.getGitTraceEnv());
       return lsRemote.call().stream().collect(Collectors.toMap(Ref::getName, ref -> ref));
-    });
+    }, gitFacade);
   }
 
   @NotNull
@@ -175,7 +284,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                  .trace(myConfig.getGitTraceEnv())
                  .call();
         return CommitResult.createSuccessResult(commit);
-      });
+      }, gitFacade);
     } catch (VcsException e) {
       // restore local ref
       try {
@@ -214,7 +323,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                         .setRepoUrl(gitRoot.getRepositoryPushURL().get())
                         .trace(myConfig.getGitTraceEnv())
                         .call();
-      });
+      }, gitFacade);
     } catch (VcsException v) {
       Loggers.VCS.warn("Failed to get information about remote tag: " + tag + " for " + debugInfo, v);
       throw v;
@@ -234,7 +343,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                    .call();
           Loggers.VCS.info("Tag '" + tag + "' was successfully removed from " + debugInfo);
           return tag;
-        });
+        }, gitFacade);
       } catch (VcsException v) {
         Loggers.VCS.warn("Failed to remove remote tag: " + tag + " for " + debugInfo, v);
         throw v;
@@ -254,7 +363,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                  .call();
         Loggers.VCS.info("Tag '" + tag + "' was successfully pushed for " + debugInfo);
         return tag;
-      });
+      }, gitFacade);
     } catch (VcsException e) {
       // remove local tag
       try {
@@ -269,7 +378,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   @NotNull
   private String getDebugInfo(@NotNull Repository db, @NotNull URIish uri, @NotNull Collection<String> refSpecs) {
     final StringBuilder sb = new StringBuilder();
-    sb.append("(").append(db.getDirectory() != null? db.getDirectory().getAbsolutePath() + ", ":"").append(uri);
+    sb.append("(").append(LogUtil.describe(db, uri));
     final int size = refSpecs.size();
     int num = 0;
     for (String spec : refSpecs) {
