@@ -173,6 +173,12 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     }
   }
 
+  @Override
+  @Nullable
+  public File getCertificatesDir() {
+    return myGitTrustStoreProvider.getTrustedCertificatesDir();
+  }
+
 
   private static class DefaultJschConfigSessionFactory extends JschConfigSessionFactory {
     protected final ServerPluginConfig myConfig;

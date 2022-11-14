@@ -23,6 +23,7 @@ import javax.net.ssl.*;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.agent.ssl.TrustedCertificatesDirectory;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitFacade;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
@@ -43,13 +44,13 @@ public class SSLInvestigator {
 
   private final static Logger LOG = Logger.getLogger(SSLInvestigator.class);
 
-  private final static String CERT_FILE = "git_custom_certificates.crt";
-
   private final URIish myFetchURL;
   private final String myTempDirectory;
   private final BuildAgentConfiguration myAgentConfiguration;
   private final SSLChecker mySSLChecker;
   private final SSLContextRetriever mySSLContextRetriever;
+
+  private final SslOperations mySslOperations = new SslOperations();
 
   private volatile Boolean myNeedCustomCertificate = null;
   private volatile String myCAInfoPath = null;
@@ -76,7 +77,7 @@ public class SSLInvestigator {
 
   public void setCertificateOptions(@NotNull final AgentGitFacade gitFacade) {
     if (!isNeedCustomCertificates()) {
-      deleteSslOption(gitFacade);
+      mySslOperations.deleteSslOption(gitFacade);
       return;
     }
 
@@ -109,7 +110,7 @@ public class SSLInvestigator {
       final String certDirectory = TrustedCertificatesDirectory.getAllCertificatesDirectory(myAgentConfiguration);
       final String pemContent = TrustStoreIO.pemContentFromDirectory(certDirectory);
       if (!pemContent.isEmpty()) {
-        final File file = new File(myTempDirectory, CERT_FILE);
+        final File file = new File(myTempDirectory, SslOperations.CERT_FILE);
         FileUtil.writeFile(file, pemContent, CharEncoding.UTF_8);
         return file.getPath();
       }
@@ -151,18 +152,6 @@ public class SSLInvestigator {
                 + " for checking custom certificates", e);
       /* unexpected error. do not use custom certificate then */
       return false;
-    }
-  }
-
-  private void deleteSslOption(@NotNull final AgentGitFacade gitFacade) {
-    try {
-      final String previous = gitFacade.getConfig().setPropertyName("http.sslCAInfo").callWithIgnoreExitCode();
-      if (!StringUtil.isEmptyOrSpaces(previous)) {
-        /* do not need custom certificate then remove corresponding options if exists */
-        gitFacade.setConfig().setPropertyName("http.sslCAInfo").unSet().call();
-      }
-    } catch (Exception e) {
-      /* option was not exist, ignore exception then */
     }
   }
 

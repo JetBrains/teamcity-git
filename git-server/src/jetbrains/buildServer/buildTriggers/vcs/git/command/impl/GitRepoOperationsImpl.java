@@ -103,7 +103,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
       final GitExec gitExec = gitExecInternal();
       if (isNativeGitOperationsSupported(gitExec)) {
         //noinspection ConstantConditions
-        return Optional.of(new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager));
+        return Optional.of(new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager, myTransportFactory.getCertificatesDir()));
       }
     }
     return Optional.empty();
@@ -160,7 +160,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     if (nativeOperations) {
       final GitExec gitExec = gitExecInternal();
       if (isNativeGitOperationsSupported(gitExec)) {
-        return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager);
+        return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager, myTransportFactory.getCertificatesDir());
       } else {
         throw new UnsupportedOperationException("git executable " + gitExec.getPath() + " version " + gitExec.getVersion() + " is not supported for running native Git commands on server-side");
       }
