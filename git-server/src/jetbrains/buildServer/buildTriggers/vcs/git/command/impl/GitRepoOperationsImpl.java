@@ -12,10 +12,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitNativeOperationsStatus;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.metrics.Counter;
-import jetbrains.buildServer.metrics.MetricDataType;
-import jetbrains.buildServer.metrics.ServerMetrics;
-import jetbrains.buildServer.metrics.Stoppable;
+import jetbrains.buildServer.metrics.*;
 import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -41,16 +38,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendly
 public class GitRepoOperationsImpl implements GitRepoOperations {
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitRepoOperationsImpl.class.getName() + ".Performance");
   private static final String GIT_NATIVE_OPERATIONS_ENABLED = "teamcity.git.nativeOperationsEnabled";
-  private static final Counter EMPTY_COUNTER = new Counter() {
-    @Override
-    public void increment(final double v) {
-    }
-
-    @Override
-    public Stoppable startMsecsTimer() {
-      return null;
-    }
-  };
+  private static final Counter EMPTY_COUNTER = new NoOpCounter();
 
   private final TransportFactory myTransportFactory;
   private final VcsRootSshKeyManager mySshKeyManager;
