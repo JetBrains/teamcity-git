@@ -196,6 +196,10 @@ public class CommandUtil {
     return isMessageContains(e, "Filename too long");
   }
 
+  public static boolean isNotFoundRemoteRefError(@NotNull VcsException e) {
+    return isMessageContains(e, "couldn't find remote ref");
+  }
+
   public static boolean isMessageContains(@NotNull VcsException e, @NotNull String text) {
     final String msg = e.getMessage();
     return msg != null && StringUtil.containsIgnoreCase(msg, text);
@@ -221,6 +225,9 @@ public class CommandUtil {
     if (isCanceledError(ve)) return false;
     if (isSslError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
+
+    if (isNotFoundRemoteRefError(ve) && (attempt == 1 || attemptsLeft))
+      return true;
 
     if (authSettings.doesTokenNeedRefresh() && attempt == 1)
       return true;

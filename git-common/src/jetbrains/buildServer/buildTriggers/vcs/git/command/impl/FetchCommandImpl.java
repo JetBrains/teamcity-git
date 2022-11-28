@@ -16,12 +16,14 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 
 public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implements FetchCommand {
@@ -32,6 +34,8 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
   private Integer myDepth;
   private boolean myFetchTags = true;
   private String myRemoteUrl;
+
+  private jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand myLsRemote;
 
   public FetchCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -74,6 +78,13 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
     return this;
   }
 
+  @NotNull
+  @Override
+  public FetchCommand setRefSpecsRefresher(LsRemoteCommand lsRemote) {
+    myLsRemote = lsRemote;
+    return this;
+  }
+
   public void call() throws VcsException {
     final GitCommandLine cmd = getCmd();
     final GitVersion gitVersion = cmd.getGitVersion();
@@ -96,7 +107,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
     if (myRefSpecs.size() > 1 && GitVersion.fetchSupportsStdin(gitVersion)) {
       cmd.addParameter("--stdin");
       cmd.addParameter(getRemote());
-      runCmd(cmd.stdErrLogLevel("debug"), refSpecsToBytes(cmd));
+      runCmd(new FetchCommandRetryable(cmd));
     } else {
       cmd.addParameter(getRemote());
       myRefSpecs.forEach(refSpec -> cmd.addParameter(refSpec));
@@ -116,5 +127,45 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
   @NotNull
   private String getRemote() {
     return myRemoteUrl == null ? "origin" : myRemoteUrl;
+  }
+
+  class FetchCommandRetryable extends GitCommandRetryable {
+    FetchCommandRetryable(@NotNull GitCommandLine cmd) {
+      super(cmd, refSpecsToBytes(cmd));
+    }
+
+    @Override
+    public boolean requiresRetry(@NotNull Exception e, int attempt, int maxAttempts) {
+      return requiresRetryWithInputRefresh(e, super.requiresRetry(e, attempt, maxAttempts));
+    }
+
+    boolean requiresRetryWithInputRefresh(Exception e, boolean shouldRetry) {
+      if (!shouldRetry) {
+        return false;
+      }
+
+      if (!(e instanceof VcsException) || !(CommandUtil.isNotFoundRemoteRefError((VcsException)e))) {
+        return true;
+      }
+
+      try {
+        refreshInput();
+        if (myRefSpecs.isEmpty())
+          return false;
+      } catch (VcsException ve) {
+        return false;
+      }
+
+      return true;
+    }
+
+    void refreshInput() throws VcsException {
+      List<Ref> remoteRefs = myLsRemote.call();
+      myRefSpecs.retainAll(remoteRefs.stream()
+                                     .filter(ref -> ref.getName().startsWith("ref"))
+                                     .map(ref -> "+" + ref.getName() + ":" + ref.getName())
+                                     .collect(Collectors.toSet()));
+      myInput = refSpecsToBytes(myCmd);
+    }
   }
 }

@@ -2,10 +2,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.Retry;
@@ -84,30 +81,45 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
     return runCmd(cmd, new byte[0]);
   }
 
+  class GitCommandRetryable implements Retry.Retryable<ExecResult> {
+    @NotNull protected byte[] myInput;
+    @NotNull final protected GitCommandLine myCmd;
+    GitCommandRetryable(@NotNull GitCommandLine cmd, @NotNull byte[] input) {
+      myInput = Arrays.copyOf(input, input.length);
+      myCmd = cmd;
+    }
+
+    @Override
+    public boolean requiresRetry(@NotNull Exception e, int attempt, int maxAttempts) {
+      return CommandUtil.isRecoverable(e, myAuthSettings, attempt, maxAttempts);
+    }
+
+    @Override
+    public ExecResult call() throws Exception {
+      for (Runnable action : myPreActions) {
+        action.run();
+      }
+      return doRunCmd(myCmd, myInput);
+    }
+
+    @NotNull
+    @Override
+    public Logger getLogger() {
+      return Loggers.VCS;
+    }
+
+  }
+
   @NotNull
   protected ExecResult runCmd(@NotNull GitCommandLine cmd, @NotNull byte[] input) throws VcsException {
+    return runCmd(new GitCommandRetryable(cmd, input));
+  }
+
+  @NotNull
+  protected ExecResult runCmd(@NotNull Retry.Retryable<ExecResult> retryable) throws VcsException {
     if (myAuthSettings == null) throw new VcsException("Authentication settings must be specified before calling this command");
     try {
-      return Retry.retry(new Retry.Retryable<ExecResult>() {
-        @Override
-        public boolean requiresRetry(@NotNull Exception e, int attempt, int maxAttempts) {
-          return CommandUtil.isRecoverable(e, myAuthSettings, attempt, maxAttempts);
-        }
-
-        @Override
-        public ExecResult call() throws Exception {
-          for (Runnable action : myPreActions) {
-            action.run();
-          }
-          return doRunCmd(cmd, input);
-        }
-
-        @NotNull
-        @Override
-        public Logger getLogger() {
-          return Loggers.VCS;
-        }
-      }, myRetryAttempts);
+      return Retry.retry(retryable, myRetryAttempts);
     } catch (Exception e) {
       if (e instanceof VcsException) throw (VcsException)e;
       throw new VcsException(e);
@@ -115,7 +127,7 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
   }
 
   @NotNull
-  private ExecResult doRunCmd(@NotNull GitCommandLine cmd, @NotNull byte[] input) throws VcsException {
+  protected ExecResult doRunCmd(@NotNull GitCommandLine cmd, @NotNull byte[] input) throws VcsException {
     try {
       return cmd.run(with()
                        .timeout(myTimeout)
