@@ -140,5 +140,6 @@ public interface Constants {
 
   String SHOW_CUSTOM_CLONE_PATH = "teamcity.git.showCustomClonePath";
   String CUSTOM_CLONE_PATH_ENABLED = "teamcity.git.customClonePathEnabled";
+  String NATIVE_GIT_RETRY_IF_REMOTE_REF_NOT_FOUND = "teamcity.git.native.retryIfRemoteRefNotFound";
   String AMAZON_HOSTS = "teamcity.git.amazonHosts";
 }

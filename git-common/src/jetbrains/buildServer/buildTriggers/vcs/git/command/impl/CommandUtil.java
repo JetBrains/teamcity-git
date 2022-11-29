@@ -29,10 +29,12 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.CheckoutCanceledException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.NATIVE_GIT_RETRY_IF_REMOTE_REF_NOT_FOUND;
 import static jetbrains.buildServer.util.FileUtil.normalizeSeparator;
 
 public class CommandUtil {
@@ -226,7 +228,7 @@ public class CommandUtil {
     if (isSslError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
 
-    if (isNotFoundRemoteRefError(ve) && (attempt == 1 || attemptsLeft))
+    if ((attempt == 1 || attemptsLeft) && isHandleNotFoundRemoteRef() && isNotFoundRemoteRefError(ve))
       return true;
 
     if (authSettings.doesTokenNeedRefresh() && attempt == 1)
@@ -271,5 +273,9 @@ public class CommandUtil {
       start = lfIndex + 1;
     }
     return res;
+  }
+
+  public static boolean isHandleNotFoundRemoteRef() {
+    return TeamCityProperties.getBooleanOrTrue(NATIVE_GIT_RETRY_IF_REMOTE_REF_NOT_FOUND);
   }
 }
