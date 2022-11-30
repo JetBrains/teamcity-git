@@ -228,7 +228,7 @@ public class CommandUtil {
     if (isSslError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
 
-    if ((attempt == 1 || attemptsLeft) && isHandleNotFoundRemoteRef() && isNotFoundRemoteRefError(ve))
+    if ((attempt == 1 || attemptsLeft) && shouldHandleRemoteRefNotFound() && isNotFoundRemoteRefError(ve))
       return true;
 
     if (authSettings.doesTokenNeedRefresh() && attempt == 1)
@@ -275,7 +275,7 @@ public class CommandUtil {
     return res;
   }
 
-  public static boolean isHandleNotFoundRemoteRef() {
+  public static boolean shouldHandleRemoteRefNotFound() {
     return TeamCityProperties.getBooleanOrTrue(NATIVE_GIT_RETRY_IF_REMOTE_REF_NOT_FOUND);
   }
 }
