@@ -29,6 +29,7 @@ import jetbrains.buildServer.parameters.ReferencesResolverUtil;
 import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.ProjectManager;
 import jetbrains.buildServer.serverSide.SProject;
+import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.ssh.ServerSshKeyManager;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -58,11 +59,13 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
   private static final String[] POSSIBLE_DEFAULT_BRANCHES = {"main", "default", "development", "develop", "primary", "trunk"};
 
   private final GitVcsSupport myGitSupport;
+  private final TokenRefresher myTokenRefresher;
   private volatile ExtensionsProvider myExtensionsProvider;
   private volatile ProjectManager myProjectManager;
 
-  public GitUrlSupport(@NotNull GitVcsSupport gitSupport) {
+  public GitUrlSupport(@NotNull GitVcsSupport gitSupport, @NotNull TokenRefresher tokenRefresher) {
     myGitSupport = gitSupport;
+    myTokenRefresher = tokenRefresher;
     gitSupport.addExtension(this);
   }
 
@@ -108,17 +111,17 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
       }
     }
 
+    final SProject curProject = myProjectManager == null ? null : myProjectManager.findProjectById(operationContext.getCurrentProjectId());
+
     Map<String, String> props = new HashMap<>(myGitSupport.getDefaultVcsProperties());
     props.put(Constants.FETCH_URL, fetchUrl);
     props.putAll(getAuthSettings(url, uri));
 
     VcsHostingRepo ghRepo = WellKnownHostingsUtil.getGitHubRepo(uri);
     if (ghRepo != null)
-      refineGithubSettings(ghRepo, props);
+      refineGithubSettings(ghRepo, props, curProject);
 
     int numSshKeysTried = 0;
-
-    final SProject curProject = myProjectManager == null ? null : myProjectManager.findProjectById(operationContext.getCurrentProjectId());
 
     if (AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString().equals(props.get(Constants.AUTH_METHOD)) && fetchUrl.endsWith(".git") && curProject != null) {
       // SSH access, before using the default private key which may not be accessible on the agent,
@@ -253,13 +256,15 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     return uri;
   }
 
-  private void refineGithubSettings(@NotNull VcsHostingRepo ghRepo, @NotNull Map<String, String> props) throws VcsException {
-    GitHubClient client = new GitHubClient();
-    AuthSettings auth = new AuthSettingsImpl(props, new URIishHelperImpl());
+  private void refineGithubSettings(@NotNull VcsHostingRepo ghRepo, @NotNull Map<String, String> props, SProject curProject) throws VcsException {
+    SVcsRoot vcsRoot = curProject.createDummyVcsRoot(Constants.VCS_NAME, props);
+    AuthSettings auth = new AuthSettingsImpl(props, vcsRoot, new URIishHelperImpl(), tokenId -> myTokenRefresher.getRefreshableToken(curProject, tokenId, false));
+
     final String password = auth.getPassword();
     AuthenticationMethod authMethod = auth.getAuthMethod();
+    GitHubClient client = new GitHubClient();
     if (authMethod.isPasswordBased() && StringUtil.isNotEmpty(password)) {
-      if (authMethod == AuthenticationMethod.ACCESS_TOKEN || ReferencesResolverUtil.containsReference(password) || password.length() != 40) return; // we can only proceed with PAT, password auth is no longer supported by github API
+      if (ReferencesResolverUtil.containsReference(password) || password.length() != 40) return; // we can only proceed with PAT, or GitHub Apps connections
 
       if (auth.getUserName() != null) {
         client.setCredentials(auth.getUserName(), password);

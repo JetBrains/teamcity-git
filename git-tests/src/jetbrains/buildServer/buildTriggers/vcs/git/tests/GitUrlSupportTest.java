@@ -27,6 +27,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ProjectManager;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.ssh.ServerSshKeyManager;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.util.StringUtil;
@@ -64,24 +65,21 @@ public class GitUrlSupportTest extends BaseTestCase {
     myMirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
 
     myProjectMock = mock(SProject.class);
+    Mock vrMock = mock(SVcsRoot.class);
+    SVcsRoot svcsRoot = (SVcsRoot)vrMock.proxy();
+    myProjectMock.stubs().method("createDummyVcsRoot").will(returnValue(svcsRoot));
+    final SProject project = (SProject)myProjectMock.proxy();
 
     final Mock pmMock = mock(ProjectManager.class);
-    final SProject project = (SProject)myProjectMock.proxy();
     pmMock.stubs().method("findProjectById").will(returnValue(project));
     ProjectManager pm = (ProjectManager)pmMock.proxy();
-
-    final Mock sshMock = mock(ServerSshKeyManager.class);
-    sshMock.stubs().method("getKeys").with(eq(project)).will(returnValue(myTestKeys));
-    ServerSshKeyManager ssh = (ServerSshKeyManager)sshMock.proxy();
-
-    Mock epMock = mock(ExtensionsProvider.class);
-    epMock.stubs().method("getExtensions").with(eq(ServerSshKeyManager.class)).will(returnValue(Collections.singleton(ssh)));
-
     myGitVcsSupport = gitSupport().withServerPaths(paths).withTestConnectionSupport(vcsRoot -> {
       if (myTestConnectionMocked != null && myTestConnectionMocked) return null;
       return myGitVcsSupport.testConnection(vcsRoot);
     }).build();
-    myUrlSupport = new GitUrlSupport(myGitVcsSupport) {
+
+    final TokenRefresher tokenRefresher = (TokenRefresher)mock(TokenRefresher.class).proxy();
+    myUrlSupport = new GitUrlSupport(myGitVcsSupport, tokenRefresher) {
       @NotNull
       @Override
       protected VcsRoot createDummyRoot(@NotNull final Map<String, String> props, @Nullable final SProject curProject) {
@@ -89,6 +87,12 @@ public class GitUrlSupportTest extends BaseTestCase {
       }
     };
     myUrlSupport.setProjectManager(pm);
+
+    final Mock sshMock = mock(ServerSshKeyManager.class);
+    sshMock.stubs().method("getKeys").with(eq(project)).will(returnValue(myTestKeys));
+    ServerSshKeyManager ssh = (ServerSshKeyManager)sshMock.proxy();
+    Mock epMock = mock(ExtensionsProvider.class);
+    epMock.stubs().method("getExtensions").with(eq(ServerSshKeyManager.class)).will(returnValue(Collections.singleton(ssh)));
     myUrlSupport.setExtensionsProvider((ExtensionsProvider)epMock.proxy());
   }
 
