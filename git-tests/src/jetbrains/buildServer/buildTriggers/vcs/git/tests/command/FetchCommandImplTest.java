@@ -22,6 +22,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
@@ -38,6 +41,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.FetchCommandImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.LsRemoteCommandImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
@@ -45,11 +50,14 @@ import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.testng.SkipException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.NATIVE_GIT_RETRY_IF_REMOTE_REF_NOT_FOUND;
 
 @Test
 public class FetchCommandImplTest extends BaseTestCase {
@@ -194,6 +202,82 @@ public class FetchCommandImplTest extends BaseTestCase {
 
     fetch.call();
     assertEquals(6000, FileUtil.listFiles(new File(work, ".git/refs/remotes/origin"), (d, n) -> true).length);
+  }
+
+  @Test
+  public void fetch_with_disappeared_refspecs() throws Exception {
+    final String gitPath = getGitPath();
+    final GitVersion version = new AgentGitFacadeImpl(gitPath).version().call();
+    if (!GitVersion.fetchSupportsStdin(version)) throw new SkipException("Git version is too old to run this test");
+
+    final File remote = GitTestUtil.dataFile("fetch_multiple_refspecs");
+    new File(remote, "refs" + File.separator + "heads").mkdirs();
+
+    final File work = createTempDir();
+    runCommand(false, gitPath, work, "init");
+
+    final GitCommandLine cmd = new GitCommandLine(new StubContext("git", version), getFakeGen());
+    cmd.setExePath(gitPath);
+    cmd.setWorkingDirectory(work);
+    final FetchCommandImpl fetch = new FetchCommandImpl(cmd);
+    fetch.setRefSpecsRefresher(new LsRemoteCommandImpl(cmd) {
+      @NotNull
+      @Override
+      public List<Ref> call() throws VcsException {
+        return IntStream.rangeClosed(0, 5999).boxed().map(i -> new RefImpl("refs/heads/branch" + i, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")).collect(Collectors.toList());
+      }
+    });
+    fetch.setRemote(remote.getAbsolutePath());
+    fetch.setAuthSettings(getEmptyAuthSettings());
+
+    for (int i = 0; i < 6000; ++i) {
+      fetch.setRefspec("+refs/heads/branch" + i + ":refs/heads/branch" + i);
+    }
+
+    for (int i = 0; i < 10; ++i) {
+      fetch.setRefspec("+refs/heads/disappear_branch" + i + ":refs/heads/disappear_branch" + i);
+    }
+
+    fetch.call();
+    assertEquals(6000, FileUtil.listFiles(new File(work, ".git/refs/heads"), (d, n) -> true).length);
+  }
+
+  @Test
+  public void fetch_with_disappeared_refspecs_fail() throws Exception {
+    setInternalProperty(NATIVE_GIT_RETRY_IF_REMOTE_REF_NOT_FOUND, "false");
+    final String gitPath = getGitPath();
+    final GitVersion version = new AgentGitFacadeImpl(gitPath).version().call();
+    if (!GitVersion.fetchSupportsStdin(version)) throw new SkipException("Git version is too old to run this test");
+
+    final File remote = GitTestUtil.dataFile("fetch_multiple_refspecs");
+    new File(remote, "refs" + File.separator + "heads").mkdirs();
+
+    final File work = createTempDir();
+    runCommand(false, gitPath, work, "init");
+
+    final GitCommandLine cmd = new GitCommandLine(new StubContext("git", version), getFakeGen());
+    cmd.setExePath(gitPath);
+    cmd.setWorkingDirectory(work);
+    final FetchCommandImpl fetch = new FetchCommandImpl(cmd);
+    fetch.setRefSpecsRefresher(new LsRemoteCommandImpl(cmd) {
+      @NotNull
+      @Override
+      public List<Ref> call() throws VcsException {
+        return IntStream.rangeClosed(0, 5999).boxed().map(i -> new RefImpl("refs/heads/branch" + i, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")).collect(Collectors.toList());
+      }
+    });
+    fetch.setRemote(remote.getAbsolutePath());
+    fetch.setAuthSettings(getEmptyAuthSettings());
+
+    for (int i = 0; i < 6000; ++i) {
+      fetch.setRefspec("+refs/heads/branch" + i + ":refs/heads/branch" + i);
+    }
+
+    for (int i = 0; i < 10; ++i) {
+      fetch.setRefspec("+refs/heads/disappear_branch" + i + ":refs/heads/disappear_branch" + i);
+    }
+
+    assertExceptionThrown(() -> fetch.call(), VcsException.class);
   }
 
   @Test
