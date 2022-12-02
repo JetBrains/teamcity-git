@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.RevisionNotFoundException;
 import jetbrains.buildServer.vcs.VcsException;
@@ -260,15 +261,17 @@ public class CommitLoaderImpl implements CommitLoader {
       }
     }
 
-    final int remotelyMissingRefsNum = missingTips.size();
-    if (remotelyMissingRefsNum > 0) {
-      final String message = remotelyMissingRefsNum == 1 ?
-                             String.format(REF_MISSING_FORMAT, missingTips.iterator().next()) :
-                             String.format(REFS_MISSING_FORMAT, StringUtil.join(", ", missingTips));
+    if (TeamCityProperties.getBooleanOrTrue("teamcity.git.failLoadCommitsIfRemoteBranchMissing")) {
+      final int remotelyMissingRefsNum = missingTips.size();
+      if (remotelyMissingRefsNum > 0) {
+        final String message = remotelyMissingRefsNum == 1 ?
+                               String.format(REF_MISSING_FORMAT, missingTips.iterator().next()) :
+                               String.format(REFS_MISSING_FORMAT, StringUtil.join(", ", missingTips));
 
-      final VcsException exception = new VcsException(message);
-      exception.setRecoverable(context.getPluginConfig().treatMissingBranchTipAsRecoverableError());
-      throw exception;
+        final VcsException exception = new VcsException(message);
+        exception.setRecoverable(context.getPluginConfig().treatMissingBranchTipAsRecoverableError());
+        throw exception;
+      }
     }
     return result;
   }
