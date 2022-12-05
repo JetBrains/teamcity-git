@@ -353,7 +353,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
   @Test
   @TestFor(issues = "http://youtrack.jetbrains.com/issue/TW-29798#comment=27-537697")
-  public void fetch_should_not_fail_if_remote_repository_does_not_have_some_branches() throws Exception {
+  public void fetch_should_fail_if_remote_repository_does_not_have_some_branches() throws Exception {
     VcsRoot root = vcsRoot().withFetchUrl(myRepo)
       .withBranch("master")
       .withReportTags(true)
@@ -384,6 +384,37 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     } catch (VcsException e) {
       //expected
     }
+  }
+
+  @Test
+  public void fetch_should_not_fail_if_remote_repository_does_not_have_some_branches() throws Exception {
+    setInternalProperty("teamcity.git.failLoadCommitsIfRemoteBranchMissing", "false");
+    VcsRoot root = vcsRoot().withFetchUrl(myRepo)
+                            .withBranch("master")
+                            .withReportTags(true)
+                            .build();
+
+    //setup fetcher with a counter
+    ServerPluginConfig config = myConfig.build();
+    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager), new FetcherProperties(config), manager);
+    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
+    GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withFetchCommand(fetchCounter).build();
+
+    RepositoryStateData state = git.getCurrentState(root);
+    RepositoryStateData s1 = createVersionState("refs/heads/master", map("refs/heads/master", state.getBranchRevisions().get("refs/heads/master")));//has a single branch
+    Map<String, String> branches = new HashMap<String, String>(state.getBranchRevisions());
+    branches.put("refs/heads/unknown.branch", branches.get(state.getDefaultBranchName()));//unknown branch that points to a commit that exists in remote repo
+    RepositoryStateData s2 = createVersionState("refs/heads/master", branches);//has many branches, some of them don't exist in remote repository
+
+    git.getCollectChangesPolicy().collectChanges(root, s2, s1, CheckoutRules.DEFAULT); // no failure if 'fromState' contains non-existing branch
+    assertEquals(fetchCounter.getFetchCount(), 1);
+
+    FileUtil.delete(config.getCachesDir());
+    fetchCounter.resetFetchCounter();
+
+    git.getCollectChangesPolicy().collectChanges(root, s1, s2, CheckoutRules.DEFAULT);
+    assertEquals(fetchCounter.getFetchCount(), 1);
   }
 
   @Test(enabled = false)
