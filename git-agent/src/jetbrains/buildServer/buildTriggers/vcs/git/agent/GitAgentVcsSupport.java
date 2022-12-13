@@ -66,8 +66,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
 
   final static String switchCheckoutModeMessage = "Fix the checkout rules to use them with agent-side checkout or enable \"Auto\" VCS checkout mode.";
 
-  final static String agentCheckoutRulesErrorMessage = "The checkout rule ‘%s’ is unsupported for agent-side checkout mode. " +
-                                                       "The rules ‘a=>[prefix/]a/postfix’ are unsupported. Only the rules ‘a=>[prefix/]a’ are supported for agent-side checkout, the [prefix/] must be the same for all rules. " + switchCheckoutModeMessage;
+  final static String agentCheckoutRulesErrorMessage = "The checkout rule '%s' is unsupported for agent-side checkout mode. " +
+                                                       "The rules 'a=>[prefix/]a/postfix' are unsupported. Only the rules 'a=>[prefix/]a' are supported for agent-side checkout, the [prefix/] must be the same for all rules. " + switchCheckoutModeMessage;
 
 
   public GitAgentVcsSupport(@NotNull FS fs,

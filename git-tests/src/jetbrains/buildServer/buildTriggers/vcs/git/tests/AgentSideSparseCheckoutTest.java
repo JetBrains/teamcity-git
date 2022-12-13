@@ -182,7 +182,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
       myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
       Assert.fail("Checking rules should be failed");
     } catch (VcsException ve) {
-      Assert.assertEquals(extractRules(ve.getMessage()).get(1), "'dir1=>dir2'");
+      Assert.assertEquals(extractRules(ve.getMessage()).get(0), "'dir1=>dir2'");
     }
   }
 
@@ -196,7 +196,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
       myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
       Assert.fail("Checking rules should be failed");
     } catch (VcsException ve) {
-      Assert.assertEquals(extractRules(ve.getMessage()).get(1), "'dirA=>dirB'");
+      Assert.assertEquals(extractRules(ve.getMessage()).get(0), "'dirA=>dirB'");
     }
   }
 
@@ -210,7 +210,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
       myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
       Assert.fail("Checking rules should be failed");
     } catch (VcsException ve) {
-      Assert.assertEquals(extractRules(ve.getMessage()).get(1), "'dir1=>dir1 dirA=>dirB/dirA'");
+      Assert.assertEquals(extractRules(ve.getMessage()).get(0), "'dirA=>dirB/dirA'");
     }
   }
 
@@ -224,7 +224,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
       myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
       Assert.fail("Checking rules should be failed");
     } catch (VcsException ve) {
-      Assert.assertEquals(extractRules(ve.getMessage()).get(1), "'dirC/dirD=>dirB/dirC/dirD/dirE'");
+      Assert.assertEquals(extractRules(ve.getMessage()).get(0), "'dirC/dirD=>dirB/dirC/dirD/dirE'");
     }
   }
 
@@ -238,7 +238,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
       myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
       Assert.fail("Checking rules should be failed");
     } catch (VcsException ve) {
-      Assert.assertEquals(extractRules(ve.getMessage()).get(1), "'dirA=>dirB/dirA dirC/dirD=>dirBx/dirC/dirD'");
+      Assert.assertEquals(extractRules(ve.getMessage()).get(0), "'dirC/dirD=>dirBx/dirC/dirD'");
     }
   }
 
@@ -252,7 +252,7 @@ public class AgentSideSparseCheckoutTest extends BaseRemoteRepositoryTest {
       myVcsSupport.updateSources(myRoot, rules, version, myCheckoutDir, build, false);
       Assert.fail("Checking rules should be failed");
     } catch (VcsException ve) {
-      Assert.assertEquals(extractRules(ve.getMessage()).get(1), "'dirC/dirD=>dirB/dirC/dirDx'");
+      Assert.assertEquals(extractRules(ve.getMessage()).get(0), "'dirC/dirD=>dirB/dirC/dirDx'");
     }
   }
 
