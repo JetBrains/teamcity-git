@@ -70,11 +70,11 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                                                     "checkout directories must have a common parent directory, e.g. 'a/b=>c/a/b d/e=>c/d/e'. " + switchCheckoutModeMessage;
 
   final static String remapErrorMessage = "Checkout rule '%s' is unsupported for agent-side checkout mode. Include Rules should not remap files or directories: VCS Path (left side of rule) must be a right part of Agent Path (right side). " +
-                                          "Rules like 'a=>b', 'c/d=>c/e' are unsupported. Correct form for agent-side checkout are: 'a[=>a]', '.=>a', 'a=>b/a'. " + switchCheckoutModeMessage;
+                                          "Rules like 'a=>b', 'c/d=>c/e' are unsupported. The correct form for agent-side checkout is: 'a[=>a]', '.=>a', 'a=>b/a'. " + switchCheckoutModeMessage;
 
   final static String agentDirectoryPostfixErrorMessage = "Checkout rule '%s' is unsupported for agent-side checkout mode. " +
-                                                          "Rules like 'a=>[prefix/]a/postfix' are unsupported, only a=>[prefix/]a are supported for agent-side checkout with common [prefix/] for all rules. " + switchCheckoutModeMessage +
-                                                          " You can also set " + PluginConfigImpl.IGNORE_CHECKOUT_RULES_POSIFIX_CHECK_PARAMETER + " configuration parameter to ignore this verification but checking out on agent side will have unpredictable behavior.";
+                                                          "Rules like 'a=>[prefix/]a/postfix' are unsupported, only a=>[prefix/]a are supported for agent-side checkout with common [prefix/] for all rules. " + switchCheckoutModeMessage;
+
 
   public GitAgentVcsSupport(@NotNull FS fs,
                             @NotNull SmartDirectoryCleaner directoryCleaner,
@@ -226,7 +226,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     try {
       pathAndMode = getTargetPathAndModeForAgentSideCheckout(rules, config.shouldIgnoreCheckoutRulesPostfixCheck());
     } catch (VcsException e) {
-      throw new VcsException("Unsupported checkout rules for agent-side checkout: '" + rules.getAsString() + "'\n " + e.getMessage());
+      throw new VcsException(e.getMessage());
     }
     String path = pathAndMode.second;
 
@@ -327,7 +327,9 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
           throw new VcsException(String.format(remapErrorMessage, rule));
         }
         if (!ignorePostfixInRules && to.length() != prefixEnd + from.length()) {
-          throw new VcsException(String.format(agentDirectoryPostfixErrorMessage, rule)); ////rule of form +:a=>b/a/c, but we don't support mapping with postfix
+          /* rule of form +:a=>b/a/c, but we don't support mapping with postfix
+          teamcity.internal.git.agent.ignoreCheckoutRulesPostfixCheck turns off this verification but checking out on the agent side will have unpredictable behavior; */
+          throw new VcsException(String.format(agentDirectoryPostfixErrorMessage, rule));
         }
         String prefix = to.substring(0, prefixEnd);
         if (!prefix.endsWith("/")) { //rule of form +:a=>ab, but we don't support such mapping
