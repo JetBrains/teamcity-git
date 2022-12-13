@@ -64,16 +64,10 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private final ConcurrentMap<VcsRoot, AgentPluginConfig> myConfigsCache = new ConcurrentHashMap<VcsRoot, AgentPluginConfig>();//cached config per root
   private final ConcurrentMap<VcsRoot, VcsException> myConfigErrorsCache = new ConcurrentHashMap<VcsRoot, VcsException>();//cached error thrown during config creation per root
 
-  final static String switchCheckoutModeMessage = "You should fix checkout rules to use it with agent-side checkout or switch on \"Auto\" VCS checkout mode.";
+  final static String switchCheckoutModeMessage = "Fix the checkout rules to use them with agent-side checkout or enable \"Auto\" VCS checkout mode.";
 
-  final static String differentParentErrorMessage = "Checkout rules '%s' are incompatible. Checkout directories (right parts) have different parent directories (%s and %s). Multiple rules like 'a/b=>c/a/b d/e=>c/f/d/e' are unsupported for agent-side checkout, " +
-                                                    "checkout directories must have a common parent directory, e.g. 'a/b=>c/a/b d/e=>c/d/e'. " + switchCheckoutModeMessage;
-
-  final static String remapErrorMessage = "Checkout rule '%s' is unsupported for agent-side checkout mode. Include Rules should not remap files or directories: VCS Path (left side of rule) must be a right part of Agent Path (right side). " +
-                                          "Rules like 'a=>b', 'c/d=>c/e' are unsupported. The correct form for agent-side checkout is: 'a[=>a]', '.=>a', 'a=>b/a'. " + switchCheckoutModeMessage;
-
-  final static String agentDirectoryPostfixErrorMessage = "Checkout rule '%s' is unsupported for agent-side checkout mode. " +
-                                                          "Rules like 'a=>[prefix/]a/postfix' are unsupported, only a=>[prefix/]a are supported for agent-side checkout with common [prefix/] for all rules. " + switchCheckoutModeMessage;
+  final static String agentCheckoutRulesErrorMessage = "The checkout rule ‘%s’ is unsupported for agent-side checkout mode. " +
+                                                       "The rules ‘a=>[prefix/]a/postfix’ are unsupported. Only the rules ‘a=>[prefix/]a’ are supported for agent-side checkout, the [prefix/] must be the same for all rules. " + switchCheckoutModeMessage;
 
 
   public GitAgentVcsSupport(@NotNull FS fs,
@@ -324,16 +318,16 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
       else {
         int prefixEnd = to.lastIndexOf(from);
         if (prefixEnd == -1) { // rule of form +:a=>b, but we don't support such mapping
-          throw new VcsException(String.format(remapErrorMessage, rule));
+          throw new VcsException(String.format(agentCheckoutRulesErrorMessage, rule));
         }
         if (!ignorePostfixInRules && to.length() != prefixEnd + from.length()) {
           /* rule of form +:a=>b/a/c, but we don't support mapping with postfix
           teamcity.internal.git.agent.ignoreCheckoutRulesPostfixCheck turns off this verification but checking out on the agent side will have unpredictable behavior; */
-          throw new VcsException(String.format(agentDirectoryPostfixErrorMessage, rule));
+          throw new VcsException(String.format(agentCheckoutRulesErrorMessage, rule));
         }
         String prefix = to.substring(0, prefixEnd);
         if (!prefix.endsWith("/")) { //rule of form +:a=>ab, but we don't support such mapping
-          throw new VcsException(String.format(remapErrorMessage, rule));
+          throw new VcsException(String.format(agentCheckoutRulesErrorMessage, rule));
         }
         prefix = prefix.substring(0, prefix.length() - 1);
 
@@ -351,7 +345,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     if (currectTargetDir == null)
       return newTargetDir;
     else if (!currectTargetDir.equals(newTargetDir))
-      throw new VcsException(String.format(differentParentErrorMessage, prevRule + " " + currentRule, currectTargetDir, newTargetDir)); //prevRul is not null because currentTargetDir is set
+      throw new VcsException(String.format(agentCheckoutRulesErrorMessage, currentRule)); //prevRul is not null because currentTargetDir is set
     return currectTargetDir;
   }
 }
