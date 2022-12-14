@@ -39,7 +39,11 @@ public class EchoArgumentEscapingTest {
   public void unix_escaping() {
     EscapeEchoArgumentUnix escaper = new EscapeEchoArgumentUnix();
     assertEquals("'ab'", escaper.escape("ab"));
-    assertEquals("'a\\\\\"b'", escaper.escape("a\\\"b"));
+
+    // We no longer need to escape backslashes as on *nix OSes
+    // we pass this value to printf as a second argument
+    assertEquals("'a\\\"b'", escaper.escape("a\\\"b"));
+
     assertEquals("''", escaper.escape(null));
     assertEquals("'a'\\''b'", escaper.escape("a'b"));//TW-51968
   }

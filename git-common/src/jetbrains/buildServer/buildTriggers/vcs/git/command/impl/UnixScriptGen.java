@@ -50,7 +50,7 @@ public class UnixScriptGen extends ScriptGen {
     try {
       out = new PrintWriter(new FileWriter(script));
       out.println("#!/bin/sh");
-      out.println("printf " + myEscaper.escape(password));
+      out.println("printf '%s' " + myEscaper.escape(password));
       if (!script.setExecutable(true))
         throw new IOException("Cannot make askpass script executable");
     } finally {

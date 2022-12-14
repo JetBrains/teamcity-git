@@ -26,7 +26,7 @@ public class EscapeEchoArgumentUnix implements EscapeEchoArgument {
     if (s == null)
       s = "";
     StringBuilder sb = new StringBuilder();
-    sb.append("\'");
+    sb.append("'");
     for (int i = 0; i < s.length(); i++) {
       char c = s.charAt(i);
       switch (c) {
@@ -35,18 +35,12 @@ public class EscapeEchoArgumentUnix implements EscapeEchoArgument {
           //add escaped ' and open next 'string'
           sb.append("'\\''");
           break;
-        case '\\':
-          sb.append("\\\\");
-          break;
-        case '%':
-          sb.append("%%");
-          break;
         default:
           sb.append(c);
           break;
       }
     }
-    sb.append("\'");
+    sb.append("'");
     return sb.toString();
   }
 
