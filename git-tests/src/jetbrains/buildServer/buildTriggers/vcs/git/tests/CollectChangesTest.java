@@ -354,6 +354,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   @Test
   @TestFor(issues = "http://youtrack.jetbrains.com/issue/TW-29798#comment=27-537697")
   public void fetch_should_fail_if_remote_repository_does_not_have_some_branches() throws Exception {
+    setInternalProperty("teamcity.git.failLoadCommitsIfRemoteBranchMissing", "true");
     VcsRoot root = vcsRoot().withFetchUrl(myRepo)
       .withBranch("master")
       .withReportTags(true)
@@ -388,7 +389,6 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
   @Test
   public void fetch_should_not_fail_if_remote_repository_does_not_have_some_branches() throws Exception {
-    setInternalProperty("teamcity.git.failLoadCommitsIfRemoteBranchMissing", "false");
     VcsRoot root = vcsRoot().withFetchUrl(myRepo)
                             .withBranch("master")
                             .withReportTags(true)
