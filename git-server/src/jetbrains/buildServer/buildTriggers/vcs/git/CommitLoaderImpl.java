@@ -261,7 +261,7 @@ public class CommitLoaderImpl implements CommitLoader {
       }
     }
 
-    if (TeamCityProperties.getBooleanOrTrue("teamcity.git.failLoadCommitsIfRemoteBranchMissing")) {
+    if (TeamCityProperties.getBoolean("teamcity.git.failLoadCommitsIfRemoteBranchMissing")) {
       final int remotelyMissingRefsNum = missingTips.size();
       if (remotelyMissingRefsNum > 0) {
         final String message = remotelyMissingRefsNum == 1 ?
