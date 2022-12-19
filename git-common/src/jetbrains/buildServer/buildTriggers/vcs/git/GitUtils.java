@@ -252,4 +252,8 @@ public class GitUtils {
       FileUtil.delete(packedRefsLock);
     }
   }
+
+  public static boolean isGitWrongResultInEnglish(@NotNull String notGitCommandMessage) {
+    return notGitCommandMessage.contains("is not a git command.");
+  }
 }

@@ -93,6 +93,18 @@
         </div>
       </td>
     </tr>
+    <jsp:useBean id="isNonEnglishGit" type="java.lang.Boolean" scope="request"/>
+    <c:if test="${isNonEnglishGit}">
+      <tr>
+        <td colspan="2">
+          <br/>
+          <p class="attentionComment">
+            <bs:buildStatusIcon type="red-sign" className="warningIcon"/>
+            Native Git uses a non-English language on the server. Please change the language used by Native Git to English in the server. TeamCity is unable to process non-English Git messages.
+          </p>
+        </td>
+      </tr>
+    </c:if>
   </table>
   <c:if test="${!isGitExecError && nativeGitOperationsSupported}">
     <bs:_collapsibleBlock title="Native Git Test Connection" id="testConnection" collapsedByDefault="true" saveState="true">

@@ -30,4 +30,7 @@ public interface GitFacade {
 
   @NotNull
   SetConfigCommand setConfig();
+
+  @NotNull
+  WrongCommand wrongCommand();
 }

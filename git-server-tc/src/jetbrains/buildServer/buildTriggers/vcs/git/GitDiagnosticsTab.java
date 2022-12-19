@@ -404,12 +404,14 @@ public class GitDiagnosticsTab extends DiagnosticTab {
   @Override
   public void fillModel(@NotNull Map<String, Object> model, @NotNull HttpServletRequest request) {
     super.fillModel(model, request);
-    model.put("nativeGitOperationsEnabled", myMainConfigProcessor.isNativeGitOperationsEnabled());
+    boolean isNativeGitEnabled = myMainConfigProcessor.isNativeGitOperationsEnabled();
+    model.put("nativeGitOperationsEnabled", isNativeGitEnabled);
     model.put("isMultinodeSetup", myNodes.getNodes().size() > 1);
     model.put("canManageServerConfiguration", myServerResponsibility.canManageServerConfiguration());
     try {
       final GitExec gitExec = myOperations.detectGit();
       model.put("gitExec", gitExec);
+      model.put("isNonEnglishGit", isNativeGitEnabled && !myOperations.isEnglishGit());
       model.put("isGitExecError", false);
       model.put("nativeGitOperationsSupported", myOperations.isNativeGitOperationsSupported(gitExec));
       model.put("projectsWithGitRoots", getProjectsWithGitRoots());
