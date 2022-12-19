@@ -609,7 +609,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   @Override
   @NotNull
   public List<String> getRepackCommandArguments() {
-    return StringUtil.splitCommandArgumentsAndUnquote(TeamCityProperties.getProperty("teamcity.git.repack.args", "-a -d"));
+    return StringUtil.splitCommandArgumentsAndUnquote(TeamCityProperties.getProperty("teamcity.git.repack.args", "-a -d --max-pack-size=400m"));
   }
 
   @Override
