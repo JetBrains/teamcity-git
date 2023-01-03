@@ -82,12 +82,6 @@ public class GitFacadeImpl implements GitFacade {
   }
 
   @NotNull
-  @Override
-  public WrongCommand wrongCommand() {
-    return new WrongCommandImpl(createCommandLine());
-  }
-
-  @NotNull
   protected GitCommandLine createCommandLine() {
     final GitCommandLine cmd = makeCommandLine();
     cmd.setExePath(myCtx.getGitExec().getPath());

@@ -24,8 +24,6 @@ public interface GitRepoOperations extends GitNativeOperationsStatus {
   @NotNull
   GitExec detectGit() throws VcsException;
 
-  boolean isEnglishGit() throws VcsException;
-
   boolean isNativeGitOperationsEnabled(@NotNull String repoUrl);
 
   boolean isNativeGitOperationsSupported(@NotNull GitExec gitExec);

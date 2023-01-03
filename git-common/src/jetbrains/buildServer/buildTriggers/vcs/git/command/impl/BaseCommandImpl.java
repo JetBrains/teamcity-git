@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.BaseCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import org.jetbrains.annotations.NotNull;
 
 public class BaseCommandImpl implements BaseCommand {
@@ -47,6 +48,9 @@ public class BaseCommandImpl implements BaseCommand {
     }
     for (Runnable action : myPostActions) {
       myCmd.addPostAction(action);
+    }
+    if (TeamCityProperties.getBooleanOrTrue("teamcity.git.native.forceEnglishLocale")) {
+      myCmd.addEnvParam("LANGUAGE", "en_US");
     }
     return myCmd.abnormalExitExpected(!myThrowExceptionOnNonZeroExitCode);
   }

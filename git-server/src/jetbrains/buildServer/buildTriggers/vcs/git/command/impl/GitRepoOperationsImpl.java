@@ -234,13 +234,6 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     return detectGitInternal();
   }
 
-  @Override
-  public boolean isEnglishGit() throws VcsException {
-    final String gitPath = myConfig.getPathToGit();
-    String wrongCommandResult = IOGuard.allowCommandLine(() -> new GitFacadeImpl(new File("."), new StubContext(gitPath)).wrongCommand().call());
-    return GitUtils.isGitWrongResultInEnglish(wrongCommandResult);
-  }
-
   @NotNull
   @Override
   public PushCommand pushCommand(@NotNull String repoUrl) {
