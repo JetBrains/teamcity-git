@@ -600,7 +600,9 @@
           $('username').value = cre.oauthLogin;
           $('oauthProviderId').value = cre.oauthProviderId;
           $('tokenType').value = cre.tokenType;
-          $('tokenId').value = '';
+          if (cre.tokenId) {
+            $('tokenId').value = cre.tokenId;
+          }
           gitSelectAuthentication(true);
         }
       });
