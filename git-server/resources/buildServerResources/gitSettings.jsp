@@ -22,8 +22,10 @@
 <%@include file="/include.jsp" %>
 <%@ taglib prefix="props" tagdir="/WEB-INF/tags/props" %>
 <%@ taglib prefix="admin" tagdir="/WEB-INF/tags/admin" %>
+<%@ taglib prefix="oauth" tagdir="/WEB-INF/tags/oauth" %>
 
 <jsp:useBean id="propertiesBean" scope="request" type="jetbrains.buildServer.controllers.BasePropertiesBean"/>
+<jsp:useBean id="project" scope="request" type="jetbrains.buildServer.serverSide.SProject"/> <%-- may be null, should be deleted with TW-79195 --%>
 <c:set var="gitPathEnv" value="<%= Constants.TEAMCITY_AGENT_GIT_PATH %>"/>
 <c:set var="teamcitySshKeysEnabled" value="<%= PluginConfigImpl.isTeamcitySshKeysEnabled() %>"/>
 <c:set var="showKnownHostsDbOption" value="<%= PluginConfigImpl.showKnownHostsDbOption() %>"/>
@@ -174,7 +176,30 @@
     </tr>
     <tr id="gitConnectionNameRow" class="auth access_token">
       <th>Token:</th>
-      <td><span title="<c:out value='${vcsPropertiesBean.tokenId}' />">Issued for <strong><c:out value="${vcsPropertiesBean.tokenUserName}" /></strong> via <strong><c:out value="${vcsPropertiesBean.connectionDisplayName}" /></strong></span></td>
+      <td>
+        <span title="<c:out value='${vcsPropertiesBean.tokenId}' />" id="issuedTokenId">
+          <span id="issuedForTitle">Issued for</span>
+          <strong id="issuedTokenUserName">
+            <c:out value="${vcsPropertiesBean.tokenOwnerUserName}" />
+            <c:if test="${not empty vcsPropertiesBean.tokenOwnerName}">
+              &nbsp;(<c:out value="${vcsPropertiesBean.tokenOwnerName}" />)
+            </c:if>
+          </strong>
+          via
+          <strong id="connectionDisplayName">
+            <c:out value="${vcsPropertiesBean.connectionDisplayName}" />
+          </strong>
+        </span>
+        <span class="acquireNewTokenBtn" style="padding-left: 1em;">
+          <c:if test="${(not empty vcsPropertiesBean.belongsToProject) and (not empty vcsPropertiesBean.connection) and (vcsPropertiesBean.connection.oauthProvider.acquiringTokenSupported)}">
+              <%-- pass connection.displayName, connection.id, tokenPopupPath, project.externalId  --%>
+              <oauth:obtainToken connection="${vcsPropertiesBean.connection}" className="btn btn_small token-connection-button" callback="setAcquiredToken">
+                Acquire new
+              </oauth:obtainToken>
+          </c:if>
+        </span>
+        <span class="error" id="error_issuedToken"></span>
+      </td>
     </tr>
     <tr id="gitPasswordRow" class="auth password">
       <th><label for="secure:password">Password / access token:</label></th>
@@ -528,6 +553,31 @@
     var selectedId = $j('#useAlternates option:selected').attr('id');
     var noteId = selectedId.replace('CheckoutType', 'Note');
     $j('#' + noteId).show();
+  };
+
+  setAcquiredToken = function(it) {
+    $('error_issuedToken').hide(0);
+    gitSelectAuthentication(true);
+    if($("issuedTokenId").getAttribute("title") == it["tokenId"]) {
+      $('error_issuedToken').show();
+      $('error_issuedToken').innerHTML = "New token wasn't issued because existing token for current user is valid."
+    }
+    else if (it["acquiredNew"] == true) {
+      $('tokenId').value = '';
+      BS.VcsSettingsForm.setModified(true);
+      $('issuedForTitle').innerHTML = "<i style='color:rgb(97, 94, 192)'>New token was issued for<i> ";
+      var teamcityName = it["teamcityName"].escapeHTML();
+      $('issuedTokenUserName').innerHTML = it["teamcityUsername"].escapeHTML() + (teamcityName ? " (" + teamcityName + ")" : "");
+      $('issuedTokenId').title = it["tokenId"];
+    }
+    else {
+      $('tokenId').value = '';
+      BS.VcsSettingsForm.setModified(true);
+      $('issuedForTitle').innerHTML = "<i style='color:rgb(97, 94, 192)'>Token for this VCS Root was replaced by previously saved token for<i> ";
+      var teamcityName = it["teamcityName"].escapeHTML();
+      $('issuedTokenUserName').innerHTML = it["teamcityUsername"].escapeHTML() + (teamcityName ? " (" + teamcityName + ")" : "");
+      $('issuedTokenId').title = it["tokenId"];
+    }
   };
 
   illustrateUsernameStyle();
