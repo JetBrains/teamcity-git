@@ -22,4 +22,8 @@ public class GitExecTimeout extends VcsException {
   public GitExecTimeout() {
     super("Timeout exception");
   }
+
+  public GitExecTimeout(Throwable cause) {
+    super("Timeout exception", cause);
+  }
 }

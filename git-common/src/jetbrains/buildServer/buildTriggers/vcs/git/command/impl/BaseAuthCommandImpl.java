@@ -137,7 +137,7 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
                        .trace(myTraceEnv));
     } catch (VcsException e) {
       if (CommandUtil.isTimeoutError(e)) {
-        throw new GitExecTimeout();
+        throw new GitExecTimeout(e);
       }
       if (Errors.isCorruptedIndexError(e)) {
         File workingDir = cmd.getWorkingDirectory();
