@@ -8,7 +8,10 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
@@ -162,9 +165,7 @@ public class GitCommandLine extends GeneralCommandLine {
 
   @Nullable
   private String getSshRequestToken() {
-//    SetEnv was first introduced in OpenSSH 7.8, so disabling this s.d. to avoid errors
-//    return myCtx.getSshRequestToken();
-    return null;
+    return myCtx.getSshRequestToken();
   }
 
   private boolean isIgnoreKnownHosts(@NotNull AuthSettings authSettings) {
