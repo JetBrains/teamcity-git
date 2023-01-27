@@ -23,7 +23,7 @@
   }
 
   .testConnectionErrorsTable td.testConnectionErrorMessageRow {
-    border-bottom: 1px solid #dfe5eb;
+    border-bottom: 1px solid var(--ring-line-color, #dfe5eb);
   }
 
   .testConnectionErrorsTable tr:last-child td.testConnectionErrorMessageRow{
