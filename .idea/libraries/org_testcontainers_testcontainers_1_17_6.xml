@@ -1,5 +1,5 @@
 <component name="libraryTable">
-  <library name="org.testcontainers:testcontainers:1.16.0" type="repository">
+  <library name="org.testcontainers:testcontainers:1.17.6" type="repository">
     <properties maven-id="org.testcontainers:testcontainers:1.16.0" />
     <CLASSES>
       <root url="jar://$MAVEN_REPOSITORY$/org/testcontainers/testcontainers/1.16.0/testcontainers-1.16.0.jar!/" />

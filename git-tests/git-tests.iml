@@ -28,7 +28,7 @@
     <orderEntry type="library" name="jgit" level="project" />
     <orderEntry type="library" name="jgit-server" level="project" />
     <orderEntry type="library" name="TeamCity common" level="project" />
-    <orderEntry type="library" name="org.testcontainers:testcontainers:1.16.0" level="project" />
+    <orderEntry type="library" name="org.testcontainers:testcontainers:1.17.6" level="project" />
     <orderEntry type="library" name="TeamCity Agent OAuth Support" level="project" />
     <orderEntry type="library" name="TeamCity Common OAuth Support" level="project" />
   </component>
