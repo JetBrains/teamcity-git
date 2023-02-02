@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package jetbrains.buildServer.buildTriggers.vcs.git.agent.command;
+package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.command.BaseCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
@@ -25,6 +24,6 @@ public interface InitCommand extends BaseCommand {
   @NotNull
   InitCommand setBare(boolean bare);
 
-  void call() throws VcsException;
+  InitCommandResult call() throws VcsException;
 
 }

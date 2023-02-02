@@ -12,7 +12,10 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitNativeOperationsStatus;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.metrics.*;
+import jetbrains.buildServer.metrics.Counter;
+import jetbrains.buildServer.metrics.MetricDataType;
+import jetbrains.buildServer.metrics.NoOpCounter;
+import jetbrains.buildServer.metrics.ServerMetrics;
 import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -88,11 +91,17 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   private Optional<GitCommand> getNativeGitCommandOptional(@NotNull String repoUrl) {
     if (isNativeGitOperationsEnabledInternal(repoUrl)) {
-      final GitExec gitExec = gitExecInternal();
-      if (isNativeGitOperationsSupported(gitExec)) {
-        //noinspection ConstantConditions
-        return Optional.of(new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager, myTransportFactory.getCertificatesDir()));
-      }
+      return getNativeGitCommandOptional();
+    }
+    return Optional.empty();
+  }
+
+  @NotNull
+  private Optional<GitCommand> getNativeGitCommandOptional() {
+    final GitExec gitExec = gitExecInternal();
+    if (isNativeGitOperationsSupported(gitExec)) {
+      //noinspection ConstantConditions
+      return Optional.of(new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager, myTransportFactory.getCertificatesDir()));
     }
     return Optional.empty();
   }
@@ -140,6 +149,16 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   public LsRemoteCommand lsRemoteCommand(@NotNull String repoUrl) {
     return (LsRemoteCommand)getNativeGitCommandOptional(repoUrl).orElse(
       (LsRemoteCommand)(db, gitRoot, settings) -> getRemoteRefsJGit(db, gitRoot));
+  }
+
+  @Override
+  public InitCommandServer initCommand() {
+    return (InitCommandServer)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Initializing command is available only for native git"));
+  }
+
+  @Override
+  public StatusCommandServer statusCommand(@NotNull String repoUrl) {
+    return (StatusCommandServer)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Status command is available only for native git"));
   }
 
   @NotNull

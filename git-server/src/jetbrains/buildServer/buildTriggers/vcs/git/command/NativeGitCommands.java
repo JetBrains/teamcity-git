@@ -1,8 +1,12 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command;
+
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.FetchCommand;
@@ -21,6 +25,7 @@ import jetbrains.buildServer.util.NamedThreadFactory;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.ssl.TrustStoreIO;
 import jetbrains.buildServer.vcs.CommitResult;
+import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import org.apache.commons.codec.CharEncoding;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -34,7 +39,8 @@ import org.jetbrains.annotations.Nullable;
 import static jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations.CERT_DIR;
 import static jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations.CERT_FILE;
 
-public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand, TagCommand {
+//see native-git-testng.xml suite for tests examples
+public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand, TagCommand, StatusCommandServer, InitCommandServer {
 
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(NativeGitCommands.class.getName() + ".Performance");
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
@@ -260,7 +266,58 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     }, gitFacade);
   }
 
+  @Override
+  public InitCommandResult init(@NotNull String path, boolean bare) throws VcsException {
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
+    gitFacade.setSshKeyManager(mySshKeyManager);
 
+    return executeCommand(ctx, "init", "Initializing repository in path: " + path, () -> {
+      final InitCommand initCommand =
+        gitFacade.init()
+                 .setBare(bare);
+      return initCommand.call();
+    }, gitFacade);
+  }
+
+  @Override
+  public InitCommandResult initAndCommit(@NotNull String path, @NotNull CommitSettings commitSettings) throws VcsException {
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
+    gitFacade.setSshKeyManager(mySshKeyManager);
+
+    final File gitDir = new File(path, ".git");
+    InitCommandResult res;
+    if (!gitDir.exists()) {
+      res = executeCommand(ctx, "init", "Initializing repository in path: " + path, () -> {
+        final InitCommand initCommand =
+          gitFacade.init()
+                   .setBare(false);
+        return initCommand.call();
+      }, gitFacade);
+    } else {
+      StatusCommand.StatusResult statusResult = executeCommand(ctx, "status", "status in repository: " + path, () -> gitFacade.status().call(), gitFacade);
+      res = new InitCommandResult(statusResult.getBranch());
+    }
+
+    executeCommand(ctx, "add", "add files in repository: " + path, () -> {
+      final AddCommand addCommand =
+        gitFacade.add()
+                 .setAddAll(true);
+      addCommand.call();
+      return null;
+    }, gitFacade);
+
+    executeCommand(ctx, "commit", "commit files in repository: " + path, () -> {
+      final CommitCommand addCommand =
+        gitFacade.commit()
+                 .setComment(commitSettings.getDescription())
+                 .setAuthor(commitSettings.getUserName());
+      addCommand.call();
+      return null;
+    }, gitFacade);
+    return res;
+  }
 
   @NotNull
   @Override

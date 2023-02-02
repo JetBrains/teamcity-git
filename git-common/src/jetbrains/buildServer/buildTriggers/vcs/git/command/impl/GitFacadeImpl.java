@@ -46,6 +46,22 @@ public class GitFacadeImpl implements GitFacade {
     return new LsRemoteCommandImpl(createCommandLine());
   }
 
+  public InitCommand init() {
+    return new InitCommandImpl(createCommandLine());
+  }
+
+  public StatusCommand status() {
+    return new StatusCommandImpl(createCommandLine());
+  }
+
+  public AddCommand add() {
+    return new AddCommandImpl(createCommandLine());
+  }
+
+  public CommitCommand commit() {
+    return new CommitCommandImpl(createCommandLine());
+  }
+
   @NotNull
   @Override
   public RemoteCommand remote() {

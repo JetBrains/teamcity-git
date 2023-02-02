@@ -18,6 +18,10 @@ public interface GitRepoOperations extends GitNativeOperationsStatus {
   @NotNull
   PushCommand pushCommand(@NotNull String repoUrl);
 
+  InitCommandServer initCommand();
+
+  StatusCommandServer statusCommand(@NotNull String repoUrl);
+
   @NotNull
   TagCommand tagCommand(@NotNull GitVcsSupport vcsSupport, @NotNull String repoUrl);
 
