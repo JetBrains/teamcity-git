@@ -18,6 +18,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.FuncThrow;
@@ -297,6 +298,14 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
       }, gitFacade);
     } else {
       StatusCommand.StatusResult statusResult = executeCommand(ctx, "status", "status in repository: " + path, () -> gitFacade.status().call(), gitFacade);
+      List<StatusCommand.FileLine> modifiedFiles = statusResult.getModifiedFiles();
+      if (!modifiedFiles.isEmpty()) {
+        Loggers.SERVER.warn("Found " + modifiedFiles.size() + " modified files on while repository already exists");
+        int threshold = TeamCityProperties.getInteger("teamcity.configsInGit.logFilesCountThreshold", 100);
+        Loggers.SERVER.warn(modifiedFiles.size() > threshold
+                            ? " first " + threshold + " changed files: " + modifiedFiles.stream().limit(threshold).map(it -> it.getPath()).collect(Collectors.toList())
+                            : "changed files: " + modifiedFiles.stream().map(it -> it.getPath()).collect(Collectors.toList()));
+      }
       res = new InitCommandResult(statusResult.getBranch());
     }
 

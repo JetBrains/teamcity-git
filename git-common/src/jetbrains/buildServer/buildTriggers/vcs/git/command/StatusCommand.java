@@ -15,11 +15,11 @@ public interface StatusCommand extends BaseCommand {
 
     @Nullable
     private final String myBranch;
-    private final List<FileLine> myModifiedLines;
+    private final List<FileLine> myModifiedFiles;
 
-    public StatusResult(@Nullable String branch, @NotNull List<FileLine> modifiedLines) {
+    public StatusResult(@Nullable String branch, @NotNull List<FileLine> modifiedFiles) {
       myBranch = branch;
-      myModifiedLines = new ArrayList<>(modifiedLines);
+      myModifiedFiles = new ArrayList<>(modifiedFiles);
     }
 
     @Nullable
@@ -27,8 +27,8 @@ public interface StatusCommand extends BaseCommand {
       return myBranch;
     }
 
-    public List<FileLine> getModifiedLines() {
-      return Collections.unmodifiableList(myModifiedLines);
+    public List<FileLine> getModifiedFiles() {
+      return Collections.unmodifiableList(myModifiedFiles);
     }
   }
 
