@@ -199,6 +199,7 @@
           </c:if>
         </span>
         <span class="error" id="error_issuedToken"></span>
+        <div id="token_additional_info"></div>
       </td>
     </tr>
     <tr id="gitPasswordRow" class="auth password">
@@ -557,15 +558,16 @@
 
   setAcquiredToken = function(it) {
     $('error_issuedToken').hide(0);
+    $('token_additional_info').hide(0);
     gitSelectAuthentication(true);
     if($("issuedTokenId").getAttribute("title") == it["tokenId"]) {
-      $('error_issuedToken').show();
-      $('error_issuedToken').innerHTML = "New token wasn't issued because existing token for current user is valid."
+      $('token_additional_info').show();
+      $('token_additional_info').innerHTML = "New token wasn't issued because existing token for current user is valid."
     }
     else if (it["acquiredNew"] == true) {
       $('tokenId').value = '';
       BS.VcsSettingsForm.setModified(true);
-      $('issuedForTitle').innerHTML = "<i style='color:rgb(97, 94, 192)'>New token was issued for<i> ";
+      $('issuedForTitle').innerHTML = "New token was issued for ";
       var teamcityName = it["teamcityName"].escapeHTML();
       $('issuedTokenUserName').innerHTML = it["teamcityUsername"].escapeHTML() + (teamcityName ? " (" + teamcityName + ")" : "");
       $('issuedTokenId').title = it["tokenId"];
@@ -573,7 +575,7 @@
     else {
       $('tokenId').value = '';
       BS.VcsSettingsForm.setModified(true);
-      $('issuedForTitle').innerHTML = "<i style='color:rgb(97, 94, 192)'>Token for this VCS Root was replaced by previously saved token for<i> ";
+      $('issuedForTitle').innerHTML = "Token for this VCS Root was replaced by previously saved token for ";
       var teamcityName = it["teamcityName"].escapeHTML();
       $('issuedTokenUserName').innerHTML = it["teamcityUsername"].escapeHTML() + (teamcityName ? " (" + teamcityName + ")" : "");
       $('issuedTokenId').title = it["tokenId"];
