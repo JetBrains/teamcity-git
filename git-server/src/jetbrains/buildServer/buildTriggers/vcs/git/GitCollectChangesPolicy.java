@@ -150,7 +150,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     }
   }
 
-  private static void markStopRevisionsParentsAsUninteresting(@NotNull Collection<String> stopRevisions, @NotNull CheckoutRulesRevWalk revWalk, @NotNull ObjectDatabase objectDatabase) throws IOException {
+  private static void markStopRevisionsParentsAsUninteresting(@NotNull Collection<String> stopRevisions, @NotNull RevWalk revWalk, @NotNull ObjectDatabase objectDatabase) throws IOException {
     for (String stopRev: stopRevisions) {
       ObjectId stopRevId = ObjectId.fromString(GitUtils.versionRevision(stopRev));
       if (!objectDatabase.has(stopRevId)) continue;
@@ -170,6 +170,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     RevWalk revWalk = null;
     try {
       revWalk = new RevWalk(context.getRepository());
+      revWalk.sort(RevSort.TOPO);
 
       ObjectId startRevId = ObjectId.fromString(GitUtils.versionRevision(startRevision));
       ObjectDatabase objectDatabase = context.getRepository().getObjectDatabase();
@@ -178,11 +179,12 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       }
 
       revWalk.markStart(revWalk.parseCommit(startRevId));
+      markStopRevisionsParentsAsUninteresting(stopRevisions, revWalk, objectDatabase);
+
       RevCommit next = revWalk.next();
       while (next != null) {
         if (stopRevisions.contains(next.name())) {
           result.add(next.name());
-          revWalk.markUninteresting(next);
         }
         next = revWalk.next();
       }

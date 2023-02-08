@@ -16,18 +16,18 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.io.IOException;
+import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.IOException;
-import java.util.*;
 
 /**
  * This RevWalk class accepts checkout rules and traverses commits graph until it finds a commit matched by these rules.
@@ -42,6 +42,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
                        @NotNull final OperationContext context,
                        @NotNull final CheckoutRules checkoutRules) throws VcsException {
     super(config, context);
+    sort(RevSort.TOPO);
     myCheckoutRules = checkoutRules;
   }
 
