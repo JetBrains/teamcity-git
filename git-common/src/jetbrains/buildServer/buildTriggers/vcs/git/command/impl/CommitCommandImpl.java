@@ -35,6 +35,14 @@ public class CommitCommandImpl extends BaseCommandImpl implements CommitCommand 
 
     String author = myAuthor.isEmpty() ? "Empty author <>" : myAuthor + " <>";
     cmd.addParameter("--author=" + author);
-    CommandUtil.runCommand(cmd.stdErrExpected(false));
+    try {
+      CommandUtil.runCommand(cmd.stdErrExpected(false));
+    } catch (VcsException e) {
+      //git commit returns non-zero exit code if there is no added files for commit. So looks like in this case we can safely ignore this problem
+      //another option to change it - add --allow-empty flag in git commit parameter, but in this case git will create empty commit
+      if (!e.getMessage().contains("nothing to commit")) {
+        throw e;
+      }
+    }
   }
 }

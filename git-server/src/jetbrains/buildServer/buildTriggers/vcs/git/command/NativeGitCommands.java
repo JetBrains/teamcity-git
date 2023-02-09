@@ -271,7 +271,6 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   public InitCommandResult init(@NotNull String path, boolean bare) throws VcsException {
     final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
-    gitFacade.setSshKeyManager(mySshKeyManager);
 
     return executeCommand(ctx, "init", "Initializing repository in path: " + path, () -> {
       final InitCommand initCommand =
@@ -285,7 +284,6 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   public InitCommandResult initAndCommit(@NotNull String path, @NotNull CommitSettings commitSettings) throws VcsException {
     final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
-    gitFacade.setSshKeyManager(mySshKeyManager);
 
     final File gitDir = new File(path, ".git");
     InitCommandResult res;
@@ -300,7 +298,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
       StatusCommand.StatusResult statusResult = executeCommand(ctx, "status", "status in repository: " + path, () -> gitFacade.status().call(), gitFacade);
       List<StatusCommand.FileLine> modifiedFiles = statusResult.getModifiedFiles();
       if (!modifiedFiles.isEmpty()) {
-        Loggers.SERVER.warn("Found " + modifiedFiles.size() + " modified files on while repository already exists");
+        Loggers.SERVER.warn("Found " + modifiedFiles.size() + " modified files while repository already exists");
         int threshold = TeamCityProperties.getInteger("teamcity.configsInGit.logFilesCountThreshold", 100);
         Loggers.SERVER.warn(modifiedFiles.size() > threshold
                             ? " first " + threshold + " changed files: " + modifiedFiles.stream().limit(threshold).map(it -> it.getPath()).collect(Collectors.toList())

@@ -51,6 +51,8 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         }
       }
     }
-    Files.write(gitIgnore, newPaths);
+    if (!newPaths.isEmpty()) {
+      Files.write(gitIgnore, newPaths);
+    }
   }
 }
