@@ -36,6 +36,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private final CheckoutRules myCheckoutRules;
   private final Set<String> myCollectedUninterestingRevisions = new HashSet<>();
   private final Set<String> myVisitedRevisions = new HashSet<>();
+  private String myClosestPartiallyAffectedMergeCommit = null;
   private final Map<String, List<ObjectId>> myMergeBasesCache = new HashMap<>();
 
   CheckoutRulesRevWalk(@NotNull final ServerPluginConfig config,
@@ -64,6 +65,11 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   @NotNull
   public Set<String> getVisitedRevisions() {
     return Collections.unmodifiableSet(myVisitedRevisions);
+  }
+
+  @Nullable
+  public String getClosesPartiallyAffectedMergeCommit() {
+    return myClosestPartiallyAffectedMergeCommit;
   }
 
   private boolean isCurrentCommitIncluded()
@@ -115,6 +121,14 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
         }
 
         collectUninterestingCommits(uninterestingParents);
+      }
+
+      if (numAffectedParents == 1) {
+        // it is possible that stop revisions will prevent us from finding the actual commit which changed the interesting files
+        // in this case we'll use the first met partially affected merge commit as a result
+        if (myClosestPartiallyAffectedMergeCommit == null) {
+          myClosestPartiallyAffectedMergeCommit = getCurrentCommit().name();
+        }
       }
 
       return numAffectedParents > 1;

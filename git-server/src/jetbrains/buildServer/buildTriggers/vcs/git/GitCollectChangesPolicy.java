@@ -129,12 +129,18 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
           revWalk.markStart(revWalk.parseCommit(startRevId));
           markStopRevisionsParentsAsUninteresting(stopRevisions, revWalk, objectDatabase);
 
-          RevCommit result = revWalk.getNextMatchedCommit();
+          String result;
+          RevCommit foundCommit = revWalk.getNextMatchedCommit();
+          if (foundCommit != null) {
+            result = foundCommit.name();
+          } else {
+            result = revWalk.getClosesPartiallyAffectedMergeCommit();
+          }
           if (visited != null) {
             visited.addAll(revWalk.getVisitedRevisions());
           }
 
-          return new Result(result == null ? null : result.name(), findReachableStopRevisions(startRevision, new HashSet<>(stopRevisions), context));
+          return new Result(result, findReachableStopRevisions(startRevision, new HashSet<>(stopRevisions), context));
         } catch (Exception e) {
           throw context.wrapException(e);
         } finally {
