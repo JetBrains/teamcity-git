@@ -264,7 +264,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
     ensureFetchPerformed(support, root, "refs/heads/master", "6ff32b16fe485e7a0a1e209bf10987e1ad46292e");
 
-    Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src/File5.java"),
+    Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:non-existing-path"),
                                                                                             "6ff32b16fe485e7a0a1e209bf10987e1ad46292e",
                                                                                             Arrays.asList("41cd95e336799f13b7565328da2f344567c23c9f",
                                                                                                           "1b753aa48a20580c26730300ba9a6fee8694b0ca",
@@ -288,6 +288,20 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                                                                             null);
     then(rev.getRevision()).isEqualTo("75c9325d5b129f299fba8567f0fd7f599d336e8f");
     then(rev.getReachableStopRevisions()).containsOnly("75c9325d5b129f299fba8567f0fd7f599d336e8f");
+  }
+
+  public void should_return_closest_merge_commit_with_one_parent_affected() throws IOException, VcsException {
+    GitVcsSupport support = git();
+    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+
+    ensureFetchPerformed(support, root, "refs/heads/br4", "ce92302a768ce0763e83aebf8c0e16e102c8d06b");
+
+    Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src/File4.java"),
+                                                                                            "ce92302a768ce0763e83aebf8c0e16e102c8d06b",
+                                                                                            Arrays.asList("40224a053e16145562d1befa3d0a127c54f5dbff", "657e07b56a174f14c1925f16a967135f9d494401"),
+                                                                                            null);
+
+    then(rev.getRevision()).isEqualTo("d036d012385a762568a474b57337b9cf398b96e0");
   }
 
   @NotNull

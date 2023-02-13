@@ -16,18 +16,18 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.io.IOException;
+import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.IOException;
-import java.util.*;
 
 /**
  * This RevWalk class accepts checkout rules and traverses commits graph until it finds a commit matched by these rules.
@@ -36,12 +36,14 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private final CheckoutRules myCheckoutRules;
   private final Set<String> myCollectedUninterestingRevisions = new HashSet<>();
   private final Set<String> myVisitedRevisions = new HashSet<>();
+  private String myClosestPartiallyAffectedMergeCommit = null;
   private final Map<String, List<ObjectId>> myMergeBasesCache = new HashMap<>();
 
   CheckoutRulesRevWalk(@NotNull final ServerPluginConfig config,
                        @NotNull final OperationContext context,
                        @NotNull final CheckoutRules checkoutRules) throws VcsException {
     super(config, context);
+    sort(RevSort.TOPO);
     myCheckoutRules = checkoutRules;
   }
 
@@ -63,6 +65,11 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   @NotNull
   public Set<String> getVisitedRevisions() {
     return Collections.unmodifiableSet(myVisitedRevisions);
+  }
+
+  @Nullable
+  public String getClosesPartiallyAffectedMergeCommit() {
+    return myClosestPartiallyAffectedMergeCommit;
   }
 
   private boolean isCurrentCommitIncluded()
@@ -114,6 +121,14 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
         }
 
         collectUninterestingCommits(uninterestingParents);
+      }
+
+      if (numAffectedParents == 1) {
+        // it is possible that stop revisions will prevent us from finding the actual commit which changed the interesting files
+        // in this case we'll use the first met partially affected merge commit as a result
+        if (myClosestPartiallyAffectedMergeCommit == null) {
+          myClosestPartiallyAffectedMergeCommit = getCurrentCommit().name();
+        }
       }
 
       return numAffectedParents > 1;
