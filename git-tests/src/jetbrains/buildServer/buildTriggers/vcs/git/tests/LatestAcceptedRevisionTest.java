@@ -209,7 +209,8 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(visited).containsOnly("6ff32b16fe485e7a0a1e209bf10987e1ad46292e",
                                "ce92302a768ce0763e83aebf8c0e16e102c8d06b",
                                "d036d012385a762568a474b57337b9cf398b96e0",
-                               "40224a053e16145562d1befa3d0a127c54f5dbff");
+                               "40224a053e16145562d1befa3d0a127c54f5dbff",
+                               "7c56bdca06b531bc0c923e857514a400b83d2e26");
   }
 
   /**
@@ -237,19 +238,19 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                                                                             "6399724fac6ec9c62e8795fc037ad385e873911f",
                                                                                             Collections.emptySet(),
                                                                                             null);
-    then(rev.getRevision()).isEqualTo("6394695f179d87f7f5fc712e12dfac0ed0d98652"); // m3 is 6394695f179d87f7f5fc712e12dfac0ed0d98652
+    then(rev.getRevision()).isEqualTo("658e25230fd75975a2491945ac2664e10aec4f23");
 
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src/File6.java"),
                                                                                             "6399724fac6ec9c62e8795fc037ad385e873911f",
                                                                                             Collections.emptySet(),
                                                                                             null);
-    then(rev.getRevision()).isEqualTo("6394695f179d87f7f5fc712e12dfac0ed0d98652");
+    then(rev.getRevision()).isEqualTo("a9a11243032a529274e7d8599ba8a6bf55a89e91");
 
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src/File7.java"),
                                                                                             "6399724fac6ec9c62e8795fc037ad385e873911f",
                                                                                             Collections.emptySet(),
                                                                                             null);
-    then(rev.getRevision()).isEqualTo("6394695f179d87f7f5fc712e12dfac0ed0d98652");
+    then(rev.getRevision()).isEqualTo("45f1b9531036c9f700cd21c24c1e61cedc44f5a1");
 
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test/TestFile5.java"),
                                                                                             "6399724fac6ec9c62e8795fc037ad385e873911f",
@@ -258,7 +259,21 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getRevision()).isEqualTo("8fc8c2a8baf37a71a2cdd0c2b0cd1eedfd1649e8");
   }
 
-  public void reachable_stop_revisions() throws IOException, VcsException {
+  public void return_reachable_and_visited_stop_revisions_only1() throws VcsException, IOException {
+    GitVcsSupport support = git();
+    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+
+    ensureFetchPerformed(support, root, "refs/heads/master", "cb3c3789d8b85d55197069c7c02f5ce693327ee4");
+
+    Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
+                                                                                            "cb3c3789d8b85d55197069c7c02f5ce693327ee4",
+                                                                                            Arrays.asList("e19e0ffec0a1512674db95ade28047fbfba76fdf", "7e4a8739b038b5b3e551c96dc3a2ef6320772969"),
+                                                                                            null);
+    then(rev.getRevision()).isNull();
+    then(rev.getReachableStopRevisions()).containsOnly("e19e0ffec0a1512674db95ade28047fbfba76fdf");
+  }
+
+  public void return_reachable_and_visited_stop_revisions_only2() throws IOException, VcsException {
     GitVcsSupport support = git();
     VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
 
@@ -272,7 +287,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                                                                                           "7c56bdca06b531bc0c923e857514a400b83d2e26"),
                                                                                             null);
     then(rev.getRevision()).isNull();
-    then(rev.getReachableStopRevisions()).containsOnly("7c56bdca06b531bc0c923e857514a400b83d2e26", "eea4a3e48901ba036998c9fe0afdc78cc8a05a33");
+    then(rev.getReachableStopRevisions()).containsOnly("7c56bdca06b531bc0c923e857514a400b83d2e26");
   }
 
   public void invalid_stop_revisions_should_be_ignored() throws IOException, VcsException {

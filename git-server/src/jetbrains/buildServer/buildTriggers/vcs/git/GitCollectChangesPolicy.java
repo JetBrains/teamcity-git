@@ -127,7 +127,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
           }
 
           revWalk.markStart(revWalk.parseCommit(startRevId));
-          markStopRevisionsParentsAsUninteresting(stopRevisions, revWalk, objectDatabase);
+          revWalk.setStopRevisions(stopRevisions);
 
           String result;
           RevCommit foundCommit = revWalk.getNextMatchedCommit();
@@ -140,7 +140,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
             visited.addAll(revWalk.getVisitedRevisions());
           }
 
-          return new Result(result, findReachableStopRevisions(startRevision, new HashSet<>(stopRevisions), context));
+          return new Result(result, revWalk.getReachedStopRevisions());
         } catch (Exception e) {
           throw context.wrapException(e);
         } finally {
@@ -154,54 +154,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     } finally {
       name.dispose();
     }
-  }
-
-  private static void markStopRevisionsParentsAsUninteresting(@NotNull Collection<String> stopRevisions, @NotNull RevWalk revWalk, @NotNull ObjectDatabase objectDatabase) throws IOException {
-    for (String stopRev: stopRevisions) {
-      ObjectId stopRevId = ObjectId.fromString(GitUtils.versionRevision(stopRev));
-      if (!objectDatabase.has(stopRevId)) continue;
-
-      RevCommit stopCommit = revWalk.parseCommit(stopRevId);
-      for (RevCommit p: stopCommit.getParents()) {
-        revWalk.markUninteresting(p);
-      }
-    }
-  }
-
-  @NotNull
-  private List<String> findReachableStopRevisions(@NotNull String startRevision, @NotNull Set<String> stopRevisions, @NotNull OperationContext context) throws VcsException, IOException {
-    if (stopRevisions.isEmpty()) return Collections.emptyList();
-
-    List<String> result = new ArrayList<>();
-    RevWalk revWalk = null;
-    try {
-      revWalk = new RevWalk(context.getRepository());
-      revWalk.sort(RevSort.TOPO);
-
-      ObjectId startRevId = ObjectId.fromString(GitUtils.versionRevision(startRevision));
-      ObjectDatabase objectDatabase = context.getRepository().getObjectDatabase();
-      if (!objectDatabase.has(startRevId)) {
-        return Collections.emptyList(); // can't happen but we have to check
-      }
-
-      revWalk.markStart(revWalk.parseCommit(startRevId));
-      markStopRevisionsParentsAsUninteresting(stopRevisions, revWalk, objectDatabase);
-
-      RevCommit next = revWalk.next();
-      while (next != null) {
-        if (stopRevisions.contains(next.name())) {
-          result.add(next.name());
-        }
-        next = revWalk.next();
-      }
-    } finally {
-      if (revWalk != null) {
-        revWalk.close();
-        revWalk.dispose();
-      }
-    }
-
-    return result;
   }
 
   @NotNull
