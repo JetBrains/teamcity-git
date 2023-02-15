@@ -99,34 +99,50 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   @NotNull
   public Result getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,
-                                                         @NotNull String startRevision,
+                                                         @NotNull Map<String, String> startRevisions,
                                                          @NotNull Collection<String> stopRevisions) throws VcsException {
-    return getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevision, stopRevisions, null);
+    return getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevisions, stopRevisions, null);
   }
 
   @NotNull
   public Result getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,
-                                                         @NotNull String startRevision,
+                                                         @NotNull Map<String, String> startRevisions,
                                                          @NotNull Collection<String> stopRevisions,
                                                          @Nullable Set<String> visited) throws VcsException {
+
+
     Disposable name = NamedDaemonThreadFactory.patchThreadName("Computing the latest commit affected by checkout rules: " + rules +
-                                                               " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision + ", stop revisions: " + stopRevisions);
+                                                               " in VCS root: " + LogUtil.describe(root) + ", start revisions: " + startRevisions + ", stop revisions: " + stopRevisions);
     try {
       OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
       GitVcsRoot gitRoot = context.getGitRoot();
       return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+        try {
+          new FetchContext(context, myVcs).withRevisions(startRevisions, false).fetchIfNoCommitsOrFail();
+        } catch (Throwable e) {
+          // some of the start revisions are missing
+          LOG.warnAndDebugDetails("Could not find some of the start revisions in the repository: " + startRevisions, e);
+        }
+
         CheckoutRulesRevWalk revWalk = null;
         try {
           revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
-
-          ObjectId startRevId = ObjectId.fromString(GitUtils.versionRevision(startRevision));
           ObjectDatabase objectDatabase = revWalk.getRepository().getObjectDatabase();
-          if (!objectDatabase.has(startRevId)) {
+
+          boolean startsFound = false;
+          for (String rev: startRevisions.values()) {
+            ObjectId startRevId = ObjectId.fromString(GitUtils.versionRevision(rev));
+            if (objectDatabase.has(startRevId)) {
+              startsFound = true;
+              revWalk.markStart(revWalk.parseCommit(startRevId));
+            }
+          }
+
+          if (!startsFound) {
             return new Result(null, Collections.emptyList());
           }
 
-          revWalk.markStart(revWalk.parseCommit(startRevId));
           revWalk.setStopRevisions(stopRevisions);
 
           String result;
