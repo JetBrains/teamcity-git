@@ -99,30 +99,32 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   @NotNull
   public Result getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,
-                                                         @NotNull Map<String, String> startRevisions,
+                                                         @NotNull String startRevision,
+                                                         @NotNull String startRevisionBranchName,
                                                          @NotNull Collection<String> stopRevisions) throws VcsException {
-    return getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevisions, stopRevisions, null);
+    return getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevision, startRevisionBranchName, stopRevisions, null);
   }
 
   @NotNull
   public Result getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,
-                                                         @NotNull Map<String, String> startRevisions,
+                                                         @NotNull String startRevision,
+                                                         @NotNull String startRevisionBranchName,
                                                          @NotNull Collection<String> stopRevisions,
                                                          @Nullable Set<String> visited) throws VcsException {
 
 
     Disposable name = NamedDaemonThreadFactory.patchThreadName("Computing the latest commit affected by checkout rules: " + rules +
-                                                               " in VCS root: " + LogUtil.describe(root) + ", start revisions: " + startRevisions + ", stop revisions: " + stopRevisions);
+                                                               " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision + " (branch: " + startRevisionBranchName + "), stop revisions: " + stopRevisions);
     try {
       OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
       GitVcsRoot gitRoot = context.getGitRoot();
       return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
         try {
-          new FetchContext(context, myVcs).withRevisions(startRevisions, false).fetchIfNoCommitsOrFail();
+          new FetchContext(context, myVcs).withRevisions(Collections.singletonMap(startRevisionBranchName, startRevision), false).fetchIfNoCommitsOrFail();
         } catch (Throwable e) {
           // some of the start revisions are missing
-          LOG.warnAndDebugDetails("Could not find some of the start revisions in the repository: " + startRevisions, e);
+          LOG.warnAndDebugDetails("Could not find the start revision " + startRevision + " in the branch " + startRevisionBranchName, e);
         }
 
         CheckoutRulesRevWalk revWalk = null;
@@ -130,16 +132,10 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
           revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
           ObjectDatabase objectDatabase = revWalk.getRepository().getObjectDatabase();
 
-          boolean startsFound = false;
-          for (String rev: startRevisions.values()) {
-            ObjectId startRevId = ObjectId.fromString(GitUtils.versionRevision(rev));
-            if (objectDatabase.has(startRevId)) {
-              startsFound = true;
-              revWalk.markStart(revWalk.parseCommit(startRevId));
-            }
-          }
-
-          if (!startsFound) {
+          ObjectId startRevId = ObjectId.fromString(GitUtils.versionRevision(startRevision));
+          if (objectDatabase.has(startRevId)) {
+            revWalk.markStart(revWalk.parseCommit(startRevId));
+          } else {
             return new Result(null, Collections.emptyList());
           }
 
