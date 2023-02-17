@@ -24,7 +24,6 @@ import jetbrains.buildServer.util.Disposable;
 import jetbrains.buildServer.util.NamedDaemonThreadFactory;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.ObjectDatabase;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -123,22 +122,20 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         try {
           new FetchContext(context, myVcs).withRevisions(Collections.singletonMap(startRevisionBranchName, startRevision), false).fetchIfNoCommitsOrFail();
         } catch (Throwable e) {
-          // some of the start revisions are missing
+          // this exception should not happen here but we'll handle it just for the case
           LOG.warnAndDebugDetails("Could not find the start revision " + startRevision + " in the branch " + startRevisionBranchName, e);
         }
 
         CheckoutRulesRevWalk revWalk = null;
         try {
           revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
-          ObjectDatabase objectDatabase = revWalk.getRepository().getObjectDatabase();
-
-          ObjectId startRevId = ObjectId.fromString(GitUtils.versionRevision(startRevision));
-          if (objectDatabase.has(startRevId)) {
-            revWalk.markStart(revWalk.parseCommit(startRevId));
-          } else {
+          List<RevCommit> startCommits = getCommits(revWalk.getRepository(), revWalk, Collections.singleton(startRevision));
+          if (startCommits.isEmpty()) {
+            LOG.warn("Could not find the start revision " + startRevision + " in the repository at path: " + gitRoot.getRepositoryDir());
             return new Result(null, Collections.emptyList());
           }
 
+          revWalk.markStart(startCommits.get(0));
           revWalk.setStopRevisions(stopRevisions);
 
           String result;

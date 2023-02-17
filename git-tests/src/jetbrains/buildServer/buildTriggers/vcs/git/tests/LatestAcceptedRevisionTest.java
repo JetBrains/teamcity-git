@@ -54,7 +54,8 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     super.setUp();
     TestLogger logger = new TestLogger();
     logger.setLogLevel(Level.INFO);
-    myConfig = new PluginConfigBuilder(new ServerPaths(myTempFiles.createTempDir().getAbsolutePath()));
+    myConfig = new PluginConfigBuilder(new ServerPaths(myTempFiles.createTempDir().getAbsolutePath()))
+      .setFetchAllRefsEnabled(true);
     myRepo = getRemoteRepositoryDir("repo_for_checkout_rules");
   }
 
