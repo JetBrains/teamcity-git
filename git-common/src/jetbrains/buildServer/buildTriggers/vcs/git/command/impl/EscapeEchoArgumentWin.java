@@ -34,6 +34,7 @@ public class EscapeEchoArgumentWin implements EscapeEchoArgument {
         case '<':
         case '>':
         case '|':
+        case '"':
           sb.append("^");
           sb.append(c);
           break;
