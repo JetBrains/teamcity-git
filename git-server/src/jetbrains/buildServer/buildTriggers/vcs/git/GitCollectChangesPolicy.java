@@ -24,7 +24,6 @@ import jetbrains.buildServer.util.Disposable;
 import jetbrains.buildServer.util.NamedDaemonThreadFactory;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.ObjectDatabase;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -100,34 +99,44 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   public Result getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,
                                                          @NotNull String startRevision,
+                                                         @NotNull String startRevisionBranchName,
                                                          @NotNull Collection<String> stopRevisions) throws VcsException {
-    return getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevision, stopRevisions, null);
+    return getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevision, startRevisionBranchName, stopRevisions, null);
   }
 
   @NotNull
   public Result getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,
                                                          @NotNull String startRevision,
+                                                         @NotNull String startRevisionBranchName,
                                                          @NotNull Collection<String> stopRevisions,
                                                          @Nullable Set<String> visited) throws VcsException {
+
+
     Disposable name = NamedDaemonThreadFactory.patchThreadName("Computing the latest commit affected by checkout rules: " + rules +
-                                                               " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision + ", stop revisions: " + stopRevisions);
+                                                               " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision + " (branch: " + startRevisionBranchName + "), stop revisions: " + stopRevisions);
     try {
       OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
       GitVcsRoot gitRoot = context.getGitRoot();
       return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+        try {
+          new FetchContext(context, myVcs).withRevisions(Collections.singletonMap(startRevisionBranchName, startRevision), false).fetchIfNoCommitsOrFail();
+        } catch (Throwable e) {
+          // this exception should not happen here but we'll handle it just for the case
+          LOG.warnAndDebugDetails("Could not find the start revision " + startRevision + " in the branch " + startRevisionBranchName, e);
+        }
+
         CheckoutRulesRevWalk revWalk = null;
         try {
           revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
-
-          ObjectId startRevId = ObjectId.fromString(GitUtils.versionRevision(startRevision));
-          ObjectDatabase objectDatabase = revWalk.getRepository().getObjectDatabase();
-          if (!objectDatabase.has(startRevId)) {
+          List<RevCommit> startCommits = getCommits(revWalk.getRepository(), revWalk, Collections.singleton(startRevision));
+          if (startCommits.isEmpty()) {
+            LOG.warn("Could not find the start revision " + startRevision + " in the repository at path: " + gitRoot.getRepositoryDir());
             return new Result(null, Collections.emptyList());
           }
 
-          revWalk.markStart(revWalk.parseCommit(startRevId));
-          markStopRevisionsParentsAsUninteresting(stopRevisions, revWalk, objectDatabase);
+          revWalk.markStart(startCommits.get(0));
+          revWalk.setStopRevisions(stopRevisions);
 
           String result;
           RevCommit foundCommit = revWalk.getNextMatchedCommit();
@@ -140,7 +149,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
             visited.addAll(revWalk.getVisitedRevisions());
           }
 
-          return new Result(result, findReachableStopRevisions(startRevision, new HashSet<>(stopRevisions), context));
+          return new Result(result, revWalk.getReachedStopRevisions());
         } catch (Exception e) {
           throw context.wrapException(e);
         } finally {
@@ -154,54 +163,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     } finally {
       name.dispose();
     }
-  }
-
-  private static void markStopRevisionsParentsAsUninteresting(@NotNull Collection<String> stopRevisions, @NotNull RevWalk revWalk, @NotNull ObjectDatabase objectDatabase) throws IOException {
-    for (String stopRev: stopRevisions) {
-      ObjectId stopRevId = ObjectId.fromString(GitUtils.versionRevision(stopRev));
-      if (!objectDatabase.has(stopRevId)) continue;
-
-      RevCommit stopCommit = revWalk.parseCommit(stopRevId);
-      for (RevCommit p: stopCommit.getParents()) {
-        revWalk.markUninteresting(p);
-      }
-    }
-  }
-
-  @NotNull
-  private List<String> findReachableStopRevisions(@NotNull String startRevision, @NotNull Set<String> stopRevisions, @NotNull OperationContext context) throws VcsException, IOException {
-    if (stopRevisions.isEmpty()) return Collections.emptyList();
-
-    List<String> result = new ArrayList<>();
-    RevWalk revWalk = null;
-    try {
-      revWalk = new RevWalk(context.getRepository());
-      revWalk.sort(RevSort.TOPO);
-
-      ObjectId startRevId = ObjectId.fromString(GitUtils.versionRevision(startRevision));
-      ObjectDatabase objectDatabase = context.getRepository().getObjectDatabase();
-      if (!objectDatabase.has(startRevId)) {
-        return Collections.emptyList(); // can't happen but we have to check
-      }
-
-      revWalk.markStart(revWalk.parseCommit(startRevId));
-      markStopRevisionsParentsAsUninteresting(stopRevisions, revWalk, objectDatabase);
-
-      RevCommit next = revWalk.next();
-      while (next != null) {
-        if (stopRevisions.contains(next.name())) {
-          result.add(next.name());
-        }
-        next = revWalk.next();
-      }
-    } finally {
-      if (revWalk != null) {
-        revWalk.close();
-        revWalk.dispose();
-      }
-    }
-
-    return result;
   }
 
   @NotNull

@@ -21,11 +21,11 @@ import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.ObjectDatabase;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -35,9 +35,10 @@ import org.jetbrains.annotations.Nullable;
 public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private final CheckoutRules myCheckoutRules;
   private final Set<String> myCollectedUninterestingRevisions = new HashSet<>();
+  private final List<String> myReachedStopRevisions = new ArrayList<>();
+  private final Set<String> myStopRevisions = new HashSet<>();
   private final Set<String> myVisitedRevisions = new HashSet<>();
   private String myClosestPartiallyAffectedMergeCommit = null;
-  private final Map<String, List<ObjectId>> myMergeBasesCache = new HashMap<>();
 
   CheckoutRulesRevWalk(@NotNull final ServerPluginConfig config,
                        @NotNull final OperationContext context,
@@ -47,19 +48,41 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     myCheckoutRules = checkoutRules;
   }
 
-  @Nullable
-  public RevCommit getNextMatchedCommit() throws IOException, VcsException {
-    while (next() != null) {
-      if (myCollectedUninterestingRevisions.contains(getCurrentCommit().name())) continue;
-      myVisitedRevisions.add(getCurrentCommit().name());
-      if (isCurrentCommitIncluded()) {
-        return getCurrentCommit();
-      }
+  public void setStopRevisions(@NotNull Collection<String> stopRevisions) {
+    myStopRevisions.clear();
+    myStopRevisions.addAll(stopRevisions);
+  }
 
-      myMergeBasesCache.remove(getCurrentCommit().name());
+  @Nullable
+  public RevCommit getNextMatchedCommit() throws IOException {
+    markStopRevisionsParentsAsUninteresting(myStopRevisions);
+
+    while (next() != null) {
+      RevCommit cc = getCurrentCommit();
+      if (myCollectedUninterestingRevisions.contains(cc.name())) continue;
+      if (myStopRevisions.contains(cc.name())) {
+        myReachedStopRevisions.add(cc.name());
+      }
+      myVisitedRevisions.add(cc.name());
+      if (isCurrentCommitIncluded()) {
+        return cc;
+      }
     }
 
     return null;
+  }
+
+  private void markStopRevisionsParentsAsUninteresting(@NotNull Collection<String> stopRevisions) throws IOException {
+    ObjectDatabase objectDatabase = getRepository().getObjectDatabase();
+    for (String stopRev: stopRevisions) {
+      ObjectId stopRevId = ObjectId.fromString(GitUtils.versionRevision(stopRev));
+      if (!objectDatabase.has(stopRevId)) continue;
+
+      RevCommit stopCommit = parseCommit(stopRevId);
+      for (RevCommit p: stopCommit.getParents()) {
+        markUninteresting(p);
+      }
+    }
   }
 
   @NotNull
@@ -67,13 +90,17 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     return Collections.unmodifiableSet(myVisitedRevisions);
   }
 
+  @NotNull
+  public List<String> getReachedStopRevisions() {
+    return Collections.unmodifiableList(myReachedStopRevisions);
+  }
+
   @Nullable
   public String getClosesPartiallyAffectedMergeCommit() {
     return myClosestPartiallyAffectedMergeCommit;
   }
 
-  private boolean isCurrentCommitIncluded()
-    throws VcsException, IOException {
+  private boolean isCurrentCommitIncluded() throws IOException {
     checkCurrentCommit();
 
     final RevCommit[] parents = getCurrentCommit().getParents();
@@ -85,7 +112,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
       int numAffectedParents = 0;
 
       Set<RevCommit> uninterestingParents = new HashSet<>();
-      for (RevCommit parent: parents) {
+      for (RevCommit parent : parents) {
         try (VcsChangeTreeWalk tw = newVcsChangeTreeWalk()) {
           tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
           tw.setRecursive(true);
@@ -95,7 +122,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
           if (isAcceptedByCheckoutRules(myCheckoutRules, tw)) {
             numAffectedParents++;
           } else {
-            for (RevCommit p: parents) {
+            for (RevCommit p : parents) {
               if (p != parent) {
                 uninterestingParents.add(p);
               }
@@ -104,31 +131,36 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
         }
       }
 
-      if (numAffectedParents <= 1) {
-        if (uninterestingParents.size() == parents.length) {
-          // we have a merge commit with some parents
-          // this merge commit does not change anything interesting in the files tree comparing to all of its parents (we already checked it above)
-          // but it is possible that all parents already had all the same changes in the interesting files or in other words
-          // there were mutual merges which brought changes of each parent to another parent and vice versa
-          // (see case from LatestAcceptedRevisionTest.merge_commit_tree_does_not_have_difference_with_parents())
-          // to solve this problem, we'll find a merge base of these parents (the nearest common ancestor) and then we'll check if there were changes
-          // in files affected by checkout rules between the current merge commit and this merge base,
-          // if there are changes, then we'll return the current merge commit as the one accepted by checkout rules
+      Set<String> uninterestingCommits = new HashSet<>();
+      if (uninterestingParents.size() < parents.length) {
+        uninterestingCommits = collectUninterestingCommits(uninterestingParents);
+      } else { // uninterestingParents.size() == parents.length
+        // we have a merge commit which does not change anything interesting in the files tree comparing to all of its parents
+        // this can happen in two cases:
+        // 1) interesting files were not changed by this commit
+        // 2) interesting files were changed in all parents of this commit in the same way (mutual merges)
+        // in either case we should go deeper, but since the files state is the same for all parents
+        // we can treat the commits reachable from one of the parent as uninteresting
 
-          if (hasInterestingCommitsSinceMergeBase()) {
-            return true;
+        // we want to mark as many commits as possible as uniteresting
+        // for this we'll collect reachable commits each time excluding one parent only
+        // then we'll choose the biggest collection
+        for (RevCommit p : parents) {
+          Set<RevCommit> uninterestingExcludingOneParent = new HashSet<>(uninterestingParents);
+          uninterestingExcludingOneParent.remove(p);
+          Set<String> res = collectUninterestingCommits(uninterestingExcludingOneParent);
+          if (res.size() > uninterestingCommits.size()) {
+            uninterestingCommits = res;
           }
         }
-
-        collectUninterestingCommits(uninterestingParents);
       }
 
-      if (numAffectedParents == 1) {
+      myCollectedUninterestingRevisions.addAll(uninterestingCommits);
+
+      if (numAffectedParents == 1 && myClosestPartiallyAffectedMergeCommit == null) {
         // it is possible that stop revisions will prevent us from finding the actual commit which changed the interesting files
         // in this case we'll use the first met partially affected merge commit as a result
-        if (myClosestPartiallyAffectedMergeCommit == null) {
-          myClosestPartiallyAffectedMergeCommit = getCurrentCommit().name();
-        }
+        myClosestPartiallyAffectedMergeCommit = getCurrentCommit().name();
       }
 
       return numAffectedParents > 1;
@@ -158,38 +190,11 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     return false;
   }
 
-  private void collectUninterestingCommits(@NotNull final Set<RevCommit> uninterestingParents) throws IOException {
+  @NotNull
+  private Set<String> collectUninterestingCommits(@NotNull final Set<RevCommit> uninterestingParents) throws IOException {
+    Set<String> result = new HashSet<>();
+
     RevCommit[] parents = getCurrentCommit().getParents();
-    if (uninterestingParents.size() == parents.length) {
-      // all parents are uninteresting, and we already check that there were no changes in files matched by checkout rules since the merge base
-      List<ObjectId> mergeBases = findCurrentCommitMergeBases();
-
-      RevWalk walk = newRevWalk();
-      try {
-        Set<RevCommit> starts = new HashSet<>();
-        for (RevCommit p: parents) {
-          starts.add(walk.parseCommit(p.getId()));
-        }
-
-        for (RevCommit c: starts) {
-          walk.markStart(c);
-        }
-        for (ObjectId mbRevision: mergeBases) {
-          walk.markUninteresting(walk.parseCommit(mbRevision));
-        }
-
-        RevCommit next;
-        while ((next = walk.next()) != null) {
-          myCollectedUninterestingRevisions.add(next.name());
-        }
-      } finally {
-        walk.reset();
-        walk.close();
-        walk.dispose();
-      }
-
-      return;
-    }
 
     Set<RevCommit> interestingParents = new HashSet<>();
     for (RevCommit c: parents) {
@@ -210,39 +215,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
       RevCommit next;
       while ((next = walk.next()) != null) {
-        myCollectedUninterestingRevisions.add(next.name());
-      }
-    } finally {
-      walk.reset();
-      walk.close();
-      walk.dispose();
-    }
-  }
-
-  @NotNull
-  private List<ObjectId> findCurrentCommitMergeBases() throws IOException {
-    List<ObjectId> cached = myMergeBasesCache.get(getCurrentCommit().name());
-    if (cached != null) return cached;
-
-    RevWalk walk = newRevWalk();
-
-    List<ObjectId> mergeBases;
-    try {
-      walk.setRevFilter(RevFilter.MERGE_BASE);
-      Set<RevCommit> starts = new HashSet<>();
-      for (RevCommit p: getCurrentCommit().getParents()) {
-        starts.add(walk.parseCommit(p.getId()));
-      }
-
-      for (RevCommit c: starts) {
-        walk.markStart(c);
-      }
-
-      mergeBases = new ArrayList<>();
-      RevCommit mergeBase = walk.next();
-      while (mergeBase != null) {
-        mergeBases.add(mergeBase.getId());
-        mergeBase = walk.next();
+        result.add(next.name());
       }
     } finally {
       walk.reset();
@@ -250,24 +223,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
       walk.dispose();
     }
 
-    myMergeBasesCache.put(getCurrentCommit().name(), mergeBases);
-    return mergeBases;
-  }
-
-  private boolean hasInterestingCommitsSinceMergeBase() throws IOException {
-    List<ObjectId> mergeBases = findCurrentCommitMergeBases();
-    for (ObjectId mergeBaseId: mergeBases) {
-      try (VcsChangeTreeWalk tw = newVcsChangeTreeWalk()) {
-        tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
-        tw.setRecursive(true);
-        getContext().addTree(getGitRoot(), tw, getRepository(), getCurrentCommit(), true, false, myCheckoutRules);
-        getContext().addTree(getGitRoot(), tw, getRepository(), parseCommit(mergeBaseId), true, false, myCheckoutRules);
-
-        if (isAcceptedByCheckoutRules(myCheckoutRules, tw)) return true;
-      }
-    }
-
-    return false;
+    return result;
   }
 
   @NotNull

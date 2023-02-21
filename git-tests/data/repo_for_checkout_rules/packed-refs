@@ -1,0 +1,12 @@
+# pack-refs with: peeled fully-peeled sorted 
+bb6ab65d23fa0ffbaa61d44c8241f127cf0f323f refs/heads/br1
+9c191865e2f2b05727e067aa4f918f3ed54f1f1a refs/heads/br2
+ce92302a768ce0763e83aebf8c0e16e102c8d06b refs/heads/br4
+75c9325d5b129f299fba8567f0fd7f599d336e8f refs/heads/br5
+1330f191b990a389459e28f8754c913e9b417c93 refs/heads/br6
+eea4a3e48901ba036998c9fe0afdc78cc8a05a33 refs/heads/br7
+7b4fe56d180eba5f22b88a6db13cd026a9af041e refs/heads/br7_sub
+1b70ae39e420725be5800dfde7b6dd6993fb2b7e refs/heads/br8
+cb3c3789d8b85d55197069c7c02f5ce693327ee4 refs/heads/master
+7bccef4c9ba5b110d67af73b8409e04c7e1445a4 refs/heads/mp1
+bcd19bdf351b6a64ad1d9a5ce3edc19bf4797db8 refs/heads/mp2
