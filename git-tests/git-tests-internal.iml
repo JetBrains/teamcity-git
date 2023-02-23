@@ -22,7 +22,9 @@
     <orderEntry type="module" module-name="server-test-core" />
     <orderEntry type="module" module-name="server-metrics" />
     <orderEntry type="module" module-name="oauth-integration" scope="TEST" />
+    <orderEntry type="module" module-name="change-viewers" scope="TEST" />
     <orderEntry type="module" module-name="changeViewers" scope="TEST" />
     <orderEntry type="module" module-name="oauth-integration-agent" scope="TEST" />
+    <orderEntry type="module" module-name="migration" scope="TEST" />
   </component>
 </module>
