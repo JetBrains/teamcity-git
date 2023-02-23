@@ -96,7 +96,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   }
 
   @Nullable
-  public String getClosesPartiallyAffectedMergeCommit() {
+  public String getClosestPartiallyAffectedMergeCommit() {
     return myClosestPartiallyAffectedMergeCommit;
   }
 

@@ -143,7 +143,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
           if (foundCommit != null) {
             result = foundCommit.name();
           } else {
-            result = revWalk.getClosesPartiallyAffectedMergeCommit();
+            result = revWalk.getClosestPartiallyAffectedMergeCommit();
           }
           if (visited != null) {
             visited.addAll(revWalk.getVisitedRevisions());
