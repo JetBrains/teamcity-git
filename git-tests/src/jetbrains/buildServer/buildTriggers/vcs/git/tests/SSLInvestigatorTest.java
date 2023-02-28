@@ -30,7 +30,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitAgentSSHService;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.GitFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.GetConfigCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitConfigCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.SetConfigCommand;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
@@ -143,8 +143,8 @@ public class SSLInvestigatorTest {
 
     final String alreadyInProperties = alreadySet ? "something" : "";
     final GitCommandProxyCallback gitCommandProxyCallback = (method, args) -> Optional.of(alreadyInProperties);
-    myLoggingFactory.addCallback(GetConfigCommand.class.getName() + ".call", gitCommandProxyCallback);
-    myLoggingFactory.addCallback(GetConfigCommand.class.getName() + ".callWithIgnoreExitCode", gitCommandProxyCallback);
+    myLoggingFactory.addCallback(GitConfigCommand.class.getName() + ".call", gitCommandProxyCallback);
+    myLoggingFactory.addCallback(GitConfigCommand.class.getName() + ".callWithIgnoreExitCode", gitCommandProxyCallback);
     myLoggingFactory.addCallback(SetConfigCommand.class.getName() + ".call", (method, args) -> Optional.empty());
 
     final SSLInvestigator instance = createInstance();
@@ -153,24 +153,24 @@ public class SSLInvestigatorTest {
 
     switch (result) {
       case ONLY_GET: {
-        assertEquals(myLoggingFactory.getNumberOfCalls(GetConfigCommand.class), 1);
+        assertEquals(myLoggingFactory.getNumberOfCalls(GitConfigCommand.class), 1);
         assertEquals(myLoggingFactory.getNumberOfCalls(SetConfigCommand.class), 0);
         break;
       }
       case ONLY_SET: {
-        assertEquals(myLoggingFactory.getNumberOfCalls(GetConfigCommand.class), 0);
+        assertEquals(myLoggingFactory.getNumberOfCalls(GitConfigCommand.class), 0);
         assertEquals(myLoggingFactory.getNumberOfCalls(SetConfigCommand.class), 1);
         assertFalse(myLoggingFactory.getInvokedMethods(SetConfigCommand.class).contains("unSet"));
         break;
       }
       case GET_AND_SET: {
-        assertEquals(myLoggingFactory.getNumberOfCalls(GetConfigCommand.class), 1);
+        assertEquals(myLoggingFactory.getNumberOfCalls(GitConfigCommand.class), 1);
         assertEquals(myLoggingFactory.getNumberOfCalls(SetConfigCommand.class), 1);
         assertFalse(myLoggingFactory.getInvokedMethods(SetConfigCommand.class).contains("unSet"));
         break;
       }
       case GET_AND_UNSET: {
-        assertEquals(myLoggingFactory.getNumberOfCalls(GetConfigCommand.class), 1);
+        assertEquals(myLoggingFactory.getNumberOfCalls(GitConfigCommand.class), 1);
         assertEquals(myLoggingFactory.getNumberOfCalls(SetConfigCommand.class), 1);
         assertTrue(myLoggingFactory.getInvokedMethods(SetConfigCommand.class).contains("unSet"));
         break;

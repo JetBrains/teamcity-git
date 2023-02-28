@@ -107,8 +107,8 @@ public class AgentGitFacadeImpl extends GitFacadeImpl implements AgentGitFacade 
   }
 
   @NotNull
-  public GetConfigCommand getConfig() {
-    return new GetConfigCommandImpl(createCommandLine());
+  public GitConfigCommand getConfig() {
+    return new GitConfigCommandImpl(createCommandLine());
   }
 
   @NotNull

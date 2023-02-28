@@ -87,8 +87,8 @@ public class GitFacadeImpl implements GitFacade {
 
   @NotNull
   @Override
-  public GetConfigCommand getConfig() {
-    return new GetConfigCommandImpl(createCommandLine());
+  public GitConfigCommand getConfig() {
+    return new GitConfigCommandImpl(createCommandLine());
   }
 
   @NotNull

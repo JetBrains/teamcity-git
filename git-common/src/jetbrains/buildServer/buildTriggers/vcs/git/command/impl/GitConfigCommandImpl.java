@@ -1,18 +1,18 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.command.GetConfigCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitConfigCommand;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
-public class GetConfigCommandImpl extends BaseCommandImpl implements GetConfigCommand {
+public class GitConfigCommandImpl extends BaseCommandImpl implements GitConfigCommand {
   private String myName;
 
-  public GetConfigCommandImpl(@NotNull GitCommandLine cmd) {
+  public GitConfigCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
   }
   @NotNull
-  public GetConfigCommand setPropertyName(@NotNull String name) {
+  public GitConfigCommand setPropertyName(@NotNull String name) {
     myName = name;
     return this;
   }
