@@ -41,7 +41,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperati
 import static jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations.CERT_FILE;
 
 //see native-git-testng.xml suite for tests examples
-public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand, TagCommand, StatusCommandServer, InitCommandServer {
+public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand, TagCommand, StatusCommandServer, InitCommandServer, LocalCommitCommandServer, ConfigCommand {
 
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(NativeGitCommands.class.getName() + ".Performance");
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
@@ -272,26 +272,13 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
 
-    return executeCommand(ctx, "init", "Initializing repository in path: " + path, () -> {
-      final InitCommand initCommand =
-        gitFacade.init()
-                 .setBare(bare);
-      return initCommand.call();
-    }, gitFacade);
-  }
-
-  @Override
-  public InitCommandResult initAndCommit(@NotNull String path, @NotNull CommitSettings commitSettings) throws VcsException {
-    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
-    final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
-
     final File gitDir = new File(path, ".git");
     InitCommandResult res;
     if (!gitDir.exists()) {
       res = executeCommand(ctx, "init", "Initializing repository in path: " + path, () -> {
         final InitCommand initCommand =
           gitFacade.init()
-                   .setBare(false);
+                   .setBare(bare);
         return initCommand.call();
       }, gitFacade);
     } else {
@@ -304,8 +291,30 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                             ? " first " + threshold + " changed files: " + modifiedFiles.stream().limit(threshold).map(it -> it.getPath()).collect(Collectors.toList())
                             : "changed files: " + modifiedFiles.stream().map(it -> it.getPath()).collect(Collectors.toList()));
       }
-      res = new InitCommandResult(statusResult.getBranch());
+      res = new InitCommandResult(statusResult.getBranch(), true);
     }
+    return res;
+  }
+
+  @Override
+  public void addConfigParameter(String path, GitConfigCommand.Scope scope, String name, String value) throws VcsException {
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
+    executeCommand(ctx, "gitConfig", "Set config parameters", () -> {
+      final GitConfigCommand gitConfigCommand = gitFacade.getConfig()
+                                                         .setScope(scope)
+                                                         .setPropertyName(name)
+                                                         .setValue(value);
+      gitConfigCommand.call();
+      return "";
+    }, gitFacade);
+  }
+
+  @Override
+  public void commit(String path, @NotNull CommitSettings commitSettings) throws VcsException {
+
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
 
     executeCommand(ctx, "add", "add files in repository: " + path, () -> {
       final AddCommand addCommand =
@@ -323,7 +332,6 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
       addCommand.call();
       return null;
     }, gitFacade);
-    return res;
   }
 
   @NotNull

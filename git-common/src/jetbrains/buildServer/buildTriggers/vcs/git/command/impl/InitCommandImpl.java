@@ -55,6 +55,6 @@ public class InitCommandImpl extends BaseCommandImpl implements InitCommand {
       initialBranch = INITIAL_BRANCH;
     }
     CommandUtil.runCommand(cmd.stdErrExpected(false));
-    return new InitCommandResult(initialBranch);
+    return new InitCommandResult(initialBranch, false);
   }
 }
