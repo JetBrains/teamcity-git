@@ -178,7 +178,12 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
         setupRepository(submoduleGitDir, mirrorRepositoryDir);
         GitUtils.removeRefLocks(submoduleGitDir);
 
-        checkout(gitFacade).setForce(true).setBranch(s.getRevision()).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+        checkout(gitFacade)
+          .setForce(true)
+          .setBranch(s.getRevision())
+          .setQuiet(isQuietCheckout())
+          .setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds())
+          .call();
       }
     }
   }
