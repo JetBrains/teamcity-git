@@ -29,6 +29,9 @@ public interface CheckoutCommand extends BaseCommand, AuthCommand<CheckoutComman
   @NotNull
   CheckoutCommand setBranch(@NotNull String branch);
 
+  @NotNull
+  CheckoutCommand setQuiet(boolean quiet);
+
   void call() throws VcsException;
 
 }

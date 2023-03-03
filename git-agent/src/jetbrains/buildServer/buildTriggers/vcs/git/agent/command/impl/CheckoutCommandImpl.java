@@ -26,6 +26,7 @@ public class CheckoutCommandImpl extends BaseAuthCommandImpl<CheckoutCommand> im
 
   private boolean myForce;
   private String myBranch;
+  private boolean myQuiet = true;
 
   public CheckoutCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -43,9 +44,18 @@ public class CheckoutCommandImpl extends BaseAuthCommandImpl<CheckoutCommand> im
     return this;
   }
 
+  @NotNull
+  @Override
+  public CheckoutCommand setQuiet(boolean quiet) {
+    myQuiet = quiet;
+    return this;
+  }
+
   public void call() throws VcsException {
     GitCommandLine cmd = getCmd();
-    cmd.addParameters("checkout", "-q");
+    cmd.addParameter("checkout");
+    if (myQuiet)
+      cmd.addParameter("-q");
     if (myForce)
       cmd.addParameter("-f");
     cmd.addParameter(myBranch);
