@@ -279,7 +279,12 @@ public class UpdaterImpl implements Updater {
         runAndFixIndexErrors(git, new VcsCommand() {
           @Override
           public void call() throws VcsException {
-            checkout(git).setForce(true).setBranch(finalBranchName).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+            checkout(git)
+              .setForce(true)
+              .setBranch(finalBranchName)
+              .setQuiet(isQuietCheckout())
+              .setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds())
+              .call();
           }
         });
         if (branches.contains(branchName)) {
@@ -305,8 +310,17 @@ public class UpdaterImpl implements Updater {
     }
   }
 
+  protected boolean isQuietCheckout() {
+    return !"false".equalsIgnoreCase(myBuild.getSharedConfigParameters().get("teamcity.internal.git.quietCheckout"));
+  }
+
   private void forceCheckout(@NotNull AgentGitFacade git, @NotNull String what) throws VcsException {
-    checkout(git).setBranch(what).setForce(true).setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds()).call();
+    checkout(git)
+      .setBranch(what)
+      .setForce(true)
+      .setQuiet(isQuietCheckout())
+      .setTimeout(myPluginConfig.getCheckoutIdleTimeoutSeconds())
+      .call();
   }
 
   private void runAndFixIndexErrors(@NotNull AgentGitFacade git, @NotNull VcsCommand cmd) throws VcsException {
