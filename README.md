@@ -1,3 +1,5 @@
+[![official JetBrains project](https://jb.gg/badges/official-flat-square.svg)](https://github.com/jetbrains#jetbrains-on-github)
+
 Git plugin for TeamCity
 =======================
 
