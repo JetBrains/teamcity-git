@@ -264,6 +264,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     }, gitFacade);
   }
 
+  @NotNull
   @Override
   public InitCommandResult init(@NotNull String path, boolean bare) throws VcsException {
     final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());

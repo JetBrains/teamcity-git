@@ -43,6 +43,7 @@ public class InitCommandImpl extends BaseCommandImpl implements InitCommand {
   }
 
 
+  @NotNull
   public InitCommandResult call() throws VcsException {
     GitCommandLine cmd = getCmd();
     cmd.addParameter("init");

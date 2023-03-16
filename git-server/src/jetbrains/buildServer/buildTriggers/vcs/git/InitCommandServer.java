@@ -17,6 +17,7 @@ public interface InitCommandServer extends GitCommand {
    * @param path path where repository should be initialized
    * @param bare if bare repository should be initialized
    */
+  @NotNull
   InitCommandResult init(@NotNull String path, boolean bare) throws VcsException;
 
 }

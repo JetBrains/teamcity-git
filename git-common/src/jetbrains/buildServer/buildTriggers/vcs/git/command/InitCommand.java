@@ -24,6 +24,7 @@ public interface InitCommand extends BaseCommand {
   @NotNull
   InitCommand setBare(boolean bare);
 
+  @NotNull
   InitCommandResult call() throws VcsException;
 
 }
