@@ -33,7 +33,7 @@ public class CommitCommandImpl extends BaseCommandImpl implements CommitCommand 
     cmd.addParameter("-m");
     cmd.addParameter(myComment.isEmpty() ? "<Empty comment>" : myComment);
 
-    String author = myAuthor.isEmpty() ? "Empty author <>" : myAuthor + " <>";
+    String author = myAuthor.isEmpty() ? "Empty author <>" : myAuthor + " <" + myAuthor + "@TeamCity>";
     cmd.addParameter("--author=" + author);
     try {
       CommandUtil.runCommand(cmd.stdErrExpected(false));
