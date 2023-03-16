@@ -20,10 +20,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
-import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.util.FuncThrow;
-import jetbrains.buildServer.util.NamedThreadFactory;
-import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.util.*;
 import jetbrains.buildServer.util.ssl.TrustStoreIO;
 import jetbrains.buildServer.vcs.CommitResult;
 import jetbrains.buildServer.vcs.CommitSettings;
@@ -285,11 +282,9 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
       StatusCommand.StatusResult statusResult = executeCommand(ctx, "status", "status in repository: " + path, () -> gitFacade.status().call(), gitFacade);
       List<StatusCommand.FileLine> modifiedFiles = statusResult.getModifiedFiles();
       if (!modifiedFiles.isEmpty()) {
-        Loggers.SERVER.warn("Found " + modifiedFiles.size() + " modified files while repository already exists");
-        int threshold = TeamCityProperties.getInteger("teamcity.configsInGit.logFilesCountThreshold", 100);
-        Loggers.SERVER.warn(modifiedFiles.size() > threshold
-                            ? " first " + threshold + " changed files: " + modifiedFiles.stream().limit(threshold).map(it -> it.getPath()).collect(Collectors.toList())
-                            : "changed files: " + modifiedFiles.stream().map(it -> it.getPath()).collect(Collectors.toList()));
+        int threshold = TeamCityProperties.getInteger("teamcity.git.initRepository.logFilesCountThreshold", 100);
+        Loggers.VCS.warn("Found " + modifiedFiles.size() + " modified files in repository " + path
+                         + ". " + "Changed files: " + CollectionsUtil.asString(modifiedFiles, threshold));
       }
       res = new InitCommandResult(statusResult.getBranch(), true);
     }
@@ -301,7 +296,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
     executeCommand(ctx, "gitConfig", "Set config parameters", () -> {
-      final GitConfigCommand gitConfigCommand = gitFacade.getConfig()
+      final GitConfigCommand gitConfigCommand = gitFacade.gitConfig()
                                                          .setScope(scope)
                                                          .setPropertyName(name)
                                                          .setValue(value);

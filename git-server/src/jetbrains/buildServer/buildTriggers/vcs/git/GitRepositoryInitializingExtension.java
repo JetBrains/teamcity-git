@@ -16,6 +16,7 @@ import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.lib.PersonIdent;
+import org.jetbrains.annotations.NotNull;
 
 public class GitRepositoryInitializingExtension implements RepositoryInitializingExtension {
 
@@ -27,14 +28,15 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
     myGitRepoOperations = gitRepoOperations;
   }
 
+  @NotNull
   @Override
-  public Map<String, String> initialize(String remotePath, CommitSettings commitSettings, List<String> ignoredPaths) throws VcsException {
+  public Map<String, String> initialize(@NotNull String remotePath, @NotNull CommitSettings commitSettings, @NotNull List<String> ignoredPaths) throws VcsException {
 
     Path dir = Paths.get(remotePath);
     try {
       patchGitIgnore(dir, ignoredPaths);
     } catch (IOException e) {
-      throw new VcsException("Can not create .gitignore file in path " + remotePath, e);
+      throw new VcsException("Could not create .gitignore file at path: " + remotePath, e);
     }
 
     Path gitDir = dir.resolve(".git");
@@ -49,8 +51,8 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
 
       VcsRootImpl dummyRoot = new VcsRootImpl(-1, Constants.VCS_NAME, props);
 
-      if (!initCommandResult.isRepositoryExisted()) {
-        OperationContext operationContext = myVcs.createContext(dummyRoot, "global configs repository initialization");
+      if (!initCommandResult.repositoryAlreadyExists()) {
+        OperationContext operationContext = myVcs.createContext(dummyRoot, "Repository initialization");
         PersonIdent personIdent = PersonIdentFactory.getTagger(operationContext.getGitRoot(), operationContext.getRepository());
 
         List<Pair<String, String>> configProps = Arrays.asList(
@@ -69,7 +71,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
       //if any exception during initialization occurs looks like it's better to remove initialized repository if it was created just now (i.e. directory didn't exist on method start)
       if (!gitDirExisted) {
         File file = gitDir.toFile();
-        Loggers.SERVER.warn("removing initialized git repository " + file + " since repository initialization was interrupted");
+        Loggers.VCS.warn("Removing the partially initialized Git repository at path: " + file.getAbsolutePath());
         FileUtil.delete(file);
       }
       throw e;

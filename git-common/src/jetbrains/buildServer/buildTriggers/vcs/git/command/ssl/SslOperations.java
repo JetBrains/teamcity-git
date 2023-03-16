@@ -14,7 +14,7 @@ public class SslOperations {
 
   @NotNull
   public static String getCertPath(@NotNull final GitFacade gitFacade) throws VcsException {
-    return gitFacade.getConfig().setPropertyName("http.sslCAInfo").callWithIgnoreExitCode();
+    return gitFacade.gitConfig().setPropertyName("http.sslCAInfo").callWithIgnoreExitCode();
   }
 
   public static void deleteSslOption(@NotNull final GitFacade gitFacade) {

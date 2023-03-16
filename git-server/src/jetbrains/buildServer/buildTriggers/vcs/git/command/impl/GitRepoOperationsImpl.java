@@ -153,7 +153,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
 
   @Override
   public InitCommandServer initCommand() {
-    return (InitCommandServer)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Initializing command is available only for native git"));
+    return (InitCommandServer)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Repository init command is available only for native git"));
   }
 
   @Override

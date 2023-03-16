@@ -5,7 +5,7 @@ import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * @since 2023.04
+ * @since 2023.05
  */
 public interface LocalCommitCommandServer extends GitCommand {
 

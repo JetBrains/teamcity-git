@@ -1,5 +1,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command;
 
+import org.jetbrains.annotations.Nullable;
+
 public class InitCommandResult {
 
   private final String myDefaultBranch;
@@ -10,10 +12,11 @@ public class InitCommandResult {
     myRepositoryExisted = repositoryExisted;
   }
 
-  public boolean isRepositoryExisted() {
+  public boolean repositoryAlreadyExists() {
     return myRepositoryExisted;
   }
 
+  @Nullable
   public String getDefaultBranch() {
     return myDefaultBranch;
   }

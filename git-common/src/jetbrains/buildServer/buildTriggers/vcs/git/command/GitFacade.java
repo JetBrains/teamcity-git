@@ -26,7 +26,7 @@ public interface GitFacade {
   TagCommand tag();
 
   @NotNull
-  GitConfigCommand getConfig();
+  GitConfigCommand gitConfig();
 
   @NotNull
   SetConfigCommand setConfig();

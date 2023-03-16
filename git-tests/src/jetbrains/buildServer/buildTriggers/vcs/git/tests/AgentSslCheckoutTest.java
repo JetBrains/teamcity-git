@@ -118,7 +118,7 @@ public class AgentSslCheckoutTest extends BaseRemoteRepositoryTest {
   private void checkConfig(boolean shouldCAInfo, AgentRunningBuild build) throws VcsException {
     final AgentGitFacade gitFacade = gitFacade(build);
     try {
-      final String sslCAInfo = gitFacade.getConfig().setPropertyName("http.sslCAInfo").call();
+      final String sslCAInfo = gitFacade.gitConfig().setPropertyName("http.sslCAInfo").call();
       if (shouldCAInfo) {
         Assert.assertNotNull(sslCAInfo);
       } else {

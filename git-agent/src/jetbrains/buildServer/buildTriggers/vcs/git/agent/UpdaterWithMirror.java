@@ -268,7 +268,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
   private String getRemoteUrl(@NotNull File repositoryDir) {
     try {
-      return myGitFactory.create(repositoryDir).getConfig().setPropertyName("remote.origin.url").call();
+      return myGitFactory.create(repositoryDir).gitConfig().setPropertyName("remote.origin.url").call();
     } catch (VcsException e) {
       LOG.debug("Failed to read remote.origin.url property", e);
       return "";

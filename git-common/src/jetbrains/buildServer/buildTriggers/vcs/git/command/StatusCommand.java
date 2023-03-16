@@ -42,6 +42,7 @@ public interface StatusCommand extends BaseCommand {
     }
 
     public String getStatusCode() {
+      //see man git status for --porcelain v1 version for details
       return myStatusCode;
     }
 
