@@ -30,23 +30,23 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
 
   @NotNull
   @Override
-  public Map<String, String> initialize(@NotNull String remotePath, @NotNull CommitSettings commitSettings, @NotNull List<String> ignoredPaths) throws VcsException {
+  public Map<String, String> initialize(@NotNull String repositoryPath, @NotNull CommitSettings commitSettings, @NotNull List<String> ignoredPaths) throws VcsException {
 
-    Path dir = Paths.get(remotePath);
+    Path dir = Paths.get(repositoryPath);
     try {
       patchGitIgnore(dir, ignoredPaths);
     } catch (IOException e) {
-      throw new VcsException("Could not create .gitignore file at path: " + remotePath, e);
+      throw new VcsException("Could not create .gitignore file at path: " + repositoryPath, e);
     }
 
     Path gitDir = dir.resolve(".git");
     boolean gitDirExisted = Files.exists(gitDir);
 
     try {
-      InitCommandResult initCommandResult = myGitRepoOperations.initCommand().init(remotePath, false);
+      InitCommandResult initCommandResult = myGitRepoOperations.initCommand().init(repositoryPath, false);
 
       Map<String, String> props = myVcs.getDefaultVcsProperties();
-      props.put(Constants.FETCH_URL, GitUtils.toURL(new File(remotePath)));
+      props.put(Constants.FETCH_URL, GitUtils.toURL(new File(repositoryPath)));
       props.put(Constants.BRANCH_NAME, initCommandResult.getDefaultBranch());
 
       VcsRootImpl dummyRoot = new VcsRootImpl(-1, Constants.VCS_NAME, props);
@@ -62,10 +62,10 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         );
 
         for (Pair<String, String> configProp : configProps) {
-          myGitRepoOperations.configCommand().addConfigParameter(remotePath, GitConfigCommand.Scope.LOCAL, configProp.getFirst(), configProp.getSecond());
+          myGitRepoOperations.configCommand().addConfigParameter(repositoryPath, GitConfigCommand.Scope.LOCAL, configProp.getFirst(), configProp.getSecond());
         }
       }
-      myGitRepoOperations.commitCommand().commit(remotePath, commitSettings);
+      myGitRepoOperations.commitCommand().commit(repositoryPath, commitSettings);
       return props;
     } catch (Exception e) {
       //if any exception during initialization occurs looks like it's better to remove initialized repository if it was created just now (i.e. directory didn't exist on method start)
