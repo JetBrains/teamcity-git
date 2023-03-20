@@ -58,7 +58,8 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         List<Pair<String, String>> configProps = Arrays.asList(
           Pair.create("user.name", personIdent.getName()),
           Pair.create("user.email", personIdent.getEmailAddress()),
-          Pair.create("receive.denycurrentbranch", "ignore")
+          Pair.create("core.autocrlf", "false"),
+          Pair.create("receive.denyCurrentBranch", "ignore")
         );
 
         for (Pair<String, String> configProp : configProps) {
