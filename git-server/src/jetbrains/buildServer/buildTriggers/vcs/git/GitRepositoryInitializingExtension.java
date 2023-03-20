@@ -10,7 +10,7 @@ import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitConfigCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.InitCommandResult;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.serverSide.impl.congisRepo.RepositoryInitializingExtension;
+import jetbrains.buildServer.serverSide.impl.configsRepo.RepositoryInitializingExtension;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
