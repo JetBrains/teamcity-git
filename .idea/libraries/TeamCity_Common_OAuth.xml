@@ -1,7 +1,7 @@
 <component name="libraryTable">
   <library name="TeamCity Common OAuth Support">
     <CLASSES>
-      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/oauth-common.jar!/" />
+      <root url="jar://$TeamCityDistribution$/webapps/ROOT/WEB-INF/lib/connections-api-common.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
