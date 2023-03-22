@@ -4,14 +4,13 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Function;
-import jetbrains.buildServer.oauth.ExpiringAccessToken;
+import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod.ACCESS_TOKEN;
-import static jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod.PASSWORD;
 
 public class AuthSettingsImpl implements AuthSettings {
 

@@ -18,9 +18,9 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.text.StringUtil;
 import java.util.concurrent.atomic.AtomicReference;
+import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.log.LogUtil;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.oauth.ExpiringAccessToken;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;

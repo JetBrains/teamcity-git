@@ -18,7 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.oauth.ExpiringAccessToken;
+import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 

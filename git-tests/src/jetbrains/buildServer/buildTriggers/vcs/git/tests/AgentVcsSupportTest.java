@@ -36,6 +36,7 @@ import jetbrains.buildServer.TestNGUtil;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.oauth.AgentTokenRetriever;
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
+import jetbrains.buildServer.agent.oauth.InvalidAccessToken;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
@@ -50,8 +51,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
 import jetbrains.buildServer.log.Loggers;
-import jetbrains.buildServer.oauth.ExpiringAccessToken;
-import jetbrains.buildServer.agent.oauth.InvalidAccessToken;
+import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.EventDispatcher;

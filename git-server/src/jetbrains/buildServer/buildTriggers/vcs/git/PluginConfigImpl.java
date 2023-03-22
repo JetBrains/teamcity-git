@@ -37,7 +37,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.jsch.SshPubkeyAcceptedAlgorit
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchProcess;
 import jetbrains.buildServer.messages.serviceMessages.ServiceMessage;
 import jetbrains.buildServer.metrics.Counter;
-import jetbrains.buildServer.oauth.ExpiringAccessToken;
+import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;

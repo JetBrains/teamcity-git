@@ -24,5 +24,6 @@
     <orderEntry type="module" module-name="common-impl" />
     <orderEntry type="module" module-name="migration" />
     <orderEntry type="module" module-name="oauth-integration-agent" />
+    <orderEntry type="module" module-name="connections-api-common" />
   </component>
 </module>

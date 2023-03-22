@@ -1,6 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import jetbrains.buildServer.oauth.ExpiringAccessToken;
+import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
