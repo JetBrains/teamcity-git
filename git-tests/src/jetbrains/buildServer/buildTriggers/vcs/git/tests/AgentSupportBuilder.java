@@ -26,7 +26,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder;
 import jetbrains.buildServer.oauth.ExpiringAccessToken;
-import jetbrains.buildServer.oauth.InvalidAccessToken;
+import jetbrains.buildServer.agent.oauth.InvalidAccessToken;
 import jetbrains.buildServer.util.EventDispatcher;
 import org.jetbrains.annotations.NotNull;
 

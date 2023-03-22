@@ -51,7 +51,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.oauth.ExpiringAccessToken;
-import jetbrains.buildServer.oauth.InvalidAccessToken;
+import jetbrains.buildServer.agent.oauth.InvalidAccessToken;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.EventDispatcher;
