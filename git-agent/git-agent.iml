@@ -25,7 +25,7 @@
     <orderEntry type="library" name="slf4j-api-1.7.5" level="project" />
     <orderEntry type="library" name="commons-codec" level="project" />
     <orderEntry type="library" name="TeamCity common" level="project" />
-    <orderEntry type="library" name="TeamCity Common OAuth Support" level="project" />
+    <orderEntry type="library" name="TeamCity Common Connection API" level="project" />
     <orderEntry type="library" name="TeamCity Agent OAuth Support" level="project" />
   </component>
 </module>
