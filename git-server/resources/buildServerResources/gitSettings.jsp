@@ -177,29 +177,38 @@
     <tr id="gitConnectionNameRow" class="auth access_token">
       <th>Token:</th>
       <td>
-        <span title="<c:out value='${vcsPropertiesBean.tokenId}' />" id="issuedTokenId">
-          <span id="issuedForTitle">Issued for</span>
-          <strong id="issuedTokenUserName">
-            <c:out value="${vcsPropertiesBean.tokenOwnerUserName}" />
-            <c:if test="${not empty vcsPropertiesBean.tokenOwnerName}">
-              &nbsp;(<c:out value="${vcsPropertiesBean.tokenOwnerName}" />)
-            </c:if>
-          </strong>
-          via
-          <strong id="connectionDisplayName">
-            <c:out value="${vcsPropertiesBean.connectionDisplayName}" />
-          </strong>
-        </span>
-        <span class="acquireNewTokenBtn" style="padding-left: 1em;">
-          <c:if test="${(not empty vcsPropertiesBean.belongsToProject) and (not empty vcsPropertiesBean.connection) and (vcsPropertiesBean.connection.oauthProvider.acquiringTokenSupported)}">
+        <div id="tokenIssuedInfo">
+          <span title="tokenId" id="issuedTokenId">
+            <span id="issuedForTitle">Issued by</span>
+            <strong id="issuedTokenUserName">
+              <c:out value="${vcsPropertiesBean.tokenOwnerUserName}" />
+              <c:if test="${not empty vcsPropertiesBean.tokenOwnerName}">
+                &nbsp;(<c:out value="${vcsPropertiesBean.tokenOwnerName}" />)
+              </c:if>
+            </strong>
+            via
+            <strong id="connectionDisplayName">
+              <c:out value="${vcsPropertiesBean.connectionDisplayName}" />
+            </strong>
+          </span>
+          <span class="acquireNewTokenBtn" style="padding-left: 1em;">
+            <c:if test="${(not empty vcsPropertiesBean.belongsToProject) and (not empty vcsPropertiesBean.connection) and (vcsPropertiesBean.connection.oauthProvider.acquiringTokenSupported)}">
               <%-- pass connection.displayName, connection.id, tokenPopupPath, project.externalId  --%>
               <oauth:obtainToken connection="${vcsPropertiesBean.connection}" className="btn btn_small token-connection-button" callback="setAcquiredToken">
                 Acquire new
               </oauth:obtainToken>
-          </c:if>
-        </span>
-        <span class="error" id="error_issuedToken"></span>
-        <div id="token_additional_info"></div>
+            </c:if>
+          </span>
+          <span class="error" id="error_issuedToken"></span>
+          <div id="token_additional_info"></div>
+        </div>
+        <div id="tokenUnavailable" style="display: none;">Issued token is unavailable</div>
+        <script type="text/javascript">
+          if (!'${vcsPropertiesBean.connection}') {
+            $('tokenIssuedInfo').hide(0);
+            $('tokenUnavailable').show();
+          }
+        </script>
       </td>
     </tr>
     <tr id="gitPasswordRow" class="auth password">
@@ -498,8 +507,17 @@
     }
   };
 
+  calculateTokenIdFragment = function(tokenId) {
+    if (tokenId) {
+      var fragmentStart = tokenId.lastIndexOf(":") + 1;
+      return tokenId.substring(fragmentStart, fragmentStart + 7);
+    }
+    return "";
+  };
+
   $j('#url').keyup(function() {Git.applyAuthConstraints();});
   $j('#push_url').keyup(function() {Git.applyAuthConstraints();});
+  $('issuedTokenId').title = "tokenId: " + calculateTokenIdFragment("${vcsPropertiesBean.tokenId}");
 
   var authTypesForPrint = {
     ANONYMOUS : 'Anonymous',
@@ -517,6 +535,7 @@
     ANONYMOUS : 'anonymous',
     TEAMCITY_SSH_KEY : 'uploadedKey'
   };
+
 
   gitSelectAuthentication = function(resetHiddenFields) {
     BS.Util.toggleDependentElements($('authMethod').value, 'auth', resetHiddenFields, authTypes);
@@ -556,29 +575,54 @@
     $j('#' + noteId).show();
   };
 
+  setTokenInfo = function(statusDescription, it) {
+    $('tokenId').value = '';
+    BS.VcsSettingsForm.setModified(true);
+    $('issuedForTitle').innerHTML = statusDescription + " ";
+    if (it["teamcityUsername"] != null) {
+      var teamcityName = it["teamcityName"] ? it["teamcityName"].escapeHTML() : null;
+      $('issuedTokenUserName').innerHTML = it["teamcityUsername"].escapeHTML() + (teamcityName ? " (" + teamcityName + ")" : "");
+    } else {
+      $('issuedTokenUserName').innerHTML = "undefined user";
+    }
+    $('issuedTokenId').title = "tokenId: " + calculateTokenIdFragment(it["tokenId"]);
+    if (it.connectionDisplayName) {
+      $('connectionDisplayName').innerHTML = it.connectionDisplayName;
+    }
+
+    BS.jQueryDropdown($('authMethod')).ufd("changeOptions");
+    if (it.oauthLogin) {
+      $('username').value = it.oauthLogin;
+    }
+
+    if (it.oauthProviderId) {
+      $('oauthProviderId').value = it.oauthProviderId;
+    }
+
+    if (it.tokenType) {
+      $('tokenType').value = it.tokenType;
+    }
+
+    if (it.tokenId) {
+      $('tokenId').value = it.tokenId;
+    }
+  };
+
   setAcquiredToken = function(it) {
+    $('tokenIssuedInfo').show(0);
+    $('tokenUnavailable').hide(0);
     $('error_issuedToken').hide(0);
     $('token_additional_info').hide(0);
     gitSelectAuthentication(true);
-    if($("issuedTokenId").getAttribute("title") == it["tokenId"]) {
+    if (it["tokenId"] && $('tokenId') && it["tokenId"] == $('tokenId').value) {
       $('token_additional_info').show();
-      $('token_additional_info').innerHTML = "New token wasn't issued because existing token for current user is valid."
+      $('token_additional_info').innerHTML = "New token wasn't issued because the existing token is valid";
     }
     else if (it["acquiredNew"] == true) {
-      $('tokenId').value = '';
-      BS.VcsSettingsForm.setModified(true);
-      $('issuedForTitle').innerHTML = "New token was issued for ";
-      var teamcityName = it["teamcityName"].escapeHTML();
-      $('issuedTokenUserName').innerHTML = it["teamcityUsername"].escapeHTML() + (teamcityName ? " (" + teamcityName + ")" : "");
-      $('issuedTokenId').title = it["tokenId"];
+      setTokenInfo("New token was issued by", it);
     }
     else {
-      $('tokenId').value = '';
-      BS.VcsSettingsForm.setModified(true);
-      $('issuedForTitle').innerHTML = "Token for this VCS Root was replaced by previously saved token for ";
-      var teamcityName = it["teamcityName"].escapeHTML();
-      $('issuedTokenUserName').innerHTML = it["teamcityUsername"].escapeHTML() + (teamcityName ? " (" + teamcityName + ")" : "");
-      $('issuedTokenId').title = it["tokenId"];
+      setTokenInfo("The token will be replaced by the existing token issued for", it);
     }
   };
 
@@ -594,16 +638,13 @@
           $('authMethod').value = 'PASSWORD';
           if (cre.permanentToken) {
             $('secure:password').value = '**************';
+          } else if (cre.tokenType == 'refreshable') {
+            Git.attachAllAuthOptions();
+            $('authMethod').value = 'ACCESS_TOKEN';
+            setAcquiredToken(cre);
           } else if (cre.tokenType) {
             Git.attachAllAuthOptions();
             $('authMethod').value = 'ACCESS_TOKEN';
-          }
-          BS.jQueryDropdown($('authMethod')).ufd("changeOptions");
-          $('username').value = cre.oauthLogin;
-          $('oauthProviderId').value = cre.oauthProviderId;
-          $('tokenType').value = cre.tokenType;
-          if (cre.tokenId) {
-            $('tokenId').value = cre.tokenId;
           }
           gitSelectAuthentication(true);
         }
