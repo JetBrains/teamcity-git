@@ -67,6 +67,15 @@ public class URIishHelperImpl implements URIishHelper {
     }
   }
 
+  @NotNull
+  @Override
+  public CommonURIish removeAuth(@NotNull CommonURIish uri) {
+    URIish result = uri.get();
+    result = result.setUser(null);
+    result = result.setPass(null);
+    return new CommonURIishImpl(result);
+  }
+
   @Override
   public CommonURIish createAuthURI(@NotNull final AuthSettings authSettings, @NotNull final CommonURIish uri) {
     return createAuthURI(authSettings, uri, true);
