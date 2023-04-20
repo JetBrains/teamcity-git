@@ -130,4 +130,9 @@ public interface Constants {
   String AMAZON_HOSTS = "teamcity.git.amazonHosts";
 
   String GIT_HTTP_CRED_PREFIX = "teamcity.git.https.credentials";
+  /**
+   * Whether to include the authentication (i.e. username) in the Git fetch / push url used internally.
+   * Defaults to true
+   */
+  String AUTH_IN_URL = "teamcity.git.includeAuthInUrl";
 }

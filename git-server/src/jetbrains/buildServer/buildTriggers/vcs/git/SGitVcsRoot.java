@@ -1,6 +1,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.connections.ExpiringAccessToken;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
@@ -39,5 +40,33 @@ public class SGitVcsRoot extends GitVcsRoot {
     } else {
       return myTokenRefresher.getToken(parentRoot.getProject(), tokenId, myCheckProjectScope, true);
     }
+  }
+
+  @Override
+  public CommonURIish getRepositoryFetchURL() {
+    return postProcessUri(super.getRepositoryFetchURL());
+  }
+
+  @Override
+  public CommonURIish getRepositoryFetchURLNoFixedErrors() {
+    return postProcessUri(super.getRepositoryFetchURLNoFixedErrors());
+  }
+
+  @Override
+  public CommonURIish getRepositoryPushURL() {
+    return postProcessUri(super.getRepositoryPushURL());
+  }
+
+  @Override
+  public CommonURIish getRepositoryPushURLNoFixedErrors() {
+    return postProcessUri(super.getRepositoryPushURLNoFixedErrors());
+  }
+
+  @NotNull
+  private CommonURIish postProcessUri(@NotNull CommonURIish uri) {
+    if (!TeamCityProperties.getBooleanOrTrue(Constants.AUTH_IN_URL)) {
+      return myURIishHelper.removeAuth(uri);
+    }
+    return uri;
   }
 }
