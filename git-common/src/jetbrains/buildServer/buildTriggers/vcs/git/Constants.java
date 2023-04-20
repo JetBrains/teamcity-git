@@ -141,4 +141,9 @@ public interface Constants {
   String SHOW_CUSTOM_CLONE_PATH = "teamcity.git.showCustomClonePath";
   String CUSTOM_CLONE_PATH_ENABLED = "teamcity.git.customClonePathEnabled";
   String AMAZON_HOSTS = "teamcity.git.amazonHosts";
+  /**
+   * Whether to include the authentication (i.e. username) in the Git fetch / push url used internally.
+   * Defaults to true
+   */
+  String AUTH_IN_URL = "teamcity.git.includeAuthInUrl";
 }

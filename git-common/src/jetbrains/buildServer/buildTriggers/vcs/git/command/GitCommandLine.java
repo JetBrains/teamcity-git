@@ -19,6 +19,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitProgressListener;
 import jetbrains.buildServer.log.LogUtil;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
@@ -81,6 +82,12 @@ public class GitCommandLine extends GeneralCommandLine {
       withAskPassScript(authSettings.getPassword(), askPassPath -> {
         getParametersList().addAt(0, "-c");
         getParametersList().addAt(1, "core.askpass=" + askPassPath);
+
+        final boolean authInUrl = TeamCityProperties.getBooleanOrTrue(Constants.AUTH_IN_URL);
+        if (!authInUrl) {
+          getParametersList().addAt(2, "-c");
+          getParametersList().addAt(3, "credential.username=" + authSettings.getUserName());
+        }
 
         addEnvParam("GIT_ASKPASS", askPassPath);
         if (myCtx.isUseSshAskPass()) {
