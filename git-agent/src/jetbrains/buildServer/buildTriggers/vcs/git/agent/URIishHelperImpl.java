@@ -70,6 +70,13 @@ public class URIishHelperImpl implements URIishHelper {
     }
   }
 
+  @NotNull
+  @Override
+  public CommonURIish removeAuth(@NotNull CommonURIish uri) {
+    // not supported on agent
+    return uri;
+  }
+
   @Override
   public CommonURIish createAuthURI(@NotNull final AuthSettings authSettings, @NotNull final CommonURIish uri) {
     return createAuthURI(authSettings, uri, true);

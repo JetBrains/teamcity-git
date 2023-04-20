@@ -142,4 +142,9 @@ public interface Constants {
   String CUSTOM_CLONE_PATH_ENABLED = "teamcity.git.customClonePathEnabled";
   String NATIVE_GIT_RETRY_IF_REMOTE_REF_NOT_FOUND = "teamcity.git.native.retryIfRemoteRefNotFound";
   String AMAZON_HOSTS = "teamcity.git.amazonHosts";
+  /**
+   * Whether to include the authentication (i.e. username) in the Git fetch / push url used internally.
+   * Defaults to true
+   */
+  String AUTH_IN_URL = "teamcity.git.includeAuthInUrl";
 }
