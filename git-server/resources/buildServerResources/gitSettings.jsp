@@ -179,13 +179,21 @@
       <td>
         <div id="tokenIssuedInfo">
           <span title="tokenId" id="issuedTokenId">
-            <span id="issuedForTitle">Issued by</span>
-            <strong id="issuedTokenUserName">
-              <c:out value="${vcsPropertiesBean.tokenOwnerUserName}" />
-              <c:if test="${not empty vcsPropertiesBean.tokenOwnerName}">
-                &nbsp;(<c:out value="${vcsPropertiesBean.tokenOwnerName}" />)
-              </c:if>
-            </strong>
+            <c:choose>
+              <c:when test="${vcsPropertiesBean.tokenOwnerUserName == 'common usage'}">
+                <span id="issuedForTitle">Non-personal token issued</span>
+                <span id="issuedTokenUserName"/>
+              </c:when>
+              <c:otherwise>
+                <span id="issuedForTitle">Issued by</span>
+                <strong id="issuedTokenUserName">
+                  <c:out value="${vcsPropertiesBean.tokenOwnerUserName}" />
+                  <c:if test="${not empty vcsPropertiesBean.tokenOwnerName}">
+                    &nbsp;(<c:out value="${vcsPropertiesBean.tokenOwnerName}" />)
+                  </c:if>
+                </strong>
+              </c:otherwise>
+            </c:choose>
             via
             <strong id="connectionDisplayName">
               <c:out value="${vcsPropertiesBean.connectionDisplayName}" />
@@ -580,8 +588,12 @@
     BS.VcsSettingsForm.setModified(true);
     $('issuedForTitle').innerHTML = statusDescription + " ";
     if (it["teamcityUsername"] != null) {
-      var teamcityName = it["teamcityName"] ? it["teamcityName"].escapeHTML() : null;
-      $('issuedTokenUserName').innerHTML = it["teamcityUsername"].escapeHTML() + (teamcityName ? " (" + teamcityName + ")" : "");
+      if (it["teamcityUsername"] === 'common usage') {
+        $('issuedTokenUserName').innerHTML = '';
+      } else {
+        var teamcityName = it["teamcityName"] ? it["teamcityName"].escapeHTML() : null;
+        $('issuedTokenUserName').innerHTML = it["teamcityUsername"].escapeHTML() + (teamcityName ? " (" + teamcityName + ")" : "");
+      }
     } else {
       $('issuedTokenUserName').innerHTML = "undefined user";
     }
