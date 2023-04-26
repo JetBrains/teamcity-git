@@ -16,6 +16,10 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.util.Properties;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
@@ -40,11 +44,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.util.Properties;
 
 import static java.util.Arrays.asList;
 import static jetbrains.buildServer.agent.ClasspathUtil.composeClasspath;
@@ -93,11 +92,9 @@ public class GitPatchTest extends PatchTestCase {
     GitTestUtil.restoreProperties(myPropertiesBeforeTest);
   }
 
-  @Override
-  protected String getTestDataPath() {
-    return dataFile().getPath();
+  protected File getTestData(final String subDirName) {
+    return new File(dataFile().getPath() + File.separator + getTestName(), subDirName);
   }
-
 
   @DataProvider(name = "patchInSeparateProcess")
   public static Object[][] createData() {
