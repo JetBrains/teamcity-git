@@ -32,6 +32,7 @@
 <c:set var="showCustomClonePath" value="<%= TeamCityProperties.getBoolean(Constants.CUSTOM_CLONE_PATH_ENABLED) &&
                                             (TeamCityProperties.getBoolean(Constants.SHOW_CUSTOM_CLONE_PATH)
                                             || !StringUtil.isEmpty(propertiesBean.getProperties().get(Constants.PATH))) %>"/>
+<c:set var="placeholderNonPersonalToken" value="common usage"/>
 <style>
 .gitUsernameStyleHighlight {
   color: rgb(97, 94, 192);
@@ -180,7 +181,7 @@
         <div id="tokenIssuedInfo">
           <span title="tokenId" id="issuedTokenId">
             <c:choose>
-              <c:when test="${vcsPropertiesBean.tokenOwnerUserName == 'common usage'}">
+              <c:when test="${vcsPropertiesBean.tokenOwnerUserName == placeholderNonPersonalToken}">
                 <span id="issuedForTitle">Non-personal token issued</span>
                 <span id="issuedTokenUserName"/>
               </c:when>
@@ -588,7 +589,7 @@
     BS.VcsSettingsForm.setModified(true);
     $('issuedForTitle').innerHTML = statusDescription + " ";
     if (it["teamcityUsername"] != null) {
-      if (it["teamcityUsername"] === 'common usage') {
+      if (it["teamcityUsername"] === '${placeholderNonPersonalToken}') {
         $('issuedTokenUserName').innerHTML = '';
       } else {
         var teamcityName = it["teamcityName"] ? it["teamcityName"].escapeHTML() : null;
