@@ -17,6 +17,8 @@
 package org.eclipse.jgit.treewalk;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.io.IOException;
+import java.net.URISyntaxException;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleFetchException;
@@ -30,9 +32,6 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-
 import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIteratorFactory.createSubmoduleAwareTreeIterator;
 
 /**
@@ -41,7 +40,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAw
  */
 public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
 
-  private static Logger LOG = Logger.getInstance(SubmoduleAwareTreeIterator.class.getName());
+  private final static Logger LOG = Logger.getInstance(SubmoduleAwareTreeIterator.class.getName());
   /**
    * The iterator wrapped by this iterator
    */
@@ -179,25 +178,10 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     int wrappedMode = myWrappedIterator.getEntryRawMode();
     String entryPath = myWrappedIterator.getEntryPathString();
     myIsOnSubmodule = checkoutSubmodules() && GITLINK_MODE_BITS == wrappedMode;
-    if (myIsOnSubmodule && myRules != null) {
-      //if submodule dir is excluded by checkout rules we can treat it as an empty dir
-      String pathFromRoot = getPathFromRoot(entryPath);
-      if (myRules.map(pathFromRoot) == null) {
-        //submodule dir itself is excluded, but some of its dirs can be included
-        //happens with checkout rules like +:submodule/dir1
-        boolean rulesInsideSubmodule = false;
-        CheckoutRules submoduleAsRule = new CheckoutRules("+:" + pathFromRoot);
-        for (IncludeRule rule : myRules.getRootIncludeRules()) {
-          if (submoduleAsRule.map(rule.getFrom()) != null) {
-            rulesInsideSubmodule = true;
-            break;
-          }
-        }
-        if (!rulesInsideSubmodule) {
-          myIsOnSubmodule = false;
-        }
-      }
+    if (myIsOnSubmodule && !isSubmodulePathAffectedByCheckoutRules(entryPath)) {
+      myIsOnSubmodule = false;
     }
+
     mode = myIsOnSubmodule ? TREE_MODE_BITS : wrappedMode;
     if (myIsOnSubmodule) {
       try {
@@ -352,6 +336,24 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                               myLogSubmoduleErrors,
                                               myRules);
     }
+  }
+
+  private boolean isSubmodulePathAffectedByCheckoutRules(@NotNull String path) {
+    if (myRules == null) return true;
+
+    String pathFromRoot = getPathFromRoot(path);
+    if (myRules.map(pathFromRoot) == null) {
+      //submodule dir itself is excluded, but some of its dirs can be included
+      //happens with checkout rules like +:submodule/dir1
+      CheckoutRules submoduleAsRule = new CheckoutRules("+:" + pathFromRoot);
+      for (IncludeRule rule : myRules.getRootIncludeRules()) {
+        if (submoduleAsRule.map(rule.getFrom()) != null) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   @Override

@@ -17,7 +17,14 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.submodules;
 
 import com.intellij.openapi.diagnostic.Logger;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.Arrays;
+import jetbrains.buildServer.buildTriggers.vcs.git.CommitLoader;
+import jetbrains.buildServer.buildTriggers.vcs.git.OperationContext;
+import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.lib.BlobBasedConfig;
@@ -29,18 +36,13 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.Arrays;
-
 /**
  * The resolver for submodules
  */
 public class SubmoduleResolverImpl implements SubmoduleResolver {
 
-  private static Logger LOG = Logger.getInstance(SubmoduleResolverImpl.class.getName());
+  private static final Logger LOG = Logger.getInstance(SubmoduleResolverImpl.class.getName());
+  public static final String GITMODULES_FILE_NAME = ".gitmodules";
   /**
    * Path from the root of the first repository.
    * For root repository = "".
@@ -54,6 +56,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
   private final Repository myDb;
   protected final CommitLoader myCommitLoader;
   private SubmodulesConfig myConfig;
+  private boolean myConfigLoaded;
 
   public SubmoduleResolverImpl(@NotNull OperationContext context,
                                @NotNull CommitLoader commitLoader,
@@ -180,13 +183,16 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
    * Ensure that submodule configuration has been loaded.
    */
   private void ensureConfigLoaded() {
+    if (myConfigLoaded) return;
     if (myConfig == null) {
       try {
-        myConfig = new SubmodulesConfig(myContext.getConfig(myDb), new BlobBasedConfig(null, myDb, myCommit, ".gitmodules"));
+        myConfig = new SubmodulesConfig(myContext.getConfig(myDb), new BlobBasedConfig(null, myDb, myCommit, GITMODULES_FILE_NAME));
       } catch (FileNotFoundException e) {
         // do nothing
       } catch (Exception e) {
         LOG.error("Unable to load or parse submodule configuration at: " + myCommit.getId().name(), e);
+      } finally {
+        myConfigLoaded = true;
       }
     }
   }
@@ -207,7 +213,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
   }
 
   public SubmoduleResolverImpl getSubResolver(RevCommit commit, String path) {
-    Repository db = null;
+    Repository db;
     try {
       db = resolveRepository(getSubmoduleUrl(path));
     } catch (Exception e) {
@@ -225,5 +231,13 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
    */
   private String fullPath(String path) {
     return myPathFromRoot.length() == 0 ? path : myPathFromRoot + "/" + path;
+  }
+
+  /**
+   * @return the commit id of the commit with which this submodule resolver was created
+   */
+  @NotNull
+  public String getSubmoduleResolverConfigCommit() {
+    return myCommit.name();
   }
 }

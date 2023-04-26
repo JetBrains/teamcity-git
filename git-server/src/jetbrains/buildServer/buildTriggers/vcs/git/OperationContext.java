@@ -260,4 +260,9 @@ public class OperationContext {
   public ServerPluginConfig getPluginConfig() {
     return myPluginConfig;
   }
+
+  @NotNull
+  public CommitLoader getCommitLoader() {
+    return myCommitLoader;
+  }
 }

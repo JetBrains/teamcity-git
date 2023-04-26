@@ -23,7 +23,9 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import jetbrains.buildServer.TestLogger;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
+import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.RepositoryStateData;
@@ -61,7 +63,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   public void test_include_all_exclude_all() throws IOException, VcsException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:."),
                                                                                             "bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf", "refs/heads/master",
@@ -76,7 +78,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   public void test_start_and_stop_are_the_same() throws IOException, VcsException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test"),
                                                                                             "bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf", "refs/heads/master",
@@ -87,7 +89,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   public void test_start_and_stop_are_not_in_repository() throws IOException, VcsException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test"),
                                                                                             "94f6d9029650d88a96e7785d9bc672408bb6e076", "refs/heads/master",
@@ -104,7 +106,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   public void test_search_by_path() throws IOException, VcsException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().build();
 
     ensureFetchPerformed(support, root, "refs/heads/br1", "d5a9a3c51fd53b1aec5e3746f521dc78355d7c78");
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
@@ -132,7 +134,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   public void branch_merged_to_master() throws IOException, VcsException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
                                                                                             "b304522994197be5f336d58cc34edc11cbda095e", "refs/heads/master",
@@ -147,7 +149,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   public void master_merged_to_branch() throws IOException, VcsException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
                                                                                             "9c191865e2f2b05727e067aa4f918f3ed54f1f1a", "refs/heads/br2",
@@ -157,7 +159,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   public void both_parents_of_merge_are_interesting() throws IOException, VcsException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test"),
                                                                                             "0ce2e3b06b628633f7b8f73ce634ece1cfe25534", "refs/heads/master",
@@ -172,7 +174,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   public void both_parents_of_merge_are_interesting_latest_parents_change_non_interesting_files() throws IOException, VcsException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
                                                                                             "ce92302a768ce0763e83aebf8c0e16e102c8d06b", "refs/heads/br4",
@@ -182,7 +184,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   public void traverse_through_merges_looking_for_interesting_commit() throws VcsException, IOException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().build();
 
     Set<String> visited = new HashSet<>();
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test/subDir"),
@@ -226,7 +228,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
    */
   public void merge_commit_tree_does_not_have_difference_with_parents() throws VcsException, IOException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
                                                                                             "6399724fac6ec9c62e8795fc037ad385e873911f", "refs/heads/master",
@@ -254,7 +256,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   public void return_reachable_and_visited_stop_revisions_only1() throws VcsException, IOException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src"),
                                                                                             "cb3c3789d8b85d55197069c7c02f5ce693327ee4", "refs/heads/master",
@@ -266,7 +268,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   public void return_reachable_and_visited_stop_revisions_only2() throws IOException, VcsException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:non-existing-path"),
                                                                                             "6ff32b16fe485e7a0a1e209bf10987e1ad46292e", "refs/heads/master",
@@ -281,7 +283,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   public void invalid_stop_revisions_should_be_ignored() throws IOException, VcsException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src/File5.java"),
                                                                                             "6ff32b16fe485e7a0a1e209bf10987e1ad46292e", "refs/heads/master",
@@ -294,7 +296,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
   public void should_return_closest_merge_commit_with_one_parent_affected() throws IOException, VcsException {
     GitVcsSupport support = git();
-    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    VcsRoot root = getVcsRootBuilder().withSubmodulePolicy(SubmodulesCheckoutPolicy.CHECKOUT).build();
 
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src/File4.java"),
                                                                                             "ce92302a768ce0763e83aebf8c0e16e102c8d06b", "refs/heads/br4",
@@ -302,6 +304,10 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                                                                             null);
 
     then(rev.getRevision()).isEqualTo("d036d012385a762568a474b57337b9cf398b96e0");
+  }
+
+  private VcsRootBuilder getVcsRootBuilder() {
+    return vcsRoot().withFetchUrl(GitUtils.toURL(myRepo));
   }
 
   @NotNull

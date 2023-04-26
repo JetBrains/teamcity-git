@@ -1,0 +1,6 @@
+0000000000000000000000000000000000000000 13e4bd374d07b35230d457390941a28885893582 Pavel Sher <pavel.sher@jetbrains.com> 1682499848 +0200	commit (initial): README
+13e4bd374d07b35230d457390941a28885893582 c7f273cd48674b8f60c6ff3b1e817b3368f605c9 Pavel Sher <pavel.sher@jetbrains.com> 1682499885 +0200	commit: test/File.java
+c7f273cd48674b8f60c6ff3b1e817b3368f605c9 bc79b4b76aaa6cdb68c7cbf4effc214b5955e5e1 Pavel Sher <pavel.sher@jetbrains.com> 1682507019 +0200	push
+bc79b4b76aaa6cdb68c7cbf4effc214b5955e5e1 6392d1d7ba58dd59d0501f52ea8fa2450a18d503 Pavel Sher <pavel.sher@jetbrains.com> 1682508635 +0200	commit: readme updated again
+6392d1d7ba58dd59d0501f52ea8fa2450a18d503 190f5153ff70549244277ccdb82fcf9a70dedbd5 Pavel Sher <pavel.sher@jetbrains.com> 1682516246 +0200	commit: src/File.java
+190f5153ff70549244277ccdb82fcf9a70dedbd5 985c6149804821072c79bf0d8090bff9090331f7 Pavel Sher <pavel.sher@jetbrains.com> 1682516305 +0200	commit: test/Test.java
