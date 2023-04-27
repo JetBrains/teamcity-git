@@ -267,7 +267,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     if (root.isCheckoutSubmodules()) {
       SubmoduleResolverImpl submoduleResolver = mySubmoduleResolver != null ? mySubmoduleResolver : createSubmoduleResolver(commit);
       SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(root.getSubmodulesCheckoutPolicy(), true);
-      tw.addTree(create(db, commit, submoduleResolver, root.getRepositoryFetchURL().toString(), "", checkoutPolicy, false, null));
+      tw.addTree(create(db, commit, submoduleResolver, root.getRepositoryFetchURL().toString(), "", checkoutPolicy, false, myCheckoutRules));
     } else {
       tw.addTree(commit.getTree().getId());
     }
