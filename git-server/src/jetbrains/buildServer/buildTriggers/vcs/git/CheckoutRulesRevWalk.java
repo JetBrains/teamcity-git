@@ -17,17 +17,23 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
+import org.eclipse.jgit.treewalk.TreeWalk;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.*;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy.getPolicyWithErrorsIgnored;
+import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIteratorFactory.create;
 
 /**
  * This RevWalk class accepts checkout rules and traverses commits graph until it finds a commit matched by these rules.
@@ -37,6 +43,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private final Set<String> myCollectedUninterestingRevisions = new HashSet<>();
   private final Set<String> myVisitedRevisions = new HashSet<>();
   private final Map<String, List<ObjectId>> myMergeBasesCache = new HashMap<>();
+  private SubmoduleResolverImpl mySubmoduleResolver;
 
   CheckoutRulesRevWalk(@NotNull final ServerPluginConfig config,
                        @NotNull final OperationContext context,
@@ -48,16 +55,30 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   @Nullable
   public RevCommit getNextMatchedCommit() throws IOException, VcsException {
     while (next() != null) {
-      if (myCollectedUninterestingRevisions.contains(getCurrentCommit().name())) continue;
-      myVisitedRevisions.add(getCurrentCommit().name());
+      final RevCommit cc = getCurrentCommit();
+      if (myVisitedRevisions.isEmpty()) {
+        // initialize the submodules resolver for the first revision only
+        initSubmodulesResolver();
+      }
+      if (myCollectedUninterestingRevisions.contains(cc.name())) continue;
+      myVisitedRevisions.add(cc.name());
       if (isCurrentCommitIncluded()) {
-        return getCurrentCommit();
+        return cc;
       }
 
-      myMergeBasesCache.remove(getCurrentCommit().name());
+      myMergeBasesCache.remove(cc.name());
     }
 
     return null;
+  }
+
+  private void initSubmodulesResolver() {
+    mySubmoduleResolver = createSubmoduleResolver(getCurrentCommit());
+  }
+
+  @NotNull
+  private SubmoduleResolverImpl createSubmoduleResolver(@NotNull RevCommit commit) {
+    return new SubmoduleResolverImpl(getContext(), getContext().getCommitLoader(), getRepository(), commit, "");
   }
 
   @NotNull
@@ -71,6 +92,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
     final RevCommit[] parents = getCurrentCommit().getParents();
 
+    final GitVcsRoot gitRoot = getGitRoot();
     if (parents.length > 1) {
       // merge commit is interesting only if it changes interesting files when comparing to both of its parents,
       // otherwise, if files are changed comparing to one parent only, then we need to go deeper through the commit graph
@@ -79,19 +101,12 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
       Set<RevCommit> uninterestingParents = new HashSet<>();
       for (RevCommit parent: parents) {
-        try (VcsChangeTreeWalk tw = newVcsChangeTreeWalk()) {
-          tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
-          tw.setRecursive(true);
-          getContext().addTree(getGitRoot(), tw, getRepository(), getCurrentCommit(), true, false, myCheckoutRules);
-          getContext().addTree(getGitRoot(), tw, getRepository(), parent, true, false, myCheckoutRules);
-
-          if (isAcceptedByCheckoutRules(myCheckoutRules, tw)) {
-            numAffectedParents++;
-          } else {
-            for (RevCommit p: parents) {
-              if (p != parent) {
-                uninterestingParents.add(p);
-              }
+        if (isAffectedByCheckoutRules(gitRoot, parent)) {
+          numAffectedParents++;
+        } else {
+          for (RevCommit p: parents) {
+            if (p != parent) {
+              uninterestingParents.add(p);
             }
           }
         }
@@ -119,18 +134,50 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
       return numAffectedParents > 1;
     }
 
+    return isAffectedByCheckoutRules(gitRoot, parents.length > 0 ? parents[0] : null);
+  }
+
+  private boolean isAffectedByCheckoutRules(@NotNull GitVcsRoot gitVcsRoot, @Nullable RevCommit parent) throws IOException {
     try (VcsChangeTreeWalk tw = newVcsChangeTreeWalk()) {
-      tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(getGitRoot()));
+      tw.setFilter(new IgnoreSubmoduleErrorsTreeFilter(gitVcsRoot));
       tw.setRecursive(true);
-      getContext().addTree(getGitRoot(), tw, getRepository(), getCurrentCommit(), true, false, myCheckoutRules);
-      if (parents.length > 0) {
-        getContext().addTree(getGitRoot(), tw, getRepository(), parents[0], true, false, myCheckoutRules);
+      addTree(gitVcsRoot, tw, getRepository(), getCurrentCommit());
+      if (parent != null) {
+        addTree(gitVcsRoot, tw, getRepository(), parent);
       }
 
-      if (isAcceptedByCheckoutRules(myCheckoutRules, tw)) return true;
+      while (tw.next()) {
+        final String path = tw.getPathString();
+        if (path.equals(SubmoduleResolverImpl.GITMODULES_FILE_NAME) &&
+            gitVcsRoot.isCheckoutSubmodules() &&
+            mySubmoduleResolver != null &&
+            !mySubmoduleResolver.getSubmoduleResolverConfigCommit().equals(getCurrentCommit().name())) {
+
+          // our submodules resolver is no longer relevant, so it's safer to reset it and
+          // from now one create a new one for each new commit
+          mySubmoduleResolver = null;
+        }
+
+        if (myCheckoutRules.shouldInclude(path)) {
+          return true;
+        }
+      }
     }
 
     return false;
+  }
+
+  private void addTree(@NotNull GitVcsRoot root,
+                       @NotNull TreeWalk tw,
+                       @NotNull Repository db,
+                       @NotNull RevCommit commit) throws IOException {
+    if (root.isCheckoutSubmodules()) {
+      SubmoduleResolverImpl submoduleResolver = mySubmoduleResolver != null ? mySubmoduleResolver : createSubmoduleResolver(commit);
+      SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(root.getSubmodulesCheckoutPolicy(), true);
+      tw.addTree(create(db, commit, submoduleResolver, root.getRepositoryFetchURL().toString(), "", checkoutPolicy, false, myCheckoutRules));
+    } else {
+      tw.addTree(commit.getTree().getId());
+    }
   }
 
   private boolean isAcceptedByCheckoutRules(final @NotNull CheckoutRules rules, @NotNull final VcsChangeTreeWalk tw) throws IOException {

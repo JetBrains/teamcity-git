@@ -34,13 +34,15 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * The resolver for submodules
  */
 public class SubmoduleResolverImpl implements SubmoduleResolver {
 
-  private static Logger LOG = Logger.getInstance(SubmoduleResolverImpl.class.getName());
+  public static final String GITMODULES_FILE_NAME = ".gitmodules";
+  private final static Logger LOG = Logger.getInstance(SubmoduleResolverImpl.class.getName());
   /**
    * Path from the root of the first repository.
    * For root repository = "".
@@ -54,6 +56,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
   private final Repository myDb;
   protected final CommitLoader myCommitLoader;
   private SubmodulesConfig myConfig;
+  private boolean myConfigLoaded;
 
   public SubmoduleResolverImpl(@NotNull OperationContext context,
                                @NotNull CommitLoader commitLoader,
@@ -180,13 +183,16 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
    * Ensure that submodule configuration has been loaded.
    */
   private void ensureConfigLoaded() {
+    if (myConfigLoaded) return;
     if (myConfig == null) {
       try {
-        myConfig = new SubmodulesConfig(myContext.getConfig(myDb), new BlobBasedConfig(null, myDb, myCommit, ".gitmodules"));
+        myConfig = new SubmodulesConfig(myContext.getConfig(myDb), new BlobBasedConfig(null, myDb, myCommit, GITMODULES_FILE_NAME));
       } catch (FileNotFoundException e) {
         // do nothing
       } catch (Exception e) {
         LOG.error("Unable to load or parse submodule configuration at: " + myCommit.getId().name(), e);
+      } finally {
+        myConfigLoaded = true;
       }
     }
   }
@@ -225,5 +231,10 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
    */
   private String fullPath(String path) {
     return myPathFromRoot.length() == 0 ? path : myPathFromRoot + "/" + path;
+  }
+
+  @NotNull
+  public String getSubmoduleResolverConfigCommit() {
+    return myCommit.name();
   }
 }
