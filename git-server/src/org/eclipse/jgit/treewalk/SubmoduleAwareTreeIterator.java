@@ -351,9 +351,11 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
           return true;
         }
       }
+
+      return false;
     }
 
-    return false;
+    return true;
   }
 
   @Override
