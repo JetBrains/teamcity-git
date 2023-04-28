@@ -23,7 +23,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.ServerPaths;
-import jetbrains.buildServer.serverSide.oauth.OAuthToken;
+import jetbrains.buildServer.serverSide.connections.RefreshableToken;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
@@ -188,25 +188,25 @@ public class GitSupportBuilder {
     TokenRefresher tokenRefresher = new TokenRefresher() {
       @Nullable
       @Override
-      public OAuthToken getRefreshableToken(@NotNull String vcsRootExtId, @NotNull String tokenFullId) {
+      public RefreshableToken getRefreshableToken(@NotNull String vcsRootExtId, @NotNull String tokenFullId) {
         return null;
       }
 
       @Nullable
       @Override
-      public OAuthToken getRefreshableToken(@NotNull SProject project, @NotNull String tokenFullId) {
+      public RefreshableToken getRefreshableToken(@NotNull SProject project, @NotNull String tokenFullId) {
         return null;
       }
 
       @Nullable
       @Override
-      public OAuthToken getRefreshableToken(@NotNull String vcsRootExtId, @NotNull String tokenFullId, boolean checkProjectScope) {
+      public RefreshableToken getRefreshableToken(@NotNull String vcsRootExtId, @NotNull String tokenFullId, boolean checkProjectScope) {
         return null;
       }
 
       @Nullable
       @Override
-      public OAuthToken getRefreshableToken(@Nullable SProject project, @NotNull String tokenFullId, boolean checkProjectScope) {
+      public RefreshableToken getRefreshableToken(@Nullable SProject project, @NotNull String tokenFullId, boolean checkProjectScope) {
         return null;
       }
     };
