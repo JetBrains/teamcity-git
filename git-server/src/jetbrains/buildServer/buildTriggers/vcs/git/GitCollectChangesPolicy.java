@@ -20,10 +20,12 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.Disposable;
 import jetbrains.buildServer.util.NamedDaemonThreadFactory;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.ObjectDatabase;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -119,12 +121,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
       GitVcsRoot gitRoot = context.getGitRoot();
       return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-        try {
-          new FetchContext(context, myVcs).withRevisions(Collections.singletonMap(startRevisionBranchName, startRevision), false).fetchIfNoCommitsOrFail();
-        } catch (Throwable e) {
-          // this exception should not happen here but we'll handle it just for the case
-          LOG.warnAndDebugDetails("Could not find the start revision " + startRevision + " in the branch " + startRevisionBranchName, e);
-        }
+        ensureRevisionIsFetched(startRevision, startRevisionBranchName, context);
 
         CheckoutRulesRevWalk revWalk = null;
         try {
@@ -162,6 +159,32 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       });
     } finally {
       name.dispose();
+    }
+  }
+
+  private void ensureRevisionIsFetched(@NotNull String revision, @NotNull String branchName, @NotNull OperationContext context) {
+    int repeatAttempts = TeamCityProperties.getInteger("teamcity.git.fetchSingleRevision.maxAttempts", 5);
+    for (int i=1; i <= repeatAttempts; i++) {
+      try {
+        Repository repository = context.getRepository();
+        ObjectId id = ObjectId.fromString(GitUtils.versionRevision(revision));
+        ObjectDatabase objectDatabase = repository.getObjectDatabase();
+        if (objectDatabase.has(id)) return;
+
+        objectDatabase.refresh(); // rescan pack files just for the case
+        if (objectDatabase.has(id)) return;
+
+        new FetchContext(context, myVcs).withRevisions(Collections.singletonMap(branchName, revision), false).fetchIfNoCommitsOrFail();
+        return;
+      } catch (Throwable e) {
+        boolean repeatable = e instanceof VcsOperationRejectedException;
+        String message = "Could not find the start revision " + revision + " in the branch " + branchName;
+        if (repeatable && i < repeatAttempts) {
+          message += ", will repeat, attempts left: " + (repeatAttempts - i);
+        }
+        LOG.warnAndDebugDetails(message, e);
+        if (!(e instanceof VcsOperationRejectedException)) break;
+      }
     }
   }
 
