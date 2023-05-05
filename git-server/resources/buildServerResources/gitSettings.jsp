@@ -650,7 +650,9 @@
         if (cre != null) {
           $('authMethod').value = 'PASSWORD';
           if (cre.permanentToken) {
+            $('username').value = cre.oauthLogin;
             $('secure:password').value = '**************';
+            $('oauthProviderId').value = cre.oauthProviderId;
           } else if (cre.tokenType == 'refreshable') {
             Git.attachAllAuthOptions();
             $('authMethod').value = 'ACCESS_TOKEN';
