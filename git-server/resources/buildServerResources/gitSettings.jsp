@@ -600,7 +600,7 @@
     }
     $('issuedTokenId').title = "tokenId: " + calculateTokenIdFragment(it["tokenId"]);
     if (it.connectionDisplayName) {
-      $('connectionDisplayName').innerHTML = it.connectionDisplayName;
+      $('connectionDisplayName').innerHTML = it.connectionDisplayName.escapeHTML();
     }
 
     BS.jQueryDropdown($('authMethod')).ufd("changeOptions");
