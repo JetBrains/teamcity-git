@@ -201,7 +201,11 @@
             </strong>
           </span>
           <span class="acquireNewTokenBtn" style="padding-left: 1em;">
-            <c:if test="${(not empty vcsPropertiesBean.belongsToProject) and (not empty vcsPropertiesBean.connection) and (vcsPropertiesBean.connection.oauthProvider.acquiringTokenSupported)}">
+            <c:if test="${(not empty vcsPropertiesBean.belongsToProject) and
+                          (not empty vcsPropertiesBean.connection) and
+                          (vcsPropertiesBean.connection.oauthProvider.acquiringTokenSupported) and
+                          (not empty vcsPropertiesBean.originalVcsRoot) and
+                          afn:canEditVcsRoot(vcsPropertiesBean.originalVcsRoot)}">
               <%-- pass connection.displayName, connection.id, tokenPopupPath, project.externalId  --%>
               <oauth:obtainToken connection="${vcsPropertiesBean.connection}" className="btn btn_small token-connection-button" callback="setAcquiredToken">
                 Acquire new
