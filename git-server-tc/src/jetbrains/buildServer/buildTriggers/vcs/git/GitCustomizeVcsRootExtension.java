@@ -42,7 +42,7 @@ public class GitCustomizeVcsRootExtension extends SimplePageExtension implements
 
     final SetupObjectFromResourceBean projectSetupBean = getSetupObjectFromResourceBean(request);
     if (projectSetupBean != null) {
-      projectSetupBean.getDiscoveredResource().getParameters().put(Constants.BRANCH_SPEC, "refs/heads/*");
+      projectSetupBean.getDiscoveredResource().getParameters().putIfAbsent(Constants.BRANCH_SPEC, "refs/heads/*");
     }
   }
 }
