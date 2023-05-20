@@ -183,7 +183,7 @@
             <c:choose>
               <c:when test="${vcsPropertiesBean.tokenOwnerUserName == placeholderNonPersonalToken}">
                 <span id="issuedForTitle">Non-personal token issued</span>
-                <span id="issuedTokenUserName"/>
+                <span id="issuedTokenUserName"></span>
               </c:when>
               <c:otherwise>
                 <span id="issuedForTitle">Issued by</span>
@@ -635,11 +635,8 @@
       $('token_additional_info').show();
       $('token_additional_info').innerHTML = "New token wasn't issued because the existing token is valid";
     }
-    else if (it["acquiredNew"] == true) {
-      setTokenInfo("New token was issued by", it);
-    }
     else {
-      setTokenInfo("The token will be replaced by the existing token issued for", it);
+      setTokenInfo("Currently configured access token was issued", it);
     }
   };
 
