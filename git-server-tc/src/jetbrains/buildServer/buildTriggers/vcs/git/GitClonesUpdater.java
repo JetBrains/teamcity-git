@@ -52,6 +52,7 @@ public class GitClonesUpdater {
                                          @NotNull final RepositoryState oldState,
                                          @NotNull final RepositoryState newState) {
         if (serverResponsibility.canCheckForChanges()) return;
+        if (myExecutor.isShutdown()) return;
 
         if (!TeamCityProperties.getBooleanOrTrue("teamcity.git.localClones.updateIfNoCheckingForChangesResponsibility")) return;
 
