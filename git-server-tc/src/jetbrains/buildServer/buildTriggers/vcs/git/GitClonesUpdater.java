@@ -52,7 +52,6 @@ public class GitClonesUpdater {
                                          @NotNull final RepositoryState oldState,
                                          @NotNull final RepositoryState newState) {
         if (serverResponsibility.canCheckForChanges()) return;
-        if (myExecutor.isShutdown()) return;
 
         if (!TeamCityProperties.getBooleanOrTrue("teamcity.git.localClones.updateIfNoCheckingForChangesResponsibility")) return;
 
@@ -64,6 +63,8 @@ public class GitClonesUpdater {
                                                                    TeamCityProperties.getInteger("teamcity.git.localClones.maxParallelUpdateThreads", 2));
             }
           }
+          if (myExecutor.isShutdown()) return;
+
           myExecutor.submit(GitClonesUpdater.this::processVcsRootsScheduledForUpdate);
         }
       }
