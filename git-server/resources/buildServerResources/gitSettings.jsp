@@ -517,6 +517,13 @@
 
       //refresh ufd
       $j("#authMethod").ufd("changeOptions");
+
+      const fetchUrl = $j('#url').val();
+      if (fetchUrl && fetchUrl.length > 0) {
+        $j('.acquireNewTokenBtn').show();
+      } else {
+        $j('.acquireNewTokenBtn').hide();
+      }
     }
   };
 
@@ -638,6 +645,10 @@
     else {
       setTokenInfo("Currently configured access token was issued", it);
     }
+  };
+
+  window.getRepositoryUrl = function () {
+    return $('url').value;
   };
 
   illustrateUsernameStyle();
