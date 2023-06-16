@@ -16,7 +16,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
@@ -51,7 +52,7 @@ public class GitClonesUpdater {
       public void repositoryStateChanged(@NotNull final VcsRoot root,
                                          @NotNull final RepositoryState oldState,
                                          @NotNull final RepositoryState newState) {
-        if (serverResponsibility.canCheckForChanges()) return;
+        if (serverResponsibility.canCheckForChanges() && CurrentNodeInfo.getNodeId().equals(newState.getLastUpdatedBy())) return;
 
         if (!TeamCityProperties.getBooleanOrTrue("teamcity.git.localClones.updateIfNoCheckingForChangesResponsibility")) return;
 

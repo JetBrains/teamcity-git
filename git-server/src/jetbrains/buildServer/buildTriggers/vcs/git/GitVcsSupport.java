@@ -216,6 +216,13 @@ public class GitVcsSupport extends ServerVcsSupport
                                                                                 myTransportFactory);
       try {
         myCommitLoader.loadCommit(context, gitRoot, toRevision);
+        if (fromRevision != null) {
+          try {
+            myCommitLoader.loadCommit(context, gitRoot, fromRevision);
+          } catch (Throwable e) {
+            LOG.warn("Could not find " + fromRevision + " in the local clone of the VCS root " + LogUtil.describe(root) + " even after fetching of all the branches, will build a full patch instead of an incremental one");
+          }
+        }
         gitPatchBuilder.buildPatch();
       } catch (Exception e) {
         throw context.wrapException(e);
