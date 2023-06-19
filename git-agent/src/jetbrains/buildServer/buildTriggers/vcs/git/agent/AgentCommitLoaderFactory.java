@@ -237,8 +237,8 @@ public class AgentCommitLoaderFactory {
     public boolean loadCommitPreferShallow(@NotNull String sha, @NotNull String branch) throws VcsException {
       final FetchHeadsMode fetchHeadsMode = myPluginConfig.getFetchHeadsMode();
       if (fetchHeadsMode == FetchHeadsMode.AFTER_BUILD_BRANCH) {
-        if (hasRevision(sha)) {
-          myLogger.debug("Revision '" + sha + "' is present in the local repository, skip fetch");
+        if (hasRevision(sha) && hasBranch(branch)) {
+          myLogger.debug("Branch '" + branch + "' and revision '" + sha + "' are present in the local repository, skip fetch");
           return true;
         }
 
@@ -333,6 +333,15 @@ public class AgentCommitLoaderFactory {
 
     protected boolean hasRevision(@NotNull String revision) {
       return getRevision(myTargetDirectory, revision) != null;
+    }
+
+    protected boolean hasBranch(@NotNull String branch) {
+      return myGitFactory.create(myTargetDirectory)
+                         .showRef()
+                         .setPattern(branch)
+                         .call()
+                         .getValidRefs()
+                         .size() > 0;
     }
 
     private String getRevision(@NotNull File repositoryDir, @NotNull String revision) {
