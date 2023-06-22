@@ -40,33 +40,49 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
     }
 
     Path gitDir = dir.resolve(".git");
-    boolean gitDirExisted = Files.exists(gitDir);
+    final boolean gitDirExisted = Files.exists(gitDir);
 
+    File tmpRepoDir = null;
     try {
-      InitCommandResult initCommandResult = myGitRepoOperations.initCommand().init(repositoryPath, false);
+      String repoPath;
+      if (gitDirExisted) {
+        repoPath = repositoryPath;
+      } else {
+        tmpRepoDir = FileUtil.createTempDirectory("git-repo-init", "");
+        repoPath = tmpRepoDir.getAbsolutePath();
+      }
 
+      InitCommandResult initCommandResult = myGitRepoOperations.initCommand().init(repoPath, false);
       Map<String, String> props = myVcs.getDefaultVcsProperties();
       props.put(Constants.FETCH_URL, GitUtils.toURL(new File(repositoryPath)));
       props.put(Constants.BRANCH_NAME, initCommandResult.getDefaultBranch());
-
       VcsRootImpl dummyRoot = new VcsRootImpl(-1, Constants.VCS_NAME, props);
 
-      if (!initCommandResult.repositoryAlreadyExists()) {
-        OperationContext operationContext = myVcs.createContext(dummyRoot, "Repository initialization");
-        PersonIdent personIdent = PersonIdentFactory.getTagger(operationContext.getGitRoot(), operationContext.getRepository());
-
-        List<Pair<String, String>> configProps = Arrays.asList(
-          Pair.create("user.name", personIdent.getName()),
-          Pair.create("user.email", personIdent.getEmailAddress()),
-          Pair.create("core.autocrlf", "false"),
-          Pair.create("receive.denyCurrentBranch", "ignore")
-        );
-
-        for (Pair<String, String> configProp : configProps) {
-          myGitRepoOperations.configCommand().addConfigParameter(repositoryPath, GitConfigCommand.Scope.LOCAL, configProp.getFirst(), configProp.getSecond());
-        }
+      if (gitDirExisted) {
+        myGitRepoOperations.commitCommand().commit(repositoryPath, commitSettings);
+        return props;
       }
-      myGitRepoOperations.commitCommand().commit(repositoryPath, commitSettings);
+      OperationContext operationContext = myVcs.createContext(dummyRoot, "Repository initialization");
+      PersonIdent personIdent = PersonIdentFactory.getTagger(operationContext.getGitRoot(), operationContext.getRepository());
+
+      List<Pair<String, String>> configProps = Arrays.asList(
+        Pair.create("user.name", personIdent.getName()),
+        Pair.create("user.email", personIdent.getEmailAddress()),
+        Pair.create("core.autocrlf", "false"),
+        Pair.create("receive.denyCurrentBranch", "ignore"),
+        Pair.create("core.worktree", repositoryPath)
+      );
+
+      for (Pair<String, String> configProp : configProps) {
+        myGitRepoOperations.configCommand().addConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, configProp.getFirst(), configProp.getSecond());
+      }
+      myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
+      List<String> errors = new ArrayList<>();
+      FileUtil.moveDirWithContent(tmpRepoDir, dir.toFile(), errors::add);
+      if (!errors.isEmpty()) {
+        throw new IOException("Failed to initialize Git repository at " + repositoryPath
+                              + ". Some files were not copied to the destination directory from temp .git directory. The following errors were reported: " + errors);
+      }
       return props;
     } catch (Exception e) {
       //if any exception during initialization occurs looks like it's better to remove initialized repository if it was created just now (i.e. directory didn't exist on method start)
@@ -75,7 +91,10 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         Loggers.VCS.warn("Removing the partially initialized Git repository at path: " + file.getAbsolutePath());
         FileUtil.delete(file);
       }
-      throw e;
+      if (tmpRepoDir != null) {
+        FileUtil.delete(tmpRepoDir);
+      }
+      throw new VcsException(e);
     }
   }
 
