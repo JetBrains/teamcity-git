@@ -307,20 +307,21 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   }
 
   @Override
-  public void commit(String path, @NotNull CommitSettings commitSettings) throws VcsException {
+  public void commit(String repositoryPath, @NotNull CommitSettings commitSettings, List<String> paths) throws VcsException {
 
     final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
-    final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(repositoryPath), ctx);
 
-    executeCommand(ctx, "add", "add files in repository: " + path, () -> {
+    executeCommand(ctx, "add", "add files in repository: " + repositoryPath, () -> {
       final AddCommand addCommand =
         gitFacade.add()
+                 .setPaths(paths)
                  .setAddAll(true);
       addCommand.call();
       return null;
     }, gitFacade);
 
-    executeCommand(ctx, "commit", "commit files in repository: " + path, () -> {
+    executeCommand(ctx, "commit", "commit files in repository: " + repositoryPath, () -> {
       final CommitCommand addCommand =
         gitFacade.commit()
                  .setComment(commitSettings.getDescription())

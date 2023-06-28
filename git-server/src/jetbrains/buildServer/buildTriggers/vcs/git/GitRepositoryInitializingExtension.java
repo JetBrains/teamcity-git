@@ -59,7 +59,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
       VcsRootImpl dummyRoot = new VcsRootImpl(-1, Constants.VCS_NAME, props);
 
       if (gitDirExisted) {
-        myGitRepoOperations.commitCommand().commit(repositoryPath, commitSettings);
+        myGitRepoOperations.commitCommand().commit(repositoryPath, commitSettings, Collections.emptyList());
         return props;
       }
       OperationContext operationContext = myVcs.createContext(dummyRoot, "Repository initialization");
@@ -76,7 +76,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
       for (Pair<String, String> configProp : configProps) {
         myGitRepoOperations.configCommand().addConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, configProp.getFirst(), configProp.getSecond());
       }
-      myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
+      myGitRepoOperations.commitCommand().commit(repoPath, commitSettings, Collections.emptyList());
       List<String> errors = new ArrayList<>();
       FileUtil.moveDirWithContent(tmpRepoDir, dir.toFile(), errors::add);
       if (!errors.isEmpty()) {
