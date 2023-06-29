@@ -38,7 +38,8 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperati
 import static jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations.CERT_FILE;
 
 //see native-git-testng.xml suite for tests examples
-public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand, TagCommand, StatusCommandServer, InitCommandServer, LocalCommitCommandServer, ConfigCommand {
+public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand, TagCommand, StatusCommandServer, InitCommandServer, LocalCommitCommandServer, ConfigCommand,
+                                          AddCommandServer {
 
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(NativeGitCommands.class.getName() + ".Performance");
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
@@ -307,8 +308,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   }
 
   @Override
-  public void commit(String repositoryPath, @NotNull CommitSettings commitSettings, List<String> paths) throws VcsException {
-
+  public void add(String repositoryPath, List<String> paths) throws VcsException {
     final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(repositoryPath), ctx);
 
@@ -320,6 +320,13 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
       addCommand.call();
       return null;
     }, gitFacade);
+  }
+
+  @Override
+  public void commit(String repositoryPath, @NotNull CommitSettings commitSettings) throws VcsException {
+
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(repositoryPath), ctx);
 
     executeCommand(ctx, "commit", "commit files in repository: " + repositoryPath, () -> {
       final CommitCommand addCommand =

@@ -162,6 +162,11 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   }
 
   @Override
+  public AddCommandServer addCommand() {
+    return (AddCommandServer)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Add command is available only for native git"));
+  }
+
+  @Override
   public ConfigCommand configCommand() {
     return (ConfigCommand)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Config command is available only for native git"));
   }

@@ -20,6 +20,8 @@ public interface GitRepoOperations extends GitNativeOperationsStatus {
 
   InitCommandServer initCommand();
 
+  AddCommandServer addCommand();
+
   LocalCommitCommandServer commitCommand();
 
   ConfigCommand configCommand();
