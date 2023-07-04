@@ -3,9 +3,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.util.Pair;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitConfigCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.InitCommandResult;
@@ -30,7 +29,10 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
 
   @NotNull
   @Override
-  public Map<String, String> initialize(@NotNull String repositoryPath, @NotNull CommitSettings commitSettings, @NotNull List<String> ignoredPaths) throws VcsException {
+  public Map<String, String> initialize(@NotNull String repositoryPath,
+                                        @NotNull CommitSettings commitSettings,
+                                        @NotNull List<String> ignoredPaths,
+                                        @NotNull FilesProcessor filesProcessor) throws VcsException {
 
     Path dir = Paths.get(repositoryPath);
     try {
@@ -77,6 +79,27 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
       for (Pair<String, String> configProp : configProps) {
         myGitRepoOperations.configCommand().addConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, configProp.getFirst(), configProp.getSecond());
       }
+      Files.walkFileTree(dir, new FileVisitor<Path>() {
+        @Override
+        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+          return processByProcessor(dir, filesProcessor, repoPath, commitSettings);
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+          return processByProcessor(file, filesProcessor, repoPath, commitSettings);
+        }
+
+        @Override
+        public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+          throw exc;
+        }
+
+        @Override
+        public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
+          return FileVisitResult.CONTINUE;
+        }
+      });
       myGitRepoOperations.addCommand().add(repoPath, Collections.emptyList());
       myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
       List<String> errors = new ArrayList<>();
@@ -97,6 +120,21 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         FileUtil.delete(tmpRepoDir);
       }
       throw new VcsException(e);
+    }
+  }
+
+  @NotNull
+  private FileVisitResult processByProcessor(Path path, @NotNull FilesProcessor filesProcessor, String repoPath, @NotNull CommitSettings commitSettings) {
+    try {
+      ProcessResult process = filesProcessor.process(path);
+      FileVisitResult result = process == ProcessResult.STEP_INSIDE ? FileVisitResult.CONTINUE : FileVisitResult.SKIP_SUBTREE;
+      if (process == ProcessResult.COMMIT) {
+        myGitRepoOperations.addCommand().add(repoPath, Collections.singletonList(path.toAbsolutePath().toString()));
+        myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
+      }
+      return result;
+    } catch (VcsException e) {
+      throw new RuntimeException("VCs exception occurred during performing commit for directory: " + path, e);
     }
   }
 

@@ -2,6 +2,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
@@ -9,17 +10,17 @@ import java.util.Objects;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.impl.configsRepo.RepositoryInitializingExtension;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.jetbrains.annotations.NotNull;
-import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
-import static junit.framework.Assert.*;
+import static org.testng.Assert.*;
 
 @Test
 public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepositoryTest {
@@ -51,7 +52,7 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
     File repository = myTempFiles.createTempDir();
     File file = new File(repository, "file");
     FileUtil.writeFile(file, "123", "UTF-8");
-    Map<String, String> params = myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.emptyList());
+    Map<String, String> params = myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.emptyList(), new CommitAllProcessor());
 
     VcsRootImpl vcsRoot = new VcsRootImpl(-1, myVcsSupport.getName(), params);
 
@@ -67,7 +68,7 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
 
     FileUtil.writeFile(file, "456", "UTF-8");
 
-    myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.emptyList());
+    myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.emptyList(), new CommitAllProcessor());
 
     assertFileContent("123".getBytes(StandardCharsets.UTF_8), "file", vcsRoot, firstState, contentProvider);
     assertFileContent("456".getBytes(StandardCharsets.UTF_8), "file", vcsRoot, myVcsSupport.getCurrentState(vcsRoot), contentProvider);
@@ -78,7 +79,7 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
     File repository = myTempFiles.createTempDir();
     File gitignore = new File(repository, ".gitignore");
     FileUtil.writeFile(gitignore, "123", "UTF-8");
-    Map<String, String> params = myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Arrays.asList("456", "123"));
+    Map<String, String> params = myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Arrays.asList("456", "123"), new CommitAllProcessor());
 
     VcsRootImpl vcsRoot = new VcsRootImpl(-1, myVcsSupport.getName(), params);
 
@@ -104,7 +105,7 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
 
   public void test_skip_commit_if_no_changes() throws VcsException, IOException {
     File repository = myTempFiles.createTempDir();
-    Map<String, String> params = myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.emptyList());
+    Map<String, String> params = myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.emptyList(), new CommitAllProcessor());
 
     VcsRootImpl vcsRoot = new VcsRootImpl(-1, myVcsSupport.getName(), params);
 
@@ -117,7 +118,7 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
     File file = new File(repository, "file");
     FileUtil.writeFile(file, "abc", "UTF-8");
 
-    myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.emptyList());
+    myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.emptyList(), new CommitAllProcessor());
 
     ListDirectChildrenPolicy listFilesPolicy = (ListDirectChildrenPolicy)myVcsSupport.getListFilesPolicy();
     assertNotNull(listFilesPolicy);
@@ -153,7 +154,7 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
     FileUtil.writeFile(file2, "456", "UTF-8");
     FileUtil.writeFile(ignoredFile, "456", "UTF-8");
 
-    Map<String, String> params = myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.singletonList("ignoredFile"));
+    Map<String, String> params = myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.singletonList("ignoredFile"), new CommitAllProcessor());
 
     VcsRootImpl vcsRoot = new VcsRootImpl(-1, myVcsSupport.getName(), params);
 
@@ -177,7 +178,7 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
 
     try {
       contentProvider.getContent(ignoredFile.getName(), vcsRoot, Objects.requireNonNull(currentState.getDefaultBranchRevision()));
-      Assert.fail("file " + ignoredFile + " shouldn't be committed into repository");
+      fail("file " + ignoredFile + " shouldn't be committed into repository");
     } catch (VcsFileNotFoundException ignored) {
     }
   }
@@ -187,6 +188,13 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
                                         VcsRootImpl vcsRoot,
                                         RepositoryStateData currentState,
                                         VcsFileContentProvider contentProvider) throws VcsException {
-    Assert.assertEquals(expectedContent, contentProvider.getContent(filePathRelativeToRepo, vcsRoot, Objects.requireNonNull(currentState.getDefaultBranchRevision())));
+    assertEquals(expectedContent, contentProvider.getContent(filePathRelativeToRepo, vcsRoot, Objects.requireNonNull(currentState.getDefaultBranchRevision())));
+  }
+
+  static class CommitAllProcessor implements RepositoryInitializingExtension.FilesProcessor {
+    @Override
+    public RepositoryInitializingExtension.ProcessResult process(Path path) {
+      return RepositoryInitializingExtension.ProcessResult.COMMIT;
+    }
   }
 }
