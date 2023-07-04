@@ -804,14 +804,14 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test
   public void gc_enabled_by_user() throws Exception {
     final File repo = createTempDir();
-    ZipUtil.extract(new File(getTestDataPath(), "TW-65641-1.zip"), repo, null);
+    ZipUtil.extract(getTestData("TW-65641-1.zip"), repo, null);
 
     final GitVcsSupport support = getSupport();
     final VcsRootImpl root = getRoot("master", false, repo);
     final OperationContext context = support.createContext(root, "fetch");
     final GitVcsRoot gitRoot = context.getGitRoot();
     final File mirror = gitRoot.getRepositoryDir();
-    ZipUtil.extract(new File(getTestDataPath(), "TW-65641.zip"), mirror, null);
+    ZipUtil.extract(getTestData("TW-65641.zip"), mirror, null);
 
     // make sure old pack files won't be kept
     final StoredConfig config = context.getRepository().getConfig();
