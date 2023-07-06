@@ -34,6 +34,7 @@ import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -355,6 +356,10 @@ public class GitVcsSupport extends ServerVcsSupport
       final OperationContext context = createContext(root, "labeling");
       try {
         final GitVcsRoot gitRoot = context.getGitRoot();
+        RevCommit labelingCommit = myCommitLoader.findCommit(context.getRepository(), version);
+        if (labelingCommit == null)
+          myCommitLoader.loadCommit(context, gitRoot, version);
+
         myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
           myGitRepoOperations.tagCommand(this, gitRoot.getRepositoryFetchURL().toString()).tag(context, label, version);
         });
