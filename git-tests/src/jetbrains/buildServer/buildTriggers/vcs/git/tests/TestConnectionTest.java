@@ -90,7 +90,11 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
       myGit.testConnection(root);
       fail("Should throw an exception for not-existing repository");
     } catch (VcsException e) {
-      TeamCityAsserts.assertContainsAny(e.getMessage(), "Cannot access the '" + url + "' repository", "Please make sure you have the correct access rights and the repository exists");
+      TeamCityAsserts.assertContainsAny(e.getMessage(),
+                                        "does not appear to be a git repository",
+                                        "Cannot access the '" + url + "' repository",
+                                        "Please make sure you have the correct access rights and the repository exists");
+
       assertFalse(e.getMessage().endsWith("\n"));
     }
   }
