@@ -234,8 +234,9 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
       myGit.testConnection(root);
       fail("should fail during transport creation");
     } catch (VcsException e) {
-      assertTrue(e.getMessage(),
-                 e.getMessage().contains("Wrong username: '" + wrongUsername + "', GitHub expects the 'git' username"));
+      TeamCityAsserts.assertContainsAny(e.getMessage(),
+                                        "user@github.com: Permission denied", // documents current behaviour in the ative Git mode
+                                        "Wrong username: '" + wrongUsername + "', GitHub expects the 'git' username");
     }
   }
 }
