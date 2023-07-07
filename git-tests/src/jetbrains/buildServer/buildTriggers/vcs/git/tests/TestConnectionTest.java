@@ -37,6 +37,7 @@ import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -147,15 +148,19 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
     final Semaphore fetchStarted = new Semaphore(1);
     final Semaphore fetchCanFinish = new Semaphore(1);
 
-    final GitVcsSupport git = gitSupport()
+    final GitSupportBuilder supportBuilder = gitSupport()
       .withBeforeFetchHook(new Runnable() {
         public void run() {
           fetchStarted.release();
           fetchCanFinish.acquireUninterruptibly();
         }
       })
-      .withPluginConfig(config)
-      .build();
+      .withPluginConfig(config);
+
+    final GitVcsSupport git = supportBuilder.build();
+
+    if (supportBuilder.getGitRepoOperations().isNativeGitOperationsEnabled())
+      throw new SkipException("The test is JGit mode specific, skipped in the native Git mode");
 
     final VcsRoot root = vcsRoot().withFetchUrl(getRemoteRepositoryUrl("repo.git")).build();
 
