@@ -1195,11 +1195,15 @@ public class GitVcsSupportTest extends PatchTestCase {
 
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, new FetcherProperties(config), manager);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
-    GitVcsSupport git = gitSupport()
+    GitSupportBuilder supportBuilder = gitSupport()
       .withPluginConfig(config)
       .withTransportFactory(transportFactory)
-      .withFetchCommand(fetchCounter)
-      .build();
+      .withFetchCommand(fetchCounter);
+
+    GitVcsSupport git = supportBuilder.build();
+
+    if (supportBuilder.getGitRepoOperations().isNativeGitOperationsEnabled())
+      throw new SkipException("The test is not relevant for native Git mode");
 
     RepositoryStateData state = git.getCurrentState(root);
     assertEquals(state.getBranchRevisions(),
