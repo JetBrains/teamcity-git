@@ -128,6 +128,8 @@ public class GitSupportBuilder {
     return myRepositoryManager;
   }
 
+  public GitRepoOperations getGitRepoOperations() { return myGitRepoOperations; }
+
   public GitMapFullPath getMapFullPath() {
     return myMapFullPath;
   }
@@ -175,8 +177,11 @@ public class GitSupportBuilder {
     }
     RevisionsCache revisionsCache = new RevisionsCache(myPluginConfig);
     myMapFullPath = new GitMapFullPath(myPluginConfig, revisionsCache);
-    final GitRepoOperations gitRepoOperations = myGitRepoOperations == null ? new GitRepoOperationsImpl(myPluginConfig, myTransportFactory, myVcsRootSSHKeyManager, myFetchCommand) : myGitRepoOperations;
-    myCommitLoader = new CommitLoaderImpl(myRepositoryManager, gitRepoOperations, myMapFullPath, myPluginConfig);
+
+    if (myGitRepoOperations == null)
+      myGitRepoOperations = new GitRepoOperationsImpl(myPluginConfig, myTransportFactory, myVcsRootSSHKeyManager, myFetchCommand);
+
+    myCommitLoader = new CommitLoaderImpl(myRepositoryManager, myGitRepoOperations, myMapFullPath, myPluginConfig);
     GitResetCacheHandler resetCacheHandler = new GitResetCacheHandler(myRepositoryManager, new GcErrors());
     ResetRevisionsCacheHandler resetRevisionsCacheHandler = new ResetRevisionsCacheHandler(revisionsCache);
 
@@ -206,7 +211,7 @@ public class GitSupportBuilder {
       }
     };
 
-    GitVcsSupport git = new GitVcsSupport(gitRepoOperations, myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
+    GitVcsSupport git = new GitVcsSupport(myGitRepoOperations, myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
                                           myVcsRootSSHKeyManager, new MockVcsOperationProgressProvider(),
                                           resetCacheHandler, resetRevisionsCacheHandler, tokenRefresher, myTestConnectionSupport);
     git.addExtensions(myExtensions);

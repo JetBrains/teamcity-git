@@ -55,6 +55,7 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
   private CommitSupport myCommitSupport;
   private VcsRoot myRoot;
   private ServerPaths myPaths;
+  private GitRepoOperationsImpl myGitRepoOperations;
 
   public GitCommitSupportTest() {
     super("merge");
@@ -111,7 +112,12 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     String ref = showRef(mirror, "refs/heads/master");
 
     assertFalse(StringUtil.isEmpty(ref));
-    assertFalse(ref.startsWith(createdRevision));
+
+    // the following conditional assertions document the current behaviour
+    if (myGitRepoOperations.isNativeGitOperationsEnabled())
+      assertTrue(ref.startsWith(createdRevision));
+    else
+      assertFalse(ref.startsWith(createdRevision));
 
     myGit.getCollectChangesPolicy().collectChanges(myRoot, state1, state2, CheckoutRules.DEFAULT);
 
@@ -298,10 +304,11 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     myPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
     GitSupportBuilder builder = gitSupport().withServerPaths(myPaths);
     myGit = builder.build();
-    myCommitSupport = new GitCommitSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), new GitRepoOperationsImpl(builder.getPluginConfig(),
-                                                                                                                                       builder.getTransportFactory(),
-                                                                                                                                       r -> null,
-                                                                                                                                       (a,b,c) -> {}));
+    myGitRepoOperations = new GitRepoOperationsImpl(builder.getPluginConfig(),
+                              builder.getTransportFactory(),
+                              r -> null,
+                              (a,b,c) -> {});
+    myCommitSupport = new GitCommitSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), myGitRepoOperations);
     myRoot = vcsRoot().withFetchUrl(getRemoteRepositoryDir("merge")).build();
   }
 

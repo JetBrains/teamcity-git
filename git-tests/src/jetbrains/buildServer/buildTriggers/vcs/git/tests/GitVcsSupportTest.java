@@ -65,6 +65,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -166,13 +167,15 @@ public class GitVcsSupportTest extends PatchTestCase {
     return getSupport(null);
   }
 
-  private GitVcsSupport getSupport(@Nullable ExtensionHolder holder) {
+  private GitSupportBuilder getSupportBuilder(@Nullable ExtensionHolder holder) {
     return gitSupport().withPluginConfig(myConfigBuilder)
       .withResetCacheManager(myResetCacheManager)
-      .withExtensionHolder(holder)
-      .build();
+      .withExtensionHolder(holder);
   }
 
+  private GitVcsSupport getSupport(@Nullable ExtensionHolder holder) {
+    return getSupportBuilder(holder).build();
+  }
 
   protected String getTestDataPath() {
     return dataFile().getPath();
@@ -680,14 +683,21 @@ public class GitVcsSupportTest extends PatchTestCase {
   @TestFor(issues = "TW-14813")
   @Test
   public void test_logging() {
+
     myConfigBuilder.setSeparateProcessForFetch(true);
 
-    String noDebugError = getFetchExceptionMessage();
+    GitSupportBuilder supportBuilder = getSupportBuilder(null);
+    GitVcsSupport gitSupport = supportBuilder.build();
+
+    if (supportBuilder.getGitRepoOperations().isNativeGitOperationsEnabled())
+      throw new SkipException("The test is not relevant for native Git mode");
+
+    String noDebugError = getFetchExceptionMessage(gitSupport);
     assertFalse(noDebugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"), "output: " + noDebugError);//no stacktrace
     assertFalse(noDebugError.endsWith("\n"));
 
     Loggers.VCS.setLevel(Level.DEBUG);
-    String debugError = getFetchExceptionMessage();
+    String debugError = getFetchExceptionMessage(gitSupport);
     assertTrue(debugError.contains("at jetbrains.buildServer.buildTriggers.vcs.git.Fetcher"), "output: " + noDebugError);
     assertFalse(debugError.endsWith("\n"), "output: " + noDebugError);
   }
@@ -1257,13 +1267,13 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
 
-  private String getFetchExceptionMessage() {
+  private String getFetchExceptionMessage(GitVcsSupport gitSupport) {
     String result = null;
     File notExisting = new File(myTmpDir, "not-existing");
     VcsRootImpl root = new VcsRootImpl(1, Constants.VCS_NAME);
     root.addProperty(Constants.FETCH_URL, GitUtils.toURL(notExisting));
     try {
-      getSupport().getContentProvider().getContent("some/path", root, MERGE_VERSION);
+      gitSupport.getContentProvider().getContent("some/path", root, MERGE_VERSION);
       fail("Should throw an exception for not-existing repository");
     } catch (VcsException e) {
       result = e.getMessage();

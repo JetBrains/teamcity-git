@@ -29,6 +29,7 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevTag;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.jetbrains.annotations.NotNull;
+import org.testng.SkipException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -135,7 +136,12 @@ public class GitLabelingSupportTest extends BaseRemoteRepositoryTest {
     myConfig.setUsePackHeuristic(true);
     myConfig.setFailLabelingWhenPackHeuristicsFail(true);
 
-    GitVcsSupport git = buildGit();
+    GitSupportBuilder supportBuilder = gitSupport().withPluginConfig(myConfig);
+    GitVcsSupport git = supportBuilder.build();
+
+    if (supportBuilder.getGitRepoOperations().isNativeGitOperationsEnabled())
+      throw new SkipException("The test checks JGit mode specific functionality, not applicable in the case of the native Git mode");
+
     File remoteRepoDir = getRemoteRepositoryDir("repo_for_fetch.2");
     VcsRoot root = vcsRoot().withFetchUrl(remoteRepoDir).build();
 
