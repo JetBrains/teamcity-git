@@ -159,8 +159,8 @@ public class TestConnectionTest extends BaseRemoteRepositoryTest {
 
     final GitVcsSupport git = supportBuilder.build();
 
-    if (supportBuilder.getGitRepoOperations().isNativeGitOperationsEnabled())
-      throw new SkipException("The test is JGit mode specific, skipped in the native Git mode");
+//    if (supportBuilder.getGitRepoOperations().isNativeGitOperationsEnabled())
+//      throw new SkipException("The test is JGit mode specific, skipped in the native Git mode");
 
     final VcsRoot root = vcsRoot().withFetchUrl(getRemoteRepositoryUrl("repo.git")).build();
 
