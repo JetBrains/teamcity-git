@@ -110,6 +110,7 @@ public class SubmoduleResolverImpl implements SubmoduleResolver {
           try {
             return myCommitLoader.getCommit(r, commit);
           } catch (Exception e) {
+            LOG.warnAndDebugDetails("Missing submodule", e);
             throw new MissingSubmoduleCommitException(parentRepositoryUrl, myCommit.name(), path, submodule.getUrl(), commit.name());
           }
         } catch (Exception e) {
