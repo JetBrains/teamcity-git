@@ -524,6 +524,10 @@
       } else {
         $j('.acquireNewTokenBtn').hide();
       }
+
+      if (selectedAuthMethod !== 'ACCESS_TOKEN') {
+        $('tokenId').value = null;
+      }
     }
   };
 
