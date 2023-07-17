@@ -19,7 +19,7 @@
     <orderEntry type="module" module-name="git-common-internal" exported="" />
     <orderEntry type="library" name="git-trilead-ssh2" level="project" />
     <orderEntry type="library" name="git-commons-codec" level="project" />
-    <orderEntry type="module" module-name="agent" exported="" />
+    <orderEntry type="module" module-name="agent-core" exported="" />
     <orderEntry type="library" name="xmlrpc-2.0" level="project" />
     <orderEntry type="module" module-name="common-impl" />
     <orderEntry type="module" module-name="migration" />
