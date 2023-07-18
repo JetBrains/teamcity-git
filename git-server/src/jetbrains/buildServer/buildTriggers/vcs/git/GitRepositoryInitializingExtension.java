@@ -125,17 +125,19 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
 
   @NotNull
   private FileVisitResult processByProcessor(Path path, @NotNull FilesProcessor filesProcessor, String repoPath, @NotNull CommitSettings commitSettings) {
-    try {
-      ProcessResult process = filesProcessor.process(path);
-      FileVisitResult result = process == ProcessResult.STEP_INSIDE ? FileVisitResult.CONTINUE : FileVisitResult.SKIP_SUBTREE;
-      if (process == ProcessResult.COMMIT) {
+    ProcessResult process = filesProcessor.process(path);
+    FileVisitResult result = process == ProcessResult.STEP_INSIDE ? FileVisitResult.CONTINUE : FileVisitResult.SKIP_SUBTREE;
+    if (process == ProcessResult.COMMIT) {
+      try {
         myGitRepoOperations.addCommand().add(repoPath, Collections.singletonList(path.toAbsolutePath().toString()));
-        myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
+      } catch (VcsException e) {
+        if (!Files.exists(path)) {
+          return result;
+        }
+        throw new RuntimeException("VCs exception occurred during performing commit for directory: " + path, e);
       }
-      return result;
-    } catch (VcsException e) {
-      throw new RuntimeException("VCs exception occurred during performing commit for directory: " + path, e);
     }
+    return result;
   }
 
   private void patchGitIgnore(Path dir, List<String> ignoredPaths) throws IOException {
