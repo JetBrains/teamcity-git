@@ -30,6 +30,7 @@ public class CommitCommandImpl extends BaseCommandImpl implements CommitCommand 
   public void call() throws VcsException {
     GitCommandLine cmd = getCmd();
     cmd.addParameter("commit");
+    cmd.addParameter("-q");
     cmd.addParameter("-m");
     cmd.addParameter(myComment.isEmpty() ? "<Empty comment>" : myComment);
 
