@@ -7,4 +7,6 @@ public interface ConfigCommand extends GitCommand {
 
   void addConfigParameter(String path, GitConfigCommand.Scope scope, String name, String value) throws VcsException;
 
+  void removeConfigParameter(String path, GitConfigCommand.Scope scope, String name) throws VcsException;
+
 }

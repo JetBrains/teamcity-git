@@ -308,6 +308,20 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   }
 
   @Override
+  public void removeConfigParameter(String path, GitConfigCommand.Scope scope, String name) throws VcsException {
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
+    executeCommand(ctx, "gitConfig", "Remove config parameters", () -> {
+      final GitConfigCommand gitConfigCommand = gitFacade.gitConfig()
+                                                         .setScope(scope)
+                                                         .setRemove(true)
+                                                         .setPropertyName(name);
+      gitConfigCommand.call();
+      return "";
+    }, gitFacade);
+  }
+
+  @Override
   public void add(String repositoryPath, List<String> paths) throws VcsException {
     final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(repositoryPath), ctx);

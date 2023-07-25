@@ -12,11 +12,14 @@ public class GitConfigCommandImpl extends BaseCommandImpl implements GitConfigCo
   @Nullable
   private String myValue;
 
+  private boolean myRemove = false;
+
   private Scope myScope;
 
   public GitConfigCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
   }
+
   @NotNull
   public GitConfigCommand setPropertyName(@NotNull String name) {
     myName = name;
@@ -27,6 +30,13 @@ public class GitConfigCommandImpl extends BaseCommandImpl implements GitConfigCo
   @Override
   public GitConfigCommand setValue(@Nullable String value) {
     myValue = value;
+    return this;
+  }
+
+  @NotNull
+  @Override
+  public GitConfigCommand setRemove(boolean remove) {
+    myRemove = remove;
     return this;
   }
 
@@ -53,9 +63,14 @@ public class GitConfigCommandImpl extends BaseCommandImpl implements GitConfigCo
     if (myScope != null) {
       cmd.addParameter(myScope.getKey());
     }
-    cmd.addParameter(myName);
-    if (myValue != null) {
-      cmd.addParameter(myValue);
+    if (myRemove) {
+      cmd.addParameter("--unset");
+      cmd.addParameter(myName);
+    } else {
+      cmd.addParameter(myName);
+      if (myValue != null) {
+        cmd.addParameter(myValue);
+      }
     }
     return CommandUtil.runCommand(cmd
                                     .abnormalExitExpected(abnormalExitExpected)

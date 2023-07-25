@@ -16,6 +16,9 @@ public interface GitConfigCommand extends BaseCommand {
   GitConfigCommand setValue(@Nullable String value);
 
   @NotNull
+  GitConfigCommand setRemove(boolean remove);
+
+  @NotNull
   GitConfigCommand setScope(@NotNull Scope scope);
 
   @NotNull String call() throws VcsException;
