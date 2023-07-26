@@ -32,6 +32,7 @@
     <orderEntry type="library" exported="" name="git-jgit-server" level="project" />
     <orderEntry type="library" name="git-javaEWAH" level="project" />
     <orderEntry type="module" module-name="server" exported="" />
+    <orderEntry type="module" module-name="server-core" exported="" />
     <orderEntry type="module" module-name="patches-impl" exported="" />
     <orderEntry type="module" module-name="usage-statistics-util" exported="" />
     <orderEntry type="module" module-name="web-openapi" />
