@@ -102,6 +102,10 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
       });
       myGitRepoOperations.addCommand().add(repoPath, Collections.emptyList());
       myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
+
+      myGitRepoOperations.configCommand().removeConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, "core.worktree");
+      myGitRepoOperations.repackCommand().repack(repoPath);
+
       List<String> errors = new ArrayList<>();
       FileUtil.moveDirWithContent(tmpRepoDir, dir.toFile(), errors::add);
       if (!errors.isEmpty()) {

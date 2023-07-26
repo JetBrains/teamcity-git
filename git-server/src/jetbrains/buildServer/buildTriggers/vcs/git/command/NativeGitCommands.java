@@ -14,6 +14,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.LsRemoteCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.PushCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.TagCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.RepackCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations;
@@ -39,7 +40,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperati
 
 //see native-git-testng.xml suite for tests examples
 public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand, TagCommand, StatusCommandServer, InitCommandServer, LocalCommitCommandServer, ConfigCommand,
-                                          AddCommandServer {
+                                          AddCommandServer, RepackCommandServer {
 
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(NativeGitCommands.class.getName() + ".Performance");
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
@@ -317,6 +318,17 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                                                          .setRemove(true)
                                                          .setPropertyName(name);
       gitConfigCommand.call();
+      return "";
+    }, gitFacade);
+  }
+
+  @Override
+  public void repack(String path) throws VcsException {
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
+    executeCommand(ctx, "gitConfig", "Remove config parameters", () -> {
+      final RepackCommand repackCommand = gitFacade.repack();
+      repackCommand.call();
       return "";
     }, gitFacade);
   }

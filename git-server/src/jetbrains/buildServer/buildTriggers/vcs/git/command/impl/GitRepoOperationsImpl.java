@@ -157,6 +157,11 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   }
 
   @Override
+  public RepackCommandServer repackCommand() {
+    return (RepackCommandServer)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Repository repack command is available only for native git"));
+  }
+
+  @Override
   public LocalCommitCommandServer commitCommand() {
     return (LocalCommitCommandServer)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Local commit command is available only for native git"));
   }

@@ -2,6 +2,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import com.intellij.openapi.util.SystemInfo;
 import java.io.File;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.RepackCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl.RepackCommandImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -48,6 +50,10 @@ public class GitFacadeImpl implements GitFacade {
 
   public InitCommand init() {
     return new InitCommandImpl(createCommandLine());
+  }
+
+  public RepackCommand repack() {
+    return new RepackCommandImpl(createCommandLine());
   }
 
   public StatusCommand status() {

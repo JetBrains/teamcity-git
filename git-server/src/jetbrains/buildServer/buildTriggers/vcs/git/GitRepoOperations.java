@@ -24,6 +24,8 @@ public interface GitRepoOperations extends GitNativeOperationsStatus {
 
   LocalCommitCommandServer commitCommand();
 
+  RepackCommandServer repackCommand();
+
   ConfigCommand configCommand();
 
   StatusCommandServer statusCommand(@NotNull String repoUrl);
