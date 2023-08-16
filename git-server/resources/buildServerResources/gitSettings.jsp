@@ -207,7 +207,7 @@
                           (not empty vcsPropertiesBean.originalVcsRoot) and
                           afn:canEditVcsRoot(vcsPropertiesBean.originalVcsRoot)}">
               <%-- pass connection.displayName, connection.id, tokenPopupPath, project.externalId  --%>
-              <oauth:obtainToken connection="${vcsPropertiesBean.connection}" className="btn btn_small token-connection-button" callback="setAcquiredToken" repositoryFieldObtainer="window.getRepositoryUrl">
+              <oauth:obtainToken connection="${vcsPropertiesBean.connection}" className="btn btn_small token-connection-button" callback="setAcquiredToken">
                 Acquire new
               </oauth:obtainToken>
             </c:if>
@@ -636,9 +636,7 @@
     $('tokenIssuedInfo').show(0);
     $('tokenUnavailable').hide(0);
     $('error_issuedToken').hide(0);
-    $j('error_issuedToken').html('');
     $('token_additional_info').hide(0);
-    $j('token_additional_info').html('');
     gitSelectAuthentication(true);
     if (it["tokenId"] && $('tokenId') && it["tokenId"] == $('tokenId').value) {
       $('token_additional_info').show();
@@ -646,11 +644,6 @@
     }
     else {
       setTokenInfo("Currently configured access token was issued", it);
-    }
-
-    if (it.hasOwnProperty("warning")) {
-      $j('#error_issuedToken').show(0);
-      $j('#error_issuedToken').html("Warning: " + it["warning"]);
     }
   };
 
