@@ -433,6 +433,12 @@ public class PluginConfigBuilder {
       public List<String> getFetchDurationMetricRepos() {
         return Collections.emptyList();
       }
+
+      @NotNull
+      @Override
+      public File getSslDir() {
+        return new File("");
+      }
     };
   }
 
