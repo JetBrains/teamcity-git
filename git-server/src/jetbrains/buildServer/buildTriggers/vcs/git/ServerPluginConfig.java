@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.jcraft.jsch.Proxy;
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 
@@ -186,4 +187,7 @@ public interface ServerPluginConfig extends PluginConfig {
 
   @NotNull
   List<String> getFetchDurationMetricRepos();
+
+  @NotNull
+  File getSslDir();
 }

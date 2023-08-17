@@ -34,7 +34,6 @@ import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations.CERT_DIR;
 import static jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations.CERT_FILE;
 
 //see native-git-testng.xml suite for tests examples
@@ -108,7 +107,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
             CommandUtil.isSslError(e) &&
             myTrustedCertificatesDir != null) {
 
-          final File cacheCertDirectory = new File(myConfig.getCachesDir(), CERT_DIR);
+          final File cacheCertDirectory = myConfig.getSslDir();
           final String pemContent = TrustStoreIO.pemContentFromDirectory(myTrustedCertificatesDir.getAbsolutePath());
           final String mergedCertificatePath = new File(cacheCertDirectory, CERT_FILE).getAbsolutePath();
 

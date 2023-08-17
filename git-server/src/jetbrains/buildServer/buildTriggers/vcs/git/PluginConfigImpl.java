@@ -102,6 +102,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public static final String FETCH_REMOTE_BRANCHES_FACTOR = "teamcity.server.git.fetchRemoteBranchesFactor";
 
   private final File myCachesDir;
+
+  private final File mySslDir;
   private final Set<String> myFetcherPropertyNames = setOf(TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS,
                                                            TEAMCITY_GIT_SSH_PROXY_TYPE,
                                                            TEAMCITY_GIT_SSH_PROXY_HOST,
@@ -120,10 +122,12 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   public PluginConfigImpl() {
     myCachesDir = null;
+    mySslDir = null;
   }
 
   public PluginConfigImpl(@NotNull final CachePaths paths) {
     myCachesDir = paths.getCacheDirectory("git");
+    mySslDir = paths.getCacheDirectory("ssl");
   }
 
 
@@ -139,6 +143,13 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return myCachesDir;
   }
 
+  @NotNull
+  @Override
+  public File getSslDir() {
+    if (mySslDir == null)
+      throw new IllegalStateException("Ssl dir is not initialized");
+    return mySslDir;
+  }
 
   public int getStreamFileThresholdMb() {
     int defaultThreshold = 128;
