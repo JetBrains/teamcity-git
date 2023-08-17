@@ -7,7 +7,6 @@ import org.apache.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
 public class SslOperations {
-  public final static String CERT_DIR = "ssl";
   public final static String CERT_FILE = "git_custom_certificates.crt";
 
   private final static Logger LOG = Logger.getLogger(SslOperations.class);
