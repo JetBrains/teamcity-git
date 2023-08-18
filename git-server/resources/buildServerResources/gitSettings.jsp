@@ -33,6 +33,8 @@
                                             (TeamCityProperties.getBoolean(Constants.SHOW_CUSTOM_CLONE_PATH)
                                             || !StringUtil.isEmpty(propertiesBean.getProperties().get(Constants.PATH))) %>"/>
 <c:set var="placeholderNonPersonalToken" value="common usage"/>
+<%--@elvariable id="parentProject" type="jetbrains.buildServer.serverSide.SProject"--%>
+<c:set var="parentReadOnly" value="${not empty parentProject and parentProject.readOnly}"/>
 <style>
 .gitUsernameStyleHighlight {
   color: rgb(97, 94, 192);
@@ -54,15 +56,17 @@
   <l:settingsGroup title="General Settings">
     <tr>
       <th><label for="url">Fetch URL: <l:star/></label></th>
-      <td><props:textProperty name="url" className="longField"/>
-        <jsp:include page="/admin/repositoryControls.html?projectId=${parentProject.externalId}&vcsType=git"/>
+      <td><props:textProperty name="url" className="longField" disabled="${parentReadOnly}"/>
+        <c:if test="${not parentReadOnly}">
+          <jsp:include page="/admin/repositoryControls.html?projectId=${parentProject.externalId}&vcsType=git"/>
+        </c:if>
         <div class="smallNote" style="margin: 0;">Used for fetching data from the repository.</div>
         <div id="fetchUrlCompatNote" class="smallNote error" style="margin: 0; display: none;"></div>
         <span class="error" id="error_url"></span></td>
     </tr>
     <tr class="advancedSetting">
       <th><label for="push_url">Push URL:</label></th>
-      <td><props:textProperty name="push_url" className="longField"/>
+      <td><props:textProperty name="push_url" className="longField" disabled="${parentReadOnly}"/>
         <div class="smallNote" style="margin: 0;">Used for pushing tags to the remote repository.
           If blank, the fetch url is used.
         </div>
@@ -73,7 +77,7 @@
     <tr>
       <th><label for="branch">Default branch: <l:star/></label></th>
       <td>
-        <props:textProperty name="branch" className="longField"/>
+        <props:textProperty name="branch" className="longField" disabled="${parentReadOnly}"/>
         <div class="smallNote" style="margin: 0">The main branch or tag to be monitored</div>
         <span class="error" id="error_branch"></span>
       </td>
@@ -82,13 +86,13 @@
     <tr class="advancedSetting">
       <th><label for="reportTagRevisions">Use tags as branches:</label></th>
       <td>
-        <props:checkboxProperty name="reportTagRevisions"/>
+        <props:checkboxProperty name="reportTagRevisions" disabled="${parentReadOnly}"/>
         <label for="reportTagRevisions">Enable to use tags in the branch specification</label>
       </td>
     </tr>
     <tr class="advancedSetting">
       <th><label for="usernameStyle">Username style:</label></th>
-      <td><props:selectProperty name="usernameStyle" enableFilter="true" className="mediumField">
+      <td><props:selectProperty name="usernameStyle" enableFilter="true" className="mediumField" disabled="${parentReadOnly}">
         <props:option value="USERID">UserId</props:option>
         <props:option value="NAME">Author Name</props:option>
         <props:option value="FULL">Author Name and Email</props:option>
@@ -111,7 +115,7 @@
     </tr>
     <tr class="advancedSetting">
       <th><label for="submoduleCheckout">Submodules:</label></th>
-      <td><props:selectProperty name="submoduleCheckout" enableFilter="true" className="mediumField">
+      <td><props:selectProperty name="submoduleCheckout" enableFilter="true" className="mediumField" disabled="${parentReadOnly}">
         <props:option value="IGNORE">Ignore</props:option>
         <props:option value="CHECKOUT">Checkout</props:option>
       </props:selectProperty>
@@ -131,7 +135,7 @@
     <tr>
       <th><label for="authMethod">Authentication method:</label></th>
       <td>
-        <props:selectProperty name="authMethod" onchange="gitSelectAuthentication(true)" enableFilter="true" className="mediumField">
+        <props:selectProperty name="authMethod" onchange="gitSelectAuthentication(true)" enableFilter="true" className="mediumField" disabled="${parentReadOnly}">
           <props:option value="ANONYMOUS">Anonymous</props:option>
           <props:option value="PASSWORD">Password / personal access token</props:option>
           <props:option value="ACCESS_TOKEN">Refreshable access token</props:option>
@@ -166,7 +170,7 @@
     </tr>
     <tr id="gitUsername" class="auth defaultKey customKey password uploadedKey access_token">
       <th><label for="username">Username:</label></th>
-      <td><props:textProperty name="username" className="longField"/>
+      <td><props:textProperty name="username" className="longField" disabled="${parentReadOnly}"/>
         <div class="smallNote" style="margin: 0">
           Specify the username if there is no username in the clone URL. The username specified here overrides the username from the URL.
         </div>
@@ -205,7 +209,8 @@
                           (not empty vcsPropertiesBean.connection) and
                           (vcsPropertiesBean.connection.oauthProvider.acquiringTokenSupported) and
                           (not empty vcsPropertiesBean.originalVcsRoot) and
-                          afn:canEditVcsRoot(vcsPropertiesBean.originalVcsRoot)}">
+                          afn:canEditVcsRoot(vcsPropertiesBean.originalVcsRoot) and
+                          not parentReadOnly}">
               <%-- pass connection.displayName, connection.id, tokenPopupPath, project.externalId  --%>
               <oauth:obtainToken connection="${vcsPropertiesBean.connection}" className="btn btn_small token-connection-button" callback="setAcquiredToken" repositoryFieldObtainer="window.getRepositoryUrl">
                 Acquire new
@@ -226,11 +231,11 @@
     </tr>
     <tr id="gitPasswordRow" class="auth password">
       <th><label for="secure:password">Password / access token:</label></th>
-      <td><props:passwordProperty name="secure:password" className="longField"/></td>
+      <td><props:passwordProperty name="secure:password" className="longField" disabled="${parentReadOnly}"/></td>
     </tr>
     <tr id="gitPrivateKeyRow" class="auth customKey">
       <th><label for="privateKeyPath">Private key path: <l:star/></label></th>
-      <td><props:textProperty name="privateKeyPath" className="longField"/>
+      <td><props:textProperty name="privateKeyPath" className="longField" disabled="${parentReadOnly}"/>
         <div class="smallNote" style="margin: 0;">
           Specify the path to the private key on the TeamCity server host.
         </div>
@@ -249,14 +254,14 @@
     </tr>
     <tr id="gitPassphraseRow" class="auth customKey">
       <th><label for="secure:passphrase">Passphrase:</label></th>
-      <td><props:passwordProperty name="secure:passphrase" className="longField"/></td>
+      <td><props:passwordProperty name="secure:passphrase" className="longField" disabled="${parentReadOnly}"/></td>
     </tr>
     <c:choose>
       <c:when test="${showKnownHostsDbOption or not vcsPropertiesBean.propertiesBean.properties['ignoreKnownHosts']}">
         <tr id="gitKnownHosts" class="advancedSetting">
           <div class="auth defaultKey customKey uploadedKey">
             <th><label for="ignoreKnownHosts">Ignore known hosts database:</label></th>
-            <td><props:checkboxProperty name="ignoreKnownHosts"/>
+            <td><props:checkboxProperty name="ignoreKnownHosts" disabled="${parentReadOnly}"/>
               <c:out value="${vcsPropertiesBean.propertiesBean.properties['ignoreKnownHosts']}"/>
             </td>
           </div>
@@ -276,13 +281,13 @@
         <label for="serverSideAutoCrlf">Convert line-endings to CRLF:<bs:help file="Git" anchor="serverAutoCRLF"/></label>
       </th>
       <td>
-        <props:checkboxProperty name="serverSideAutoCrlf"/>
+        <props:checkboxProperty name="serverSideAutoCrlf" disabled="${parentReadOnly}"/>
       </td>
     </tr>
     <c:if test="${showCustomClonePath}">
       <tr class="advancedSetting">
         <th><label for="path">Custom clone directory on server:<bs:help file="Git" anchor="customCloneDir"/></label></th>
-        <td><props:textProperty name="path" className="longField"/>
+        <td><props:textProperty name="path" className="longField" disabled="${parentReadOnly}"/>
           <div class="smallNote" style="margin: 0;">
             A directory on the TeamCity server where a bare cloned repository is to be created. Leave blank to use the default path.
           </div>
@@ -296,7 +301,7 @@
     </tr>
     <tr class="advancedSetting">
       <th><label for="agentGitPath">Path to Git: </label></th>
-      <td><props:textProperty name="agentGitPath" className="longField"/>
+      <td><props:textProperty name="agentGitPath" className="longField" disabled="${parentReadOnly}"/>
         <div class="smallNote" style="margin: 0;">
           The path to a git executable on the agent. If blank, the location set up in ${gitPathEnv} environment variable is used.
         </div>
@@ -308,7 +313,7 @@
         <c:set var="checkoutPolicyProp" value="${vcsPropertiesBean.propertiesBean.properties['useAlternates']}"/>
         <c:set var="checkoutPolicy" value="${checkoutPolicyProp == null ? null : fn:toUpperCase(checkoutPolicyProp)}"/>
 
-        <props:selectProperty name="useAlternates" enableFilter="true" className="mediumField" onchange="updateCheckoutTypeNote()">
+        <props:selectProperty name="useAlternates" enableFilter="true" className="mediumField" onchange="updateCheckoutTypeNote()" disabled="${parentReadOnly}">
           <props:option id="autoCheckoutType" value="AUTO"  selected="${'AUTO' eq checkoutPolicy}">Auto</props:option>
           <props:option id="useMirrorsCheckoutType" value="USE_MIRRORS" selected="${'TRUE' eq checkoutPolicy || 'USE_MIRRORS' eq checkoutPolicy}">Use mirrors</props:option>
           <props:option id="noMirrorsCheckoutType" value="NO_MIRRORS" selected="${empty checkoutPolicy || 'FALSE' eq checkoutPolicy || 'NO_MIRRORS' eq checkoutPolicy}">Do not use mirrors</props:option>
@@ -322,7 +327,7 @@
     </tr>
     <tr class="advancedSetting">
       <th><label for="agentCleanPolicy">Clean policy:</label></th>
-      <td><props:selectProperty name="agentCleanPolicy" enableFilter="true" className="mediumField">
+      <td><props:selectProperty name="agentCleanPolicy" enableFilter="true" className="mediumField" disabled="${parentReadOnly}">
         <props:option value="ON_BRANCH_CHANGE">On Branch Change</props:option>
         <props:option value="ALWAYS">Always</props:option>
         <props:option value="NEVER">Never</props:option>
@@ -334,7 +339,7 @@
     </tr>
     <tr class="advancedSetting">
       <th><label for="agentCleanFilesPolicy">Clean files policy:</label></th>
-      <td><props:selectProperty name="agentCleanFilesPolicy" enableFilter="true" className="mediumField">
+      <td><props:selectProperty name="agentCleanFilesPolicy" enableFilter="true" className="mediumField" disabled="${parentReadOnly}">
         <props:option value="ALL_UNTRACKED">All untracked files</props:option>
         <props:option value="IGNORED_ONLY">All ignored untracked files</props:option>
         <props:option value="NON_IGNORED_ONLY">All non-ignored untracked files</props:option>
