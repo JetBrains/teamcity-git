@@ -207,7 +207,7 @@
           <span class="acquireNewTokenBtn" style="padding-left: 1em;">
             <c:if test="${(not empty vcsPropertiesBean.belongsToProject) and
                           (not empty vcsPropertiesBean.connection) and
-                          (vcsPropertiesBean.connection.oauthProvider.acquiringTokenSupported) and
+                          (vcsPropertiesBean.connection.acquiringTokenSupported) and
                           (not empty vcsPropertiesBean.originalVcsRoot) and
                           afn:canEditVcsRoot(vcsPropertiesBean.originalVcsRoot) and
                           not parentReadOnly}">
