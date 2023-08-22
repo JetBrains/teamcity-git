@@ -24,6 +24,7 @@
   <bean id="fetchCommand" class="jetbrains.buildServer.buildTriggers.vcs.git.FetchCommandImpl"/>
   <bean id="repoOperations" class="jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitRepositoryInitializingExtension"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitHostedRepositoryManager"/>
   <bean id="jetbrainsGitServer" class="jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport">
     <constructor-arg index="12"><null/></constructor-arg>
   </bean>
