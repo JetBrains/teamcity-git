@@ -258,15 +258,25 @@ public class GitServerUtil {
         String message = "Wrong username: '" + root.getAuthSettings().getUserName() + "', GitHub expects the 'git' username";
         return new VcsException(message, te);
       }
-      if (root.isHttp() && !root.getRepositoryFetchURL().getPath().endsWith(".git") &&
-          te.getMessage().contains("service=git-upload-pack not found")) {
-        String url = root.getRepositoryFetchURL().toString();
-        String message = "Url \"" + url + "\" might be incorrect, try using \"" + url + ".git\"";
-        return new VcsException(message, te);
+      if (te.getMessage().contains("service=git-upload-pack not found")) {
+        if (isGitHubApp(te, root)) {
+          String message = "GitHub App might have insufficient privileges to access repository content, check it on the GitHub side";
+          return new VcsException(message, te);
+        }
+        if (root.isHttp() && !root.getRepositoryFetchURL().getPath().endsWith(".git")) {
+          String url = root.getRepositoryFetchURL().toString();
+          String message = "Url \"" + url + "\" might be incorrect, try using \"" + url + ".git\"";
+          return new VcsException(message, te);
+        }
       }
     }
 
     return te;
+  }
+
+  private static boolean isGitHubApp(TransportException te, GitVcsRoot root) {
+    AuthSettings authSettings = root.getAuthSettings();
+    return root.isHttp() && authSettings.getAuthMethod().equals(AuthenticationMethod.ACCESS_TOKEN);
   }
 
 
