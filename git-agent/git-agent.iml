@@ -27,5 +27,6 @@
     <orderEntry type="library" name="TeamCity common" level="project" />
     <orderEntry type="library" name="TeamCity Common Connection API" level="project" />
     <orderEntry type="library" name="TeamCity Agent OAuth Support" level="project" />
+    <orderEntry type="library" name="httpclient" level="project" />
   </component>
 </module>
