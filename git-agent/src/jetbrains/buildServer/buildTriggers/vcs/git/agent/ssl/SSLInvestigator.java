@@ -26,6 +26,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitFacade;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.ssl.TrustStoreIO;
 import org.apache.commons.codec.CharEncoding;
 import org.apache.log4j.Logger;
@@ -211,13 +212,12 @@ public class SSLInvestigator {
   public static class SSLCheckerImpl implements SSLChecker {
     @Override
     public boolean canConnect(@NotNull final SSLContext sslContext, @NotNull final String host, final int port) throws Exception {
+      final SSLSocket socket = (SSLSocket)sslContext.getSocketFactory().createSocket(host, port);
+      socket.setSoTimeout(TeamCityProperties.getInteger("teamcity.ssl.checkTimeout.git", 10 * 1000));
       try {
-        SSLConnectionCheck.tryConnect(sslContext, host, port);
-      }
-      catch (SSLConnectionCheck.UnexpectedErrorException e) {
-        throw e;
-      }
-      catch (Exception e) {
+        socket.startHandshake();
+        socket.close();
+      } catch (Exception e) {
         /* can't connect with custom certificate */
         return false;
       }
