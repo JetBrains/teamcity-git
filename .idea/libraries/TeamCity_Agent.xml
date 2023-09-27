@@ -2,6 +2,7 @@
   <library name="TeamCity Agent">
     <CLASSES>
       <root url="jar://$TeamCityDistribution$/buildAgent/lib/agent.jar!/" />
+      <root url="jar://$TeamCityDistribution$/buildAgent/lib/agent-core.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
