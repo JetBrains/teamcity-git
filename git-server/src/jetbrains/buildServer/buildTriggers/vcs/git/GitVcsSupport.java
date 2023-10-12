@@ -360,8 +360,10 @@ public class GitVcsSupport extends ServerVcsSupport
         if (labelingCommit == null)
           myCommitLoader.loadCommit(context, gitRoot, version);
 
+        String labelToPublish = label.trim().replace(' ', '_').replace('\t', '_').replace('\n', '_');
+
         myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-          myGitRepoOperations.tagCommand(this, gitRoot.getRepositoryFetchURL().toString()).tag(context, label, version);
+          myGitRepoOperations.tagCommand(this, gitRoot.getRepositoryFetchURL().toString()).tag(context, labelToPublish, version);
         });
       } catch (Exception e) {
         throw context.wrapException(e);
