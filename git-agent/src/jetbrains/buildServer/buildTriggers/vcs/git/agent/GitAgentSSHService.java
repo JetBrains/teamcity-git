@@ -22,6 +22,7 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jzlib.JZlib;
 import java.io.File;
 import java.io.IOException;
+import jetbrains.buildServer.XmlRpcHandlerManager;
 import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.plugins.beans.PluginDescriptor;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
@@ -145,7 +146,10 @@ public class GitAgentSSHService extends GitSSHService {
 
   @Override
   protected void registerInternalHandler(String handlerName, GitSSHHandler handler) {
-    myAgent.getXmlRpcHandlerManager().addHandler(handlerName, handler);
+    XmlRpcHandlerManager xmlRpcHandlerManager = myAgent.getXmlRpcHandlerManager();
+    if (xmlRpcHandlerManager != null) {
+      xmlRpcHandlerManager.addHandler(handlerName, handler);
+    }
   }
 
   @Nullable
