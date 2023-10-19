@@ -55,11 +55,10 @@ public class SSHAgentServiceTest extends BaseTestCase {
       allowing(buildTracker).getCurrentBuild(); will(throwException(new NoRunningBuildException()));
     }});
 
-    GitAgentSSHService agentSSHService = new GitAgentSSHService(agent,
-                                                                agentConf,
-                                                                new MockGitPluginDescriptor(),
-                                                                new MockVcsRootSshKeyManagerProvider(),
-                                                                buildTracker);
+    GitAgentSSHService agentSSHService = new GitAgentSSHService(
+      agentConf,
+      new MockVcsRootSshKeyManagerProvider()
+    );
     String scriptPath = agentSSHService.getScriptPath();
 
     GeneralCommandLine commandLine = new GeneralCommandLine();

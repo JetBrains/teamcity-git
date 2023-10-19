@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import java.util.Vector;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
@@ -45,10 +44,6 @@ import org.jetbrains.git4idea.ssh.GitSSHService;
  * SSH handler implementation
  */
 public class SshHandler implements GitSSHService.Handler {
-  /**
-   * The handler number
-   */
-  private final int myHandlerNo;
   /**
    * SSH service
    */
@@ -128,8 +123,6 @@ public class SshHandler implements GitSSHService.Handler {
       deleteKeys();
       throw new VcsException("SSH script cannot be generated: " + e.getMessage(), e);
     }
-    myHandlerNo = ssh.registerHandler(this);
-    cmd.addEnvParam(GitSSHHandler.SSH_HANDLER_ENV, Integer.toString(myHandlerNo));
 
     final String sendEnv = ctx.getSshRequestToken();
     if (StringUtil.isNotEmpty(sendEnv)) {
@@ -142,7 +135,6 @@ public class SshHandler implements GitSSHService.Handler {
    */
   public void unregister() {
     deleteKeys();
-    mySsh.unregisterHandler(myHandlerNo);
   }
 
 
@@ -150,36 +142,6 @@ public class SshHandler implements GitSSHService.Handler {
     for (File f : myFilesToClean) {
       FileUtil.delete(f);
     }
-  }
-
-  public boolean verifyServerHostKey(String hostname,
-                                     int port,
-                                     String serverHostKeyAlgorithm,
-                                     String serverHostKey,
-                                     boolean isNew) {
-    return false;
-  }
-
-  public String askPassphrase(String username, String keyPath, boolean resetPassword, String lastError) {
-    if (resetPassword) {
-      return null;
-    }
-    return myAuthSettings.getPassphrase();
-  }
-
-  public Vector<String> replyToChallenge(String username,
-                                         String name,
-                                         String instruction,
-                                         int numPrompts,
-                                         Vector<String> prompt,
-                                         Vector<Boolean> echo,
-                                         String lastError) {
-    return null;
-  }
-
-  public String askPassword(String username, boolean resetPassword, String lastError) {
-    // The password is injected into URL
-    return null;
   }
 
   @Nullable

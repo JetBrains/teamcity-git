@@ -17,7 +17,6 @@
     <orderEntry type="jdk" jdkName="1.8" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="git-common-internal" exported="" />
-    <orderEntry type="library" name="git-trilead-ssh2" level="project" />
     <orderEntry type="library" name="git-commons-codec" level="project" />
     <orderEntry type="module" module-name="agent" exported="" />
     <orderEntry type="module" module-name="agent-core" exported="" />
