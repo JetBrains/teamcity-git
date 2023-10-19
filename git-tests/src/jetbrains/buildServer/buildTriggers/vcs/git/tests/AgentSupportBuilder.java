@@ -80,7 +80,7 @@ class AgentSupportBuilder {
       }
     };
     myGitAgentSSHService =
-      new GitAgentSSHService(myAgent, myAgentConfiguration, new MockGitPluginDescriptor(), mySshKeyProvider, buildTracker);
+      new GitAgentSSHService(myAgentConfiguration, mySshKeyProvider);
 
     AgentTokenRetriever tokenRetriever = new AgentTokenRetriever() {
       @NotNull
