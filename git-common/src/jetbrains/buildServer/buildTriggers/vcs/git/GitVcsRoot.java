@@ -44,11 +44,11 @@ public class GitVcsRoot {
   private final String myRef;
   private final UserNameStyle myUsernameStyle;
   private final SubmodulesCheckoutPolicy mySubmodulePolicy;
-  private final AuthSettings myAuthSettings;
+  protected final AuthSettings myAuthSettings;
   private final String myUsernameForTags;
   private final String myBranchSpec;
   private final boolean myAutoCrlf;
-  private final boolean myTokenRefreshEnabled;
+  protected final boolean myTokenRefreshEnabled;
   private boolean myReportTags;
   private final boolean myIgnoreMissingDefaultBranch;
   private final boolean myIncludeCommitInfoSubmodules;

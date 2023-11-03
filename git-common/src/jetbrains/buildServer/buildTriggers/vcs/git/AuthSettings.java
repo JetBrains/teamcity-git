@@ -51,4 +51,8 @@ public interface AuthSettings {
 
   boolean doesTokenNeedRefresh();
 
+  boolean isStoredTokenAuth();
+
+  @Nullable
+  String getTokenId();
 }

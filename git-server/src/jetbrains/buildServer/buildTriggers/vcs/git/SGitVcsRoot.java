@@ -22,20 +22,49 @@ public class SGitVcsRoot extends GitVcsRoot {
     super(mirrorManager, root, urIishHelper, tokenRefresher != null);
     myTokenRefresher = tokenRefresher;
     myCheckProjectScope = (root.getId() >= 0);
+
+    if (myTokenRefreshEnabled &&
+        myAuthSettings.getAuthMethod().isPasswordBased() &&
+        myAuthSettings.isStoredTokenAuth() &&
+        myAuthSettings.getTokenId() != null &&
+        !checkIsTokenPermitted(myAuthSettings.getTokenId())) {
+      throw new VcsException("VCS Root credentials refer to the token that is not permitted within the project scope");
+    }
+  }
+
+  @Nullable
+  private SVcsRoot getParentVcsRoot(@NotNull VcsRoot vcsRoot) {
+    return vcsRoot instanceof SVcsRoot ? (SVcsRoot)vcsRoot
+                                : vcsRoot instanceof VcsRootInstance ? ((VcsRootInstance)vcsRoot).getParent() : null;
   }
 
   @Nullable
   protected ExpiringAccessToken getOrRefreshToken(@NotNull String tokenId) {
-    VcsRoot vcsRoot = getOriginalRoot();
     if (myTokenRefresher == null)
       return null;
 
-    SVcsRoot parentRoot = vcsRoot instanceof SVcsRoot ? (SVcsRoot)vcsRoot
-                                                      : vcsRoot instanceof VcsRootInstance ? ((VcsRootInstance)vcsRoot).getParent() : null;
+    VcsRoot vcsRoot = getOriginalRoot();
+    SVcsRoot parentRoot = getParentVcsRoot(vcsRoot);
+
     if (parentRoot == null) {
       return myTokenRefresher.getRefreshableToken(vcsRoot.getExternalId(), tokenId, myCheckProjectScope);
     } else {
       return myTokenRefresher.getRefreshableToken(parentRoot.getProject(), tokenId, myCheckProjectScope);
+    }
+  }
+
+  private boolean checkIsTokenPermitted(@NotNull String tokenId) {
+    if (myTokenRefresher == null)
+      return false;
+
+    VcsRoot vcsRoot = getOriginalRoot();
+    SVcsRoot parentRoot = getParentVcsRoot(vcsRoot);
+
+    if (parentRoot == null) {
+      return myTokenRefresher.isTokenPermittedInVcsRoot(vcsRoot.getExternalId(), tokenId);
+    }
+    else {
+      return myTokenRefresher.isTokenPermittedInProject(parentRoot.getProject(), tokenId);
     }
   }
 }

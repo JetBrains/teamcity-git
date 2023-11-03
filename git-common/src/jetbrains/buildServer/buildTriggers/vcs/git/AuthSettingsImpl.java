@@ -115,8 +115,14 @@ public class AuthSettingsImpl implements AuthSettings {
 
   @Nullable
   @Override
+  public String getTokenId() {
+    return myTokenId;
+  }
+
+  @Nullable
+  @Override
   public String getPassword() {
-    if (myAuthMethod != ACCESS_TOKEN || myTokenId == null || myTokenRetriever == null)
+    if (!isStoredTokenAuth())
       return myPassword;
 
     myToken = myTokenRetriever.apply(myTokenId);
@@ -124,6 +130,11 @@ public class AuthSettingsImpl implements AuthSettings {
       return null;
 
     return myToken.getAccessToken();
+  }
+
+  @Override
+  public boolean isStoredTokenAuth() {
+    return myAuthMethod == ACCESS_TOKEN && myTokenId != null && myTokenRetriever != null;
   }
 
   @Nullable
