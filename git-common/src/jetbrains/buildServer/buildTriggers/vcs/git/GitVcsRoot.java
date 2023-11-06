@@ -44,11 +44,11 @@ public class GitVcsRoot {
   private final String myRef;
   private final UserNameStyle myUsernameStyle;
   private final SubmodulesCheckoutPolicy mySubmodulePolicy;
-  protected final AuthSettings myAuthSettings;
+  private final AuthSettings myAuthSettings;
   private final String myUsernameForTags;
   private final String myBranchSpec;
   private final boolean myAutoCrlf;
-  protected final boolean myTokenRefreshEnabled;
+  private final boolean myTokenRefreshEnabled;
   private boolean myReportTags;
   private final boolean myIgnoreMissingDefaultBranch;
   private final boolean myIncludeCommitInfoSubmodules;
@@ -345,5 +345,9 @@ public class GitVcsRoot {
   @Nullable
   protected ExpiringAccessToken getOrRefreshToken(@NotNull String tokenId) {
     return null;
+  }
+
+  public boolean isTokenRefreshEnabled() {
+    return myTokenRefreshEnabled;
   }
 }

@@ -23,11 +23,12 @@ public class SGitVcsRoot extends GitVcsRoot {
     myTokenRefresher = tokenRefresher;
     myCheckProjectScope = (root.getId() >= 0);
 
-    if (myTokenRefreshEnabled &&
-        myAuthSettings.getAuthMethod().isPasswordBased() &&
-        myAuthSettings.isStoredTokenAuth() &&
-        myAuthSettings.getTokenId() != null &&
-        !checkIsTokenPermitted(myAuthSettings.getTokenId())) {
+    AuthSettings authSettings = getAuthSettings();
+    if (isTokenRefreshEnabled() &&
+        authSettings.getAuthMethod().isPasswordBased() &&
+        authSettings.isStoredTokenAuth() &&
+        authSettings.getTokenId() != null &&
+        !checkIsTokenPermitted(authSettings.getTokenId())) {
       throw new VcsException("VCS Root credentials refer to the token that is not permitted within the project scope");
     }
   }
