@@ -5,6 +5,7 @@ import java.io.File;
 import java.util.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Retry;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.AuthCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.BaseCommand;
@@ -146,6 +147,14 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
       }
       if (Errors.isOutdatedIndexError(e)) {
         throw new GitOutdatedIndexException(e);
+      }
+      if (myAuthSettings.getAuthMethod().equals(AuthenticationMethod.ACCESS_TOKEN) && Errors.isAccessDeniedError(e)) {
+        throw new VcsException("Failed to authorize using the specified token. " +
+                               "This issue could be linked to the following causes: " +
+                               "the token is invalid, " +
+                               "the token is associated with other projects, " +
+                               "a token is missing from the TeamCity storage, " +
+                               "and so on.\n" + e.getMessage() , e);
       }
       throw e;
     }

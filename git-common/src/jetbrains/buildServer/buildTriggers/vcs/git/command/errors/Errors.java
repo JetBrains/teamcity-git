@@ -39,4 +39,11 @@ public class Errors {
     return OUTDATED_INDEX_PATTERN.matcher(msg).matches();
   }
 
+  public static boolean isAccessDeniedError(@NotNull VcsException e) {
+    String msg = e.getMessage();
+    if (msg == null)
+      return false;
+    return msg.toLowerCase().contains("access denied");
+  }
+
 }
