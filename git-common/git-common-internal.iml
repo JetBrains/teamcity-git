@@ -7,12 +7,13 @@
     </content>
     <orderEntry type="jdk" jdkName="1.8" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="git-httpclient" level="project" />
     <orderEntry type="library" exported="" name="git-slf4j" level="project" />
     <orderEntry type="module" module-name="common" exported="" />
     <orderEntry type="module" module-name="migration" exported="" />
     <orderEntry type="library" exported="" name="git-jgit" level="project" />
     <orderEntry type="library" exported="" name="git-jsch" level="project" />
     <orderEntry type="module" module-name="connections-api-common" />
+    <orderEntry type="library" name="Maven: org.apache.httpcomponents:httpclient:4.5.14" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.httpcomponents:httpcore:4.4.16" level="project" />
   </component>
 </module>

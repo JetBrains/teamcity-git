@@ -15,7 +15,8 @@
         <element id="artifact" artifact-name="git-common.jar" />
         <element id="library" level="project" name="quartz-2.3.2" />
         <element id="library" level="project" name="org.eclipse.egit.github.core-2.4.0-SNAPSHOT" />
-        <element id="library" level="project" name="httpclient" />
+        <element id="library" level="project" name="Maven: org.apache.httpcomponents:httpclient:4.5.14" />
+        <element id="library" level="project" name="Maven: org.apache.httpcomponents:httpcore:4.4.16" />
         <element id="library" level="project" name="JavaEWAH" />
         <element id="library" level="project" name="jgit" />
         <element id="library" level="project" name="jgit-server" />
@@ -31,7 +32,8 @@
               <element id="directory" name="ssh">
                 <element id="library" level="project" name="Trilead SSH" />
               </element>
-              <element id="library" level="project" name="httpclient" />
+              <element id="library" level="project" name="Maven: org.apache.httpcomponents:httpclient:4.5.14" />
+              <element id="library" level="project" name="Maven: org.apache.httpcomponents:httpcore:4.4.16" />
             </element>
           </element>
         </element>
