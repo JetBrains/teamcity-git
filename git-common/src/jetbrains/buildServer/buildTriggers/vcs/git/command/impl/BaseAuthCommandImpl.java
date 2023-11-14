@@ -148,7 +148,7 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
       if (Errors.isOutdatedIndexError(e)) {
         throw new GitOutdatedIndexException(e);
       }
-      if (myAuthSettings.getAuthMethod().equals(AuthenticationMethod.ACCESS_TOKEN) && Errors.isAccessDeniedError(e)) {
+      if (myAuthSettings.getAuthMethod().equals(AuthenticationMethod.ACCESS_TOKEN) && Errors.isAuthenticationFailedError(e)) {
         throw new VcsException("Failed to authorize using the specified token. " +
                                "This issue could be linked to the following causes: " +
                                "the token is invalid, " +
