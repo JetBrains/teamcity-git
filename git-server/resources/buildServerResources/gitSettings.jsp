@@ -204,19 +204,42 @@
               <c:out value="${vcsPropertiesBean.connectionDisplayName}" />
             </strong>
           </span>
-          <span class="acquireNewTokenBtn" style="padding-left: 1em;">
-            <c:if test="${(not empty vcsPropertiesBean.belongsToProject) and
-                          (not empty vcsPropertiesBean.connection) and
-                          (vcsPropertiesBean.connection.acquiringTokenSupported) and
-                          (not empty vcsPropertiesBean.originalVcsRoot) and
-                          afn:canEditVcsRoot(vcsPropertiesBean.originalVcsRoot) and
-                          not parentReadOnly}">
-              <%-- pass connection.displayName, connection.id, tokenPopupPath, project.externalId  --%>
-              <oauth:obtainToken connection="${vcsPropertiesBean.connection}" className="btn btn_small token-connection-button" callback="setAcquiredToken" repositoryFieldObtainer="window.getRepositoryUrl">
-                Acquire new
-              </oauth:obtainToken>
-            </c:if>
-          </span>
+          <c:set var="canObtainTokens" value="${(not empty vcsPropertiesBean.belongsToProject) and
+                              (not empty vcsPropertiesBean.connection) and
+                              (vcsPropertiesBean.connection.acquiringTokenSupported) and
+                              (not empty vcsPropertiesBean.originalVcsRoot) and
+                              afn:canEditVcsRoot(vcsPropertiesBean.originalVcsRoot) and
+                              not parentReadOnly}"/>
+          <oauth:includeTokenControls>
+            <jsp:attribute name="beforeInclude">
+              <script type="text/javascript">
+                BS.TokenControlParams = {
+                  projectId: '${parentProject.externalId}',
+                  fullTokenId: '${vcsPropertiesBean.tokenId}',
+                  canObtainTokens: ${canObtainTokens},
+                  tokenCallback: function (it) {
+                    setAcquiredToken(it)
+                  },
+                  infoMode: 'ICON',
+                  acquireCaption: 'Acquire new',
+                  tokenIntent: 'REPO_FULL'
+                };
+              </script>
+            </jsp:attribute>
+            <jsp:attribute name="ifDidInclude">
+              <oauth:tokenObtainer shiftX="0" shiftY="-80"/>
+            </jsp:attribute>
+            <jsp:attribute name="ifDidNotInclude">
+              <span class="acquireNewTokenBtn" style="padding-left: 1em;">
+                <c:if test="${canObtainTokens}">
+                  <%-- pass connection.displayName, connection.id, tokenPopupPath, project.externalId  --%>
+                  <oauth:obtainToken connection="${vcsPropertiesBean.connection}" className="btn btn_small token-connection-button" callback="setAcquiredToken" repositoryFieldObtainer="window.getRepositoryUrl">
+                    Acquire new
+                  </oauth:obtainToken>
+                </c:if>
+              </span>
+            </jsp:attribute>
+          </oauth:includeTokenControls>
           <span class="error" id="error_issuedToken"></span>
           <div id="token_additional_info"></div>
         </div>
