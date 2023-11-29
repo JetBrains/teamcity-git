@@ -20,6 +20,7 @@ import com.intellij.openapi.util.Trinity;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import jetbrains.buildServer.BuildProblemData;
@@ -573,6 +574,24 @@ public class UpdaterImpl implements Updater {
     return cmd;
   }
 
+  /**
+   * @param targetPath checkout directory of current vcs root
+   * @param includeRule one of the include rules of other vcs root, such that targetPath starts with includeRule.getTo()
+   * @param excludeRules exclude rules of other vcs root
+   * @return if current vcs root can be checked out in the targetPath, without interfering with other vcs root(e.g. it won't delete files of other root with git clean)
+   */
+  private static boolean canCheckoutIntoSameDir(@NotNull String targetPath, @NotNull IncludeRule includeRule, @NotNull List<FileRule> excludeRules) {
+    try {
+      return excludeRules.stream().anyMatch(excludeRule -> {
+        String exclude = excludeRule.getFrom();
+        return (includeRule.getFrom().isEmpty() || Paths.get(exclude).startsWith(Paths.get(includeRule.getFrom()))) && //check if exclude rule affects include rule
+               Paths.get(targetPath).startsWith(Paths.get(includeRule.getTo(), exclude.substring(includeRule.getFrom().length()))); // check that target path replaces directory excluded by the excludeRule
+      });
+    } catch (Throwable ignored) {
+      return false;
+    }
+  }
+
   @NotNull
   public Collection<String> getPathsToExclude(@NotNull VcsRootEntry otherRoot, @NotNull String targetPath) {
     final SortedSet<String> clashingPaths = new TreeSet<>(); // we need an ordered tree here
@@ -590,12 +609,16 @@ public class UpdaterImpl implements Updater {
       if (targetPath.isEmpty()) {
         clashingPaths.add(to);
       } else if (to.isEmpty() || targetPath.startsWith(to + "/")) {
-        // case when this root is "inside" the other root - we can't fix this using exclude, only report
-        // (TBD: another option is not to run clean at all)
-        myLogger
-          .warning("Two VCS roots shouldn't be checked out into the same folder: performing git clean for " + myRoot.getName() +
-                   " may remove files checked out for " + otherRoot.getVcsRoot().getName() +
-                   ". Please configure checkout to separate folders using Checkout rules.");
+        // check if the targetPath is excluded by checkout rules. In this case the contents of the directory can be managed and cleaned by myRoot, without accidentally cleaning files of otherRoot
+        // For example we don't want to add warning if we have separate vcs root for a submodule and have it exluded in the main vcs root, see TW-82946
+        if (!canCheckoutIntoSameDir(targetPath, rule, otherRoot.getCheckoutRules().getExcludeRules())) {
+          // case when this root is "inside" the other root - we can't fix this using exclude, only report
+          // (TBD: another option is not to run clean at all)
+          myLogger
+            .warning("Two VCS roots shouldn't be checked out into the same folder: performing git clean for " + myRoot.getName() +
+                     " may remove files checked out for " + otherRoot.getVcsRoot().getName() +
+                     ". Please configure checkout to separate folders using Checkout rules.");
+        }
       } else if (to.startsWith(targetPath + "/")) {
         clashingPaths.add(to.substring(targetPath.length() + 1));
       }

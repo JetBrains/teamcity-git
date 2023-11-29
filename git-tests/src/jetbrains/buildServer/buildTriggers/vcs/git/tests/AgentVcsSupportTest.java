@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -58,6 +59,7 @@ import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.CheckoutRules;
+import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsUtil;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
@@ -634,6 +636,36 @@ public class AgentVcsSupportTest {
 
     assertTrue(new File(myCheckoutDir, "target/path/Folder1").isDirectory());
     assertTrue(new File(myCheckoutDir, "target/path/Folder2").isDirectory());
+  }
+
+  @TestFor(issues = "TW-82946")
+  public void can_checkout_roots_into_same_directory_if_nested_directory_is_excluded_by_checkout_rules()
+    throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    Method canCheckoutIntoSameDirectory = UpdaterImpl.class.getDeclaredMethod("canCheckoutIntoSameDir", String.class, IncludeRule.class, List.class);
+    canCheckoutIntoSameDirectory.setAccessible(true);
+
+    CheckoutRules rules1 = new CheckoutRules(Arrays.asList("+:.=>.", "-:test"));
+    assertTrue((Boolean)canCheckoutIntoSameDirectory.invoke(null, "test", rules1.getIncludeRules().get(0), rules1.getExcludeRules()));
+    assertFalse((Boolean)canCheckoutIntoSameDirectory.invoke(null, "test1", rules1.getIncludeRules().get(0), rules1.getExcludeRules()));
+
+    CheckoutRules rules2 = new CheckoutRules(Arrays.asList("+:.=>dir", "-:test"));
+    assertTrue((Boolean)canCheckoutIntoSameDirectory.invoke(null, "dir/test", rules2.getIncludeRules().get(0), rules2.getExcludeRules()));
+    assertFalse((Boolean)canCheckoutIntoSameDirectory.invoke(null, "dir/test1", rules2.getIncludeRules().get(0), rules2.getExcludeRules()));
+
+    CheckoutRules rules3 = new CheckoutRules(Arrays.asList("+:from=>dir/from", "-:test"));
+    assertFalse((Boolean)canCheckoutIntoSameDirectory.invoke(null, "dir/from/test", rules3.getIncludeRules().get(0), rules3.getExcludeRules()));
+    assertFalse((Boolean)canCheckoutIntoSameDirectory.invoke(null, "dir/from/test1", rules3.getIncludeRules().get(0), rules3.getExcludeRules()));
+
+    CheckoutRules rules4 = new CheckoutRules(Arrays.asList("+:from=>dir/from", "-:from/test"));
+    assertTrue((Boolean)canCheckoutIntoSameDirectory.invoke(null, "dir/from/test", rules4.getIncludeRules().get(0), rules4.getExcludeRules()));
+    assertFalse((Boolean)canCheckoutIntoSameDirectory.invoke(null, "dir/from/test1", rules4.getIncludeRules().get(0), rules4.getExcludeRules()));
+
+    CheckoutRules rules5 = new CheckoutRules(Arrays.asList("+:from=>dir/from", "-:from1/test"));
+    assertFalse((Boolean)canCheckoutIntoSameDirectory.invoke(null, "dir/from/1/test", rules5.getIncludeRules().get(0), rules5.getExcludeRules()));
+
+    // Invalid paths
+    CheckoutRules rules6 = new CheckoutRules(Arrays.asList("+:.=>.", "-:test\0"));
+    assertFalse((Boolean)canCheckoutIntoSameDirectory.invoke(null, "test\0", rules6.getIncludeRules().get(0), rules6.getExcludeRules()));
   }
 
   @NotNull
