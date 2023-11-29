@@ -216,7 +216,7 @@ public class RemoteRepositoryConfiguratorTest {
 
     StoredConfig config = r.getConfig();
     then(config.getString("remote", "origin", "url")).isEqualTo(setup.getExpectedUrl());
-    then(config.getString("credential", null, "username")).isEqualTo(setup.getExpectedCredentialUser());
+    then(config.getString("credential", config.getString("remote", "origin", "url"), "username")).isEqualTo(setup.getExpectedCredentialUser());
   }
 
 

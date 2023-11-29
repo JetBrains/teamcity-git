@@ -118,12 +118,12 @@ public class HttpUrlWithUsernameTest extends BaseRemoteRepositoryTest {
     if (mirrorMode != MirrorMode.DISABLED) {
       StoredConfig config = getMirrorConfig(root);
       then(config.getString("remote", "origin", "url")).doesNotContain(USER + "@");
-      then(config.getString("credential", null, "username")).isEqualTo(USER);
+      then(config.getString("credential", config.getString("remote", "origin", "url"), "username")).isEqualTo(USER);
     }
 
     StoredConfig config = getWorkingDirConfig();
     then(config.getString("remote", "origin", "url")).doesNotContain(USER + "@");
-    then(config.getString("credential", null, "username")).isEqualTo(USER);
+    then(config.getString("credential", config.getString("remote", "origin", "url"), "username")).isEqualTo(USER);
   }
 
 
@@ -146,12 +146,12 @@ public class HttpUrlWithUsernameTest extends BaseRemoteRepositoryTest {
     if (mirrorMode != MirrorMode.DISABLED) {
       StoredConfig config = getMirrorConfig(root);
       then(config.getString("remote", "origin", "url")).doesNotContain(USER + "@");
-      then(config.getString("credential", null, "username")).isEqualTo(USER);
+      then(config.getString("credential", config.getString("remote", "origin", "url"), "username")).isEqualTo(USER);
     }
 
     StoredConfig config = getWorkingDirConfig();
     then(config.getString("remote", "origin", "url")).doesNotContain(USER + "@");
-    then(config.getString("credential", null, "username")).isEqualTo(USER);
+    then(config.getString("credential", config.getString("remote", "origin", "url"), "username")).isEqualTo(USER);
   }
 
 

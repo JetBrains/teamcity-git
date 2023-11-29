@@ -64,7 +64,7 @@ public class RemoteRepositoryConfigurator {
         URIish fetchUrlNoUser = ((URIish) fetchUrl.get()).setUser(null);
         config.setString("remote", "origin", "url", fetchUrlNoUser.toString());
         config.unset("credential", null, "username");
-        config.setString("credential", "origin", "username", user);
+        config.setString("credential", fetchUrlNoUser.toString(), "username", user);
       } else {
         config.setString("remote", "origin", "url", fetchUrl.toString());
         config.unset("credential", null, "username");
