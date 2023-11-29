@@ -20,6 +20,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.locks.ReentrantLock;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.*;
@@ -61,12 +63,18 @@ public class GitClonesUpdater {
           synchronized (myScheduledForUpdate) {
             if (myExecutor == null) {
               myExecutor = ExecutorsFactory.newFixedDaemonExecutor("Git local clones updater",
-                                                                   TeamCityProperties.getInteger("teamcity.git.localClones.maxParallelUpdateThreads", 2));
+                                                                   TeamCityProperties.getInteger("teamcity.git.localClones.maxParallelUpdateThreads", 2),
+                                                                   TeamCityProperties.getInteger("teamcity.git.localClones.maxPoolSize", 2),
+                                                                   TeamCityProperties.getInteger("teamcity.git.localClones.maxQueueSize", 5));
             }
           }
           if (myExecutor.isShutdown()) return;
 
-          myExecutor.submit(GitClonesUpdater.this::processVcsRootsScheduledForUpdate);
+          try {
+            myExecutor.submit(GitClonesUpdater.this::processVcsRootsScheduledForUpdate);
+          } catch (RejectedExecutionException ignored) {
+            //if the exception occured it means there are already submitted tasks which will process our change, so we can ignore this exception
+          }
         }
       }
     });
