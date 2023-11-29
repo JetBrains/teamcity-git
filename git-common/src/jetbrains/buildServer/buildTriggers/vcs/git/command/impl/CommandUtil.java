@@ -205,6 +205,10 @@ public class CommandUtil {
     return isMessageContains(e, "couldn't find remote ref");
   }
 
+  public static boolean isNoUsername(@NotNull VcsException e) {
+    return isMessageContains(e, "could not read Username");
+  }
+
   public static boolean isMessageContains(@NotNull VcsException e, @NotNull String text) {
     final String msg = e.getMessage();
     return msg != null && StringUtil.containsIgnoreCase(msg, text);

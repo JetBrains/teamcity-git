@@ -148,6 +148,9 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
       if (Errors.isOutdatedIndexError(e)) {
         throw new GitOutdatedIndexException(e);
       }
+      if (CommandUtil.isNoUsername(e)) {
+        throw new VcsException("Anonymous authentication has failed. The repository is either private or does not exist", e);
+      }
       if (myAuthSettings.getAuthMethod().equals(AuthenticationMethod.ACCESS_TOKEN) && Errors.isAuthenticationFailedError(e)) {
         throw new VcsException("Failed to authorize using the specified token. " +
                                "This issue could be linked to the following causes: " +
