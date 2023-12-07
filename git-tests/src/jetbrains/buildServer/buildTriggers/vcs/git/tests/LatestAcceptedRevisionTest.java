@@ -67,7 +67,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
 
     Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:."),
                                                                                             "bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf", "refs/heads/master",
-                                                                                                                                     Collections.emptySet());
+                                                                                            Collections.emptySet());
     then(rev.getRevision()).isEqualTo("bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf");
 
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("-:."),
@@ -263,7 +263,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                                                                             Arrays.asList("e19e0ffec0a1512674db95ade28047fbfba76fdf", "7e4a8739b038b5b3e551c96dc3a2ef6320772969"),
                                                                                             null);
     then(rev.getRevision()).isNull();
-    then(rev.getReachableStopRevisions()).containsOnly("e19e0ffec0a1512674db95ade28047fbfba76fdf");
+    then(rev.getReachableStopRevisions()).containsOnly("7e4a8739b038b5b3e551c96dc3a2ef6320772969", "e19e0ffec0a1512674db95ade28047fbfba76fdf");
   }
 
   public void return_reachable_and_visited_stop_revisions_only2() throws IOException, VcsException {
@@ -278,7 +278,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                                                                                           "7c56bdca06b531bc0c923e857514a400b83d2e26"),
                                                                                             null);
     then(rev.getRevision()).isNull();
-    then(rev.getReachableStopRevisions()).containsOnly("7c56bdca06b531bc0c923e857514a400b83d2e26");
+    then(rev.getReachableStopRevisions()).containsOnly("eea4a3e48901ba036998c9fe0afdc78cc8a05a33", "7c56bdca06b531bc0c923e857514a400b83d2e26");
   }
 
   public void invalid_stop_revisions_should_be_ignored() throws IOException, VcsException {

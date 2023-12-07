@@ -41,11 +41,12 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAw
 public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private final CheckoutRules myCheckoutRules;
   private final Set<String> myCollectedUninterestingRevisions = new HashSet<>();
-  private final List<String> myReachedStopRevisions = new ArrayList<>();
+  private final Set<String> myReachedStopRevisions = new LinkedHashSet<>();
   private final Set<String> myStopRevisions = new HashSet<>();
   private final Set<String> myVisitedRevisions = new HashSet<>();
   private SubmoduleResolverImpl mySubmoduleResolver;
   private String myClosestPartiallyAffectedMergeCommit = null;
+  private Set<ObjectId> myStopRevisionsParents = new HashSet<>();
 
   CheckoutRulesRevWalk(@NotNull final ServerPluginConfig config,
                        @NotNull final OperationContext context,
@@ -58,11 +59,13 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   public void setStopRevisions(@NotNull Collection<String> stopRevisions) {
     myStopRevisions.clear();
     myStopRevisions.addAll(stopRevisions);
+    myStopRevisionsParents.clear();
   }
 
   @Nullable
   public RevCommit getNextMatchedCommit() throws IOException {
-    markStopRevisionsParentsAsUninteresting(myStopRevisions);
+    rememberStopRevisionsParents();
+    markStopRevisionsParentsAsUninteresting(this);
 
     while (next() != null) {
       RevCommit cc = getCurrentCommit();
@@ -72,9 +75,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
       }
 
       if (myCollectedUninterestingRevisions.contains(cc.name())) continue;
-      if (myStopRevisions.contains(cc.name())) {
-        myReachedStopRevisions.add(cc.name());
-      }
+      handleStopRevision(cc);
       myVisitedRevisions.add(cc.name());
       if (isCurrentCommitIncluded()) {
         return cc;
@@ -84,16 +85,29 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     return null;
   }
 
-  private void markStopRevisionsParentsAsUninteresting(@NotNull Collection<String> stopRevisions) throws IOException {
+  private void rememberStopRevisionsParents() throws IOException {
     ObjectDatabase objectDatabase = getRepository().getObjectDatabase();
-    for (String stopRev: stopRevisions) {
+    for (String stopRev: myStopRevisions) {
       ObjectId stopRevId = ObjectId.fromString(GitUtils.versionRevision(stopRev));
       if (!objectDatabase.has(stopRevId)) continue;
 
       RevCommit stopCommit = parseCommit(stopRevId);
       for (RevCommit p: stopCommit.getParents()) {
-        markUninteresting(p);
+        myStopRevisionsParents.add(p.getId());
       }
+    }
+
+  }
+
+  private void handleStopRevision(@NotNull RevCommit cc) {
+    if (myStopRevisions.contains(cc.name())) {
+      myReachedStopRevisions.add(cc.name());
+    }
+  }
+
+  private void markStopRevisionsParentsAsUninteresting(@NotNull RevWalk revWalk) throws IOException {
+    for (ObjectId parentId: myStopRevisionsParents) {
+      revWalk.markUninteresting(revWalk.parseCommit(parentId));
     }
   }
 
@@ -104,7 +118,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
   @NotNull
   public List<String> getReachedStopRevisions() {
-    return Collections.unmodifiableList(myReachedStopRevisions);
+    return new ArrayList<>(myReachedStopRevisions);
   }
 
   @Nullable
@@ -228,6 +242,10 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
     // we should mark all commits reachable from uninteresting parents as uninteresting, except those which are also reachable from the interesting parents
     RevWalk walk = newRevWalk();
+
+    // for performance reasons it's important to avoid going beyond stop revisions
+    markStopRevisionsParentsAsUninteresting(walk);
+
     try {
       for (RevCommit p: interestingParents) {
         walk.markUninteresting(walk.parseCommit(p.getId()));
@@ -239,6 +257,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
       RevCommit next;
       while ((next = walk.next()) != null) {
+        handleStopRevision(next);
         result.add(next.name());
       }
     } finally {
