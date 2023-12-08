@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
+import java.util.List;
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.connections.ExpiringAccessToken;
@@ -46,8 +47,8 @@ public class AgentGitVcsRoot extends GitVcsRoot {
 
   private final AgentTokenStorage myTokenStorage;
 
-  public AgentGitVcsRoot(MirrorManager mirrorManager, VcsRoot root, AgentTokenStorage tokenStorage) throws VcsException {
-    super(mirrorManager, root, new URIishHelperImpl(), true);
+  public AgentGitVcsRoot(MirrorManager mirrorManager, VcsRoot root, AgentTokenStorage tokenStorage, @NotNull List<ExtraHTTPCredentials> extraHTTPCredentials) throws VcsException {
+    super(mirrorManager, root, new URIishHelperImpl(), extraHTTPCredentials, true);
     myLocalRepositoryDir = getRepositoryDir();
     String clean = getProperty(Constants.AGENT_CLEAN_POLICY);
     myCleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);
@@ -57,8 +58,8 @@ public class AgentGitVcsRoot extends GitVcsRoot {
   }
 
 
-  public AgentGitVcsRoot(MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root, AgentTokenStorage tokenStorage) throws VcsException {
-    super(mirrorManager, root, new URIishHelperImpl(), true);
+  public AgentGitVcsRoot(MirrorManager mirrorManager, File localRepositoryDir, VcsRoot root, AgentTokenStorage tokenStorage, @NotNull List<ExtraHTTPCredentials> extraHTTPCredentials) throws VcsException {
+    super(mirrorManager, root, new URIishHelperImpl(), extraHTTPCredentials, true);
     myLocalRepositoryDir = localRepositoryDir;
     String clean = getProperty(Constants.AGENT_CLEAN_POLICY);
     myCleanPolicy = clean == null ? AgentCleanPolicy.ON_BRANCH_CHANGE : AgentCleanPolicy.valueOf(clean);

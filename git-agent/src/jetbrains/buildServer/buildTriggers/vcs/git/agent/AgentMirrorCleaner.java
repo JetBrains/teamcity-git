@@ -24,7 +24,6 @@ import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -35,6 +34,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.util.*;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.agent.GitUtilsAgent.detectExtraHTTPCredentialsInBuild;
 
 public class AgentMirrorCleaner implements DirectoryCleanersProvider {
 
@@ -176,7 +177,7 @@ public class AgentMirrorCleaner implements DirectoryCleanersProvider {
       if (!Constants.VCS_NAME.equals(root.getVcsName()))
         continue;
       try {
-        GitVcsRoot gitRoot = new AgentGitVcsRoot(myMirrorManager, root, myTokenStorage);
+        GitVcsRoot gitRoot = new AgentGitVcsRoot(myMirrorManager, root, myTokenStorage, detectExtraHTTPCredentialsInBuild(context.getRunningBuild()));
         String repositoryUrl = gitRoot.getRepositoryFetchURL().toString();
         LOG.debug("Repository " + repositoryUrl + " is used in the build, its mirror won't be cleaned");
         addRepositoryWithSubmodules(repositories, gitRoot.getRepositoryFetchURL().toString());

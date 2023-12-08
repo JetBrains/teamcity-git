@@ -18,10 +18,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.ExtensionsProvider;
 import jetbrains.buildServer.log.Loggers;
@@ -47,6 +44,8 @@ import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_HTTP_CRED_PREFIX;
 
 /**
  * @author dmitry.neverov
@@ -258,7 +257,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
 
   private void refineGithubSettings(@NotNull VcsHostingRepo ghRepo, @NotNull Map<String, String> props, SProject curProject) throws VcsException {
     SVcsRoot vcsRoot = curProject.createDummyVcsRoot(Constants.VCS_NAME, props);
-    AuthSettings auth = new AuthSettingsImpl(props, vcsRoot, new URIishHelperImpl(), tokenId -> myTokenRefresher.getRefreshableToken(curProject, tokenId, false));
+    AuthSettings auth = new AuthSettingsImpl(props, vcsRoot, new URIishHelperImpl(), tokenId -> myTokenRefresher.getRefreshableToken(curProject, tokenId, false), GitServerUtil.detectExtraHTTPCredentialsInProject(curProject));
 
     final String password = auth.getPassword();
     AuthenticationMethod authMethod = auth.getAuthMethod();

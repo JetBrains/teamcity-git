@@ -21,9 +21,7 @@ import com.intellij.openapi.util.SystemInfo;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.log.Loggers;
@@ -32,6 +30,8 @@ import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
 import org.jetbrains.annotations.NotNull;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_HTTP_CRED_PREFIX;
 
 /**
  * Commands that allows working with git repositories
@@ -251,5 +251,22 @@ public class GitUtils {
       Loggers.VCS.info("Removing packed refs lock file " + packedRefsLock.getAbsolutePath());
       FileUtil.delete(packedRefsLock);
     }
+  }
+
+  @NotNull
+  public static List<ExtraHTTPCredentials> processExtraHTTPCredentials(@NotNull Map<String, Map<String, String>> extraCreds) {
+    List<ExtraHTTPCredentials> result = new ArrayList<>();
+
+    for (Map<String, String> credentialsParams : extraCreds.values()) {
+      if (credentialsParams.containsKey(GIT_HTTP_CRED_PREFIX +".url") &&
+          credentialsParams.containsKey(GIT_HTTP_CRED_PREFIX + ".username") &&
+          credentialsParams.containsKey(GIT_HTTP_CRED_PREFIX + ".password")) {
+        result.add(new ExtraHTTPCredentialsImpl(credentialsParams.get(GIT_HTTP_CRED_PREFIX +".url"),
+                                                credentialsParams.get(GIT_HTTP_CRED_PREFIX +".username"),
+                                                credentialsParams.get(GIT_HTTP_CRED_PREFIX +".password")));
+      }
+    }
+
+    return result;
   }
 }

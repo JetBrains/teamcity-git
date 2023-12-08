@@ -17,6 +17,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.text.StringUtil;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.log.LogUtil;
@@ -59,18 +61,27 @@ public class GitVcsRoot {
   protected final String myRawFetchUrl;
   protected final String myPushUrl;
 
-
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root,
                     @NotNull URIishHelper urIishHelper) throws VcsException {
-    this(mirrorManager, root, urIishHelper, false);
+    this(mirrorManager, root, urIishHelper, new ArrayList<>(), false);
   }
 
-  public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root,
-                    @NotNull URIishHelper urIishHelper, boolean isTokenRefreshEnabled) throws VcsException {
-    this(mirrorManager, root, root.getProperty(Constants.BRANCH_NAME), urIishHelper, isTokenRefreshEnabled);
+  public GitVcsRoot(@NotNull final MirrorManager mirrorManager,
+                    @NotNull final VcsRoot root,
+                    @NotNull URIishHelper urIishHelper,
+                    @NotNull List<ExtraHTTPCredentials> extraHTTPCredentials) throws VcsException {
+    this(mirrorManager, root, urIishHelper, extraHTTPCredentials, false);
   }
 
-  public GitVcsRoot(@NotNull MirrorManager mirrorManager, @NotNull VcsRoot root, @Nullable String ref, @NotNull URIishHelper urIishHelper, boolean isTokenRefreshEnabled) throws VcsException {
+  public GitVcsRoot(@NotNull final MirrorManager mirrorManager,
+                    @NotNull final VcsRoot root,
+                    @NotNull URIishHelper urIishHelper,
+                    @NotNull List<ExtraHTTPCredentials> extraHTTPCredentials,
+                    boolean isTokenRefreshEnabled) throws VcsException {
+    this(mirrorManager, root, root.getProperty(Constants.BRANCH_NAME), urIishHelper, extraHTTPCredentials, isTokenRefreshEnabled);
+  }
+
+  public GitVcsRoot(@NotNull MirrorManager mirrorManager, @NotNull VcsRoot root, @Nullable String ref, @NotNull URIishHelper urIishHelper, @NotNull List<ExtraHTTPCredentials> extraHTTPCredentials, boolean isTokenRefreshEnabled) throws VcsException {
     myMirrorManager = mirrorManager;
     myDelegate = root;
     myCustomRepositoryDir = getPath();
@@ -79,7 +90,7 @@ public class GitVcsRoot {
     myUsernameStyle = readUserNameStyle();
     mySubmodulePolicy = readSubmodulesPolicy();
     myTokenRefreshEnabled = isTokenRefreshEnabled;
-    myAuthSettings = createAuthSettings(urIishHelper);
+    myAuthSettings = createAuthSettings(urIishHelper, extraHTTPCredentials);
     myRawFetchUrl = getProperty(Constants.FETCH_URL);
     if (myRawFetchUrl.contains("\n") || myRawFetchUrl.contains("\r"))
       throw new VcsException("Newline in fetch url '" + myRawFetchUrl + "'");
@@ -100,8 +111,8 @@ public class GitVcsRoot {
     myCheckoutPolicy = readCheckoutPolicy();
   }
 
-  private AuthSettings createAuthSettings(@NotNull URIishHelper urIishHelper) {
-    return new AuthSettingsImpl(this, urIishHelper, myTokenRefreshEnabled ? tokenId -> getOrRefreshToken(tokenId) : null);
+  private AuthSettings createAuthSettings(@NotNull URIishHelper urIishHelper, @NotNull List<ExtraHTTPCredentials> extraHTTPCredentials) {
+    return new AuthSettingsImpl(this, urIishHelper, myTokenRefreshEnabled ? tokenId -> getOrRefreshToken(tokenId) : null, extraHTTPCredentials);
   }
 
   @Nullable

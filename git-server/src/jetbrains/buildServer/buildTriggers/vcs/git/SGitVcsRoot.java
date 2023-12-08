@@ -9,6 +9,8 @@ import jetbrains.buildServer.vcs.VcsRootInstance;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.detectExtraHTTPCredentialsInVcsRoot;
+
 public class SGitVcsRoot extends GitVcsRoot {
 
   @Nullable
@@ -19,7 +21,7 @@ public class SGitVcsRoot extends GitVcsRoot {
                      @NotNull VcsRoot root,
                      @NotNull URIishHelper urIishHelper,
                      @Nullable TokenRefresher tokenRefresher) throws VcsException {
-    super(mirrorManager, root, urIishHelper, tokenRefresher != null);
+    super(mirrorManager, root, urIishHelper, detectExtraHTTPCredentialsInVcsRoot(root), tokenRefresher != null);
     myTokenRefresher = tokenRefresher;
     myCheckProjectScope = (root.getId() >= 0);
   }

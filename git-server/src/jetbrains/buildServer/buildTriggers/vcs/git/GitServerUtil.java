@@ -29,10 +29,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.log.LogInitializer;
 import jetbrains.buildServer.serverSide.FileWatchingPropertiesModel;
+import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
+import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.VcsRootInstance;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.layout.PatternLayout;
@@ -53,6 +57,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_HTTP_CRED_PREFIX;
 
 /**
  * Utilities for server part of the plugin
@@ -768,5 +773,19 @@ public class GitServerUtil {
              ); // TW-68453
     }
     return false;
+  }
+
+  public static List<ExtraHTTPCredentials> detectExtraHTTPCredentialsInProject(@NotNull SProject project) {
+    return GitUtils.processExtraHTTPCredentials(PropertiesHelper.aggregatePropertiesByAlias(project.getParameters(), GIT_HTTP_CRED_PREFIX));
+  }
+
+  public static List<ExtraHTTPCredentials> detectExtraHTTPCredentialsInVcsRoot(@NotNull VcsRoot root) {
+    if (root instanceof VcsRootInstance) {
+      return detectExtraHTTPCredentialsInProject(((VcsRootInstance)root).getParent().getProject());
+    } else if (root instanceof SVcsRoot) {
+      return detectExtraHTTPCredentialsInProject(((SVcsRoot)root).getProject());
+    } else {
+      return new ArrayList<>();
+    }
   }
 }

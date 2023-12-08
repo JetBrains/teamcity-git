@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
@@ -54,10 +55,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBu
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
-import jetbrains.buildServer.util.CollectionsUtil;
-import jetbrains.buildServer.util.EventDispatcher;
-import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.util.TestFor;
+import jetbrains.buildServer.util.*;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
@@ -79,6 +77,7 @@ import org.testng.annotations.Test;
 
 import static com.intellij.openapi.util.io.FileUtil.copyDir;
 import static com.intellij.openapi.util.io.FileUtil.delete;
+import static jetbrains.buildServer.buildTriggers.vcs.git.agent.GitUtilsAgent.detectExtraHTTPCredentialsInBuild;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVersionProvider.getGitPath;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
@@ -104,7 +103,7 @@ public class AgentVcsSupportTest {
   private GitAgentVcsSupport myVcsSupport;
   private AgentRunningBuild myBuild;
   private AgentSupportBuilder myBuilder;
-  private AgentTokenStorage myTookenStorage;
+  private AgentTokenStorage myTokenStorage;
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -135,7 +134,7 @@ public class AgentVcsSupportTest {
         return new InvalidAccessToken();
       }
     };
-    myTookenStorage = new AgentTokenStorage(EventDispatcher.create(AgentLifeCycleListener.class), tokenRetriever);
+    myTokenStorage = new AgentTokenStorage(EventDispatcher.create(AgentLifeCycleListener.class), tokenRetriever);
   }
 
 
@@ -248,6 +247,37 @@ public class AgentVcsSupportTest {
     then(r.getAllRefs().get("refs/heads/personal").getObjectId().name()).isEqualTo("d47dda159b27b9a8c4cee4ce98e4435eb5b17168");
     then(r.getAllRefs().get("refs/remotes/origin/personal").getObjectId().name()).isEqualTo("d47dda159b27b9a8c4cee4ce98e4435eb5b17168");
   }
+
+  @Test
+  public void additional_http_creds_param_test() throws Exception {
+    VcsRootImpl root = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(myTempFiles.createTempDir()).withUseMirrors(true).build();
+    String buildBranchParam = GitUtils.getGitRootBranchParamName(root);
+
+    AgentRunningBuild build = createRunningBuild(map(buildBranchParam, "refs/heads/master",
+                                                     "teamcity.git.http.credentials.alias.password", "pass1",
+                                                     "teamcity.git.http.credentials.alias.url", "https://gitlab1.com/owner/repo.git",
+                                                     "teamcity.git.http.credentials.alias.username", "user1",
+
+                                                     "teamcity.git.http.credentials.password", "pass2",
+                                                     "teamcity.git.http.credentials.url", "https://gitlab2.com/owner/repo.git",
+                                                     "teamcity.git.http.credentials.username", "user2")
+                                                 );
+
+
+    AgentGitVcsRoot gitRoot = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myTempFiles.createTempDir(), root, myTokenStorage, detectExtraHTTPCredentialsInBuild(build));
+    AuthSettings settings = gitRoot.getAuthSettings();
+    List<ExtraHTTPCredentials> creds = settings.getExtraHTTPCredentials().stream().sorted((c1, c2) -> StringUtil.compare(c1.getUsername(), c2.getUsername())).collect(Collectors.toList());
+
+    assertEquals(2, creds.size());
+
+    assertEquals("https://gitlab1.com/owner/repo.git", creds.get(0).getUrl());
+    assertEquals("user1", creds.get(0).getUsername());
+    assertEquals("pass1", creds.get(0).getPassword());
+
+    assertEquals("https://gitlab2.com/owner/repo.git", creds.get(1).getUrl());
+    assertEquals("user2", creds.get(1).getUsername());
+    assertEquals("pass2", creds.get(1).getPassword());
+ }
 
 
   /**
@@ -739,7 +769,7 @@ public class AgentVcsSupportTest {
 
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, myBuild, false);
 
-    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTokenStorage, new ArrayList<>());
     File bareRepositoryDir = root.getRepositoryDir();
     assertTrue(bareRepositoryDir.exists());
     //check some dirs that should be present in the bare repository:
@@ -766,7 +796,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildBeforeUsingMirrors, false);
     AgentRunningBuild buildWithMirrorsEnabled = createRunningBuild(true);
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
-    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTokenStorage, new ArrayList<>());
     String localMirrorUrl = new URIish(root.getRepositoryDir().toURI().toASCIIString()).toString();
     Repository r = new RepositoryBuilder().setWorkTree(myCheckoutDir).build();
     assertEquals(root.getRepositoryFetchURL().toString(), r.getConfig().getString("url", localMirrorUrl, "insteadOf"));
@@ -783,7 +813,7 @@ public class AgentVcsSupportTest {
 
   @TestFor(issues = "TW-67736")
   public void delete_url_insteadOf_from_config_when_switching_from_mirrors_to_alternates() throws Exception {
-    final GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
+    final GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTokenStorage, new ArrayList<>());
     {
       final AgentRunningBuild build = createRunningBuild(map(PluginConfigImpl.USE_MIRRORS, "true"));
       myVcsSupport.updateSources(root.getOriginalRoot(), new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
@@ -812,7 +842,7 @@ public class AgentVcsSupportTest {
 
   public void stop_use_any_mirror_if_agent_property_changed_to_false() throws Exception {
     AgentRunningBuild build2 = createRunningBuild(false);
-    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTokenStorage, new ArrayList<>());
     myVcsSupport.updateSources(myRoot, new CheckoutRules(""), GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build2, false);
 
     //add some mirror
@@ -873,7 +903,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, buildWithMirrorsEnabled, false);
 
     //corrupt local mirror
-    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTokenStorage, new ArrayList<>());
     File mirror = myBuilder.getMirrorManager().getMirrorDir(root.getRepositoryFetchURL().toString());
     File[] children = mirror.listFiles();
     if (children != null) {
@@ -1654,7 +1684,7 @@ public class AgentVcsSupportTest {
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", myCheckoutDir, build, true);
 
     //manually create a branch tmp_branch_for_build with, it seems like it wasn't removed due to errors in previous checkouts
-    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTookenStorage);
+    GitVcsRoot root = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTokenStorage, new ArrayList<>());
     File mirror = myBuilder.getMirrorManager().getMirrorDir(root.getRepositoryFetchURL().toString());
     File emptyBranchFile = new File(mirror, "refs" + File.separator + "heads" + File.separator + "tmp_branch_for_build");
     FileUtil.writeToFile(emptyBranchFile, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653\n".getBytes());

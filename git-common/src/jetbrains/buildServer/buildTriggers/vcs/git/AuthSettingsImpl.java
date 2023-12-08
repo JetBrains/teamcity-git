@@ -1,8 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -27,23 +25,32 @@ public class AuthSettingsImpl implements AuthSettings {
   private final String myTeamCitySshKeyId;
   private final Function<String, ExpiringAccessToken> myTokenRetriever;
 
+  private final List<ExtraHTTPCredentials> myExtraHTTPCredentials = new ArrayList<>();
+
   public AuthSettingsImpl(@NotNull VcsRoot root, @NotNull URIishHelper urIishHelper) {
-    this(root.getProperties(), root, urIishHelper, null);
+    this(root.getProperties(), root, urIishHelper, null, new ArrayList<>());
   }
 
-  public AuthSettingsImpl(@NotNull GitVcsRoot root, @NotNull URIishHelper urIishHelper, @Nullable Function <String, ExpiringAccessToken> tokenRetriever) {
-    this(root.getProperties(), root.getOriginalRoot(), urIishHelper, tokenRetriever);
+  public AuthSettingsImpl(@NotNull GitVcsRoot root,
+                          @NotNull URIishHelper urIishHelper,
+                          @Nullable Function <String, ExpiringAccessToken> tokenRetriever,
+                          @NotNull List<ExtraHTTPCredentials> extraHTTPCredentials) {
+    this(root.getProperties(), root.getOriginalRoot(), urIishHelper, tokenRetriever, extraHTTPCredentials);
   }
 
   public AuthSettingsImpl(@NotNull Map<String, String> properties, @NotNull URIishHelper urIishHelper) {
-    this(properties, null, urIishHelper, null);
+    this(properties, null, urIishHelper, null, new ArrayList<>());
   }
 
   public AuthSettingsImpl(@NotNull Map<String, String> properties, @Nullable VcsRoot root, @NotNull URIishHelper urIishHelper) {
-    this(properties, root, urIishHelper, null);
+    this(properties, root, urIishHelper, null, new ArrayList<>());
   }
 
-  public AuthSettingsImpl(@NotNull Map<String, String> properties, @Nullable VcsRoot root, @NotNull URIishHelper urIishHelper, @Nullable Function <String, ExpiringAccessToken> tokenRetriever) {
+  public AuthSettingsImpl(@NotNull Map<String, String> properties,
+                          @Nullable VcsRoot root,
+                          @NotNull URIishHelper urIishHelper,
+                          @Nullable Function <String, ExpiringAccessToken> tokenRetriever,
+                          @NotNull List<ExtraHTTPCredentials> extraHTTPCredentials) {
     myAuthMethod = readAuthMethod(properties);
     myIgnoreKnownHosts = "true".equals(properties.get(Constants.IGNORE_KNOWN_HOSTS));
     if (myAuthMethod == AuthenticationMethod.PRIVATE_KEY_FILE) {
@@ -68,6 +75,7 @@ public class AuthSettingsImpl implements AuthSettings {
     myTeamCitySshKeyId = myAuthMethod != AuthenticationMethod.TEAMCITY_SSH_KEY ? null : properties.get(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME);
     myRoot = root;
     myTokenRetriever = tokenRetriever;
+    myExtraHTTPCredentials.addAll(extraHTTPCredentials);
   }
 
   @Nullable
@@ -124,6 +132,12 @@ public class AuthSettingsImpl implements AuthSettings {
       return null;
 
     return myToken.getAccessToken();
+  }
+
+  @NotNull
+  @Override
+  public List<ExtraHTTPCredentials> getExtraHTTPCredentials() {
+    return new ArrayList<>(myExtraHTTPCredentials);
   }
 
   @Nullable

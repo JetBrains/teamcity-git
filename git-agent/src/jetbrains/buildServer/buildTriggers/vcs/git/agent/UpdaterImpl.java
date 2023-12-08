@@ -53,6 +53,7 @@ import org.jetbrains.annotations.Nullable;
 
 import static com.intellij.openapi.util.text.StringUtil.isEmpty;
 import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
+import static jetbrains.buildServer.buildTriggers.vcs.git.agent.GitUtilsAgent.detectExtraHTTPCredentialsInBuild;
 
 public class UpdaterImpl implements Updater {
 
@@ -115,7 +116,7 @@ public class UpdaterImpl implements Updater {
     myRevision = GitUtils.versionRevision(version);
     myTargetDirectory = targetDir;
     mySubmoduleManager = submoduleManager;
-    myRoot = new AgentGitVcsRoot(mirrorManager, myTargetDirectory, root, tokenStorage);
+    myRoot = new AgentGitVcsRoot(mirrorManager, myTargetDirectory, root, tokenStorage, detectExtraHTTPCredentialsInBuild(build));
     myFullBranchName = getBranch();
     myRules = rules;
     myCheckoutMode = checkoutMode;

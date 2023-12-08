@@ -16,6 +16,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import java.util.List;
 import java.util.Map;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
@@ -51,4 +52,6 @@ public interface AuthSettings {
 
   boolean doesTokenNeedRefresh();
 
+  @NotNull
+  List<ExtraHTTPCredentials> getExtraHTTPCredentials();
 }
