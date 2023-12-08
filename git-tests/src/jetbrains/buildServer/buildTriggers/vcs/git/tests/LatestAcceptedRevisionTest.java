@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import jetbrains.buildServer.TestLogger;
+import jetbrains.buildServer.buildTriggers.vcs.git.CheckoutRulesRevWalk;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
@@ -304,6 +305,20 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                                                                             null);
 
     then(rev.getRevision()).isEqualTo("d036d012385a762568a474b57337b9cf398b96e0");
+  }
+
+  public void checked_commits_limit() throws VcsException {
+    setInternalProperty(CheckoutRulesRevWalk.TEAMCITY_MAX_CHECKED_COMMITS_PROP, "7");
+    GitVcsSupport support = git();
+    VcsRoot root = getVcsRootBuilder().build();
+
+    final Set<String> visited = new HashSet<>();
+    Result rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:non-existing-path"),
+                                                                                            "6ff32b16fe485e7a0a1e209bf10987e1ad46292e", "refs/heads/master",
+                                                                                            Collections.emptySet(),
+                                                                                            visited);
+    then(rev.getRevision()).isNull();
+    then(visited.size()).isEqualTo(7);
   }
 
   private VcsRootBuilder getVcsRootBuilder() {
