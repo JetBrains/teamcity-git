@@ -68,6 +68,7 @@ public class GitUrlSupportTest extends BaseTestCase {
     Mock vrMock = mock(SVcsRoot.class);
     SVcsRoot svcsRoot = (SVcsRoot)vrMock.proxy();
     myProjectMock.stubs().method("createDummyVcsRoot").will(returnValue(svcsRoot));
+    myProjectMock.stubs().method("getParameters").will(returnValue(new HashMap<>()));
     final SProject project = (SProject)myProjectMock.proxy();
 
     final Mock pmMock = mock(ProjectManager.class);
