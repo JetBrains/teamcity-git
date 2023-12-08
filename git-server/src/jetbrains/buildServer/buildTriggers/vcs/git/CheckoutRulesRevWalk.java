@@ -16,10 +16,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.ObjectDatabase;
@@ -39,14 +42,19 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAw
  * This RevWalk class accepts checkout rules and traverses commits graph until it finds a commit matched by these rules.
  */
 public class CheckoutRulesRevWalk extends LimitingRevWalk {
+  public static final String TEAMCITY_MAX_VISITED_UNINTERESTING_COMMITS_PROP = "teamcity.git.checkoutRulesRevWalk.maxVisitedUninterestingCommits";
+  public static final String TEAMCITY_MAX_CHECKED_COMMITS_PROP = "teamcity.git.checkoutRulesRevWalk.maxCheckedCommits";
   private final CheckoutRules myCheckoutRules;
   private final Set<String> myCollectedUninterestingRevisions = new HashSet<>();
   private final Set<String> myReachedStopRevisions = new LinkedHashSet<>();
   private final Set<String> myStopRevisions = new HashSet<>();
+  private String myStartRevision;
   private final Set<String> myVisitedRevisions = new HashSet<>();
   private SubmoduleResolverImpl mySubmoduleResolver;
   private String myClosestPartiallyAffectedMergeCommit = null;
-  private Set<ObjectId> myStopRevisionsParents = new HashSet<>();
+  private final Set<ObjectId> myStopRevisionsParents = new HashSet<>();
+
+  private final static Logger LOG = Logger.getInstance(CheckoutRulesRevWalk.class);
 
   CheckoutRulesRevWalk(@NotNull final ServerPluginConfig config,
                        @NotNull final OperationContext context,
@@ -54,6 +62,12 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     super(config, context);
     sort(RevSort.TOPO);
     myCheckoutRules = checkoutRules;
+  }
+
+  @Override
+  public void markStart(RevCommit c) throws IOException {
+    super.markStart(c);
+    myStartRevision = c.name();
   }
 
   public void setStopRevisions(@NotNull Collection<String> stopRevisions) {
@@ -66,6 +80,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   public RevCommit getNextMatchedCommit() throws IOException {
     rememberStopRevisionsParents();
     markStopRevisionsParentsAsUninteresting(this);
+    int maxNumberOfCheckedCommits = TeamCityProperties.getInteger(TEAMCITY_MAX_CHECKED_COMMITS_PROP, 10_000);
 
     while (next() != null) {
       RevCommit cc = getCurrentCommit();
@@ -79,6 +94,12 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
       myVisitedRevisions.add(cc.name());
       if (isCurrentCommitIncluded()) {
         return cc;
+      }
+
+      if (myVisitedRevisions.size() >= maxNumberOfCheckedCommits) {
+        LOG.info("Reached the limit of " + maxNumberOfCheckedCommits + " checked commits for the start revision: " + myStartRevision +
+                 " and stop revisions: " + myStopRevisions + " in repository: " + getGitRoot().toString() + ", giving up");
+        return null;
       }
     }
 
@@ -230,6 +251,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
   @NotNull
   private Set<String> collectUninterestingCommits(@NotNull final Set<RevCommit> uninterestingParents) throws IOException {
+    int maxNumberOfProcessedUninterestingCommits = TeamCityProperties.getInteger(TEAMCITY_MAX_VISITED_UNINTERESTING_COMMITS_PROP, 10_000);
     Set<String> result = new HashSet<>();
 
     RevCommit[] parents = getCurrentCommit().getParents();
@@ -255,10 +277,17 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
         walk.markStart(walk.parseCommit(p.getId()));
       }
 
+      int numVisited = 0;
       RevCommit next;
       while ((next = walk.next()) != null) {
         handleStopRevision(next);
         result.add(next.name());
+        numVisited++;
+        if (numVisited >= maxNumberOfProcessedUninterestingCommits) {
+          LOG.info("Reached the limit of " + maxNumberOfProcessedUninterestingCommits + " processed uninteresting commits while going from: " +
+                   uninterestingParents.stream().map(c -> c.name()).collect(Collectors.toList()) + " in repository: " + getGitRoot().toString());
+          break;
+        }
       }
     } finally {
       walk.reset();
