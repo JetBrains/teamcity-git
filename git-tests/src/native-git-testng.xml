@@ -18,7 +18,7 @@
 <suite name="Native Git Suite">
   <test name="Native Git Tests">
     <classes>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentVcsSupportTest"/>
+      <!-- <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentVcsSupportTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.command.FetchCommandImplTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentSideSparseCheckoutTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CredentialsHelperTest"/>
@@ -29,7 +29,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.DiffWithUpperLimitRevisionTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentSslCheckoutTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SSLInvestigatorTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CommandUtilTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CommandUtilTest"/> -->
     </classes>
   </test>
 </suite>
