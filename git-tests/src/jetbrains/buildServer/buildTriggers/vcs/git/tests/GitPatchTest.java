@@ -19,6 +19,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Properties;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
@@ -334,6 +335,10 @@ public class GitPatchTest extends PatchTestCase {
 
   private void checkPatch(String name, @NotNull String branchName, @Nullable String fromVersion, @NotNull String toVersion, boolean enableSubmodules) throws IOException, VcsException {
     System.out.println("NG:" + TeamCityProperties.getProperty("teamcity.git.nativeOperationsEnabled"));
+    Map<String, String> ng = TeamCityProperties.getPropertiesWithPrefix("teamcity.git.nativeOperationsEnabled");
+    System.out.println(ng.size());
+    ng.forEach((k, v) -> System.out.println(k + " : " + v));
+
     setName(name);
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot(branchName, enableSubmodules);
