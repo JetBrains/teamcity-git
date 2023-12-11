@@ -208,6 +208,7 @@ public class GitVcsSupport extends ServerVcsSupport
     String toRevision = GitUtils.versionRevision(toVersion);
     logBuildPatch(root, fromRevision, toRevision);
     GitVcsRoot gitRoot = context.getGitRoot();
+    System.out.println("NG Enabled: " + myGitRepoOperations.isNativeGitOperationsEnabled(gitRoot.getRepositoryFetchURL().toString()));
     myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
       final File trustedCertificatesDir = myGitTrustStoreProvider.getTrustedCertificatesDir();
       GitPatchBuilderDispatcher gitPatchBuilder = new GitPatchBuilderDispatcher(myConfig, mySshKeyManager, context, builder, fromRevision,
