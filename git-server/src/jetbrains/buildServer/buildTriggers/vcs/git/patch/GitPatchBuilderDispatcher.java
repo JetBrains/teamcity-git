@@ -198,6 +198,7 @@ public final class GitPatchBuilderDispatcher {
                      "-cp", myConfig.getPatchClasspath(),
                      myConfig.getPatchBuilderClassName(),
                      myGitRoot.getRepositoryFetchURL().toString());
+    System.out.println("Classpath: " + myConfig.getPatchClasspath());
     cmd.setPassParentEnvs(myConfig.passEnvToChildProcess());
     cmd.setEnvParams(Collections.singletonMap("JDK_JAVA_OPTIONS", null)); // TW-64719
     return cmd;
