@@ -333,6 +333,7 @@ public class GitPatchTest extends PatchTestCase {
   }
 
   private void checkPatch(String name, @NotNull String branchName, @Nullable String fromVersion, @NotNull String toVersion, boolean enableSubmodules) throws IOException, VcsException {
+    System.out.println("NG:" + TeamCityProperties.getProperty("teamcity.git.nativeOperationsEnabled"));
     setName(name);
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot(branchName, enableSubmodules);
