@@ -275,6 +275,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
     result.addAll(asList(
       Fetcher.class,
       VcsRoot.class,
+      VcsRootInstance.class,
+      SVcsRoot.class,
+      LVcsRootInstance.class,
+      LVcsRoot.class,
       ProgressMonitor.class,
       VcsPersonalSupport.class,
       Logger.class,
