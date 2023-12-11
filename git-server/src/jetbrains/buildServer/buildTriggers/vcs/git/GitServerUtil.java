@@ -780,6 +780,7 @@ public class GitServerUtil {
   }
 
   public static List<ExtraHTTPCredentials> detectExtraHTTPCredentialsInVcsRoot(@NotNull VcsRoot root) {
+    System.out.println("detect creds " + (root instanceof VcsRootInstance) + " - " + (root instanceof SVcsRoot));
     if (root instanceof VcsRootInstance) {
       return detectExtraHTTPCredentialsInProject(((VcsRootInstance)root).getParent().getProject());
     } else if (root instanceof SVcsRoot) {
