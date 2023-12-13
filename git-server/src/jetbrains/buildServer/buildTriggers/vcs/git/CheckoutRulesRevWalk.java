@@ -251,7 +251,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
   @NotNull
   private Set<String> collectUninterestingCommits(@NotNull final Set<RevCommit> uninterestingParents) throws IOException {
-    int maxNumberOfProcessedUninterestingCommits = TeamCityProperties.getInteger(TEAMCITY_MAX_VISITED_UNINTERESTING_COMMITS_PROP, 10_000);
+    int maxNumberOfProcessedUninterestingCommits = TeamCityProperties.getInteger(TEAMCITY_MAX_VISITED_UNINTERESTING_COMMITS_PROP, Integer.MAX_VALUE);
     Set<String> result = new HashSet<>();
 
     RevCommit[] parents = getCurrentCommit().getParents();
