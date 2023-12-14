@@ -66,7 +66,8 @@ public class UpdaterWithMirror extends UpdaterImpl {
                            @NotNull File targetDir,
                            @NotNull CheckoutRules rules,
                            @NotNull CheckoutMode mode,
-                           @NotNull SubmoduleManager submoduleManager, AgentTokenStorage tokenStorage) throws VcsException {
+                           @NotNull SubmoduleManager submoduleManager,
+                           @NotNull AgentTokenStorage tokenStorage) throws VcsException {
     super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode, submoduleManager, tokenStorage);
   }
 

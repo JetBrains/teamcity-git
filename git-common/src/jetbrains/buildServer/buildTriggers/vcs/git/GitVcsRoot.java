@@ -37,6 +37,8 @@ import java.util.Map;
  */
 public class GitVcsRoot {
 
+  public static final String FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX = "teamcity.git.fetchUrlMapping";
+
   protected final MirrorManager myMirrorManager;
   private final VcsRoot myDelegate;
   private final AtomicReference<CommonURIish> myRepositoryFetchURL = new AtomicReference<>();
@@ -91,12 +93,14 @@ public class GitVcsRoot {
     mySubmodulePolicy = readSubmodulesPolicy();
     myTokenRefreshEnabled = isTokenRefreshEnabled;
     myAuthSettings = createAuthSettings(urIishHelper, extraHTTPCredentials);
-    myRawFetchUrl = getProperty(Constants.FETCH_URL);
+    final String modifiedFetchUrl = getModifiedFetchUrl(root, myAuthSettings);
+    myRawFetchUrl = modifiedFetchUrl == null ? getProperty(Constants.FETCH_URL) : modifiedFetchUrl;
     if (myRawFetchUrl.contains("\n") || myRawFetchUrl.contains("\r"))
       throw new VcsException("Newline in fetch url '" + myRawFetchUrl + "'");
     myRepositoryFetchURL.set(myURIishHelper.createAuthURI(myAuthSettings, myRawFetchUrl));
     myRepositoryFetchURLNoFixErrors.set(myURIishHelper.createAuthURI(myAuthSettings, myRawFetchUrl, false));
-    myPushUrl = getProperty(Constants.PUSH_URL);
+    // myPushUrl will never be empty if fetch url was modifiedFetchUrl(modifiedUrl != null)
+    myPushUrl = getRawPushUrl(modifiedFetchUrl != null);
     if (myPushUrl != null && (myPushUrl.contains("\n") || myPushUrl.contains("\r")))
       throw new VcsException("Newline in push url '" + myPushUrl + "'");
     myRepositoryPushURL.set(StringUtil.isEmpty(myPushUrl) ? myRepositoryFetchURL.get() : myURIishHelper.createAuthURI(myAuthSettings, myPushUrl));
@@ -109,6 +113,31 @@ public class GitVcsRoot {
     myIgnoreMissingDefaultBranch = Boolean.valueOf(getProperty(Constants.IGNORE_MISSING_DEFAULT_BRANCH, "false"));
     myIncludeCommitInfoSubmodules = Boolean.valueOf(getProperty(Constants.INCLUDE_COMMIT_INFO_SUBMODULES, "false"));
     myCheckoutPolicy = readCheckoutPolicy();
+  }
+
+  @Nullable
+  private String getRawPushUrl(boolean modifiedFetchUrlUsed) {
+    String url = getProperty(Constants.PUSH_URL);
+    if (StringUtil.isEmpty(url) && modifiedFetchUrlUsed) {
+      url = getProperty(Constants.FETCH_URL);
+    }
+    return url;
+  }
+
+  @Nullable
+  private static String getModifiedFetchUrl(@NotNull VcsRoot root, @NotNull AuthSettings authSettings) {
+    String modifiedUrl = GitURLMapper.getModifiedURL(root.getProperty(Constants.FETCH_URL) /* always not null */, FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX);
+    if (modifiedUrl == null) {
+      // the url shouldn't be modified
+      return null;
+    }
+    if (authSettings.getAuthMethod().isKeyAuth() || authSettings.getAuthMethod() == AuthenticationMethod.ANONYMOUS) {
+      return modifiedUrl;
+    } else {
+      Loggers.VCS.warn(String.format("The fetch url for %s will not be mapped to %s, since %s auth method is incompatible with fetch url mapping." +
+                                     " %s parameter will be ignored. Using default fetch url", LogUtil.describe(root), modifiedUrl, authSettings.getAuthMethod().uiName(), FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX));
+      return null;
+    }
   }
 
   private AuthSettings createAuthSettings(@NotNull URIishHelper urIishHelper, @NotNull List<ExtraHTTPCredentials> extraHTTPCredentials) {

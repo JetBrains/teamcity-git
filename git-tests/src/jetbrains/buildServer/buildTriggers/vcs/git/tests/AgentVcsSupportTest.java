@@ -39,6 +39,7 @@ import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.oauth.AgentTokenRetriever;
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.agent.oauth.InvalidAccessToken;
+import jetbrains.buildServer.agent.vcs.AgentVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
@@ -104,6 +105,7 @@ public class AgentVcsSupportTest {
   private AgentRunningBuild myBuild;
   private AgentSupportBuilder myBuilder;
   private AgentTokenStorage myTokenStorage;
+  private Properties myPropertiesBeforeTest;
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -135,11 +137,13 @@ public class AgentVcsSupportTest {
       }
     };
     myTokenStorage = new AgentTokenStorage(EventDispatcher.create(AgentLifeCycleListener.class), tokenRetriever);
+    myPropertiesBeforeTest = GitTestUtil.copyCurrentProperties();
   }
 
 
   @AfterMethod
   protected void tearDown() throws Exception {
+    GitTestUtil.restoreProperties(myPropertiesBeforeTest);
     myTempFiles.cleanup();
   }
 
@@ -1914,7 +1918,7 @@ public class AgentVcsSupportTest {
 //    AgentRunningBuild build = createRunningBuild(map(
 //      PluginConfigImpl.USE_MIRRORS, "true",
 //      BuildContext.TEAMCITY_GIT_SSH_DEBUG, "true",
-//      BuildContext.TEAMCITY_GIT_SSH_SEND_ENV, "123456"));
+//      BuildContext.TEAMCITY_gGIT_SSH_SEND_ENV, "123456"));
 //
 //    myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "a540b3cab44a513b5b420582701dca2e8805d772", myCheckoutDir, build, false);
 //  }
@@ -2294,5 +2298,46 @@ public class AgentVcsSupportTest {
     }});
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "f618f42b6e1a076217475224abab174c4f4f7ac3", myCheckoutDir, build, false);
     assertTrue(new File(myCheckoutDir, "submodule_no_master/f.txt").isFile());
+  }
+
+  @TestFor(issues = "TW-84952")
+  public void test_fetch_url_replacement() throws Exception {
+    System.setProperty(AgentGitVcsRoot.FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX + "1", "https://github.com/user/* => http://localhost:8123/");
+    System.setProperty(AgentGitVcsRoot.FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX + "2", " git@github.com:user/* => git@127.0.0.1:user/ ");
+    System.setProperty(AgentGitVcsRoot.FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX + "3", " https://github.com/user2/repo2 => http://localhost:8123/repo3");
+
+    myRoot.addProperty(Constants.FETCH_URL, "https://github.com/user/test");
+    GitVcsRoot vcsRoot = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTokenStorage, Collections.emptyList());
+    assertEquals("http://localhost:8123/test", vcsRoot.getRepositoryFetchURL().toString());
+    assertEquals("http://localhost:8123/test", vcsRoot.getRepositoryFetchURLNoFixedErrors().toString());
+    assertEquals("https://github.com/user/test", vcsRoot.getRepositoryPushURL().toString());
+
+    myRoot.addProperty(Constants.FETCH_URL, "git@github.com:user/test");
+    myRoot.addProperty(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString());
+    vcsRoot = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTokenStorage, Collections.emptyList());
+    assertEquals("git@127.0.0.1:user/test", vcsRoot.getRepositoryFetchURL().toString());
+
+    myRoot.addProperty(Constants.FETCH_URL, "https://github.com/user2/repo2");
+    vcsRoot = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTokenStorage, Collections.emptyList());
+    assertEquals("http://localhost:8123/repo3", vcsRoot.getRepositoryFetchURL().toString());
+
+    myRoot.addProperty(Constants.FETCH_URL, "https://github.com/user2/repo4");
+    vcsRoot = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTokenStorage, Collections.emptyList());
+    assertEquals("https://github.com/user2/repo4", vcsRoot.getRepositoryFetchURL().toString());
+  }
+
+  @TestFor(issues = "TW-84952")
+  public void test_fetch_url_is_not_modified_by_mapper_if_password_based_auth_is_used() throws Exception {
+    System.setProperty(AgentGitVcsRoot.FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX + "1", "https://github.com/user/* => http://localhost:8123/");
+
+    myRoot.addProperty(Constants.FETCH_URL, "https://github.com/user/test");
+    myRoot.addProperty(Constants.AUTH_METHOD, AuthenticationMethod.ACCESS_TOKEN.toString());
+    GitVcsRoot vcsRoot = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTokenStorage, Collections.emptyList());
+    assertEquals("https://github.com/user/test", vcsRoot.getRepositoryFetchURL().toString());
+
+    myRoot.addProperty(Constants.FETCH_URL, "https://github.com/user/test");
+    myRoot.addProperty(Constants.AUTH_METHOD, AuthenticationMethod.PASSWORD.toString());
+    vcsRoot = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTokenStorage, Collections.emptyList());
+    assertEquals("https://github.com/user/test", vcsRoot.getRepositoryFetchURL().toString());
   }
 }
