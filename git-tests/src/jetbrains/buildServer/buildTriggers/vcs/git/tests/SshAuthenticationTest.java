@@ -507,7 +507,7 @@ public class SshAuthenticationTest extends BaseTestCase {
 
       final GitVcsSupport vcsSupport =
         GitSupportBuilder.gitSupport().withServerPaths(serverPaths).withPluginConfig(config).withTransportFactory(transportFactory).build();
-      repoOperations.tagCommand(vcsSupport, repoUrl).tag(vcsSupport.createContext(gitRoot.getOriginalRoot(),"tag"), "test_tag", "b896070465af79121c9a4eb5300ecff29453c164");
+      repoOperations.tagCommand(vcsSupport, repoUrl).tag(vcsSupport.createContext(gitRoot.getOriginalRoot(),"tag"), "test_tag", null, "b896070465af79121c9a4eb5300ecff29453c164");
 
       assertContains(repoOperations.lsRemoteCommand(repoUrl).lsRemote(db, gitRoot, new FetchSettings(gitRoot.getAuthSettings())).keySet(), "refs/tags/test_tag");
     });

@@ -352,25 +352,36 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public LabelingSupport getLabelingSupport() {
-    return (label, version, root, checkoutRules) -> {
-      final OperationContext context = createContext(root, "labeling");
-      try {
-        final GitVcsRoot gitRoot = context.getGitRoot();
-        RevCommit labelingCommit = myCommitLoader.findCommit(context.getRepository(), version);
-        if (labelingCommit == null)
-          myCommitLoader.loadCommit(context, gitRoot, version);
-
-        String labelToPublish = label.trim().replace(' ', '_').replace('\t', '_').replace('\n', '_');
-
-        myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-          myGitRepoOperations.tagCommand(this, gitRoot.getRepositoryFetchURL().toString()).tag(context, labelToPublish, version);
-        });
-      } catch (Exception e) {
-        throw context.wrapException(e);
-      } finally {
-        context.close();
+    GitVcsSupport support = this;
+    return new LabelingSupport() {
+      @NotNull
+      @Override
+      public String label(@NotNull String label, @NotNull String version, @NotNull VcsRoot root, @NotNull CheckoutRules checkoutRules) throws VcsException {
+        return label(label, null, version, root, checkoutRules);
       }
-      return label;
+
+      @NotNull
+      @Override
+      public String label(@NotNull String label, @Nullable String message, @NotNull String version, @NotNull VcsRoot root, @NotNull CheckoutRules checkoutRules) throws VcsException {
+        final OperationContext context = createContext(root, "labeling");
+        try {
+          final GitVcsRoot gitRoot = context.getGitRoot();
+          RevCommit labelingCommit = myCommitLoader.findCommit(context.getRepository(), version);
+          if (labelingCommit == null)
+            myCommitLoader.loadCommit(context, gitRoot, version);
+
+          String labelToPublish = label.trim().replace(' ', '_').replace('\t', '_').replace('\n', '_');
+
+          myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+            myGitRepoOperations.tagCommand(support, gitRoot.getRepositoryFetchURL().toString()).tag(context, labelToPublish, message, version);
+          });
+        } catch (Exception e) {
+          throw context.wrapException(e);
+        } finally {
+          context.close();
+        }
+        return label;
+      }
     };
   }
 

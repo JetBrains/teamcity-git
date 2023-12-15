@@ -422,7 +422,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   @Override
   @NotNull
-  public String tag(@NotNull OperationContext context, @NotNull String tag, @NotNull String commit) throws VcsException {
+  public String tag(@NotNull OperationContext context, @NotNull String tag, @Nullable String message, @NotNull String commit) throws VcsException {
     final Context ctx = new ContextImpl(context.getGitRoot(), myConfig, myGitDetector.detectGit());
     final Repository db = context.getRepository();
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
@@ -432,7 +432,8 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
     final PersonIdent tagger = PersonIdentFactory.getTagger(gitRoot, db);
     gitFacade.tag().setName(tag).setCommit(commit).force(true).annotate(true)
-             .setTagger(tagger.getName(), tagger.getEmailAddress()).setMessage("automatically created by TeamCity VCS labeling build feature").call();
+             .setTagger(tagger.getName(), tagger.getEmailAddress())
+             .setMessage(message != null ? message : "").call();
 
     final String debugInfo = LogUtil.describe(gitRoot);
     List<Ref> currentTags;

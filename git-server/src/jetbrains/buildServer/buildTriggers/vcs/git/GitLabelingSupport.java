@@ -58,7 +58,7 @@ public class GitLabelingSupport implements TagCommand {
 
   @Override
   @NotNull
-  public String tag(@NotNull OperationContext context, @NotNull String label, @NotNull String version) throws VcsException {
+  public String tag(@NotNull OperationContext context, @NotNull String label, @Nullable String message, @NotNull String version) throws VcsException {
     GitVcsRoot gitRoot = context.getGitRoot();
     RevisionsInfo revisionsInfo = new RevisionsInfo();
     if (myConfig.useTagPackHeuristics()) {
@@ -81,6 +81,7 @@ public class GitLabelingSupport implements TagCommand {
       Git git = new Git(r);
       Ref tagRef = git.tag().setTagger(PersonIdentFactory.getTagger(gitRoot, r))
         .setName(label)
+        .setMessage(message)
         .setObjectId(commit)
         .setForceUpdate(true)
         .call();
