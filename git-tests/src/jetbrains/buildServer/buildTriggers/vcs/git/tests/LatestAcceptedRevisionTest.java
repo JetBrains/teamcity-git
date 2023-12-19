@@ -208,8 +208,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(visited).containsOnly("6ff32b16fe485e7a0a1e209bf10987e1ad46292e",
                                "ce92302a768ce0763e83aebf8c0e16e102c8d06b",
                                "d036d012385a762568a474b57337b9cf398b96e0",
-                               "40224a053e16145562d1befa3d0a127c54f5dbff",
-                               "7c56bdca06b531bc0c923e857514a400b83d2e26");
+                               "40224a053e16145562d1befa3d0a127c54f5dbff");
   }
 
   /**
@@ -235,7 +234,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                                                                             "6399724fac6ec9c62e8795fc037ad385e873911f", "refs/heads/master",
                                                                                             Collections.emptySet(),
                                                                                             null);
-    then(rev.getRevision()).isEqualTo("658e25230fd75975a2491945ac2664e10aec4f23");
+    then(rev.getRevision()).isEqualTo("45f1b9531036c9f700cd21c24c1e61cedc44f5a1");
 
     rev = support.getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src/File6.java"),
                                                                                      "6399724fac6ec9c62e8795fc037ad385e873911f", "refs/heads/master",
