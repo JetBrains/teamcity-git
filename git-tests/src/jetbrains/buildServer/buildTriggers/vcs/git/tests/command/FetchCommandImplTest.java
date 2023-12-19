@@ -99,7 +99,7 @@ public class FetchCommandImplTest extends BaseTestCase {
   }
 
   @TestFor(issues = "TW-18853")
-  public void should_throw_special_exception_when_stderr_mentions_broken_index() throws VcsException {
+  public void should_throw_special_exception_when_stderr_mentions_broken_index() throws Exception {
 
     AgentGitCommandLine failedCmd = new AgentGitCommandLine(null, getFakeGen(), new StubContext()) {
       @Override
@@ -128,17 +128,17 @@ public class FetchCommandImplTest extends BaseTestCase {
   }
 
   @NotNull
-  private ScriptGen getFakeGen() {
-    return new ScriptGen(new File(".")) {
+  private ScriptGen getFakeGen() throws IOException {
+    return new ScriptGen(createTempDir()) {
       @NotNull
       public File generateAskPass(@NotNull AuthSettings authSettings) throws IOException {
-        return new File(".");
+        return createTempFile();
       }
 
       @NotNull
       @Override
       public File generateAskPass(@NotNull final String password) throws IOException {
-        return new File(".");
+        return createTempFile();
       }
 
       @NotNull

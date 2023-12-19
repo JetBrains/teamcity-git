@@ -20,6 +20,7 @@
     <classes>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentVcsSupportTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.command.FetchCommandImplTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CommandLineTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentSideSparseCheckoutTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CredentialsHelperTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.HttpAuthTest"/>
