@@ -19,7 +19,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -29,7 +28,6 @@ import org.eclipse.jgit.lib.ObjectDatabase;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.jetbrains.annotations.NotNull;
@@ -42,12 +40,10 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAw
  * This RevWalk class accepts checkout rules and traverses commits graph until it finds a commit matched by these rules.
  */
 public class CheckoutRulesRevWalk extends LimitingRevWalk {
-  public static final String TEAMCITY_MAX_VISITED_UNINTERESTING_COMMITS_PROP = "teamcity.git.checkoutRulesRevWalk.maxVisitedUninterestingCommits";
   public static final String TEAMCITY_MAX_CHECKED_COMMITS_PROP = "teamcity.git.checkoutRulesRevWalk.maxCheckedCommits";
   private final CheckoutRules myCheckoutRules;
-  private final Set<String> myCollectedUninterestingRevisions = new HashSet<>();
-  private final Set<String> myReachedStopRevisions = new LinkedHashSet<>();
   private final Set<String> myStopRevisions = new HashSet<>();
+  private final List<String> myReachedStopRevisions = new ArrayList<>();
   private String myStartRevision;
   private final Set<String> myVisitedRevisions = new HashSet<>();
   private SubmoduleResolverImpl mySubmoduleResolver;
@@ -60,13 +56,10 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
                        @NotNull final OperationContext context,
                        @NotNull final CheckoutRules checkoutRules) throws VcsException {
     super(config, context);
-    sort(RevSort.TOPO);
     myCheckoutRules = checkoutRules;
   }
 
-  @Override
-  public void markStart(RevCommit c) throws IOException {
-    super.markStart(c);
+  public void setStartRevision(@NotNull RevCommit c) {
     myStartRevision = c.name();
   }
 
@@ -77,20 +70,23 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   }
 
   @Nullable
-  public RevCommit getNextMatchedCommit() throws IOException {
+  public RevCommit findMatchedCommit() throws IOException {
+    int maxNumberOfCheckedCommits = TeamCityProperties.getInteger(TEAMCITY_MAX_CHECKED_COMMITS_PROP, 10_000);
+
+    markStart(parseCommit(ObjectId.fromString(GitUtils.versionRevision(myStartRevision))));
     rememberStopRevisionsParents();
     markStopRevisionsParentsAsUninteresting(this);
-    int maxNumberOfCheckedCommits = TeamCityProperties.getInteger(TEAMCITY_MAX_CHECKED_COMMITS_PROP, 10_000);
 
     while (next() != null) {
       RevCommit cc = getCurrentCommit();
+
       if (myVisitedRevisions.isEmpty()) {
         // initialize the submodules resolver for the first revision only
         initSubmodulesResolver();
       }
 
-      if (myCollectedUninterestingRevisions.contains(cc.name())) continue;
-      handleStopRevision(cc);
+      checkIfStopRevision(cc.name());
+
       myVisitedRevisions.add(cc.name());
       if (isCurrentCommitIncluded()) {
         return cc;
@@ -106,6 +102,12 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     return null;
   }
 
+  private void checkIfStopRevision(@NotNull String revision) {
+    if (myStopRevisions.contains(revision)) {
+      myReachedStopRevisions.add(revision);
+    }
+  }
+
   private void rememberStopRevisionsParents() throws IOException {
     ObjectDatabase objectDatabase = getRepository().getObjectDatabase();
     for (String stopRev: myStopRevisions) {
@@ -118,12 +120,6 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
       }
     }
 
-  }
-
-  private void handleStopRevision(@NotNull RevCommit cc) {
-    if (myStopRevisions.contains(cc.name())) {
-      myReachedStopRevisions.add(cc.name());
-    }
   }
 
   private void markStopRevisionsParentsAsUninteresting(@NotNull RevWalk revWalk) throws IOException {
@@ -172,36 +168,24 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
         }
       }
 
-      Set<String> uninterestingCommits = new HashSet<>();
-      if (uninterestingParents.size() < parents.length) {
-        uninterestingCommits = collectUninterestingCommits(uninterestingParents);
-      } else { // uninterestingParents.size() == parents.length
-        // we have a merge commit which does not change anything interesting in the files tree comparing to all of its parents
-        // this can happen in two cases:
-        // 1) interesting files were not changed by this commit
-        // 2) interesting files were changed in all parents of this commit in the same way (mutual merges)
-        // in either case we should go deeper, but since the files state is the same for all parents
-        // we can treat the commits reachable from one of the parent as uninteresting
-
-        // we want to mark as many commits as possible as uniteresting
-        // for this we'll collect reachable commits each time excluding one parent only
-        // then we'll choose the biggest collection
-        for (RevCommit p : parents) {
-          Set<RevCommit> uninterestingExcludingOneParent = new HashSet<>(uninterestingParents);
-          uninterestingExcludingOneParent.remove(p);
-          Set<String> res = collectUninterestingCommits(uninterestingExcludingOneParent);
-          if (res.size() > uninterestingCommits.size()) {
-            uninterestingCommits = res;
-          }
-        }
-      }
-
-      myCollectedUninterestingRevisions.addAll(uninterestingCommits);
-
       if (numAffectedParents == 1 && myClosestPartiallyAffectedMergeCommit == null) {
         // it is possible that stop revisions will prevent us from finding the actual commit which changed the interesting files
         // in this case we'll use the first met partially affected merge commit as a result
         myClosestPartiallyAffectedMergeCommit = getCurrentCommit().name();
+      }
+
+      if (numAffectedParents == 0) {
+        // we have a merge commit which does not change anything interesting in the files tree comparing to all of its parents
+        // this can happen in two cases:
+        // 1) interesting files were not changed by this commit
+        // 2) interesting files were changed in all parents of this commit in the same way (mutual merges)
+        // in either case we should go deeper
+      } else if (numAffectedParents < parents.length) {
+        // only one parent brings changes in files included by checkout rules
+        // we need to mark all other parents as uninteresting to exclude them from traversing
+        for (RevCommit p: uninterestingParents) {
+          markUninteresting(p);
+        }
       }
 
       return numAffectedParents > 1;
@@ -247,60 +231,6 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     }
 
     return false;
-  }
-
-  @NotNull
-  private Set<String> collectUninterestingCommits(@NotNull final Set<RevCommit> uninterestingParents) throws IOException {
-    int maxNumberOfProcessedUninterestingCommits = TeamCityProperties.getInteger(TEAMCITY_MAX_VISITED_UNINTERESTING_COMMITS_PROP, Integer.MAX_VALUE);
-    Set<String> result = new HashSet<>();
-
-    RevCommit[] parents = getCurrentCommit().getParents();
-
-    Set<RevCommit> interestingParents = new HashSet<>();
-    for (RevCommit c: parents) {
-      if (uninterestingParents.contains(c)) continue;
-      interestingParents.add(c);
-    }
-
-    // we should mark all commits reachable from uninteresting parents as uninteresting, except those which are also reachable from the interesting parents
-    RevWalk walk = newRevWalk();
-
-    // for performance reasons it's important to avoid going beyond stop revisions
-    markStopRevisionsParentsAsUninteresting(walk);
-
-    try {
-      for (RevCommit p: interestingParents) {
-        walk.markUninteresting(walk.parseCommit(p.getId()));
-      }
-
-      for (RevCommit p: uninterestingParents) {
-        walk.markStart(walk.parseCommit(p.getId()));
-      }
-
-      int numVisited = 0;
-      RevCommit next;
-      while ((next = walk.next()) != null) {
-        handleStopRevision(next);
-        result.add(next.name());
-        numVisited++;
-        if (numVisited >= maxNumberOfProcessedUninterestingCommits) {
-          LOG.info("Reached the limit of " + maxNumberOfProcessedUninterestingCommits + " processed uninteresting commits while going from: " +
-                   uninterestingParents.stream().map(c -> c.name()).collect(Collectors.toList()) + " in repository: " + getGitRoot().toString());
-          break;
-        }
-      }
-    } finally {
-      walk.reset();
-      walk.close();
-      walk.dispose();
-    }
-
-    return result;
-  }
-
-  @NotNull
-  private RevWalk newRevWalk() {
-    return new RevWalk(getObjectReader());
   }
 
   @NotNull
