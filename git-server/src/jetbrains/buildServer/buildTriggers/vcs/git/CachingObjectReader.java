@@ -77,11 +77,6 @@ public class CachingObjectReader extends ObjectReader {
   }
 
   public void clearCache() {
-    printStatistics();
     myCache.clear();
-  }
-
-  public void printStatistics() {
-    System.out.println("Total objects cache size: " + myCache.size() + ", estimated occupied memory: " + myCache.size() * myMaxCachedObjectSize);
   }
 }
