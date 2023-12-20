@@ -17,6 +17,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import jetbrains.buildServer.vcs.VcsException;
+import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -35,6 +36,14 @@ public class LimitingRevWalk extends RevWalk {
 
   LimitingRevWalk(@NotNull ServerPluginConfig config, @NotNull OperationContext context) throws VcsException {
     super(context.getRepository());
+    myConfig = config;
+    myContext = context;
+    myGitRoot = context.getGitRoot();
+    myRepository = context.getRepository();
+  }
+
+  LimitingRevWalk(@NotNull ObjectReader reader, @NotNull ServerPluginConfig config, @NotNull OperationContext context) throws VcsException {
+    super(reader);
     myConfig = config;
     myContext = context;
     myGitRoot = context.getGitRoot();

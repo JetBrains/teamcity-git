@@ -24,12 +24,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverI
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.lib.ObjectDatabase;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevFlag;
-import org.eclipse.jgit.revwalk.RevSort;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.jetbrains.annotations.NotNull;
@@ -58,8 +54,20 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   CheckoutRulesRevWalk(@NotNull final ServerPluginConfig config,
                        @NotNull final OperationContext context,
                        @NotNull final CheckoutRules checkoutRules) throws VcsException {
-    super(config, context);
+    super(createCachingReader(context.getRepository().newObjectReader()), config, context);
     myCheckoutRules = checkoutRules;
+  }
+
+  @NotNull
+  private static CachingObjectReader createCachingReader(@NotNull ObjectReader objectReader) {
+    int maxCachedObjects = TeamCityProperties.getInteger("teamcity.git.checkoutRulesRevWalk.maxCachedObjects", 50_000);
+
+    // to reduce memory usage we don't want to cache commits with large amount of metadata (parents, commit message, etc)
+    int maxCachedObjectSize = TeamCityProperties.getInteger("teamcity.git.checkoutRulesRevWalk.maxCachedObjectSize.bytes", 700);
+
+    final CachingObjectReader reader = new CachingObjectReader(objectReader, maxCachedObjects, maxCachedObjectSize);
+    reader.setCachingEnabled(true);
+    return reader;
   }
 
   public void setStartRevision(@NotNull RevCommit c) {
@@ -80,30 +88,56 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     rememberStopRevisionsParents();
     markStopRevisionsParentsAsUninteresting(this);
 
-    while (next() != null) {
-      RevCommit cc = getCurrentCommit();
+    try {
+      while (next() != null) {
+        RevCommit cc = getCurrentCommit();
+        removeCachedObject(cc);
 
-      if (myVisitedRevisions.isEmpty()) {
-        // initialize the submodules resolver for the first revision only
-        initSubmodulesResolver();
+        if (myVisitedRevisions.isEmpty()) {
+          // initialize the submodules resolver for the first revision only
+          initSubmodulesResolver();
+        }
+
+        if (myUninterestingCommits.remove(cc.name())) {
+          continue;
+        }
+
+        checkIfStopRevision(cc.name());
+
+        myVisitedRevisions.add(cc.name());
+        if (isCurrentCommitIncluded()) {
+          return cc;
+        }
+
+        if (myVisitedRevisions.size() >= maxNumberOfCheckedCommits) {
+          LOG.info("Reached the limit of " + maxNumberOfCheckedCommits + " checked commits for the start revision: " + myStartRevision +
+                   " and stop revisions: " + myStopRevisions + " in repository: " + getGitRoot().toString() + ", giving up");
+          return null;
+        }
       }
-
-      if (myUninterestingCommits.contains(cc.name())) continue;
-      checkIfStopRevision(cc.name());
-
-      myVisitedRevisions.add(cc.name());
-      if (isCurrentCommitIncluded()) {
-        return cc;
-      }
-
-      if (myVisitedRevisions.size() >= maxNumberOfCheckedCommits) {
-        LOG.info("Reached the limit of " + maxNumberOfCheckedCommits + " checked commits for the start revision: " + myStartRevision +
-                 " and stop revisions: " + myStopRevisions + " in repository: " + getGitRoot().toString() + ", giving up");
-        return null;
-      }
+    } finally {
+      clearObjectsCache();
     }
 
     return null;
+  }
+
+  private void removeCachedObject(@NotNull RevCommit commit) {
+    ObjectReader reader = getObjectReader();
+    if (reader instanceof CachingObjectReader) {
+      final CachingObjectReader cachingReader = (CachingObjectReader)reader;
+      cachingReader.removeCached(commit);
+      for (RevCommit parent: commit.getParents()) {
+        cachingReader.removeCached(parent);
+      }
+    }
+  }
+
+  private void clearObjectsCache() {
+    ObjectReader reader = getObjectReader();
+    if (reader instanceof CachingObjectReader) {
+      ((CachingObjectReader)reader).clearCache();
+    }
   }
 
   private void checkIfStopRevision(@NotNull String revision) {
@@ -304,6 +338,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   @Override
   public void dispose() {
     myUninterestingCommits.clear();
+    clearObjectsCache();
     super.dispose();
   }
 }
