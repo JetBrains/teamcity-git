@@ -46,6 +46,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private final CheckoutRules myCheckoutRules;
   private final Set<String> myStopRevisions = new HashSet<>();
   private final List<String> myReachedStopRevisions = new ArrayList<>();
+  private final Set<String> myUninterestingCommits = new HashSet<>();
   private String myStartRevision;
   private final Set<String> myVisitedRevisions = new HashSet<>();
   private SubmoduleResolverImpl mySubmoduleResolver;
@@ -58,7 +59,6 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
                        @NotNull final OperationContext context,
                        @NotNull final CheckoutRules checkoutRules) throws VcsException {
     super(config, context);
-    sort(RevSort.TOPO);
     myCheckoutRules = checkoutRules;
   }
 
@@ -82,18 +82,14 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
     while (next() != null) {
       RevCommit cc = getCurrentCommit();
-      checkIfStopRevision(cc.name());
 
       if (myVisitedRevisions.isEmpty()) {
         // initialize the submodules resolver for the first revision only
         initSubmodulesResolver();
       }
 
-      if (cc.has(RevFlag.UNINTERESTING)) {
-        // if stop revisions are not configured then underlying generator will not ignore uninteresting commits and
-        // will pass to us all of them
-        continue;
-      }
+      if (myUninterestingCommits.contains(cc.name())) continue;
+      checkIfStopRevision(cc.name());
 
       myVisitedRevisions.add(cc.name());
       if (isCurrentCommitIncluded()) {
@@ -270,8 +266,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
 
       RevCommit next;
       while ((next = walk.next()) != null) {
-        // mark as uninteresting all reachable commits in the main rev walk
-        parseCommit(next.getId()).add(RevFlag.UNINTERESTING);
+        myUninterestingCommits.add(next.name());
         checkIfStopRevision(next.name());
         numMarked++;
       }
@@ -304,5 +299,11 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     } else {
       tw.addTree(commit.getTree().getId());
     }
+  }
+
+  @Override
+  public void dispose() {
+    myUninterestingCommits.clear();
+    super.dispose();
   }
 }
