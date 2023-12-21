@@ -24,7 +24,10 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverI
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
-import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.lib.ObjectDatabase;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectReader;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
@@ -98,11 +101,11 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
           initSubmodulesResolver();
         }
 
+        checkIfStopRevision(cc.name());
+
         if (myUninterestingCommits.remove(cc.name())) {
           continue;
         }
-
-        checkIfStopRevision(cc.name());
 
         myVisitedRevisions.add(cc.name());
         if (isCurrentCommitIncluded()) {
@@ -220,20 +223,14 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
         // in either case we should go deeper, but since the files state is the same for all parents
         // we can mark all the commits reachable from the parents (excluding those reachable from other parents) as uninteresting
 
-        for (RevCommit parent: parents) {
-          Set<RevCommit> uninteresting = new HashSet<>(Arrays.asList(parents));
-          uninteresting.remove(parent);
-          markReachableCommitsAsUninteresting(uninteresting, Collections.singletonList(parent));
-        }
-
+        myUninterestingCommits.addAll(collectCommitsReachableFromEachStartCommitOnly(Arrays.asList(parents)));
       } else if (numAffectedParents < parents.length) {
-        Set<RevCommit> excluding = new HashSet<>();
-        for (RevCommit parent: parents) {
-          if (!uninterestingParents.contains(parent)) {
-            excluding.add(parent);
-          }
-        }
-        markReachableCommitsAsUninteresting(uninterestingParents, excluding);
+        // only one parent brings changes in files included by checkout rules
+        // we need to collect all commits excluding reachable from this parent and put them to uninteresting collection
+        // because there is no need to check checkout rules against them
+        Set<RevCommit> excluding = new HashSet<>(Arrays.asList(parents));
+        excluding.removeAll(uninterestingParents);
+        myUninterestingCommits.addAll(collectReachableCommitsExcluding(uninterestingParents, excluding));
       }
 
       return numAffectedParents > 1;
@@ -281,35 +278,111 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     return false;
   }
 
-  private int markReachableCommitsAsUninteresting(@NotNull final Collection<RevCommit> startFrom, @NotNull Collection<RevCommit> excluding) throws IOException {
-    int numMarked = 0;
-    // we should mark all commits reachable from uninteresting parents as uninteresting, except those which are also reachable from the interesting parents
+  /**
+   * In case of the following graph:
+   *
+   * (1)  (2)
+   *  |    |
+   * (3)  (4)
+   *  |  /
+   *  (5)
+   *
+   *  Where (1) is a start commit and (2) is excluded commit, this method returns (1) and (3), i.e. commits which are only reachable from the start commits and not reachable from excludes
+   * @param startFrom
+   * @return
+   * @throws IOException
+   */
+  @NotNull
+  private Set<String> collectReachableCommitsExcluding(@NotNull final Collection<RevCommit> startFrom, @NotNull Collection<RevCommit> excluding) throws IOException {
+    Set<String> result = new HashSet<>();
+
     RevWalk walk = newRevWalk();
 
-    // for performance reasons it's important to avoid going beyond stop revisions
-    markStopRevisionsParentsAsUninteresting(walk);
-
     try {
-      for (RevCommit p: excluding) {
-        walk.markUninteresting(walk.parseCommit(p.getId()));
-      }
-
       for (RevCommit p: startFrom) {
         walk.markStart(walk.parseCommit(p.getId()));
       }
 
+      for (RevCommit p: excluding) {
+        walk.markUninteresting(walk.parseCommit(p.getId()));
+      }
+
+      markStopRevisionsParentsAsUninteresting(walk);
+
       RevCommit next;
       while ((next = walk.next()) != null) {
-        myUninterestingCommits.add(next.name());
-        checkIfStopRevision(next.name());
-        numMarked++;
+        result.add(next.name());
       }
+
+      /*
+      CachingObjectReader reader = (CachingObjectReader)getObjectReader();
+      reader.printStatistics();
+      */
+
     } finally {
       walk.reset();
       walk.close();
       walk.dispose();
     }
-    return numMarked;
+
+    return result;
+  }
+
+  /**
+   * In case of the following graph:
+   *
+   * (1)  (2)
+   *  |    |
+   * (3)  (4)
+   *  |  /
+   *  (5)
+   *
+   *  Where (1) and (2) are start commits, this method returns (1), (2), (3) and (4), i.e. commits which are only reachable from each individural start commit
+   * @param startFrom
+   * @return
+   * @throws IOException
+   */
+  @NotNull
+  private Set<String> collectCommitsReachableFromEachStartCommitOnly(@NotNull final Collection<RevCommit> startFrom) throws IOException {
+    Set<String> result = new HashSet<>();
+
+    RevWalk walk = newRevWalk();
+
+    try {
+      for (RevCommit start: startFrom) {
+        walk.markStart(walk.parseCommit(start.getId()));
+        for (RevCommit other: startFrom) {
+          if (start == other) continue;
+          walk.markUninteresting(walk.parseCommit(other.getId()));
+        }
+
+        markStopRevisionsParentsAsUninteresting(walk);
+
+        RevCommit next;
+        while ((next = walk.next()) != null) {
+          if (result.remove(next.name())) {
+            // was collected before because it was reachable from other start, we should remove this commit
+            continue;
+          }
+
+          result.add(next.name());
+        }
+
+        walk.reset();
+      }
+
+      /*
+      CachingObjectReader reader = (CachingObjectReader)getObjectReader();
+      reader.printStatistics();
+      */
+
+    } finally {
+      walk.reset();
+      walk.close();
+      walk.dispose();
+    }
+
+    return result;
   }
 
   @NotNull
