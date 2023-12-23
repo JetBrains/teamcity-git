@@ -23,6 +23,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.Disposable;
 import jetbrains.buildServer.util.NamedDaemonThreadFactory;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectDatabase;
@@ -83,6 +84,13 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         while (revWalk.next() != null) {
           changes.add(revWalk.createModificationData());
         }
+        final int limit = TeamCityProperties.getInteger("teamcity.git.collectChanges.maxChanges", Integer.MAX_VALUE);
+        if (changes.size() > limit) {
+          List<String> updatedBranches = getInterestingBranches(fromState, toState);
+          LOG.warn("Reached the limit (" + limit + ") for the number of collected changes for VCS root: " + gitRoot.toString() + ", while collecting changes from state: " +
+                   shortRepoStateDetails(fromState, updatedBranches) + ", to state: " + shortRepoStateDetails(toState, updatedBranches));
+          return changes;
+        }
       } catch (Exception e) {
         if (e instanceof SubmoduleException) {
           SubmoduleException se = (SubmoduleException) e;
@@ -95,6 +103,57 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       }
       return changes;
     });
+  }
+
+  @NotNull
+  private String shortRepoStateDetails(@NotNull RepositoryStateData state, @NotNull List<String> updatedBranches) {
+    StringBuilder result = new StringBuilder();
+    result.append("RepositoryState{");
+    result.append("defaultBranch='").append(state.getDefaultBranchName()).append("', ");
+    result.append("revisions={");
+    Map<String, String> revisions = state.getBranchRevisions();
+    Iterator<String> iterator = updatedBranches.iterator();
+    while (iterator.hasNext()) {
+      String branch = iterator.next();
+      result.append(branch).append(": ").append(revisions.get(branch));
+      if (iterator.hasNext())
+        result.append(", ");
+    }
+    int diff = revisions.size() - updatedBranches.size();
+    if (diff > 0) {
+      result.append(", and ").append(diff).append(" more unchanged ").append(StringUtil.pluralize("branch", diff));
+    }
+    result.append("}}");
+    return result.toString();
+  }
+
+  @NotNull
+  private List<String> getInterestingBranches(@NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState) {
+    Set<String> updatedBranches = new HashSet<String>();
+    Map<String, String> fromBranches = fromState.getBranchRevisions();
+    Map<String, String> toBranches = toState.getBranchRevisions();
+    for (Map.Entry<String, String> e : fromBranches.entrySet()) {
+      String branchName = e.getKey();
+      String toRevision = toBranches.get(branchName);
+      if (!e.getValue().equals(toRevision)) {
+        updatedBranches.add(branchName);
+      }
+    }
+    for (Map.Entry<String, String> e : toBranches.entrySet()) {
+      String branchName = e.getKey();
+      String fromRevision = fromBranches.get(branchName);
+      if (!e.getValue().equals(fromRevision)) {
+        updatedBranches.add(branchName);
+      }
+    }
+
+    //always include default branches even when they are not updated
+    updatedBranches.add(fromState.getDefaultBranchName());
+    updatedBranches.add(toState.getDefaultBranchName());
+
+    List<String> result = new ArrayList<>(updatedBranches);
+    Collections.sort(result);
+    return result;
   }
 
   @NotNull
