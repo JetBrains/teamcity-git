@@ -85,7 +85,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
           changes.add(revWalk.createModificationData());
 
           final int limit = TeamCityProperties.getInteger("teamcity.git.collectChanges.maxChanges", Integer.MAX_VALUE);
-          if (changes.size() > limit) {
+          if (changes.size() >= limit) {
             List<String> updatedBranches = getInterestingBranches(fromState, toState);
             LOG.warn("Reached the limit (" + limit + ") for the number of collected changes for VCS root: " + gitRoot.toString() + ", while collecting changes from state: " +
                      shortRepoStateDetails(fromState, updatedBranches) + ", to state: " + shortRepoStateDetails(toState, updatedBranches));
