@@ -83,13 +83,14 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         markUninteresting(r, revWalk, fromState, toState);
         while (revWalk.next() != null) {
           changes.add(revWalk.createModificationData());
-        }
-        final int limit = TeamCityProperties.getInteger("teamcity.git.collectChanges.maxChanges", Integer.MAX_VALUE);
-        if (changes.size() > limit) {
-          List<String> updatedBranches = getInterestingBranches(fromState, toState);
-          LOG.warn("Reached the limit (" + limit + ") for the number of collected changes for VCS root: " + gitRoot.toString() + ", while collecting changes from state: " +
-                   shortRepoStateDetails(fromState, updatedBranches) + ", to state: " + shortRepoStateDetails(toState, updatedBranches));
-          return changes;
+
+          final int limit = TeamCityProperties.getInteger("teamcity.git.collectChanges.maxChanges", Integer.MAX_VALUE);
+          if (changes.size() > limit) {
+            List<String> updatedBranches = getInterestingBranches(fromState, toState);
+            LOG.warn("Reached the limit (" + limit + ") for the number of collected changes for VCS root: " + gitRoot.toString() + ", while collecting changes from state: " +
+                     shortRepoStateDetails(fromState, updatedBranches) + ", to state: " + shortRepoStateDetails(toState, updatedBranches));
+            return changes;
+          }
         }
       } catch (Exception e) {
         if (e instanceof SubmoduleException) {
