@@ -139,6 +139,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private void clearObjectsCache() {
     ObjectReader reader = getObjectReader();
     if (reader instanceof CachingObjectReader) {
+      //((CachingObjectReader)reader).printStatistics();
       ((CachingObjectReader)reader).clearCache();
     }
   }
@@ -222,15 +223,13 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
         // 2) interesting files were changed in all parents of this commit in the same way (mutual merges)
         // in either case we should go deeper, but since the files state is the same for all parents
         // we can mark all the commits reachable from the parents (excluding those reachable from other parents) as uninteresting
-
         myUninterestingCommits.addAll(collectCommitsReachableFromEachStartCommitOnly(Arrays.asList(parents)));
       } else if (numAffectedParents < parents.length) {
         // only one parent brings changes in files included by checkout rules
-        // we need to collect all commits excluding reachable from this parent and put them to uninteresting collection
-        // because there is no need to check checkout rules against them
-        Set<RevCommit> excluding = new HashSet<>(Arrays.asList(parents));
-        excluding.removeAll(uninterestingParents);
-        myUninterestingCommits.addAll(collectReachableCommitsExcluding(uninterestingParents, excluding));
+        // we need to mark all other parents as uninteresting to exclude them from traversing
+        for (RevCommit p: uninterestingParents) {
+          markUninteresting(p);
+        }
       }
 
       return numAffectedParents > 1;
@@ -276,56 +275,6 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     }
 
     return false;
-  }
-
-  /**
-   * In case of the following graph:
-   *
-   * (1)  (2)
-   *  |    |
-   * (3)  (4)
-   *  |  /
-   *  (5)
-   *
-   *  Where (1) is a start commit and (2) is excluded commit, this method returns (1) and (3), i.e. commits which are only reachable from the start commits and not reachable from excludes
-   * @param startFrom
-   * @return
-   * @throws IOException
-   */
-  @NotNull
-  private Set<String> collectReachableCommitsExcluding(@NotNull final Collection<RevCommit> startFrom, @NotNull Collection<RevCommit> excluding) throws IOException {
-    Set<String> result = new HashSet<>();
-
-    RevWalk walk = newRevWalk();
-
-    try {
-      for (RevCommit p: startFrom) {
-        walk.markStart(walk.parseCommit(p.getId()));
-      }
-
-      for (RevCommit p: excluding) {
-        walk.markUninteresting(walk.parseCommit(p.getId()));
-      }
-
-      markStopRevisionsParentsAsUninteresting(walk);
-
-      RevCommit next;
-      while ((next = walk.next()) != null) {
-        result.add(next.name());
-      }
-
-      /*
-      CachingObjectReader reader = (CachingObjectReader)getObjectReader();
-      reader.printStatistics();
-      */
-
-    } finally {
-      walk.reset();
-      walk.close();
-      walk.dispose();
-    }
-
-    return result;
   }
 
   /**
