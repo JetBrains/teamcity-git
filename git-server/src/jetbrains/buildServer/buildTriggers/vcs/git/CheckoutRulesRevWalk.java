@@ -57,20 +57,8 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   CheckoutRulesRevWalk(@NotNull final ServerPluginConfig config,
                        @NotNull final OperationContext context,
                        @NotNull final CheckoutRules checkoutRules) throws VcsException {
-    super(createCachingReader(context.getRepository().newObjectReader()), config, context);
+    super(config, context);
     myCheckoutRules = checkoutRules;
-  }
-
-  @NotNull
-  private static CachingObjectReader createCachingReader(@NotNull ObjectReader objectReader) {
-    int maxCachedObjects = TeamCityProperties.getInteger("teamcity.git.checkoutRulesRevWalk.maxCachedObjects", 50_000);
-
-    // to reduce memory usage we don't want to cache commits with large amount of metadata (parents, commit message, etc)
-    int maxCachedObjectSize = TeamCityProperties.getInteger("teamcity.git.checkoutRulesRevWalk.maxCachedObjectSize.bytes", 700);
-
-    final CachingObjectReader reader = new CachingObjectReader(objectReader, maxCachedObjects, maxCachedObjectSize);
-    reader.setCachingEnabled(true);
-    return reader;
   }
 
   public void setStartRevision(@NotNull RevCommit c) {
@@ -221,9 +209,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
         // this can happen in two cases:
         // 1) interesting files were not changed by this commit
         // 2) interesting files were changed in all parents of this commit in the same way (mutual merges)
-        // in either case we should go deeper, but since the files state is the same for all parents
-        // we can mark all the commits reachable from the parents (excluding those reachable from other parents) as uninteresting
-        myUninterestingCommits.addAll(collectCommitsReachableFromEachStartCommitOnly(Arrays.asList(parents)));
+        // in either case we should go deeper
       } else if (numAffectedParents < parents.length) {
         // only one parent brings changes in files included by checkout rules
         // we need to mark all other parents as uninteresting to exclude them from traversing
@@ -275,68 +261,6 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     }
 
     return false;
-  }
-
-  /**
-   * In case of the following graph:
-   *
-   * (1)  (2)
-   *  |    |
-   * (3)  (4)
-   *  |  /
-   *  (5)
-   *
-   *  Where (1) and (2) are start commits, this method returns (1), (2), (3) and (4), i.e. commits which are only reachable from each individural start commit
-   * @param startFrom
-   * @return
-   * @throws IOException
-   */
-  @NotNull
-  private Set<String> collectCommitsReachableFromEachStartCommitOnly(@NotNull final Collection<RevCommit> startFrom) throws IOException {
-    Set<String> result = new HashSet<>();
-
-    RevWalk walk = newRevWalk();
-
-    try {
-      for (RevCommit start: startFrom) {
-        walk.markStart(walk.parseCommit(start.getId()));
-        for (RevCommit other: startFrom) {
-          if (start == other) continue;
-          walk.markUninteresting(walk.parseCommit(other.getId()));
-        }
-
-        markStopRevisionsParentsAsUninteresting(walk);
-
-        RevCommit next;
-        while ((next = walk.next()) != null) {
-          if (result.remove(next.name())) {
-            // was collected before because it was reachable from other start, we should remove this commit
-            continue;
-          }
-
-          result.add(next.name());
-        }
-
-        walk.reset();
-      }
-
-      /*
-      CachingObjectReader reader = (CachingObjectReader)getObjectReader();
-      reader.printStatistics();
-      */
-
-    } finally {
-      walk.reset();
-      walk.close();
-      walk.dispose();
-    }
-
-    return result;
-  }
-
-  @NotNull
-  private RevWalk newRevWalk() {
-    return new RevWalk(getObjectReader());
   }
 
   @NotNull
