@@ -247,6 +247,20 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
                     tuple("97442a720324a0bd092fb9235f72246dc8b345bc", asList("2276eaf76a658f96b5cf3eb25f3e1fda90f6b653")));
   }
 
+  public void collect_changes_limit() throws Exception {
+    setInternalProperty("teamcity.git.collectChanges.maxChanges", "2");
+    GitVcsSupport support = git();
+    VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
+    List<ModificationData> changes = support.collectChanges(root, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", "ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", CheckoutRules.DEFAULT);
+    then(changes).hasSize(2);
+    then(changes).extracting("version").containsOnly("ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7");
+
+    setInternalProperty("teamcity.git.collectChanges.maxChanges", "100000");
+    changes = support.collectChanges(root, "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653", "ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", CheckoutRules.DEFAULT);
+    then(changes).hasSize(3);
+    then(changes).extracting("version").containsOnly("ee886e4adb70fbe3bdc6f3f6393598b3f02e8009", "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7", "97442a720324a0bd092fb9235f72246dc8b345bc");
+  }
+
 
   public void collect_changes_after_cache_reset() throws Exception {
     GitVcsSupport git = git();
