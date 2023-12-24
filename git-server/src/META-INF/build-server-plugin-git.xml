@@ -50,4 +50,5 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitTrustStoreProviderImpl"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitCustomizeVcsRootExtension"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitHubPasswordAuthRootRegistryFactoryImpl"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.CheckoutRulesLatestRevisionCache"/>
 </beans>
