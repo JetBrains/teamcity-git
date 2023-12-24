@@ -67,6 +67,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private final GitTrustStoreProvider myGitTrustStoreProvider;
   private final TestConnectionSupport myTestConnection;
   private final TokenRefresher myTokenRefresher;
+  private final CheckoutRulesLatestRevisionCache myCheckoutRulesLatestRevisionCache;
   private final Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
 
   public GitVcsSupport(@NotNull GitRepoOperations gitRepoOperations,
@@ -81,9 +82,11 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull GitResetCacheHandler resetCacheHandler,
                        @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler,
                        @NotNull TokenRefresher tokenRefresher,
-                       @Nullable TestConnectionSupport customTestConnection) {
+                       @Nullable TestConnectionSupport customTestConnection,
+                       @NotNull CheckoutRulesLatestRevisionCache checkoutRulesLatestRevisionCache) {
     this(gitRepoOperations, config, resetCacheManager, transportFactory, repositoryManager, mapFullPath, commitLoader, sshKeyManager, progressProvider,
-         resetCacheHandler, resetRevisionsCacheHandler, new GitTrustStoreProviderStatic(null), tokenRefresher, customTestConnection);
+         resetCacheHandler, resetRevisionsCacheHandler, new GitTrustStoreProviderStatic(null), tokenRefresher, customTestConnection,
+         checkoutRulesLatestRevisionCache);
   }
 
   public GitVcsSupport(@NotNull GitRepoOperations gitRepoOperations,
@@ -99,7 +102,8 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler,
                        @NotNull GitTrustStoreProvider gitTrustStoreProvider,
                        @NotNull TokenRefresher tokenRefresher,
-                       @Nullable TestConnectionSupport customTestConnection) {
+                       @Nullable TestConnectionSupport customTestConnection,
+                       @NotNull CheckoutRulesLatestRevisionCache checkoutRulesLatestRevisionCache) {
     myGitRepoOperations = gitRepoOperations;
     myConfig = config;
     myTransportFactory = transportFactory;
@@ -108,6 +112,7 @@ public class GitVcsSupport extends ServerVcsSupport
     myCommitLoader = commitLoader;
     mySshKeyManager = sshKeyManager;
     myProgressProvider = progressProvider;
+    myCheckoutRulesLatestRevisionCache = checkoutRulesLatestRevisionCache;
     setStreamFileThreshold();
     resetCacheManager.registerHandler(resetCacheHandler);
     resetCacheManager.registerHandler(resetRevisionsCacheHandler);
@@ -392,7 +397,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public GitCollectChangesPolicy getCollectChangesPolicy() {
-    return new GitCollectChangesPolicy(this, myProgressProvider, myConfig, myRepositoryManager);
+    return new GitCollectChangesPolicy(this, myProgressProvider, myConfig, myRepositoryManager, myCheckoutRulesLatestRevisionCache);
   }
 
   @NotNull

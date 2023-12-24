@@ -26,7 +26,6 @@ import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.ObjectDatabase;
 import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -45,7 +44,6 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private final CheckoutRules myCheckoutRules;
   private final Set<String> myStopRevisions = new HashSet<>();
   private final List<String> myReachedStopRevisions = new ArrayList<>();
-  private final Set<String> myUninterestingCommits = new HashSet<>();
   private String myStartRevision;
   private final Set<String> myVisitedRevisions = new HashSet<>();
   private SubmoduleResolverImpl mySubmoduleResolver;
@@ -79,57 +77,29 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     rememberStopRevisionsParents();
     markStopRevisionsParentsAsUninteresting(this);
 
-    try {
-      while (next() != null) {
-        RevCommit cc = getCurrentCommit();
-        removeCachedObject(cc);
+    while (next() != null) {
+      RevCommit cc = getCurrentCommit();
 
-        if (myVisitedRevisions.isEmpty()) {
-          // initialize the submodules resolver for the first revision only
-          initSubmodulesResolver();
-        }
-
-        checkIfStopRevision(cc.name());
-
-        if (myUninterestingCommits.remove(cc.name())) {
-          continue;
-        }
-
-        myVisitedRevisions.add(cc.name());
-        if (isCurrentCommitIncluded()) {
-          return cc;
-        }
-
-        if (myVisitedRevisions.size() >= maxNumberOfCheckedCommits) {
-          LOG.info("Reached the limit of " + maxNumberOfCheckedCommits + " checked commits for the start revision: " + myStartRevision +
-                   " and stop revisions: " + myStopRevisions + " in repository: " + getGitRoot().toString() + ", giving up");
-          return null;
-        }
+      if (myVisitedRevisions.isEmpty()) {
+        // initialize the submodules resolver for the first revision only
+        initSubmodulesResolver();
       }
-    } finally {
-      clearObjectsCache();
+
+      checkIfStopRevision(cc.name());
+
+      myVisitedRevisions.add(cc.name());
+      if (isCurrentCommitIncluded()) {
+        return cc;
+      }
+
+      if (myVisitedRevisions.size() >= maxNumberOfCheckedCommits) {
+        LOG.info("Reached the limit of " + maxNumberOfCheckedCommits + " checked commits for the start revision: " + myStartRevision +
+                 " and stop revisions: " + myStopRevisions + " in repository: " + getGitRoot().toString() + ", giving up");
+        return null;
+      }
     }
 
     return null;
-  }
-
-  private void removeCachedObject(@NotNull RevCommit commit) {
-    ObjectReader reader = getObjectReader();
-    if (reader instanceof CachingObjectReader) {
-      final CachingObjectReader cachingReader = (CachingObjectReader)reader;
-      cachingReader.removeCached(commit);
-      for (RevCommit parent: commit.getParents()) {
-        cachingReader.removeCached(parent);
-      }
-    }
-  }
-
-  private void clearObjectsCache() {
-    ObjectReader reader = getObjectReader();
-    if (reader instanceof CachingObjectReader) {
-      //((CachingObjectReader)reader).printStatistics();
-      ((CachingObjectReader)reader).clearCache();
-    }
   }
 
   private void checkIfStopRevision(@NotNull String revision) {
@@ -279,12 +249,5 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     } else {
       tw.addTree(commit.getTree().getId());
     }
-  }
-
-  @Override
-  public void dispose() {
-    myUninterestingCommits.clear();
-    clearObjectsCache();
-    super.dispose();
   }
 }

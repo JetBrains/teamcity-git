@@ -44,15 +44,18 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   private final VcsOperationProgressProvider myProgressProvider;
   private final ServerPluginConfig myConfig;
   private final RepositoryManager myRepositoryManager;
+  private final CheckoutRulesLatestRevisionCache myCheckoutRulesLatestRevisionCache;
 
   public GitCollectChangesPolicy(@NotNull GitVcsSupport vcs,
                                  @NotNull VcsOperationProgressProvider progressProvider,
                                  @NotNull ServerPluginConfig config,
-                                 @NotNull RepositoryManager repositoryManager) {
+                                 @NotNull RepositoryManager repositoryManager,
+                                 @NotNull CheckoutRulesLatestRevisionCache checkoutRulesLatestRevisionCache) {
     myVcs = vcs;
     myProgressProvider = progressProvider;
     myConfig = config;
     myRepositoryManager = repositoryManager;
+    myCheckoutRulesLatestRevisionCache = checkoutRulesLatestRevisionCache;
   }
 
 
@@ -173,8 +176,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                          @NotNull String startRevisionBranchName,
                                                          @NotNull Collection<String> stopRevisions,
                                                          @Nullable Set<String> visited) throws VcsException {
-
-
     Disposable name = NamedDaemonThreadFactory.patchThreadName("Computing the latest commit affected by checkout rules: " + rules +
                                                                " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision + " (branch: " + startRevisionBranchName + "), stop revisions: " + stopRevisions);
     try {
@@ -183,42 +184,96 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
         ensureRevisionIsFetched(startRevision, startRevisionBranchName, context);
 
-        CheckoutRulesRevWalk revWalk = null;
-        try {
-          revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
-          List<RevCommit> startCommits = getCommits(revWalk.getRepository(), revWalk, Collections.singleton(startRevision));
-          if (startCommits.isEmpty()) {
-            LOG.warn("Could not find the start revision " + startRevision + " in the repository at path: " + gitRoot.getRepositoryDir());
-            return new Result(null, Collections.emptyList());
-          }
-
-          revWalk.setStartRevision(startCommits.get(0));
-          revWalk.setStopRevisions(stopRevisions);
-
-          String result;
-          RevCommit foundCommit = revWalk.findMatchedCommit();
-          if (foundCommit != null) {
-            result = foundCommit.name();
-          } else {
-            result = revWalk.getClosestPartiallyAffectedMergeCommit();
-          }
-          if (visited != null) {
-            visited.addAll(revWalk.getVisitedRevisions());
-          }
-
-          return new Result(result, revWalk.getReachedStopRevisions());
-        } catch (Exception e) {
-          throw context.wrapException(e);
-        } finally {
-          if (revWalk != null) {
-            revWalk.close();
-            revWalk.dispose();
-          }
-          context.close();
+        Result finalResult = null;
+        CheckoutRulesLatestRevisionCache.Value cached = myCheckoutRulesLatestRevisionCache.getCachedValue(gitRoot, startRevisionBranchName, rules);
+        if (cached != null && cached.myStartRevision.equals(startRevision) && cached.myStopRevisions.equals(stopRevisions)) {
+          return new Result(cached.myComputedRevision, cached.myReachedStopRevisions);
         }
+
+        if (cached != null &&
+            ((stopRevisions.isEmpty() && cached.myStopRevisions.isEmpty()) || (stopRevisions.containsAll(cached.myStopRevisions) && !cached.myStopRevisions.isEmpty()))) {
+          // in this case we can add previous start revision as a stop revision and compute a new result from the new start
+          // if the result is null, then we can use the previous result as is
+          // otherwise we will return the newly found revision
+          Set<String> stops = new HashSet<>(stopRevisions);
+          stops.add(cached.myStartRevision);
+
+          Set<String> visitedCommits = new HashSet<>();
+          Result result = computeRevisionByCheckoutRules(startRevision, stops, rules, visitedCommits, context, gitRoot);
+          if (resultIsValid(result, visitedCommits)) {
+            List<String> reachedStops = new ArrayList<>(cached.myReachedStopRevisions);
+            reachedStops.retainAll(stopRevisions); // we should only return stop revisions passed to us as an argument
+            String computedResult = result.getRevision();
+
+            if (result.getRevision() == null) {
+              // no interesting commits since the last start, return previous result
+              computedResult = cached.myComputedRevision;
+            }
+
+            finalResult = new Result(computedResult, reachedStops);
+            if (visited != null) {
+              visited.addAll(visitedCommits);
+            }
+          }
+        }
+
+        if (finalResult == null) {
+          finalResult = computeRevisionByCheckoutRules(startRevision, stopRevisions, rules, visited, context, gitRoot);
+        }
+        myCheckoutRulesLatestRevisionCache.storeInCache(gitRoot, rules, startRevision, startRevisionBranchName, stopRevisions, finalResult);
+        return finalResult;
       });
     } finally {
       name.dispose();
+    }
+  }
+
+  private boolean resultIsValid(@NotNull Result result, @NotNull Set<String> visitedCommits) {
+    // either we should find some commit or we should at least visit some of the commits
+    // if none of these conditions is true then it seems our cached start revision is not reachable
+    // from the new start revision (hard reset to some previous commit + force push)
+    return result.getRevision() != null || !visitedCommits.isEmpty();
+  }
+
+  @NotNull
+  private Result computeRevisionByCheckoutRules(@NotNull String startRevision,
+                                                @NotNull Collection<String> stopRevisions,
+                                                @NotNull CheckoutRules rules,
+                                                @Nullable Set<String> visited,
+                                                @NotNull OperationContext context,
+                                                @NotNull GitVcsRoot gitRoot) throws VcsException {
+    CheckoutRulesRevWalk revWalk = null;
+    try {
+      revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
+      List<RevCommit> startCommits = getCommits(revWalk.getRepository(), revWalk, Collections.singleton(startRevision));
+      if (startCommits.isEmpty()) {
+        LOG.warn("Could not find the start revision " + startRevision + " in the repository at path: " + gitRoot.getRepositoryDir());
+        return new Result(null, Collections.emptyList());
+      }
+
+      revWalk.setStartRevision(startCommits.get(0));
+      revWalk.setStopRevisions(stopRevisions);
+
+      String result;
+      RevCommit foundCommit = revWalk.findMatchedCommit();
+      if (foundCommit != null) {
+        result = foundCommit.name();
+      } else {
+        result = revWalk.getClosestPartiallyAffectedMergeCommit();
+      }
+      if (visited != null) {
+        visited.addAll(revWalk.getVisitedRevisions());
+      }
+
+      return new Result(result, revWalk.getReachedStopRevisions());
+    } catch (Exception e) {
+      throw context.wrapException(e);
+    } finally {
+      if (revWalk != null) {
+        revWalk.close();
+        revWalk.dispose();
+      }
+      context.close();
     }
   }
 
