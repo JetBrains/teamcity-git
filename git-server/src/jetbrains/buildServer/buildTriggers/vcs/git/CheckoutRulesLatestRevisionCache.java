@@ -1,7 +1,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import java.io.File;
 import java.util.Collection;
 import java.util.List;
@@ -18,11 +18,10 @@ public class CheckoutRulesLatestRevisionCache {
   private final Cache<Key, Value> myCache;
 
   public CheckoutRulesLatestRevisionCache() {
-    myCache = Caffeine.newBuilder()
-                      .expireAfterAccess(TeamCityProperties.getInteger("teamcity.git.checkoutRulesRevisionCache.expirationTime", 8*3600), TimeUnit.SECONDS)
-                      .maximumSize(TeamCityProperties.getInteger("teamcity.git.checkoutRulesRevisionCache.size", 10_000))
-                      .executor(Runnable::run)
-                      .build();
+    myCache = CacheBuilder.newBuilder()
+                          .expireAfterAccess(TeamCityProperties.getInteger("teamcity.git.checkoutRulesRevisionCache.expirationTime", 8*3600), TimeUnit.SECONDS)
+                          .maximumSize(TeamCityProperties.getInteger("teamcity.git.checkoutRulesRevisionCache.size", 10_000))
+                          .build();
   }
 
   @Nullable
