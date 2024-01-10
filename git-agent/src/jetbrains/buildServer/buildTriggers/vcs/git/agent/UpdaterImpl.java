@@ -1019,9 +1019,6 @@ public class UpdaterImpl implements Updater {
   protected void configureLFS(@NotNull BaseCommand command) {
     if (!myPluginConfig.isProvideCredHelper())
       return;
-    Trinity<String, String, String> lfsAuth = getLfsAuth();
-    if (lfsAuth == null)
-      return;
     File credentialsHelper = null;
     try {
       ScriptGen scriptGen = myGitFactory.create(new File(".")).getScriptGen();
@@ -1032,12 +1029,6 @@ public class UpdaterImpl implements Updater {
         //helpers in system-global-local chain. If empty helper is not supported,
         //then the only workaround is to disable helpers manually in config files.
         command.addConfig("credential.helper", "");
-      }
-      CredentialsHelperConfig config = new CredentialsHelperConfig();
-      config.addCredentials(lfsAuth.first, lfsAuth.second, lfsAuth.third);
-      config.setMatchAllUrls(myPluginConfig.isCredHelperMatchesAllUrls());
-      for (Map.Entry<String, String> e : config.getEnv().entrySet()) {
-        command.setEnv(e.getKey(), e.getValue());
       }
       String path = credHelper.getCanonicalPath();
       path = path.replaceAll("\\\\", "/");
@@ -1058,30 +1049,6 @@ public class UpdaterImpl implements Updater {
       myLogger.warning(msg);
       LOG.debug(msg, e);
     }
-  }
-
-
-  //returns (url, name, pass) for lfs or null if no authentication is required or
-  //root doesn't use http(s)
-  @Nullable
-  private Trinity<String, String, String> getLfsAuth() {
-    try {
-      URIish uri = new URIish(myRoot.getRepositoryFetchURL().toString());
-      String scheme = uri.getScheme();
-      if (myRoot.getAuthSettings().getAuthMethod().isPasswordBased() &&
-          ("http".equals(scheme) || "https".equals(scheme))) {
-        String lfsUrl = uri.setPass("").setUser("").toASCIIString();
-        if (lfsUrl.endsWith(".git")) {
-          lfsUrl += "/info/lfs";
-        } else {
-          lfsUrl += lfsUrl.endsWith("/") ? ".git/info/lfs" : "/.git/info/lfs";
-        }
-        return Trinity.create(lfsUrl, myRoot.getAuthSettings().getUserName(), myRoot.getAuthSettings().getPassword());
-      }
-    } catch (Exception e) {
-      LOG.debug("Cannot get lfs auth config", e);
-    }
-    return null;
   }
 
 

@@ -16,6 +16,7 @@ import java.util.function.Consumer;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelperConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.CheckoutCanceledException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
@@ -95,6 +96,22 @@ public class GitCommandLine extends GeneralCommandLine {
     if (settings.isUseNativeSsh() && myCtx.isUseGitSshCommand()) {
       configureGitSshCommand(settings);
     }
+
+    GitCommandCredentials extraCredentials = authSettings.getExtraHTTPCredentials();
+    CredentialsHelperConfig config = new CredentialsHelperConfig();
+    for (ExtraHTTPCredentials creds : extraCredentials.getCredentials()) {
+      config.addCredentials(creds);
+    }
+
+    if (extraCredentials.isStoresOnlyDefaultCredential()) {
+      config.setMatchAllUrls(true);
+    }
+
+
+    for (Map.Entry<String, String> e : config.getEnv().entrySet()) {
+      addEnvParam(e.getKey(), e.getValue());
+    }
+
     return doRunCommand(settings);
   }
 

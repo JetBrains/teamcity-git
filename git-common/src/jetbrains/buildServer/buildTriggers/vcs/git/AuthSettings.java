@@ -53,5 +53,5 @@ public interface AuthSettings {
   boolean doesTokenNeedRefresh();
 
   @NotNull
-  List<ExtraHTTPCredentials> getExtraHTTPCredentials();
+  GitCommandCredentials getExtraHTTPCredentials();
 }

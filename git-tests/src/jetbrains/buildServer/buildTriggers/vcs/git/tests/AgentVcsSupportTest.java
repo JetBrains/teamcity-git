@@ -39,7 +39,6 @@ import jetbrains.buildServer.agent.*;
 import jetbrains.buildServer.agent.oauth.AgentTokenRetriever;
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.agent.oauth.InvalidAccessToken;
-import jetbrains.buildServer.agent.vcs.AgentVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.PluginConfigImpl;
@@ -270,7 +269,7 @@ public class AgentVcsSupportTest {
 
     AgentGitVcsRoot gitRoot = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myTempFiles.createTempDir(), root, myTokenStorage, detectExtraHTTPCredentialsInBuild(build));
     AuthSettings settings = gitRoot.getAuthSettings();
-    List<ExtraHTTPCredentials> creds = settings.getExtraHTTPCredentials().stream().sorted((c1, c2) -> StringUtil.compare(c1.getUsername(), c2.getUsername())).collect(Collectors.toList());
+    List<ExtraHTTPCredentials> creds = settings.getExtraHTTPCredentials().getCredentials().stream().sorted((c1, c2) -> StringUtil.compare(c1.getUsername(), c2.getUsername())).collect(Collectors.toList());
 
     assertEquals(2, creds.size());
 

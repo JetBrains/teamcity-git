@@ -51,6 +51,13 @@ class GitHttpServer {
     return "http://localhost:" + myPort + "/" + myRepo.getName();
   }
 
+  public String getUser() {
+    return myUser;
+  }
+
+  public String getPassword() {
+    return myPassword;
+  }
 
   void start() throws IOException {
     myServer = HttpServer.create(new InetSocketAddress(myPort), 0);

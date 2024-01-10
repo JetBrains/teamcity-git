@@ -259,7 +259,6 @@ public class GitUtils {
 
     for (Map<String, String> credentialsParams : extraCreds.values()) {
       if (credentialsParams.containsKey(GIT_HTTP_CRED_PREFIX +".url") &&
-          credentialsParams.containsKey(GIT_HTTP_CRED_PREFIX + ".username") &&
           credentialsParams.containsKey(GIT_HTTP_CRED_PREFIX + ".password")) {
         result.add(new ExtraHTTPCredentialsImpl(credentialsParams.get(GIT_HTTP_CRED_PREFIX +".url"),
                                                 credentialsParams.get(GIT_HTTP_CRED_PREFIX +".username"),

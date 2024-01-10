@@ -2,6 +2,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import java.util.*;
 import java.util.function.Function;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelperConfig;
 import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -25,7 +26,7 @@ public class AuthSettingsImpl implements AuthSettings {
   private final String myTeamCitySshKeyId;
   private final Function<String, ExpiringAccessToken> myTokenRetriever;
 
-  private final List<ExtraHTTPCredentials> myExtraHTTPCredentials = new ArrayList<>();
+  private final GitCommandCredentials myExtraHTTPCredentials = new GitCommandCredentials();
 
   public AuthSettingsImpl(@NotNull VcsRoot root, @NotNull URIishHelper urIishHelper) {
     this(root.getProperties(), root, urIishHelper, null, new ArrayList<>());
@@ -65,17 +66,35 @@ public class AuthSettingsImpl implements AuthSettings {
     }
     myUrIishHelper = urIishHelper;
     myUserName = readUsername(properties);
+    myTokenRetriever = tokenRetriever;
     if (myAuthMethod.isPasswordBased()) {
       myTokenId = properties.get(Constants.TOKEN_ID);
       myPassword = properties.get(Constants.PASSWORD);
+
+      String lfsUrl = CredentialsHelperConfig.configureLfsUrl(properties.get(Constants.FETCH_URL));
+
+      ExtraHTTPCredentials lfsCredentials = null;
+      if (lfsUrl != null) {
+        if (isStoredTokenAuth()) {
+          lfsCredentials = new ExtraHTTPCredentialsImpl(lfsUrl, myUserName, myTokenId, myTokenRetriever);
+        } else {
+          lfsCredentials = new ExtraHTTPCredentialsImpl(lfsUrl, myUserName, myPassword);
+        }
+      }
+
+      if (lfsCredentials != null) {
+        myExtraHTTPCredentials.add(lfsCredentials);
+        if (extraHTTPCredentials.isEmpty()) {
+          myExtraHTTPCredentials.setStoresOnlyDefaultCredential();
+        }
+      }
     } else {
       myTokenId = null;
       myPassword = null;
     }
+    myExtraHTTPCredentials.addAll(extraHTTPCredentials);
     myTeamCitySshKeyId = myAuthMethod != AuthenticationMethod.TEAMCITY_SSH_KEY ? null : properties.get(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME);
     myRoot = root;
-    myTokenRetriever = tokenRetriever;
-    myExtraHTTPCredentials.addAll(extraHTTPCredentials);
   }
 
   @Nullable
@@ -84,6 +103,7 @@ public class AuthSettingsImpl implements AuthSettings {
     return myRoot;
   }
 
+  @Nullable
   private String readUsername(Map<String, String> properties) {
     if (myAuthMethod == AuthenticationMethod.ANONYMOUS) {
       return null;
@@ -124,7 +144,7 @@ public class AuthSettingsImpl implements AuthSettings {
   @Nullable
   @Override
   public String getPassword() {
-    if (myAuthMethod != ACCESS_TOKEN || myTokenId == null || myTokenRetriever == null)
+    if (!isStoredTokenAuth())
       return myPassword;
 
     myToken = myTokenRetriever.apply(myTokenId);
@@ -134,10 +154,14 @@ public class AuthSettingsImpl implements AuthSettings {
     return myToken.getAccessToken();
   }
 
+  private boolean isStoredTokenAuth() {
+    return myAuthMethod == ACCESS_TOKEN && myTokenId != null && myTokenRetriever != null;
+  }
+
   @NotNull
   @Override
-  public List<ExtraHTTPCredentials> getExtraHTTPCredentials() {
-    return new ArrayList<>(myExtraHTTPCredentials);
+  public GitCommandCredentials getExtraHTTPCredentials() {
+    return myExtraHTTPCredentials;
   }
 
   @Nullable
