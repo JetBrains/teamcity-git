@@ -71,6 +71,10 @@ public class GitCommandLine extends GeneralCommandLine {
       //to the local repository config and not disable helpers in every command.
       //But some commands ignore this setting, e.g. 'git submodules update':
       //https://public-inbox.org/git/CAC+L6n0YeX_n_AysCLtBWkA+jPHwg7HmOWq2PLj75byxOZE=qQ@mail.gmail.com/
+
+      getParametersList().addAt(0, "-c");
+      getParametersList().addAt(1, "credential.helper=/Users/Danila.Manturov/source/tmp/cred-helper-tmp.sh");
+
       getParametersList().addAt(0, "-c");
       getParametersList().addAt(1, "credential.helper=");
     }
@@ -111,6 +115,11 @@ public class GitCommandLine extends GeneralCommandLine {
     for (Map.Entry<String, String> e : config.getEnv().entrySet()) {
       addEnvParam(e.getKey(), e.getValue());
     }
+
+    //if (getParametersList().getList().stream().filter(c -> c.startsWith("credential.helper=") && c.length() > "credential.helper=".length()).count() == 0) {
+    // getParametersList().add("-c");
+    //  getParametersList().add("credential.helper=/Users/Danila.Manturov/source/tmp/cred-helper-tmp.sh");
+    //}
 
     return doRunCommand(settings);
   }
