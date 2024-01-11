@@ -81,6 +81,7 @@ public class GitCommandLine extends GeneralCommandLine {
         getParametersList().addAt(3, "credential.helper=" + credHelperPath);
 
         addPostAction(new Runnable() {
+          //todo isCleanCredHelperScript - check
           @Override
           public void run() {
             FileUtil.delete(new File(credHelperPath));

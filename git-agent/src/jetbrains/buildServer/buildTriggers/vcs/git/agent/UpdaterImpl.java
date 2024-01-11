@@ -336,7 +336,7 @@ public class UpdaterImpl implements Updater {
     UpdateIndexCommand result = git.updateIndex()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
-    configureLFS(result);
+    // configureLFS(result); todo check is remote
     return result;
   }
 
@@ -346,7 +346,6 @@ public class UpdaterImpl implements Updater {
     ResetCommand result = git.reset()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
-    configureLFS(result);
     return result;
   }
 
@@ -355,7 +354,6 @@ public class UpdaterImpl implements Updater {
     CheckoutCommand result = git.checkout()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
-    configureLFS(result);
     return result;
   }
 
@@ -367,7 +365,7 @@ public class UpdaterImpl implements Updater {
             .setTimeout(myPluginConfig.getSubmoduleUpdateTimeoutSeconds())
             .setForce(isForceUpdateSupported());
     submoduleUpdate.addConfig("protocol.file.allow", "always");
-    configureLFS(submoduleUpdate);
+    // configureLFS(submoduleUpdate); todo check is remote
     submoduleUpdate.call();
   }
 
@@ -1001,41 +999,6 @@ public class UpdaterImpl implements Updater {
                        localRef.getObjectId().name());
   }
 
-
-  protected void configureLFS(@NotNull BaseCommand command) {
-    if (!myPluginConfig.isProvideCredHelper())
-      return;
-    File credentialsHelper = null;
-    try {
-      ScriptGen scriptGen = myGitFactory.create(new File(".")).getScriptGen();
-      final File credHelper = scriptGen.generateCredentialsHelper();
-      credentialsHelper = credHelper;
-      if (!myPluginConfig.getGitVersion().isLessThan(UpdaterImpl.EMPTY_CRED_HELPER)) {
-        //Specify an empty helper if it is supported in order to disable
-        //helpers in system-global-local chain. If empty helper is not supported,
-        //then the only workaround is to disable helpers manually in config files.
-        command.addConfig("credential.helper", "");
-      }
-      String path = credHelper.getCanonicalPath();
-      path = path.replaceAll("\\\\", "/");
-      command.addConfig("credential.helper", path);
-      if (myPluginConfig.isCleanCredHelperScript()) {
-        command.addPostAction(new Runnable() {
-          @Override
-          public void run() {
-            FileUtil.delete(credHelper);
-          }
-        });
-      }
-    } catch (Exception e) {
-      if (credentialsHelper != null)
-        FileUtil.delete(credentialsHelper);
-
-      final String msg = "Exception while creating credential.helper script: " + e.getMessage();
-      myLogger.warning(msg);
-      LOG.debug(msg, e);
-    }
-  }
 
 
   private interface VcsCommand {

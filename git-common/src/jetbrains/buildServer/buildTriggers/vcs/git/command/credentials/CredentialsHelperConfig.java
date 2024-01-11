@@ -109,6 +109,7 @@ public class CredentialsHelperConfig {
       if (credentialsHelper != null)
         FileUtil.delete(credentialsHelper);
 
+      //todo check logging works
       final String msg = "Exception while creating credential.helper script: " + e.getMessage();
       LOG.debug(msg, e);
     }
