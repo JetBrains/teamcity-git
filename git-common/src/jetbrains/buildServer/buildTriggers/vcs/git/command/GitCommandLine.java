@@ -73,10 +73,20 @@ public class GitCommandLine extends GeneralCommandLine {
       //https://public-inbox.org/git/CAC+L6n0YeX_n_AysCLtBWkA+jPHwg7HmOWq2PLj75byxOZE=qQ@mail.gmail.com/
 
       getParametersList().addAt(0, "-c");
-      getParametersList().addAt(1, "credential.helper=/Users/Danila.Manturov/source/tmp/cred-helper-tmp.sh");
-
-      getParametersList().addAt(0, "-c");
       getParametersList().addAt(1, "credential.helper=");
+
+      String credHelperPath = CredentialsHelperConfig.configureCredentialHelperScript(myCtx);
+      if (!StringUtil.isEmptyOrSpaces(credHelperPath)) {
+        getParametersList().addAt(2, "-c");
+        getParametersList().addAt(3, "credential.helper=" + credHelperPath);
+
+        addPostAction(new Runnable() {
+          @Override
+          public void run() {
+            FileUtil.delete(new File(credHelperPath));
+          }
+        });
+      }
     }
 
     settings.getTraceEnv().entrySet().forEach(e -> addEnvParam(e.getKey(), e.getValue()));
@@ -116,10 +126,6 @@ public class GitCommandLine extends GeneralCommandLine {
       addEnvParam(e.getKey(), e.getValue());
     }
 
-    //if (getParametersList().getList().stream().filter(c -> c.startsWith("credential.helper=") && c.length() > "credential.helper=".length()).count() == 0) {
-    // getParametersList().add("-c");
-    //  getParametersList().add("credential.helper=/Users/Danila.Manturov/source/tmp/cred-helper-tmp.sh");
-    //}
 
     return doRunCommand(settings);
   }

@@ -2,22 +2,28 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command.credentials;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Trinity;
+import java.io.File;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.ExtraHTTPCredentials;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
+import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelper.*;
 
 public class CredentialsHelperConfig {
   private final List<Trinity<String, String, String>> myCredentials = new ArrayList<Trinity<String, String, String>>();
+  private static final Logger LOG = Logger.getInstance(CredentialsHelperConfig.class);
   private boolean myMatchAllUrls;
 
   public void addCredentials(@NotNull String url, @Nullable String user, @NotNull String password) {
@@ -85,5 +91,28 @@ public class CredentialsHelperConfig {
     else {
       return null;
     }
+  }
+
+  @Nullable
+  public static String configureCredentialHelperScript(@NotNull Context ctx) {
+    File credentialsHelper = null;
+    try {
+      ScriptGen scriptGen = new GitFacadeImpl(new File("."), ctx).getScriptGen();
+
+      final File credHelper = scriptGen.generateCredentialsHelper();
+      credentialsHelper = credHelper;
+
+      String path = credHelper.getCanonicalPath();
+      path = path.replaceAll("\\\\", "/");
+      return path;
+    } catch (Exception e) {
+      if (credentialsHelper != null)
+        FileUtil.delete(credentialsHelper);
+
+      final String msg = "Exception while creating credential.helper script: " + e.getMessage();
+      LOG.debug(msg, e);
+    }
+
+    return null;
   }
 }
