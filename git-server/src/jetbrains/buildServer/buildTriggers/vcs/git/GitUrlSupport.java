@@ -243,7 +243,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
 
   private void refineGithubSettings(@NotNull VcsHostingRepo ghRepo, @NotNull Map<String, String> props, SProject curProject) throws VcsException {
     SVcsRoot vcsRoot = curProject.createDummyVcsRoot(Constants.VCS_NAME, props);
-    AuthSettings auth = new AuthSettingsImpl(props, vcsRoot, new URIishHelperImpl(), tokenId -> myTokenRefresher.getRefreshableToken(curProject, tokenId, false),
+    AuthSettings auth = new AuthSettingsImpl(props, vcsRoot, new URIishHelperImpl(), tokenId -> myTokenRefresher.getToken(curProject, tokenId, false, true),
                                              GitServerUtil.detectExtraHTTPCredentialsInProject(curProject));
 
     final String password = auth.getPassword();

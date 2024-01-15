@@ -35,9 +35,9 @@ public class SGitVcsRoot extends GitVcsRoot {
     SVcsRoot parentRoot = vcsRoot instanceof SVcsRoot ? (SVcsRoot)vcsRoot
                                                       : vcsRoot instanceof VcsRootInstance ? ((VcsRootInstance)vcsRoot).getParent() : null;
     if (parentRoot == null) {
-      return myTokenRefresher.getRefreshableToken(vcsRoot.getExternalId(), tokenId, myCheckProjectScope);
+      return myTokenRefresher.getToken(vcsRoot.getExternalId(), tokenId, myCheckProjectScope, true);
     } else {
-      return myTokenRefresher.getRefreshableToken(parentRoot.getProject(), tokenId, myCheckProjectScope);
+      return myTokenRefresher.getToken(parentRoot.getProject(), tokenId, myCheckProjectScope, true);
     }
   }
 }
