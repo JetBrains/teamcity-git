@@ -26,6 +26,8 @@ public interface Context {
 
   boolean isProvideCredHelper();
 
+  boolean isCleanCredHelperScript();
+
   @Nullable
   Charset getCharset();
 

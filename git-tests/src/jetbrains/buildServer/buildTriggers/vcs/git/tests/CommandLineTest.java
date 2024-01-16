@@ -100,6 +100,11 @@ public class CommandLineTest extends BaseRemoteRepositoryTest {
       public boolean isProvideCredHelper() {
         return true;
       }
+
+      @Override
+      public boolean isCleanCredHelperScript() {
+        return true;
+      }
     }, new AgentGitFacadeImpl(git.getPath()).getScriptGen());
 
     cmd.setExePath(git.getPath());

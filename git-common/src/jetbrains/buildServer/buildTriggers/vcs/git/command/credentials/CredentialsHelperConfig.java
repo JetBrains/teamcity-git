@@ -99,19 +99,18 @@ public class CredentialsHelperConfig {
     try {
       ScriptGen scriptGen = new GitFacadeImpl(new File("."), ctx).getScriptGen();
 
-      final File credHelper = scriptGen.generateCredentialsHelper();
-      credentialsHelper = credHelper;
+      final File credentialHelper = scriptGen.generateCredentialHelper();
+      credentialsHelper = credentialHelper;
 
-      String path = credHelper.getCanonicalPath();
+      String path = credentialHelper.getCanonicalPath();
       path = path.replaceAll("\\\\", "/");
       return path;
     } catch (Exception e) {
       if (credentialsHelper != null)
         FileUtil.delete(credentialsHelper);
 
-      //todo check logging works
       final String msg = "Exception while creating credential.helper script: " + e.getMessage();
-      LOG.debug(msg, e);
+      LOG.warnAndDebugDetails(msg, e);
     }
 
     return null;

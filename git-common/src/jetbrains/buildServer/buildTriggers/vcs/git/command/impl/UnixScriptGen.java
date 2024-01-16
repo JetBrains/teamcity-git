@@ -2,13 +2,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
-import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelper;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
+import jetbrains.buildServer.util.FileUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -46,10 +48,27 @@ public class UnixScriptGen extends ScriptGen {
     return script;
   }
 
-
   @NotNull
   @Override
-  protected String getCredHelperTemplate() {
-    return "/META-INF/credentials-helper.sh";
+  public File generateCredentialHelper() throws IOException {
+    File script = FileUtil.createTempFile(myTempDir, "credHelper", ".sh", true);
+    try (PrintWriter out = new PrintWriter(script)) {
+      out.println("#!/bin/sh");
+
+      out.println("if [ \"$1\" = \"erase\" ]; then");
+      out.printf("rm '%s';%n", script.getCanonicalPath());
+      out.println("exit;");
+      out.println("fi");
+
+      out.printf("%s -cp '%s' %s $*%n",
+                 getJavaPath(),
+                 ClasspathUtil.composeClasspath(new Class[]{CredentialsHelper.class}, null, null),
+                 CredentialsHelper.class.getName()).flush();
+
+      if (!script.setExecutable(true))
+        throw new IOException("Cannot make credential helper script executable");
+    }
+
+    return script;
   }
 }

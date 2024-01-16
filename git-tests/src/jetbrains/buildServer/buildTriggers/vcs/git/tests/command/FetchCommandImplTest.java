@@ -128,8 +128,9 @@ public class FetchCommandImplTest extends BaseTestCase {
       }
 
       @NotNull
-      protected String getCredHelperTemplate() {
-        return "";
+      @Override
+      public File generateCredentialHelper() throws IOException {
+        return createTempFile();
       }
     };
   }

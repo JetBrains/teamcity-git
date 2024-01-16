@@ -336,7 +336,6 @@ public class UpdaterImpl implements Updater {
     UpdateIndexCommand result = git.updateIndex()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
-    // configureLFS(result); todo check is remote
     return result;
   }
 
@@ -365,7 +364,6 @@ public class UpdaterImpl implements Updater {
             .setTimeout(myPluginConfig.getSubmoduleUpdateTimeoutSeconds())
             .setForce(isForceUpdateSupported());
     submoduleUpdate.addConfig("protocol.file.allow", "always");
-    // configureLFS(submoduleUpdate); todo check is remote
     submoduleUpdate.call();
   }
 

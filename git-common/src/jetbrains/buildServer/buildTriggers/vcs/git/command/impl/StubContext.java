@@ -59,6 +59,11 @@ public class StubContext implements Context {
   }
 
   @Override
+  public boolean isCleanCredHelperScript() {
+    return false;
+  }
+
+  @Override
   public boolean isDebugSsh() {
     return Loggers.VCS.isDebugEnabled();
   }

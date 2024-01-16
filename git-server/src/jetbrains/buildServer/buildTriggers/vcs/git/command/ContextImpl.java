@@ -54,6 +54,11 @@ public class ContextImpl implements Context {
     return true;
   }
 
+  @Override
+  public boolean isCleanCredHelperScript() {
+    return true;
+  }
+
   @Nullable
   @Override
   public Charset getCharset() {

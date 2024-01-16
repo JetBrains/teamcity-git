@@ -2,13 +2,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
-import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
+import jetbrains.buildServer.util.FileUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -45,7 +45,9 @@ public class WinScriptGen extends ScriptGen {
 
   @NotNull
   @Override
-  protected String getCredHelperTemplate() {
-    return "/META-INF/credentials-helper.bat";
+  public File generateCredentialHelper() throws IOException {
+    //todo write for windows
+    File script = FileUtil.createTempFile(myTempDir, "credHelper", ".bat", true);
+    return script;
   }
 }
