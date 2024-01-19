@@ -6,7 +6,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelper;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.util.FileUtil;
 import org.jetbrains.annotations.NotNull;
@@ -46,8 +48,22 @@ public class WinScriptGen extends ScriptGen {
   @NotNull
   @Override
   public File generateCredentialHelper() throws IOException {
-    //todo write for windows
     File script = FileUtil.createTempFile(myTempDir, "credHelper", ".bat", true);
+    try (PrintWriter out = new PrintWriter(script)) {
+      out.println("@echo off");
+      out.println("if \"\"%1\"\" == \"\"erase\"\" goto erase");
+      out.printf("%s -cp %s %s %%*%n",
+                 getJavaPath(),
+                 ClasspathUtil.composeClasspath(new Class[]{CredentialsHelper.class}, null, null),
+                 CredentialsHelper.class.getName()).flush();
+      out.println("goto end");
+      out.println(":erase");
+      out.printf("del \"%s\"%n", script.getCanonicalPath());
+      out.println(":end");
+
+      if (!script.setExecutable(true))
+        throw new IOException("Cannot make credential helper script executable");
+    }
     return script;
   }
 }
