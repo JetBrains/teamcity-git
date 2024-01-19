@@ -5,11 +5,15 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command.credentials;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import static java.nio.file.StandardOpenOption.APPEND;
 
 /**
  * Git credentials helper.
@@ -49,6 +53,10 @@ public class CredentialsHelper {
 
 
   public void run() throws IOException {
+    PrintWriter writer1 = new PrintWriter(new FileOutputStream("/dev/null", true));
+    writer1.println("----------------------------------------------------------------------------------------------------");
+    writer1.close();
+
     if (myArgs.length < 1)
       return;
 
@@ -58,8 +66,18 @@ public class CredentialsHelper {
 
     Credentials credentials = Credentials.parseCredentials(myEnv);
     Context context = Context.parseContext(myIn);
+
+    ///////
+    context.printResult(Files.newOutputStream(Paths.get("/dev/null"), APPEND));
+    PrintWriter writer = new PrintWriter(new FileOutputStream("/dev/null", true));
+    writer.println(credentials);
+    writer.close();
+    //////
+
+
     if (credentials.fill(context))
       context.printResult(myOut);
+    context.printResult(Files.newOutputStream(Paths.get("/dev/null"), APPEND));
   }
 
 
@@ -77,10 +95,12 @@ public class CredentialsHelper {
       final LinkedHashMap<String, String> attributes = new LinkedHashMap<String, String>();
       final BufferedReader reader = new BufferedReader(new InputStreamReader(in));
       String line = null;
+      PrintWriter writer = new PrintWriter(new FileOutputStream("/dev/null", true));
       while ((line = reader.readLine()) != null) {
         if (line.length() == 0) {
           break;
         } else {
+          writer.println("a:" + line);
           int idx = line.indexOf("=");
           if (idx > 0)
             attributes.put(line.substring(0, idx), line.substring(idx + 1, line.length()));
@@ -96,6 +116,9 @@ public class CredentialsHelper {
         result.myUsername = attributes.get("username");
       if (attributes.get("password") != null)
         result.myPassword = attributes.get("password");
+
+
+      writer.close();
       return result;
     }
 
@@ -140,9 +163,7 @@ public class CredentialsHelper {
         try {
           URL url = new URL(e.getKey());
           if (matches(context, url)) {
-            Cred cred = e.getValue();
-            if (context.myUsername == null || cred.myUsername.equals(context.myUsername))
-              return cred;
+            return e.getValue();
           }
         } catch (MalformedURLException ignored) {
         }
@@ -161,8 +182,8 @@ public class CredentialsHelper {
       if (!hostPort.equals(context.myHost))
         return false;
 
-      String path = url.getPath();
-      return context.myPath == null || path.equals(context.myPath);
+      String path = unifyPath(url.getPath());
+      return context.myPath == null || path.equals(unifyPath(context.myPath));
     }
 
 
@@ -198,10 +219,30 @@ public class CredentialsHelper {
     private final static class Cred {
       private final String myUsername;
       private final String myPassword;
+
       Cred(String username, String password) {
         myUsername = username;
         myPassword = password;
       }
+
+      @Override
+      public String toString() {
+        return "username: " + myUsername + ", password: " + myPassword;
+      }
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder builder = new StringBuilder();
+      builder.append("match_all_urls=").append(myMatchAllUrls).append("\n");
+      int i = 1;
+      for (Map.Entry<String, Cred> e : myCredentials.entrySet()) {
+        builder.append(i).append(")\n");
+        builder.append(e.getKey()).append("\n");
+        builder.append(e.getValue()).append("\n");
+        ++i;
+      }
+      return builder.toString();
     }
   }
 
@@ -212,5 +253,17 @@ public class CredentialsHelper {
 
   static String credEnv(int i, @NotNull String name) {
     return CredentialsHelper.CRED_PREFIX + i + "_" + name;
+  }
+
+  @NotNull
+  public static String unifyPath(@Nullable String path) {
+    if (path == null)
+      return "";
+
+    String unifiedPath = path;
+    unifiedPath = unifiedPath.startsWith("/") ? unifiedPath.substring(1) : unifiedPath;
+    unifiedPath = unifiedPath.endsWith("/") ? unifiedPath.substring(0, unifiedPath.length() - 1) : unifiedPath;
+    unifiedPath = unifiedPath.endsWith(".git") ? unifiedPath.substring(0, unifiedPath.length() - 4) : unifiedPath;
+    return unifiedPath;
   }
 }
