@@ -172,27 +172,16 @@ public class GitSupportBuilder {
     ResetRevisionsCacheHandler resetRevisionsCacheHandler = new ResetRevisionsCacheHandler(revisionsCache);
 
     TokenRefresher tokenRefresher = new TokenRefresher() {
+
       @Nullable
       @Override
-      public OAuthToken getRefreshableToken(@NotNull String vcsRootExtId, @NotNull String tokenFullId) {
+      public OAuthToken getToken(@Nullable SProject project, @NotNull String tokenFullId, boolean checkProjectScope, boolean refreshIfExpired) {
         return null;
       }
 
       @Nullable
       @Override
-      public OAuthToken getRefreshableToken(@NotNull SProject project, @NotNull String tokenFullId) {
-        return null;
-      }
-
-      @Nullable
-      @Override
-      public OAuthToken getRefreshableToken(@NotNull String vcsRootExtId, @NotNull String tokenFullId, boolean checkProjectScope) {
-        return null;
-      }
-
-      @Nullable
-      @Override
-      public OAuthToken getRefreshableToken(@Nullable SProject project, @NotNull String tokenFullId, boolean checkProjectScope) {
+      public OAuthToken getToken(@NotNull String vcsRootExtId, @NotNull String tokenFullId, boolean checkProjectScope, boolean refreshIfExpired) {
         return null;
       }
     };
