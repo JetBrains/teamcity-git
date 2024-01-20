@@ -282,6 +282,12 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                                                 Arrays.asList("40224a053e16145562d1befa3d0a127c54f5dbff", "657e07b56a174f14c1925f16a967135f9d494401"));
 
     then(rev.getRevision()).isEqualTo("d036d012385a762568a474b57337b9cf398b96e0");
+
+    rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:test/subDir"),
+                                                                "6ff32b16fe485e7a0a1e209bf10987e1ad46292e", "refs/heads/br4",
+                                                                Arrays.asList("75c9325d5b129f299fba8567f0fd7f599d336e8f", "d036d012385a762568a474b57337b9cf398b96e0"));
+
+    then(rev.getRevision()).isEqualTo("1330f191b990a389459e28f8754c913e9b417c93");
   }
 
   public void checked_commits_limit() throws VcsException {
