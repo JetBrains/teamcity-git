@@ -290,6 +290,19 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getRevision()).isEqualTo("1330f191b990a389459e28f8754c913e9b417c93");
   }
 
+  public void merge_with_resolved_conflict() throws IOException, VcsException {
+    VcsRoot root = getVcsRootBuilder().withSubmodulePolicy(SubmodulesCheckoutPolicy.CHECKOUT).build();
+
+    final Set<String> visited = new HashSet<>();
+    Result rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:src/File9.java"),
+                                                                                    "f7a3bf64d3522fae44359fe2f4d24326475b3d8e", "refs/heads/master",
+                                                                                    Arrays.asList("cb3c3789d8b85d55197069c7c02f5ce693327ee4"),
+                                                                                    visited);
+
+    then(rev.getRevision()).isEqualTo("f7a3bf64d3522fae44359fe2f4d24326475b3d8e");
+    then(visited).containsOnly("f7a3bf64d3522fae44359fe2f4d24326475b3d8e");
+  }
+
   public void checked_commits_limit() throws VcsException {
     setInternalProperty(CheckoutRulesRevWalk.TEAMCITY_MAX_CHECKED_COMMITS_PROP, "7");
     VcsRoot root = getVcsRootBuilder().build();
