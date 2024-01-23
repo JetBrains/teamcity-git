@@ -7,8 +7,8 @@ import org.jetbrains.annotations.NotNull;
 
 public class PropertiesHelper {
   /**
-   * if prefix = "teamcity.git.http.credentials"
-   * properties map {"teamcity.git.http.credentials.alias.v1" -> "123"} will be converted to {"alias" -> {"teamcity.git.http.credentials.v1" -> "123"}}
+   * if prefix = "teamcity.git.https.credentials"
+   * properties map {"teamcity.git.https.credentials.alias.v1" -> "123"} will be converted to {"alias" -> {"teamcity.git.htts.credentials.v1" -> "123"}}
    * and so on
    */
   public static Map<String, Map<String, String>> aggregatePropertiesByAlias(@NotNull Map<String, String> properties, @NotNull String prefix) {

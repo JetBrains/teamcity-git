@@ -243,13 +243,13 @@ public class AgentVcsSupportTest {
     String buildBranchParam = GitUtils.getGitRootBranchParamName(root);
 
     AgentRunningBuild build = createRunningBuild(map(buildBranchParam, "refs/heads/master",
-                                                     "teamcity.git.http.credentials.alias.password", "pass1",
-                                                     "teamcity.git.http.credentials.alias.url", "https://gitlab1.com/owner/repo.git",
-                                                     "teamcity.git.http.credentials.alias.username", "user1",
+                                                     "teamcity.git.https.credentials.alias.password", "pass1",
+                                                     "teamcity.git.https.credentials.alias.url", "https://gitlab1.com/owner/repo.git",
+                                                     "teamcity.git.https.credentials.alias.username", "user1",
 
-                                                     "teamcity.git.http.credentials.password", "pass2",
-                                                     "teamcity.git.http.credentials.url", "https://gitlab2.com/owner/repo.git",
-                                                     "teamcity.git.http.credentials.username", "user2")
+                                                     "teamcity.git.https.credentials.password", "pass2",
+                                                     "teamcity.git.https.credentials.url", "https://gitlab2.com/owner/repo.git",
+                                                     "teamcity.git.https.credentials.username", "user2")
                                                  );
 
 

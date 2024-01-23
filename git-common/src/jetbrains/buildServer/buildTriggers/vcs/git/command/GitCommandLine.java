@@ -72,7 +72,7 @@ public class GitCommandLine extends GeneralCommandLine {
       //But some commands ignore this setting, e.g. 'git submodules update':
       //https://public-inbox.org/git/CAC+L6n0YeX_n_AysCLtBWkA+jPHwg7HmOWq2PLj75byxOZE=qQ@mail.gmail.com/
 
-      //todo make order here
+      //if credential.helper is configured to the empty string, this resets the helper list to empty
       getParametersList().addAt(0, "-c");
       getParametersList().addAt(1, "credential.helper=");
 
@@ -81,8 +81,6 @@ public class GitCommandLine extends GeneralCommandLine {
         getParametersList().addAt(2, "-c");
         getParametersList().addAt(3, "credential.helper=" + credHelperPath);
 
-        getParametersList().addAt(4, "-c");
-        getParametersList().addAt(5, "credential.useHttpPath=true");
 
         if (myCtx.isCleanCredHelperScript()) {
           addPostAction(new Runnable() {
@@ -125,6 +123,9 @@ public class GitCommandLine extends GeneralCommandLine {
 
     if (extraCredentials.isStoresOnlyDefaultCredential()) {
       config.setMatchAllUrls(true);
+    } else {
+      getParametersList().addAt(0, "-c");
+      getParametersList().addAt(1, "credential.useHttpPath=true");
     }
 
 
