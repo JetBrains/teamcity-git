@@ -123,7 +123,7 @@ public class GitCommandLine extends GeneralCommandLine {
 
     if (extraCredentials.isStoresOnlyDefaultCredential()) {
       config.setMatchAllUrls(true);
-    } else {
+    } else if (extraCredentials.getCredentials().size() > 1){
       getParametersList().addAt(0, "-c");
       getParametersList().addAt(1, "credential.useHttpPath=true");
     }
