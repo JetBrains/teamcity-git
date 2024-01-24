@@ -33,7 +33,6 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
   private String myStartRevision;
   private final Set<String> myVisitedRevisions = new HashSet<>();
   private SubmoduleResolverImpl mySubmoduleResolver;
-  private String myClosestPartiallyAffectedMergeCommit = null;
   private final Set<ObjectId> myStopRevisionsParents = new HashSet<>();
 
   private final static Logger LOG = Logger.getInstance(CheckoutRulesRevWalk.class);
@@ -124,11 +123,6 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     return new ArrayList<>(myReachedStopRevisions);
   }
 
-  @Nullable
-  public String getClosestPartiallyAffectedMergeCommit() {
-    return myClosestPartiallyAffectedMergeCommit;
-  }
-
   private boolean isCurrentCommitIncluded() throws IOException {
     checkCurrentCommit();
 
@@ -152,12 +146,6 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
             }
           }
         }
-      }
-
-      if (numAffectedParents == 1) {
-        // it is possible that stop revisions will prevent us from finding the actual commit which changed the interesting files
-        // in this case we'll use the last met partially affected merge commit as a result (the closest approximation)
-        myClosestPartiallyAffectedMergeCommit = getCurrentCommit().name();
       }
 
       if (numAffectedParents == 0) {

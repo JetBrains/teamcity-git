@@ -240,13 +240,12 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       revWalk.setStartRevision(startCommits.get(0));
       revWalk.setStopRevisions(stopRevisions);
 
-      String result;
+      String result = null;
       RevCommit foundCommit = revWalk.findMatchedCommit();
       if (foundCommit != null) {
         result = foundCommit.name();
-      } else {
-        result = revWalk.getClosestPartiallyAffectedMergeCommit();
       }
+
       if (visited != null) {
         visited.addAll(revWalk.getVisitedRevisions());
       }

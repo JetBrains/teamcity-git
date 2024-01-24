@@ -246,7 +246,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:src"),
                                                                 "cb3c3789d8b85d55197069c7c02f5ce693327ee4", "refs/heads/master",
                                                                 Arrays.asList("e19e0ffec0a1512674db95ade28047fbfba76fdf", "7e4a8739b038b5b3e551c96dc3a2ef6320772969"));
-    then(rev.getRevision()).isEqualTo("a2b61002b849eeff94900ba4ddfae4aeb5ea7ded");
+    then(rev.getRevision()).isNull();
     then(rev.getReachableStopRevisions()).containsOnly("e19e0ffec0a1512674db95ade28047fbfba76fdf");
   }
 
@@ -274,20 +274,22 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getReachableStopRevisions()).containsOnly("75c9325d5b129f299fba8567f0fd7f599d336e8f");
   }
 
-  public void should_return_closest_merge_commit_with_one_parent_affected() throws IOException, VcsException {
+  public void should_return_nearest_stop_revision() throws IOException, VcsException {
     VcsRoot root = getVcsRootBuilder().withSubmodulePolicy(SubmodulesCheckoutPolicy.CHECKOUT).build();
 
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:src/File4.java"),
                                                                 "ce92302a768ce0763e83aebf8c0e16e102c8d06b", "refs/heads/br4",
                                                                 Arrays.asList("40224a053e16145562d1befa3d0a127c54f5dbff", "657e07b56a174f14c1925f16a967135f9d494401"));
 
-    then(rev.getRevision()).isEqualTo("d036d012385a762568a474b57337b9cf398b96e0");
+    then(rev.getRevision()).isNull();
+    then(rev.getReachableStopRevisions()).containsOnly("40224a053e16145562d1befa3d0a127c54f5dbff");
 
     rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:test/subDir"),
                                                                 "6ff32b16fe485e7a0a1e209bf10987e1ad46292e", "refs/heads/br4",
                                                                 Arrays.asList("75c9325d5b129f299fba8567f0fd7f599d336e8f", "d036d012385a762568a474b57337b9cf398b96e0"));
 
-    then(rev.getRevision()).isEqualTo("1330f191b990a389459e28f8754c913e9b417c93");
+    then(rev.getRevision()).isNull();
+    then(rev.getReachableStopRevisions()).containsOnly("75c9325d5b129f299fba8567f0fd7f599d336e8f");
   }
 
   public void merge_with_resolved_conflict() throws IOException, VcsException {
