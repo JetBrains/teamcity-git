@@ -53,9 +53,11 @@ public class CredentialsHelper {
 
 
   public void run() throws IOException {
-    PrintWriter writer1 = new PrintWriter(new FileOutputStream("/dev/null", true));
-    writer1.println("----------------------------------------------------------------------------------------------------");
-    writer1.close();
+    //
+    //PrintWriter writer1 = new PrintWriter(new FileOutputStream("/dev/null", true));
+    //writer1.println("----------------------------------------------------------------------------------------------------");
+    //writer1.close();
+    //
 
     if (myArgs.length < 1)
       return;
@@ -68,16 +70,19 @@ public class CredentialsHelper {
     Context context = Context.parseContext(myIn);
 
     ///////
-    context.printResult(Files.newOutputStream(Paths.get("/dev/null"), APPEND));
-    PrintWriter writer = new PrintWriter(new FileOutputStream("/dev/null", true));
-    writer.println(credentials);
-    writer.close();
+    //context.printResult(Files.newOutputStream(Paths.get("/dev/null"), APPEND));
+    //PrintWriter writer = new PrintWriter(new FileOutputStream("/dev/null", true));
+    //writer.println(credentials);
+    //writer.close();
     //////
 
 
     if (credentials.fill(context))
       context.printResult(myOut);
-    context.printResult(Files.newOutputStream(Paths.get("/dev/null"), APPEND));
+
+    //
+    //context.printResult(Files.newOutputStream(Paths.get("/dev/null"), APPEND));
+    //
   }
 
 
@@ -95,12 +100,16 @@ public class CredentialsHelper {
       final LinkedHashMap<String, String> attributes = new LinkedHashMap<String, String>();
       final BufferedReader reader = new BufferedReader(new InputStreamReader(in));
       String line = null;
-      PrintWriter writer = new PrintWriter(new FileOutputStream("/dev/null", true));
+
+      //
+      //PrintWriter writer = new PrintWriter(new FileOutputStream("/dev/null", true));
+      //
+
       while ((line = reader.readLine()) != null) {
         if (line.length() == 0) {
           break;
         } else {
-          writer.println("a:" + line);
+          //writer.println("a:" + line);
           int idx = line.indexOf("=");
           if (idx > 0)
             attributes.put(line.substring(0, idx), line.substring(idx + 1, line.length()));
@@ -117,8 +126,9 @@ public class CredentialsHelper {
       if (attributes.get("password") != null)
         result.myPassword = attributes.get("password");
 
-
-      writer.close();
+      //
+      //writer.close();
+      //
       return result;
     }
 
