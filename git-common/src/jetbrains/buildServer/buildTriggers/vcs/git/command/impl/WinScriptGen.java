@@ -45,6 +45,17 @@ public class WinScriptGen extends ScriptGen {
     return script;
   }
 
+
+  /**
+   * @echo off
+   * if ""%1"" == ""erase"" goto erase
+   * "C:\...\bin\java" -cp C:/.../TeamCity/buildAgent/plugins/jetbrains.git/lib/git-common.jar jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelper %*
+   * goto end
+   * :erase
+   * del "C:\...\credHelperXXXXXXXXXX.bat"
+   * :end
+   *
+   */
   @NotNull
   @Override
   public File generateCredentialHelper() throws IOException {

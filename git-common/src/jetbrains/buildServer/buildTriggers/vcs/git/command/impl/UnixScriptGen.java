@@ -48,6 +48,15 @@ public class UnixScriptGen extends ScriptGen {
     return script;
   }
 
+
+  /**
+   * #!/bin/sh
+   * if [ "$1" = "erase" ]; then
+   * rm '/.../credHelperXXXXXXX.sh';
+   * exit;
+   * fi
+   * "/...../jre/bin/java" -cp '/...../plugins/jetbrains.git/lib/git-common.jar' jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelper $*
+   */
   @NotNull
   @Override
   public File generateCredentialHelper() throws IOException {

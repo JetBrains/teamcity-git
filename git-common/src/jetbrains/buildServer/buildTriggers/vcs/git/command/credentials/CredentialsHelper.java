@@ -5,15 +5,11 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command.credentials;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import static java.nio.file.StandardOpenOption.APPEND;
 
 /**
  * Git credentials helper.
@@ -51,14 +47,7 @@ public class CredentialsHelper {
     new CredentialsHelper(System.in, System.out, System.getenv(), args).run();
   }
 
-
   public void run() throws IOException {
-    //
-    //PrintWriter writer1 = new PrintWriter(new FileOutputStream("/dev/null", true));
-    //writer1.println("----------------------------------------------------------------------------------------------------");
-    //writer1.close();
-    //
-
     if (myArgs.length < 1)
       return;
 
@@ -69,20 +58,8 @@ public class CredentialsHelper {
     Credentials credentials = Credentials.parseCredentials(myEnv);
     Context context = Context.parseContext(myIn);
 
-    ///////
-    //context.printResult(Files.newOutputStream(Paths.get("/dev/null"), APPEND));
-    //PrintWriter writer = new PrintWriter(new FileOutputStream("/dev/null", true));
-    //writer.println(credentials);
-    //writer.close();
-    //////
-
-
     if (credentials.fill(context))
       context.printResult(myOut);
-
-    //
-    //context.printResult(Files.newOutputStream(Paths.get("/dev/null"), APPEND));
-    //
   }
 
 
@@ -101,15 +78,10 @@ public class CredentialsHelper {
       final BufferedReader reader = new BufferedReader(new InputStreamReader(in));
       String line = null;
 
-      //
-      //PrintWriter writer = new PrintWriter(new FileOutputStream("/dev/null", true));
-      //
-
       while ((line = reader.readLine()) != null) {
         if (line.length() == 0) {
           break;
         } else {
-          //writer.println("a:" + line);
           int idx = line.indexOf("=");
           if (idx > 0)
             attributes.put(line.substring(0, idx), line.substring(idx + 1, line.length()));
@@ -126,9 +98,6 @@ public class CredentialsHelper {
       if (attributes.get("password") != null)
         result.myPassword = attributes.get("password");
 
-      //
-      //writer.close();
-      //
       return result;
     }
 
@@ -153,8 +122,7 @@ public class CredentialsHelper {
 
   private static class Credentials {
     private boolean myMatchAllUrls = false;//when set to true credentials are provided for every URL
-    //url -> credentials
-    private final Map<String, Cred> myCredentials = new HashMap<String, Cred>();
+    private final Map<String, Cred> myCredentials = new HashMap<String, Cred>(); //url -> credentials
 
     boolean fill(@NotNull Context context) {
       Cred credentials = findCredentials(context);
