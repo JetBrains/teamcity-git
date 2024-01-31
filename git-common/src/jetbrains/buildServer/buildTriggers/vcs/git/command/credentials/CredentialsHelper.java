@@ -202,25 +202,6 @@ public class CredentialsHelper {
         myUsername = username;
         myPassword = password;
       }
-
-      @Override
-      public String toString() {
-        return "username: " + myUsername + ", password: " + myPassword;
-      }
-    }
-
-    @Override
-    public String toString() {
-      StringBuilder builder = new StringBuilder();
-      builder.append("match_all_urls=").append(myMatchAllUrls).append("\n");
-      int i = 1;
-      for (Map.Entry<String, Cred> e : myCredentials.entrySet()) {
-        builder.append(i).append(")\n");
-        builder.append(e.getKey()).append("\n");
-        builder.append(e.getValue()).append("\n");
-        ++i;
-      }
-      return builder.toString();
     }
   }
 
