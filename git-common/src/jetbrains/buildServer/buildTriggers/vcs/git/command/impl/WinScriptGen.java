@@ -49,7 +49,7 @@ public class WinScriptGen extends ScriptGen {
   /**
    * @echo off
    * if ""%1"" == ""erase"" goto erase
-   * "C:\...\bin\java" -cp C:/.../TeamCity/buildAgent/plugins/jetbrains.git/lib/git-common.jar jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelper %*
+   * "C:\...\bin\java" -cp "C:/.../TeamCity/buildAgent/plugins/jetbrains.git/lib/git-common.jar" jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelper %*
    * goto end
    * :erase
    * del "C:\...\credHelperXXXXXXXXXX.bat"
@@ -63,7 +63,7 @@ public class WinScriptGen extends ScriptGen {
     try (PrintWriter out = new PrintWriter(script)) {
       out.println("@echo off");
       out.println("if \"\"%1\"\" == \"\"erase\"\" goto erase");
-      out.printf("%s -cp %s %s %%*%n",
+      out.printf("%s -cp \"%s\" %s %%*%n",
                  getJavaPath(),
                  ClasspathUtil.composeClasspath(new Class[]{CredentialsHelper.class}, null, null),
                  CredentialsHelper.class.getName()).flush();
