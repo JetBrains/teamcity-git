@@ -94,11 +94,9 @@ public class CredentialsHelperConfig {
   }
 
   @Nullable
-  public static String configureCredentialHelperScript(@NotNull Context ctx) {
+  public static String configureCredentialHelperScript(@NotNull Context ctx, @NotNull ScriptGen scriptGen) {
     File credentialsHelper = null;
     try {
-      ScriptGen scriptGen = new GitFacadeImpl(new File("."), ctx).getScriptGen();
-
       final File credentialHelper = scriptGen.generateCredentialHelper();
       credentialsHelper = credentialHelper;
 
