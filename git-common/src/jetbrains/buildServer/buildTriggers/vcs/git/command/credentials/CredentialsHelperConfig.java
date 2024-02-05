@@ -3,6 +3,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.command.credentials;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.Trinity;
 import java.io.File;
 import java.net.URISyntaxException;
@@ -11,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.ExtraHTTPCredentials;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
@@ -94,14 +96,16 @@ public class CredentialsHelperConfig {
   }
 
   @Nullable
-  public static String configureCredentialHelperScript(@NotNull Context ctx, @NotNull ScriptGen scriptGen) {
+  public static String configureCredentialHelperScript(@NotNull ScriptGen scriptGen) {
     File credentialsHelper = null;
     try {
       final File credentialHelper = scriptGen.generateCredentialHelper();
       credentialsHelper = credentialHelper;
 
-      String path = credentialHelper.getCanonicalPath();
-      path = path.replaceAll("\\\\", "/");
+      String path = credentialHelper.getAbsolutePath();
+      if (path.contains(" ") && SystemInfo.isWindows) {
+        path = GitUtils.getShortFileName(credentialHelper);
+      }
       return path;
     } catch (Exception e) {
       if (credentialsHelper != null)

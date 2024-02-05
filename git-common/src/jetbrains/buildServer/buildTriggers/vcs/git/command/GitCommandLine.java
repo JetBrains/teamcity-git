@@ -76,7 +76,7 @@ public class GitCommandLine extends GeneralCommandLine {
       getParametersList().addAt(0, "-c");
       getParametersList().addAt(1, "credential.helper=");
 
-      String credHelperPath = CredentialsHelperConfig.configureCredentialHelperScript(myCtx, myScriptGen);
+      String credHelperPath = CredentialsHelperConfig.configureCredentialHelperScript(myScriptGen);
       if (!StringUtil.isEmptyOrSpaces(credHelperPath)) {
         getParametersList().addAt(2, "-c");
         getParametersList().addAt(3, "credential.helper=" + credHelperPath);
