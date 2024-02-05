@@ -59,7 +59,7 @@ public class WinScriptGen extends ScriptGen {
   @NotNull
   @Override
   public File generateCredentialHelper() throws IOException {
-    File script = FileUtil.createTempFile(myTempDir, "credHelper", ".bat", true);
+    File script = FileUtil.createTempFile(myTempDir, "cred", ".bat", true);
     try (PrintWriter out = new PrintWriter(script)) {
       out.println("@echo off");
       out.println("if \"\"%1\"\" == \"\"erase\"\" goto erase");
@@ -69,7 +69,8 @@ public class WinScriptGen extends ScriptGen {
                  CredentialsHelper.class.getName()).flush();
       out.println("goto end");
       out.println(":erase");
-      out.printf("del \"%s\"%n", script.getCanonicalPath());
+      //out.printf("del \"%s\"%n", script.getCanonicalPath());
+      out.println("echo 123");
       out.println(":end");
 
       if (!script.setExecutable(true))
