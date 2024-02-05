@@ -104,8 +104,9 @@ public class CredentialsHelperConfig {
 
       String path = credentialHelper.getAbsolutePath();
       if (path.contains(" ") && SystemInfo.isWindows) {
-        path = GitUtils.getShortFileName(credentialHelper).replaceAll("\\\\", "/");
+        path = GitUtils.getShortFileName(credentialHelper);
       }
+      path = path.replaceAll("\\\\", "/");
       return path;
     } catch (Exception e) {
       if (credentialsHelper != null)
