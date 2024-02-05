@@ -69,7 +69,8 @@ public class WinScriptGen extends ScriptGen {
                  CredentialsHelper.class.getName()).flush();
       out.println("goto end");
       out.println(":erase");
-      //out.printf("del \"%s\"%n", script.getCanonicalPath());
+      out.printf("echo \"%s\"%n", script.getAbsolutePath());
+      out.printf("echo \"%s\"%n", script.getCanonicalPath());
       out.println("echo 123");
       out.println(":end");
 
