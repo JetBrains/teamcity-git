@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.function.Function;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelperConfig;
 import jetbrains.buildServer.connections.ExpiringAccessToken;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
@@ -27,6 +28,8 @@ public class AuthSettingsImpl implements AuthSettings {
   private final Function<String, ExpiringAccessToken> myTokenRetriever;
 
   private final GitCommandCredentials myExtraHTTPCredentials = new GitCommandCredentials();
+
+  public final String EXTRA_CREDS_ENABLED = "teamcity.git.extra.credentials.enable";
 
   public AuthSettingsImpl(@NotNull VcsRoot root, @NotNull URIishHelper urIishHelper) {
     this(root.getProperties(), root, urIishHelper, null, new ArrayList<>());
@@ -84,7 +87,7 @@ public class AuthSettingsImpl implements AuthSettings {
 
       if (lfsCredentials != null) {
         myExtraHTTPCredentials.add(lfsCredentials);
-        if (extraHTTPCredentials.isEmpty()) {
+        if (extraHTTPCredentials.isEmpty() || !TeamCityProperties.getBoolean(EXTRA_CREDS_ENABLED)) {
           myExtraHTTPCredentials.setStoresOnlyDefaultCredential();
         }
       }
@@ -92,7 +95,9 @@ public class AuthSettingsImpl implements AuthSettings {
       myTokenId = null;
       myPassword = null;
     }
-    myExtraHTTPCredentials.addAll(extraHTTPCredentials);
+    if (TeamCityProperties.getBoolean(EXTRA_CREDS_ENABLED)) {
+      myExtraHTTPCredentials.addAll(extraHTTPCredentials);
+    }
     myTeamCitySshKeyId = myAuthMethod != AuthenticationMethod.TEAMCITY_SSH_KEY ? null : properties.get(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME);
     myRoot = root;
   }
