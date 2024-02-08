@@ -40,6 +40,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.connections.ExpiringAccessToken;
+import jetbrains.buildServer.serverSide.BasePropertiesModel;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.*;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -239,6 +241,7 @@ public class AgentVcsSupportTest {
 
   @Test
   public void additional_http_creds_param_test() throws Exception {
+    System.setProperty("teamcity.git.extra.credentials.enable", "true");
     VcsRootImpl root = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(myTempFiles.createTempDir()).withUseMirrors(true).build();
     String buildBranchParam = GitUtils.getGitRootBranchParamName(root);
 
