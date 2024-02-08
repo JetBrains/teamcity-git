@@ -129,5 +129,5 @@ public interface Constants {
   String NATIVE_GIT_RETRY_IF_REMOTE_REF_NOT_FOUND = "teamcity.git.native.retryIfRemoteRefNotFound";
   String AMAZON_HOSTS = "teamcity.git.amazonHosts";
 
-  String GIT_HTTP_CRED_PREFIX = "teamcity.git.http.credentials";
+  String GIT_HTTP_CRED_PREFIX = "teamcity.git.https.credentials";
 }

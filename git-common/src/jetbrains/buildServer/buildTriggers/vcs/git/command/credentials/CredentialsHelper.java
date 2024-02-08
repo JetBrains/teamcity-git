@@ -47,7 +47,6 @@ public class CredentialsHelper {
     new CredentialsHelper(System.in, System.out, System.getenv(), args).run();
   }
 
-
   public void run() throws IOException {
     if (myArgs.length < 1)
       return;
@@ -58,6 +57,7 @@ public class CredentialsHelper {
 
     Credentials credentials = Credentials.parseCredentials(myEnv);
     Context context = Context.parseContext(myIn);
+
     if (credentials.fill(context))
       context.printResult(myOut);
   }
@@ -77,6 +77,7 @@ public class CredentialsHelper {
       final LinkedHashMap<String, String> attributes = new LinkedHashMap<String, String>();
       final BufferedReader reader = new BufferedReader(new InputStreamReader(in));
       String line = null;
+
       while ((line = reader.readLine()) != null) {
         if (line.length() == 0) {
           break;
@@ -96,6 +97,7 @@ public class CredentialsHelper {
         result.myUsername = attributes.get("username");
       if (attributes.get("password") != null)
         result.myPassword = attributes.get("password");
+
       return result;
     }
 
@@ -120,8 +122,7 @@ public class CredentialsHelper {
 
   private static class Credentials {
     private boolean myMatchAllUrls = false;//when set to true credentials are provided for every URL
-    //url -> credentials
-    private final Map<String, Cred> myCredentials = new HashMap<String, Cred>();
+    private final Map<String, Cred> myCredentials = new HashMap<String, Cred>(); //url -> credentials
 
     boolean fill(@NotNull Context context) {
       Cred credentials = findCredentials(context);
@@ -140,9 +141,7 @@ public class CredentialsHelper {
         try {
           URL url = new URL(e.getKey());
           if (matches(context, url)) {
-            Cred cred = e.getValue();
-            if (context.myUsername == null || cred.myUsername.equals(context.myUsername))
-              return cred;
+            return e.getValue();
           }
         } catch (MalformedURLException ignored) {
         }
@@ -161,8 +160,8 @@ public class CredentialsHelper {
       if (!hostPort.equals(context.myHost))
         return false;
 
-      String path = url.getPath();
-      return context.myPath == null || path.equals(context.myPath);
+      String path = unifyPath(url.getPath());
+      return context.myPath == null || path.equals(unifyPath(context.myPath));
     }
 
 
@@ -198,6 +197,7 @@ public class CredentialsHelper {
     private final static class Cred {
       private final String myUsername;
       private final String myPassword;
+
       Cred(String username, String password) {
         myUsername = username;
         myPassword = password;
@@ -212,5 +212,17 @@ public class CredentialsHelper {
 
   static String credEnv(int i, @NotNull String name) {
     return CredentialsHelper.CRED_PREFIX + i + "_" + name;
+  }
+
+  @NotNull
+  public static String unifyPath(@Nullable String path) {
+    if (path == null)
+      return "";
+
+    String unifiedPath = path;
+    unifiedPath = unifiedPath.startsWith("/") ? unifiedPath.substring(1) : unifiedPath;
+    unifiedPath = unifiedPath.endsWith("/") ? unifiedPath.substring(0, unifiedPath.length() - 1) : unifiedPath;
+    unifiedPath = unifiedPath.endsWith(".git") ? unifiedPath.substring(0, unifiedPath.length() - 4) : unifiedPath;
+    return unifiedPath;
   }
 }

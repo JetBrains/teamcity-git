@@ -71,8 +71,26 @@ public class GitCommandLine extends GeneralCommandLine {
       //to the local repository config and not disable helpers in every command.
       //But some commands ignore this setting, e.g. 'git submodules update':
       //https://public-inbox.org/git/CAC+L6n0YeX_n_AysCLtBWkA+jPHwg7HmOWq2PLj75byxOZE=qQ@mail.gmail.com/
+
+      //if credential.helper is configured to the empty string, this resets the helper list to empty
       getParametersList().addAt(0, "-c");
       getParametersList().addAt(1, "credential.helper=");
+
+      String credHelperPath = CredentialsHelperConfig.configureCredentialHelperScript(myScriptGen);
+      if (!StringUtil.isEmptyOrSpaces(credHelperPath)) {
+        getParametersList().addAt(2, "-c");
+        getParametersList().addAt(3, "credential.helper=" + credHelperPath);
+
+
+        if (myCtx.isCleanCredHelperScript()) {
+          addPostAction(new Runnable() {
+            @Override
+            public void run() {
+              FileUtil.delete(new File(credHelperPath));
+            }
+          });
+        }
+      }
     }
 
     settings.getTraceEnv().entrySet().forEach(e -> addEnvParam(e.getKey(), e.getValue()));
@@ -105,6 +123,9 @@ public class GitCommandLine extends GeneralCommandLine {
 
     if (extraCredentials.isStoresOnlyDefaultCredential()) {
       config.setMatchAllUrls(true);
+    } else if (extraCredentials.getCredentials().size() > 1){
+      getParametersList().addAt(0, "-c");
+      getParametersList().addAt(1, "credential.useHttpPath=true");
     }
 
 

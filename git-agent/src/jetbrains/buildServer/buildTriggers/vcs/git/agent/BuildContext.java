@@ -60,6 +60,11 @@ public class BuildContext implements Context {
   }
 
   @Override
+  public boolean isCleanCredHelperScript() {
+    return myConfig.isCleanCredHelperScript();
+  }
+
+  @Override
   public boolean isDebugSsh() {
     return myConfig.isDebugSsh();
   }

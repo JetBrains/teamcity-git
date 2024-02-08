@@ -49,7 +49,6 @@ public class ShallowUpdater extends UpdaterImpl {
                                                 .setForce(isForceUpdateSupported())
                                                 .setDepth(1);
     submoduleUpdate.addConfig("protocol.file.allow", "always");
-    configureLFS(submoduleUpdate);
     submoduleUpdate.call();
   }
 }

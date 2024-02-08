@@ -762,7 +762,7 @@ public class GitServerUtil {
   }
 
   public static List<ExtraHTTPCredentials> detectExtraHTTPCredentialsInProject(@NotNull SProject project) {
-    return GitUtils.processExtraHTTPCredentials(PropertiesHelper.aggregatePropertiesByAlias(project.getParameters(), GIT_HTTP_CRED_PREFIX));
+    return GitUtils.processExtraHTTPCredentials(PropertiesHelper.aggregatePropertiesByAlias(project.getParametersProvider().getAll(), GIT_HTTP_CRED_PREFIX));
   }
 
   public static List<ExtraHTTPCredentials> detectExtraHTTPCredentialsInVcsRoot(@NotNull VcsRoot root) {

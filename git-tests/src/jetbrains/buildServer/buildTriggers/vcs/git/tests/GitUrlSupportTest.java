@@ -10,6 +10,7 @@ import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExtensionsProvider;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.parameters.ParametersProvider;
 import jetbrains.buildServer.serverSide.ProjectManager;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -52,9 +53,14 @@ public class GitUrlSupportTest extends BaseTestCase {
 
     myProjectMock = mock(SProject.class);
     Mock vrMock = mock(SVcsRoot.class);
+
+    Mock mockParametersProvider = mock(ParametersProvider.class);
+    mockParametersProvider.stubs().method("getAll").will(returnValue(new HashMap<>()));
+
     SVcsRoot svcsRoot = (SVcsRoot)vrMock.proxy();
     myProjectMock.stubs().method("createDummyVcsRoot").will(returnValue(svcsRoot));
     myProjectMock.stubs().method("getParameters").will(returnValue(new HashMap<>()));
+    myProjectMock.stubs().method("getParametersProvider").will(returnValue(mockParametersProvider.proxy()));
     final SProject project = (SProject)myProjectMock.proxy();
 
     final Mock pmMock = mock(ProjectManager.class);
