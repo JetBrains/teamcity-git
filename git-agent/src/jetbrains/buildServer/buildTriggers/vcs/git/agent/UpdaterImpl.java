@@ -26,6 +26,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitOutdatedInd
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.messages.DefaultMessagesInfo;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
@@ -103,6 +104,15 @@ public class UpdaterImpl implements Updater {
     myTargetDirectory = targetDir;
     mySubmoduleManager = submoduleManager;
     myRoot = new AgentGitVcsRoot(mirrorManager, myTargetDirectory, root, tokenStorage, detectExtraHTTPCredentialsInBuild(build));
+    if (myRoot.isModifiedFetchUrlUsed()) {
+      myLogger.logMessage(DefaultMessagesInfo.createTextMessage(
+        String.format("Fetch URL %s is used instead of %s for VCS root %s on the agent due to a substitution rule defined in one of the %s.* agent properties",
+                      myRoot.getRepositoryFetchURL(),
+                      myRoot.getProperty(jetbrains.buildServer.buildTriggers.vcs.git.Constants.FETCH_URL),
+                      myRoot.getName(),
+                      GitVcsRoot.FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX
+                      )));
+    }
     myFullBranchName = getBranch();
     myRules = rules;
     myCheckoutMode = checkoutMode;

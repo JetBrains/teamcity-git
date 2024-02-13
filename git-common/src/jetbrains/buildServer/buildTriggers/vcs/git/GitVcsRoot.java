@@ -48,6 +48,7 @@ public class GitVcsRoot {
   protected final URIishHelper myURIishHelper;
   protected final String myRawFetchUrl;
   protected final String myPushUrl;
+  protected final boolean myModifiedFetchUrlUsed;
 
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root,
                     @NotNull URIishHelper urIishHelper) throws VcsException {
@@ -80,6 +81,7 @@ public class GitVcsRoot {
     myTokenRefreshEnabled = isTokenRefreshEnabled;
     myAuthSettings = createAuthSettings(urIishHelper, extraHTTPCredentials);
     final String modifiedFetchUrl = getModifiedFetchUrl(root, myAuthSettings);
+    myModifiedFetchUrlUsed = modifiedFetchUrl != null;
     myRawFetchUrl = modifiedFetchUrl == null ? getProperty(Constants.FETCH_URL) : modifiedFetchUrl;
     if (myRawFetchUrl.contains("\n") || myRawFetchUrl.contains("\r"))
       throw new VcsException("Newline in fetch url '" + myRawFetchUrl + "'");
@@ -178,6 +180,13 @@ public class GitVcsRoot {
     } else {
       return Enum.valueOf(SubmodulesCheckoutPolicy.class, submoduleCheckout);
     }
+  }
+
+  /**
+   * @return true if fetch url was modified by {@link GitURLMapper}
+   */
+  public boolean isModifiedFetchUrlUsed() {
+    return myModifiedFetchUrlUsed;
   }
 
   /**
