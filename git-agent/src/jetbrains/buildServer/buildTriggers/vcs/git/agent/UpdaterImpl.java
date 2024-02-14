@@ -2,7 +2,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
-import com.intellij.openapi.util.Trinity;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -18,9 +17,6 @@ import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.BaseCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelperConfig;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitOutdatedIndexException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
@@ -45,8 +41,6 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.agent.GitUtilsAgent.de
 public class UpdaterImpl implements Updater {
 
   private final static Logger LOG = Logger.getLogger(UpdaterImpl.class);
-  /** Git version which supports --progress option in the fetch command */
-  private final static GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
   //--force option in git submodule update introduced in 1.7.6
   private final static GitVersion GIT_WITH_FORCE_SUBMODULE_UPDATE = new GitVersion(1, 7, 6);
   public final static GitVersion GIT_WITH_SPARSE_CHECKOUT = new GitVersion(1, 7, 4);
@@ -54,8 +48,6 @@ public class UpdaterImpl implements Updater {
   public final static GitVersion MIN_GIT_SSH_COMMAND = new GitVersion(2, 3, 0);//GIT_SSH_COMMAND was introduced in git 2.3.0
   public final static GitVersion GIT_UPDATE_REFS_STDIN = new GitVersion(1, 8, 5); // update-refs with '--stdin' support
   public final static GitVersion GIT_CLEAN_LEARNED_EXCLUDE = new GitVersion(1, 7, 3); // clean first learned -e <pattern> and --exclude=<pattern> in 1.7.3
-  // in 2.30 git init started reporing hint about defaut initial branch renaming to stderr, see https://github.com/git/git/commit/675704c74dd4476f455bfa91e72eb9e163317c10
-  public final static GitVersion GIT_INIT_STDERR_DEFAULT_BRANCH_HINT = new GitVersion(2, 30, 0);
   /**
    * Git version supporting an empty credential helper - the only way to disable system/global/local cred helper
    */
@@ -343,27 +335,24 @@ public class UpdaterImpl implements Updater {
 
   @NotNull
   private UpdateIndexCommand updateIndex(final AgentGitFacade git) {
-    UpdateIndexCommand result = git.updateIndex()
+    return git.updateIndex()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
-    return result;
   }
 
 
   @NotNull
   private ResetCommand reset(final AgentGitFacade git) {
-    ResetCommand result = git.reset()
+    return git.reset()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
-    return result;
   }
 
   @NotNull
   protected CheckoutCommand checkout(final AgentGitFacade git) {
-    CheckoutCommand result = git.checkout()
+    return git.checkout()
       .setAuthSettings(myRoot.getAuthSettings())
       .setUseNativeSsh(myPluginConfig.isUseNativeSSH());
-    return result;
   }
 
   protected void updateSubmodules(@NotNull final File repositoryDir) throws VcsException, ConfigInvalidException, IOException {
