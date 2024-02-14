@@ -529,6 +529,10 @@ public class UpdaterImpl implements Updater {
     Set<String> submodules = config.getSubsections("submodule");
     for (String submoduleName : submodules) {
       String submodulePath = config.getString("submodule", submoduleName, "path");
+      if (submodulePath == null) {
+        logWarn("No path found in .gitmodules for submodule " + submoduleName);
+        continue;
+      }
       paths.add(submodulePath.replaceAll("/", Matcher.quoteReplacement(File.separator)));
     }
     return paths;
