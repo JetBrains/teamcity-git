@@ -26,7 +26,7 @@ public class CheckoutRulesLatestRevisionCache {
 
   @Nullable
   public Value getCachedValue(@NotNull GitVcsRoot vcsRoot, @NotNull String branchName, @NotNull CheckoutRules checkoutRules) {
-    if (!TeamCityProperties.getBoolean(CHECKOUT_RULES_REVISION_CACHE_ENABLED)) {
+    if (!TeamCityProperties.getBooleanOrTrue(CHECKOUT_RULES_REVISION_CACHE_ENABLED)) {
       myCache.invalidateAll();
       return null;
     }
