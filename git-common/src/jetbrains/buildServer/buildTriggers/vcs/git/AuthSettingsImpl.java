@@ -87,7 +87,7 @@ public class AuthSettingsImpl implements AuthSettings {
 
       if (lfsCredentials != null) {
         myExtraHTTPCredentials.add(lfsCredentials);
-        if (extraHTTPCredentials.isEmpty() || !TeamCityProperties.getBoolean(EXTRA_CREDS_ENABLED)) {
+        if (extraHTTPCredentials.isEmpty() || !TeamCityProperties.getBooleanOrTrue(EXTRA_CREDS_ENABLED)) {
           myExtraHTTPCredentials.setStoresOnlyDefaultCredential();
         }
       }
@@ -95,7 +95,7 @@ public class AuthSettingsImpl implements AuthSettings {
       myTokenId = null;
       myPassword = null;
     }
-    if (TeamCityProperties.getBoolean(EXTRA_CREDS_ENABLED)) {
+    if (TeamCityProperties.getBooleanOrTrue(EXTRA_CREDS_ENABLED)) {
       myExtraHTTPCredentials.addAll(extraHTTPCredentials);
     }
     myTeamCitySshKeyId = myAuthMethod != AuthenticationMethod.TEAMCITY_SSH_KEY ? null : properties.get(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME);
