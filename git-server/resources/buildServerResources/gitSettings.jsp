@@ -104,7 +104,10 @@
       <td><props:selectProperty name="submoduleCheckout" enableFilter="true" className="mediumField" disabled="${parentReadOnly}">
         <props:option value="IGNORE">Ignore</props:option>
         <props:option value="CHECKOUT">Checkout</props:option>
-        <props:option value="NON_RECURSIVE_CHECKOUT">Non-recursive checkout</props:option>
+        <c:set var="nonRecursiveSubmodulesEnabled" value="<%= TeamCityProperties.getBoolean(Constants.NON_RECURSIVE_SUBMODULES_ENABLE) %>"/>
+        <c:if test="${nonRecursiveSubmodulesEnabled or propertiesBean.properties['submoduleCheckout'].equals('NON_RECURSIVE_CHECKOUT')}">
+          <props:option value="NON_RECURSIVE_CHECKOUT">Non-recursive checkout</props:option>
+        </c:if>
       </props:selectProperty>
         <div class="smallNote" style="margin: 0">
           Defines whether to checkout submodules

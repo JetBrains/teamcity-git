@@ -130,4 +130,6 @@ public interface Constants {
   String AMAZON_HOSTS = "teamcity.git.amazonHosts";
 
   String GIT_HTTP_CRED_PREFIX = "teamcity.git.https.credentials";
+
+  String NON_RECURSIVE_SUBMODULES_ENABLE = "teamcity.git.submodules.nonrecursive.enable";
 }
