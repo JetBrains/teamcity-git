@@ -9,7 +9,6 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.RevisionNotFoundException;
 import jetbrains.buildServer.vcs.VcsException;
@@ -30,36 +29,26 @@ import static java.util.Arrays.asList;
 
 public class CommitLoaderImpl implements CommitLoader {
 
-  private static final Logger LOG = Logger.getInstance(CommitLoaderImpl.class.getName());
+  static final Logger LOG = Logger.getInstance(CommitLoaderImpl.class.getName());
   public static final Logger PERFORMANCE_LOG = Logger.getInstance(CommitLoaderImpl.class.getName() + ".Performance");
 
   private final RepositoryManager myRepositoryManager;
   private final GitRepoOperations myGitRepoOperations;
   private final GitMapFullPath myMapFullPath;
   private final ServerPluginConfig myPluginConfig;
+  private final FetchSettingsFactory myFetchSettingsFactory;
 
   public CommitLoaderImpl(@NotNull RepositoryManager repositoryManager,
                           @NotNull GitRepoOperations gitRepoOperations,
-                          @NotNull GitMapFullPath mapFullPath, ServerPluginConfig pluginConfig) {
+                          @NotNull GitMapFullPath mapFullPath,
+                          @NotNull ServerPluginConfig pluginConfig,
+                          @NotNull FetchSettingsFactory fetchSettingsFactory) {
     myRepositoryManager = repositoryManager;
     myGitRepoOperations = gitRepoOperations;
     myMapFullPath = mapFullPath;
     myPluginConfig = pluginConfig;
+    myFetchSettingsFactory = fetchSettingsFactory;
     myMapFullPath.setCommitLoader(this);
-  }
-
-  @NotNull
-  private static FetchSettings getFetchSettings(@NotNull OperationContext context,
-                                                @NotNull Collection<RefSpec> refSpecs,
-                                                boolean fetchRemoteRefs, boolean includeTags) throws VcsException {
-    final FetchSettings settings = new FetchSettings(context.getGitRoot().getAuthSettings(), context.getProgress(), refSpecs);
-    settings.setFetchMode(FetchSettings.getFetchMode(fetchRemoteRefs, includeTags));
-    return settings;
-  }
-
-  @NotNull
-  private static Set<RefSpec> getAllRefSpec() {
-    return Collections.singleton(new RefSpec("refs/*:refs/*").setForceUpdate(true));
   }
 
   @NotNull
@@ -130,16 +119,6 @@ public class CommitLoaderImpl implements CommitLoader {
     myMapFullPath.invalidateRevisionsCache(db, oldRefs, newRefs);
   }
 
-  private boolean shouldFetchRemoteRefs(@NotNull OperationContext context, @NotNull Collection<RefCommit> revisions, @NotNull Set<String> filteredRemoteRefs) {
-    final float factor = context.getPluginConfig().fetchRemoteBranchesFactor();
-    if (factor == 0) return false;
-
-    final int currentStateNum = revisions.stream().map(RefCommit::getRef).collect(Collectors.toSet()).size();
-    if (currentStateNum == 1) return false;
-
-    final int remoteNum = filteredRemoteRefs.size();
-    return remoteNum < currentStateNum || (float)currentStateNum / remoteNum >= factor;
-  }
 
   @NotNull
   private ReentrantLock acquireWriteLock(@NotNull File repo, long timeout) throws VcsException {
@@ -153,9 +132,8 @@ public class CommitLoaderImpl implements CommitLoader {
       } catch (InterruptedException e) {
         throw new VcsException("Commit loader operation interrupted", e);
       }
-    } else {
-      lock.lock();
     }
+    lock.lock();
     return lock;
   }
 
@@ -225,53 +203,6 @@ public class CommitLoaderImpl implements CommitLoader {
     }
   }
 
-  private static final String REF_MISSING_FORMAT = "Ref %s is no longer present in the remote repository";
-  private static final String REFS_MISSING_FORMAT = "Refs %s are no longer present in the remote repository";
-
-  @NotNull
-  private Collection<RefSpec> getRefSpecForCurrentState(@NotNull OperationContext context, @NotNull Collection<RefCommit> revisions, @NotNull Collection<String> remoteRefs) throws VcsException {
-    final Set<RefSpec> result = new HashSet<>();
-    final Set<String> missingTips = new HashSet<>();
-
-    for (RefCommit r : revisions) {
-      final String ref = r.getRef();
-      final boolean existsRemotely = remoteRefs.contains(ref);
-      if (existsRemotely) {
-        result.add(new RefSpec(ref + ":" + ref).setForceUpdate(true));
-        continue;
-      }
-      if (r.isRefTip()) {
-        missingTips.add(ref);
-      } else {
-        LOG.debug(String.format(REF_MISSING_FORMAT, ref) + " for " + context.getGitRoot().debugInfo());
-      }
-    }
-
-    if (TeamCityProperties.getBoolean("teamcity.git.failLoadCommitsIfRemoteBranchMissing")) {
-      final int remotelyMissingRefsNum = missingTips.size();
-      if (remotelyMissingRefsNum > 0) {
-        final String message = remotelyMissingRefsNum == 1 ?
-                               String.format(REF_MISSING_FORMAT, missingTips.iterator().next()) :
-                               String.format(REFS_MISSING_FORMAT, StringUtil.join(", ", missingTips));
-
-        final VcsException exception = new VcsException(message);
-        exception.setRecoverable(context.getPluginConfig().treatMissingBranchTipAsRecoverableError());
-        throw exception;
-      }
-    }
-    return result;
-  }
-
-  @NotNull
-  private Set<String> getFilteredRemoteRefs(@NotNull OperationContext context, @NotNull Set<String> refs) throws VcsException {
-    final GitVcsRoot gitRoot = context.getGitRoot();
-    final boolean reportTags = gitRoot.isReportTags();
-    if (reportTags) return refs;
-
-    final String defaultBranch = GitUtils.expandRef(gitRoot.getRef());
-    return refs.stream().filter(r -> !GitServerUtil.isTag(r) || defaultBranch.equals(r)).collect(Collectors.toSet());
-  }
-
   public void loadCommits(@NotNull OperationContext context,
                           @NotNull URIish fetchURI,
                           @NotNull Collection<RefCommit> revisions,
@@ -299,11 +230,9 @@ public class CommitLoaderImpl implements CommitLoader {
       refsToFetch = findRefsToFetch(context, db, refsToFetch, true, false);
       if (refsToFetch.isEmpty()) return;
 
-      final Set<String> filteredRemoteRefs = getFilteredRemoteRefs(context, remoteRefs); // unlike remoteRefs, which includes all remote refs, doesn't include tags if not enabled
-      final boolean fetchRemoteRefs = shouldFetchRemoteRefs(context, revisions, filteredRemoteRefs);
       final boolean includeTags = context.getGitRoot().isReportTags();
-      final Collection<RefSpec> refSpecs = getRefSpecForCurrentState(context, refsToFetch, remoteRefs);
-      doFetch(db, fetchURI, getFetchSettings(context, refSpecs, fetchRemoteRefs, includeTags));
+      FetchSettings settings = myFetchSettingsFactory.getFetchSettings(context, refsToFetch, revisions, remoteRefs, includeTags);
+      doFetch(db, fetchURI, settings);
 
       refsToFetch = findRefsToFetch(context, db, refsToFetch, false, false);
       if (refsToFetch.isEmpty()) return;
@@ -311,7 +240,8 @@ public class CommitLoaderImpl implements CommitLoader {
       final boolean fetchAllRefsDisabled = !context.getPluginConfig().fetchAllRefsEnabled();
       if (fetchAllRefsDisabled && refsToFetch.stream().noneMatch(RefCommit::isRefTip)) return;
 
-      doFetch(db, fetchURI, getFetchSettings(context, getAllRefSpec(), true, includeTags || !fetchAllRefsDisabled));
+      settings = myFetchSettingsFactory.getFetchSettings(context, includeTags || !fetchAllRefsDisabled);
+      doFetch(db, fetchURI, settings);
       findRefsToFetch(context, db, refsToFetch, false, true);
     } finally {
       lock.unlock();

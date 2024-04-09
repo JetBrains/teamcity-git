@@ -46,9 +46,4 @@ public interface CommitLoader {
   @Nullable
   RevCommit findCommit(@NotNull Repository r, @NotNull String sha);
 
-  interface RefCommit {
-    @NotNull String getRef();
-    @NotNull String getCommit();
-    boolean isRefTip();
-  }
 }

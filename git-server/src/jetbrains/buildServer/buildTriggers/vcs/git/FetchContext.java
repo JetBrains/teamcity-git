@@ -19,7 +19,7 @@ public class FetchContext {
   @NotNull private final Set<String> myRemoteRefs;
   @NotNull private final CommitLoader myCommitLoader;
 
-  @NotNull private final Collection<CommitLoader.RefCommit> myRevisions = new ArrayList<>();
+  @NotNull private final Collection<RefCommit> myRevisions = new ArrayList<>();
 
   public FetchContext(@NotNull final OperationContext context, @NotNull GitVcsSupport vcsSupport) throws VcsException {
     myContext = context;
@@ -44,8 +44,8 @@ public class FetchContext {
   }
 
   @NotNull
-  private Collection<CommitLoader.RefCommit> expandRefs(@NotNull Map<String, String> revisions, boolean tips) {
-    return revisions.entrySet().stream().filter(e -> !isEmpty(e.getKey())).map(e -> new CommitLoader.RefCommit() {
+  private Collection<RefCommit> expandRefs(@NotNull Map<String, String> revisions, boolean tips) {
+    return revisions.entrySet().stream().filter(e -> !isEmpty(e.getKey())).map(e -> new RefCommit() {
       @NotNull
       @Override
       public String getRef() {
