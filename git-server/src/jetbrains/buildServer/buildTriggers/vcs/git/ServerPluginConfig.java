@@ -166,6 +166,8 @@ public interface ServerPluginConfig extends PluginConfig {
 
   float fetchRemoteBranchesFactor();
 
+  int fetchRemoteBranchesThreshold();
+
   @NotNull
   Map<String, String> getGitTraceEnv();
 

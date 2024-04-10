@@ -86,6 +86,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   public static final float FETCH_PROCESS_MAX_MEMORY_MULT_FACTOR_DEFAULT = 1.4f;
   public static final String FETCH_REMOTE_BRANCHES_FACTOR = "teamcity.server.git.fetchRemoteBranchesFactor";
+  public static final String FETCH_REMOTE_BRANCHES_THRESHOLD = "teamcity.server.git.fetchRemoteBranchesThreshold";
+  public static final int FETCH_REMOTE_BRANCHES_THRESHOLD_DEFAULT = 200;
 
   private final File myCachesDir;
 
@@ -670,6 +672,15 @@ public class PluginConfigImpl implements ServerPluginConfig {
       LOG.warn(String.format("Unexpected \"%s\" value \"%s\": the value should be a float number from 0 to 1, where 0 means the feature is disabled", FETCH_REMOTE_BRANCHES_FACTOR, factor));
     }
     return factor;
+  }
+
+  @Override
+  public int fetchRemoteBranchesThreshold() {
+    final int threshold = TeamCityProperties.getInteger(FETCH_REMOTE_BRANCHES_THRESHOLD, FETCH_REMOTE_BRANCHES_THRESHOLD_DEFAULT);
+    if (threshold <= 0) {
+      LOG.warn(String.format("Unexpected \"%s\" value \"%s\": the value should be a positive integer number", FETCH_REMOTE_BRANCHES_THRESHOLD, threshold));
+    }
+    return threshold;
   }
 
   @NotNull

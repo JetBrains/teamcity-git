@@ -54,6 +54,9 @@ public class FetchSettingsFactoryImpl implements FetchSettingsFactory {
 
 
   private boolean shouldFetchRemoteRefs(@NotNull OperationContext context, @NotNull Collection<RefCommit> revisions, @NotNull Collection<String> filteredRemoteRefs) {
+    if (revisions.size() > context.getPluginConfig().fetchRemoteBranchesThreshold())
+      return true;
+
     final float factor = context.getPluginConfig().fetchRemoteBranchesFactor();
     if (factor == 0) return false;
 

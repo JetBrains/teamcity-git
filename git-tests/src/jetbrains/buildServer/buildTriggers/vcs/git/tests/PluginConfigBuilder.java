@@ -59,15 +59,18 @@ public class PluginConfigBuilder {
   private Boolean myReportPerParentChangedFiles;
   private boolean myFetchAllRefsEnabled;
   private float myFetchRemoteBranchesFactor;
+  private int myFetchRemoteBranchesThreshold;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
   }
 
   public PluginConfigBuilder() {
+    myFetchRemoteBranchesThreshold = PluginConfigImpl.FETCH_REMOTE_BRANCHES_THRESHOLD_DEFAULT;
   }
 
   public PluginConfigBuilder(@NotNull ServerPaths paths) {
+    this();
     myPaths = paths;
   }
 
@@ -86,6 +89,7 @@ public class PluginConfigBuilder {
       }
     }
     return new ServerPluginConfig() {
+
       @NotNull
       public File getCachesDir() {
         return myDelegate.getCachesDir();
@@ -397,6 +401,11 @@ public class PluginConfigBuilder {
         return myFetchRemoteBranchesFactor;
       }
 
+      @Override
+      public int fetchRemoteBranchesThreshold() {
+        return myFetchRemoteBranchesThreshold;
+      }
+
       @NotNull
       @Override
       public Map<String, String> getGitTraceEnv() {
@@ -615,6 +624,11 @@ public class PluginConfigBuilder {
 
   PluginConfigBuilder setFetchRemoteBranchesFactor(float factor) {
     myFetchRemoteBranchesFactor = factor;
+    return this;
+  }
+
+  PluginConfigBuilder setFetchRemoteBranchesThreshold(int threshold) {
+    myFetchRemoteBranchesThreshold = threshold;
     return this;
   }
 }
