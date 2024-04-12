@@ -2,11 +2,13 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.VcsPropertiesProcessor;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.util.TestFor;
+import jetbrains.buildServer.vcs.VcsException;
 import junit.framework.TestCase;
+import org.jetbrains.annotations.NotNull;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Collection;
@@ -15,6 +17,8 @@ import java.util.HashMap;
 import static jetbrains.buildServer.util.Util.map;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.AssertJUnit.fail;
 
 /**
  * @author dmitry.neverov
@@ -126,5 +130,58 @@ public class VcsPropertiesProcessorTest extends TestCase {
       Constants.PUSH_URL, "git://some.org/repository\r",
       Constants.BRANCH_NAME, "refs/heads/master"));
     then(errors).extracting("propertyName").contains(Constants.PUSH_URL);
+  }
+
+  @DataProvider
+  public static Object[][] urlsWithIncompatibleAuthType() {
+    return new Object[][]{
+      new Object[] { "http://some.org/repo", AuthenticationMethod.PRIVATE_KEY_DEFAULT},
+      new Object[] { "http://some.org/repo", AuthenticationMethod.PRIVATE_KEY_FILE},
+      new Object[] { "http://some.org/repo", AuthenticationMethod.TEAMCITY_SSH_KEY},
+      new Object[] { "https://some.org/repo", AuthenticationMethod.PRIVATE_KEY_DEFAULT},
+      new Object[] { "ssh://some.org/repo", AuthenticationMethod.PASSWORD},
+      new Object[] { "git@github.com:org/repo", AuthenticationMethod.PASSWORD},
+      new Object[] { "user@github.com:org/repo", AuthenticationMethod.PASSWORD},
+      new Object[] { "git@github.com:org/repo", AuthenticationMethod.ANONYMOUS},
+      new Object[] { "git@github.com:org/repo", AuthenticationMethod.ACCESS_TOKEN},
+    };
+  }
+
+  @TestFor(issues = "TW-82895")
+  @Test(dataProvider = "urlsWithIncompatibleAuthType")
+  public void incompatible_auth_type(@NotNull String incompatibleUrl, @NotNull AuthenticationMethod authMethod) {
+    try {
+      VcsPropertiesProcessor.validateUrlAuthMethod(incompatibleUrl, authMethod, "fetch");
+      fail("No error for fetch url '" + incompatibleUrl + "'");
+    } catch (VcsException e) {
+      assertTrue(e.getMessage().endsWith("protocol of the fetch url"));
+    }
+  }
+
+  @DataProvider
+  public static Object[][] urlsWithCompatibleType() {
+    return new Object[][]{
+      new Object[] { "ssh://some.org/repo", AuthenticationMethod.PRIVATE_KEY_DEFAULT},
+      new Object[] { "ssh://some.org/repo", AuthenticationMethod.PRIVATE_KEY_FILE},
+      new Object[] { "ssh://some.org/repo", AuthenticationMethod.TEAMCITY_SSH_KEY},
+      new Object[] { "git@server.org:project.git", AuthenticationMethod.TEAMCITY_SSH_KEY},
+      new Object[] { "user@server.org:project", AuthenticationMethod.TEAMCITY_SSH_KEY},
+      new Object[] { "user@server.org:some_org/project.git", AuthenticationMethod.TEAMCITY_SSH_KEY},
+      new Object[] { "some.org/project.git", AuthenticationMethod.ACCESS_TOKEN},
+      new Object[] { "some.org/project.git", AuthenticationMethod.PASSWORD},
+      new Object[] { "https://some.org/project.git", AuthenticationMethod.PASSWORD},
+      new Object[] { "http://some.org/project.git", AuthenticationMethod.ACCESS_TOKEN},
+      new Object[] { "http://some.org/project.git", AuthenticationMethod.ANONYMOUS},
+    };
+  }
+
+  @TestFor(issues = "TW-82895")
+  @Test(dataProvider = "urlsWithCompatibleType")
+  public void compatible_auth_type(@NotNull String url, @NotNull AuthenticationMethod authMethod) {
+    try {
+      VcsPropertiesProcessor.validateUrlAuthMethod(url, authMethod, "fetch");
+    } catch (VcsException e) {
+      fail("Unexpected error for url '" + url + "'");
+    }
   }
 }

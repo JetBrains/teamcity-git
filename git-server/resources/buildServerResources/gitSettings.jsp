@@ -140,6 +140,7 @@
         <div id="defaultPrivateKeyNote" class="smallNote auth defaultKey" style="margin: 0">Uses mapping specified in the default location on the server or the agent if that file exists (server&apos;s file location is &quot;<c:out value="${userHome}"/>&quot;).  <%-- This exposes user under whom the server runs, so absolute path should probbaly only be present for sys admins --%>
         </div>
         <div id="authMethodCompatNote" class="smallNote" style="margin: 0; display: none;"></div>
+        <span class="error" id="error_authMethod"></span>
         <div id="uploadedPrivateKeyNote" class="smallNote auth uploadedKey" style="margin: 0">
           Keys uploaded via UI in
           <c:choose>
@@ -371,7 +372,8 @@
     compatibleAuthMethods: {//protocol -> compatible auth methods
       'git' : ['ANONYMOUS'],
       'http' : ['ANONYMOUS', 'PASSWORD', 'ACCESS_TOKEN'],
-      'https' : ['ANONYMOUS', 'PASSWORD', 'ACCESS_TOKEN']
+      'https' : ['ANONYMOUS', 'PASSWORD', 'ACCESS_TOKEN'],
+      'ssh' : ['PRIVATE_KEY_DEFAULT', 'PRIVATE_KEY_FILE', "TEAMCITY_SSH_KEY"]
     },
 
     detachedAuthOptions: new Set(),
@@ -385,7 +387,14 @@
           return 'http';
         } else if (url.startsWith('https://')) {
           return 'https';
+        } else if (url.startsWith('ssh://')) {
+          return 'ssh'
         } else {
+          var index1 = url.indexOf('@');
+          var index2 = url.indexOf(':');
+          if (index1 > 0 && index2 > index1 + 1 && index2 < url.length - 1) { // user@server:project.git
+            return 'ssh';
+          }
           return 'other';
         }
       } else {
@@ -480,6 +489,10 @@
 
 
     applyAuthConstraints: function () {
+      $j('#error_url').text("");
+      $j('#error_push_url').text("");
+      $j('#error_authMethod').text("");
+
       var selectedAuthMethod = $('authMethod').value;
       var authMethodName = this.getAuthMethodName(selectedAuthMethod);
       var fetchProto = this.getProtocol($j('#url'));
