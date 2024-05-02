@@ -1,0 +1,40 @@
+<div id="tokenIssuedInfo">
+  <span title="tokenId" id="issuedTokenId">
+    <c:choose>
+      <c:when test="${vcsPropertiesBean.tokenOwnerUserName == placeholderNonPersonalToken}">
+        <span id="issuedForTitle">Non-personal token issued</span>
+        <span id="issuedTokenUserName"></span>
+      </c:when>
+      <c:otherwise>
+        <span id="issuedForTitle">Issued by</span>
+        <strong id="issuedTokenUserName">
+          <c:out value="${vcsPropertiesBean.tokenOwnerUserName}" />
+          <c:if test="${not empty vcsPropertiesBean.tokenOwnerName}">
+            &nbsp;(<c:out value="${vcsPropertiesBean.tokenOwnerName}" />)
+          </c:if>
+        </strong>
+      </c:otherwise>
+    </c:choose>
+    via
+    <strong id="connectionDisplayName">
+      <c:out value="${vcsPropertiesBean.connectionDisplayName}" />
+    </strong>
+  </span>
+  <span class="acquireNewTokenBtn" style="padding-left: 1em;">
+    <c:if test="${canObtainTokens}">
+      <%-- pass connection.displayName, connection.id, tokenPopupPath, project.externalId  --%>
+      <oauth:obtainToken connection="${vcsPropertiesBean.connection}" className="btn btn_small token-connection-button" callback="setAcquiredToken" repositoryFieldObtainer="window.getRepositoryUrl">
+        Acquire new
+      </oauth:obtainToken>
+    </c:if>
+  </span>
+  <span class="error" id="error_issuedToken"></span>
+  <div id="token_additional_info"></div>
+</div>
+<div id="tokenUnavailable" style="display: none;">Issued token is unavailable</div>
+<script type="text/javascript">
+  if (!'${vcsPropertiesBean.connection}') {
+    $('tokenIssuedInfo').hide(0);
+    $('tokenUnavailable').show();
+  }
+</script>
