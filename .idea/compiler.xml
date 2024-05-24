@@ -18,6 +18,7 @@
       <entry name="?*.tld" />
       <entry name="?*.ftl" />
       <entry name="?*.jsp" />
+      <entry name="?*.jspf" />
       <entry name="do-not-load-in-vcs-mode" />
       <entry name="*.bat" />
       <entry name="*.sh" />
