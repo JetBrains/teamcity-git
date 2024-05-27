@@ -186,7 +186,6 @@
               <script type="text/javascript">
                 BS.TokenControlParams = {
                   projectId: '${parentProject.externalId}',
-                  canObtainTokens: ${canObtainTokens},
                   tokenCallback: function (it) {
                     setAcquiredToken(it);
                   },
