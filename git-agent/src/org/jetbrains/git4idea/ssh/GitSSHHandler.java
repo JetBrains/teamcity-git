@@ -16,6 +16,7 @@ public interface GitSSHHandler {
    * Name of environment variable for SSH handler number
    */
   @NonNls String SSH_IGNORE_KNOWN_HOSTS_ENV = "GIT4IDEA_SSH_IGNORE_KNOWN_HOSTS";
+  @NonNls String SSH_KNOWN_HOSTS_FILE = "GIT4IDEA_SSH_KNOWN_HOSTS_FILE";
   /**
    * Name of environment variable for SSH handler
    */

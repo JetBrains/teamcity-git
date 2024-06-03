@@ -8,8 +8,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.vcs.SVcsRoot;
+import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.VcsRootInstance;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -57,6 +61,21 @@ public class ContextImpl implements Context {
   @Override
   public boolean isCleanCredHelperScript() {
     return true;
+  }
+
+  @Override
+  public boolean sshIgnoreKnownHosts() {
+    return getSshKnownHosts() == null;
+  }
+
+  @Nullable
+  @Override
+  public String getSshKnownHosts() {
+    Collection<String> props = TeamCityProperties.getPropertiesWithPrefix(Constants.SSH_KNOWN_HOSTS_PARAM_NAME).values();
+    if (props.isEmpty()) {
+      return null;
+    }
+    return String.join("\n", props);
   }
 
   @Nullable

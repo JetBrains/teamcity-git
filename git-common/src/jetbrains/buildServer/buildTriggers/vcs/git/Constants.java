@@ -132,4 +132,6 @@ public interface Constants {
   String GIT_HTTP_CRED_PREFIX = "teamcity.git.https.credentials";
 
   String NON_RECURSIVE_SUBMODULES_ENABLE = "teamcity.git.submodules.nonrecursive.enable";
+
+  String SSH_KNOWN_HOSTS_PARAM_NAME = "teamcity.internal.ssh.knownHosts";
 }

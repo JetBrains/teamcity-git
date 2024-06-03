@@ -12,6 +12,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -53,8 +54,24 @@ public class SshHandler implements GitSSHService.Handler {
     mySsh = ssh;
     myAuthSettings = authSettings;
     cmd.addEnvParam(GitSSHHandler.SSH_PORT_ENV, Integer.toString(mySsh.getXmlRcpPort()));
-    if (myAuthSettings.isIgnoreKnownHosts())
+    if (myAuthSettings.isIgnoreKnownHosts() && ctx.sshIgnoreKnownHosts()) {
       cmd.addEnvParam(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV, "true");
+    } else {
+      String knownHostsFromParam = ctx.getSshKnownHosts();
+      if (knownHostsFromParam != null) {
+        try {
+          File knownHostsFile = FileUtil.createTempFile(ctx.getTempDir(), "known_hosts", "", true);
+          try (FileWriter writer = new FileWriter(knownHostsFile)) {
+            writer.write(knownHostsFromParam);
+          }
+          cmd.addEnvParam(GitSSHHandler.SSH_KNOWN_HOSTS_FILE, knownHostsFile.getAbsolutePath());
+          myFilesToClean.add(knownHostsFile);
+        } catch (IOException e) {
+          throw new VcsException("SSH script cannot be generated: " + e.getMessage(), e);
+        }
+
+      }
+    }
     if (authSettings.getAuthMethod() == AuthenticationMethod.TEAMCITY_SSH_KEY) {
       String keyId = authSettings.getTeamCitySshKeyId();
       if (keyId != null && sshKeyManager != null) {

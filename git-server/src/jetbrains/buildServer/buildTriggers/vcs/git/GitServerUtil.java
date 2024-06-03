@@ -240,7 +240,7 @@ public class GitServerUtil {
   public static Exception friendlyTransportException(@NotNull TransportException te, @NotNull GitVcsRoot root) {
     if (isUnknownHostKeyError(te)) {
       String originalMessage = te.getMessage();
-      String message = originalMessage + ". Add this host to a known hosts database or check option 'Ignore Known Hosts Database'.";
+      String message = originalMessage + ". Host key verification failed.";
       return new VcsException(message, te);
     }
 
@@ -306,7 +306,11 @@ public class GitServerUtil {
 
   private static boolean isUnknownHostKeyError(TransportException error) {
     String message = error.getMessage();
-    return message != null && message.contains("UnknownHostKey") && message.contains("key fingerprint is");
+    Throwable cause = error.getCause();
+    if (cause != null) {
+      message += cause.getMessage();
+    }
+    return message != null && message.contains("authenticity of host") && message.contains("key fingerprint is");
   }
 
 

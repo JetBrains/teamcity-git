@@ -8,6 +8,7 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.util.*;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildInterruptReason;
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
@@ -62,6 +63,17 @@ public class BuildContext implements Context {
   @Override
   public boolean isCleanCredHelperScript() {
     return myConfig.isCleanCredHelperScript();
+  }
+
+  @Override
+  public boolean sshIgnoreKnownHosts() {
+    return getSshKnownHosts() == null;
+  }
+
+  @Nullable
+  @Override
+  public String getSshKnownHosts() {
+    return myBuild.getSharedConfigParameters().get(Constants.SSH_KNOWN_HOSTS_PARAM_NAME);
   }
 
   @Override

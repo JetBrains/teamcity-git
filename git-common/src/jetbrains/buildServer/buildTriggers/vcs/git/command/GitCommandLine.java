@@ -170,8 +170,20 @@ public class GitCommandLine extends GeneralCommandLine {
         if (ignoreKnownHosts) {
           gitSshCommand.append(" -o \"StrictHostKeyChecking=no\" -o \"UserKnownHostsFile=/dev/null\" -o \"GlobalKnownHostsFile=/dev/null\"");
         } else {
-          myLogger.warning(
-            "\"Ignore known hosts database\" setting is disabled, please make sure that per-user or global known host key database contains remote host key, otherwise git operations may hang or fail in unexpected way");
+          String knownHosts = myCtx.getSshKnownHosts();
+          if (knownHosts == null) {
+            myLogger.warning(
+              "\"Ignore known hosts database\" setting is disabled, please make sure that per-user or global known host key database contains remote host key, otherwise git operations may hang or fail in unexpected way");
+          } else {
+            File knownHostsFile = FileUtil.createTempFile(myCtx.getTempDir(), "known_hosts", "", true);
+            addPostAction(() -> FileUtil.delete(knownHostsFile));
+            try (FileWriter writer = new FileWriter(knownHostsFile)) {
+              writer.write(knownHosts);
+            }
+            String knownHostsPath = knownHostsFile.getAbsolutePath();
+            gitSshCommand.append(String.format(" -o \"UserKnownHostsFile=%s\" -o \"GlobalKnownHostsFile=%s\"", knownHostsPath, knownHostsPath));
+          }
+
         }
         if (authSettings.getAuthMethod().isKeyAuth()) {
           gitSshCommand.append(" -o \"PreferredAuthentications=publickey\" -o \"PasswordAuthentication=no\" -o \"KbdInteractiveAuthentication=no\"");
@@ -209,9 +221,9 @@ public class GitCommandLine extends GeneralCommandLine {
   private boolean isIgnoreKnownHosts(@NotNull AuthSettings authSettings) {
     // see TW-74389
     final AuthenticationMethod authMethod = authSettings.getAuthMethod();
-    return authSettings.isIgnoreKnownHosts() ||
+    return myCtx.sshIgnoreKnownHosts() && (authSettings.isIgnoreKnownHosts() ||
            authMethod == AuthenticationMethod.TEAMCITY_SSH_KEY ||
-           authMethod == AuthenticationMethod.PRIVATE_KEY_FILE;
+           authMethod == AuthenticationMethod.PRIVATE_KEY_FILE);
   }
 
   @Nullable

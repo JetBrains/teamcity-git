@@ -9,12 +9,19 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.jsch.SshPubkeyAcceptedAlgorithms;
+import jetbrains.buildServer.serverSide.SProject;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
+import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcs.VcsRootInstance;
 import jetbrains.buildServer.version.ServerVersionHolder;
 import jetbrains.buildServer.version.ServerVersionInfo;
 import org.eclipse.jgit.errors.NotSupportedException;
@@ -165,11 +172,20 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     return myGitTrustStoreProvider.getTrustedCertificatesDir();
   }
 
+  @Nullable
+  private static String getSshKnownHosts(@NotNull AuthSettings authSettings) {
+    Collection<String> props = TeamCityProperties.getPropertiesWithPrefix(Constants.SSH_KNOWN_HOSTS_PARAM_NAME).values();
+    if (props.isEmpty()) {
+      return null;
+    }
+    return String.join("\n", props);
+  }
 
   private static class DefaultJschConfigSessionFactory extends JschConfigSessionFactory {
     protected final ServerPluginConfig myConfig;
     protected final AuthSettings myAuthSettings;
     private final Map<String,String> myJschOptions;
+    private final List<File> myFilesToDelete;
 
     private DefaultJschConfigSessionFactory(@NotNull ServerPluginConfig config,
                                             @NotNull AuthSettings authSettings,
@@ -177,20 +193,69 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
       myConfig = config;
       myAuthSettings = authSettings;
       myJschOptions = jschOptions;
+      myFilesToDelete = new ArrayList<>();
     }
 
     @Override
     protected void configure(OpenSshConfig.Host hc, Session session) {
       configureClientVersion(session);
       session.setProxy(myConfig.getJschProxy());//null proxy is allowed
-      if (myAuthSettings.isIgnoreKnownHosts())
+      if (myAuthSettings.isIgnoreKnownHosts() && getSshKnownHosts(myAuthSettings) == null) {
         session.setConfig("StrictHostKeyChecking", "no");
+      }
       if (!myConfig.alwaysCheckCiphers()) {
         for (Map.Entry<String, String> entry : myJschOptions.entrySet())
           session.setConfig(entry.getKey(), entry.getValue());
       }
 
       SshPubkeyAcceptedAlgorithms.configureSession(session);
+    }
+
+    @Override
+    protected JSch getJSch(OpenSshConfig.Host hc, FS fs) throws JSchException {
+      JSch jsch = super.getJSch(hc, fs);
+      configureKnownHosts(jsch);
+      return jsch;
+    }
+
+    @Override
+    protected JSch createDefaultJSch(FS fs) throws JSchException {
+      JSch jsch =  super.createDefaultJSch(fs);
+      configureKnownHosts(jsch);
+      return jsch;
+    }
+
+    protected void configureKnownHosts(JSch jSch) throws JSchException{
+      String sshKnownHostsFromParam = getSshKnownHosts(myAuthSettings);
+      if (sshKnownHostsFromParam != null) {
+        File knownHostsFile;
+        try {
+          knownHostsFile = FileUtil.createTempFile("known_hosts", "");
+        } catch (IOException e) {
+          throw new JSchException("Can't create known hosts temporary file", e);
+        }
+        try (FileWriter writer = new FileWriter(knownHostsFile)) {
+          writer.write(sshKnownHostsFromParam);
+        } catch (IOException e) {
+          deleteFiles();
+          throw new JSchException("Can't write to known hosts temporary file", e);
+        }
+        myFilesToDelete.add(knownHostsFile);
+        jSch.setKnownHosts(knownHostsFile.getAbsolutePath());
+      }
+    }
+
+    @Override
+    public void releaseSession(RemoteSession session) {
+      super.releaseSession(session);
+
+      deleteFiles();
+    }
+
+    private void deleteFiles() {
+      for (File file: myFilesToDelete) {
+        FileUtil.delete(file);
+      }
     }
   }
 
@@ -228,13 +293,16 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     protected JSch createDefaultJSch(FS fs) throws JSchException {
       final JSch jsch = new JSch();
       jsch.addIdentity(myAuthSettings.getPrivateKeyFilePath(), myAuthSettings.getPassphrase());
+      configureKnownHosts(jsch);
       return jsch;
     }
 
     @Override
     protected void configure(OpenSshConfig.Host hc, Session session) {
       super.configure(hc, session);
-      session.setConfig("StrictHostKeyChecking", "no");
+      if (getSshKnownHosts(myAuthSettings) == null) {
+        session.setConfig("StrictHostKeyChecking", "no");
+      }
       SshPubkeyAcceptedAlgorithms.configureSession(session);
     }
   }
@@ -274,6 +342,7 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
           }
         }
       }
+      configureKnownHosts(jsch);
       return jsch;
     }
 
@@ -297,7 +366,9 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     @Override
     protected void configure(OpenSshConfig.Host hc, Session session) {
       super.configure(hc, session);
-      session.setConfig("StrictHostKeyChecking", "no");
+      if (getSshKnownHosts(myAuthSettings) == null) {
+        session.setConfig("StrictHostKeyChecking", "no");
+      }
       SshPubkeyAcceptedAlgorithms.configureSession(session);
     }
   }

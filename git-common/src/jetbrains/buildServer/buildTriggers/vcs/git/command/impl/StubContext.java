@@ -64,6 +64,17 @@ public class StubContext implements Context {
   }
 
   @Override
+  public boolean sshIgnoreKnownHosts() {
+    return true;
+  }
+
+  @Nullable
+  @Override
+  public String getSshKnownHosts() {
+    return null;
+  }
+
+  @Override
   public boolean isDebugSsh() {
     return Loggers.VCS.isDebugEnabled();
   }

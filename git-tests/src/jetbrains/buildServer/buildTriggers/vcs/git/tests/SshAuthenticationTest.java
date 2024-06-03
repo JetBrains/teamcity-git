@@ -421,23 +421,49 @@ public class SshAuthenticationTest extends BaseTestCase {
     final File key = dataFile("keys/id_rsa");
     withSubstitutedLocalKeys("known_hosts", () -> {
       do_ssh_test(nativeOperationsEnabled, false, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication no\nPubkeyAuthentication yes", null, "keys/id_rsa.pub",
-                  b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(key.getAbsolutePath()), false);
+                  b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(key.getAbsolutePath()), false, false);
       return null;
     });
   }
 
-  private void do_ssh_test(boolean nativeOperationsEnabled, boolean useSshAskPass, @NotNull String urlFormat, @NotNull String sshdConfig, @Nullable TeamCitySshKey tcKey, @Nullable String publicKey, @NotNull VcsRootConfigurator builder) throws Exception {
-    do_ssh_test(nativeOperationsEnabled, useSshAskPass, urlFormat, sshdConfig, tcKey, publicKey, builder, true);
+  @Test(dataProvider = "true,false")
+  public void ssh_known_hosts_set_via_internal_property(boolean nativeOperationsEnabled) throws Exception {
+    setInternalProperty(Constants.SSH_KNOWN_HOSTS_PARAM_NAME + ".1", "localhost " + FileUtil.readText(dataFile("keys/docker_key.pub")));
+    final File key = dataFile("keys/id_rsa");
+    do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", Files.readAllBytes(key.toPath()), false), "keys/id_rsa.pub",
+                b -> b.withAuthMethod(AuthenticationMethod.TEAMCITY_SSH_KEY).withTeamCitySshKey("test_key"), false, true);
   }
 
-  private void do_ssh_test(boolean nativeOperationsEnabled, boolean useSshAskPass, @NotNull String urlFormat, @NotNull String sshdConfig, @Nullable TeamCitySshKey tcKey, @Nullable String publicKey, @NotNull VcsRootConfigurator builder, boolean ignoreKnownHosts) throws Exception {
+  @Test(dataProvider = "true,false")
+  public void ssh_known_hosts_set_via_internal_property_server_key_is_not_present(boolean nativeOperationsEnabled) throws Exception {
+    setInternalProperty(Constants.SSH_KNOWN_HOSTS_PARAM_NAME + ".1", "localhost " + FileUtil.readText(dataFile("keys/id_rsa.pub")));
+    final File key = dataFile("keys/id_rsa");
+    try {
+      do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", Files.readAllBytes(key.toPath()), false),
+                  "keys/id_rsa.pub",
+                  b -> b.withAuthMethod(AuthenticationMethod.TEAMCITY_SSH_KEY).withTeamCitySshKey("test_key"), false, true);
+      fail();
+    } catch (Exception e) {
+      String message = e.getMessage();
+      if (e.getCause() != null) {
+        message += " " + e.getCause().getMessage();
+      }
+      assertTrue(message.contains("Host key verification failed") || message.contains("remote hung up unexpectedly"));
+    }
+  }
+
+  private void do_ssh_test(boolean nativeOperationsEnabled, boolean useSshAskPass, @NotNull String urlFormat, @NotNull String sshdConfig, @Nullable TeamCitySshKey tcKey, @Nullable String publicKey, @NotNull VcsRootConfigurator builder) throws Exception {
+    do_ssh_test(nativeOperationsEnabled, useSshAskPass, urlFormat, sshdConfig, tcKey, publicKey, builder, true, false);
+  }
+
+  private void do_ssh_test(boolean nativeOperationsEnabled, boolean useSshAskPass, @NotNull String urlFormat, @NotNull String sshdConfig, @Nullable TeamCitySshKey tcKey, @Nullable String publicKey, @NotNull VcsRootConfigurator builder, boolean ignoreKnownHosts, boolean useCustomSshServerKey) throws Exception {
     if (!nativeOperationsEnabled) {
       JSchConfigInitializer.initJSchConfig(JSch.class);
     }
     enableDebug();
 
     final File pub_key = publicKey == null ? null : dataFile(publicKey);
-    ssh_test(pub_key, sshdConfig, container -> {
+    ssh_test(pub_key, sshdConfig, useCustomSshServerKey, container -> {
       setInternalProperty("teamcity.git.nativeOperationsEnabled", String.valueOf(nativeOperationsEnabled));
       setInternalProperty("teamcity.git.useSshAskPas", String.valueOf(useSshAskPass));
       setInternalProperty("teamcity.git.debugNativeGit", "true");
@@ -499,7 +525,9 @@ public class SshAuthenticationTest extends BaseTestCase {
     });
   }
 
-  private void ssh_test(@Nullable File pub_key, @NotNull String sshdConfig, @NotNull ContainerTest test) throws Exception {
+  private void ssh_test(@Nullable File pub_key, @NotNull String sshdConfig, boolean useCustomSshKey, @NotNull ContainerTest test) throws Exception {
+    String dockerSshKeyPub = FileUtil.readText(dataFile("keys/docker_key.pub"));
+    String dockerSshKey= FileUtil.readText(dataFile("keys/docker_key"));
     final GitSshContainer gitServer = new GitSshContainer(
       new ImageFromDockerfile()
         .withDockerfileFromBuilder(builder ->
@@ -525,6 +553,9 @@ public class SshAuthenticationTest extends BaseTestCase {
                                                                "cat $GIT_HOME/.ssh/authorized_keys\n" +
                                                                "cp -r /git-server/repos/repo.git $GIT_HOME/repo.git\n" +
 //                                                               "ls -lah $GIT_HOME/repo.git\n" +
+                                                               (useCustomSshKey ? String.format("cd /etc/ssh\necho -e '%s' > ssh_host_ed25519_key\necho '%s' > ssh_host_ed25519_key.pub\n",
+                                                                                                dockerSshKey.replace("\n", "\\n"), dockerSshKeyPub)
+                                                                                : "") +
                                                                "chown git:git -R $GIT_HOME && chmod 700 $GIT_HOME/.ssh  && chmod 600 $GIT_HOME/.ssh/authorized_keys\n" +
                                                                "echo \"" + sshdConfig + "\" >> /etc/ssh/sshd_config\n" +
                                                                "/usr/sbin/sshd -D -e")
