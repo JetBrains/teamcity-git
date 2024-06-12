@@ -235,6 +235,9 @@
       <option name="IGNORE">
         <description>Don't checkout submodules and don't show changes from submodules in UI</description>
       </option>
+      <option name="NON_RECURSIVE_CHECKOUT">
+        <description>Checkout submodules non-recursively</description>
+      </option>
     </enum>
     <enum name="AgentCleanPolicy">
       <description>Specifies when the "git clean" command should be executed in case of agent-side checkout</description>
