@@ -7,128 +7,179 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitConfigCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.InitCommandResult;
-import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.impl.configsRepo.CentralRepositoryConfiguration;
 import jetbrains.buildServer.serverSide.impl.configsRepo.RepositoryInitializingExtension;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
-import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.transport.RefSpec;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class GitRepositoryInitializingExtension implements RepositoryInitializingExtension {
 
   private final GitVcsSupport myVcs;
   private final GitRepoOperations myGitRepoOperations;
+  private final ServerPaths myServerPaths;
 
-  public GitRepositoryInitializingExtension(GitVcsSupport vcs, GitRepoOperations gitRepoOperations) {
+  public GitRepositoryInitializingExtension(GitVcsSupport vcs, GitRepoOperations gitRepoOperations, ServerPaths serverPaths) {
     myVcs = vcs;
     myGitRepoOperations = gitRepoOperations;
+    myServerPaths = serverPaths;
+  }
+
+  @Override
+  public void createSelfHostedRepository(Path path) throws VcsException {
+    myGitRepoOperations.initCommand().init(path.toString(), true);
   }
 
   @NotNull
   @Override
-  public Map<String, String> initialize(@NotNull String repositoryPath,
-                                        @NotNull CommitSettings commitSettings,
-                                        @NotNull List<String> ignoredPaths,
-                                        @NotNull FilesProcessor filesProcessor) throws VcsException {
-
-    Path dir = Paths.get(repositoryPath);
-    try {
-      patchGitIgnore(dir, ignoredPaths);
-    } catch (IOException e) {
-      throw new VcsException("Could not create .gitignore file at path: " + repositoryPath, e);
+  public Map<String, String> commitAllChanges(@NotNull CentralRepositoryConfiguration repositoryConfiguration,
+                                              @NotNull CommitSettings commitSettings,
+                                              @NotNull List<String> ignoredPaths,
+                                              @Nullable FilesProcessor filesProcessor) throws VcsException {
+    String repositoryUrl = repositoryConfiguration.getRepositoryUrl();
+    String fullBranch = repositoryConfiguration.getBranch();
+    if (fullBranch == null) {
+      throw new RuntimeException("Branch isn't specified for central repository");
     }
-
-    Path gitDir = dir.resolve(".git");
-    final boolean gitDirExisted = Files.exists(gitDir);
+    Path configDir = Paths.get(myServerPaths.getConfigDir());
+    try {
+      patchGitIgnore(configDir, ignoredPaths);
+    } catch (IOException e) {
+      throw new VcsException("Could not create .gitignore file at path: " + repositoryUrl, e);
+    }
 
     File tmpRepoDir = null;
     try {
-      String repoPath;
-      if (gitDirExisted) {
-        repoPath = repositoryPath;
-      } else {
-        tmpRepoDir = FileUtil.createTempDirectory("git-repo-init", "");
-        repoPath = tmpRepoDir.getAbsolutePath();
-      }
+      tmpRepoDir = FileUtil.createTempDirectory("git-repo-init", "");
+      String repoPath = tmpRepoDir.getAbsolutePath();
 
-      InitCommandResult initCommandResult = myGitRepoOperations.initCommand().init(repoPath, false);
+      myGitRepoOperations.initCommand().init(repoPath, false);
+
       Map<String, String> props = myVcs.getDefaultVcsProperties();
-      props.put(Constants.FETCH_URL, GitUtils.toURL(new File(repositoryPath)));
-      props.put(Constants.BRANCH_NAME, initCommandResult.getDefaultBranch());
+      props.put(Constants.FETCH_URL, repositoryUrl);
+      props.put(Constants.BRANCH_NAME, repositoryConfiguration.getBranch());
       VcsRootImpl dummyRoot = new VcsRootImpl(-1, Constants.VCS_NAME, props);
 
-      if (gitDirExisted) {
-        myGitRepoOperations.addCommand().add(repositoryPath, Collections.emptyList());
-        myGitRepoOperations.commitCommand().commit(repositoryPath, commitSettings);
-        return props;
-      }
       OperationContext operationContext = myVcs.createContext(dummyRoot, "Repository initialization");
-      PersonIdent personIdent = PersonIdentFactory.getTagger(operationContext.getGitRoot(), operationContext.getRepository());
+      GitVcsRoot gitRoot = operationContext.getGitRoot();
 
+      PersonIdent personIdent = PersonIdentFactory.getTagger(gitRoot, operationContext.getRepository());
       List<Pair<String, String>> configProps = Arrays.asList(
         Pair.create("user.name", personIdent.getName()),
         Pair.create("user.email", personIdent.getEmailAddress()),
         Pair.create("core.autocrlf", "false"),
-        Pair.create("receive.denyCurrentBranch", "ignore"),
-        Pair.create("core.worktree", repositoryPath)
+        Pair.create("receive.denyCurrentBranch", "ignore")
       );
 
       for (Pair<String, String> configProp : configProps) {
         myGitRepoOperations.configCommand().addConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, configProp.getFirst(), configProp.getSecond());
       }
-      Files.walkFileTree(dir, new FileVisitor<Path>() {
-        @Override
-        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-          return processByProcessor(dir, filesProcessor, repoPath, commitSettings);
+
+      Repository db = FileRepositoryBuilder.create(new File(tmpRepoDir, ".git"));
+      StoredConfig config = db.getConfig();
+      config.setString("remote", "origin", "url", repositoryUrl);
+      config.setString("remote", "origin", "fetch", "+refs/*:refs/*");
+      config.save();
+      Git git = new Git(db);
+      RefSpec refSpec = new RefSpec().setSourceDestination("refs/*", "refs/*").setForceUpdate(true);
+      myGitRepoOperations.fetchCommand(repositoryUrl).fetch(db,
+                                                            gitRoot.getRepositoryFetchURL().get(),
+                                                            new FetchSettings(gitRoot.getAuthSettings(),
+                                                                              Collections.singleton(refSpec)));
+      boolean originExisted = false;
+      for (Ref branchRef : git.branchList().call()) {
+        if (branchRef.getName().equals(repositoryConfiguration.getBranch())) {
+          originExisted = true;
+          break;
         }
-
-        @Override
-        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-          return processByProcessor(file, filesProcessor, repoPath, commitSettings);
-        }
-
-        @Override
-        public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-          throw exc;
-        }
-
-        @Override
-        public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
-          return FileVisitResult.CONTINUE;
-        }
-      });
-      myGitRepoOperations.addCommand().add(repoPath, Collections.emptyList());
-      myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
-
-      myGitRepoOperations.configCommand().removeConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, "core.worktree");
-      myGitRepoOperations.repackCommand().repack(repoPath);
-
-      List<String> errors = new ArrayList<>();
-      FileUtil.moveDirWithContent(tmpRepoDir, dir.toFile(), errors::add);
-      if (!errors.isEmpty()) {
-        throw new IOException("Failed to initialize Git repository at " + repositoryPath
-                              + ". Some files were not copied to the destination directory from temp .git directory. The following errors were reported: " + errors);
       }
+      String shortBranch = fullBranch.replace("refs/heads/", "");
+      String initBranch = "tempInitializationBranch";
+      if (originExisted) {
+        git.checkout().
+           setCreateBranch(true).
+           setName(initBranch).
+           setStartPoint(shortBranch).
+           call();
+      }
+      RevCommit lastCommit = getLastCommit(db, fullBranch);
+
+      myGitRepoOperations.configCommand().addConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, "core.worktree", configDir.toString());
+      if (filesProcessor == null) {
+        myGitRepoOperations.addCommand().add(repoPath, Collections.emptyList());
+        myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
+      } else {
+        Files.walkFileTree(configDir, new FileVisitor<Path>() {
+          @Override
+          public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+            return processByProcessor(dir, filesProcessor, repoPath);
+          }
+
+          @Override
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+            return processByProcessor(file, filesProcessor, repoPath);
+          }
+
+          @Override
+          public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+            throw exc;
+          }
+
+          @Override
+          public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
+            return FileVisitResult.CONTINUE;
+          }
+        });
+        myGitRepoOperations.addCommand().add(repoPath, Collections.emptyList());
+        myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
+
+        if (!db.getRefDatabase().hasRefs()) {
+          //no refs exist, there were nothing to commit
+          return props;
+        }
+
+        if (!originExisted) {
+          git.branchRename().setNewName(initBranch).call();
+        }
+      }
+      RevCommit createdCommit = getLastCommit(db, GitUtils.expandRef(initBranch));
+      myGitRepoOperations.pushCommand(repositoryUrl).push(db, gitRoot, repositoryConfiguration.getBranch(), createdCommit.name(), lastCommit.name());
+
       return props;
     } catch (Exception e) {
-      //if any exception during initialization occurs looks like it's better to remove initialized repository if it was created just now (i.e. directory didn't exist on method start)
-      if (!gitDirExisted) {
-        File file = gitDir.toFile();
-        Loggers.VCS.warn("Removing the partially initialized Git repository at path: " + file.getAbsolutePath());
-        FileUtil.delete(file);
-      }
+      throw new VcsException(e);
+    } finally {
       if (tmpRepoDir != null) {
         FileUtil.delete(tmpRepoDir);
       }
-      throw new VcsException(e);
+    }
+  }
+
+  private RevCommit getLastCommit(Repository db, String branch) throws VcsException {
+    try {
+      Ref ref = db.exactRef(branch);
+      RevWalk revWalk = new RevWalk(db);
+      if (ref == null) {
+        return revWalk.lookupCommit(ObjectId.zeroId());
+      }
+      return revWalk.parseCommit(ref.getObjectId());
+    } catch (Exception e) {
+      throw new VcsException("Can't load last commit from repository", e);
     }
   }
 
   @NotNull
-  private FileVisitResult processByProcessor(Path path, @NotNull FilesProcessor filesProcessor, String repoPath, @NotNull CommitSettings commitSettings) {
+  private FileVisitResult processByProcessor(Path path, @NotNull FilesProcessor filesProcessor, String repoPath) {
     ProcessResult process = filesProcessor.process(path);
     FileVisitResult result = process == ProcessResult.STEP_INSIDE ? FileVisitResult.CONTINUE : FileVisitResult.SKIP_SUBTREE;
     if (process == ProcessResult.COMMIT) {

@@ -10,6 +10,7 @@ import java.util.Objects;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.impl.configsRepo.CentralRepositoryConfiguration;
 import jetbrains.buildServer.serverSide.impl.configsRepo.RepositoryInitializingExtension;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
@@ -27,15 +28,17 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
 
   private GitRepositoryInitializingExtension myExtension;
   private GitVcsSupport myVcsSupport;
+  private ServerPaths myServerPaths;
+  private File originRepository;
 
   @Override
   @BeforeMethod
   public void setUp() throws Exception {
     super.setUp();
 
-
-    final ServerPaths serverPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    final ServerPluginConfig config = new PluginConfigBuilder(serverPaths).build();
+    originRepository = myTempFiles.createTempDir();
+    myServerPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
+    final ServerPluginConfig config = new PluginConfigBuilder(myServerPaths).build();
     final VcsRootSshKeyManager keyManager = r -> null;
     final TransportFactoryImpl transportFactory = new TransportFactoryImpl(config, keyManager);
     final GitRepoOperationsImpl repoOperations = new GitRepoOperationsImpl(config, transportFactory, keyManager,
@@ -43,16 +46,18 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
                                                                                                 new FetcherProperties(config),
                                                                                                 keyManager));
     myVcsSupport = gitSupport().withPluginConfig(config).build();
-    myExtension = new GitRepositoryInitializingExtension(myVcsSupport, repoOperations);
+    myExtension = new GitRepositoryInitializingExtension(myVcsSupport, repoOperations, myServerPaths);
+
+    myExtension.createSelfHostedRepository(originRepository.toPath());
 
     setInternalProperty("teamcity.git.nativeOperationsEnabled", "true");
   }
 
   public void test_double_initializing() throws IOException, VcsException {
-    File repository = myTempFiles.createTempDir();
-    File file = new File(repository, "file");
-    FileUtil.writeFile(file, "123", "UTF-8");
-    Map<String, String> params = myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.emptyList(), new CommitAllProcessor());
+    File configDir = new File(myServerPaths.getConfigDir());
+    File file = new File(configDir, "file");
+    FileUtil.writeToFile(file, "123".getBytes(StandardCharsets.UTF_8));
+    Map<String, String> params = myExtension.commitAllChanges(getRepositoryConfiguration(), getCommitSettings(), Collections.emptyList(), new CommitAllProcessor());
 
     VcsRootImpl vcsRoot = new VcsRootImpl(-1, myVcsSupport.getName(), params);
 
@@ -66,20 +71,28 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
     RepositoryStateData firstState = myVcsSupport.getCurrentState(vcsRoot);
     assertFileContent("123".getBytes(StandardCharsets.UTF_8), "file", vcsRoot, firstState, contentProvider);
 
-    FileUtil.writeFile(file, "456", "UTF-8");
+    FileUtil.writeToFile(file, "456".getBytes(StandardCharsets.UTF_8));
 
-    myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.emptyList(), new CommitAllProcessor());
+    myExtension.commitAllChanges(getRepositoryConfiguration(), getCommitSettings(), Collections.emptyList(), new CommitAllProcessor());
 
     assertFileContent("123".getBytes(StandardCharsets.UTF_8), "file", vcsRoot, firstState, contentProvider);
     assertFileContent("456".getBytes(StandardCharsets.UTF_8), "file", vcsRoot, myVcsSupport.getCurrentState(vcsRoot), contentProvider);
     assertEquals(1, listFilesPolicy.listFiles(vcsRoot, "").size());
   }
 
+  @NotNull
+  private CentralRepositoryConfiguration getRepositoryConfiguration() {
+    CentralRepositoryConfiguration centralRepositoryConfiguration = new CentralRepositoryConfiguration(true);
+    centralRepositoryConfiguration.setRepositoryUrl("file://" + originRepository.getAbsolutePath());
+    centralRepositoryConfiguration.setBranch("refs/heads/master");
+    return centralRepositoryConfiguration;
+  }
+
   public void test_gitignore_exists() throws IOException, VcsException {
-    File repository = myTempFiles.createTempDir();
-    File gitignore = new File(repository, ".gitignore");
-    FileUtil.writeFile(gitignore, "123", "UTF-8");
-    Map<String, String> params = myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Arrays.asList("456", "123"), new CommitAllProcessor());
+    File configDir = new File(myServerPaths.getConfigDir());
+    File gitignore = new File(configDir, ".gitignore");
+    FileUtil.writeToFile(gitignore, "123".getBytes(StandardCharsets.UTF_8));
+    Map<String, String> params = myExtension.commitAllChanges(getRepositoryConfiguration(), getCommitSettings(), Arrays.asList("456", "123"), new CommitAllProcessor());
 
     VcsRootImpl vcsRoot = new VcsRootImpl(-1, myVcsSupport.getName(), params);
 
@@ -104,8 +117,9 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
   }
 
   public void test_skip_commit_if_no_changes() throws VcsException, IOException {
-    File repository = myTempFiles.createTempDir();
-    Map<String, String> params = myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.emptyList(), new CommitAllProcessor());
+    File configDir = new File(myServerPaths.getConfigDir());
+    configDir.mkdirs();
+    Map<String, String> params = myExtension.commitAllChanges(getRepositoryConfiguration(), getCommitSettings(), Collections.emptyList(), new CommitAllProcessor());
 
     VcsRootImpl vcsRoot = new VcsRootImpl(-1, myVcsSupport.getName(), params);
 
@@ -115,10 +129,10 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
     } catch (VcsException ignored) {
     }
 
-    File file = new File(repository, "file");
-    FileUtil.writeFile(file, "abc", "UTF-8");
+    File file = new File(configDir, "file");
+    FileUtil.writeToFile(file, "abc".getBytes(StandardCharsets.UTF_8));
 
-    myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.emptyList(), new CommitAllProcessor());
+    myExtension.commitAllChanges(getRepositoryConfiguration(), getCommitSettings(), Collections.emptyList(), new CommitAllProcessor());
 
     ListDirectChildrenPolicy listFilesPolicy = (ListDirectChildrenPolicy)myVcsSupport.getListFilesPolicy();
     assertNotNull(listFilesPolicy);
@@ -145,16 +159,17 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
   }
 
   public void test_ignored_path() throws Exception {
-    File repository = myTempFiles.createTempDir();
-    File file1 = new File(repository, "toCommit");
-    File file2 = new File(repository, "toCommit2");
-    File ignoredFile = new File(repository, "ignoredFile");
+    File configDir = new File(myServerPaths.getConfigDir());
+    File file1 = new File(configDir, "toCommit");
+    File file2 = new File(configDir, "toCommit2");
+    File ignoredFile = new File(configDir, "ignoredFile");
 
-    FileUtil.writeFile(file1, "123", "UTF-8");
-    FileUtil.writeFile(file2, "456", "UTF-8");
-    FileUtil.writeFile(ignoredFile, "456", "UTF-8");
+    FileUtil.writeToFile(file1, "123".getBytes(StandardCharsets.UTF_8));
+    FileUtil.writeToFile(file2, "456".getBytes(StandardCharsets.UTF_8));
+    FileUtil.writeToFile(ignoredFile, "456".getBytes(StandardCharsets.UTF_8));
 
-    Map<String, String> params = myExtension.initialize(repository.getAbsolutePath(), getCommitSettings(), Collections.singletonList("ignoredFile"), new CommitAllProcessor());
+    Map<String, String> params = myExtension.commitAllChanges(getRepositoryConfiguration(), getCommitSettings(), Collections.singletonList("ignoredFile"), new CommitAllProcessor()
+    );
 
     VcsRootImpl vcsRoot = new VcsRootImpl(-1, myVcsSupport.getName(), params);
 
