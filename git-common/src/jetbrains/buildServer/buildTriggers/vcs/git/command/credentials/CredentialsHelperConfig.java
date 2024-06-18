@@ -57,7 +57,7 @@ public class CredentialsHelperConfig {
       if (StringUtil.isNotEmpty(credential.second)) {
         result.put(credEnv(i, CRED_USER), credential.second);
       }
-      if (StringUtil.isNotEmpty(credential.third)) {
+      if (credential.third != null) {
         result.put(credEnv(i, CRED_PWD), credential.third);
       }
       ++i;
