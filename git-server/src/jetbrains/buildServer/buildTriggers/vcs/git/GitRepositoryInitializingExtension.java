@@ -36,7 +36,10 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
   }
 
   @Override
-  public void createSelfHostedRepository(Path path) throws VcsException {
+  public void createSelfHostedRepository(Path path) throws Exception {
+    if (!Files.exists(path)) {
+      Files.createDirectories(path);
+    }
     myGitRepoOperations.initCommand().init(path.toString(), true);
   }
 
