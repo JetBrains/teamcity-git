@@ -16,6 +16,7 @@ public class InitCommandImpl extends BaseCommandImpl implements InitCommand {
   public static final String INITIAL_BRANCH = "main";
 
   private boolean myBare = false;
+  private String myInitialBranch;
 
   public InitCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -28,6 +29,11 @@ public class InitCommandImpl extends BaseCommandImpl implements InitCommand {
     return this;
   }
 
+  @Override
+  public InitCommand setInitialBranch(String branch) {
+    myInitialBranch = branch;
+    return this;
+  }
 
   @NotNull
   public InitCommandResult call() throws VcsException {
@@ -36,10 +42,15 @@ public class InitCommandImpl extends BaseCommandImpl implements InitCommand {
     if (myBare)
       cmd.addParameter("--bare");
     String initialBranch = "master";
-    if (!cmd.getGitVersion().isLessThan(GIT_INIT_STDERR_DEFAULT_BRANCH_HINT)) {
-      // TW-69468
-      cmd.addParameter("--initial-branch=" + INITIAL_BRANCH);
-      initialBranch = INITIAL_BRANCH;
+    if (myInitialBranch == null) {
+      if (!cmd.getGitVersion().isLessThan(GIT_INIT_STDERR_DEFAULT_BRANCH_HINT)) {
+        // TW-69468
+        cmd.addParameter("--initial-branch=" + INITIAL_BRANCH);
+        initialBranch = INITIAL_BRANCH;
+      }
+    } else {
+      initialBranch = myInitialBranch;
+      cmd.addParameter("--initial-branch=" + initialBranch);
     }
     CommandUtil.runCommand(cmd.stdErrExpected(false));
     return new InitCommandResult(initialBranch, false);

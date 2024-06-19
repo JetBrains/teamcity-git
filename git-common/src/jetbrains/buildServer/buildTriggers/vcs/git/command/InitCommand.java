@@ -10,6 +10,8 @@ public interface InitCommand extends BaseCommand {
   @NotNull
   InitCommand setBare(boolean bare);
 
+  InitCommand setInitialBranch(String branch);
+
   @NotNull
   InitCommandResult call() throws VcsException;
 

@@ -8,6 +8,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitConfigCommand;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.impl.configsRepo.CentralConfigsRepository;
+import jetbrains.buildServer.serverSide.impl.configsRepo.CentralConfigsRepositoryUtils;
 import jetbrains.buildServer.serverSide.impl.configsRepo.CentralRepositoryConfiguration;
 import jetbrains.buildServer.serverSide.impl.configsRepo.RepositoryInitializingExtension;
 import jetbrains.buildServer.util.FileUtil;
@@ -40,7 +42,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
     if (!Files.exists(path)) {
       Files.createDirectories(path);
     }
-    myGitRepoOperations.initCommand().init(path.toString(), true);
+    myGitRepoOperations.initCommand().init(path.toString(), true, null);
   }
 
   @NotNull
@@ -66,11 +68,16 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
       tmpRepoDir = FileUtil.createTempDirectory("git-repo-init", "");
       String repoPath = tmpRepoDir.getAbsolutePath();
 
-      myGitRepoOperations.initCommand().init(repoPath, false);
+      final String initBranch = "tempInitializationBranch";
+      myGitRepoOperations.initCommand().init(repoPath, false, initBranch);
 
       Map<String, String> props = myVcs.getDefaultVcsProperties();
       props.put(Constants.FETCH_URL, repositoryUrl);
       props.put(Constants.BRANCH_NAME, repositoryConfiguration.getBranch());
+      if (CentralRepositoryConfiguration.Auth.KEY.equals(repositoryConfiguration.getAuth())) {
+        props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.toString());
+        props.put(Constants.PRIVATE_KEY_PATH, CentralConfigsRepositoryUtils.getCentralConfigsRepositoryPluginData(myServerPaths).resolve(CentralConfigsRepository.KEY_FILE_NAME).toAbsolutePath().toString());
+      }
       VcsRootImpl dummyRoot = new VcsRootImpl(-1, Constants.VCS_NAME, props);
 
       OperationContext operationContext = myVcs.createContext(dummyRoot, "Repository initialization");
@@ -107,7 +114,6 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         }
       }
       String shortBranch = fullBranch.replace("refs/heads/", "");
-      String initBranch = "tempInitializationBranch";
       if (originExisted) {
         git.checkout().
            setCreateBranch(true).
@@ -149,10 +155,6 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         if (!db.getRefDatabase().hasRefs()) {
           //no refs exist, there were nothing to commit
           return props;
-        }
-
-        if (!originExisted) {
-          git.branchRename().setNewName(initBranch).call();
         }
       }
       RevCommit createdCommit = getLastCommit(db, GitUtils.expandRef(initBranch));

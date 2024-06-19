@@ -82,7 +82,9 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
 
   @NotNull
   private CentralRepositoryConfiguration getRepositoryConfiguration() {
-    CentralRepositoryConfiguration centralRepositoryConfiguration = new CentralRepositoryConfiguration(true);
+    CentralRepositoryConfiguration centralRepositoryConfiguration = new CentralRepositoryConfiguration();
+    centralRepositoryConfiguration.setEnabled(true);
+    centralRepositoryConfiguration.setSelfHosted(true);
     centralRepositoryConfiguration.setRepositoryUrl("file://" + originRepository.getAbsolutePath());
     centralRepositoryConfiguration.setBranch("refs/heads/master");
     return centralRepositoryConfiguration;

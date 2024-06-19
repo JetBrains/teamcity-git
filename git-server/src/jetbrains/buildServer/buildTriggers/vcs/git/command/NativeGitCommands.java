@@ -267,7 +267,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   @NotNull
   @Override
-  public InitCommandResult init(@NotNull String path, boolean bare) throws VcsException {
+  public InitCommandResult init(@NotNull String path, boolean bare, String initialBranch) throws VcsException {
     final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
 
@@ -277,6 +277,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
       res = executeCommand(ctx, "init", "Initializing repository in path: " + path, () -> {
         final InitCommand initCommand =
           gitFacade.init()
+                   .setInitialBranch(initialBranch)
                    .setBare(bare);
         return initCommand.call();
       }, gitFacade);
