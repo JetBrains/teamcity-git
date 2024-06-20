@@ -2,8 +2,8 @@
   <library name="jsch">
     <CLASSES>
       <root url="jar://$PROJECT_DIR$/lib/common/jzlib-1.1.3.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/common/bcprov-jdk18on-1.76.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/common/bcutil-jdk18on-1.76.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/bcprov-jdk18on-1.78.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/common/bcutil-jdk18on-1.78.jar!/" />
       <root url="jar://$PROJECT_DIR$/lib/common/jsch-0.1.67.jar!/" />
     </CLASSES>
     <JAVADOC />
