@@ -17,6 +17,7 @@ import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.ssh.ServerSshKeyManager;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
+import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.*;
@@ -35,6 +36,9 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilde
  * @author dmitry.neverov
  */
 public class GitUrlSupportTest extends BaseTestCase {
+
+  private static final String KEY_NAME = "my_ssh_key";
+  private static final String PASS_PHRASE = "pass_phrase";
 
   private TempFiles myTempFiles = new TempFiles();
   private GitUrlSupport myUrlSupport;
@@ -82,6 +86,8 @@ public class GitUrlSupportTest extends BaseTestCase {
     myUrlSupport.setProjectManager(pm);
 
     final Mock sshMock = mock(ServerSshKeyManager.class);
+    sshMock.stubs().method("getKey").with(eq(project), eq("user")).will(returnValue(null));
+    sshMock.stubs().method("getKey").with(eq(project), eq(KEY_NAME)).will(returnValue(new TeamCitySshKey(KEY_NAME, new byte[0], true)));
     sshMock.stubs().method("getKeys").with(eq(project)).will(returnValue(myTestKeys));
     ServerSshKeyManager ssh = (ServerSshKeyManager)sshMock.proxy();
     Mock epMock = mock(ExtensionsProvider.class);
@@ -251,6 +257,14 @@ public class GitUrlSupportTest extends BaseTestCase {
     assertNull(myUrlSupport.convertToVcsRootProperties(url, createRootContext()));
   }
 
+  @Test
+  public void should_fill_key_info() throws Exception {
+    VcsUrl url = new VcsUrl("git@vcs.com:user/repo.git", new SshKeyCredentials(KEY_NAME, PASS_PHRASE));
+    myTestConnectionMocked = true;
+    GitVcsRoot root = toGitRoot(url);
+    assertEquals(KEY_NAME, root.getProperty(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME));
+    assertEquals(PASS_PHRASE, root.getProperty(Constants.PASSPHRASE));
+  }
 
   @Test
   @TestFor(issues = "TW-43247")

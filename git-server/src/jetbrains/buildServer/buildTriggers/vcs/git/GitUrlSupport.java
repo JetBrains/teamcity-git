@@ -31,8 +31,6 @@ import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_HTTP_CRED_PREFIX;
-
 /**
  * @author dmitry.neverov
  */
@@ -108,13 +106,43 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
 
     int numSshKeysTried = 0;
 
-    if (AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString().equals(props.get(Constants.AUTH_METHOD)) && fetchUrl.endsWith(".git") && curProject != null) {
-      // SSH access, before using the default private key which may not be accessible on the agent,
-      // let's iterate over all SSH keys of the current project, maybe we'll find a working one
+    if (AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString().equals(props.get(Constants.AUTH_METHOD))
+        && curProject != null
+        && isSsh(uri)) {
       ServerSshKeyManager serverSshKeyManager = getSshKeyManager();
       if (serverSshKeyManager != null) {
+        Credentials credentials = url.getCredentials();
+        String testedKeyName = null;
+        // if credentials are provided, trying to find matching key
+        if (credentials != null) {
+          TeamCitySshKey key = serverSshKeyManager.getKey(curProject, credentials.getUsername());
+          if (key != null) {
+            Map<String, String> propsCopy = new HashMap<>(props);
+            propsCopy.put(Constants.AUTH_METHOD, AuthenticationMethod.TEAMCITY_SSH_KEY.toString());
+            propsCopy.put(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME, key.getName());
+
+            if (key.isEncrypted()) {
+              String passphrase = credentials.getPassword();
+              if (StringUtil.isNotEmpty(passphrase)) {
+                propsCopy.put(Constants.PASSPHRASE, passphrase);
+              }
+            }
+
+            try {
+              numSshKeysTried++;
+              testedKeyName = key.getName();
+              return testConnection(propsCopy, curProject);
+            } catch (VcsException e) {
+              if (isBranchRelatedError(e)) throw e;
+            }
+          }
+        }
+
+        // SSH access, before using the default private key which may not be accessible on the agent,
+        // let's iterate over all SSH keys of the current project, maybe we'll find a working one
         for (TeamCitySshKey key: serverSshKeyManager.getKeys(curProject)) {
           if (key.isEncrypted()) continue; // don't know password, so can't use it
+          if (key.getName().equals(testedKeyName)) continue; // don't double-check the same key
 
           Map<String, String> propsCopy = new HashMap<>(props);
           propsCopy.put(Constants.AUTH_METHOD, AuthenticationMethod.TEAMCITY_SSH_KEY.toString());
@@ -164,6 +192,12 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
       Loggers.VCS.infoAndDebugDetails("Failed to recognize " + url.getUrl() + " as a git repository", e);
       return null;
     }
+  }
+
+  private boolean isSsh(URIish uri) {
+    String scheme = uri.getScheme();
+    if (scheme == null && !StringUtil.isEmptyOrSpaces(uri.getUser())) return true;
+    return "ssh".equals(scheme);
   }
 
   @NotNull
