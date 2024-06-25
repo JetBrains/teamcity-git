@@ -44,7 +44,7 @@ import org.eclipse.jgit.lfs.LfsBlobLoader;
 import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.transport.JschConfigSessionFactory;
 import org.eclipse.jgit.transport.http.apache.HttpClientConnectionFactory;
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.quartz.CronExpression;

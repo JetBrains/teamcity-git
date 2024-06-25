@@ -3,7 +3,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitNativeOperationsStatus;
 import jetbrains.buildServer.serverSide.MainConfigProcessor;
 import jetbrains.buildServer.serverSide.impl.MainConfigManager;
-import org.jdom.Element;
+import org.jdom2.Element;
 
 public class GitMainConfigProcessor implements MainConfigProcessor, GitNativeOperationsStatus {
 
