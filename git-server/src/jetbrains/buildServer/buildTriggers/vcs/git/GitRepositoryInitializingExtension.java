@@ -53,116 +53,142 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
                                               @Nullable FilesProcessor filesProcessor) throws VcsException {
     String repositoryUrl = repositoryConfiguration.getRepositoryUrl();
     String fullBranch = repositoryConfiguration.getBranch();
-    if (fullBranch == null) {
-      throw new RuntimeException("Branch isn't specified for central repository");
-    }
     Path configDir = Paths.get(myServerPaths.getConfigDir());
     try {
       patchGitIgnore(configDir, ignoredPaths);
     } catch (IOException e) {
-      throw new VcsException("Could not create .gitignore file at path: " + repositoryUrl, e);
+      throw new VcsException("Can not create .gitignore file at path: " + repositoryUrl, e);
     }
 
     File tmpRepoDir = null;
     try {
-      tmpRepoDir = FileUtil.createTempDirectory("git-repo-init", "");
-      String repoPath = tmpRepoDir.getAbsolutePath();
-
+      String repoPath;
+      GitVcsRoot gitRoot;
       final String initBranch = "tempInitializationBranch";
-      myGitRepoOperations.initCommand().init(repoPath, false, initBranch);
-
       Map<String, String> props = myVcs.getDefaultVcsProperties();
-      props.put(Constants.FETCH_URL, repositoryUrl);
-      props.put(Constants.BRANCH_NAME, repositoryConfiguration.getBranch());
-      if (CentralRepositoryConfiguration.Auth.KEY.equals(repositoryConfiguration.getAuth())) {
-        props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.toString());
-        props.put(Constants.PRIVATE_KEY_PATH, CentralConfigsRepositoryUtils.getCentralConfigsRepositoryPluginData(myServerPaths).resolve(CentralConfigsRepository.KEY_FILE_NAME).toAbsolutePath().toString());
+      try {
+        tmpRepoDir = FileUtil.createTempDirectory("git-repo-init", "");
+        repoPath = tmpRepoDir.getAbsolutePath();
+
+        myGitRepoOperations.initCommand().init(repoPath, false, initBranch);
+        props.put(Constants.FETCH_URL, repositoryUrl);
+        props.put(Constants.BRANCH_NAME, repositoryConfiguration.getBranch());
+        if (CentralRepositoryConfiguration.Auth.KEY.equals(repositoryConfiguration.getAuth())) {
+          props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.toString());
+          Path authKeyPath = CentralConfigsRepositoryUtils.getCentralConfigsRepositoryPluginData(myServerPaths).resolve(CentralConfigsRepository.KEY_FILE_NAME).toAbsolutePath();
+          if (!Files.exists(authKeyPath)) {
+            throw new RuntimeException("Private key for repository isn't found. Upload private key with write access to the repository");
+          }
+          props.put(Constants.PRIVATE_KEY_PATH, authKeyPath.toString());
+        }
+        VcsRootImpl dummyRoot = new VcsRootImpl(-1, Constants.VCS_NAME, props);
+
+        OperationContext operationContext = myVcs.createContext(dummyRoot, "Repository initialization");
+        gitRoot = operationContext.getGitRoot();
+
+        PersonIdent personIdent = PersonIdentFactory.getTagger(gitRoot, operationContext.getRepository());
+        List<Pair<String, String>> configProps = Arrays.asList(
+          Pair.create("user.name", personIdent.getName()),
+          Pair.create("user.email", personIdent.getEmailAddress()),
+          Pair.create("core.autocrlf", "false"),
+          Pair.create("receive.denyCurrentBranch", "ignore")
+        );
+
+        for (Pair<String, String> configProp : configProps) {
+          myGitRepoOperations.configCommand().addConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, configProp.getFirst(), configProp.getSecond());
+        }
+      } catch (VcsException | IOException e) {
+        throw new RuntimeException("Can not create local git repository for committing current configuration files: " + e.getMessage());
       }
-      VcsRootImpl dummyRoot = new VcsRootImpl(-1, Constants.VCS_NAME, props);
 
-      OperationContext operationContext = myVcs.createContext(dummyRoot, "Repository initialization");
-      GitVcsRoot gitRoot = operationContext.getGitRoot();
-
-      PersonIdent personIdent = PersonIdentFactory.getTagger(gitRoot, operationContext.getRepository());
-      List<Pair<String, String>> configProps = Arrays.asList(
-        Pair.create("user.name", personIdent.getName()),
-        Pair.create("user.email", personIdent.getEmailAddress()),
-        Pair.create("core.autocrlf", "false"),
-        Pair.create("receive.denyCurrentBranch", "ignore")
-      );
-
-      for (Pair<String, String> configProp : configProps) {
-        myGitRepoOperations.configCommand().addConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, configProp.getFirst(), configProp.getSecond());
+      Repository db;
+      try {
+        db = FileRepositoryBuilder.create(new File(tmpRepoDir, ".git"));
+      } catch (IOException e) {
+        throw new RuntimeException("Can not create local git repository for committing current configuration files", e);
       }
-
-      Repository db = FileRepositoryBuilder.create(new File(tmpRepoDir, ".git"));
       StoredConfig config = db.getConfig();
       config.setString("remote", "origin", "url", repositoryUrl);
       config.setString("remote", "origin", "fetch", "+refs/*:refs/*");
-      config.save();
+      try {
+        config.save();
+      } catch (IOException e) {
+        throw new RuntimeException("Can not bind origin remote repository with the local repository", e);
+      }
       Git git = new Git(db);
       RefSpec refSpec = new RefSpec().setSourceDestination("refs/*", "refs/*").setForceUpdate(true);
-      myGitRepoOperations.fetchCommand(repositoryUrl).fetch(db,
-                                                            gitRoot.getRepositoryFetchURL().get(),
-                                                            new FetchSettings(gitRoot.getAuthSettings(),
-                                                                              Collections.singleton(refSpec)));
+      try {
+        myGitRepoOperations.fetchCommand(repositoryUrl).fetch(db,
+                                                              gitRoot.getRepositoryFetchURL().get(),
+                                                              new FetchSettings(gitRoot.getAuthSettings(),
+                                                                                Collections.singleton(refSpec)));
+      } catch (IOException| VcsException e) {
+        throw new RuntimeException("TeamCity can not fetch changes from remote repository: " + e.getMessage(), e);
+      }
       boolean originExisted = false;
-      for (Ref branchRef : git.branchList().call()) {
-        if (branchRef.getName().equals(repositoryConfiguration.getBranch())) {
-          originExisted = true;
-          break;
+      RevCommit createdCommit;
+      RevCommit lastCommit;
+      try {
+        for (Ref branchRef : git.branchList().call()) {
+          if (branchRef.getName().equals(repositoryConfiguration.getBranch())) {
+            originExisted = true;
+            break;
+          }
         }
-      }
-      String shortBranch = fullBranch.replace("refs/heads/", "");
-      if (originExisted) {
-        git.checkout().
-           setCreateBranch(true).
-           setName(initBranch).
-           setStartPoint(shortBranch).
-           call();
-      }
-      RevCommit lastCommit = getLastCommit(db, fullBranch);
-
-      myGitRepoOperations.configCommand().addConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, "core.worktree", configDir.toString());
-      if (filesProcessor == null) {
-        myGitRepoOperations.addCommand().add(repoPath, Collections.emptyList());
-        myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
-      } else {
-        Files.walkFileTree(configDir, new FileVisitor<Path>() {
-          @Override
-          public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-            return processByProcessor(dir, filesProcessor, repoPath);
-          }
-
-          @Override
-          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-            return processByProcessor(file, filesProcessor, repoPath);
-          }
-
-          @Override
-          public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-            throw exc;
-          }
-
-          @Override
-          public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
-            return FileVisitResult.CONTINUE;
-          }
-        });
-        myGitRepoOperations.addCommand().add(repoPath, Collections.emptyList());
-        myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
-
-        if (!db.getRefDatabase().hasRefs()) {
-          //no refs exist, there were nothing to commit
-          return props;
+        String shortBranch = fullBranch.replace("refs/heads/", "");
+        if (originExisted) {
+          git.checkout().
+             setCreateBranch(true).
+             setName(initBranch).
+             setStartPoint(shortBranch).
+             call();
         }
-      }
-      RevCommit createdCommit = getLastCommit(db, GitUtils.expandRef(initBranch));
-      myGitRepoOperations.pushCommand(repositoryUrl).push(db, gitRoot, repositoryConfiguration.getBranch(), createdCommit.name(), lastCommit.name());
+        lastCommit = getLastCommit(db, fullBranch);
 
+        myGitRepoOperations.configCommand().addConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, "core.worktree", configDir.toString());
+        if (filesProcessor == null) {
+          myGitRepoOperations.addCommand().add(repoPath, Collections.emptyList());
+          myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
+        } else {
+          Files.walkFileTree(configDir, new FileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+              return processByProcessor(dir, filesProcessor, repoPath);
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+              return processByProcessor(file, filesProcessor, repoPath);
+            }
+
+            @Override
+            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+              throw exc;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
+              return FileVisitResult.CONTINUE;
+            }
+          });
+          myGitRepoOperations.addCommand().add(repoPath, Collections.emptyList());
+          myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
+
+          if (!db.getRefDatabase().hasRefs()) {
+            //no refs exist, there were nothing to commit
+            return props;
+          }
+        }
+        createdCommit = getLastCommit(db, GitUtils.expandRef(initBranch));
+      } catch (Exception e) {
+        throw new RuntimeException("TeamCity can not commit all current configuration files into local repository: " + e.getMessage(), e);
+      }
+      try {
+        myGitRepoOperations.pushCommand(repositoryUrl).push(db, gitRoot, repositoryConfiguration.getBranch(), createdCommit.name(), lastCommit.name());
+      } catch (VcsException e) {
+        throw new RuntimeException("TeamCity can not push commits into remote repository: " + e.getMessage(), e);
+      }
       return props;
-    } catch (Exception e) {
-      throw new VcsException(e);
     } finally {
       if (tmpRepoDir != null) {
         FileUtil.delete(tmpRepoDir);
