@@ -101,18 +101,18 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     props.putAll(getAuthSettings(url, uri));
 
     VcsHostingRepo ghRepo = WellKnownHostingsUtil.getGitHubRepo(uri);
-    if (ghRepo != null)
+    if (ghRepo != null && curProject != null)
       refineGithubSettings(ghRepo, props, curProject);
-
-    int numSshKeysTried = 0;
 
     if (AuthenticationMethod.PRIVATE_KEY_DEFAULT.toString().equals(props.get(Constants.AUTH_METHOD))
         && curProject != null
         && isSsh(uri)) {
       ServerSshKeyManager serverSshKeyManager = getSshKeyManager();
+
+      int numSshKeysTried = 0;
+
       if (serverSshKeyManager != null) {
         Credentials credentials = url.getCredentials();
-        String testedKeyName = null;
         // if credentials are provided, trying to find matching key
         if (credentials != null) {
           TeamCitySshKey key = serverSshKeyManager.getKey(curProject, credentials.getUsername());
@@ -129,11 +129,10 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
             }
 
             try {
-              numSshKeysTried++;
-              testedKeyName = key.getName();
               return testConnection(propsCopy, curProject);
             } catch (VcsException e) {
-              if (isBranchRelatedError(e)) throw e;
+              // here we try to use the exact key, so if it does not fit - we fail the check
+              if (isBranchRelatedError(e) || GitServerUtil.isAuthError(e) || fetchUrl.toLowerCase().contains("git")) throw e;
             }
           }
         }
@@ -142,7 +141,6 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
         // let's iterate over all SSH keys of the current project, maybe we'll find a working one
         for (TeamCitySshKey key: serverSshKeyManager.getKeys(curProject)) {
           if (key.isEncrypted()) continue; // don't know password, so can't use it
-          if (key.getName().equals(testedKeyName)) continue; // don't double-check the same key
 
           Map<String, String> propsCopy = new HashMap<>(props);
           propsCopy.put(Constants.AUTH_METHOD, AuthenticationMethod.TEAMCITY_SSH_KEY.toString());
@@ -275,7 +273,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     return uri;
   }
 
-  private void refineGithubSettings(@NotNull VcsHostingRepo ghRepo, @NotNull Map<String, String> props, SProject curProject) throws VcsException {
+  private void refineGithubSettings(@NotNull VcsHostingRepo ghRepo, @NotNull Map<String, String> props, @NotNull SProject curProject) throws VcsException {
     SVcsRoot vcsRoot = curProject.createDummyVcsRoot(Constants.VCS_NAME, props);
     AuthSettings auth = new AuthSettingsImpl(props, vcsRoot, new URIishHelperImpl(), tokenId -> myTokenRefresher.getToken(curProject, tokenId, false, true),
                                              GitServerUtil.detectExtraHTTPCredentialsInProject(curProject));
