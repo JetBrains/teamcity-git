@@ -25,6 +25,8 @@ import org.eclipse.jgit.transport.RefSpec;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static jetbrains.buildServer.serverSide.impl.configsRepo.CentralRepositoryConfiguration.TC_DATA_DIR;
+
 public class GitRepositoryInitializingExtension implements RepositoryInitializingExtension {
 
   private final GitVcsSupport myVcs;
@@ -51,7 +53,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
                                               @NotNull CommitSettings commitSettings,
                                               @NotNull List<String> ignoredPaths,
                                               @Nullable FilesProcessor filesProcessor) throws VcsException {
-    String repositoryUrl = repositoryConfiguration.getRepositoryUrl();
+    String repositoryUrl = repositoryConfiguration.getRepositoryUrl().replace(TC_DATA_DIR, myServerPaths.getDataDirectory().getAbsolutePath());
     String fullBranch = repositoryConfiguration.getBranch();
     Path configDir = Paths.get(myServerPaths.getConfigDir());
     try {
