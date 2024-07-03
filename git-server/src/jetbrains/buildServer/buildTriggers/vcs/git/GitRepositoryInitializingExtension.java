@@ -17,6 +17,7 @@ import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -62,22 +63,32 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
       throw new VcsException("Can not create .gitignore file at path: " + repositoryUrl, e);
     }
 
-    File tmpRepoDir = null;
+    File repoDir = null;
+    Repository db = null;
     try {
       String repoPath;
       GitVcsRoot gitRoot;
       final String initBranch = "tempInitializationBranch";
       Map<String, String> props = myVcs.getDefaultVcsProperties();
+      Path centralConfigsRepositoryPluginData = CentralConfigsRepositoryUtils.getCentralConfigsRepositoryPluginData(myServerPaths);
+      Path localRepo = centralConfigsRepositoryPluginData.resolve("localMirror");
+      boolean shouldCreateRepo = shouldCreateRepo(localRepo, repositoryUrl);
       try {
-        tmpRepoDir = FileUtil.createTempDirectory("git-repo-init", "");
-        repoPath = tmpRepoDir.getAbsolutePath();
+        if (shouldCreateRepo && Files.exists(localRepo)) {
+          FileUtil.delete(localRepo.toFile());
+        }
+        repoPath = localRepo.toFile().getAbsolutePath();
 
-        myGitRepoOperations.initCommand().init(repoPath, false, initBranch);
+        if (shouldCreateRepo) {
+          repoDir = FileUtil.createDir(localRepo.toFile());
+
+          myGitRepoOperations.initCommand().init(repoPath, false, initBranch);
+        }
         props.put(Constants.FETCH_URL, repositoryUrl);
         props.put(Constants.BRANCH_NAME, repositoryConfiguration.getBranch());
         if (CentralRepositoryConfiguration.Auth.KEY.equals(repositoryConfiguration.getAuth())) {
           props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.toString());
-          Path authKeyPath = CentralConfigsRepositoryUtils.getCentralConfigsRepositoryPluginData(myServerPaths).resolve(CentralConfigsRepository.KEY_FILE_NAME).toAbsolutePath();
+          Path authKeyPath = centralConfigsRepositoryPluginData.resolve(CentralConfigsRepository.KEY_FILE_NAME).toAbsolutePath();
           if (!Files.exists(authKeyPath)) {
             throw new RuntimeException("Private key for repository isn't found. Upload private key with write access to the repository");
           }
@@ -88,34 +99,37 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         OperationContext operationContext = myVcs.createContext(dummyRoot, "Repository initialization");
         gitRoot = operationContext.getGitRoot();
 
-        PersonIdent personIdent = PersonIdentFactory.getTagger(gitRoot, operationContext.getRepository());
-        List<Pair<String, String>> configProps = Arrays.asList(
-          Pair.create("user.name", personIdent.getName()),
-          Pair.create("user.email", personIdent.getEmailAddress()),
-          Pair.create("core.autocrlf", "false"),
-          Pair.create("receive.denyCurrentBranch", "ignore")
-        );
+        if (shouldCreateRepo) {
+          PersonIdent personIdent = PersonIdentFactory.getTagger(gitRoot, operationContext.getRepository());
+          List<Pair<String, String>> configProps = Arrays.asList(
+            Pair.create("user.name", personIdent.getName()),
+            Pair.create("user.email", personIdent.getEmailAddress()),
+            Pair.create("core.autocrlf", "false"),
+            Pair.create("receive.denyCurrentBranch", "ignore")
+          );
 
-        for (Pair<String, String> configProp : configProps) {
-          myGitRepoOperations.configCommand().addConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, configProp.getFirst(), configProp.getSecond());
+          for (Pair<String, String> configProp : configProps) {
+            myGitRepoOperations.configCommand().addConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, configProp.getFirst(), configProp.getSecond());
+          }
         }
       } catch (VcsException | IOException e) {
         throw new RuntimeException("Can not create local git repository for committing current configuration files: " + e.getMessage());
       }
 
-      Repository db;
       try {
-        db = FileRepositoryBuilder.create(new File(tmpRepoDir, ".git"));
+        db = FileRepositoryBuilder.create(new File(repoPath, ".git"));
       } catch (IOException e) {
         throw new RuntimeException("Can not create local git repository for committing current configuration files", e);
       }
-      StoredConfig config = db.getConfig();
-      config.setString("remote", "origin", "url", repositoryUrl);
-      config.setString("remote", "origin", "fetch", "+refs/*:refs/*");
-      try {
-        config.save();
-      } catch (IOException e) {
-        throw new RuntimeException("Can not bind origin remote repository with the local repository", e);
+      if (shouldCreateRepo) {
+        StoredConfig config = db.getConfig();
+        config.setString("remote", "origin", "url", repositoryUrl);
+        config.setString("remote", "origin", "fetch", "+refs/*:refs/*");
+        try {
+          config.save();
+        } catch (IOException e) {
+          throw new RuntimeException("Can not bind origin remote repository with the local repository", e);
+        }
       }
       Git git = new Git(db);
       RefSpec refSpec = new RefSpec().setSourceDestination("refs/*", "refs/*").setForceUpdate(true);
@@ -147,7 +161,9 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         }
         lastCommit = getLastCommit(db, fullBranch);
 
-        myGitRepoOperations.configCommand().addConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, "core.worktree", configDir.toString());
+        if (shouldCreateRepo) {
+          myGitRepoOperations.configCommand().addConfigParameter(repoPath, GitConfigCommand.Scope.LOCAL, "core.worktree", configDir.toString());
+        }
         if (filesProcessor == null) {
           myGitRepoOperations.addCommand().add(repoPath, Collections.emptyList());
           myGitRepoOperations.commitCommand().commit(repoPath, commitSettings);
@@ -191,11 +207,28 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         throw new RuntimeException("TeamCity can not push commits into remote repository: " + e.getMessage(), e);
       }
       return props;
+    } catch (Exception e) {
+      if (repoDir != null) {
+        FileUtil.delete(repoDir);
+      }
+      throw e;
     } finally {
-      if (tmpRepoDir != null) {
-        FileUtil.delete(tmpRepoDir);
+      if (db != null) {
+        db.close();
       }
     }
+  }
+
+  private boolean shouldCreateRepo(Path localRepo, String repositoryUrl) {
+
+    if (!Files.exists(localRepo)) return true;
+    try (Repository db = FileRepositoryBuilder.create(new File(localRepo.toFile(), ".git"))) {
+      StoredConfig config = db.getConfig();
+      String actualUrl = config.getString("remote", "origin", "url");
+      if (repositoryUrl.equals(actualUrl)) return false;
+    } catch (IOException ignored) {
+    }
+    return true;
   }
 
   private RevCommit getLastCommit(Repository db, String branch) throws VcsException {
