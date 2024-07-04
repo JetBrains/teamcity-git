@@ -526,8 +526,8 @@ public class SshAuthenticationTest extends BaseTestCase {
   }
 
   private void ssh_test(@Nullable File pub_key, @NotNull String sshdConfig, boolean useCustomSshKey, @NotNull ContainerTest test) throws Exception {
-    String dockerSshKeyPub = FileUtil.readText(dataFile("keys/docker_key.pub"));
-    String dockerSshKey= FileUtil.readText(dataFile("keys/docker_key"));
+    File dockerSshKeyPub = dataFile("keys/docker_key.pub");
+    File dockerSshKey= dataFile("keys/docker_key");
     final GitSshContainer gitServer = new GitSshContainer(
       new ImageFromDockerfile()
         .withDockerfileFromBuilder(builder ->
@@ -553,8 +553,10 @@ public class SshAuthenticationTest extends BaseTestCase {
                                                                "cat $GIT_HOME/.ssh/authorized_keys\n" +
                                                                "cp -r /git-server/repos/repo.git $GIT_HOME/repo.git\n" +
 //                                                               "ls -lah $GIT_HOME/repo.git\n" +
-                                                               (useCustomSshKey ? String.format("cd /etc/ssh\necho -e '%s' > ssh_host_ed25519_key\necho '%s' > ssh_host_ed25519_key.pub\n",
-                                                                                                dockerSshKey.replace("\n", "\\n"), dockerSshKeyPub)
+                                                               (useCustomSshKey ? String.format("rm -rf /etc/ssh/ssh_host*;\n cp /git-server/keys/%s /etc/ssh/ssh_host_ed25519_key\n " +
+                                                                                                "cp /git-server/keys/%s /etc/ssh/ssh_host_ed25519_key.pub\n " +
+                                                                                                "chmod 400 /etc/ssh/ssh_host_ed25519_key.pub;\n chmod 400 /etc/ssh/ssh_host_ed25519_key\n",
+                                                                                                dockerSshKey.getName(), dockerSshKeyPub.getName())
                                                                                 : "") +
                                                                "chown git:git -R $GIT_HOME && chmod 700 $GIT_HOME/.ssh  && chmod 600 $GIT_HOME/.ssh/authorized_keys\n" +
                                                                "echo \"" + sshdConfig + "\" >> /etc/ssh/sshd_config\n" +
@@ -569,6 +571,10 @@ public class SshAuthenticationTest extends BaseTestCase {
 
     if (pub_key != null) {
       gitServer.withFileSystemBind(pub_key.getAbsolutePath(), "/git-server/keys/" + pub_key.getName(), BindMode.READ_ONLY);
+    }
+    if (useCustomSshKey) {
+      gitServer.withFileSystemBind(dockerSshKey.getAbsolutePath(), "/git-server/keys/" + dockerSshKey.getName(), BindMode.READ_ONLY);
+      gitServer.withFileSystemBind(dockerSshKeyPub.getAbsolutePath(), "/git-server/keys/" + dockerSshKeyPub.getName(), BindMode.READ_ONLY);
     }
 
     gitServer.start();
