@@ -106,10 +106,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
 
     // GitHub api does not seem to work with uri ending with trailing slash, but git works with it.
     // no need to remove "/" from actual uri stored in properties
-    String uriPath = uri.getPath();
-    if (uriPath.endsWith("/")) {
-      uri = uri.setPath(uriPath.substring(0, uriPath.length() - 1));
-    }
+    uri = uri.setPath(StringUtil.removeTailingSlash(uri.getPath()));
 
     VcsHostingRepo ghRepo = WellKnownHostingsUtil.getGitHubRepo(uri);
     if (ghRepo != null && curProject != null)
