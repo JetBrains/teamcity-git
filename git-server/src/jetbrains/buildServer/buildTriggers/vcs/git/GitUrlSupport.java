@@ -85,9 +85,13 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
 
     URIish uri = parseURIish(fetchUrl);
 
-    if (fetchUrl.startsWith("https://") && !fetchUrl.endsWith(".git")) {
+    if (fetchUrl.startsWith("https://") && !fetchUrl.endsWith(".git") && !fetchUrl.endsWith(".git/")) {
       VcsHostingRepo gitlabRepo = WellKnownHostingsUtil.getGitlabRepo(uri);
       if (gitlabRepo != null) {
+        // if repo ends with a backslash, but does not have ".git" suffix, we have to remove the backslash for JGit to work
+        if (fetchUrl.endsWith("/")) {
+          fetchUrl = fetchUrl.substring(0, fetchUrl.length() - 1);
+        }
         // for GitLab we need to add .git suffix to the fetch URL, otherwise, for some reason JGit can't work with this repository (although regular git command works)
         fetchUrl = fetchUrl + ".git";
         uri = parseURIish(fetchUrl);
@@ -99,6 +103,13 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     Map<String, String> props = new HashMap<>(myGitSupport.getDefaultVcsProperties());
     props.put(Constants.FETCH_URL, fetchUrl);
     props.putAll(getAuthSettings(url, uri));
+
+    // GitHub api does not seem to work with uri ending with trailing slash, but git works with it.
+    // no need to remove "/" from actual uri stored in properties
+    String uriPath = uri.getPath();
+    if (uriPath.endsWith("/")) {
+      uri = uri.setPath(uriPath.substring(0, uriPath.length() - 1));
+    }
 
     VcsHostingRepo ghRepo = WellKnownHostingsUtil.getGitHubRepo(uri);
     if (ghRepo != null && curProject != null)
