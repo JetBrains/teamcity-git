@@ -78,14 +78,15 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
   @Nullable
   public Map<String, String> convertToVcsRootProperties(@NotNull VcsUrl url, @NotNull VcsOperationContext operationContext) throws VcsException {
     String scmName = getMavenScmName(url);
-    if (scmName != null && !"git".equals(scmName) && !"ssh".equals(scmName)) //some other scm provider
+    if (scmName != null && !"git".equalsIgnoreCase(scmName) && !"ssh".equalsIgnoreCase(scmName)) //some other scm provider
       return null;
 
     String fetchUrl = getFetchUrl(url);
+    String lowerCaseFetchUrl = StringUtil.toLowerCase(fetchUrl);
 
     URIish uri = parseURIish(fetchUrl);
 
-    if (fetchUrl.startsWith("https://") && !fetchUrl.endsWith(".git")) {
+    if (lowerCaseFetchUrl.startsWith("https://") && !lowerCaseFetchUrl.endsWith(".git")) {
       VcsHostingRepo gitlabRepo = WellKnownHostingsUtil.getGitlabRepo(uri);
       if (gitlabRepo != null) {
         // for GitLab we need to add .git suffix to the fetch URL, otherwise, for some reason JGit can't work with this repository (although regular git command works)
@@ -176,7 +177,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     final boolean defaultBranchKnown = props.get(Constants.BRANCH_NAME) != null;
     if (defaultBranchKnown) {
       //git protocol, or git scm provider
-      if ("git".equals(scmName) || "git".equals(uri.getScheme()) || fetchUrl.endsWith(".git")) return props;
+      if ("git".equalsIgnoreCase(scmName) || "git".equalsIgnoreCase(uri.getScheme()) || fetchUrl.endsWith(".git") || lowerCaseFetchUrl.endsWith(".git")) return props;
     }
 
     // need to guess default branch or
@@ -195,7 +196,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
   private boolean isSsh(URIish uri) {
     String scheme = uri.getScheme();
     if (scheme == null && !StringUtil.isEmptyOrSpaces(uri.getUser())) return true;
-    return "ssh".equals(scheme);
+    return "ssh".equalsIgnoreCase(scheme);
   }
 
   @NotNull
@@ -319,7 +320,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
   }
 
   private AuthenticationMethod getAuthMethod(@NotNull VcsUrl url, @NotNull URIish uri) {
-    if (isScpSyntax(uri) || "ssh".equals(uri.getScheme()))
+    if (isScpSyntax(uri) || "ssh".equalsIgnoreCase(uri.getScheme()))
       return AuthenticationMethod.PRIVATE_KEY_DEFAULT;
     Credentials credentials = url.getCredentials();
     if (credentials != null)
