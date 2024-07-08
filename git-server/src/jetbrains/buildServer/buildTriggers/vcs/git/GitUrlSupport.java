@@ -89,9 +89,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
       VcsHostingRepo gitlabRepo = WellKnownHostingsUtil.getGitlabRepo(uri);
       if (gitlabRepo != null) {
         // if repo ends with a backslash, but does not have ".git" suffix, we have to remove the backslash for JGit to work
-        if (fetchUrl.endsWith("/")) {
-          fetchUrl = fetchUrl.substring(0, fetchUrl.length() - 1);
-        }
+        fetchUrl = StringUtil.removeTailingSlash(fetchUrl);
         // for GitLab we need to add .git suffix to the fetch URL, otherwise, for some reason JGit can't work with this repository (although regular git command works)
         fetchUrl = fetchUrl + ".git";
         uri = parseURIish(fetchUrl);
