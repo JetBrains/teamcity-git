@@ -351,7 +351,7 @@ public class AgentRunningBuildBuilder {
 
       @NotNull
       public NodeIdHolder getNodeIdHolder() {
-        return new BuildNodeIdHolder("main");
+        return new BuildNodeIdHolder(this, "main");
       }
 
       @NotNull
