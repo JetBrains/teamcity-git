@@ -70,8 +70,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
       GitVcsRoot gitRoot;
       final String initBranch = "tempInitializationBranch";
       Map<String, String> props = myVcs.getDefaultVcsProperties();
-      Path centralConfigsRepositoryPluginData = myServerPaths.getCacheDirectory("centralConfigsRepository").toPath();
-      Path localRepo = centralConfigsRepositoryPluginData.resolve("localMirror");
+      Path localRepo = myServerPaths.getCacheDirectory("centralConfigsRepository").toPath().resolve("localMirror");
       boolean shouldCreateRepo = shouldCreateRepo(localRepo, repositoryUrl);
       try {
         if (shouldCreateRepo && Files.exists(localRepo)) {
@@ -88,7 +87,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         props.put(Constants.BRANCH_NAME, repositoryConfiguration.getBranch());
         if (CentralRepositoryConfiguration.Auth.KEY.equals(repositoryConfiguration.getAuth())) {
           props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.toString());
-          Path authKeyPath = centralConfigsRepositoryPluginData.resolve(CentralConfigsRepository.KEY_FILE_NAME).toAbsolutePath();
+          Path authKeyPath = CentralConfigsRepositoryUtils.getCentralConfigsRepositoryPluginData(myServerPaths).resolve(CentralConfigsRepository.KEY_FILE_NAME).toAbsolutePath();
           if (!Files.exists(authKeyPath)) {
             throw new RuntimeException("Private key for repository isn't found. Upload private key with write access to the repository");
           }
