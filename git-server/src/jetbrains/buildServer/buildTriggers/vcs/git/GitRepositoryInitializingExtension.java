@@ -70,7 +70,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
       GitVcsRoot gitRoot;
       final String initBranch = "tempInitializationBranch";
       Map<String, String> props = myVcs.getDefaultVcsProperties();
-      Path centralConfigsRepositoryPluginData = CentralConfigsRepositoryUtils.getCentralConfigsRepositoryPluginData(myServerPaths);
+      Path centralConfigsRepositoryPluginData = myServerPaths.getCacheDirectory("centralConfigsRepository").toPath();
       Path localRepo = centralConfigsRepositoryPluginData.resolve("localMirror");
       boolean shouldCreateRepo = shouldCreateRepo(localRepo, repositoryUrl);
       try {
