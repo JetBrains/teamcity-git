@@ -152,8 +152,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         }
         String shortBranch = fullBranch.replace("refs/heads/", "");
         if (originExisted) {
-          git.checkout().
-             setCreateBranch(true).
+          git.branchCreate().
              setName(initBranch).
              setStartPoint(shortBranch).
              call();
