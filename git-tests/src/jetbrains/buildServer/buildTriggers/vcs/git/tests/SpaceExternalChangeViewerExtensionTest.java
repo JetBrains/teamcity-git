@@ -9,6 +9,7 @@ import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.changeViewers.PropertyType;
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor;
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager;
+import jetbrains.buildServer.serverSide.oauth.space.SpaceLinkBuilder;
 import jetbrains.buildServer.serverSide.oauth.space.SpaceOAuthProvider;
 import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.impl.VcsRootInstanceImpl;
@@ -21,6 +22,7 @@ import java.util.Map;
 
 import static jetbrains.buildServer.serverSide.oauth.space.SpaceOAuthKeys.*;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertNull;
 
 public class SpaceExternalChangeViewerExtensionTest {
@@ -90,6 +92,8 @@ public class SpaceExternalChangeViewerExtensionTest {
       SPACE_CLIENT_ID, "ignore",
       SPACE_CLIENT_SECRET, "ignore"
     )).when(connection).getParameters();
+    Mockito.doReturn(Mockito.mock(SProject.class)).when(connection).getProject();
+    Mockito.doReturn("PROJECT_EXT_MOCK").when(connection).getId();
 
     // test
     SpaceExternalChangeViewerExtension extension = mySpaceExternalChangeViewerExtension();
@@ -192,12 +196,16 @@ public class SpaceExternalChangeViewerExtensionTest {
       SPACE_CLIENT_ID, "ignore",
       SPACE_CLIENT_SECRET, "ignore"
     )).when(connection1).getParameters();
+    Mockito.doReturn(Mockito.mock(SProject.class)).when(connection1).getProject();
+    Mockito.doReturn("PROJECT_EXT_MOCK_1").when(connection1).getId();
 
     Mockito.doReturn(ImmutableMap.of(
       SPACE_SERVER_URL, selfHostedServerUrl,
       SPACE_CLIENT_ID, "ignore",
       SPACE_CLIENT_SECRET, "ignore"
     )).when(connection2).getParameters();
+    Mockito.doReturn(Mockito.mock(SProject.class)).when(connection2).getProject();
+    Mockito.doReturn("PROJECT_EXT_MOCK_2").when(connection2).getId();
 
     // test
     SpaceExternalChangeViewerExtension extension = mySpaceExternalChangeViewerExtension();
@@ -216,6 +224,6 @@ public class SpaceExternalChangeViewerExtensionTest {
 
   @NotNull
   private SpaceExternalChangeViewerExtension mySpaceExternalChangeViewerExtension() {
-    return new SpaceExternalChangeViewerExtension(myExtensionHolder, myOAuthConnectionsManager);
+    return new SpaceExternalChangeViewerExtension(myExtensionHolder, myOAuthConnectionsManager, new SpaceLinkBuilder());
   }
 }

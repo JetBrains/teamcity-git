@@ -9,6 +9,7 @@ import jetbrains.buildServer.serverSide.changeViewers.PropertyType;
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor;
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager;
 import jetbrains.buildServer.serverSide.oauth.space.SpaceConnectDescriber;
+import jetbrains.buildServer.serverSide.oauth.space.SpaceLinkBuilder;
 import jetbrains.buildServer.serverSide.oauth.space.SpaceOAuthProvider;
 import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.vcs.SVcsRoot;
@@ -22,12 +23,17 @@ public class SpaceExternalChangeViewerExtension implements ExternalChangeViewerE
 
   private final OAuthConnectionsManager myOAuthConnectionsManager;
 
+  @NotNull
+  private final SpaceLinkBuilder mySpaceLinkBuilder;
+
   public SpaceExternalChangeViewerExtension(
     @NotNull ExtensionHolder extensionHolder,
-    @NotNull OAuthConnectionsManager oAuthConnectionsManager
+    @NotNull OAuthConnectionsManager oAuthConnectionsManager,
+    @NotNull SpaceLinkBuilder spaceLinkBuilder
   ) {
-    extensionHolder.registerExtension(ExternalChangeViewerExtension.class, getClass().getName(), this);
     myOAuthConnectionsManager = oAuthConnectionsManager;
+    mySpaceLinkBuilder = spaceLinkBuilder;
+    extensionHolder.registerExtension(ExternalChangeViewerExtension.class, getClass().getName(), this);
   }
 
   @Nullable
@@ -74,7 +80,7 @@ public class SpaceExternalChangeViewerExtension implements ExternalChangeViewerE
           if (strings.length == 2) {
             final String project = strings[0];
             final String repository = strings[1].replaceFirst("\\.git$", "");
-            final String repositoryUrl = String.format("https://%s/p/%s/repositories/%s", spaceAddress, project, repository);
+            final String repositoryUrl = mySpaceLinkBuilder.buildForRepository(connection, project, repository);
 
             return createResponse(repositoryUrl);
           }
