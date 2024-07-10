@@ -112,13 +112,13 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
           }
         }
       } catch (VcsException | IOException e) {
-        throw new RuntimeException("Can not create local git repository for committing current configuration files: " + e.getMessage());
+        throw new RuntimeException("Could not create local git repository for committing current configuration files, error: " + e.getMessage());
       }
 
       try {
         db = FileRepositoryBuilder.create(new File(repoPath, ".git"));
       } catch (IOException e) {
-        throw new RuntimeException("Can not create local git repository for committing current configuration files", e);
+        throw new RuntimeException("Could not create local git repository for committing current configuration files, error: " + e.getMessage(), e);
       }
       if (shouldCreateRepo) {
         StoredConfig config = db.getConfig();
@@ -127,7 +127,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         try {
           config.save();
         } catch (IOException e) {
-          throw new RuntimeException("Can not bind origin remote repository with the local repository", e);
+          throw new RuntimeException("Could not bind origin remote repository with the local repository, error: " + e.getMessage(), e);
         }
       }
       Git git = new Git(db);
@@ -197,12 +197,12 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
         }
         createdCommit = getLastCommit(db, GitUtils.expandRef(initBranch));
       } catch (Exception e) {
-        throw new RuntimeException("TeamCity can not commit all current configuration files into local repository: " + e.getMessage(), e);
+        throw new RuntimeException("Could not commit all current configuration files into local repository, error: " + e.getMessage(), e);
       }
       try {
         myGitRepoOperations.pushCommand(repositoryUrl).push(db, gitRoot, repositoryConfiguration.getBranch(), createdCommit.name(), lastCommit.name());
       } catch (VcsException e) {
-        throw new RuntimeException("TeamCity can not push commits into remote repository: " + e.getMessage(), e);
+        throw new RuntimeException("Could not push commits into the remote repository, error: " + e.getMessage(), e);
       }
       return props;
     } catch (Exception e) {
