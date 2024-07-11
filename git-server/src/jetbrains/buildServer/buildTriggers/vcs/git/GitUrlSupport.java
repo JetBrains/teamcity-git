@@ -285,8 +285,10 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
     if (authMethod.isPasswordBased() && StringUtil.isNotEmpty(password)) {
       if (ReferencesResolverUtil.containsReference(password) || password.length() != 40) return; // we can only proceed with PAT, or GitHub Apps connections
 
-      if (auth.getUserName() != null) {
+      if (StringUtil.isNotEmpty(auth.getUserName())) {
         client.setCredentials(auth.getUserName(), password);
+      } else {
+        client.setOAuth2Token(password);
       }
     }
     try {
