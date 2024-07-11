@@ -322,9 +322,11 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
   }
 
   private AuthenticationMethod getAuthMethod(@NotNull VcsUrl url, @NotNull URIish uri) {
-    if (isScpSyntax(uri) || "ssh".equalsIgnoreCase(uri.getScheme()))
-      return AuthenticationMethod.PRIVATE_KEY_DEFAULT;
     Credentials credentials = url.getCredentials();
+    if (isScpSyntax(uri) || "ssh".equalsIgnoreCase(uri.getScheme())) {
+      if (credentials == null || credentials instanceof SshKeyCredentials)
+        return AuthenticationMethod.PRIVATE_KEY_DEFAULT;
+    }
     if (credentials != null)
       return credentials instanceof RefreshableTokenCredentials ? AuthenticationMethod.ACCESS_TOKEN : AuthenticationMethod.PASSWORD;
     return AuthenticationMethod.ANONYMOUS;
