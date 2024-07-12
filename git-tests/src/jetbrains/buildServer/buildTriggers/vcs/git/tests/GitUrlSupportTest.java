@@ -161,13 +161,24 @@ public class GitUrlSupportTest extends BaseTestCase {
     myTestConnectionMocked = true;
 
     GitVcsRoot root = toGitRoot(url);
-    assertEquals(new URIish("user@github.com:user/repo.git"), root.getRepositoryFetchURL().get());
-    assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
+    URIish expected = new URIish("user@github.com:user/repo.git").setPass("pass");
+    assertEquals(expected, root.getRepositoryFetchURL().get());
+    assertEquals(AuthenticationMethod.PASSWORD, root.getAuthSettings().getAuthMethod());
     assertEquals("user", root.getAuthSettings().toMap().get(Constants.USERNAME));
-    assertNull(root.getAuthSettings().toMap().get(Constants.PASSWORD));
+    assertEquals("pass", root.getAuthSettings().toMap().get(Constants.PASSWORD));
 
     assertEquals(root.getProperties(),
                  myUrlSupport.convertToVcsRootProperties(new VcsUrl("git@github.com:user/repo.git", new Credentials("user", "pass")), createRootContext()));
+  }
+
+  @Test
+  public void convert_scp_like_syntax_with_password() throws Exception {
+    VcsUrl url = new VcsUrl("scm:git:git@github.com:user/repo.git", new Credentials("user", "pass"));
+    myTestConnectionMocked = true;
+
+    GitVcsRoot root = toGitRoot(url);
+    URIish expected = new URIish("user@github.com:user/repo.git").setPass("pass");
+    assertEquals(expected, root.getRepositoryFetchURL().get());
   }
 
   @Test
@@ -288,12 +299,18 @@ public class GitUrlSupportTest extends BaseTestCase {
 
   private void checkAuthMethod(MavenVcsUrl url, GitVcsRoot root) {
     if (url.getProviderSpecificPart().startsWith("ssh")) {
-      assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
-      assertTrue(root.getAuthSettings().isIgnoreKnownHosts());
-      if (url.getCredentials() != null) {
-        assertEquals(url.getCredentials().getUsername(), root.getAuthSettings().toMap().get(Constants.USERNAME));
+      Credentials cre = url.getCredentials();
+      if (cre != null) {
+        assertEquals(cre.getUsername(), root.getAuthSettings().toMap().get(Constants.USERNAME));
+        assertEquals(cre.getPassword(), root.getAuthSettings().toMap().get(Constants.PASSWORD));
+        if (StringUtil.isNotEmpty(cre.getUsername()) && StringUtil.isNotEmpty(cre.getPassword())) {
+          assertEquals(AuthenticationMethod.PASSWORD, root.getAuthSettings().getAuthMethod());
+        }
       }
-      assertNull(root.getAuthSettings().toMap().get(Constants.PASSWORD));
+      if (cre == null || StringUtil.isEmpty(cre.getUsername()) || StringUtil.isEmpty(cre.getPassword())) {
+        assertEquals(AuthenticationMethod.PRIVATE_KEY_DEFAULT, root.getAuthSettings().getAuthMethod());
+      }
+      assertTrue(root.getAuthSettings().isIgnoreKnownHosts());
     } else {
       if (url.getCredentials() != null &&
           !StringUtil.isEmptyOrSpaces(url.getCredentials().getUsername()) &&
