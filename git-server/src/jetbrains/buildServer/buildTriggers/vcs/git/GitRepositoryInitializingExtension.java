@@ -179,7 +179,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
 
             @Override
             public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-              throw exc;
+              return FileVisitResult.CONTINUE;
             }
 
             @Override
