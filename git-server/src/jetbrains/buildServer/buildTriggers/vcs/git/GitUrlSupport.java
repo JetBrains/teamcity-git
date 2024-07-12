@@ -327,7 +327,7 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
       if (credentials == null || credentials instanceof SshKeyCredentials)
         return AuthenticationMethod.PRIVATE_KEY_DEFAULT;
     }
-    if (credentials != null)
+    if (credentials != null && (StringUtil.isNotEmpty(credentials.getUsername()) || StringUtil.isNotEmpty(credentials.getPassword())))
       return credentials instanceof RefreshableTokenCredentials ? AuthenticationMethod.ACCESS_TOKEN : AuthenticationMethod.PASSWORD;
     return AuthenticationMethod.ANONYMOUS;
   }
