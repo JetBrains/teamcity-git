@@ -20,6 +20,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperations;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.*;
 import jetbrains.buildServer.util.ssl.TrustStoreIO;
@@ -50,6 +51,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   private final ServerPluginConfig myConfig;
   private final GitDetector myGitDetector;
   private final VcsRootSshKeyManager mySshKeyManager;
+  private final SshKnownHostsManager myKnownHostsManager;
 
   private final File myTrustedCertificatesDir;
 
@@ -58,11 +60,13 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   public NativeGitCommands(@NotNull ServerPluginConfig config,
                            @NotNull GitDetector gitDetector,
                            @NotNull VcsRootSshKeyManager sshKeyManager,
-                           @Nullable File trustedCertificatesDir) {
+                           @Nullable File trustedCertificatesDir,
+                           @NotNull SshKnownHostsManager knownHostsManager) {
     myConfig = config;
     myGitDetector = gitDetector;
     mySshKeyManager = sshKeyManager;
     myTrustedCertificatesDir = trustedCertificatesDir;
+    myKnownHostsManager = knownHostsManager;
   }
 
   private boolean shouldGenerateMergedSslCertificate(@NotNull String pemContent, @NotNull File cachedSslDirectory) throws VcsException {
@@ -163,7 +167,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   private void prune(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull FetchSettings settings) throws VcsException {
     final GitExec gitExec = myGitDetector.detectGit();
-    final Context ctx = new ContextImpl(null, myConfig, gitExec, settings.getProgress());
+    final Context ctx = new ContextImpl(null, myConfig, gitExec, settings.getProgress(), myKnownHostsManager);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
@@ -249,7 +253,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   @Override
   public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull FetchSettings settings) throws IOException, VcsException {
     final GitExec gitExec = myGitDetector.detectGit();
-    final Context ctx = new ContextImpl(null, myConfig, gitExec, settings.getProgress());
+    final Context ctx = new ContextImpl(null, myConfig, gitExec, settings.getProgress(), myKnownHostsManager);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
     Collection<String> resultRefSpecs = defineRefSpecsForFetch(settings);
@@ -268,7 +272,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   @NotNull
   @Override
   public InitCommandResult init(@NotNull String path, boolean bare, String initialBranch) throws VcsException {
-    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit(), myKnownHostsManager);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
 
     final File gitDir = new File(path, ".git");
@@ -296,7 +300,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   @Override
   public void addConfigParameter(String path, GitConfigCommand.Scope scope, String name, String value) throws VcsException {
-    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit(), myKnownHostsManager);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
     executeCommand(ctx, "gitConfig", "Set config parameters", () -> {
       final GitConfigCommand gitConfigCommand = gitFacade.gitConfig()
@@ -310,7 +314,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   @Override
   public void removeConfigParameter(String path, GitConfigCommand.Scope scope, String name) throws VcsException {
-    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit(), myKnownHostsManager);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
     executeCommand(ctx, "gitConfig", "Remove config parameters", () -> {
       final GitConfigCommand gitConfigCommand = gitFacade.gitConfig()
@@ -324,7 +328,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   @Override
   public void repack(String path) throws VcsException {
-    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit(), myKnownHostsManager);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(path), ctx);
     executeCommand(ctx, "gitConfig", "Remove config parameters", () -> {
       final RepackCommand repackCommand = gitFacade.repack();
@@ -335,7 +339,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   @Override
   public void add(String repositoryPath, List<String> paths) throws VcsException {
-    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit(), myKnownHostsManager);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(repositoryPath), ctx);
 
     executeCommand(ctx, "add", "add files in repository: " + repositoryPath, () -> {
@@ -351,7 +355,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   @Override
   public void commit(String repositoryPath, @NotNull CommitSettings commitSettings) throws VcsException {
 
-    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit());
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit(), myKnownHostsManager);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(repositoryPath), ctx);
 
     executeCommand(ctx, "commit", "commit files in repository: " + repositoryPath, () -> {
@@ -367,7 +371,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   @NotNull
   @Override
   public Map<String, Ref> lsRemote(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull FetchSettings settings) throws VcsException {
-    final Context ctx = new ContextImpl(gitRoot, myConfig, myGitDetector.detectGit(), settings.getProgress());
+    final Context ctx = new ContextImpl(gitRoot, myConfig, myGitDetector.detectGit(), settings.getProgress(), myKnownHostsManager);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
@@ -390,7 +394,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
     final String fullRef = GitUtils.expandRef(ref);
 
-    final Context ctx = new ContextImpl(gitRoot, myConfig, myGitDetector.detectGit());
+    final Context ctx = new ContextImpl(gitRoot, myConfig, myGitDetector.detectGit(), myKnownHostsManager);
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);
 
@@ -424,7 +428,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
   @Override
   @NotNull
   public String tag(@NotNull OperationContext context, @NotNull String tag, @Nullable String message, @NotNull String commit) throws VcsException {
-    final Context ctx = new ContextImpl(context.getGitRoot(), myConfig, myGitDetector.detectGit());
+    final Context ctx = new ContextImpl(context.getGitRoot(), myConfig, myGitDetector.detectGit(), myKnownHostsManager);
     final Repository db = context.getRepository();
     final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
     gitFacade.setSshKeyManager(mySshKeyManager);

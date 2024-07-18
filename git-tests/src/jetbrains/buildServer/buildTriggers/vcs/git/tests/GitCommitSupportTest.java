@@ -293,7 +293,8 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     myGitRepoOperations = new GitRepoOperationsImpl(builder.getPluginConfig(),
                               builder.getTransportFactory(),
                               r -> null,
-                              (a,b,c) -> {});
+                              (a,b,c) -> {},
+                              myKnownHostsManager);
     myCommitSupport = new GitCommitSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(), myGitRepoOperations);
     myRoot = vcsRoot().withFetchUrl(getRemoteRepositoryDir("merge")).build();
   }
@@ -314,11 +315,11 @@ public class GitCommitSupportTest extends BaseRemoteRepositoryTest {
     myCommitSupport = new GitCommitSupport(myGit, builder.getCommitLoader(), repositoryManager, new GitRepoOperationsImpl(config,
                                                                                                                           builder.getTransportFactory(),
                                                                                                                           r -> null,
-                                                                                                                          (a,b,c) -> {}) {
+                                                                                                                          (a,b,c) -> {}, myKnownHostsManager) {
       @NotNull
       @Override
       public PushCommand pushCommand(@NotNull String repoUrl) {
-        return new NativeGitCommands(config, GitCommitSupportTest::detectGitStub, r -> null, null) {
+        return new NativeGitCommands(config, GitCommitSupportTest::detectGitStub, r -> null, null, myKnownHostsManager) {
           @Override
           protected <R> R executeCommand(@NotNull Context ctx, @NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, @NotNull GitFacade gitFacade) throws VcsException {
             throw new VcsException("Always fails");

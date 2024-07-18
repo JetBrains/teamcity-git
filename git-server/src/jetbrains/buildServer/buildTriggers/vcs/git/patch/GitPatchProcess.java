@@ -9,6 +9,9 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleFetchException;
 import jetbrains.buildServer.serverSide.CachePaths;
+import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
+import jetbrains.buildServer.ssh.SshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
@@ -36,10 +39,11 @@ public class GitPatchProcess {
       config, new MirrorManagerImpl(config, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl()));
     GitMapFullPath mapFullPath = new GitMapFullPath(config, new RevisionsCache(config));
     VcsRootSshKeyManager sshKeyManager = new ConstantSshKeyManager(settings.getKeyBytes());
-    TransportFactory transportFactory = new TransportFactoryImpl(config, sshKeyManager, settings.getGitTrustStoreProvider());
+    SshKnownHostsManager knownHostsManager = new SshKnownHostsManagerImpl(new ServerSshKnownHostsManagerImpl());
+    TransportFactory transportFactory = new TransportFactoryImpl(config, sshKeyManager, settings.getGitTrustStoreProvider(), knownHostsManager);
     FetcherProperties fetcherProperties = new FetcherProperties(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, fetcherProperties, sshKeyManager, settings.getGitTrustStoreProvider());
-    GitRepoOperations repoOperations = new GitRepoOperationsImpl(config, transportFactory, sshKeyManager, fetchCommand);
+    GitRepoOperations repoOperations = new GitRepoOperationsImpl(config, transportFactory, sshKeyManager, fetchCommand, knownHostsManager);
     CommitLoader commitLoader = new CommitLoaderImpl(repositoryManager, repoOperations, mapFullPath, config, new FetchSettingsFactoryImpl());
 
     OperationContext context = new OperationContext(commitLoader, repositoryManager, settings.getRoot(), "build patch", GitProgress.NO_OP, config, null);

@@ -5,6 +5,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
@@ -34,6 +35,7 @@ public class TransportFactoryTest {
   private TempFiles myTempFiles;
   private PluginConfigBuilder myConfigBuilder;
   private ServerPaths myServerPaths;
+  private SshKnownHostsManager mySshKnownHostsManager;
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -54,7 +56,7 @@ public class TransportFactoryTest {
     myConfigBuilder.setIdleTimeoutSeconds(20);
     ServerPluginConfig config = myConfigBuilder.build();
     VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
-    TransportFactory transportFactory = new TransportFactoryImpl(config, manager);
+    TransportFactory transportFactory = new TransportFactoryImpl(config, manager, mySshKnownHostsManager);
     Transport transport = createTransport(transportFactory);
     assertEquals(20, transport.getTimeout());
   }
@@ -70,7 +72,7 @@ public class TransportFactoryTest {
       .withPassword("pwd")
       .build();
     AuthSettings authSettings = new AuthSettingsImpl(root, new URIishHelperImpl());
-    TransportFactory factory = new TransportFactoryImpl(myConfigBuilder.build(), new EmptyVcsRootSshKeyManager());
+    TransportFactory factory = new TransportFactoryImpl(myConfigBuilder.build(), new EmptyVcsRootSshKeyManager(), mySshKnownHostsManager);
     factory.createTransport(r, new URIishHelperImpl().createAuthURI(authSettings, "git://some.org/repo.git").get(), authSettings);
   }
 

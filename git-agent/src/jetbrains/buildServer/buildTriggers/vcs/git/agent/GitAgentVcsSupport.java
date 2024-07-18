@@ -22,6 +22,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommandUtil;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import jetbrains.buildServer.vcs.*;
@@ -42,6 +43,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private final SubmoduleManager mySubmoduleManager;
   private final GitMetaFactory myGitMetaFactory;
   private final AgentTokenStorage myTokenStorage;
+  private final SshKnownHostsManager mySshKnownHostsManager;
 
   //The canCheckout() method should check that roots are not checked out in the same dir (TW-49786).
   //To do that we need to create AgentPluginConfig for each VCS root which involves 'git version'
@@ -66,7 +68,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             final SubmoduleManager submoduleManager,
                             @NotNull GitMetaFactory gitMetaFactory,
                             @NotNull EventDispatcher<AgentLifeCycleListener> agentEventDispatcher,
-                            @NotNull AgentTokenStorage tokenStorage) {
+                            @NotNull AgentTokenStorage tokenStorage,
+                            @NotNull SshKnownHostsManager sshKnownHostsManager) {
     myFS = fs;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
@@ -75,6 +78,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     mySubmoduleManager = submoduleManager;
     myGitMetaFactory = gitMetaFactory;
     myTokenStorage = tokenStorage;
+    mySshKnownHostsManager = sshKnownHostsManager;
 
     agentEventDispatcher.addListener(new AgentLifeCycleAdapter() {
       @Override
@@ -108,7 +112,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull AgentRunningBuild build,
                             boolean cleanCheckoutRequested) throws VcsException {
     AgentPluginConfig config = myConfigFactory.createConfig(build, root);
-    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, new BuildContext(build, config));
+    GitFactory gitFactory = myGitMetaFactory.createFactory(mySshService, new BuildContext(build, config, mySshKnownHostsManager));
     Pair<CheckoutMode, File> targetDirAndMode = getTargetDirAndMode(config, rules, checkoutDirectory);
     CheckoutMode mode = targetDirAndMode.first;
     File targetDir = targetDirAndMode.second;
