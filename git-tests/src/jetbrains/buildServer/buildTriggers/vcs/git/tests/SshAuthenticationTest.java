@@ -16,13 +16,11 @@ import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.TempFiles;
-import jetbrains.buildServer.agent.impl.ssh.AgentSshKnownHostsManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
-import jetbrains.buildServer.ssh.SshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
@@ -46,7 +44,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.data
 @Test
 public class SshAuthenticationTest extends BaseTestCase {
   protected TempFiles myTempFiles;
-  private final SshKnownHostsManager mySshKnownHostsManager = new SshKnownHostsManagerImpl(new ServerSshKnownHostsManagerImpl(), new AgentSshKnownHostsManagerImpl());
+  private final SshKnownHostsManager mySshKnownHostsManager = new ServerSshKnownHostsManagerImpl();
 
   @BeforeMethod
   public void setUp() throws Exception {

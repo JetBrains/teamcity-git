@@ -27,7 +27,6 @@ import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
-import jetbrains.buildServer.ssh.SshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.FileUtil;
@@ -90,7 +89,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   private ResetCacheRegister myResetCacheManager;
   private ServerPaths myServerPaths;
   private Mockery myContext;
-  private SshKnownHostsManager myKnownHostsManager = new SshKnownHostsManagerImpl(new ServerSshKnownHostsManagerImpl(), new AgentSshKnownHostsManagerImpl());
+  private SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl();
   @BeforeMethod
   public void setUp() throws IOException {
     myTestLogger.setLogLevel(Level.INFO);

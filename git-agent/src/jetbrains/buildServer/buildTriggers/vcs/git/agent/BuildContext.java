@@ -76,7 +76,7 @@ public class BuildContext implements Context {
   @Nullable
   @Override
   public String getSshKnownHosts() {
-    return mySshKnownHostsManager.getKnownHostsAgent(myBuild.getSharedConfigParameters());
+    return mySshKnownHostsManager.getKnownHosts(myBuild.getSharedConfigParameters());
   }
 
   @Override

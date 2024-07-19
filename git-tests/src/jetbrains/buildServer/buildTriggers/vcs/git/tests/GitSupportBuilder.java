@@ -5,7 +5,6 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import java.util.ArrayList;
 import java.util.List;
 import jetbrains.buildServer.ExtensionHolder;
-import jetbrains.buildServer.agent.impl.ssh.AgentSshKnownHostsManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.SProject;
@@ -14,7 +13,6 @@ import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.serverSide.oauth.OAuthToken;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
-import jetbrains.buildServer.ssh.SshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
@@ -43,7 +41,7 @@ public class GitSupportBuilder {
   private final List<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
   private VcsRootSshKeyManager myVcsRootSSHKeyManager = new EmptyVcsRootSshKeyManager();
   private GitRepoOperations myGitRepoOperations;
-  private SshKnownHostsManager myKnownHostsManager = new SshKnownHostsManagerImpl(new ServerSshKnownHostsManagerImpl(), new AgentSshKnownHostsManagerImpl());
+  private SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl();
 
   public static GitSupportBuilder gitSupport() {
     return new GitSupportBuilder();

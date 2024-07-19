@@ -11,7 +11,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleFetchExce
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
-import jetbrains.buildServer.ssh.SshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
@@ -39,7 +38,7 @@ public class GitPatchProcess {
       config, new MirrorManagerImpl(config, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl()));
     GitMapFullPath mapFullPath = new GitMapFullPath(config, new RevisionsCache(config));
     VcsRootSshKeyManager sshKeyManager = new ConstantSshKeyManager(settings.getKeyBytes());
-    SshKnownHostsManager knownHostsManager = new SshKnownHostsManagerImpl(new ServerSshKnownHostsManagerImpl());
+    SshKnownHostsManager knownHostsManager = new ServerSshKnownHostsManagerImpl();
     TransportFactory transportFactory = new TransportFactoryImpl(config, sshKeyManager, settings.getGitTrustStoreProvider(), knownHostsManager);
     FetcherProperties fetcherProperties = new FetcherProperties(config);
     FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, fetcherProperties, sshKeyManager, settings.getGitTrustStoreProvider());

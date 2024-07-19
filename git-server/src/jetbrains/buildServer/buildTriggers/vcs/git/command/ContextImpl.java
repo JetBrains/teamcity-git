@@ -70,7 +70,7 @@ public class ContextImpl implements Context {
   @Nullable
   @Override
   public String getSshKnownHosts() {
-    return myKnownHostsManager.getKnownHostsServer();
+    return myKnownHostsManager.getKnownHosts(null);
   }
 
   @Nullable
