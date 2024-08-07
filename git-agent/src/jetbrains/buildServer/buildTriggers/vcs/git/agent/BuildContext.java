@@ -8,6 +8,7 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.util.*;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildInterruptReason;
+import jetbrains.buildServer.agent.ssh.AgentSshKnownHostsContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
@@ -76,7 +77,7 @@ public class BuildContext implements Context {
   @Nullable
   @Override
   public String getSshKnownHosts() {
-    return mySshKnownHostsManager.getKnownHosts(myBuild.getSharedConfigParameters());
+    return mySshKnownHostsManager.getKnownHosts(new AgentSshKnownHostsContext(myBuild));
   }
 
   @Override

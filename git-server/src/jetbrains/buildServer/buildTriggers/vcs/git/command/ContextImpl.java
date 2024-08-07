@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.ssh.ServerSshKnownHostsContext;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.util.FileUtil;
 import org.jetbrains.annotations.NotNull;
@@ -70,7 +71,7 @@ public class ContextImpl implements Context {
   @Nullable
   @Override
   public String getSshKnownHosts() {
-    return myKnownHostsManager.getKnownHosts(null);
+    return myKnownHostsManager.getKnownHosts(ServerSshKnownHostsContext.INSTANCE);
   }
 
   @Nullable
