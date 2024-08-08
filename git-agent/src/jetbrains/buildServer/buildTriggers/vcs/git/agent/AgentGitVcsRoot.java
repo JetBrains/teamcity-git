@@ -77,7 +77,7 @@ public class AgentGitVcsRoot extends GitVcsRoot {
 
   public File getRepositoryDir() {
     //ignore custom clone path on server
-    String fetchUrl = getRepositoryFetchURL().toString();
+    String fetchUrl = getRepositoryOriginalFetchURL().toString();
     return myMirrorManager.getMirrorDir(fetchUrl);
   }
 

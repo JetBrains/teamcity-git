@@ -28,6 +28,7 @@ public class GitVcsRoot {
   protected final MirrorManager myMirrorManager;
   private final VcsRoot myDelegate;
   private final AtomicReference<CommonURIish> myRepositoryFetchURL = new AtomicReference<>();
+  private final AtomicReference<CommonURIish> myOriginalRepositoryFetchURL = new AtomicReference<>();
   private final AtomicReference<CommonURIish> myRepositoryFetchURLNoFixErrors = new AtomicReference<>();
   private final AtomicReference<CommonURIish> myRepositoryPushURL = new AtomicReference<>();
   private final AtomicReference<CommonURIish> myRepositoryPushURLNoFixErrors = new AtomicReference<>();
@@ -86,6 +87,9 @@ public class GitVcsRoot {
     if (myRawFetchUrl.contains("\n") || myRawFetchUrl.contains("\r"))
       throw new VcsException("Newline in fetch url '" + myRawFetchUrl + "'");
     myRepositoryFetchURL.set(myURIishHelper.createAuthURI(myAuthSettings, myRawFetchUrl));
+    if (modifiedFetchUrl != null) {
+      myOriginalRepositoryFetchURL.set(myURIishHelper.createAuthURI(myAuthSettings, getProperty(Constants.FETCH_URL)));
+    }
     myRepositoryFetchURLNoFixErrors.set(myURIishHelper.createAuthURI(myAuthSettings, myRawFetchUrl, false));
     // myPushUrl will never be empty if fetch url was modifiedFetchUrl(modifiedUrl != null)
     myPushUrl = getRawPushUrl(modifiedFetchUrl != null);
@@ -247,6 +251,17 @@ public class GitVcsRoot {
    */
   public CommonURIish getRepositoryFetchURL() {
     return getOrRefreshUrl(myRepositoryFetchURL, true);
+  }
+
+  /**
+   * @return original fetch URL for the repository. Might be different from the fetch url if it was modified
+   */
+  public CommonURIish getRepositoryOriginalFetchURL() {
+    if (myOriginalRepositoryFetchURL.get() == null) {
+      // fetch url wasn't modified
+      return getRepositoryFetchURL();
+    }
+    return getOrRefreshUrl(myOriginalRepositoryFetchURL, true);
   }
 
   public CommonURIish getRepositoryFetchURLNoFixedErrors() {

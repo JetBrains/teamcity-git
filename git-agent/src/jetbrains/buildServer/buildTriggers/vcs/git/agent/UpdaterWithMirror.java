@@ -72,7 +72,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     String message = "Update git mirror (" + myRoot.getRepositoryDir() + ")";
     myLogger.activityStarted(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
     try {
-      updateLocalMirror(myRoot.getRepositoryDir(), myRoot.getRepositoryFetchURL(), asRef(myFullBranchName, myRevision));
+      updateLocalMirror(myRoot.getRepositoryDir(), myRoot.getRepositoryFetchURL(), myRoot.getRepositoryOriginalFetchURL(), asRef(myFullBranchName, myRevision));
       //prepare refs for copying into working dir repository
       myGitFactory.create(myRoot.getRepositoryDir()).packRefs().call();
     } finally {
@@ -82,6 +82,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
   protected void updateLocalMirror(File bareRepositoryDir,
                                    CommonURIish fetchUrl,
+                                   CommonURIish originalFetchUrl,
                                    Ref... revisions) throws VcsException {
     final boolean isSubmodule = !isRootRepositoryDir(bareRepositoryDir);
     String mirrorDescription = (isSubmodule ? "submodule " : "") + "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
@@ -126,7 +127,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       } else {
         LOG.info("Failed to delete repository " + bareRepositoryDir + " after failed checkout, clone repository in another directory");
         myMirrorManager.invalidate(bareRepositoryDir);
-        updateLocalMirror(myMirrorManager.getMirrorDir(fetchUrl.toString()), fetchUrl, revisions);
+        updateLocalMirror(myMirrorManager.getMirrorDir(originalFetchUrl.toString()), fetchUrl, originalFetchUrl, revisions);
       }
     }
   }
@@ -268,8 +269,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
     final String message = "Update git mirror (" + mirrorRepositoryDir + ") for " + submodule.getNamesString();
     myLogger.activityStarted(message, GitBuildProgressLogger.GIT_PROGRESS_ACTIVITY);
     try {
+      CommonURIish submoduleUrl = new URIishHelperImpl().createURI(submodule.getUrl());
       updateLocalMirror(mirrorRepositoryDir,
-                        new URIishHelperImpl().createURI(submodule.getUrl()),
+                        submoduleUrl,
+                        submoduleUrl,
                         submodule.getRevisions());
       mirrorRepositoryDir = getSubmoduleMirror(submodule); // submodule mirrorRepositoryDir can change if couldn't remove it after unsuccessful fetch
       myGitFactory.create(mirrorRepositoryDir).packRefs().call();
