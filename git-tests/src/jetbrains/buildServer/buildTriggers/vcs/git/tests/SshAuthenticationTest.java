@@ -19,6 +19,8 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
@@ -42,6 +44,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.data
 @Test
 public class SshAuthenticationTest extends BaseTestCase {
   protected TempFiles myTempFiles;
+  private final SshKnownHostsManager mySshKnownHostsManager = new ServerSshKnownHostsManagerImpl();
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -428,7 +431,7 @@ public class SshAuthenticationTest extends BaseTestCase {
 
   @Test(dataProvider = "true,false")
   public void ssh_known_hosts_set_via_internal_property(boolean nativeOperationsEnabled) throws Exception {
-    setInternalProperty(Constants.SSH_KNOWN_HOSTS_PARAM_NAME + ".1", "localhost " + FileUtil.readText(dataFile("keys/docker_key.pub")));
+    setInternalProperty(SshKnownHostsManager.SSH_KNOWN_HOSTS_PARAM_NAME + ".1", "localhost " + FileUtil.readText(dataFile("keys/docker_key.pub")));
     final File key = dataFile("keys/id_rsa");
     do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", Files.readAllBytes(key.toPath()), false), "keys/id_rsa.pub",
                 b -> b.withAuthMethod(AuthenticationMethod.TEAMCITY_SSH_KEY).withTeamCitySshKey("test_key"), false, true);
@@ -436,7 +439,7 @@ public class SshAuthenticationTest extends BaseTestCase {
 
   @Test(dataProvider = "true,false")
   public void ssh_known_hosts_set_via_internal_property_server_key_is_not_present(boolean nativeOperationsEnabled) throws Exception {
-    setInternalProperty(Constants.SSH_KNOWN_HOSTS_PARAM_NAME + ".1", "localhost " + FileUtil.readText(dataFile("keys/id_rsa.pub")));
+    setInternalProperty(SshKnownHostsManager.SSH_KNOWN_HOSTS_PARAM_NAME + ".1", "localhost " + FileUtil.readText(dataFile("keys/id_rsa.pub")));
     final File key = dataFile("keys/id_rsa");
     try {
       do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", Files.readAllBytes(key.toPath()), false),
@@ -471,11 +474,11 @@ public class SshAuthenticationTest extends BaseTestCase {
       final ServerPaths serverPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
       final ServerPluginConfig config = new PluginConfigBuilder(serverPaths).build();
       final VcsRootSshKeyManager keyManager = r -> tcKey;
-      final TransportFactoryImpl transportFactory = new TransportFactoryImpl(config, keyManager);
+      final TransportFactoryImpl transportFactory = new TransportFactoryImpl(config, keyManager, mySshKnownHostsManager);
       final GitRepoOperationsImpl repoOperations = new GitRepoOperationsImpl(config, transportFactory, keyManager,
                                                                              new FetchCommandImpl(config, transportFactory,
                                                                                                   new FetcherProperties(config),
-                                                                                                  keyManager));
+                                                                                                  keyManager), mySshKnownHostsManager);
       final MirrorManagerImpl mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
       final RepositoryManagerImpl repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
       final String repoUrl = String.format(urlFormat, container.getContainerIpAddress(), container.getMappedPort(22));

@@ -4,6 +4,8 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.Pair;
 import com.jcraft.jsch.JSch;
+import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.util.DiagnosticUtil;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
@@ -66,7 +68,9 @@ public class Fetcher {
       gcListener = new GcListener(gcDumpFilePath);
       gcListener.startListen();
       exec.scheduleAtFixedRate(new Monitoring(threadDumpFilePath, gitOutput), 10, 10, TimeUnit.SECONDS);
-      fetch(new File(repositoryPath), properties, progress, debug);
+
+      SshKnownHostsManager knownHostsManager = new ServerSshKnownHostsManagerImpl();
+      fetch(new File(repositoryPath), properties, progress, knownHostsManager, debug);
 
       if (System.currentTimeMillis() - start <= new PluginConfigImpl().getMonitoringFileThresholdMillis()) {
         FileUtil.delete(new File(threadDumpFilePath));
@@ -99,6 +103,7 @@ public class Fetcher {
   private static void fetch(@NotNull File repositoryDir,
                             @NotNull Map<String, String> vcsRootProperties,
                             @NotNull ProgressMonitor progressMonitor,
+                            @NotNull SshKnownHostsManager knownHostsManager,
                             boolean debug) throws IOException, VcsException, URISyntaxException {
     final String fetchUrl = vcsRootProperties.get(Constants.FETCH_URL);
     final String refspecs = vcsRootProperties.get(Constants.REFSPEC);
@@ -109,7 +114,7 @@ public class Fetcher {
     GitServerUtil.setupMemoryMappedIndexReading();
     GitServerUtil.configureStreamFileThreshold(Integer.MAX_VALUE);
 
-    TransportFactory transportFactory = new TransportFactoryImpl(config, new EmptyVcsRootSshKeyManager(), new GitTrustStoreProviderStatic(trustedCertificatesDir));
+    TransportFactory transportFactory = new TransportFactoryImpl(config, new EmptyVcsRootSshKeyManager(), new GitTrustStoreProviderStatic(trustedCertificatesDir), knownHostsManager);
     Repository repository = GitServerUtil.getRepositoryWithDisabledAutoGc(repositoryDir);
 
     workaroundRacyGit();

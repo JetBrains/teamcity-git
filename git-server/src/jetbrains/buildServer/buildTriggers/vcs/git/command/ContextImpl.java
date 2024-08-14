@@ -8,12 +8,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.ssh.ServerSshKnownHostsContext;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.vcs.SVcsRoot;
-import jetbrains.buildServer.vcs.VcsRoot;
-import jetbrains.buildServer.vcs.VcsRootInstance;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -23,16 +21,18 @@ public class ContextImpl implements Context {
   private final GitProgress myProgress;
   private final GitExec myGitExec;
   private final GitVcsRoot myRoot;
+  private final SshKnownHostsManager myKnownHostsManager;
 
-  public ContextImpl(@Nullable GitVcsRoot root, @NotNull ServerPluginConfig config, @NotNull GitExec gitExec) {
-    this(root, config, gitExec, GitProgress.NO_OP);
+  public ContextImpl(@Nullable GitVcsRoot root, @NotNull ServerPluginConfig config, @NotNull GitExec gitExec, @NotNull SshKnownHostsManager knownHostsManager) {
+    this(root, config, gitExec, GitProgress.NO_OP, knownHostsManager);
   }
 
-  public ContextImpl(@Nullable GitVcsRoot root, @NotNull ServerPluginConfig config, @NotNull GitExec gitExec, @NotNull GitProgress progress) {
+  public ContextImpl(@Nullable GitVcsRoot root, @NotNull ServerPluginConfig config, @NotNull GitExec gitExec, @NotNull GitProgress progress, @NotNull SshKnownHostsManager knownHostsManager) {
     myRoot = root;
     myConfig = config;
     myGitExec = gitExec;
     myProgress = progress;
+    myKnownHostsManager = knownHostsManager;
   }
 
   @Nullable
@@ -71,11 +71,7 @@ public class ContextImpl implements Context {
   @Nullable
   @Override
   public String getSshKnownHosts() {
-    Collection<String> props = TeamCityProperties.getPropertiesWithPrefix(Constants.SSH_KNOWN_HOSTS_PARAM_NAME).values();
-    if (props.isEmpty()) {
-      return null;
-    }
-    return String.join("\n", props);
+    return myKnownHostsManager.getKnownHosts(ServerSshKnownHostsContext.INSTANCE);
   }
 
   @Nullable

@@ -29,5 +29,4 @@
   </bean>
   <bean id="mainConfigProcessor" class="jetbrains.buildServer.buildTriggers.vcs.git.GitMainConfigProcessor"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitDiagnosticsTab"/>
-  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.SshKnownHostsParameterProcessor"/>
 </beans>

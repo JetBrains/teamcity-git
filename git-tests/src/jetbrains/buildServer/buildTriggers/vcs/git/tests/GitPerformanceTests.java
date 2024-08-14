@@ -7,10 +7,12 @@ import java.io.OutputStream;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicLong;
 import jetbrains.buildServer.BaseTestCase;
+import jetbrains.buildServer.agent.impl.ssh.AgentSshKnownHostsManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.vcs.CheckoutRules;
@@ -51,7 +53,7 @@ public class GitPerformanceTests extends BaseTestCase {
         public TeamCitySshKey getKey(@NotNull VcsRoot root) {
           return null;
         }
-      }, null));
+      }, null, new ServerSshKnownHostsManagerImpl()));
     GitVcsSupport support = builder.build();
 
     final RepositoryStateData currentState = support.getCurrentState(root);

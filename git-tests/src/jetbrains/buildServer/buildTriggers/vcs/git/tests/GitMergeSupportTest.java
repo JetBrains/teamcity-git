@@ -46,7 +46,8 @@ public class GitMergeSupportTest extends BaseRemoteRepositoryTest {
     myRepoOperations = new GitRepoOperationsImpl(builder.getPluginConfig(),
                                                  builder.getTransportFactory(),
                                                  r -> null,
-                                                 (a, b, c) -> {});
+                                                 (a, b, c) -> {},
+                                                 myKnownHostsManager);
     myMergeSupport = new GitMergeSupport(myGit, builder.getCommitLoader(), builder.getRepositoryManager(),
                                          builder.getPluginConfig(),
                                          myRepoOperations);

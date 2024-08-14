@@ -13,6 +13,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder;
 import jetbrains.buildServer.connections.ExpiringAccessToken;
+import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.util.EventDispatcher;
 import org.jetbrains.annotations.NotNull;
 
@@ -77,7 +78,8 @@ class AgentSupportBuilder {
     };
     return new GitAgentVcsSupport(myFS, new MockDirectoryCleaner(), myGitAgentSSHService,
                                   myPluginConfigFactory, myMirrorManager, new SubmoduleManagerImpl(myMirrorManager), myGitMetaFactory,
-                                  EventDispatcher.create(AgentLifeCycleListener.class), new AgentTokenStorage(EventDispatcher.create(AgentLifeCycleListener.class), tokenRetriever));
+                                  EventDispatcher.create(AgentLifeCycleListener.class), new AgentTokenStorage(EventDispatcher.create(AgentLifeCycleListener.class), tokenRetriever),
+                                  new ServerSshKnownHostsManagerImpl());
   }
 
 

@@ -9,8 +9,10 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.serverSide.oauth.OAuthToken;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
@@ -39,6 +41,7 @@ public class GitSupportBuilder {
   private final List<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
   private VcsRootSshKeyManager myVcsRootSSHKeyManager = new EmptyVcsRootSshKeyManager();
   private GitRepoOperations myGitRepoOperations;
+  private SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl();
 
   public static GitSupportBuilder gitSupport() {
     return new GitSupportBuilder();
@@ -135,7 +138,7 @@ public class GitSupportBuilder {
     if (myPluginConfig == null)
       myPluginConfig = myPluginConfigBuilder != null ? myPluginConfigBuilder.build() : new PluginConfigImpl(myServerPaths);
     if (myTransportFactory == null)
-      myTransportFactory = new TransportFactoryImpl(myPluginConfig, myVcsRootSSHKeyManager);
+      myTransportFactory = new TransportFactoryImpl(myPluginConfig, myVcsRootSSHKeyManager, myKnownHostsManager);
 
     Mockery context = new Mockery();
     if (myFetchCommand == null) {
@@ -165,7 +168,7 @@ public class GitSupportBuilder {
     myMapFullPath = new GitMapFullPath(myPluginConfig, revisionsCache);
 
     if (myGitRepoOperations == null)
-      myGitRepoOperations = new GitRepoOperationsImpl(myPluginConfig, myTransportFactory, myVcsRootSSHKeyManager, myFetchCommand);
+      myGitRepoOperations = new GitRepoOperationsImpl(myPluginConfig, myTransportFactory, myVcsRootSSHKeyManager, myFetchCommand, myKnownHostsManager);
 
     myCommitLoader = new CommitLoaderImpl(myRepositoryManager, myGitRepoOperations, myMapFullPath, myPluginConfig, new FetchSettingsFactoryImpl());
     GitResetCacheHandler resetCacheHandler = new GitResetCacheHandler(myRepositoryManager, new GcErrors());

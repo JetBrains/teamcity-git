@@ -40,11 +40,11 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
     myServerPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
     final ServerPluginConfig config = new PluginConfigBuilder(myServerPaths).build();
     final VcsRootSshKeyManager keyManager = r -> null;
-    final TransportFactoryImpl transportFactory = new TransportFactoryImpl(config, keyManager);
+    final TransportFactoryImpl transportFactory = new TransportFactoryImpl(config, keyManager, myKnownHostsManager);
     final GitRepoOperationsImpl repoOperations = new GitRepoOperationsImpl(config, transportFactory, keyManager,
                                                                            new FetchCommandImpl(config, transportFactory,
                                                                                                 new FetcherProperties(config),
-                                                                                                keyManager));
+                                                                                                keyManager), myKnownHostsManager);
     myVcsSupport = gitSupport().withPluginConfig(config).build();
     myExtension = new GitRepositoryInitializingExtension(myVcsSupport, repoOperations, myServerPaths);
 

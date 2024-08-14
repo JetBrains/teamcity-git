@@ -18,6 +18,7 @@ import jetbrains.buildServer.metrics.NoOpCounter;
 import jetbrains.buildServer.metrics.ServerMetrics;
 import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CommitResult;
@@ -45,6 +46,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
 
   private final TransportFactory myTransportFactory;
   private final VcsRootSshKeyManager mySshKeyManager;
+  private final SshKnownHostsManager myKnownHostsManager;
   private final ServerPluginConfig myConfig;
   private final FetchCommand myJGitFetchCommand;
   private final LazyGitExec myGitExec = new LazyGitExec();
@@ -55,8 +57,9 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
                                @NotNull TransportFactory transportFactory,
                                @NotNull VcsRootSshKeyManager sshKeyManager,
-                               @NotNull FetchCommand jGitFetchCommand) {
-    this(config, NO_IMPL, transportFactory, sshKeyManager, jGitFetchCommand, (Function<String, Counter>)repoUrl -> EMPTY_COUNTER);
+                               @NotNull FetchCommand jGitFetchCommand,
+                               @NotNull SshKnownHostsManager sshKnownHostsManager) {
+    this(config, NO_IMPL, transportFactory, sshKeyManager, jGitFetchCommand, (Function<String, Counter>)repoUrl -> EMPTY_COUNTER, sshKnownHostsManager);
   }
 
   public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
@@ -64,8 +67,9 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
                                @NotNull TransportFactory transportFactory,
                                @NotNull VcsRootSshKeyManager sshKeyManager,
                                @NotNull FetchCommand jGitFetchCommand,
-                               @NotNull ServerMetrics serverMetrics) {
-    this(config, nativeOperationsStatus, transportFactory, sshKeyManager, jGitFetchCommand, new FetchDurationTimers(serverMetrics, config));
+                               @NotNull ServerMetrics serverMetrics,
+                               @NotNull SshKnownHostsManager sshKnownHostsManager) {
+    this(config, nativeOperationsStatus, transportFactory, sshKeyManager, jGitFetchCommand, new FetchDurationTimers(serverMetrics, config), sshKnownHostsManager);
   }
 
   private GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
@@ -73,13 +77,15 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
                                 @NotNull TransportFactory transportFactory,
                                 @NotNull VcsRootSshKeyManager sshKeyManager,
                                 @NotNull FetchCommand jGitFetchCommand,
-                                @NotNull Function<String, Counter> fetchDurationTimerProvider) {
+                                @NotNull Function<String, Counter> fetchDurationTimerProvider,
+                                @NotNull SshKnownHostsManager sshKnownHostsManager) {
     myConfig = config;
     myMainConfigSettings = nativeOperationsStatus;
     myTransportFactory = transportFactory;
     mySshKeyManager = sshKeyManager;
     myJGitFetchCommand = jGitFetchCommand;
     myFetchDurationTimerProvider = fetchDurationTimerProvider;
+    myKnownHostsManager = sshKnownHostsManager;
   }
 
   @NotNull
@@ -101,7 +107,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     final GitExec gitExec = gitExecInternal();
     if (isNativeGitOperationsSupported(gitExec)) {
       //noinspection ConstantConditions
-      return Optional.of(new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager, myTransportFactory.getCertificatesDir()));
+      return Optional.of(new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager, myTransportFactory.getCertificatesDir(), myKnownHostsManager));
     }
     return Optional.empty();
   }
@@ -187,7 +193,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     if (nativeOperations) {
       final GitExec gitExec = gitExecInternal();
       if (isNativeGitOperationsSupported(gitExec)) {
-        return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager, myTransportFactory.getCertificatesDir());
+        return new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager, myTransportFactory.getCertificatesDir(), myKnownHostsManager);
       } else {
         throw new UnsupportedOperationException("git executable " + gitExec.getPath() + " version " + gitExec.getVersion() + " is not supported for running native Git commands on server-side");
       }

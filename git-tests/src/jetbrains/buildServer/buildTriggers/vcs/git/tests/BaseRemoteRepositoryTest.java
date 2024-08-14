@@ -13,6 +13,8 @@ import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder;
 import jetbrains.buildServer.log.LogInitializer;
+import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -29,6 +31,7 @@ public abstract class BaseRemoteRepositoryTest {
   protected BuildAgentConfiguration myAgentConfiguration;
   private String[] myRepositories;
   private Map<String, File> myRemoteRepositories;
+  protected SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl();
 
   protected BaseRemoteRepositoryTest(String... repositories) {
     myRepositories = repositories;

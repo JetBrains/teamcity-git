@@ -6,8 +6,10 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import jetbrains.buildServer.agent.AgentRunningBuild;
+import jetbrains.buildServer.agent.impl.ssh.AgentSshKnownHostsManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
@@ -120,7 +122,8 @@ public class AgentSslCheckoutTest extends BaseRemoteRepositoryTest {
   private AgentGitFacade gitFacade(AgentRunningBuild build) throws VcsException {
     final AgentPluginConfig config = pluginConfigFactory().createConfig(build, myRoot);
     final Map<String, String> env = getGitCommandEnv(config, build);
-    final GitFactory gitFactory = gitMetaFactory().createFactory(getGitAgentSSHService(), new BuildContext(build, config));
+    SshKnownHostsManager knownHostsManager = new AgentSshKnownHostsManagerImpl();
+    final GitFactory gitFactory = gitMetaFactory().createFactory(getGitAgentSSHService(), new BuildContext(build, config, knownHostsManager));
     return gitFactory.create(myCheckoutDir);
   }
 

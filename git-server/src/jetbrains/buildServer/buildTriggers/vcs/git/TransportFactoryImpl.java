@@ -13,15 +13,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.jsch.SshPubkeyAcceptedAlgorithms;
-import jetbrains.buildServer.serverSide.SProject;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.ssh.ServerSshKnownHostsContext;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
-import jetbrains.buildServer.vcs.SVcsRoot;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
-import jetbrains.buildServer.vcs.VcsRootInstance;
 import jetbrains.buildServer.version.ServerVersionHolder;
 import jetbrains.buildServer.version.ServerVersionInfo;
 import org.eclipse.jgit.errors.NotSupportedException;
@@ -47,19 +45,23 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
   private final Map<String,String> myJSchOptions;
   private final VcsRootSshKeyManager mySshKeyManager;
   private final GitTrustStoreProvider myGitTrustStoreProvider;
+  private final SshKnownHostsManager myKnownHostsManager;
 
   public TransportFactoryImpl(@NotNull ServerPluginConfig config,
-                              @NotNull VcsRootSshKeyManager sshKeyManager) {
-    this(config, sshKeyManager, new GitTrustStoreProviderStatic(null));
+                              @NotNull VcsRootSshKeyManager sshKeyManager,
+                              @NotNull SshKnownHostsManager knownHostsManager) {
+    this(config, sshKeyManager, new GitTrustStoreProviderStatic(null), knownHostsManager);
   }
 
   public TransportFactoryImpl(@NotNull ServerPluginConfig config,
                               @NotNull VcsRootSshKeyManager sshKeyManager,
-                              @NotNull GitTrustStoreProvider gitTrustStoreProvider) {
+                              @NotNull GitTrustStoreProvider gitTrustStoreProvider,
+                              @NotNull SshKnownHostsManager knownHostsManager) {
     myConfig = config;
     myGitTrustStoreProvider = gitTrustStoreProvider;
     myJSchOptions = getJSchCipherOptions();
     mySshKeyManager = sshKeyManager;
+    myKnownHostsManager = knownHostsManager;
     String factoryName = myConfig.getHttpConnectionFactory();
     HttpConnectionFactory f;
     if ("httpClient".equals(factoryName)) {
@@ -152,13 +154,13 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
   public SshSessionFactory getSshSessionFactory(@NotNull URIish url, @NotNull AuthSettings authSettings) throws VcsException {
     switch (authSettings.getAuthMethod()) {
       case PRIVATE_KEY_DEFAULT:
-        return new DefaultJschConfigSessionFactory(myConfig, authSettings, myJSchOptions);
+        return new DefaultJschConfigSessionFactory(myConfig, authSettings, myJSchOptions, myKnownHostsManager);
       case PRIVATE_KEY_FILE:
-        return new CustomPrivateKeySessionFactory(myConfig, authSettings, myJSchOptions);
+        return new CustomPrivateKeySessionFactory(myConfig, authSettings, myJSchOptions, myKnownHostsManager);
       case TEAMCITY_SSH_KEY:
-        return new TeamCitySshKeySessionFactory(myConfig, authSettings, myJSchOptions, mySshKeyManager);
+        return new TeamCitySshKeySessionFactory(myConfig, authSettings, myJSchOptions, mySshKeyManager, myKnownHostsManager);
       case PASSWORD: case ACCESS_TOKEN:
-        return new PasswordJschConfigSessionFactory(myConfig, authSettings, myJSchOptions);
+        return new PasswordJschConfigSessionFactory(myConfig, authSettings, myJSchOptions, myKnownHostsManager);
       default:
         final AuthenticationMethod method = authSettings.getAuthMethod();
         final String methodName = method.uiName();
@@ -172,35 +174,29 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     return myGitTrustStoreProvider.getTrustedCertificatesDir();
   }
 
-  @Nullable
-  private static String getSshKnownHosts(@NotNull AuthSettings authSettings) {
-    Collection<String> props = TeamCityProperties.getPropertiesWithPrefix(Constants.SSH_KNOWN_HOSTS_PARAM_NAME).values();
-    if (props.isEmpty()) {
-      return null;
-    }
-    return String.join("\n", props);
-  }
-
   private static class DefaultJschConfigSessionFactory extends JschConfigSessionFactory {
     protected final ServerPluginConfig myConfig;
     protected final AuthSettings myAuthSettings;
+    protected final SshKnownHostsManager myKnownHostsManager;
     private final Map<String,String> myJschOptions;
     private final List<File> myFilesToDelete;
 
     private DefaultJschConfigSessionFactory(@NotNull ServerPluginConfig config,
                                             @NotNull AuthSettings authSettings,
-                                            @NotNull Map<String,String> jschOptions) {
+                                            @NotNull Map<String,String> jschOptions,
+                                            @NotNull SshKnownHostsManager sshKnownHostsManager) {
       myConfig = config;
       myAuthSettings = authSettings;
       myJschOptions = jschOptions;
       myFilesToDelete = new ArrayList<>();
+      myKnownHostsManager = sshKnownHostsManager;
     }
 
     @Override
     protected void configure(OpenSshConfig.Host hc, Session session) {
       configureClientVersion(session);
       session.setProxy(myConfig.getJschProxy());//null proxy is allowed
-      if (myAuthSettings.isIgnoreKnownHosts() && getSshKnownHosts(myAuthSettings) == null) {
+      if (myAuthSettings.isIgnoreKnownHosts() && myKnownHostsManager.getKnownHosts(ServerSshKnownHostsContext.INSTANCE) == null) {
         session.setConfig("StrictHostKeyChecking", "no");
       }
       if (!myConfig.alwaysCheckCiphers()) {
@@ -226,7 +222,7 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     }
 
     protected void configureKnownHosts(JSch jSch) throws JSchException{
-      String sshKnownHostsFromParam = getSshKnownHosts(myAuthSettings);
+      String sshKnownHostsFromParam = myKnownHostsManager.getKnownHosts(ServerSshKnownHostsContext.INSTANCE);
       if (sshKnownHostsFromParam != null) {
         File knownHostsFile;
         try {
@@ -263,8 +259,9 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
 
     private PasswordJschConfigSessionFactory(@NotNull ServerPluginConfig config,
                                              @NotNull AuthSettings authSettings,
-                                             @NotNull Map<String,String> jschOptions) {
-      super(config, authSettings, jschOptions);
+                                             @NotNull Map<String,String> jschOptions,
+                                             @NotNull SshKnownHostsManager sshKnownHostsManager) {
+      super(config, authSettings, jschOptions, sshKnownHostsManager);
     }
 
     @Override
@@ -280,8 +277,9 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
 
     private CustomPrivateKeySessionFactory(@NotNull ServerPluginConfig config,
                                            @NotNull AuthSettings authSettings,
-                                           @NotNull Map<String,String> jschOptions) {
-      super(config, authSettings, jschOptions);
+                                           @NotNull Map<String,String> jschOptions,
+                                           @NotNull SshKnownHostsManager sshKnownHostsManager) {
+      super(config, authSettings, jschOptions, sshKnownHostsManager);
     }
 
     @Override
@@ -300,7 +298,7 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     @Override
     protected void configure(OpenSshConfig.Host hc, Session session) {
       super.configure(hc, session);
-      if (getSshKnownHosts(myAuthSettings) == null) {
+      if (myKnownHostsManager.getKnownHosts(ServerSshKnownHostsContext.INSTANCE) == null) {
         session.setConfig("StrictHostKeyChecking", "no");
       }
       SshPubkeyAcceptedAlgorithms.configureSession(session);
@@ -315,8 +313,9 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     private TeamCitySshKeySessionFactory(@NotNull ServerPluginConfig config,
                                          @NotNull AuthSettings authSettings,
                                          @NotNull Map<String,String> jschOptions,
-                                         @NotNull VcsRootSshKeyManager sshKeyManager) {
-      super(config, authSettings, jschOptions);
+                                         @NotNull VcsRootSshKeyManager sshKeyManager,
+                                         @NotNull SshKnownHostsManager sshKnownHostsManager) {
+      super(config, authSettings, jschOptions, sshKnownHostsManager);
       mySshKeyManager = sshKeyManager;
     }
 
@@ -366,7 +365,7 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     @Override
     protected void configure(OpenSshConfig.Host hc, Session session) {
       super.configure(hc, session);
-      if (getSshKnownHosts(myAuthSettings) == null) {
+      if (myKnownHostsManager.getKnownHosts(ServerSshKnownHostsContext.INSTANCE) == null) {
         session.setConfig("StrictHostKeyChecking", "no");
       }
       SshPubkeyAcceptedAlgorithms.configureSession(session);

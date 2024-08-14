@@ -8,11 +8,12 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.util.*;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildInterruptReason;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.agent.ssh.AgentSshKnownHostsContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -22,11 +23,14 @@ public class BuildContext implements Context {
   private final AgentRunningBuild myBuild;
   private final AgentPluginConfig myConfig;
   private final GitProgressLogger myLogger;
+  private final SshKnownHostsManager mySshKnownHostsManager;
 
   public BuildContext(@NotNull AgentRunningBuild build,
-                      @NotNull AgentPluginConfig config) {
+                      @NotNull AgentPluginConfig config,
+                      @NotNull SshKnownHostsManager knownHostsManager) {
     myBuild = build;
     myConfig = config;
+    mySshKnownHostsManager = knownHostsManager;
     myLogger = new GitBuildProgressLogger(build.getBuildLogger().getFlowLogger("-1"), config.getGitProgressMode());
   }
 
@@ -73,7 +77,7 @@ public class BuildContext implements Context {
   @Nullable
   @Override
   public String getSshKnownHosts() {
-    return myBuild.getSharedConfigParameters().get(Constants.SSH_KNOWN_HOSTS_PARAM_NAME);
+    return mySshKnownHostsManager.getKnownHosts(new AgentSshKnownHostsContext(myBuild));
   }
 
   @Override
