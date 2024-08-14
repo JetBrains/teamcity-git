@@ -27,6 +27,7 @@ import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
+import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.util.*;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
 import jetbrains.buildServer.vcs.*;
@@ -299,7 +300,8 @@ public class PluginConfigImpl implements ServerPluginConfig {
       JschConfigSessionFactory.class,
       JSchConfigInitializer.class,
       Pair.class,
-      ExpiringAccessToken.class
+      ExpiringAccessToken.class,
+      ServerSshKnownHostsManagerImpl.class
     ));
     Collections.addAll(result, GitVcsSupport.class.getInterfaces());
     return result;
