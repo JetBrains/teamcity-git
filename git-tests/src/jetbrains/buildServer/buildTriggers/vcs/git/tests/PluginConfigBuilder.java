@@ -116,6 +116,11 @@ public class PluginConfigBuilder {
         return myDelegate.getPatchProcessIdleTimeoutSeconds();
       }
 
+      @Override
+      public int getPruneTimeoutSeconds() {
+        return myDelegate.getPruneTimeoutSeconds();
+      }
+
       public String getFetchProcessJavaPath() {
         return myDelegate.getFetchProcessJavaPath();
       }

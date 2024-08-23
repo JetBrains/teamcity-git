@@ -174,7 +174,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     executeCommand(ctx, "prune", LogUtil.describe(db, fetchURI), () -> {
       jetbrains.buildServer.buildTriggers.vcs.git.command.RemoteCommand prune =
         gitFacade.remote()
-               .setCommand("prune").setRemote("origin")
+               .setCommand("prune").setRemote("origin").setTimeout(myConfig.getPruneTimeoutSeconds())
                .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
                .setRetryAttempts(myConfig.getConnectionRetryAttempts())
                .setRepoUrl(fetchURI)

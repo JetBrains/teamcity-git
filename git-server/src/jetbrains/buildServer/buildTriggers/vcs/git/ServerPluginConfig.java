@@ -29,6 +29,8 @@ public interface ServerPluginConfig extends PluginConfig {
 
   int getPatchProcessIdleTimeoutSeconds();
 
+  int getPruneTimeoutSeconds();
+
   String getFetchProcessJavaPath();
 
 
