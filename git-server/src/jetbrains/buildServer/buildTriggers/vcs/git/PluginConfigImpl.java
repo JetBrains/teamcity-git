@@ -315,7 +315,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return TeamCityProperties.getInteger(TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS, DEFAULT_IDLE_TIMEOUT);
   }
 
-  public int getFetchTimeout() {
+  public int getFetchTimeoutSeconds() {
     int deprecatedFetchTimeout = TeamCityProperties.getInteger("teamcity.git.fetch.timeout", DEFAULT_IDLE_TIMEOUT);
     int idleTimeout = getIdleTimeoutSeconds();
     if (deprecatedFetchTimeout > idleTimeout)

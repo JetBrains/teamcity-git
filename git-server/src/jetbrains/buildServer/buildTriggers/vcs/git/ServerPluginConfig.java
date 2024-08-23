@@ -21,7 +21,7 @@ public interface ServerPluginConfig extends PluginConfig {
    */
   int getStreamFileThresholdMb();
 
-  int getFetchTimeout();
+  int getFetchTimeoutSeconds();
 
   int getPushTimeoutSeconds();
 

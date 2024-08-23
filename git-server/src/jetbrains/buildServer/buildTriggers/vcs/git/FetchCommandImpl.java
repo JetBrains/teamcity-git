@@ -109,7 +109,7 @@ public class FetchCommandImpl implements FetchCommand {
 
         final GitProcessExecutor.GitExecResult gitResult = processExecutor.runProcess(
           getFetchProcessInputBytes(getAuthSettings(settings, teamcityPrivateKey), repository.getDirectory(), uri, specs, getDumpFile(repository, null), gcDump, gitPropertiesFile),
-          myConfig.getFetchTimeout(),
+          myConfig.getFetchTimeoutSeconds(),
           settings.createStdoutBuffer(),
           new ByteArrayOutputStream(),
           new GitProcessExecutor.ProcessExecutorAdapter() {
@@ -241,7 +241,7 @@ public class FetchCommandImpl implements FetchCommand {
     StringBuilder message = new StringBuilder();
     message.append("git fetch for root ").append(debugInfo)
       .append(" was idle for more than ")
-      .append(myConfig.getFetchTimeout())
+      .append(myConfig.getFetchTimeoutSeconds())
       .append(" second(s), try increasing the timeout using the " + PluginConfigImpl.TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS + " property.");
     if (threadDump.exists())
       message.append(" Fetch progress details can be found in ").append(threadDump.getAbsolutePath());

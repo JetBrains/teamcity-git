@@ -99,8 +99,8 @@ public class PluginConfigBuilder {
         return myStreamFileThreshold != null ? myStreamFileThreshold : myDelegate.getStreamFileThresholdMb();
       }
 
-      public int getFetchTimeout() {
-        return myFetchTimeoutSeconds != null ? myFetchTimeoutSeconds : myDelegate.getFetchTimeout();
+      public int getFetchTimeoutSeconds() {
+        return myFetchTimeoutSeconds != null ? myFetchTimeoutSeconds : myDelegate.getFetchTimeoutSeconds();
       }
 
       @Override

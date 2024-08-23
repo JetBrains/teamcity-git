@@ -195,7 +195,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                .setRemote(fetchURI.toString())
                .setFetchTags(false)
                .setAuthSettings(settings.getAuthSettings()).setUseNativeSsh(true)
-               .setTimeout(myConfig.getFetchTimeout())
+               .setTimeout(myConfig.getFetchTimeoutSeconds())
                .setRetryAttempts(myConfig.getConnectionRetryAttempts())
                .setRepoUrl(fetchURI)
                .trace(myConfig.getGitTraceEnv())

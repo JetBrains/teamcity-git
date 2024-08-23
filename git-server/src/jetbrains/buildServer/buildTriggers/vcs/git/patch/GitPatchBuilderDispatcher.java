@@ -111,7 +111,7 @@ public final class GitPatchBuilderDispatcher {
             throw new VcsException("There is not enough memory for git patch (last attempted -Xmx" + xmx + "M). Please contact your system administrator", patchError);
 
           } else if (gitResult.isTimeout()) {
-            throw new VcsException("git patch for root " + rootStr + " was idle for more than " + myConfig.getFetchTimeout() + " second(s), try increasing the timeout using the " + PluginConfigImpl.TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS + " property", patchError);
+            throw new VcsException("git patch for root " + rootStr + " was idle for more than " + myConfig.getPatchProcessIdleTimeoutSeconds() + " second(s), try increasing the timeout using the " + PluginConfigImpl.TEAMCITY_GIT_IDLE_TIMEOUT_SECONDS + " property", patchError);
           }
           throw patchError;
         }
