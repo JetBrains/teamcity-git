@@ -89,7 +89,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   public static final String FETCH_REMOTE_BRANCHES_FACTOR = "teamcity.server.git.fetchRemoteBranchesFactor";
   public static final String FETCH_REMOTE_BRANCHES_THRESHOLD = "teamcity.server.git.fetchRemoteBranchesThreshold";
   public static final int FETCH_REMOTE_BRANCHES_THRESHOLD_DEFAULT = 200;
-  private static final String GET_PRUNE_TIMEOUT_SECONDS = "teamcity.git.pruneTimeoutSeconds";
+  private static final String GIT_PRUNE_TIMEOUT_SECONDS = "teamcity.git.pruneTimeoutSeconds";
 
   private final File myCachesDir;
 
@@ -339,7 +339,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   @Override
   public int getPruneTimeoutSeconds() {
-    return TeamCityProperties.getInteger(GET_PRUNE_TIMEOUT_SECONDS, 3600);
+    return TeamCityProperties.getInteger(GIT_PRUNE_TIMEOUT_SECONDS, 3600);
   }
 
   public long getMirrorExpirationTimeoutMillis() {
