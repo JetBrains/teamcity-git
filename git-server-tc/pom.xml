@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.jetbrains.teamcity.plugins</groupId>
+    <artifactId>teamcity-git</artifactId>
+    <version>${revision}</version>
+    <relativePath>../</relativePath>
+  </parent>
+  <artifactId>git-server-tc</artifactId>
+  <packaging>jar</packaging>
+
+  <dependencies>
+
+    <dependency>
+      <groupId>org.jetbrains.teamcity.plugins</groupId>
+      <artifactId>git-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jetbrains.teamcity.plugins</groupId>
+      <artifactId>git-server</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jetbrains.teamcity</groupId>
+      <artifactId>web-openapi</artifactId>
+      <version>${teamcity.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jetbrains.teamcity</groupId>
+      <artifactId>change-viewers</artifactId>
+      <version>${teamcity.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jetbrains.teamcity</groupId>
+      <artifactId>web-diagnostic</artifactId>
+      <version>${teamcity.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jetbrains.teamcity</groupId>
+      <artifactId>web-core</artifactId>
+      <version>${teamcity.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jetbrains.teamcity.internal</groupId>
+      <artifactId>web</artifactId>
+      <version>${teamcity.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+  </dependencies>
+</project>

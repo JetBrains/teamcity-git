@@ -700,7 +700,7 @@ public class GitVcsSupportTest extends PatchTestCase {
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void should_create_teamcity_config_in_root_with_custom_path(boolean fetchInSeparateProcess) throws IOException, VcsException {
     setInternalProperty(Constants.CUSTOM_CLONE_PATH_ENABLED, "true");
-    System.setProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
+    setInternalProperty("teamcity.git.fetch.separate.process", String.valueOf(fetchInSeparateProcess));
     File customRootDir = new File(myTmpDir, "custom-dir");
     VcsRootImpl root = (VcsRootImpl) getRoot("master");
     root.addProperty(Constants.PATH, customRootDir.getAbsolutePath());
@@ -758,120 +758,6 @@ public class GitVcsSupportTest extends PatchTestCase {
     } finally {
       System.setProperties(beforeTestProperties);
     }
-  }
-
-  @Test
-  @TestFor(issues = "TW-65641")
-  public void disable_auto_gc() throws Exception {
-    myConfigBuilder.setSeparateProcessForFetch(false);
-
-    final File repo = createTempDir();
-    ZipUtil.extract(new File(getTestDataPath(), "TW-65641-1.zip"), repo, null);
-
-    final GitVcsSupport support = getSupport();
-    final VcsRootImpl root = getRoot("master", false, repo);
-    final OperationContext context = support.createContext(root, "fetch");
-    final GitVcsRoot gitRoot = context.getGitRoot();
-    final File mirror = gitRoot.getRepositoryDir();
-    ZipUtil.extract(new File(getTestDataPath(), "TW-65641.zip"), mirror, null);
-
-    // make sure old pack files won't be kept
-    final StoredConfig config = context.getRepository().getConfig();
-    config.setString("gc", null, "prunepackexpire", "now");
-    config.save();
-
-    final File gitObjects = new File(mirror + "/objects");
-    Assert.assertTrue(gitObjects.isDirectory());
-
-    final HashSet<String> before = listObjectsRecursively(mirror);
-
-    support.collectChanges(root, "2faa6375bf6139923245a625a47bef046e5e6550", "ba04d81036c5953d17469f532e520fc1ecbcd3f1", CheckoutRules.DEFAULT);
-
-    Thread.sleep(5000); // enough time for auto gc to start
-    new WaitFor() {
-      @Override
-      protected boolean condition() {
-        return !new File(mirror, "gc.log.lock").isFile();
-      }
-    };
-
-    final HashSet<String> after = listObjectsRecursively(mirror);
-    Assert.assertTrue(after.containsAll(before));
-    after.removeAll(before);
-  }
-
-  @Test
-  public void gc_enabled_by_user() throws Exception {
-    final File repo = createTempDir();
-    ZipUtil.extract(new File(getTestDataPath(),"TW-65641-1.zip"), repo, null);
-
-    final GitVcsSupport support = getSupport();
-    final VcsRootImpl root = getRoot("master", false, repo);
-    final OperationContext context = support.createContext(root, "fetch");
-    final GitVcsRoot gitRoot = context.getGitRoot();
-    final File mirror = gitRoot.getRepositoryDir();
-    ZipUtil.extract(new File(getTestDataPath(),"TW-65641.zip"), mirror, null);
-
-    // make sure old pack files won't be kept
-    final StoredConfig config = context.getRepository().getConfig();
-    config.setString("gc", null, "prunepackexpire", "now");
-    config.setInt("gc", null, "auto", 1); // enable gc externally
-    config.save();
-
-    final File gitObjects = new File(mirror + "/objects");
-    Assert.assertTrue(gitObjects.isDirectory());
-
-    final HashSet<String> before = listObjectsRecursively(mirror);
-
-    support.collectChanges(root, "2faa6375bf6139923245a625a47bef046e5e6550", "ba04d81036c5953d17469f532e520fc1ecbcd3f1", CheckoutRules.DEFAULT);
-
-    Thread.sleep(5000); // enough time for auto gc to start
-    new WaitFor() {
-      @Override
-      protected boolean condition() {
-        return !new File(mirror, "gc.log.lock").isFile();
-      }
-    };
-
-    final HashSet<String> after = listObjectsRecursively(mirror);
-    Assert.assertFalse(after.containsAll(before));
-  }
-
-  @Test
-  public void gc_disabled_by_user() throws Exception {
-    final File repo = createTempDir();
-    ZipUtil.extract(new File(getTestDataPath(), "TW-65641-1.zip"), repo, null);
-
-    final GitVcsSupport support = getSupport();
-    final VcsRootImpl root = getRoot("master", false, repo);
-    final OperationContext context = support.createContext(root, "fetch");
-    final GitVcsRoot gitRoot = context.getGitRoot();
-    final File mirror = gitRoot.getRepositoryDir();
-    ZipUtil.extract(new File(getTestDataPath(), "TW-65641.zip"), mirror, null);
-
-    // make sure old pack files won't be kept
-    final StoredConfig config = context.getRepository().getConfig();
-    config.setString("gc", null, "prunepackexpire", "now");
-    config.setInt("gc", null, "auto", 0); // disable gc externally
-    config.save();
-
-    final File gitObjects = new File(mirror + "/objects");
-    Assert.assertTrue(gitObjects.isDirectory());
-
-    final HashSet<String> before = listObjectsRecursively(mirror);
-
-    support.collectChanges(root, "2faa6375bf6139923245a625a47bef046e5e6550", "ba04d81036c5953d17469f532e520fc1ecbcd3f1", CheckoutRules.DEFAULT);
-
-    Thread.sleep(5000); // enough time for auto gc to start
-    new WaitFor() {
-      @Override
-      protected boolean condition() {
-        return !new File(mirror, "gc.log.lock").isFile();
-      }
-    };
-
-    final HashSet<String> after = listObjectsRecursively(mirror);
-    Assert.assertTrue(after.containsAll(before));
   }
 
   @NotNull

@@ -28,7 +28,7 @@ public class GitTestUtil {
    * @return the IO file object (the file is absolute)
    */
   public static File dataFile(String... path) {
-    File f = new File("git-tests", "data");
+    File f = new File("src/test/resources", "data");
     for (String p : path) {
       f = new File(f, p);
     }

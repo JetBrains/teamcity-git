@@ -6,3 +6,10 @@
 /test-output
 .idea/workspace.xml
 /.idea/codeStyles/
+git-common/target
+git-agent/target
+git-server/target
+git-server-tc/target
+git-tests/target
+build/target
+target
