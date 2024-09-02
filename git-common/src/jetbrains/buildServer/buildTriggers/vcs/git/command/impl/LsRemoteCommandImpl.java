@@ -2,10 +2,12 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
+import com.intellij.openapi.diagnostic.Logger;
 import java.util.*;
-
+import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.VcsException;
 import org.eclipse.jgit.lib.Ref;
 import org.jetbrains.annotations.NotNull;
@@ -18,6 +20,7 @@ public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> im
   private boolean myTags = false;
 
   private final List<String> myLsRemoteBranches = new ArrayList<>();
+  private static final Logger LOG = Logger.getInstance(LsRemoteCommandImpl.class);
 
   public LsRemoteCommandImpl(@NotNull GitCommandLine cmd) {
     super(cmd);
@@ -56,7 +59,15 @@ public class LsRemoteCommandImpl extends BaseAuthCommandImpl<LsRemoteCommand> im
       cmd.addParameters(myLsRemoteBranches);
     }
 
-    return parse(runCmd(cmd.stdErrLogLevel("debug")).getStdout());
+    ExecResult res = runCmd(cmd.stdErrLogLevel("debug"));
+    String repoUrl = TeamCityProperties.getPropertyOrNull("teamcity.git.native.lsRemote.logCommandOutputForUrl");
+    if (repoUrl != null && getRepoUrl().toString().contains(repoUrl)) {
+      LOG.debug("[ls-remote " + getRepoUrl().toString() + "] stdout: " + res.getStdout());
+      LOG.debug("[ls-remote " + getRepoUrl().toString() + "] stderr: " + res.getStderr());
+      LOG.debug("[ls-remote " + getRepoUrl().toString() + "] exit code: " + res.getExitCode());
+    }
+
+    return parse(res.getStdout());
   }
 
   private List<Ref> parse(@NotNull final String str) throws VcsException {

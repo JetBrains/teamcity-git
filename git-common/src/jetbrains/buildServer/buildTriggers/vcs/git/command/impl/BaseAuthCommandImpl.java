@@ -77,6 +77,10 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
     return (T)this;
   }
 
+  protected URIish getRepoUrl() {
+    return myRepoUrl;
+  }
+
   @NotNull
   protected ExecResult runCmd(@NotNull GitCommandLine cmd) throws VcsException {
     return runCmd(cmd, new byte[0]);
