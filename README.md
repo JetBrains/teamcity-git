@@ -14,9 +14,9 @@ Running tests
 --------------
  Locally: 
  ```
- setsid mvn -Pwith_tests test
+ setsid mvn test -Ptest
  ```
  On server(without terminal)
  ```
- mvn -Pwith_tests test
+ mvn test -Ptest
  ```

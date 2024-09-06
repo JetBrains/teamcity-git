@@ -234,8 +234,6 @@
       <version>1.16.2</version>
       <scope>test</scope>
     </dependency>
-
-
   </dependencies>
 
   <build>
@@ -243,16 +241,170 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.19.1</version>
         <configuration>
-          <suiteXmlFiles>
-            <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
-            <suiteXmlFile>src/test/resources/native-git-testng.xml</suiteXmlFile>
-            <suiteXmlFile>src/test/resources/auth-git-tests.xml</suiteXmlFile>
-          </suiteXmlFiles>
-          <skipTests>${maven.test.skip}</skipTests>
+          <skipTests>true</skipTests>
         </configuration>
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>build</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <build>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <configuration>
+            <skipTests>true</skipTests>
+          </configuration>
+        </plugin>
+      </plugins>
+      </build>
+    </profile>
+
+
+    <profile>
+      <id>tests-without-auth</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>tests-server-native-git</id>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <reportNameSuffix>with-native</reportNameSuffix>
+                  <suiteXmlFiles>
+                    <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
+                  </suiteXmlFiles>
+                  <argLine>-Dteamcity.git.nativeOperationsEnabled=true</argLine>
+                  <skipTests>false</skipTests>
+                </configuration>
+              </execution>
+              <execution>
+                <id>git-tests</id>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <reportNameSuffix>other-tests</reportNameSuffix>
+                  <suiteXmlFiles>
+                    <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
+                    <suiteXmlFile>src/test/resources/native-git-testng.xml</suiteXmlFile>
+                  </suiteXmlFiles>
+                  <skipTests>false</skipTests>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+
+    <profile>
+      <id>auth-tests</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>auth-git-tests</id>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <suiteXmlFiles>
+                    <suiteXmlFile>src/test/resources/auth-git-tests.xml</suiteXmlFile>
+                  </suiteXmlFiles>
+                  <skipTests>false</skipTests>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <profile>
+      <id>native-git-tests</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>native-tests</id>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <suiteXmlFiles>
+                    <suiteXmlFile>src/test/resources/native-git-testng.xml</suiteXmlFile>
+                  </suiteXmlFiles>
+                  <skipTests>false</skipTests>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <profile>
+      <id>test</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>git-tests</id>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <reportNameSuffix>other-tests</reportNameSuffix>
+                  <suiteXmlFiles>
+                    <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
+                    <suiteXmlFile>src/test/resources/native-git-testng.xml</suiteXmlFile>
+                    <suiteXmlFile>src/test/resources/auth-git-tests.xml</suiteXmlFile>
+                  </suiteXmlFiles>
+                  <skipTests>false</skipTests>
+                </configuration>
+              </execution>
+              <execution>
+                <id>tests-server-native-git</id>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <reportNameSuffix>with-native</reportNameSuffix>
+                  <suiteXmlFiles>
+                    <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
+                  </suiteXmlFiles>
+                  <argLine>-Dteamcity.git.nativeOperationsEnabled=true</argLine>
+                  <skipTests>false</skipTests>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+  </profiles>
 </project>

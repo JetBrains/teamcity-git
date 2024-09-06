@@ -73,6 +73,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
+          <version>3.5.0</version>
           <configuration>
             <testFailureIgnore>true</testFailureIgnore>
           </configuration>
@@ -98,23 +99,5 @@
     </pluginManagement>
   </build>
 
-  <profiles>
-    <profile>
-      <id>build</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <properties>
-        <maven.test.skip>true</maven.test.skip>
-      </properties>
-    </profile>
-    <profile>
-      <id>with_tests</id>
-      <properties>
-        <maven.test.skip>false</maven.test.skip>
-      </properties>
-    </profile>
-
-  </profiles>
 
 </project>
