@@ -20,7 +20,8 @@
     <PluginVersion>${teamcity.version}</PluginVersion>
     <teamcity.version>${MAJOR_VERSION}-SNAPSHOT</teamcity.version>
     <MAJOR_VERSION>2024.11</MAJOR_VERSION>
-    <local.repo.path>local-repo</local.repo.path>
+    <local.repo.path>${TC_LOCAL_REPO}</local.repo.path>
+    <TC_LOCAL_REPO>local-repo</TC_LOCAL_REPO>
     <maven.compiler.source>8</maven.compiler.source>
     <maven.compiler.target>8</maven.compiler.target>
   </properties>
@@ -68,6 +69,44 @@
   </dependencyManagement>
 
   <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>flatten-maven-plugin</artifactId>
+        <version>1.6.0</version>
+        <executions>
+          <execution>
+            <id>flatten</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>flatten</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>flatten.clean</id>
+            <phase>clean</phase>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+          </execution>
+        </executions>
+
+        <configuration>
+          <outputDirectory>${project.build.directory}</outputDirectory>
+          <flattenMode>defaults</flattenMode>
+          <pomElements>
+            <parent>expand</parent>
+            <organization>remove</organization>
+            <properties>remove</properties>
+            <repositories>remove</repositories>
+            <dependencyManagement>remove</dependencyManagement>
+            <profiles>remove</profiles>
+          </pomElements>
+          <updatePomFile>true</updatePomFile>
+        </configuration>
+      </plugin>
+
+    </plugins>
     <pluginManagement>
       <plugins>
         <plugin>
