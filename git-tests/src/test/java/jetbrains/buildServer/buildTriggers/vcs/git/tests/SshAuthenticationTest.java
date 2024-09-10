@@ -12,12 +12,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
-import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseGitTestCase;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
@@ -42,12 +42,13 @@ import org.testng.annotations.Test;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.dataFile;
 
 @Test
-public class SshAuthenticationTest extends BaseTestCase {
+public class SshAuthenticationTest extends BaseGitTestCase {
   protected TempFiles myTempFiles;
   private final SshKnownHostsManager mySshKnownHostsManager = new ServerSshKnownHostsManagerImpl();
 
   @BeforeMethod
   public void setUp() throws Exception {
+    super.setUp();
     myTempFiles = new TempFiles();
   }
 

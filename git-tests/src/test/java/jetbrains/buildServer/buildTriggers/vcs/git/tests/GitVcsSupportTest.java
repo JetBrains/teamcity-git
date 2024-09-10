@@ -21,6 +21,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleCommitException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleConfigException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleEntryException;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.InternalPropertiesHandler;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
@@ -81,7 +82,6 @@ public class GitVcsSupportTest extends PatchTestCase {
   public static final String BEFORE_FIRST_LEVEL_SUBMODULE_ADDED_VERSION = "f3f826ce85d6dad25156b2d7550cedeb1a422f4c";
   public static final String AFTER_FIRST_LEVEL_SUBMODULE_ADDED_VERSION = "ce6044093939bb47283439d97a1c80f759669ff5";
 
-  private Set<String> myPropertiesToClean;
   private File myMainRepositoryDir;
   private File myTmpDir;
   private PluginConfigBuilder myConfigBuilder;
@@ -90,6 +90,8 @@ public class GitVcsSupportTest extends PatchTestCase {
   private ServerPaths myServerPaths;
   private Mockery myContext;
   private SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl();
+  private InternalPropertiesHandler myInternalPropertiesHandler;
+
   @BeforeMethod
   public void setUp() throws IOException {
     myTestLogger.setLogLevel(Level.INFO);
@@ -97,7 +99,7 @@ public class GitVcsSupportTest extends PatchTestCase {
     new TeamCityProperties() {{
       setModel(new BasePropertiesModel() {});
     }};
-    myPropertiesToClean = new HashSet<>();
+    myInternalPropertiesHandler = new InternalPropertiesHandler();
     myContext = new Mockery();
     myTempFiles = new TempFiles();
     myServerPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
@@ -1161,14 +1163,10 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   protected void setInternalProperty(@NotNull String propKey, @NotNull String value) {
-    System.setProperty(propKey, value);
-    myPropertiesToClean.add(propKey);
+    myInternalPropertiesHandler.setInternalProperty(propKey, value);
   }
 
   private void cleanInternalProperties() {
-    for (String prop : myPropertiesToClean) {
-      System.getProperties().remove(prop);
-    }
-    myPropertiesToClean.clear();
+    myInternalPropertiesHandler.tearDown();
   }
 }

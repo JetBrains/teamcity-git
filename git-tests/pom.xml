@@ -286,7 +286,7 @@
                   <suiteXmlFiles>
                     <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
                   </suiteXmlFiles>
-                  <argLine>-Dteamcity.git.nativeOperationsEnabled=true</argLine>
+                  <argLine>-Dteamcity.git.nativeOperationsEnabled=true -Dteamcity.git.fetch.separate.process=false</argLine>
                   <skipTests>false</skipTests>
                 </configuration>
               </execution>
@@ -301,6 +301,7 @@
                     <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
                     <suiteXmlFile>src/test/resources/native-git-testng.xml</suiteXmlFile>
                   </suiteXmlFiles>
+                  <argLine>-Dteamcity.git.fetch.separate.process=false</argLine> <!-- speed up jgit tests-->
                   <skipTests>false</skipTests>
                 </configuration>
               </execution>

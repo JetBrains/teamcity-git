@@ -10,6 +10,7 @@ import jetbrains.buildServer.MockTimeService;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitHubPasswordAuthRootRegistryImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseGitTestCase;
 import jetbrains.buildServer.serverSide.BuildServerListener;
 import jetbrains.buildServer.serverSide.MultiNodesEvents;
 import jetbrains.buildServer.serverSide.ProjectManager;
@@ -29,7 +30,7 @@ import org.jmock.Mockery;
 import org.testng.annotations.Test;
 
 @Test
-public class GitHubPasswordAuthRootRegistryImplTest extends BaseTestCase {
+public class GitHubPasswordAuthRootRegistryImplTest extends BaseGitTestCase {
   @Test
   public void test() {
     final Map<String, Long> events = new HashMap<>();

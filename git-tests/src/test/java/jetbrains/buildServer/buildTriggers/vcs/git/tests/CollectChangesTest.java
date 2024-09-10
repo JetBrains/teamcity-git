@@ -12,6 +12,7 @@ import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.TestLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.TestFor;
@@ -32,6 +33,7 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+import org.testng.SkipException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -325,6 +327,10 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
   @TestFor(issues = "TW-29798")
   public void do_not_do_fetch_per_branch() throws Exception {
+    if (TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled")) {
+      throw new SkipException("The test is not compatible with native git");
+    }
+
     VcsRoot root = vcsRoot().withFetchUrl(myRepo)
       .withBranch("master")
       .withReportTags(true)
@@ -354,6 +360,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   @Test
   @TestFor(issues = "http://youtrack.jetbrains.com/issue/TW-29798#comment=27-537697")
   public void fetch_should_fail_if_remote_repository_does_not_have_some_branches() throws Exception {
+    if (TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled")) {
+      throw new SkipException("The test is not compatible with native git");
+    }
     setInternalProperty("teamcity.git.failLoadCommitsIfRemoteBranchMissing", "true");
     VcsRoot root = vcsRoot().withFetchUrl(myRepo)
       .withBranch("master")
@@ -389,6 +398,10 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
   @Test
   public void fetch_should_not_fail_if_remote_repository_does_not_have_some_branches() throws Exception {
+    if (TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled")) {
+      throw new SkipException("The test is not compatible with native git");
+    }
+
     VcsRoot root = vcsRoot().withFetchUrl(myRepo)
                             .withBranch("master")
                             .withReportTags(true)
@@ -550,6 +563,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
   @TestFor(issues = "TW-29770")
   public void collect_changes_with_branch_pointing_to_a_non_commit() throws Exception {
+    if (TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled")) {
+      throw new SkipException("The test is not compatible with native git");
+    }
     //setup remote repo with a branch pointing to a non commit
     VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
 
@@ -646,6 +662,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   @TestFor(issues = "TW-43859")
   @Test(dataProvider = "ref_error")
   public void should_report_conflicting_refs(@NotNull String conflictingRef, @NotNull String expectedError) throws Exception {
+    if (TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled")) {
+      throw new SkipException("The test is not compatible with native git");
+    }
     GitVcsSupport git = git();
     VcsRoot root = vcsRoot().withFetchUrl(myRepo).build();
     //fetch repo
@@ -672,6 +691,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   @TestFor(issues = "TW-38899")
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void ignore_missing_branch(boolean fetchInSeparateProcess) throws Exception {
+    if (TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled")) {
+      throw new SkipException("The test is not compatible with native git");
+    }
     myConfig.setSeparateProcessForFetch(fetchInSeparateProcess);
     myConfig.setIgnoreMissingRemoteRef(true);
     myConfig.withFetcherProperties(PluginConfigImpl.IGNORE_MISSING_REMOTE_REF, "true");

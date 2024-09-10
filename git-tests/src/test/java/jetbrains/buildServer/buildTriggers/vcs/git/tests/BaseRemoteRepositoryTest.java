@@ -12,6 +12,7 @@ import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.InternalPropertiesHandler;
 import jetbrains.buildServer.log.LogInitializer;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
@@ -26,12 +27,12 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.data
 
 public abstract class BaseRemoteRepositoryTest {
 
-  private Set<String> myPropertiesToClean;
   protected TempFiles myTempFiles;
   protected BuildAgentConfiguration myAgentConfiguration;
   private String[] myRepositories;
   private Map<String, File> myRemoteRepositories;
   protected SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl();
+  private InternalPropertiesHandler myInternalPropertiesHandler;
 
   protected BaseRemoteRepositoryTest(String... repositories) {
     myRepositories = repositories;
@@ -45,7 +46,6 @@ public abstract class BaseRemoteRepositoryTest {
   @BeforeMethod
   public void setUp() throws Exception {
     TestInternalProperties.init();
-    myPropertiesToClean = new HashSet<>();
     myTempFiles = new TempFiles();
     File tmp = myTempFiles.createTempDir();
     myRemoteRepositories = new HashMap<String, File>();
@@ -56,6 +56,7 @@ public abstract class BaseRemoteRepositoryTest {
     }
     myAgentConfiguration = BuildAgentConfigurationBuilder.agentConfiguration(myTempFiles.createTempDir(), myTempFiles.createTempDir(), myTempFiles.createTempDir())
       .build();
+    myInternalPropertiesHandler = new InternalPropertiesHandler();
   }
 
   @AfterMethod
@@ -84,14 +85,10 @@ public abstract class BaseRemoteRepositoryTest {
   }
 
   protected void setInternalProperty(@NotNull String propKey, @NotNull String value) {
-    System.setProperty(propKey, value);
-    myPropertiesToClean.add(propKey);
+    myInternalPropertiesHandler.setInternalProperty(propKey, value);
   }
 
   private void cleanInternalProperties() {
-    for (String prop : myPropertiesToClean) {
-      System.getProperties().remove(prop);
-    }
-    myPropertiesToClean.clear();
+    myInternalPropertiesHandler.tearDown();
   }
 }
