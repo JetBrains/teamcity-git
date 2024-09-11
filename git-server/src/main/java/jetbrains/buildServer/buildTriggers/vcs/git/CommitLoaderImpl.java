@@ -145,6 +145,11 @@ public class CommitLoaderImpl implements CommitLoader {
                                                        boolean throwErrors) throws VcsException {
     final Set<RefCommit> refsToFetch = new HashSet<>();
 
+    Map<String, Ref> currentRefTips = Collections.emptyMap();
+    if (checkTipRefs) {
+      currentRefTips = loadCurrentRefTips(db, revisions);
+    }
+
     try (RevWalk walk = new RevWalk(db)) {
       for (RefCommit r : revisions) {
         final String ref = GitUtils.expandRef(r.getRef());
@@ -154,7 +159,7 @@ public class CommitLoaderImpl implements CommitLoader {
             // For the refs from the new ("to") state we check if these refs in the local clone point to the same revisions
             // this is only done prior to determining if we need to fetch these refs selectively (hence checkTipRefs argument)
             String localRev = null;
-            Ref localRef = db.getRefDatabase().findRef(ref);
+            Ref localRef = currentRefTips.get(ref);
             if (localRef != null) {
               ObjectId localRevId = localRef.getObjectId();
               if (localRevId != null) {
@@ -201,6 +206,28 @@ public class CommitLoaderImpl implements CommitLoader {
       }
       return refsToFetch;
     }
+  }
+
+  private static @NotNull Map<String, Ref> loadCurrentRefTips(@NotNull Repository db, @NotNull Collection<RefCommit> revisions) {
+    Map<String, Ref> allRefsMap = new HashMap<>();
+    try {
+      List<String> refTips = new ArrayList<>();
+      for (RefCommit r: revisions) {
+        final String ref = GitUtils.expandRef(r.getRef());
+        if (r.isRefTip() && !GitServerUtil.isTag(ref)) {
+          refTips.add(ref);
+        }
+      }
+
+      if (!refTips.isEmpty()) {
+        for (Ref ref: db.getRefDatabase().getRefsByPrefix(refTips.toArray(new String[0]))) {
+          allRefsMap.put(ref.getName(), ref);
+        }
+      }
+    } catch (IOException e) {
+      LOG.warnAndDebugDetails("Unexpected exception while trying to load refs from the local clone: " + db.getDirectory().getAbsolutePath(), e);
+    }
+    return allRefsMap;
   }
 
   public void loadCommits(@NotNull OperationContext context,
