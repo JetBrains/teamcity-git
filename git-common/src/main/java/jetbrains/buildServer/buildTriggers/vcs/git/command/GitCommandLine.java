@@ -8,11 +8,9 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.LineAwareByteArrayOutputStream;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
@@ -29,6 +27,7 @@ import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import org.apache.http.auth.Credentials;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,6 +38,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private final GitProgressLogger myLogger;
   private final List<Runnable> myPostActions = new ArrayList<Runnable>();
   @Nullable protected VcsRootSshKeyManager mySshKeyManager;
+  private final ProxyHandler myProxy;
   private File myWorkingDirectory;
   private boolean myHasProgress = false;
   private boolean myRepeatOnEmptyOutput = false;
@@ -54,6 +54,7 @@ public class GitCommandLine extends GeneralCommandLine {
     myLogger = myCtx.getLogger();
     setPassParentEnvs(true);
     setEnvParams(myCtx.getEnv());
+    myProxy = new ProxyHandler();
   }
 
   @NotNull
@@ -95,6 +96,8 @@ public class GitCommandLine extends GeneralCommandLine {
 
     settings.getTraceEnv().entrySet().forEach(e -> addEnvParam(e.getKey(), e.getValue()));
 
+    setProxySettings();
+
     final AuthSettings authSettings = settings.getAuthSettings();
     if (authSettings == null) {
       return doRunCommand(settings);
@@ -134,6 +137,50 @@ public class GitCommandLine extends GeneralCommandLine {
     }
 
     return doRunCommand(settings);
+  }
+
+  private void setProxySettings() {
+    if (myProxy.isHttpProxyEnabled()) {
+      Credentials credentials = myProxy.getHttpCredentials();
+
+      addEnvParam("http_proxy", getFullProxyAddr(myProxy.getHttpProxyHost(), myProxy.getHttpProxyPort(), credentials));
+    }
+
+    if (myProxy.isHttpsProxyEnabled()) {
+      Credentials credentials = myProxy.getHttpsCredentials();
+
+      addEnvParam("https_proxy", getFullProxyAddr(myProxy.getHttpsProxyHost(), myProxy.getHttpsProxyPort(), credentials));
+    }
+
+    if (myProxy.isHttpProxyEnabled() || myProxy.isHttpsProxyEnabled()) {
+      String nonProxyHosts = myProxy.getNonProxyHosts();
+      if (nonProxyHosts != null) {
+        addEnvParam("no_proxy", convertNonProxyHosts(nonProxyHosts));
+      }
+    }
+  }
+
+  private String getFullProxyAddr(@NotNull String proxyHost, int proxyPort, @Nullable Credentials credentials) {
+    if (credentials == null) {
+      return proxyPort != 0 ? String.format("%s:%d", proxyHost, proxyPort) : proxyHost;
+    } else {
+      return proxyPort != 0 ? String.format("%s:%s@%s:%d", credentials.getUserPrincipal().getName(), credentials.getPassword(), proxyHost, proxyPort)
+                            : String.format("%s:%s@%s", credentials.getUserPrincipal().getName(), credentials.getPassword(), proxyHost);
+    }
+  }
+
+  private String convertNonProxyHosts(@NotNull String nonProxyHostsJava) {
+    return Arrays.stream(nonProxyHostsJava.split("\\|"))
+                 .map(host -> host.trim())
+                 .map(host -> host.startsWith("*.") ? host.substring(1) : host)
+                 .filter(host -> {
+                   if (host.endsWith(".*")) {
+                     myLogger.warning("NonProxyHosts pattern '" + host + "' will be ignored because suffix wildcards are not supported in git");
+                     return false;
+                   }
+                   return true;
+                 })
+      .collect(Collectors.joining(","));
   }
 
   @NotNull
@@ -185,6 +232,19 @@ public class GitCommandLine extends GeneralCommandLine {
           }
 
         }
+
+        if (myProxy.isSshProxyEnabled()) {
+          String strType;
+          switch (Objects.requireNonNull(myProxy.getSshProxyType())) {
+            case SOCKS4: strType = "4"; break;
+            case SOCKS5: strType = "5"; break;
+            default: strType = "connect"; break;
+          }
+          int port = myProxy.getSshProxyPort();
+          String fullProxyAddr = port != 0 ? String.format("%s:%d", myProxy.getSshProxyHost(), port) : myProxy.getSshProxyHost();
+          gitSshCommand.append(String.format(" -o ProxyCommand=\"nc -v -X %s -x %s %%h %%p\"", strType, fullProxyAddr));
+        }
+
         if (authSettings.getAuthMethod().isKeyAuth()) {
           gitSshCommand.append(" -o \"PreferredAuthentications=publickey\" -o \"PasswordAuthentication=no\" -o \"KbdInteractiveAuthentication=no\"");
         } else {
