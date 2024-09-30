@@ -17,6 +17,7 @@ import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.RefDatabase;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -212,6 +213,7 @@ public class CommitLoaderImpl implements CommitLoader {
     Map<String, Ref> allRefsMap = new HashMap<>();
     try {
       List<String> refTips = new ArrayList<>();
+      RefDatabase refDatabase = db.getRefDatabase();
       for (RefCommit r: revisions) {
         final String ref = GitUtils.expandRef(r.getRef());
         if (r.isRefTip() && !GitServerUtil.isTag(ref)) {
@@ -220,9 +222,7 @@ public class CommitLoaderImpl implements CommitLoader {
       }
 
       if (!refTips.isEmpty()) {
-        for (Ref ref: db.getRefDatabase().getRefsByPrefix(refTips.toArray(new String[0]))) {
-          allRefsMap.put(ref.getName(), ref);
-        }
+        allRefsMap.putAll(refDatabase.exactRef(refTips.toArray(new String[0])));
       }
     } catch (IOException e) {
       LOG.warnAndDebugDetails("Unexpected exception while trying to load refs from the local clone: " + db.getDirectory().getAbsolutePath(), e);
