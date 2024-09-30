@@ -59,7 +59,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
                                @NotNull VcsRootSshKeyManager sshKeyManager,
                                @NotNull FetchCommand jGitFetchCommand,
                                @NotNull SshKnownHostsManager sshKnownHostsManager) {
-    this(config, NO_IMPL, transportFactory, sshKeyManager, jGitFetchCommand, (Function<String, Counter>)repoUrl -> EMPTY_COUNTER, sshKnownHostsManager);
+    this(config, NO_IMPL, transportFactory, sshKeyManager, jGitFetchCommand, repoUrl -> EMPTY_COUNTER, sshKnownHostsManager);
   }
 
   public GitRepoOperationsImpl(@NotNull ServerPluginConfig config,
@@ -377,7 +377,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
         .tags("repoUrl", key)
         .dataType(MetricDataType.MILLISECONDS)
         .experimental(true)
-        .description("git fetch operations duration")
+        .description("Git plugin fetch operations duration")
         .buildCounter());
     }
   }

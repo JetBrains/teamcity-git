@@ -6,6 +6,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
+import jetbrains.buildServer.metrics.*;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.Disposable;
 import jetbrains.buildServer.util.NamedDaemonThreadFactory;
@@ -31,6 +32,8 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   private final ServerPluginConfig myConfig;
   private final RepositoryManager myRepositoryManager;
   private final CheckoutRulesLatestRevisionCache myCheckoutRulesLatestRevisionCache;
+  private final Counter myCollectChangesMetric;
+  private final Counter myComputeRevisionMetric;
 
   public GitCollectChangesPolicy(@NotNull GitVcsSupport vcs,
                                  @NotNull VcsOperationProgressProvider progressProvider,
@@ -42,6 +45,23 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     myConfig = config;
     myRepositoryManager = repositoryManager;
     myCheckoutRulesLatestRevisionCache = checkoutRulesLatestRevisionCache;
+
+    ServerMetrics serverMetrics = vcs.getServerMetrics();
+    if (serverMetrics != null) {
+      myCollectChangesMetric = serverMetrics.metricBuilder("vcs.git.collectChanges.duration")
+                                            .description("Git plugin collect changes duration")
+                                            .dataType(MetricDataType.MILLISECONDS)
+                                            .experimental(true)
+                                            .buildCounter();
+      myComputeRevisionMetric = serverMetrics.metricBuilder("vcs.git.computeRevision.duration")
+                                             .description("Git plugin compute revision by checkout rules duration")
+                                             .dataType(MetricDataType.MILLISECONDS)
+                                             .experimental(true)
+                                             .buildCounter();
+    } else {
+      myCollectChangesMetric = myComputeRevisionMetric = new NoOpCounter();
+    }
+
   }
 
 
@@ -59,40 +79,42 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                @NotNull RepositoryStateData fromState,
                                                @NotNull RepositoryStateData toState,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
-    OperationContext context = myVcs.createContext(root, "collecting changes", createProgress());
-    GitVcsRoot gitRoot = context.getGitRoot();
-    return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-      List<ModificationData> changes = new ArrayList<ModificationData>();
-      try {
-        Repository r = context.getRepository();
-        ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
-        revWalk.sort(RevSort.TOPO);
-        ensureRepositoryStateLoadedFor(context, fromState, toState);
-        markStart(r, revWalk, toState);
-        markUninteresting(r, revWalk, fromState, toState);
-        while (revWalk.next() != null) {
-          changes.add(revWalk.createModificationData());
+    try (Stoppable stoppable = myCollectChangesMetric.startMsecsTimer()) {
+      OperationContext context = myVcs.createContext(root, "collecting changes", createProgress());
+      GitVcsRoot gitRoot = context.getGitRoot();
+      return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+        List<ModificationData> changes = new ArrayList<>();
+        try {
+          Repository r = context.getRepository();
+          ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
+          revWalk.sort(RevSort.TOPO);
+          ensureRepositoryStateLoadedFor(context, fromState, toState);
+          markStart(r, revWalk, toState);
+          markUninteresting(r, revWalk, fromState, toState);
+          while (revWalk.next() != null) {
+            changes.add(revWalk.createModificationData());
 
-          final int limit = TeamCityProperties.getInteger("teamcity.git.collectChanges.maxChanges", Integer.MAX_VALUE);
-          if (changes.size() >= limit) {
-            List<String> updatedBranches = getInterestingBranches(fromState, toState);
-            LOG.warn("Reached the limit (" + limit + ") for the number of collected changes for VCS root: " + gitRoot.toString() + ", while collecting changes from state: " +
-                     shortRepoStateDetails(fromState, updatedBranches) + ", to state: " + shortRepoStateDetails(toState, updatedBranches));
-            return changes;
+            final int limit = TeamCityProperties.getInteger("teamcity.git.collectChanges.maxChanges", Integer.MAX_VALUE);
+            if (changes.size() >= limit) {
+              List<String> updatedBranches = getInterestingBranches(fromState, toState);
+              LOG.warn("Reached the limit (" + limit + ") for the number of collected changes for VCS root: " + gitRoot.toString() + ", while collecting changes from state: " +
+                       shortRepoStateDetails(fromState, updatedBranches) + ", to state: " + shortRepoStateDetails(toState, updatedBranches));
+              return changes;
+            }
           }
+        } catch (Exception e) {
+          if (e instanceof SubmoduleException) {
+            SubmoduleException se = (SubmoduleException) e;
+            Set<String> affectedBranches = getBranchesWithCommit(context.getRepository(), toState, se.getMainRepositoryCommit());
+            throw context.wrapException(se.addBranches(affectedBranches));
+          }
+          throw context.wrapException(e);
+        } finally {
+          context.close();
         }
-      } catch (Exception e) {
-        if (e instanceof SubmoduleException) {
-          SubmoduleException se = (SubmoduleException) e;
-          Set<String> affectedBranches = getBranchesWithCommit(context.getRepository(), toState, se.getMainRepositoryCommit());
-          throw context.wrapException(se.addBranches(affectedBranches));
-        }
-        throw context.wrapException(e);
-      } finally {
-        context.close();
-      }
-      return changes;
-    });
+        return changes;
+      });
+    }
   }
 
   @NotNull
@@ -162,55 +184,57 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                          @NotNull String startRevisionBranchName,
                                                          @NotNull Collection<String> stopRevisions,
                                                          @Nullable Set<String> visited) throws VcsException {
-    Disposable name = NamedDaemonThreadFactory.patchThreadName("Computing the latest commit affected by checkout rules: " + rules +
-                                                               " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision + " (branch: " + startRevisionBranchName + "), stop revisions: " + stopRevisions);
-    try {
-      OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
-      GitVcsRoot gitRoot = context.getGitRoot();
-      return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-        ensureRevisionIsFetched(startRevision, startRevisionBranchName, context);
+    try (Stoppable stoppable = myComputeRevisionMetric.startMsecsTimer()) {
+      Disposable name = NamedDaemonThreadFactory.patchThreadName("Computing the latest commit affected by checkout rules: " + rules +
+                                                                 " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision + " (branch: " + startRevisionBranchName + "), stop revisions: " + stopRevisions);
+      try {
+        OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
+        GitVcsRoot gitRoot = context.getGitRoot();
+        return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+          ensureRevisionIsFetched(startRevision, startRevisionBranchName, context);
 
-        Result finalResult = null;
-        CheckoutRulesLatestRevisionCache.Value cached = myCheckoutRulesLatestRevisionCache.getCachedValue(gitRoot, startRevisionBranchName, rules);
-        if (cached != null && cached.myStartRevision.equals(startRevision) && cached.myStopRevisions.equals(stopRevisions)) {
-          return new Result(cached.myComputedRevision, cached.myReachedStopRevisions);
-        }
+          Result finalResult = null;
+          CheckoutRulesLatestRevisionCache.Value cached = myCheckoutRulesLatestRevisionCache.getCachedValue(gitRoot, startRevisionBranchName, rules);
+          if (cached != null && cached.myStartRevision.equals(startRevision) && cached.myStopRevisions.equals(stopRevisions)) {
+            return new Result(cached.myComputedRevision, cached.myReachedStopRevisions);
+          }
 
-        if (cached != null &&
-            ((stopRevisions.isEmpty() && cached.myStopRevisions.isEmpty()) || (stopRevisions.containsAll(cached.myStopRevisions) && !cached.myStopRevisions.isEmpty()))) {
-          // in this case we can add previous start revision as a stop revision and compute a new result from the new start
-          // if the result is null, then we can use the previous result as is
-          // otherwise we will return the newly found revision
-          Set<String> stops = new HashSet<>(stopRevisions);
-          stops.add(cached.myStartRevision);
+          if (cached != null &&
+              ((stopRevisions.isEmpty() && cached.myStopRevisions.isEmpty()) || (stopRevisions.containsAll(cached.myStopRevisions) && !cached.myStopRevisions.isEmpty()))) {
+            // in this case we can add previous start revision as a stop revision and compute a new result from the new start
+            // if the result is null, then we can use the previous result as is
+            // otherwise we will return the newly found revision
+            Set<String> stops = new HashSet<>(stopRevisions);
+            stops.add(cached.myStartRevision);
 
-          Set<String> visitedCommits = new HashSet<>();
-          Result result = computeRevisionByCheckoutRules(startRevision, stops, rules, visitedCommits, context, gitRoot);
-          if (resultIsValid(result, visitedCommits)) {
-            List<String> reachedStops = new ArrayList<>(cached.myReachedStopRevisions);
-            reachedStops.retainAll(stopRevisions); // we should only return stop revisions passed to us as an argument
-            String computedResult = result.getRevision();
+            Set<String> visitedCommits = new HashSet<>();
+            Result result = computeRevisionByCheckoutRules(startRevision, stops, rules, visitedCommits, context, gitRoot);
+            if (resultIsValid(result, visitedCommits)) {
+              List<String> reachedStops = new ArrayList<>(cached.myReachedStopRevisions);
+              reachedStops.retainAll(stopRevisions); // we should only return stop revisions passed to us as an argument
+              String computedResult = result.getRevision();
 
-            if (result.getRevision() == null) {
-              // no interesting commits since the last start, return previous result
-              computedResult = cached.myComputedRevision;
-            }
+              if (result.getRevision() == null) {
+                // no interesting commits since the last start, return previous result
+                computedResult = cached.myComputedRevision;
+              }
 
-            finalResult = new Result(computedResult, reachedStops);
-            if (visited != null) {
-              visited.addAll(visitedCommits);
+              finalResult = new Result(computedResult, reachedStops);
+              if (visited != null) {
+                visited.addAll(visitedCommits);
+              }
             }
           }
-        }
 
-        if (finalResult == null) {
-          finalResult = computeRevisionByCheckoutRules(startRevision, stopRevisions, rules, visited, context, gitRoot);
-        }
-        myCheckoutRulesLatestRevisionCache.storeInCache(gitRoot, rules, startRevision, startRevisionBranchName, stopRevisions, finalResult);
-        return finalResult;
-      });
-    } finally {
-      name.dispose();
+          if (finalResult == null) {
+            finalResult = computeRevisionByCheckoutRules(startRevision, stopRevisions, rules, visited, context, gitRoot);
+          }
+          myCheckoutRulesLatestRevisionCache.storeInCache(gitRoot, rules, startRevision, startRevisionBranchName, stopRevisions, finalResult);
+          return finalResult;
+        });
+      } finally {
+        name.dispose();
+      }
     }
   }
 

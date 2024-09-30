@@ -10,6 +10,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
+import jetbrains.buildServer.metrics.*;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -42,6 +43,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   private final GitRepoOperations myGitRepoOperations;
   private ExtensionHolder myExtensionHolder;
+  private ServerMetrics myServerMetrics;
   private volatile String myDisplayName = null;
   private final ServerPluginConfig myConfig;
   private final TransportFactory myTransportFactory;
@@ -55,6 +57,7 @@ public class GitVcsSupport extends ServerVcsSupport
   private final TokenRefresher myTokenRefresher;
   private final CheckoutRulesLatestRevisionCache myCheckoutRulesLatestRevisionCache;
   private final Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
+  private Counter myCurrentStateMetric = new NoOpCounter();
 
   public GitVcsSupport(@NotNull GitRepoOperations gitRepoOperations,
                        @NotNull ServerPluginConfig config,
@@ -106,6 +109,15 @@ public class GitVcsSupport extends ServerVcsSupport
     myTestConnection = customTestConnection == null ? this : customTestConnection;
     myTokenRefresher = tokenRefresher;
     JSchConfigInitializer.initJSchConfig(JSch.class);
+  }
+
+  public void setServerMetrics(@NotNull ServerMetrics serverMetrics) {
+    myServerMetrics = serverMetrics;
+    myCurrentStateMetric = serverMetrics.metricBuilder("vcs.git.currentState.duration")
+                                        .description("Git plugin get current state duration")
+                                        .dataType(MetricDataType.MILLISECONDS)
+                                        .experimental(true)
+                                        .buildCounter();
   }
 
   public void setExtensionHolder(@Nullable ExtensionHolder extensionHolder) {
@@ -161,8 +173,10 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public RepositoryStateData getCurrentState(@NotNull VcsRoot root) throws VcsException {
-    GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), myTokenRefresher);
-    return getCurrentState(gitRoot);
+    try (Stoppable stoppable = myCurrentStateMetric.startMsecsTimer()) {
+      GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), myTokenRefresher);
+      return getCurrentState(gitRoot);
+    }
   }
 
   @NotNull
@@ -665,5 +679,10 @@ public class GitVcsSupport extends ServerVcsSupport
   public String getDefaultBranchName(@NotNull VcsRoot vcsRoot) {
     final String prop = vcsRoot.getProperty(Constants.BRANCH_NAME);
     return prop == null ? null : GitUtils.expandRef(prop);
+  }
+
+  @Nullable
+  public ServerMetrics getServerMetrics() {
+    return myServerMetrics;
   }
 }
