@@ -191,7 +191,8 @@
                   },
                   tokenIntent: 'REPO_FULL',
                   readOnly: ${parentReadOnly},
-                  tokenIdElement: $('tokenId')
+                  tokenIdElement: $('tokenId'),
+                  noGenerateButton: !${canObtainTokens}
                 };
               </script>
             </jsp:attribute>
