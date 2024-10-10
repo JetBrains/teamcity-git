@@ -3,18 +3,31 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.Pair;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitApiClientFactory;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitRepoApi;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.ProxyCredentials;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.CommitChange;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.CommitInfo;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.CommitList;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.FileChange;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
 import jetbrains.buildServer.metrics.*;
+import jetbrains.buildServer.serverSide.Parameter;
+import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
 import jetbrains.buildServer.util.Disposable;
 import jetbrains.buildServer.util.NamedDaemonThreadFactory;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
-import org.eclipse.jgit.lib.Constants;
+import jetbrains.buildServer.vcshostings.url.ServerURIParser;
 import org.eclipse.jgit.lib.ObjectDatabase;
 import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevObject;
@@ -25,6 +38,9 @@ import org.jetbrains.annotations.Nullable;
 
 public class GitCollectChangesPolicy implements CollectChangesBetweenRepositories, RevisionMatchedByCheckoutRulesCalculator {
 
+  private static final String GIT_PROXY_URL_PROPERTY = "teamcity.git.gitProxy.url";
+  private static final String GIT_PROXY_AUTH_PROPERTY = "teamcity.git.gitProxy.auth";
+
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
 
   private final GitVcsSupport myVcs;
@@ -34,18 +50,22 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   private final CheckoutRulesLatestRevisionCache myCheckoutRulesLatestRevisionCache;
   private final Counter myCollectChangesMetric;
   private final Counter myComputeRevisionMetric;
+  private final GitApiClientFactory myGitApiClientFactory;
+  private final ParameterFactory myParameterFactory;
 
   public GitCollectChangesPolicy(@NotNull GitVcsSupport vcs,
                                  @NotNull VcsOperationProgressProvider progressProvider,
                                  @NotNull ServerPluginConfig config,
                                  @NotNull RepositoryManager repositoryManager,
-                                 @NotNull CheckoutRulesLatestRevisionCache checkoutRulesLatestRevisionCache) {
+                                 @NotNull CheckoutRulesLatestRevisionCache checkoutRulesLatestRevisionCache,
+                                 @NotNull GitApiClientFactory gitApiClientFactory,
+                                 @NotNull ParameterFactory parameterFactory) {
     myVcs = vcs;
     myProgressProvider = progressProvider;
     myConfig = config;
     myRepositoryManager = repositoryManager;
     myCheckoutRulesLatestRevisionCache = checkoutRulesLatestRevisionCache;
-
+    myParameterFactory = parameterFactory;
     ServerMetrics serverMetrics = vcs.getServerMetrics();
     if (serverMetrics != null) {
       myCollectChangesMetric = serverMetrics.metricBuilder("vcs.git.collectChanges.duration")
@@ -62,6 +82,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       myCollectChangesMetric = myComputeRevisionMetric = new NoOpCounter();
     }
 
+    myGitApiClientFactory = gitApiClientFactory;
   }
 
 
@@ -80,41 +101,204 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                @NotNull RepositoryStateData toState,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     try (Stoppable stoppable = myCollectChangesMetric.startMsecsTimer()) {
-      OperationContext context = myVcs.createContext(root, "collecting changes", createProgress());
-      GitVcsRoot gitRoot = context.getGitRoot();
-      return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-        List<ModificationData> changes = new ArrayList<>();
-        try {
-          Repository r = context.getRepository();
-          ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
-          revWalk.sort(RevSort.TOPO);
-          ensureRepositoryStateLoadedFor(context, fromState, toState);
-          markStart(r, revWalk, toState);
-          markUninteresting(r, revWalk, fromState, toState);
-          while (revWalk.next() != null) {
-            changes.add(revWalk.createModificationData());
-
-            final int limit = TeamCityProperties.getInteger("teamcity.git.collectChanges.maxChanges", Integer.MAX_VALUE);
-            if (changes.size() >= limit) {
-              List<String> updatedBranches = getInterestingBranches(fromState, toState);
-              LOG.warn("Reached the limit (" + limit + ") for the number of collected changes for VCS root: " + gitRoot.toString() + ", while collecting changes from state: " +
-                       shortRepoStateDetails(fromState, updatedBranches) + ", to state: " + shortRepoStateDetails(toState, updatedBranches));
-              return changes;
-            }
-          }
-        } catch (Exception e) {
-          if (e instanceof SubmoduleException) {
-            SubmoduleException se = (SubmoduleException) e;
-            Set<String> affectedBranches = getBranchesWithCommit(context.getRepository(), toState, se.getMainRepositoryCommit());
-            throw context.wrapException(se.addBranches(affectedBranches));
-          }
-          throw context.wrapException(e);
-        } finally {
-          context.close();
-        }
-        return changes;
-      });
+      ProxyCredentials proxyCredentials = getGitProxyInfo(root);
+      if (proxyCredentials != null) {
+        return collectChangesGitProxy(root, fromState, toState, proxyCredentials);
+      } else {
+        return collectChangesJgit(root, fromState, toState);
+      }
     }
+  }
+
+  @Nullable
+  private ProxyCredentials getGitProxyInfo(VcsRoot root) {
+    try {
+      if (!(root instanceof VcsRootInstance)) {
+        return null;
+      }
+
+      SProject project = ((VcsRootInstance)root).getParent().getProject();
+      Parameter urlParam = project.getParameter(GIT_PROXY_URL_PROPERTY);
+      Parameter authParam = project.getParameter(GIT_PROXY_AUTH_PROPERTY);
+      if (urlParam != null && authParam != null) {
+        return new ProxyCredentials(urlParam.getValue(), myParameterFactory.getRawValue(authParam));
+      }
+    } catch (Throwable e) {
+      LOG.warnAndDebugDetails("Failed to determine if git proxy should be used", e);
+    }
+    return null;
+  }
+
+  private List<ModificationData> collectChangesGitProxy(@NotNull VcsRoot root,
+                                                        @NotNull RepositoryStateData fromState,
+                                                        @NotNull RepositoryStateData toState,
+                                                        @NotNull ProxyCredentials proxyCredentials) throws VcsException {
+    OperationContext context = myVcs.createContext(root, "collecting changes");
+    GitVcsRoot gitRoot = context.getGitRoot();
+
+    String url = root.getProperty(Constants.FETCH_URL);
+    if (url == null) {
+      return Collections.emptyList();
+    }
+
+    List<String> path = ServerURIParser.createServerURI(url).getPathFragments();
+    if (path.size() < 2) {
+      return Collections.emptyList();
+    }
+    String repoName = String.format("%s/%s", path.get(path.size() - 2), path.get(path.size() - 1));
+    GitRepoApi client = myGitApiClientFactory.createRepoApi(proxyCredentials, null, repoName);
+
+    List<String> commitPatterns = new ArrayList<>();
+    for (Map.Entry<String, String> entry: fromState.getBranchRevisions().entrySet()) {
+      commitPatterns.add("^" + entry.getValue());
+    }
+    for (Map.Entry<String, String> entry: toState.getBranchRevisions().entrySet()) {
+      String branch = entry.getKey();
+      String branchRevision = entry.getValue();
+      String fromStateRev = fromState.getBranchRevisions().get(branch);
+      if (fromStateRev == null || !branchRevision.equals(fromStateRev)) {
+        commitPatterns.add(branchRevision);
+      }
+    }
+
+    CommitList commitList = client.listCommits(Collections.singletonList(new Pair<>("id-range", commitPatterns)), 0, Integer.MAX_VALUE, false, true);
+    List<String> commitIds = commitList.commits.stream().map(commit -> commit.id).collect(Collectors.toList());
+    Map<String, CommitInfo> commitInfoMap = commitList.commits.stream().collect(Collectors.toMap(commit -> commit.id, commit -> commit.info));
+    List<CommitChange> changes = client.listChanges(commitIds, false, true, false, false, Integer.MAX_VALUE);
+
+    List<ModificationData> result = new ArrayList<>();
+    int i = 0;
+    while (i < changes.size()) {
+      CommitChange change = changes.get(i);
+      CommitInfo info = commitInfoMap.get(changes.get(i).revision);
+      i++;
+      List<CommitChange> mergeEdgeChanges = null;
+      // find diff for other edges of merge commit, when inferMergeCommitChanges was set to false separate commit changes are returned for each edge of the merge commit
+      while (i < changes.size() && changes.get(i).revision.equals(info.id)) {
+        if (mergeEdgeChanges == null) {
+          mergeEdgeChanges = new ArrayList<>();
+        }
+        mergeEdgeChanges.add(changes.get(i));
+        i++;
+      }
+      if (info == null) {
+        LOG.warn("There is no commit info for returned revision " + change.revision);
+        continue;
+      }
+      result.add(createModificationDataGitProxy(info, change, gitRoot, root, mergeEdgeChanges));
+    }
+    return result;
+  }
+
+  private ModificationData createModificationDataGitProxy(@NotNull CommitInfo info, @NotNull CommitChange firstEdgeChange, @NotNull GitVcsRoot gitRoot, @NotNull VcsRoot root, @Nullable List<CommitChange> mergeEdgeChanges) {
+    CommitChange change;
+    Map<String, LinkedHashSet<String>> perParentChangedFilesForMergeCommit = null;
+    if (mergeEdgeChanges == null) {
+      change = firstEdgeChange;
+    } else {
+      perParentChangedFilesForMergeCommit = new HashMap<>();
+      addFileChanges(perParentChangedFilesForMergeCommit, firstEdgeChange);
+      for (CommitChange edgeChange : mergeEdgeChanges) {
+        addFileChanges(perParentChangedFilesForMergeCommit, edgeChange);
+      }
+      change = inferMergeCommitChange(firstEdgeChange, perParentChangedFilesForMergeCommit);
+    }
+    List<VcsChange> vcsChanges = change.changes.stream().map(fileChange -> {
+      VcsChangeInfo.Type changeType;
+      switch (fileChange.changeType) {
+        case Added: changeType = VcsChangeInfo.Type.ADDED; break;
+        case Deleted: changeType = VcsChangeInfo.Type.REMOVED; break;
+        case Modified: changeType = VcsChangeInfo.Type.CHANGED; break;
+        default: changeType = VcsChangeInfo.Type.NOT_CHANGED;
+      }
+      return new VcsChange(changeType,
+                           null, // TODO identify if file mode has changed and provide description in that case
+                           fileChange.newPath,
+                           fileChange.newPath,
+                           (info.parents == null || info.parents.isEmpty()) ? ObjectId.zeroId().name() : info.parents.get(0),
+                           info.id);
+    }).collect(Collectors.toList());
+
+    String author = GitServerUtil.getUser(gitRoot, new PersonIdent(info.author.name, info.author.email));
+    Date authorDate = new Date((long)info.authorTime * 1000);
+    ModificationData modificationData = new ModificationData(authorDate, vcsChanges, info.fullMessage, author, root, change.revision, change.revision);
+
+    if (perParentChangedFilesForMergeCommit != null) {
+      setMergeCommitAttributes(modificationData, perParentChangedFilesForMergeCommit);
+    }
+    String commiter = GitServerUtil.getUser(gitRoot, new PersonIdent(info.committer.name, info.committer.email));
+    Date commitDate = new Date((long)info.commitTime * 1000);
+    if (!Objects.equals(authorDate, commitDate)) {
+      modificationData.setAttribute("teamcity.commit.time", Long.toString(commitDate.getTime()));
+    }
+    if (!Objects.equals(author, commiter)) {
+      modificationData.setAttribute("teamcity.commit.user", commiter);
+    }
+
+    modificationData.setParentRevisions(info.parents != null ? info.parents : Collections.singletonList(ObjectId.zeroId().name()));
+
+    return modificationData;
+  }
+
+  private void setMergeCommitAttributes(@NotNull ModificationData modificationData,  @NotNull Map<String, LinkedHashSet<String>> perParentChangedFiles) {
+    modificationData.setAttributes(VcsChangeTreeWalk.buildChangedFilesAttributesFor(perParentChangedFiles));
+  }
+
+  private void addFileChanges(@NotNull Map<String, LinkedHashSet<String>> changedFiles, @NotNull CommitChange edgeChange) {
+    if (edgeChange.compareTo == null) {
+      return;
+    }
+    changedFiles.put(edgeChange.compareTo, edgeChange.changes.stream().map(fileChange -> fileChange.newPath).collect(Collectors.toCollection(LinkedHashSet::new)));
+  }
+
+  private CommitChange inferMergeCommitChange(@NotNull CommitChange firstEdgeChange, Map<String, LinkedHashSet<String>> parentChangedFilesMap) {
+    List<FileChange> changedFiles = new ArrayList<>();
+    for (FileChange fileChange : firstEdgeChange.changes) {
+      // check that file is changed by each edge, this means that the change was made in the merge commit
+      if (parentChangedFilesMap.entrySet().stream().allMatch(entry -> entry.getValue().contains(fileChange.newPath))) {
+        changedFiles.add(fileChange);
+      }
+    }
+    return new CommitChange(firstEdgeChange.revision, firstEdgeChange.compareTo, firstEdgeChange.limitReached, changedFiles);
+  }
+
+  private List<ModificationData> collectChangesJgit(@NotNull VcsRoot root,
+                                                    @NotNull RepositoryStateData fromState,
+                                                    @NotNull RepositoryStateData toState) throws VcsException {
+    OperationContext context = myVcs.createContext(root, "collecting changes", createProgress());
+    GitVcsRoot gitRoot = context.getGitRoot();
+    return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
+      List<ModificationData> changes = new ArrayList<ModificationData>();
+      try {
+        Repository r = context.getRepository();
+        ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
+        revWalk.sort(RevSort.TOPO);
+        ensureRepositoryStateLoadedFor(context, fromState, toState);
+        markStart(r, revWalk, toState);
+        markUninteresting(r, revWalk, fromState, toState);
+        while (revWalk.next() != null) {
+          changes.add(revWalk.createModificationData());
+
+          final int limit = TeamCityProperties.getInteger("teamcity.git.collectChanges.maxChanges", Integer.MAX_VALUE);
+          if (changes.size() >= limit) {
+            List<String> updatedBranches = getInterestingBranches(fromState, toState);
+            LOG.warn("Reached the limit (" + limit + ") for the number of collected changes for VCS root: " + gitRoot.toString() + ", while collecting changes from state: " +
+                     shortRepoStateDetails(fromState, updatedBranches) + ", to state: " + shortRepoStateDetails(toState, updatedBranches));
+            return changes;
+          }
+        }
+      } catch (Exception e) {
+        if (e instanceof SubmoduleException) {
+          SubmoduleException se = (SubmoduleException) e;
+          Set<String> affectedBranches = getBranchesWithCommit(context.getRepository(), toState, se.getMainRepositoryCommit());
+          throw context.wrapException(se.addBranches(affectedBranches));
+        }
+        throw context.wrapException(e);
+      } finally {
+        context.close();
+      }
+      return changes;
+    });
   }
 
   @NotNull
@@ -387,7 +571,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       ObjectId id = ObjectId.fromString(GitUtils.versionRevision(revision));
       if (r.getObjectDatabase().has(id)) {
         RevObject obj = walk.parseAny(id);
-        if (obj.getType() == Constants.OBJ_COMMIT)
+        if (obj.getType() == org.eclipse.jgit.lib.Constants.OBJ_COMMIT)
           result.add((RevCommit) obj);
       }
     }

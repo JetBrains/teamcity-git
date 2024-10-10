@@ -7,7 +7,7 @@ import org.testng.annotations.Test;
 
 import static org.assertj.core.api.BDDAssertions.then;
 
-public class GitProxyTests extends BaseGitTestCase {
+public class ProxyTests extends BaseGitTestCase {
 
   @Test
   public void protocol_host_port_test() {

@@ -51,15 +51,19 @@ public class VcsChangeTreeWalk extends TreeWalk {
     myPerParentChangedFiles.put(parentCommit.name(), new ArrayList<>());
   }
 
-
-  @NotNull
   public Map<String, String> buildChangedFilesAttributes() {
-    if (myPerParentChangedFiles.isEmpty())
+    return buildChangedFilesAttributesFor(myPerParentChangedFiles);
+  }
+
+
+    @NotNull
+  public static Map<String, String> buildChangedFilesAttributesFor(@NotNull Map<String, ? extends Collection<String>> perParentChangedFiles) {
+    if (perParentChangedFiles.isEmpty())
       return Collections.emptyMap();
     Map<String, String> result = new HashMap<>();
-    for (Map.Entry<String, List<String>> entry : myPerParentChangedFiles.entrySet()) {
+    for (Map.Entry<String, ? extends Collection<String>> entry : perParentChangedFiles.entrySet()) {
       String parentCommit = entry.getKey();
-      List<String> files = entry.getValue();
+      Collection<String> files = entry.getValue();
       Map<String, List<String>> groupedByCommonPrefix = new HashMap<>();
       for (String path: files) {
         int separatorIdx = path.lastIndexOf('/');

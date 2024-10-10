@@ -9,14 +9,18 @@ import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.ExtensionHolder;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitApiClientFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
 import jetbrains.buildServer.metrics.*;
+import jetbrains.buildServer.parameters.ParametersProvider;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
+import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
+import jetbrains.buildServer.util.ssl.SSLTrustStoreProvider;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.patches.PatchBuilder;
 import org.eclipse.jgit.lib.Ref;
@@ -58,6 +62,8 @@ public class GitVcsSupport extends ServerVcsSupport
   private final CheckoutRulesLatestRevisionCache myCheckoutRulesLatestRevisionCache;
   private final Collection<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
   private Counter myCurrentStateMetric = new NoOpCounter();
+  private final SSLTrustStoreProvider mySslTrustStoreProvider;
+  private final ParameterFactory myParameterFactory;
 
   public GitVcsSupport(@NotNull GitRepoOperations gitRepoOperations,
                        @NotNull ServerPluginConfig config,
@@ -72,10 +78,12 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull ResetRevisionsCacheHandler resetRevisionsCacheHandler,
                        @NotNull TokenRefresher tokenRefresher,
                        @Nullable TestConnectionSupport customTestConnection,
-                       @NotNull CheckoutRulesLatestRevisionCache checkoutRulesLatestRevisionCache) {
+                       @NotNull CheckoutRulesLatestRevisionCache checkoutRulesLatestRevisionCache,
+                       @NotNull SSLTrustStoreProvider sslTrustStoreProvider,
+                       @NotNull ParameterFactory parameterFactory) {
     this(gitRepoOperations, config, resetCacheManager, transportFactory, repositoryManager, mapFullPath, commitLoader, sshKeyManager, progressProvider,
          resetCacheHandler, resetRevisionsCacheHandler, new GitTrustStoreProviderStatic(null), tokenRefresher, customTestConnection,
-         checkoutRulesLatestRevisionCache);
+         checkoutRulesLatestRevisionCache, sslTrustStoreProvider, parameterFactory);
   }
 
   public GitVcsSupport(@NotNull GitRepoOperations gitRepoOperations,
@@ -92,7 +100,9 @@ public class GitVcsSupport extends ServerVcsSupport
                        @NotNull GitTrustStoreProvider gitTrustStoreProvider,
                        @NotNull TokenRefresher tokenRefresher,
                        @Nullable TestConnectionSupport customTestConnection,
-                       @NotNull CheckoutRulesLatestRevisionCache checkoutRulesLatestRevisionCache) {
+                       @NotNull CheckoutRulesLatestRevisionCache checkoutRulesLatestRevisionCache,
+                       @NotNull SSLTrustStoreProvider sslTrustStoreProvider,
+                       @NotNull ParameterFactory parameterFactory) {
     myGitRepoOperations = gitRepoOperations;
     myConfig = config;
     myTransportFactory = transportFactory;
@@ -108,6 +118,8 @@ public class GitVcsSupport extends ServerVcsSupport
     myGitTrustStoreProvider = gitTrustStoreProvider;
     myTestConnection = customTestConnection == null ? this : customTestConnection;
     myTokenRefresher = tokenRefresher;
+    mySslTrustStoreProvider = sslTrustStoreProvider;
+    myParameterFactory = parameterFactory;
     JSchConfigInitializer.initJSchConfig(JSch.class);
   }
 
@@ -397,7 +409,7 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public GitCollectChangesPolicy getCollectChangesPolicy() {
-    return new GitCollectChangesPolicy(this, myProgressProvider, myConfig, myRepositoryManager, myCheckoutRulesLatestRevisionCache);
+    return new GitCollectChangesPolicy(this, myProgressProvider, myConfig, myRepositoryManager, myCheckoutRulesLatestRevisionCache, new GitApiClientFactory(mySslTrustStoreProvider), myParameterFactory);
   }
 
   @NotNull

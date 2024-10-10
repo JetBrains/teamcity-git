@@ -17,7 +17,8 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentSslCheckoutTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SSLInvestigatorTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CommandUtilTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitProxyTests"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ProxyTests"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.gitProxy.GitProxyServiceTests"/>
     </classes>
   </test>
 </suite>

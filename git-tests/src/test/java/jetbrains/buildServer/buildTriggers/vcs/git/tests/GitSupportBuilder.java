@@ -2,20 +2,30 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.security.KeyStore;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.crypt.BaseEncryptionStrategy;
+import jetbrains.buildServer.serverSide.crypt.EncryptionManager;
+import jetbrains.buildServer.serverSide.crypt.EncryptionSettings;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.serverSide.oauth.OAuthToken;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
+import jetbrains.buildServer.serverSide.parameters.ParameterDescriptionFactoryImpl;
+import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
+import jetbrains.buildServer.serverSide.parameters.ParameterFactoryImpl;
+import jetbrains.buildServer.serverSide.parameters.types.ParameterTypeManager;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
 import jetbrains.buildServer.util.cache.ResetCacheRegister;
+import jetbrains.buildServer.util.ssl.SSLTrustStoreProvider;
 import jetbrains.buildServer.vcs.MockVcsOperationProgressProvider;
 import jetbrains.buildServer.vcs.TestConnectionSupport;
 import org.jetbrains.annotations.NotNull;
@@ -131,6 +141,10 @@ public class GitSupportBuilder {
     return myTransportFactory;
   }
 
+  public static ParameterFactory getParametersFactory() {
+    return new ParameterFactoryImpl(new ParameterDescriptionFactoryImpl(), new ParameterTypeManager(Collections.emptyList()), new EncryptionManager(new EncryptionSettings(), Collections.emptyList(), new BaseEncryptionStrategy()));
+  }
+
   @NotNull
   public GitVcsSupport build() {
     if (myPluginConfigBuilder == null && myServerPaths == null && myPluginConfig == null)
@@ -192,7 +206,13 @@ public class GitSupportBuilder {
     GitVcsSupport git = new GitVcsSupport(myGitRepoOperations, myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
                                           myVcsRootSSHKeyManager, new MockVcsOperationProgressProvider(),
                                           resetCacheHandler, resetRevisionsCacheHandler, tokenRefresher, myTestConnectionSupport,
-                                          new CheckoutRulesLatestRevisionCache());
+                                          new CheckoutRulesLatestRevisionCache(), new SSLTrustStoreProvider() {
+      @Nullable
+      @Override
+      public KeyStore getTrustStore() {
+        return null;
+      }
+    }, getParametersFactory());
     git.addExtensions(myExtensions);
     git.setExtensionHolder(myExtensionHolder);
     return git;
