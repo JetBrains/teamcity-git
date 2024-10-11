@@ -24,6 +24,7 @@ import jetbrains.buildServer.util.Disposable;
 import jetbrains.buildServer.util.NamedDaemonThreadFactory;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
+import jetbrains.buildServer.vcs.impl.DBVcsModification;
 import jetbrains.buildServer.vcshostings.url.ServerURIParser;
 import org.eclipse.jgit.lib.ObjectDatabase;
 import org.eclipse.jgit.lib.ObjectId;
@@ -117,6 +118,12 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         return null;
       }
 
+      String vcsUrl = root.getProperty(Constants.FETCH_URL);
+      // for now git proxy only works with jetbrains.team repositories
+      if (vcsUrl == null || !vcsUrl.contains("jetbrains.team")) {
+        return null;
+      }
+
       SProject project = ((VcsRootInstance)root).getParent().getProject();
       Parameter urlParam = project.getParameter(GIT_PROXY_URL_PROPERTY);
       Parameter authParam = project.getParameter(GIT_PROXY_AUTH_PROPERTY);
@@ -133,20 +140,24 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                         @NotNull RepositoryStateData fromState,
                                                         @NotNull RepositoryStateData toState,
                                                         @NotNull ProxyCredentials proxyCredentials) throws VcsException {
-    OperationContext context = myVcs.createContext(root, "collecting changes");
-    GitVcsRoot gitRoot = context.getGitRoot();
+    GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), null);
 
     String url = root.getProperty(Constants.FETCH_URL);
     if (url == null) {
       return Collections.emptyList();
     }
 
+    // try to parse project name and repository name from url. For now git proxy only works with jetbrains.team repositories
     List<String> path = ServerURIParser.createServerURI(url).getPathFragments();
     if (path.size() < 2) {
       return Collections.emptyList();
     }
-    String repoName = String.format("%s/%s", path.get(path.size() - 2), path.get(path.size() - 1));
-    GitRepoApi client = myGitApiClientFactory.createRepoApi(proxyCredentials, null, repoName);
+    String repoName = path.get(path.size() - 1);
+    if (repoName.endsWith(".git")) {
+      repoName = repoName.substring(0, repoName.length() - 4);
+    }
+    String fullRepoName = String.format("%s/%s", path.get(path.size() - 2), repoName);
+    GitRepoApi client = myGitApiClientFactory.createRepoApi(proxyCredentials, null, fullRepoName);
 
     List<String> commitPatterns = new ArrayList<>();
     for (Map.Entry<String, String> entry: fromState.getBranchRevisions().entrySet()) {
@@ -161,10 +172,20 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       }
     }
 
-    CommitList commitList = client.listCommits(Collections.singletonList(new Pair<>("id-range", commitPatterns)), 0, Integer.MAX_VALUE, false, true);
+    CommitList commitList;
+    try {
+      commitList = client.listCommits(Collections.singletonList(new Pair<>("id-range", commitPatterns)), 0, Integer.MAX_VALUE, false, true);
+    } catch (Exception e) {
+      throw new VcsException("Failed to collect commits from git proxy for collectChanges operation", e);
+    }
     List<String> commitIds = commitList.commits.stream().map(commit -> commit.id).collect(Collectors.toList());
     Map<String, CommitInfo> commitInfoMap = commitList.commits.stream().collect(Collectors.toMap(commit -> commit.id, commit -> commit.info));
-    List<CommitChange> changes = client.listChanges(commitIds, false, true, false, false, Integer.MAX_VALUE);
+    List<CommitChange> changes;
+    try {
+      changes = client.listChanges(commitIds, false, true, false, false, Integer.MAX_VALUE);
+    } catch (Exception e) {
+      throw new VcsException("Failed to collect changes from git proxy for collectChanges operation", e);
+    }
 
     List<ModificationData> result = new ArrayList<>();
     int i = 0;
@@ -182,7 +203,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         i++;
       }
       if (info == null) {
-        LOG.warn("There is no commit info for returned revision " + change.revision);
+        LOG.error("There is no commit info for returned revision " + change.revision);
         continue;
       }
       result.add(createModificationDataGitProxy(info, change, gitRoot, root, mergeEdgeChanges));
@@ -229,10 +250,10 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     String commiter = GitServerUtil.getUser(gitRoot, new PersonIdent(info.committer.name, info.committer.email));
     Date commitDate = new Date((long)info.commitTime * 1000);
     if (!Objects.equals(authorDate, commitDate)) {
-      modificationData.setAttribute("teamcity.commit.time", Long.toString(commitDate.getTime()));
+      modificationData.setAttribute(DBVcsModification.TEAMCITY_COMMIT_TIME, Long.toString(commitDate.getTime()));
     }
     if (!Objects.equals(author, commiter)) {
-      modificationData.setAttribute("teamcity.commit.user", commiter);
+      modificationData.setAttribute(DBVcsModification.TEAMCITY_COMMIT_USER, commiter);
     }
 
     modificationData.setParentRevisions(info.parents != null ? info.parents : Collections.singletonList(ObjectId.zeroId().name()));

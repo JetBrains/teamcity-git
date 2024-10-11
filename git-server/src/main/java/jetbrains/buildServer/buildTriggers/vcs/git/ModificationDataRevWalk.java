@@ -9,6 +9,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErr
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.impl.DBVcsModification;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -69,10 +70,10 @@ class ModificationDataRevWalk extends LimitingRevWalk {
     final String commiter = GitServerUtil.getUser(getGitRoot(), commiterIdent);
     final Date commitDate = commiterIdent.getWhen();
     if (!Objects.equals(authorDate, commitDate)) {
-      result.setAttribute("teamcity.commit.time", Long.toString(commitDate.getTime()));
+      result.setAttribute(DBVcsModification.TEAMCITY_COMMIT_TIME, Long.toString(commitDate.getTime()));
     }
     if (!Objects.equals(author, commiter)) {
-      result.setAttribute("teamcity.commit.user", commiter);
+      result.setAttribute(DBVcsModification.TEAMCITY_COMMIT_USER, commiter);
     }
 
     if (getCurrentCommit().getParentCount() > 0) {

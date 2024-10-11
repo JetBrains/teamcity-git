@@ -13,11 +13,14 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import jetbrains.buildServer.serverSide.IOGuard;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.HTTPRequestBuilder;
 import jetbrains.buildServer.util.ssl.SSLTrustStoreProvider;
 import org.jetbrains.annotations.NotNull;
 
 public class GitApiClientFactoryBase {
+
+  private static final String REQUEST_TIMEOUT_PROPERTY = "teamcity.git.gitProxy.requestTimeoutSeconds";
 
   @NotNull private final SSLTrustStoreProvider myTrustStoreProvider;
   @NotNull private final HTTPRequestBuilder.ApacheClient43RequestHandler myClient;
@@ -84,7 +87,7 @@ public class GitApiClientFactoryBase {
       AtomicReference<String> responseBody = new AtomicReference<>();
 
       HTTPRequestBuilder.Request request = new HTTPRequestBuilder(myEndpoint)
-        .withTimeout(20 * 1000)
+        .withTimeout(TeamCityProperties.getInteger(REQUEST_TIMEOUT_PROPERTY, 20) * 1000)
         .withPreemptiveAuthentication(true)
         .withHeader(myHeaders)
         .withTrustStore(myTrustStoreProvider.getTrustStore())
