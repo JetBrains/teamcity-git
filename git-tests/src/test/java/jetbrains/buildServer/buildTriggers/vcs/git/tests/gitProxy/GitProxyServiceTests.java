@@ -35,7 +35,7 @@ public class GitProxyServiceTests extends BaseServerTestCase {
     super.setUp();
 
     SVcsRootImpl root = myFixture.addVcsRoot("jetbrains.git", "", myBuildType);
-    root.addProperty("url", "http://example.com/project/repo");
+    root.addProperty("url", "http://jetbrains.team/project/repo");
     myVcsRootInstance = myBuildType.getVcsRootInstanceForParent(root);
 
     ParameterFactory factory = myFixture.getSingletonService(ParameterFactory.class);
