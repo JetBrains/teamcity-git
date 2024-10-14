@@ -41,6 +41,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
 
   private static final String GIT_PROXY_URL_PROPERTY = "teamcity.git.gitProxy.url";
   private static final String GIT_PROXY_AUTH_PROPERTY = "teamcity.git.gitProxy.auth";
+  private static final String ENABLE_CHANGES_COLLECTION_LOGGING = "teamcity.internal.git.changesCollectionTimeLogging.enabled";
 
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
 
@@ -101,20 +102,43 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                @NotNull RepositoryStateData fromState,
                                                @NotNull RepositoryStateData toState,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
+    SProject project = retrieveProject(root);
+    long startTime = System.currentTimeMillis();
+    String collectChangesExec = null;
     try (Stoppable stoppable = myCollectChangesMetric.startMsecsTimer()) {
-      ProxyCredentials proxyCredentials = getGitProxyInfo(root);
+      ProxyCredentials proxyCredentials = getGitProxyInfo(root, project);
       if (proxyCredentials != null) {
+        collectChangesExec = "gitProxy";
         return collectChangesGitProxy(root, fromState, toState, proxyCredentials);
       } else {
+        collectChangesExec = "jgit";
         return collectChangesJgit(root, fromState, toState);
+      }
+    } finally {
+      if (project != null && Boolean.parseBoolean(project.getParameterValue(ENABLE_CHANGES_COLLECTION_LOGGING))) {
+        LOG.info(String.format("Changes collection(%s) operation for Project %s, VCS Root %s: %d ms",
+                               collectChangesExec, project.getProjectId(), root.getExternalId(), System.currentTimeMillis() - startTime));
       }
     }
   }
 
   @Nullable
-  private ProxyCredentials getGitProxyInfo(VcsRoot root) {
+  private SProject retrieveProject(@NotNull VcsRoot root) {
     try {
       if (!(root instanceof VcsRootInstance)) {
+        return null;
+      }
+
+      return ((VcsRootInstance)root).getParent().getProject();
+    } catch (Throwable e) {
+      return null;
+    }
+  }
+
+  @Nullable
+  private ProxyCredentials getGitProxyInfo(@NotNull VcsRoot root, @Nullable SProject project) {
+    try {
+      if (project == null) {
         return null;
       }
 
@@ -124,7 +148,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         return null;
       }
 
-      SProject project = ((VcsRootInstance)root).getParent().getProject();
       Parameter urlParam = project.getParameter(GIT_PROXY_URL_PROPERTY);
       Parameter authParam = project.getParameter(GIT_PROXY_AUTH_PROPERTY);
       if (urlParam != null && authParam != null) {
