@@ -72,10 +72,10 @@ public class GitProxyServiceTests extends BaseServerTestCase {
     List<CommitChange> changes = Arrays.asList(new CommitChange("rev5", "rev4",false, Arrays.asList(new FileChange(ChangeType.Modified, "file1", "file1", "", "", EntryType.File),
                                                                                                                 new FileChange(ChangeType.Modified, "file2", "file2", "", "", EntryType.File))),
                                                new CommitChange("rev4", "rev3", false, Arrays.asList(new FileChange(ChangeType.Added, "file2", "file2", "", "", EntryType.File))),
-                                               new CommitChange("rev3", "rev2", false, Arrays.asList(new FileChange(ChangeType.Deleted, "file0", "file0", "", "", EntryType.File)))
+                                               new CommitChange("rev3", "rev2", false, Arrays.asList(new FileChange(ChangeType.Deleted, null, "file0", "", "", EntryType.File)))
     );
     Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev2", "^rev1", "rev5"))), 0, Integer.MAX_VALUE, false, true);
-    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5", "rev4", "rev3"), false, true, false, false, Integer.MAX_VALUE);
+    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5", "rev4", "rev3"), false, false, false, false, Integer.MAX_VALUE);
 
     List<ModificationData> changesData = myCollectChangesPolicy.collectChanges(myVcsRootInstance,
                                                                          RepositoryStateData.createVersionState("master", map("master", "rev1", "branch1", "rev2")),
@@ -128,7 +128,7 @@ public class GitProxyServiceTests extends BaseServerTestCase {
                                                new CommitChange("rev5", "rev2", false, Arrays.asList(new FileChange(ChangeType.Modified, "file2", "file2", "", "", EntryType.File)))
     );
     Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev4", "rev5"))), 0, Integer.MAX_VALUE, false, true);
-    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5"), false, true, false, false, Integer.MAX_VALUE);
+    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5"), false, false, false, false, Integer.MAX_VALUE);
 
     List<ModificationData> changesData = myCollectChangesPolicy.collectChanges(myVcsRootInstance,
                                                                              RepositoryStateData.createVersionState("master", map("master", "rev4")),
@@ -163,7 +163,7 @@ public class GitProxyServiceTests extends BaseServerTestCase {
                                                new CommitChange("rev5", "rev2", false, Arrays.asList(new FileChange(ChangeType.Modified, "file3", "file3", "", "", EntryType.File)))
     );
     Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev4", "rev5"))), 0, Integer.MAX_VALUE, false, true);
-    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5"), false, true, false, false, Integer.MAX_VALUE);
+    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5"), false, false, false, false, Integer.MAX_VALUE);
 
     List<ModificationData> changesData = myCollectChangesPolicy.collectChanges(myVcsRootInstance,
                                                                                RepositoryStateData.createVersionState("master", map("master", "rev4")),

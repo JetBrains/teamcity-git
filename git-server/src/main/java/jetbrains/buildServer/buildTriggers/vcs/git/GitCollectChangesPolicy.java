@@ -205,7 +205,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     Map<String, CommitInfo> commitInfoMap = commitList.commits.stream().collect(Collectors.toMap(commit -> commit.id, commit -> commit.info));
     List<CommitChange> changes;
     try {
-      changes = client.listChanges(commitIds, false, true, false, false, Integer.MAX_VALUE);
+      changes = client.listChanges(commitIds, false, false, false, false, Integer.MAX_VALUE);
     } catch (Exception e) {
       throw new VcsException("Failed to collect changes from git proxy for collectChanges operation", e);
     }
@@ -255,10 +255,12 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         case Modified: changeType = VcsChangeInfo.Type.CHANGED; break;
         default: changeType = VcsChangeInfo.Type.NOT_CHANGED;
       }
+
+      String filePath = fileChange.getDisplayPath();
       return new VcsChange(changeType,
                            null, // TODO identify if file mode has changed and provide description in that case
-                           fileChange.newPath,
-                           fileChange.newPath,
+                           filePath,
+                           filePath,
                            (info.parents == null || info.parents.isEmpty()) ? ObjectId.zeroId().name() : info.parents.get(0),
                            info.id);
     }).collect(Collectors.toList());
@@ -292,14 +294,14 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     if (edgeChange.compareTo == null) {
       return;
     }
-    changedFiles.put(edgeChange.compareTo, edgeChange.changes.stream().map(fileChange -> fileChange.newPath).collect(Collectors.toCollection(LinkedHashSet::new)));
+    changedFiles.put(edgeChange.compareTo, edgeChange.changes.stream().map(fileChange -> fileChange.getDisplayPath()).collect(Collectors.toCollection(LinkedHashSet::new)));
   }
 
   private CommitChange inferMergeCommitChange(@NotNull CommitChange firstEdgeChange, Map<String, LinkedHashSet<String>> parentChangedFilesMap) {
     List<FileChange> changedFiles = new ArrayList<>();
     for (FileChange fileChange : firstEdgeChange.changes) {
       // check that file is changed by each edge, this means that the change was made in the merge commit
-      if (parentChangedFilesMap.entrySet().stream().allMatch(entry -> entry.getValue().contains(fileChange.newPath))) {
+      if (parentChangedFilesMap.entrySet().stream().allMatch(entry -> entry.getValue().contains(fileChange.getDisplayPath()))) {
         changedFiles.add(fileChange);
       }
     }

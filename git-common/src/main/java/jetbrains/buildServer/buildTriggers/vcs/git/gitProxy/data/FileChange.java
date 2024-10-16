@@ -16,4 +16,8 @@ public class FileChange {
     this.oldBlob = oldBlob;
     this.entryType = entryType;
   }
+
+  public String getDisplayPath() {
+    return newPath != null ? newPath : oldPath;
+  }
 }
