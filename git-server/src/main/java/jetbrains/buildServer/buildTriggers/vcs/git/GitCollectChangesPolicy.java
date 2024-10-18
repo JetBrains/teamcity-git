@@ -2,10 +2,15 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.google.gson.ExclusionStrategy;
+import com.google.gson.FieldAttributes;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitApiClientFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitRepoApi;
@@ -42,6 +47,9 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   private static final String GIT_PROXY_URL_PROPERTY = "teamcity.git.gitProxy.url";
   private static final String GIT_PROXY_AUTH_PROPERTY = "teamcity.git.gitProxy.auth";
   private static final String ENABLE_CHANGES_COLLECTION_LOGGING = "teamcity.internal.git.changesCollectionTimeLogging.enabled";
+  private static final String ENABLE_GIT_PROXY_COMPARISON_LOGGING = "teamcity.internal.git.gitProxy.changesCollectionComparison.enabled";
+
+  private static final String COMPARE_MODIFICATIONS_WITHOUT_ORDER_LOGGING_PROPERTY = "teamcity.git.gitProxy.logging.unorderedModificationComparison";
 
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
 
@@ -54,6 +62,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   private final Counter myComputeRevisionMetric;
   private final GitApiClientFactory myGitApiClientFactory;
   private final ParameterFactory myParameterFactory;
+  private final Gson myGson;
 
   public GitCollectChangesPolicy(@NotNull GitVcsSupport vcs,
                                  @NotNull VcsOperationProgressProvider progressProvider,
@@ -85,6 +94,17 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     }
 
     myGitApiClientFactory = gitApiClientFactory;
+    myGson = new GsonBuilder().setExclusionStrategies(new ExclusionStrategy() {
+      @Override
+      public boolean shouldSkipField(FieldAttributes f) {
+        return f.getName().toLowerCase().contains("root");
+      }
+
+      @Override
+      public boolean shouldSkipClass(Class<?> clazz) {
+        return false;
+      }
+    }).create();
   }
 
 
@@ -103,22 +123,143 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                @NotNull RepositoryStateData toState,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     SProject project = retrieveProject(root);
-    long startTime = System.currentTimeMillis();
-    String collectChangesExec = null;
     try (Stoppable stoppable = myCollectChangesMetric.startMsecsTimer()) {
-      ProxyCredentials proxyCredentials = getGitProxyInfo(root, project);
+      final ProxyCredentials proxyCredentials = getGitProxyInfo(root, project, "");
       if (proxyCredentials != null) {
-        collectChangesExec = "gitProxy";
-        return collectChangesGitProxy(root, fromState, toState, proxyCredentials);
+        return runCollectChangesWithTimer("gitProxy", root, project, false, () -> collectChangesGitProxy(root, fromState, toState, proxyCredentials));
       } else {
-        collectChangesExec = "jgit";
-        return collectChangesJgit(root, fromState, toState);
+        List<ModificationData> jgitResult = runCollectChangesWithTimer("jgit", root, project, false, () -> collectChangesJgit(root, fromState, toState));
+        if (project != null && Boolean.parseBoolean(project.getParameterValue(ENABLE_GIT_PROXY_COMPARISON_LOGGING))) {
+          try {
+            ProxyCredentials testProxyCredentials = getGitProxyInfo(root, project, ".comparisonTest");
+            if (testProxyCredentials != null) {
+              List<ModificationData> gitProxyResult =
+                runCollectChangesWithTimer("gitProxy", root, project, true, () -> collectChangesGitProxy(root, fromState, toState, testProxyCredentials));
+              logAnyDifferences(jgitResult, gitProxyResult, fromState, toState, root);
+            }
+          } catch (Throwable t) {
+            LOG.error("Failed to compare gitProxy and jgit changes collection results", t);
+          }
+        }
+        return jgitResult;
       }
-    } finally {
-      if (project != null && Boolean.parseBoolean(project.getParameterValue(ENABLE_CHANGES_COLLECTION_LOGGING))) {
-        LOG.info(String.format("Changes collection(%s) operation for Project %s, VCS Root %s: %d ms",
-                               collectChangesExec, project.getProjectId(), root.getExternalId(), System.currentTimeMillis() - startTime));
+    }
+  }
+
+  private List<ModificationData> runCollectChangesWithTimer(@NotNull String methodName, @NotNull VcsRoot root, @Nullable SProject project, boolean safeMode, Callable<List<ModificationData>> operation) throws VcsException {
+    long startTime = System.currentTimeMillis();
+    List<ModificationData> result;
+    try {
+      result = operation.call();
+    } catch (Exception e) {
+      logChangesCollectionOperationData(methodName, root, project, System.currentTimeMillis() - startTime, e);
+      if (!safeMode) {
+        if (e instanceof VcsException) {
+          throw (VcsException)e;
+        }
+        throw new VcsException(e);
+      } else {
+        return Collections.emptyList();
       }
+    }
+
+    logChangesCollectionOperationData(methodName, root, project, System.currentTimeMillis() - startTime, null);
+
+    return result;
+  }
+
+  private void logAnyDifferences(@NotNull List<ModificationData> jgitData, @NotNull List<ModificationData> gitProxyData, @NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState, @NotNull VcsRoot root) {
+    if (jgitData.size() != gitProxyData.size()) {
+      LOG.info("GitProxy difference was found for VCS root(" + LogUtil.describe(root) + "). Different length. jgit:{" + myGson.toJson(jgitData) + "}, gitProxy:{" + myGson.toJson(gitProxyData) + "}," + getStateDiff(fromState, toState));
+      return;
+    }
+
+    if (TeamCityProperties.getBoolean(COMPARE_MODIFICATIONS_WITHOUT_ORDER_LOGGING_PROPERTY) && notEqualModificationListsById(jgitData, gitProxyData)) {
+      jgitData = new ArrayList<>(jgitData);
+      gitProxyData = new ArrayList<>(gitProxyData);
+      Collections.sort(jgitData, (a, b) -> a.getVersion().compareTo(b.getVersion()));
+      Collections.sort(gitProxyData, (a, b) -> a.getVersion().compareTo(b.getVersion()));
+    }
+    for (int i = 0; i < jgitData.size(); i++) {
+      if (notEqualModifications(jgitData.get(i), gitProxyData.get(i))) {
+        LOG.info(
+          "GitProxy difference was found for VCS root(" + LogUtil.describe(root) + "). Different ModificationData at position " + i + ". jgit:{" + myGson.toJson(jgitData) +
+          "}, gitProxy:{" + myGson.toJson(gitProxyData) + "}," + getStateDiff(fromState, toState));
+        return;
+      }
+    }
+  }
+
+  @NotNull
+  private static String getStateDiff(@NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState) {
+    StringBuilder result = new StringBuilder( "State_diff{");
+    result.append("FromState[default=").append(fromState.getDefaultBranchName()).append(":").append(fromState.getDefaultBranchRevision()).append("] ");
+    result.append("ToState[default=").append(fromState.getDefaultBranchName()).append(":").append(fromState.getDefaultBranchRevision()).append("] ");
+    result.append("diff[");
+
+    for (Map.Entry<String, String> entry : fromState.getBranchRevisions().entrySet()) {
+      String toStateValue = toState.getBranchRevisions().get(entry.getKey());
+      if (!entry.getValue().equals(toStateValue)) {
+        result.append(entry.getKey()).append("(").append("f:").append(entry.getValue()).append("|").append("t:").append(toStateValue).append("),");
+      }
+    }
+
+    for (Map.Entry<String, String> entry : toState.getBranchRevisions().entrySet()) {
+      if (!fromState.getBranchRevisions().containsKey(entry.getKey())) {
+        result.append(entry.getKey()).append("(").append("f:null|").append("t:").append(entry.getValue()).append("),");
+      }
+    }
+    result.append("]}");
+    return result.toString();
+  }
+
+  private static boolean notEqualModificationListsById(@NotNull List<ModificationData> data1, @NotNull List<ModificationData> data2) {
+    for (int i = 0; i < data1.size(); i++) {
+      if (!data1.get(i).getVersion().equals(data2.get(i).getVersion())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean notEqualModifications(@NotNull ModificationData data1, @NotNull ModificationData data2) {
+    if (data1.getChangeCount() != data2.getChangeCount()) return true;
+    if (!data2.getDisplayVersion().equals(data1.getDisplayVersion())) return true;
+    if (!data2.getVersion().equals(data1.getVersion())) return true;
+    if (!Objects.equals(data2.getUserName(), data1.getUserName())) return true;
+    if (!Objects.equals(data2.getVcsDate(), data1.getVcsDate())) return true;
+    if (!Objects.equals(data2.getParentRevisions(), data1.getParentRevisions())) return true;
+    if (!Objects.equals(data2.getAttributes(), data1.getAttributes())) return true;
+
+    if (data1.getChanges().size() != data2.getChanges().size()) return true;
+
+    if (notEqualVcsChanges(data1.getChanges(), data2.getChanges())) {
+      List<VcsChange> changes1Sorted = new ArrayList<>(data1.getChanges());
+      List<VcsChange> changes2Sorted = new ArrayList<>(data2.getChanges());
+      Collections.sort(changes1Sorted, (a, b) -> a.getFileName().compareTo(b.getFileName()));
+      Collections.sort(changes2Sorted, (a, b) -> a.getFileName().compareTo(b.getFileName()));
+      if (notEqualVcsChanges(changes1Sorted, changes2Sorted)) return true;
+    }
+    return false;
+  }
+
+  private static boolean notEqualVcsChanges(@NotNull List<VcsChange> changes1, @NotNull List<VcsChange> changes2) {
+    for (int i = 0; i < changes2.size(); i++) {
+      VcsChange change1 = changes1.get(i);
+      VcsChange change2 = changes2.get(i);
+      if (!Objects.equals(change1.getType(), change2.getType())) return true;
+      if (!Objects.equals(change1.getAfterChangeRevisionNumber(), change2.getAfterChangeRevisionNumber())) return true;
+      if (!Objects.equals(change1.getBeforeChangeRevisionNumber(), change2.getBeforeChangeRevisionNumber())) return true;
+      if (!Objects.equals(change1.getFileName(), change2.getFileName())) return true;
+      if (!Objects.equals(change1.getRelativeFileName(), change2.getRelativeFileName())) return true;
+    }
+    return false;
+  }
+
+  private void logChangesCollectionOperationData(@NotNull String methodName, @NotNull VcsRoot root, @Nullable SProject project, long time, @Nullable Exception e) {
+    if (project != null && Boolean.parseBoolean(project.getParameterValue(ENABLE_CHANGES_COLLECTION_LOGGING))) {
+      LOG.info(String.format("Changes collection(%s) operation for Project %s, VCS Root %s: %d ms.",
+                             methodName, project.getProjectId(), root.getExternalId(), time) + (e == null ? "" : " Finished with exception"), e);
     }
   }
 
@@ -136,7 +277,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   }
 
   @Nullable
-  private ProxyCredentials getGitProxyInfo(@NotNull VcsRoot root, @Nullable SProject project) {
+  private ProxyCredentials getGitProxyInfo(@NotNull VcsRoot root, @Nullable SProject project, @NotNull String suffix) {
     try {
       if (project == null) {
         return null;
@@ -148,8 +289,8 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         return null;
       }
 
-      Parameter urlParam = project.getParameter(GIT_PROXY_URL_PROPERTY);
-      Parameter authParam = project.getParameter(GIT_PROXY_AUTH_PROPERTY);
+      Parameter urlParam = project.getParameter(GIT_PROXY_URL_PROPERTY + suffix);
+      Parameter authParam = project.getParameter(GIT_PROXY_AUTH_PROPERTY + suffix);
       if (urlParam != null && authParam != null) {
         return new ProxyCredentials(urlParam.getValue(), myParameterFactory.getRawValue(authParam));
       }
