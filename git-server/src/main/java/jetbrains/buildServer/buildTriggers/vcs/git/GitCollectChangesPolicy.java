@@ -44,8 +44,8 @@ import org.jetbrains.annotations.Nullable;
 
 public class GitCollectChangesPolicy implements CollectChangesBetweenRepositories, RevisionMatchedByCheckoutRulesCalculator {
 
-  private static final String GIT_PROXY_URL_PROPERTY = "teamcity.git.gitProxy.url";
-  private static final String GIT_PROXY_AUTH_PROPERTY = "teamcity.git.gitProxy.auth";
+  private static final String GIT_PROXY_URL_PROPERTY = "teamcity.internal.git.gitProxy.url";
+  private static final String GIT_PROXY_AUTH_PROPERTY = "teamcity.internal.git.gitProxy.auth";
   private static final String ENABLE_CHANGES_COLLECTION_LOGGING = "teamcity.internal.git.changesCollectionTimeLogging.enabled";
   private static final String ENABLE_GIT_PROXY_COMPARISON_LOGGING = "teamcity.internal.git.gitProxy.changesCollectionComparison.enabled";
 

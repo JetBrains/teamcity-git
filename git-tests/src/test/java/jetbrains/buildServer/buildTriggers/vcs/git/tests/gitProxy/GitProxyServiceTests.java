@@ -39,8 +39,8 @@ public class GitProxyServiceTests extends BaseServerTestCase {
     myVcsRootInstance = myBuildType.getVcsRootInstanceForParent(root);
 
     ParameterFactory factory = myFixture.getSingletonService(ParameterFactory.class);
-    myProject.addParameter(new MockParameter("teamcity.git.gitProxy.url", "aaaa"));
-    myProject.addParameter(new MockParameter("teamcity.git.gitProxy.auth", "bbbb"));
+    myProject.addParameter(new MockParameter("teamcity.internal.git.gitProxy.url", "aaaa"));
+    myProject.addParameter(new MockParameter("teamcity.internal.git.gitProxy.auth", "bbbb"));
 
     GitApiClientFactory gitApiClientFactory = Mockito.mock(GitApiClientFactory.class);
     myGitRepoApi = Mockito.mock(GitRepoApi.class);
