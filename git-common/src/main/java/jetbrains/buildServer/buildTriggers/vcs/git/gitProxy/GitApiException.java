@@ -12,7 +12,7 @@ public class GitApiException extends RuntimeException {
                          int statusCode,
                          @Nullable String body,
                          @Nullable Throwable cause) {
-    super(message, cause);
+    super(message + (body != null ? ": " + body : ""), cause);
     myStatusCode = statusCode;
     myBody = body;
   }

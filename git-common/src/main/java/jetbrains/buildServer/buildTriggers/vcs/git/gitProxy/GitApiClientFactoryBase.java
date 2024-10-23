@@ -1,6 +1,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.gitProxy;
 
 import com.google.gson.Gson;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import java.lang.reflect.*;
 import java.net.URISyntaxException;
@@ -24,6 +25,8 @@ public class GitApiClientFactoryBase {
 
   @NotNull private final SSLTrustStoreProvider myTrustStoreProvider;
   @NotNull private final HTTPRequestBuilder.ApacheClient43RequestHandler myClient;
+
+  private static final Logger LOG = Logger.getInstance(GitApiClientFactoryBase.class.getName());
 
 
   public GitApiClientFactoryBase(@NotNull SSLTrustStoreProvider trustStoreProvider) {
@@ -86,6 +89,7 @@ public class GitApiClientFactoryBase {
       AtomicInteger responseCode = new AtomicInteger();
       AtomicReference<String> responseBody = new AtomicReference<>();
 
+      long startTime = System.currentTimeMillis();
       HTTPRequestBuilder.Request request = new HTTPRequestBuilder(myEndpoint)
         .withTimeout(TeamCityProperties.getInteger(REQUEST_TIMEOUT_PROPERTY, 20) * 1000)
         .withPreemptiveAuthentication(true)
@@ -108,13 +112,28 @@ public class GitApiClientFactoryBase {
 
       IOGuard.allowNetworkCall(() -> myClient.doRequest(request));
 
-      if (responseCode.get() != 200) {
-        throw new GitApiException("Api request failed", responseCode.get(), responseBody.get(), null);
+      if (responseCode.get() != 200 || exception.get() != null) {
+        LOG.warn(String.format("Git proxy request to %s failed in %d ms.%s%s%s%s",
+                               myEndpoint,
+                               System.currentTimeMillis() - startTime,
+                               responseCode.get() != 0 ? " Response code: " + responseCode.get() + "." : "",
+                               responseBody.get() != null ? " Body: " + responseBody.get() + "." : "",
+                               exception.get() != null ? " Exception: " + exception.get().toString() + "." : "",
+                               getRequestDump(payload)));
+        throw new GitApiException("Api request failed", responseCode.get(), responseBody.get(), exception.get());
       }
 
       return myGson.fromJson(responseBody.get(), method.getGenericReturnType());
     }
 
-
+    private String getRequestDump(@NotNull String payLoad) {
+      StringBuilder builder = new StringBuilder();
+      builder.append(String.format(" Request: "));
+      if (myHeaders.containsKey("X-Request-ID")) {
+        builder.append("X-Request-ID(").append(myHeaders.get("X-Request-ID")).append(") ");
+      }
+      builder.append(payLoad);
+      return builder.toString();
+    }
   }
 }
