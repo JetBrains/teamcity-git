@@ -182,11 +182,6 @@ public class GitHubPasswordAuthRootRegistryImplTest extends BaseGitTestCase {
       }
 
       @Override
-      public void publish(@NotNull String eventName, @NotNull Long longArg, @NotNull String strArg) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
       public void publish(@NotNull EventData eventData) {
         throw new UnsupportedOperationException();
       }
