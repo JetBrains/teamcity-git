@@ -313,14 +313,19 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
 
     // try to parse project name and repository name from url. For now git proxy only works with jetbrains.team repositories
     List<String> path = ServerURIParser.createServerURI(url).getPathFragments();
-    if (path.size() < 2) {
+    if (path.size() == 0) {
       return Collections.emptyList();
     }
     String repoName = path.get(path.size() - 1);
     if (repoName.endsWith(".git")) {
       repoName = repoName.substring(0, repoName.length() - 4);
     }
-    String fullRepoName = String.format("%s/%s", path.get(path.size() - 2), repoName);
+    String fullRepoName;
+    if (path.size() == 1) {
+      fullRepoName = repoName;
+    } else {
+      fullRepoName = String.format("%s/%s", path.get(path.size() - 2), repoName);
+    }
     GitRepoApi client = myGitApiClientFactory.createRepoApi(proxyCredentials, null, fullRepoName);
 
     List<String> commitPatterns = new ArrayList<>();
