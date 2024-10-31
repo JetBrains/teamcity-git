@@ -75,17 +75,29 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
     rc.addAll(validateBranchName(properties));
     rc.addAll(validateBranchSpec(properties));
 
-    if (authenticationMethod == AuthenticationMethod.PRIVATE_KEY_FILE) {
-      String pkFile = properties.get(Constants.PRIVATE_KEY_PATH);
-      if (isEmpty(pkFile)) {
-        rc.add(new InvalidProperty(Constants.PRIVATE_KEY_PATH, "The private key path must be specified."));
-      }
+    switch (authenticationMethod) {
+      case PRIVATE_KEY_FILE:
+        String pkFile = properties.get(Constants.PRIVATE_KEY_PATH);
+        if (isEmpty(pkFile)) {
+          rc.add(new InvalidProperty(Constants.PRIVATE_KEY_PATH, "The private key path must be specified."));
+        }
+        break;
+
+      case TEAMCITY_SSH_KEY:
+        String keyId = properties.get(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME);
+        if (isEmpty(keyId)) {
+          rc.add(new InvalidProperty(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME, "The Uploaded key must be specified."));
+        }
+        break;
+
+      case ACCESS_TOKEN:
+        final String tokenId = properties.get(Constants.TOKEN_ID);
+        if (StringUtil.isEmptyOrSpaces(tokenId)) {
+          rc.add(new InvalidProperty(Constants.TOKEN_ID, "The access token must be specified."));
+        }
+        break;
     }
-    if (authenticationMethod == AuthenticationMethod.TEAMCITY_SSH_KEY) {
-      String keyId = properties.get(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME);
-      if (isEmpty(keyId))
-        rc.add(new InvalidProperty(VcsRootSshKeyManager.VCS_ROOT_TEAMCITY_SSH_KEY_NAME, "The Uploaded key must be specified."));
-    }
+
     return rc;
   }
 
