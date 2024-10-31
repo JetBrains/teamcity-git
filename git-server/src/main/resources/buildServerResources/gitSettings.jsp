@@ -206,6 +206,7 @@
             </jsp:attribute>
           </oauth:includeTokenControls>
         </div>
+        <span class="error" id="error_tokenId"></span>
       </td>
     </tr>
     <tr id="gitPasswordRow" class="auth password">
@@ -432,6 +433,10 @@
     },
 
     isHiddenIfNotSelected: function(method) {
+      if (BS.TokenControlParams) {
+        // if token controls are installed, it's safe to allow token authentication from the get go
+        return false;
+      }
       return method == "ACCESS_TOKEN";
     },
 
@@ -623,6 +628,10 @@
       }
 
       idElement.value = it.tokenId;
+    }
+
+    if (it.tokenId) {
+      $('error_tokenId').hide();
     }
   };
 
