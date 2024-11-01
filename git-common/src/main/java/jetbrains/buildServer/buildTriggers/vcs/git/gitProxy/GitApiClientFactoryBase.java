@@ -17,11 +17,13 @@ import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.HTTPRequestBuilder;
 import jetbrains.buildServer.util.ssl.SSLTrustStoreProvider;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.jetbrains.annotations.NotNull;
 
 public class GitApiClientFactoryBase {
 
-  private static final String REQUEST_TIMEOUT_PROPERTY = "teamcity.git.gitProxy.requestTimeoutSeconds";
+  private static final String CLIENT_MAX_CONNECTIONS = "teamcity.git.gitProxy.maxConnections";
+  private static final int CLIENT_MAX_CONNECTIONS_DEFAULT = 10;
 
   @NotNull private final SSLTrustStoreProvider myTrustStoreProvider;
   @NotNull private final HTTPRequestBuilder.ApacheClient43RequestHandler myClient;
@@ -35,26 +37,28 @@ public class GitApiClientFactoryBase {
   }
 
 
-  public <T> T create(@NotNull String endpoint, @NotNull Map<String, String> headers, @NotNull String description, Class<T> clazz, Consumer<Map<String, Object>> additionalArgsBuilder) {
+  public <T> T create(@NotNull GitProxySettings proxyCredentials, @NotNull Map<String, String> headers, @NotNull String description, Class<T> clazz, Consumer<Map<String, Object>> additionalArgsBuilder) {
     return clazz.cast(Proxy.newProxyInstance(
       clazz.getClassLoader(),
       new Class[]{clazz},
-      new Handler(clazz, endpoint, headers, description, additionalArgsBuilder)
+      new Handler(clazz, proxyCredentials, headers, description, additionalArgsBuilder)
     ));
   }
 
   private class Handler implements InvocationHandler {
 
     @NotNull private final Class<?> myClass;
+    @NotNull private final GitProxySettings myGitProxySettings;
     @NotNull private final String myEndpoint;
     @NotNull private final Map<String, String> myHeaders;
     @NotNull private final String myDescription;
     private final Consumer<Map<String, Object>> myAdditionalArgsBuilder;
     @NotNull private final Gson myGson;
 
-    public Handler(@NotNull Class<?> clazz, @NotNull String endpoint, @NotNull Map<String, String> headers, @NotNull String description, Consumer<Map<String, Object>> additionalArgsBuilder) {
+    public Handler(@NotNull Class<?> clazz, @NotNull GitProxySettings proxyCredentials, @NotNull Map<String, String> headers, @NotNull String description, Consumer<Map<String, Object>> additionalArgsBuilder) {
       myClass = clazz;
-      myEndpoint = endpoint;
+      myEndpoint = proxyCredentials.getUrl();
+      myGitProxySettings = proxyCredentials;
       myHeaders = headers;
       myDescription = description;
       myAdditionalArgsBuilder = additionalArgsBuilder;
@@ -90,27 +94,44 @@ public class GitApiClientFactoryBase {
       AtomicReference<String> responseBody = new AtomicReference<>();
 
       long startTime = System.currentTimeMillis();
-      HTTPRequestBuilder.Request request = new HTTPRequestBuilder(myEndpoint)
-        .withTimeout(TeamCityProperties.getInteger(REQUEST_TIMEOUT_PROPERTY, 20) * 1000)
-        .withPreemptiveAuthentication(true)
-        .withHeader(myHeaders)
-        .withTrustStore(myTrustStoreProvider.getTrustStore())
-        .withData(payload.getBytes(StandardCharsets.UTF_8))
-        .withMethod("POST")
-        .onException(ex -> {
-          exception.set(ex);
-        })
-        .onErrorResponse(response -> {
-          responseCode.set(response.getStatusCode());
-          responseBody.set(response.getBodyAsString());
-        })
-        .onSuccess(response -> {
-          responseCode.set(response.getStatusCode());
-          responseBody.set(response.getBodyAsString());
-        })
-        .build();
+      int connectTimeoutMs = myGitProxySettings.getConnectTimeoutMs();
+      int retryNum = 0;
+      while (System.currentTimeMillis() - startTime < myGitProxySettings.getTimeoutMs() && retryNum <= myGitProxySettings.getConnectRetryCnt()) {
+        exception.set(null);
+        responseCode.set(0);
+        responseBody.set(null);
+        HTTPRequestBuilder.Request request = new HTTPRequestBuilder(myEndpoint)
+          .withTimeout(myGitProxySettings.getTimeoutMs())
+          .withConnectTimeout(connectTimeoutMs)
+          .withPreemptiveAuthentication(true)
+          .withHeader(myHeaders)
+          .withTrustStore(myTrustStoreProvider.getTrustStore())
+          .withMaxConnections(TeamCityProperties.getInteger(CLIENT_MAX_CONNECTIONS, CLIENT_MAX_CONNECTIONS_DEFAULT))
+          .withData(payload.getBytes(StandardCharsets.UTF_8))
+          .withMethod("POST")
+          .onException(ex -> {
+            exception.set(ex);
+          })
+          .onErrorResponse(response -> {
+            responseCode.set(response.getStatusCode());
+            responseBody.set(response.getBodyAsString());
+          })
+          .onSuccess(response -> {
+            responseCode.set(response.getStatusCode());
+            responseBody.set(response.getBodyAsString());
+          })
+          .build();
 
-      IOGuard.allowNetworkCall(() -> myClient.doRequest(request));
+        IOGuard.allowNetworkCall(() -> myClient.doRequest(request));
+
+        Exception ex = exception.get();
+        if (ex != null && ex instanceof ConnectTimeoutException) {
+          connectTimeoutMs *= 2;
+          retryNum++;
+        } else {
+          break;
+        }
+      }
 
       if (responseCode.get() != 200 || exception.get() != null) {
         LOG.warn(String.format("Git proxy request to %s failed in %d ms.%s%s%s%s",

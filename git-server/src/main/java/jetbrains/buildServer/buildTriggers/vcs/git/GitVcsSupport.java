@@ -12,7 +12,6 @@ import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitApiClientFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchBuilderDispatcher;
 import jetbrains.buildServer.metrics.*;
-import jetbrains.buildServer.parameters.ParametersProvider;
 import jetbrains.buildServer.serverSide.PropertiesProcessor;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
