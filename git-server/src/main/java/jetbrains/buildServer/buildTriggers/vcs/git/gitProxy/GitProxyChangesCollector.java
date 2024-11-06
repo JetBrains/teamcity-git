@@ -8,11 +8,16 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import java.util.*;
 import java.util.stream.Collectors;
-import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.CommitChange;
-import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.CommitInfo;
-import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.CommitList;
-import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.FileChange;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitCollectChangesPolicy;
+import jetbrains.buildServer.buildTriggers.vcs.git.LogUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.VcsChangeTreeWalk;
+import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
+import jetbrains.buildServer.buildTriggers.vcs.git.RepositoryManager;
+import jetbrains.buildServer.buildTriggers.vcs.git.SGitVcsRoot;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
+import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.*;
 import jetbrains.buildServer.serverSide.Parameter;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -194,9 +199,15 @@ public class GitProxyChangesCollector {
         diff.add(jgitData.get(i));
         diff.add(gitProxyData.get(i));
         differentPostions.add(i);
-      } else if (cmpRes == ModDataComparisonResult.NOT_EQUAL_OTHER) {
-        diff.add(getDataWithoutFileChanges(jgitData.get(i), false));
-        diff.add(getDataWithoutFileChanges(gitProxyData.get(i), false));
+      }
+      else if (cmpRes == ModDataComparisonResult.NOT_EQUAL_ATTRIBUTES) {
+        diff.add(getDataWithoutFileChanges(jgitData.get(i), false, true));
+        diff.add(getDataWithoutFileChanges(gitProxyData.get(i), false, true));
+        differentPostions.add(i);
+      }
+      else if (cmpRes == ModDataComparisonResult.NOT_EQUAL_OTHER) {
+        diff.add(getDataWithoutFileChanges(jgitData.get(i), false, false));
+        diff.add(getDataWithoutFileChanges(gitProxyData.get(i), false, false));
         differentPostions.add(i);
       }
     }
@@ -213,7 +224,7 @@ public class GitProxyChangesCollector {
 
   private ModificationData createModificationDataGitProxy(@NotNull CommitInfo info, @NotNull CommitChange firstEdgeChange, @NotNull GitVcsRoot gitRoot, @NotNull VcsRoot root, @Nullable List<CommitChange> mergeEdgeChanges) {
     CommitChange change;
-    Map<String, LinkedHashSet<String>> perParentChangedFilesForMergeCommit = null;
+    Map<String, LinkedHashMap<String, ChangeType>> perParentChangedFilesForMergeCommit = null;
     if (mergeEdgeChanges == null) {
       change = firstEdgeChange;
     } else {
@@ -258,27 +269,52 @@ public class GitProxyChangesCollector {
       modificationData.setAttribute(DBVcsModification.TEAMCITY_COMMIT_USER, commiter);
     }
 
-    modificationData.setParentRevisions(info.parents != null ? info.parents : Collections.singletonList(ObjectId.zeroId().name()));
+    modificationData.setParentRevisions(info.parents != null && !info.parents.isEmpty() ? info.parents : Collections.singletonList(ObjectId.zeroId().name()));
 
     return modificationData;
   }
 
-  private void setMergeCommitAttributes(@NotNull ModificationData modificationData,  @NotNull Map<String, LinkedHashSet<String>> perParentChangedFiles) {
-    modificationData.setAttributes(VcsChangeTreeWalk.buildChangedFilesAttributesFor(perParentChangedFiles));
+  private void setMergeCommitAttributes(@NotNull ModificationData modificationData,  @NotNull Map<String, LinkedHashMap<String, ChangeType>> perParentChangedFiles) {
+    Map<String, Set<String>> map = new HashMap<>(perParentChangedFiles.size());
+    for (Map.Entry<String, LinkedHashMap<String, ChangeType>> entry : perParentChangedFiles.entrySet()) {
+      map.put(entry.getKey(), entry.getValue().keySet());
+    }
+    modificationData.setAttributes(VcsChangeTreeWalk.buildChangedFilesAttributesFor(map));
   }
 
-  private void addFileChanges(@NotNull Map<String, LinkedHashSet<String>> changedFiles, @NotNull CommitChange edgeChange) {
+  private void addFileChanges(@NotNull Map<String, LinkedHashMap<String, ChangeType>> changedFiles, @NotNull CommitChange edgeChange) {
     if (edgeChange.compareTo == null) {
       return;
     }
-    changedFiles.put(edgeChange.compareTo, edgeChange.changes.stream().map(fileChange -> fileChange.getDisplayPath()).collect(Collectors.toCollection(LinkedHashSet::new)));
+    LinkedHashMap<String, ChangeType> res = new LinkedHashMap<>(edgeChange.changes.size());
+    for (FileChange fileChange : edgeChange.changes) {
+      res.put(fileChange.getDisplayPath(), fileChange.changeType);
+    }
+    changedFiles.put(edgeChange.compareTo, res);
   }
 
-  private CommitChange inferMergeCommitChange(@NotNull CommitChange firstEdgeChange, Map<String, LinkedHashSet<String>> parentChangedFilesMap) {
+  private CommitChange inferMergeCommitChange(@NotNull CommitChange firstEdgeChange, Map<String, LinkedHashMap<String, ChangeType>> parentChangedFilesMap) {
     List<FileChange> changedFiles = new ArrayList<>();
     for (FileChange fileChange : firstEdgeChange.changes) {
       // check that file is changed by each edge, this means that the change was made in the merge commit
-      if (parentChangedFilesMap.entrySet().stream().allMatch(entry -> entry.getValue().contains(fileChange.getDisplayPath()))) {
+      boolean wasChangedInMergeCommit = true;
+      ChangeType changeType = fileChange.changeType;
+      for (Map.Entry<String, LinkedHashMap<String, ChangeType>> entry : parentChangedFilesMap.entrySet()) {
+        if (!entry.getValue().containsKey(fileChange.getDisplayPath())) {
+          wasChangedInMergeCommit = false;
+          break;
+        }
+
+        // if at least by one edge the file was modified, then the change type should be Modified even if the first edge change type was Added
+        if (changeType == ChangeType.Added) {
+          ChangeType edgeChangeType = entry.getValue().get(fileChange.getDisplayPath());
+          if (edgeChangeType == ChangeType.Modified) {
+            changeType = ChangeType.Modified;
+          }
+        }
+      }
+      if (wasChangedInMergeCommit) {
+        fileChange.changeType = changeType;
         changedFiles.add(fileChange);
       }
     }
@@ -320,6 +356,7 @@ public class GitProxyChangesCollector {
   public enum ModDataComparisonResult {
     EQUAL,
     NOT_EQUAL_VCS_CHANGES,
+    NOT_EQUAL_ATTRIBUTES,
     NOT_EQUAL_OTHER
   }
 
@@ -341,7 +378,7 @@ public class GitProxyChangesCollector {
     // if (!Objects.equals(data2.getUserName(), data1.getUserName())) return ModDataComparisonResult.NOT_EUQAL_OTHER;
     if (!Objects.equals(data2.getVcsDate(), data1.getVcsDate())) return ModDataComparisonResult.NOT_EQUAL_OTHER;
     if (!Objects.equals(data2.getParentRevisions(), data1.getParentRevisions())) return ModDataComparisonResult.NOT_EQUAL_OTHER;
-    if (!Objects.equals(data2.getAttributes(), data1.getAttributes())) return ModDataComparisonResult.NOT_EQUAL_OTHER;
+    if (!Objects.equals(data2.getAttributes(), data1.getAttributes())) return ModDataComparisonResult.NOT_EQUAL_ATTRIBUTES;
     return ModDataComparisonResult.EQUAL;
   }
 
@@ -359,15 +396,18 @@ public class GitProxyChangesCollector {
   }
 
   private static List<ModificationData> getCommitOnlyModificationDataList(@NotNull List<ModificationData> modifications) {
-    return modifications.stream().map(data -> getDataWithoutFileChanges(data, true)).collect(Collectors.toList());
+    return modifications.stream().map(data -> getDataWithoutFileChanges(data, true, false)).collect(Collectors.toList());
   }
 
-  private static ModificationData getDataWithoutFileChanges(@NotNull ModificationData data, boolean commitOnly) {
+  private static ModificationData getDataWithoutFileChanges(@NotNull ModificationData data, boolean commitOnly, boolean addAttributes) {
     ModificationData updData;
     if (commitOnly) {
       updData = new ModificationData(data.getVcsDate(), Collections.emptyList(), null, null, data.getVcsRoot(), data.getVersion(), null);
     } else {
       updData = new ModificationData(data.getVcsDate(), Collections.emptyList(), data.getDescription(), data.getUserName(), data.getVcsRoot(), data.getVersion(), null);
+    }
+    if (addAttributes) {
+      updData.setAttributes(data.getAttributes());
     }
     updData.setParentRevisions(data.getParentRevisions());
     return updData;
