@@ -25,6 +25,7 @@ import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.DBVcsModification;
 import jetbrains.buildServer.vcshostings.url.ServerURIParser;
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.jetbrains.annotations.NotNull;
@@ -201,8 +202,8 @@ public class GitProxyChangesCollector {
         differentPostions.add(i);
       }
       else if (cmpRes == ModDataComparisonResult.NOT_EQUAL_ATTRIBUTES) {
-        diff.add(getDataWithoutFileChanges(jgitData.get(i), false, true));
-        diff.add(getDataWithoutFileChanges(gitProxyData.get(i), false, true));
+        diff.add(getDataWithoutFileChanges(jgitData.get(i), false, true, gitProxyData.get(i), false));
+        diff.add(getDataWithoutFileChanges(gitProxyData.get(i), false, true, jgitData.get(i), true));
         differentPostions.add(i);
       }
       else if (cmpRes == ModDataComparisonResult.NOT_EQUAL_OTHER) {
@@ -400,6 +401,11 @@ public class GitProxyChangesCollector {
   }
 
   private static ModificationData getDataWithoutFileChanges(@NotNull ModificationData data, boolean commitOnly, boolean addAttributes) {
+    return getDataWithoutFileChanges(data, commitOnly, addAttributes, null, false);
+  }
+
+
+  private static ModificationData getDataWithoutFileChanges(@NotNull ModificationData data, boolean commitOnly, boolean addAttributes, @Nullable ModificationData otherData, boolean attrOnlyDiff) {
     ModificationData updData;
     if (commitOnly) {
       updData = new ModificationData(data.getVcsDate(), Collections.emptyList(), null, null, data.getVcsRoot(), data.getVersion(), null);
@@ -407,7 +413,29 @@ public class GitProxyChangesCollector {
       updData = new ModificationData(data.getVcsDate(), Collections.emptyList(), data.getDescription(), data.getUserName(), data.getVcsRoot(), data.getVersion(), null);
     }
     if (addAttributes) {
-      updData.setAttributes(data.getAttributes());
+      if (otherData != null) {
+        HashMap<String, String> attributes = new HashMap<>();
+        Map<String, String> otherAttributes = otherData.getAttributes();
+        for (Map.Entry<String, String> entry : data.getAttributes().entrySet()) {
+          if (!otherAttributes.containsKey(entry.getKey())) {
+            attributes.put(entry.getKey(), "other doesn't contain attribute");
+          } else {
+            String otherValue = otherAttributes.get(entry.getKey());
+            if (!otherValue.equals(entry.getValue())) {
+              if (attrOnlyDiff) {
+                attributes.put(entry.getKey(), String.format("Difference starting from position %d: %s",
+                                                             StringUtils.indexOfDifference(entry.getValue(), otherValue),
+                                                             StringUtils.difference(entry.getValue(), otherValue)));
+              } else {
+                attributes.put(entry.getKey(), entry.getValue());
+              }
+            }
+          }
+        }
+        updData.setAttributes(attributes);
+      } else {
+        updData.setAttributes(data.getAttributes());
+      }
     }
     updData.setParentRevisions(data.getParentRevisions());
     return updData;
