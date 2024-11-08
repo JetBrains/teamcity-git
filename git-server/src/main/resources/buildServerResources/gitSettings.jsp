@@ -21,6 +21,7 @@
 <c:set var="placeholderNonPersonalToken" value="common usage"/>
 <%--@elvariable id="parentProject" type="jetbrains.buildServer.serverSide.SProject"--%>
 <c:set var="parentReadOnly" value="${not empty parentProject and parentProject.readOnly}"/>
+<c:set var="readOnly" value="${vcsPropertiesBean.readOnly}"/>
 <style>
 .gitUsernameStyleHighlight {
   color: rgb(97, 94, 192);
@@ -193,7 +194,7 @@
                     setAcquiredToken(it);
                   },
                   tokenIntent: 'REPO_FULL',
-                  readOnly: ${parentReadOnly},
+                  readOnly: ${readOnly or parentReadOnly},
                   tokenIdElement: $('tokenId'),
                   noGenerateButton: !${canObtainTokens || canObtainTokensForNewRoot}
                 };
