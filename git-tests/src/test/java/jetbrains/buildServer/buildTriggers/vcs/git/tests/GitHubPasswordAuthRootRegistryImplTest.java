@@ -1,5 +1,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +33,7 @@ import org.testng.annotations.Test;
 @Test
 public class GitHubPasswordAuthRootRegistryImplTest extends BaseGitTestCase {
   @Test
-  public void test() {
+  public void test() throws IOException {
     final Map<String, Long> events = new HashMap<>();
     final MockTimeService timeService = new MockTimeService();
 
@@ -48,7 +49,7 @@ public class GitHubPasswordAuthRootRegistryImplTest extends BaseGitTestCase {
     mockery.checking(new Expectations() {
       {
         allowing(projectManager).findVcsRootById(1);
-        final MockSVcsRoot vcsRoot = new MockSVcsRoot(1, Constants.VCS_NAME);
+        final MockSVcsRoot vcsRoot = new MockSVcsRoot(1, Constants.VCS_NAME, createTempDir());
         vcsRoot.setProperties(vcsProperties);
         will(returnValue(vcsRoot));
 
