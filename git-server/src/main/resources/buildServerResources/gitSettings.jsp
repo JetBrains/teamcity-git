@@ -183,8 +183,6 @@
                               afn:canEditVcsRoot(vcsPropertiesBean.originalVcsRoot) and
                               not parentReadOnly}"/>
 
-          <c:set var="canObtainTokensForNewRoot" value="${empty vcsPropertiesBean.originalVcsRoot}"/>
-
           <oauth:includeTokenControls>
             <jsp:attribute name="beforeInclude">
               <script type="text/javascript">
@@ -195,8 +193,7 @@
                   },
                   tokenIntent: 'REPO_FULL',
                   readOnly: ${readOnly or parentReadOnly},
-                  tokenIdElement: $('tokenId'),
-                  noGenerateButton: !${canObtainTokens || canObtainTokensForNewRoot}
+                  tokenIdElement: $('tokenId')
                 };
               </script>
             </jsp:attribute>
