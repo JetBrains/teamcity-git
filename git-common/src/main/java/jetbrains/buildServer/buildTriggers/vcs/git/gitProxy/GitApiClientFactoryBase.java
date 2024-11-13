@@ -102,7 +102,7 @@ public class GitApiClientFactoryBase {
         responseBody.set(null);
         HTTPRequestBuilder.Request request = new HTTPRequestBuilder(myEndpoint)
           .withTimeout(myGitProxySettings.getTimeoutMs())
-          .withConnectTimeout(connectTimeoutMs)
+          .withConnectionTimeoutMs(connectTimeoutMs)
           .withPreemptiveAuthentication(true)
           .withHeader(myHeaders)
           .withTrustStore(myTrustStoreProvider.getTrustStore())
