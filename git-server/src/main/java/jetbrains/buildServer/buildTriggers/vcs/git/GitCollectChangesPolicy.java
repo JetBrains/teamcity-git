@@ -558,17 +558,17 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     try (Stoppable stoppable = myComputeRevisionMetric.startMsecsTimer()) {
       Disposable name = NamedDaemonThreadFactory.patchThreadName("Computing the latest commit affected by checkout rules: " + rules +
                                                                  " in VCS root: " + LogUtil.describe(root) + ", start revision: " + startRevision + " (branch: " + startRevisionBranchName + "), stop revisions: " + stopRevisions);
+      OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
       try {
-        OperationContext context = myVcs.createContext(root, "latest revision affecting checkout", createProgress());
         GitVcsRoot gitRoot = context.getGitRoot();
         return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-          ensureRevisionIsFetched(startRevision, startRevisionBranchName, context);
-
           Result finalResult = null;
           CheckoutRulesLatestRevisionCache.Value cached = myCheckoutRulesLatestRevisionCache.getCachedValue(gitRoot, startRevisionBranchName, rules);
           if (cached != null && cached.myStartRevision.equals(startRevision) && cached.myStopRevisions.equals(stopRevisions)) {
             return new Result(cached.myComputedRevision, cached.myReachedStopRevisions);
           }
+
+          ensureRevisionIsFetched(startRevision, startRevisionBranchName, context);
 
           if (cached != null &&
               ((stopRevisions.isEmpty() && cached.myStopRevisions.isEmpty()) || (stopRevisions.containsAll(cached.myStopRevisions) && !cached.myStopRevisions.isEmpty()))) {
@@ -604,6 +604,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
           return finalResult;
         });
       } finally {
+        context.close();
         name.dispose();
       }
     }
@@ -653,7 +654,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         revWalk.close();
         revWalk.dispose();
       }
-      context.close();
     }
   }
 
