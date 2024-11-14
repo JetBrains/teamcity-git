@@ -9,6 +9,7 @@ import java.util.concurrent.Callable;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitApiClientFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitProxyChangesCollector;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitProxySettings;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitRepoApi;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
 import jetbrains.buildServer.metrics.*;
 import jetbrains.buildServer.serverSide.SProject;
@@ -99,7 +100,8 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
             if (testProxyCredentials != null) {
               List<ModificationData> gitProxyResult = runCollectChangesWithTimer("gitProxy", root, project, true,
                                                                                  () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, testProxyCredentials));
-              myGitProxyChangesCollector.logAnyDifferences(jgitResult, gitProxyResult, fromState, toState, root);
+              GitRepoApi api = myGitProxyChangesCollector.getClient(testProxyCredentials, root);
+              myGitProxyChangesCollector.logAnyDifferences(jgitResult, gitProxyResult, fromState, toState, root, Objects.requireNonNull(api, "Git repo api can't be null"));
             }
           } catch (IgnoredCollectChangesFailure ignored) {
           } catch (Throwable t) {

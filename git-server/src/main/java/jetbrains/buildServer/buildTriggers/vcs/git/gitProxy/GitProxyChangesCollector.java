@@ -98,22 +98,17 @@ public class GitProxyChangesCollector {
     return null;
   }
 
-  @NotNull
-  public List<ModificationData> collectChangesGitProxy(@NotNull VcsRoot root,
-                                                        @NotNull RepositoryStateData fromState,
-                                                        @NotNull RepositoryStateData toState,
-                                                        @NotNull GitProxySettings proxyCredentials) throws VcsException {
-    GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), null);
-
+  @Nullable
+  public GitRepoApi getClient(@NotNull GitProxySettings proxySettings, @NotNull VcsRoot root) {
     String url = root.getProperty(Constants.FETCH_URL);
     if (url == null) {
-      return Collections.emptyList();
+      return null;
     }
 
     // try to parse project name and repository name from url. For now git proxy only works with jetbrains.team repositories
     List<String> path = ServerURIParser.createServerURI(url).getPathFragments();
     if (path.size() == 0) {
-      return Collections.emptyList();
+      return null;
     }
     String repoName = path.get(path.size() - 1);
     if (repoName.endsWith(".git")) {
@@ -125,7 +120,19 @@ public class GitProxyChangesCollector {
     } else {
       fullRepoName = String.format("%s/%s", path.get(path.size() - 2), repoName);
     }
-    GitRepoApi client = myGitApiClientFactory.createRepoApi(proxyCredentials, null, fullRepoName);
+    return myGitApiClientFactory.createRepoApi(proxySettings, null, fullRepoName);
+  }
+
+  @NotNull
+  public List<ModificationData> collectChangesGitProxy(@NotNull VcsRoot root,
+                                                        @NotNull RepositoryStateData fromState,
+                                                        @NotNull RepositoryStateData toState,
+                                                        @NotNull GitProxySettings proxyCredentials) throws VcsException {
+    GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), null);
+    GitRepoApi client = getClient(proxyCredentials, root);
+    if (client == null) {
+      return Collections.emptyList();
+    }
 
     List<String> commitPatterns = new ArrayList<>();
     for (Map.Entry<String, String> entry: fromState.getBranchRevisions().entrySet()) {
@@ -179,9 +186,122 @@ public class GitProxyChangesCollector {
     return result;
   }
 
-  public void logAnyDifferences(@NotNull List<ModificationData> jgitData, @NotNull List<ModificationData> gitProxyData, @NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState, @NotNull VcsRoot root) {
+  private void logDiffLength(@NotNull List<ModificationData> jgitData, @NotNull List<ModificationData> gitProxyData, @NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState, @NotNull VcsRoot root, @NotNull String additionalData) {
+    LOG.info("GitProxy difference was found for VCS root(" + LogUtil.describe(root) + "). Different length." + additionalData + " jgit:{" + myGson.toJson(getCommitOnlyModificationDataList(jgitData)) + "}, gitProxy:{" + myGson.toJson(getCommitOnlyModificationDataList(gitProxyData)) + "}," + getStateDiff(fromState, toState));
+  }
+
+  enum ExtraDataState {
+    FORCE_PUSHED,
+    UNKNOWN
+  }
+
+  private boolean doesCommitStillExist(@NotNull String version, GitRepoApi repoApi) {
+    CommitList res = repoApi.listCommits(Collections.singletonList(new Pair<>("id", Collections.singletonList(version))), 0, Integer.MAX_VALUE, false, false);
+    return res.totalMatched > 0;
+  }
+
+  public void logAnyDifferences(@NotNull List<ModificationData> jgitData, @NotNull List<ModificationData> gitProxyData, @NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState, @NotNull VcsRoot root, @NotNull GitRepoApi gitRepoApi) {
+    long startTime = System.currentTimeMillis();
     if (jgitData.size() != gitProxyData.size()) {
-      LOG.info("GitProxy difference was found for VCS root(" + LogUtil.describe(root) + "). Different length. jgit:{" + myGson.toJson(getCommitOnlyModificationDataList(jgitData)) + "}, gitProxy:{" + myGson.toJson(getCommitOnlyModificationDataList(gitProxyData)) + "}," + getStateDiff(fromState, toState));
+      if (jgitData.size() == 0) {
+        logDiffLength(jgitData, gitProxyData, fromState, toState, root, " Jgit result is empty.");
+        return;
+      }
+      Map<String, ModificationData> gitProxyDatMap = new HashMap<>(gitProxyData.size());
+      Map<String, ModificationData> jgitDataMap = new HashMap<>(jgitData.size());
+      Map<String, String> jgitReverseEdges = new HashMap<>(jgitData.size());
+      for (ModificationData data: gitProxyData) {
+        gitProxyDatMap.put(data.getVersion(), data);
+      }
+
+      Map<String, ExtraDataState> jgitExtraData = new HashMap<>();
+      for (ModificationData data: jgitData) {
+        jgitDataMap.put(data.getVersion(), data);
+        if (!gitProxyDatMap.containsKey(data.getVersion())) {
+          jgitExtraData.put(data.getVersion(), ExtraDataState.UNKNOWN);
+        }
+        for (String parentVersion : data.getParentRevisions()) {
+          jgitReverseEdges.put(parentVersion, data.getVersion());
+        }
+      }
+
+      for (ModificationData data: gitProxyData) {
+        if (!jgitDataMap.containsKey(data.getVersion())) {
+          logDiffLength(jgitData, gitProxyData, fromState, toState, root, " gitProxy result has extra commits.");
+          return;
+        }
+      }
+
+      for (String bottomModVersion: jgitExtraData.keySet()) {
+        if (System.currentTimeMillis() - startTime > 10000) {
+          throw new RuntimeException("Compare diff timeout");
+        }
+        ModificationData data = jgitDataMap.get(bottomModVersion);
+        if (data.getParentRevisions().stream().anyMatch(parent -> jgitDataMap.containsKey(parent))) {
+          // this is not the bottom modification in the returned result
+          continue;
+        }
+
+        // try to find the top modification from which this modification is reachable
+        String parentVersion = data.getVersion();
+        List<ModificationData> branchModifications = new ArrayList<>();
+        // this var is to avoid visiting the same commits twice
+        boolean forcePushed = false;
+        while (parentVersion != null) {
+          if (System.currentTimeMillis() - startTime > 10000) {
+            throw new RuntimeException("Compare diff timeout");
+          }
+          if (jgitExtraData.containsKey(parentVersion) && jgitExtraData.get(parentVersion) == ExtraDataState.FORCE_PUSHED) {
+            forcePushed = true;
+            break;
+          }
+          branchModifications.add(jgitDataMap.get(parentVersion));
+          parentVersion = jgitReverseEdges.get(parentVersion);
+        }
+
+        if (!forcePushed) {
+          ModificationData topModification = branchModifications.get(branchModifications.size() - 1);
+          if (!gitProxyDatMap.containsKey(topModification.getVersion())) {
+            // this is likely the case when the branch was rolled back, it is expected to have empty result from git proxy
+            // check if commit still exists
+            if (doesCommitStillExist(topModification.getVersion(), gitRepoApi)) {
+              logDiffLength(jgitData, gitProxyData, fromState, toState, root,
+                            String.format(" Version %s still exists, but gitProxy didn't return it.", topModification.getVersion()));
+              return;
+            }
+          } else {
+            // we need to find the corresponding from version for this branch to check if jgit returned more commits because of force push
+            String topFromRevision = null;
+            for (Map.Entry<String, String> toEntry : toState.getBranchRevisions().entrySet()) {
+              if (topModification.getVersion().equals(toEntry.getValue())) {
+                String fromRev = fromState.getBranchRevisions().get(toEntry.getKey());
+                if (fromRev != null && !fromRev.equals(topModification.getVersion())) {
+                  topFromRevision = fromRev;
+                  break;
+                }
+              }
+            }
+
+            if (topFromRevision == null) {
+              logDiffLength(jgitData, gitProxyData, fromState, toState, root,
+                            String.format(" From state revision wasn't found for to state revision %s.", topModification.getVersion()));
+              return;
+            }
+
+            if (doesCommitStillExist(topFromRevision, gitRepoApi)) {
+              logDiffLength(jgitData, gitProxyData, fromState, toState, root, String.format(" From state revision %s still exists.", topFromRevision));
+              return;
+            }
+          }
+        }
+
+        // mark commits as force pushed so we won't try to process them again
+        branchModifications.forEach(mod -> {
+          if (jgitExtraData.containsKey(mod.getVersion())) {
+            jgitExtraData.put(mod.getVersion(), ExtraDataState.FORCE_PUSHED);
+          }
+        });
+      }
       return;
     }
 
