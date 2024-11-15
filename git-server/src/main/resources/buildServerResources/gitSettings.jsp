@@ -193,7 +193,8 @@
                   },
                   tokenIntent: 'REPO_FULL',
                   readOnly: ${readOnly or parentReadOnly},
-                  tokenIdElement: $('tokenId')
+                  tokenIdElement: $('tokenId'),
+                  projectScopeMismatchLevel: 'warn'
                 };
               </script>
             </jsp:attribute>
