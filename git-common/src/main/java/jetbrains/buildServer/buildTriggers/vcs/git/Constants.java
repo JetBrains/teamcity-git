@@ -106,8 +106,10 @@ public interface Constants {
 
   /**
    * A prefix for build parameter with vcs branch name of git root
+   * @deprecated use teamcity.build.vcs.branch.ROOT_EXT_ID instead
    */
   public static final String GIT_ROOT_BUILD_BRANCH_PREFIX = "teamcity.git.build.vcs.branch.";
+  String USE_DEPRECATED_GIT_BRANCH_PARAMETERS_INTERNAL_PROP = "teamcity.git.deprecatedGitBranchParameters.enabled";
 
   String RECORD_SEPARATOR = new String(new char[]{30});
 
