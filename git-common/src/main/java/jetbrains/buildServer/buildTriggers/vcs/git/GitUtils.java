@@ -10,7 +10,9 @@ import java.io.IOException;
 import java.util.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
+import jetbrains.buildServer.agent.ServerProvidedProperties;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -163,7 +165,11 @@ public class GitUtils {
    * git VCS root
    */
   public static String getGitRootBranchParamName(@NotNull VcsRoot root) {
-    return jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_ROOT_BUILD_BRANCH_PREFIX + VcsUtil.getSimplifiedName(root);
+    if (TeamCityProperties.getBoolean(Constants.USE_DEPRECATED_GIT_BRANCH_PARAMETERS_INTERNAL_PROP)) {
+      return jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_ROOT_BUILD_BRANCH_PREFIX + VcsUtil.getSimplifiedName(root);
+    } else {
+      return ServerProvidedProperties.TEAMCITY_BUILD_VCS_BRANCH + "." + root.getExternalId();
+    }
   }
 
 
