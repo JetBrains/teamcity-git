@@ -81,8 +81,7 @@ public class JSchClient {
     } else {
       Map<String, String> loadedProps = new HashMap<>();
       Properties props = new Properties();
-      try {
-        FileReader r = new FileReader(intPropsFile);
+      try (FileReader r = new FileReader(intPropsFile)) {
         props.load(r);
         props.forEach((k, v) -> loadedProps.put((String)k, (String)v));
       } catch (IOException e) {
