@@ -12,6 +12,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.UnsupportedCallbackException;
@@ -35,6 +36,8 @@ public class JSchClient {
   private final Logger myLogger;
   private final Map<String, String> myOptions;
 
+  private Function<String, String> myEnvironmentAccessor;
+
   private JSchClient(@NotNull String host,
                      @Nullable String username,
                      @Nullable Integer port,
@@ -47,6 +50,7 @@ public class JSchClient {
     myCommand = command;
     myLogger = logger;
     myOptions = options;
+    myEnvironmentAccessor = System::getenv;
   }
 
   public static void main(String... args) {
@@ -111,9 +115,9 @@ public class JSchClient {
       JSchConfigInitializer.initJSchConfig(JSch.class);
       JSch.setLogger(myLogger);
       JSch jsch = new JSch();
-      String privateKeyPath = System.getenv(GitSSHHandler.TEAMCITY_PRIVATE_KEY_PATH);
+      String privateKeyPath = myEnvironmentAccessor.apply(GitSSHHandler.TEAMCITY_PRIVATE_KEY_PATH);
       if (privateKeyPath != null) {
-        jsch.addIdentity(privateKeyPath, System.getenv(GitSSHHandler.TEAMCITY_PASSPHRASE));
+        jsch.addIdentity(privateKeyPath, myEnvironmentAccessor.apply(GitSSHHandler.TEAMCITY_PASSPHRASE));
       } else {
         String userHome = System.getProperty("user.home");
         if (userHome != null) {
@@ -137,15 +141,15 @@ public class JSchClient {
       session = jsch.getSession(myUsername, myHost, myPort != null ? myPort : 22);
       SshPubkeyAcceptedAlgorithms.configureSession(session);
 
-      String teamCityVersion = System.getenv(GitSSHHandler.TEAMCITY_VERSION);
+      String teamCityVersion = myEnvironmentAccessor.apply(GitSSHHandler.TEAMCITY_VERSION);
       if (teamCityVersion != null) {
         session.setClientVersion(GitUtils.getSshClientVersion(session.getClientVersion(), teamCityVersion));
       }
 
-      if (Boolean.parseBoolean(System.getenv(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV))) {
+      if (Boolean.parseBoolean(myEnvironmentAccessor.apply(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV))) {
         session.setConfig("StrictHostKeyChecking", "no");
       } else {
-        String knownHostsFilePath = System.getenv(GitSSHHandler.SSH_KNOWN_HOSTS_FILE);
+        String knownHostsFilePath = myEnvironmentAccessor.apply(GitSSHHandler.SSH_KNOWN_HOSTS_FILE);
         File knownHosts = null;
         if (knownHostsFilePath != null) {
           knownHosts = new File(knownHostsFilePath);
@@ -166,7 +170,7 @@ public class JSchClient {
         }
       }
 
-      String authMethods = System.getenv(GitSSHHandler.TEAMCITY_SSH_PREFERRED_AUTH_METHODS);
+      String authMethods = myEnvironmentAccessor.apply(GitSSHHandler.TEAMCITY_SSH_PREFERRED_AUTH_METHODS);
       if (isNotEmpty(authMethods))
         session.setConfig("PreferredAuthentications", authMethods);
 
@@ -183,7 +187,12 @@ public class JSchClient {
       // threads don't prevent us from exit.
       session.setDaemonThread(true);
 
-      session.connect();
+      final Integer connectTimeoutSeconds = getConnectTimeoutSeconds();
+      if (connectTimeoutSeconds != null) {
+        session.connect(connectTimeoutSeconds * 1000);
+      } else {
+        session.connect();
+      }
 
       channel = (ChannelExec) session.openChannel("exec");
       channel.setPty(false);
@@ -191,7 +200,7 @@ public class JSchClient {
       channel.setInputStream(System.in);
       channel.setErrStream(System.err);
 
-      final String sendEnv = System.getenv(GitSSHHandler.TEAMCITY_SSH_REQUEST_TOKEN);
+      final String sendEnv = myEnvironmentAccessor.apply(GitSSHHandler.TEAMCITY_SSH_REQUEST_TOKEN);
       if (isNotEmpty(sendEnv)) {
         channel.setEnv(GitSSHHandler.TEAMCITY_SSH_REQUEST_TOKEN, sendEnv);
       }
@@ -230,17 +239,32 @@ public class JSchClient {
 
   @Nullable
   private Integer getTimeoutSeconds() {
-    String timeout = System.getenv(GitSSHHandler.TEAMCITY_SSH_IDLE_TIMEOUT_SECONDS);
-    if (timeout == null)
+    return getIntFromEnv("idle timeout", GitSSHHandler.TEAMCITY_SSH_IDLE_TIMEOUT_SECONDS);
+  }
+
+  @Nullable
+  private Integer getConnectTimeoutSeconds() {
+    return getIntFromEnv("connect timeout", GitSSHHandler.TEAMCITY_SSH_CONNECT_TIMEOUT_SECONDS);
+  }
+
+  @Nullable
+  private Integer getIntFromEnv(@NotNull String displayName, @NotNull String envVarName) {
+    final String intValue = myEnvironmentAccessor.apply(envVarName);
+    if (intValue == null) {
       return null;
+    }
+
     try {
-      return Integer.parseInt(timeout);
+      return Integer.parseInt(intValue);
     } catch (NumberFormatException e) {
-      myLogger.log(Logger.WARN, "Failed to parse idle timeout: '" + timeout + "'");
+      myLogger.log(Logger.WARN, "Failed to parse " + displayName + ": '" + intValue + "'");
       return null;
     }
   }
 
+  public void setEnvironmentAccessor(@NotNull Function<String, String> environmentAccessor) {
+    myEnvironmentAccessor = environmentAccessor;
+  }
 
   private class Timer extends Thread {
     private final long myThresholdNanos;

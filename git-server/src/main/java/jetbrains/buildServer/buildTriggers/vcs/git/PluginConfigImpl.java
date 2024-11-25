@@ -81,6 +81,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private static final String GIT_OUTPUT_CHARSET = "teamcity.git.outputCharset";
   private static final String PATCH_DOWNLOAD_LFS_OBJECTS = "teamcity.git.patch.downloadLfsObjects";
   private static final String FETCH_DURATION_METRIC_REPOS = "teamcity.git.fetch.durationMetricRepos";
+  public static final String SSH_CONNECT_TIMEOUT_SECONDS = "teamcity.git.ssh.connect.timeout.seconds";
 
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
@@ -725,5 +726,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
     final String prop = TeamCityProperties.getPropertyOrNull(FETCH_DURATION_METRIC_REPOS);
     return prop == null ? Collections.emptyList() : Arrays.asList(prop.replace("\r\n", ";").replace("\n", ";").split(";"));
 
+  }
+
+  @Override
+  public int getSshConnectTimeoutSeconds() {
+    return TeamCityProperties.getInteger(SSH_CONNECT_TIMEOUT_SECONDS, DEFAULT_SSH_CONNECT_TIMEOUT);
   }
 }

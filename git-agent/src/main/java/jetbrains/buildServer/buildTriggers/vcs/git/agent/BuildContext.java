@@ -178,4 +178,9 @@ public class BuildContext implements Context {
   public String getSshCommandOptions() {
     return myBuild.getSharedConfigParameters().get("teamcity.internal.git.sshCommandOptions");
   }
+
+  @Override
+  public int getSshConnectTimeoutSeconds() {
+    return myConfig.getSshConnectTimeoutSeconds();
+  }
 }
