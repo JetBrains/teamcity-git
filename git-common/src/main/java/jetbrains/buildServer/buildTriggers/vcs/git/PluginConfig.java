@@ -12,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 public interface PluginConfig extends MirrorConfig {
 
   static int DEFAULT_IDLE_TIMEOUT = 1800;
+  static int DEFAULT_SSH_CONNECT_TIMEOUT = 15; // seconds
 
   @NotNull
   File getCachesDir();
@@ -25,4 +26,6 @@ public interface PluginConfig extends MirrorConfig {
    */
   @Nullable
   String getGitOutputCharsetName();
+
+  int getSshConnectTimeoutSeconds();
 }

@@ -200,4 +200,9 @@ public class ContextImpl implements Context {
   public String getSshCommandOptions() {
     return TeamCityProperties.getPropertyOrNull("teamcity.git.sshCommandOptions");
   }
+
+  @Override
+  public int getSshConnectTimeoutSeconds() {
+    return myConfig.getSshConnectTimeoutSeconds();
+  }
 }

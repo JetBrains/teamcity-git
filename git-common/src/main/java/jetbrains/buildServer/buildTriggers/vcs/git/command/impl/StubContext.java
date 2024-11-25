@@ -15,6 +15,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.log.Loggers;
+import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -166,5 +167,10 @@ public class StubContext implements Context {
   @Override
   public String getSshCommandOptions() {
     return null;
+  }
+
+  @Override
+  public int getSshConnectTimeoutSeconds() {
+    return PluginConfig.DEFAULT_SSH_CONNECT_TIMEOUT;
   }
 }

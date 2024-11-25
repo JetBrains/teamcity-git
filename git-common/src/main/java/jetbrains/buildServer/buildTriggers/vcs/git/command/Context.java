@@ -73,4 +73,6 @@ public interface Context {
 
   @Nullable
   String getSshCommandOptions();
+
+  int getSshConnectTimeoutSeconds();
 }

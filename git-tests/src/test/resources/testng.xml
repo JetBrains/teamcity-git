@@ -47,6 +47,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitHubPasswordAuthRootRegistryImplTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.NativeGitTestConnectionRunnerTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitUrlMapperTest"></class>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ssh.JSchClientTest"/>
     </classes>
   </test>
 </suite>

@@ -65,6 +65,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   private static final String SUBMODULE_UPDATE_TIMEOUT_SECONDS = "teamcity.internal.git.agent.submodules.update.timeout.seconds";
   public static final String SSH_SEND_ENV_REQUEST_TOKEN = "sshSendEnvRequestToken";
   public static final String SSH_SEND_ENV_REQUEST_TOKEN_PARAM = "teamcity.internal.git." + SSH_SEND_ENV_REQUEST_TOKEN;
+  public static final String SSH_CONNECT_TIMEOUT_SECONDS = "teamcity.git.ssh.connect.timeout.seconds";
   public static final String CLEAN_RESPECTS_OTHER_ROOTS = "teamcity.internal.git.cleanRespectsOtherRoots";
   public static final String CUSTOM_GIT_CONFIG = "teamcity.internal.git.customConfig";
   public static final String REMOTE_OPERATION_ATTEMPTS = "teamcity.internal.git.remoteOperationAttempts";
@@ -467,5 +468,15 @@ public class PluginConfigImpl implements AgentPluginConfig {
   @Override
   public boolean shouldIgnoreCheckoutRulesPostfixCheck() {
     return Boolean.parseBoolean(myBuild.getSharedConfigParameters().get(IGNORE_CHECKOUT_RULES_POSIFIX_CHECK_PARAMETER));
+  }
+
+  @Override
+  public int getSshConnectTimeoutSeconds() {
+    final String valueFromBuild = myBuild.getSharedConfigParameters().get(SSH_CONNECT_TIMEOUT_SECONDS);
+    if (valueFromBuild == null) {
+      return DEFAULT_SSH_CONNECT_TIMEOUT;
+    }
+
+    return parseTimeout(valueFromBuild, DEFAULT_SSH_CONNECT_TIMEOUT);
   }
 }

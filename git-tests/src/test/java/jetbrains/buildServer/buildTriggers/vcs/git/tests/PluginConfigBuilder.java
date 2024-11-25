@@ -60,6 +60,7 @@ public class PluginConfigBuilder {
   private boolean myFetchAllRefsEnabled;
   private float myFetchRemoteBranchesFactor;
   private int myFetchRemoteBranchesThreshold;
+  private Integer mySshConnectTimeoutSeconds;
 
   public static PluginConfigBuilder pluginConfig() {
     return new PluginConfigBuilder();
@@ -438,6 +439,11 @@ public class PluginConfigBuilder {
       @Override
       public File getSslDir() {
         return new File("");
+      }
+
+      @Override
+      public int getSshConnectTimeoutSeconds() {
+        return mySshConnectTimeoutSeconds != null ? mySshConnectTimeoutSeconds : myDelegate.getSshConnectTimeoutSeconds();
       }
     };
   }
