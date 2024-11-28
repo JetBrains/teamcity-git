@@ -126,7 +126,7 @@ public class VcsChangeTreeWalk extends TreeWalk {
     int treeCount = getTreeCount();
     if (!myParentCommits.isEmpty() && myParentCommits.size() == treeCount - 1) {
       for (int i = 1; i < treeCount; i++) {
-        if (!idEqual(0, i)) {
+        if (!idEqual(0, i) || !Objects.equals(getFileMode(0), getFileMode(i))) {
           String parentCommit = myParentCommits.get(i - 1);
           List<String> changedFiles = myPerParentChangedFiles.get(parentCommit);
           if (changedFiles != null) {
