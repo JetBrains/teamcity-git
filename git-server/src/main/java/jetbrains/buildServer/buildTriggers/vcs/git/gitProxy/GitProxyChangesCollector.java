@@ -304,6 +304,33 @@ public class GitProxyChangesCollector {
     return res.totalMatched > 0;
   }
 
+  private String findCorrespondingFromRevision(@NotNull String topModVersion, @NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState,
+                                               @NotNull Map<String, ModificationData> modificationDataMap, boolean expandSafeMergeBranches) {
+    String topFromRevision = null;
+    String topBranch = null;
+    for (Map.Entry<String, String> toEntry : toState.getBranchRevisions().entrySet()) {
+      if (topModVersion.equals(toEntry.getValue())) {
+        topBranch = toEntry.getKey();
+        String fromRev = fromState.getBranchRevisions().get(toEntry.getKey());
+        if (fromRev != null && !fromRev.equals(topModVersion)) {
+          topFromRevision = fromRev;
+          break;
+        }
+      }
+    }
+
+    // try to find from revision for original branch for safe merge
+    if (expandSafeMergeBranches && topFromRevision == null && topBranch != null && topBranch.endsWith("/safe-merge")) {
+      ModificationData correspondingModData = modificationDataMap.get(topModVersion);
+      if (correspondingModData == null) return null;
+      List<String> parentRevisions = correspondingModData.getParentRevisions();
+      if (parentRevisions.isEmpty()) return null;
+      String originalBranchRev = parentRevisions.size() >= 2 ? parentRevisions.get(1) : parentRevisions.get(0);
+      return findCorrespondingFromRevision(originalBranchRev, fromState, toState, modificationDataMap, false);
+    }
+    return topFromRevision;
+  }
+
   public void logAnyDifferences(@NotNull List<ModificationData> jgitData, @NotNull List<ModificationData> gitProxyData,
                                 @NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState,
                                 @NotNull VcsRoot root, @NotNull GitApiClient<GitRepoApi> gitRepoApi,
@@ -311,6 +338,13 @@ public class GitProxyChangesCollector {
     long startTime = System.currentTimeMillis();
     if (jgitData.size() != gitProxyData.size()) {
       if (jgitData.size() == 0) {
+        if (fromState.getBranchRevisions().size() == 1) {
+          String defaultBranchRevision = fromState.getDefaultBranchRevision();
+          if (defaultBranchRevision != null && !doesCommitStillExist(defaultBranchRevision, gitRepoApi)) {
+            // in this case jgit returns empty result because there is no exisiting branch revisions in FromState
+            return;
+          }
+        }
         logDiffLength(jgitData, gitProxyData, fromState, toState, root, " Jgit result is empty.");
         return;
       }
@@ -369,8 +403,19 @@ public class GitProxyChangesCollector {
         if (!forcePushed) {
           ModificationData topModification = branchModifications.get(branchModifications.size() - 1);
           if (!gitProxyDatMap.containsKey(topModification.getVersion())) {
-            // this is likely the case when the branch was rolled back, it is expected to have empty result from git proxy
-            // check if commit still exists
+            // this is likely the case when the branch was rolled back, it is expected to have empty result from git proxy for the branch. There are 2 cases
+
+            // check if from commit still exists, this is the case when the branch was rolled back and the changes were already collected for the old HEAD
+            // if it doesn't, then the gitProxy returned correct empty result for the branch
+            String correspondingFromRev = findCorrespondingFromRevision(topModification.getVersion(), fromState, toState, jgitDataMap,false);
+            ModificationData bottomModData = jgitDataMap.get(bottomModVersion);
+            if (correspondingFromRev != null && /*checking that it wasn't some old commit*/!bottomModData.getParentRevisions().contains(correspondingFromRev)
+                && !doesCommitStillExist(correspondingFromRev, gitRepoApi)) {
+              continue;
+            }
+
+            // check if top commit still exists, if it doesn't this means that the git proxy returned correct empty result. This is the case when the branch was rolled back
+            // and the changes were not collected for the old HEAD. Otherwise, we should report the difference
             if (doesCommitStillExist(topModification.getVersion(), gitRepoApi)) {
               logDiffLength(jgitData, gitProxyData, fromState, toState, root,
                             String.format(" Version %s still exists, but gitProxy didn't return it.", topModification.getVersion()));
@@ -378,25 +423,15 @@ public class GitProxyChangesCollector {
             }
           } else {
             // we need to find the corresponding from version for this branch to check if jgit returned more commits because of force push
-            String topFromRevision = null;
-            for (Map.Entry<String, String> toEntry : toState.getBranchRevisions().entrySet()) {
-              if (topModification.getVersion().equals(toEntry.getValue())) {
-                String fromRev = fromState.getBranchRevisions().get(toEntry.getKey());
-                if (fromRev != null && !fromRev.equals(topModification.getVersion())) {
-                  topFromRevision = fromRev;
-                  break;
-                }
-              }
-            }
-
-            if (topFromRevision == null) {
+            String correspondingFromRev = findCorrespondingFromRevision(topModification.getVersion(), fromState, toState, jgitDataMap, true);
+            if (correspondingFromRev == null) {
               logDiffLength(jgitData, gitProxyData, fromState, toState, root,
                             String.format(" From state revision wasn't found for to state revision %s.", topModification.getVersion()));
               return;
             }
 
-            if (doesCommitStillExist(topFromRevision, gitRepoApi)) {
-              logDiffLength(jgitData, gitProxyData, fromState, toState, root, String.format(" From state revision %s still exists.", topFromRevision));
+            if (doesCommitStillExist(correspondingFromRev, gitRepoApi)) {
+              logDiffLength(jgitData, gitProxyData, fromState, toState, root, String.format(" From state revision %s still exists.", correspondingFromRev));
               return;
             }
           }
