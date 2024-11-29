@@ -82,7 +82,6 @@ public class GitProxyChangesCollector {
 
   private static final long GIT_COMMIT_ID_SIZE_BYTES = 120; // 40 chars(80 bytes) + 40 bytes approximate string overhead
 
-
   @Nullable
   public GitProxySettings getGitProxyInfo(@NotNull VcsRoot root, @Nullable SProject project, @NotNull String suffix) {
     try {
@@ -137,12 +136,17 @@ public class GitProxyChangesCollector {
                                 .withOperationId(operationId);
   }
 
+  /**
+   * @param commitIdToSubmodulePrefixes commit id to list of paths to submodules that were changed in that commit
+   * @throws VcsException
+   */
   @NotNull
   public List<ModificationData> collectChangesGitProxy(@NotNull VcsRoot root,
                                                         @NotNull RepositoryStateData fromState,
                                                         @NotNull RepositoryStateData toState,
                                                         @NotNull GitProxySettings proxyCredentials,
-                                                        @NotNull String operationId) throws VcsException {
+                                                        @NotNull String operationId,
+                                                        @Nullable Map<String, List<String>> commitIdToSubmodulePrefixes) throws VcsException {
     GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), null);
     GitApiClient<GitRepoApi> client = getClient(proxyCredentials, root, operationId);
     if (client == null) {
@@ -191,7 +195,7 @@ public class GitProxyChangesCollector {
         continue;
       }
       commitInfoMap.remove(change.revision); // remove for gc
-      result.add(createModificationDataGitProxy(info, change, gitRoot, root, mergeEdgeChanges));
+      result.add(createModificationDataGitProxy(info, change, gitRoot, root, mergeEdgeChanges, commitIdToSubmodulePrefixes));
     }
     Collections.reverse(result);
     return result;
@@ -300,8 +304,10 @@ public class GitProxyChangesCollector {
     return res.totalMatched > 0;
   }
 
-  public void logAnyDifferences(@NotNull List<ModificationData> jgitData, @NotNull List<ModificationData> gitProxyData, @NotNull RepositoryStateData fromState,
-                                @NotNull RepositoryStateData toState, @NotNull VcsRoot root, @NotNull GitApiClient<GitRepoApi> gitRepoApi) {
+  public void logAnyDifferences(@NotNull List<ModificationData> jgitData, @NotNull List<ModificationData> gitProxyData,
+                                @NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState,
+                                @NotNull VcsRoot root, @NotNull GitApiClient<GitRepoApi> gitRepoApi,
+                                @NotNull Map<String, List<String>> submodulePrefixes) {
     long startTime = System.currentTimeMillis();
     if (jgitData.size() != gitProxyData.size()) {
       if (jgitData.size() == 0) {
@@ -416,7 +422,7 @@ public class GitProxyChangesCollector {
     List<ModificationData> diff = new ArrayList<>();
     List<Integer> differentPostions = new ArrayList<>();
     for (int i = 0; i < jgitData.size(); i++) {
-      ModDataComparisonResult cmpRes = compareModifications(jgitData.get(i), gitProxyData.get(i));
+      ModDataComparisonResult cmpRes = compareModifications(jgitData.get(i), gitProxyData.get(i), submodulePrefixes.get(jgitData.get(i).getVersion()));
       if (cmpRes == ModDataComparisonResult.NOT_EQUAL_VCS_CHANGES) {
         diff.add(jgitData.get(i));
         diff.add(gitProxyData.get(i));
@@ -444,9 +450,11 @@ public class GitProxyChangesCollector {
     }
   }
 
-  private ModificationData createModificationDataGitProxy(@NotNull CommitInfo info, @NotNull CommitChange firstEdgeChange, @NotNull GitVcsRoot gitRoot, @NotNull VcsRoot root, @Nullable List<CommitChange> mergeEdgeChanges) {
+  private ModificationData createModificationDataGitProxy(@NotNull CommitInfo info, @NotNull CommitChange firstEdgeChange, @NotNull GitVcsRoot gitRoot, @NotNull VcsRoot root,
+                                                          @Nullable List<CommitChange> mergeEdgeChanges, @Nullable Map<String, List<String>> submodulePrefixesMap) {
     CommitChange change;
     Map<String, LinkedHashMap<String, ChangeType>> perParentChangedFilesForMergeCommit = null;
+
     if (mergeEdgeChanges == null) {
       change = firstEdgeChange;
     } else {
@@ -457,7 +465,9 @@ public class GitProxyChangesCollector {
       }
       change = inferMergeCommitChange(firstEdgeChange, perParentChangedFilesForMergeCommit);
     }
-    List<VcsChange> vcsChanges = change.changes.stream().map(fileChange -> {
+
+    List<VcsChange> vcsChanges = new ArrayList<>(change.changes.size());
+    for (FileChange fileChange : change.changes) {
       VcsChangeInfo.Type changeType;
       switch (fileChange.changeType) {
         case Added: changeType = VcsChangeInfo.Type.ADDED; break;
@@ -467,13 +477,21 @@ public class GitProxyChangesCollector {
       }
 
       String filePath = fileChange.getDisplayPath();
-      return new VcsChange(changeType,
+      if (fileChange.entryType == EntryType.GitLink) {
+        if (submodulePrefixesMap != null) {
+          submodulePrefixesMap.computeIfAbsent(info.id, (k) -> new ArrayList<>()).add(filePath + "/");
+        }
+        // we don't list changes in submodules for now
+        continue;
+      }
+
+     vcsChanges.add(new VcsChange(changeType,
                            null, // TODO identify if file mode has changed and provide description in that case
                            filePath,
                            filePath,
                            (info.parents == null || info.parents.isEmpty()) ? ObjectId.zeroId().name() : info.parents.get(0),
-                           info.id);
-    }).collect(Collectors.toList());
+                           info.id));
+    }
 
     String author = GitServerUtil.getUser(gitRoot, new PersonIdent(info.author.name, info.author.email));
     Date authorDate = new Date((long)info.authorTime * 1000);
@@ -582,17 +600,14 @@ public class GitProxyChangesCollector {
     NOT_EQUAL_OTHER
   }
 
-  private static ModDataComparisonResult compareModifications(@NotNull ModificationData data1, @NotNull ModificationData data2) {
+  private static ModDataComparisonResult compareModifications(@NotNull ModificationData data1, @NotNull ModificationData data2, @Nullable List<String> submodulePrefixes) {
     if (!data2.getVersion().equals(data1.getVersion())) return ModDataComparisonResult.NOT_EQUAL_OTHER;
 
-    if (data1.getChanges().size() != data2.getChanges().size()) return ModDataComparisonResult.NOT_EQUAL_VCS_CHANGES;
-    if (notEqualVcsChanges(data1.getChanges(), data2.getChanges())) {
-      List<VcsChange> changes1Sorted = new ArrayList<>(data1.getChanges());
-      List<VcsChange> changes2Sorted = new ArrayList<>(data2.getChanges());
-      Collections.sort(changes1Sorted, (a, b) -> a.getFileName().compareTo(b.getFileName()));
-      Collections.sort(changes2Sorted, (a, b) -> a.getFileName().compareTo(b.getFileName()));
-      if (notEqualVcsChanges(changes1Sorted, changes2Sorted)) return ModDataComparisonResult.NOT_EQUAL_VCS_CHANGES;
-    }
+    List<VcsChange> changes1Sorted = new ArrayList<>(data1.getChanges());
+    List<VcsChange> changes2Sorted = new ArrayList<>(data2.getChanges());
+    Collections.sort(changes1Sorted, (a, b) -> a.getFileName().compareTo(b.getFileName()));
+    Collections.sort(changes2Sorted, (a, b) -> a.getFileName().compareTo(b.getFileName()));
+    if (notEqualVcsChanges(changes1Sorted, changes2Sorted, submodulePrefixes)) return ModDataComparisonResult.NOT_EQUAL_VCS_CHANGES;
 
     if (data1.getChangeCount() != data2.getChangeCount()) return ModDataComparisonResult.NOT_EQUAL_OTHER;
     if (!data2.getDisplayVersion().equals(data1.getDisplayVersion())) return ModDataComparisonResult.NOT_EQUAL_OTHER;
@@ -604,10 +619,27 @@ public class GitProxyChangesCollector {
     return ModDataComparisonResult.EQUAL;
   }
 
-  private static boolean notEqualVcsChanges(@NotNull List<VcsChange> changes1, @NotNull List<VcsChange> changes2) {
-    for (int i = 0; i < changes2.size(); i++) {
-      VcsChange change1 = changes1.get(i);
-      VcsChange change2 = changes2.get(i);
+  private static boolean notEqualVcsChanges(@NotNull List<VcsChange> changesJgit, @NotNull List<VcsChange> changesGitProxy, @Nullable List<String> submodulePrefixes) {
+
+    // currently we don't expect git proxy to return file changes in submodules, so we need to filter them out
+    // TODO remove this if we start supporting submodules
+    if (submodulePrefixes != null) {
+      changesJgit = changesJgit.stream().filter(change -> {
+        for (String prefix : submodulePrefixes) {
+          if (change.getFileName().startsWith(prefix)) {
+            return false;
+          }
+        }
+        return true;
+      }).collect(Collectors.toList());
+    }
+
+    if (changesJgit.size() != changesGitProxy.size()) return true;
+
+
+    for (int i = 0; i < changesGitProxy.size(); i++) {
+      VcsChange change1 = changesJgit.get(i);
+      VcsChange change2 = changesGitProxy.get(i);
       if (!Objects.equals(change1.getType(), change2.getType())) return true;
       if (!Objects.equals(change1.getAfterChangeRevisionNumber(), change2.getAfterChangeRevisionNumber())) return true;
       if (!Objects.equals(change1.getBeforeChangeRevisionNumber(), change2.getBeforeChangeRevisionNumber())) return true;
@@ -641,12 +673,16 @@ public class GitProxyChangesCollector {
           if (!otherAttributes.containsKey(entry.getKey())) {
             attributes.put(entry.getKey(), "other doesn't contain attribute");
           } else {
+            if ("teamcity.commit.user".equals(entry.getKey())) {
+              // TODO for now we don't log differences in user names, because Space uses mailmap and jgit doesn't
+              continue;
+            }
             String otherValue = otherAttributes.get(entry.getKey());
             if (!otherValue.equals(entry.getValue())) {
               if (attrOnlyDiff) {
                 attributes.put(entry.getKey(), String.format("Difference starting from position %d: %s",
-                                                             StringUtils.indexOfDifference(entry.getValue(), otherValue),
-                                                             StringUtils.difference(entry.getValue(), otherValue)));
+                                                             StringUtils.indexOfDifference(otherValue, entry.getValue()),
+                                                             StringUtils.difference(otherValue, entry.getValue())));
               } else {
                 attributes.put(entry.getKey(), entry.getValue());
               }

@@ -94,12 +94,13 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         List<ModificationData> jgitResult = runCollectChangesWithTimer("jgit", operationId, root, project, false, () -> collectChangesJgit(root, fromState, toState));
         if (project != null && Boolean.parseBoolean(project.getParameterValue(ENABLE_GIT_PROXY_COMPARISON_LOGGING))) {
           try {
+            Map<String, List<String>> submodulePrefixesMap = new HashMap<>();
             GitProxySettings testProxyCredentials = myGitProxyChangesCollector.getGitProxyInfo(root, project, ".comparisonTest");
             if (testProxyCredentials != null) {
               List<ModificationData> gitProxyResult = runCollectChangesWithTimer("gitProxy", operationId, root, project, true,
-                                                                                 () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, testProxyCredentials, operationId));
+                                                                                 () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, testProxyCredentials, operationId, submodulePrefixesMap));
               GitApiClient<GitRepoApi> api = myGitProxyChangesCollector.getClient(testProxyCredentials, root, operationId);
-              myGitProxyChangesCollector.logAnyDifferences(jgitResult, gitProxyResult, fromState, toState, root, Objects.requireNonNull(api, "Git repo api can't be null"));
+              myGitProxyChangesCollector.logAnyDifferences(jgitResult, gitProxyResult, fromState, toState, root, Objects.requireNonNull(api, "Git repo api can't be null"), submodulePrefixesMap);
             }
           } catch (IgnoredCollectChangesFailure ignored) {
           } catch (Throwable t) {
@@ -108,7 +109,8 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         }
         return jgitResult;
       } else {
-        return runCollectChangesWithTimer("gitProxy", operationId, root, project, false, () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, proxyCredentials, operationId));
+        return runCollectChangesWithTimer("gitProxy", operationId, root, project, false,
+                                          () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, proxyCredentials, operationId, null));
       }
     }
   }
