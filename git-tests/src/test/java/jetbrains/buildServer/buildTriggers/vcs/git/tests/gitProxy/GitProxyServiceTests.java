@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitApiClient;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitApiClientFactory;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitRepoApi;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.*;
@@ -44,7 +45,8 @@ public class GitProxyServiceTests extends BaseServerTestCase {
 
     GitApiClientFactory gitApiClientFactory = Mockito.mock(GitApiClientFactory.class);
     myGitRepoApi = Mockito.mock(GitRepoApi.class);
-    Mockito.doReturn(myGitRepoApi).when(gitApiClientFactory).createRepoApi(Mockito.any(), Mockito.any(), Mockito.any());
+    GitApiClient<GitRepoApi> gitApiClient = new GitApiClient<>(requestData -> myGitRepoApi);
+    Mockito.doReturn(gitApiClient).when(gitApiClientFactory).createRepoApi(Mockito.any(), Mockito.any(), Mockito.any());
 
     OperationContext mockOperationContext = Mockito.mock(OperationContext.class);
     Mockito.doReturn(new GitVcsRoot(Mockito.mock(MirrorManager.class), myVcsRootInstance, new URIishHelperImpl())).when(mockOperationContext).getGitRoot();
@@ -63,19 +65,19 @@ public class GitProxyServiceTests extends BaseServerTestCase {
   public void testCreatesModificationDataCorrectly() throws Exception {
     CommitList commitList = new CommitList();
     commitList.commits = Arrays.asList(new Commit("rev5", new CommitInfo("rev5", "", "commit5", new Person("user", "user@email.com"), 1, new Person("user2", "user2@email.com"), 2,
-                                                                         Arrays.asList("rev4"), Arrays.asList())),
+                                                                         Arrays.asList("rev4"))),
                                        new Commit("rev4", new CommitInfo("rev4", "", "commit4", new Person("user", "user@email.com"), 1, new Person("user", "user@email.com"), 2,
-                                                                         Arrays.asList("rev3"), Arrays.asList(""))),
+                                                                         Arrays.asList("rev3"))),
                                        new Commit("rev3", new CommitInfo("rev3", "", "commit3", new Person("user", "user@email.com"), 1, new Person("user", "user@email.com"), 2,
-                                                                         Arrays.asList("rev2"), Arrays.asList("")))
+                                                                         Arrays.asList("rev2")))
                                        );
-    List<CommitChange> changes = Arrays.asList(new CommitChange("rev5", "rev4",false, Arrays.asList(new FileChange(ChangeType.Modified, "file1", "file1", "", "", EntryType.File),
-                                                                                                                new FileChange(ChangeType.Modified, "file2", "file2", "", "", EntryType.File))),
-                                               new CommitChange("rev4", "rev3", false, Arrays.asList(new FileChange(ChangeType.Added, "file2", "file2", "", "", EntryType.File))),
-                                               new CommitChange("rev3", "rev2", false, Arrays.asList(new FileChange(ChangeType.Deleted, null, "file0", "", "", EntryType.File)))
+    List<CommitChange> changes = Arrays.asList(new CommitChange("rev5", "rev4",false, Arrays.asList(new FileChange(ChangeType.Modified, "file1", "file1", EntryType.File),
+                                                                                                                new FileChange(ChangeType.Modified, "file2", "file2", EntryType.File))),
+                                               new CommitChange("rev4", "rev3", false, Arrays.asList(new FileChange(ChangeType.Added, "file2", "file2", EntryType.File))),
+                                               new CommitChange("rev3", "rev2", false, Arrays.asList(new FileChange(ChangeType.Deleted, null, "file0", EntryType.File)))
     );
-    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev2", "^rev1", "rev5"))), 0, Integer.MAX_VALUE, false, true);
-    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5", "rev4", "rev3"), false, false, false, false, Integer.MAX_VALUE);
+    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev2", "^rev1", "rev5"))), 0, 1000, false, true);
+    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5", "rev4", "rev3"), false, false, false, false, 10_000);
 
     List<ModificationData> changesData = myCollectChangesPolicy.collectChanges(myVcsRootInstance,
                                                                          RepositoryStateData.createVersionState("master", map("master", "rev1", "branch1", "rev2")),
@@ -121,14 +123,14 @@ public class GitProxyServiceTests extends BaseServerTestCase {
 
     CommitList commitList = new CommitList();
     commitList.commits = Arrays.asList(new Commit("rev5", new CommitInfo("rev5", "", "merge rev4, rev3, rev2", new Person("user", "user@email.com"), 1, new Person("user", "user@email.com"), 2,
-                                                                         Arrays.asList("rev4", "rev3", "rev2"), Arrays.asList())));
-    List<CommitChange> changes = Arrays.asList(new CommitChange("rev5", "rev4",false, Arrays.asList(new FileChange(ChangeType.Added, "file1", "file1", "", "", EntryType.File),
-                                                                                                    new FileChange(ChangeType.Modified, "file2", "file2", "", "", EntryType.File))),
-                                               new CommitChange("rev5", "rev3", false, Arrays.asList(new FileChange(ChangeType.Modified, "file2", "file2", "", "", EntryType.File))),
-                                               new CommitChange("rev5", "rev2", false, Arrays.asList(new FileChange(ChangeType.Modified, "file2", "file2", "", "", EntryType.File)))
+                                                                         Arrays.asList("rev4", "rev3", "rev2"))));
+    List<CommitChange> changes = Arrays.asList(new CommitChange("rev5", "rev4",false, Arrays.asList(new FileChange(ChangeType.Added, "file1", "file1", EntryType.File),
+                                                                                                    new FileChange(ChangeType.Modified, "file2", "file2", EntryType.File))),
+                                               new CommitChange("rev5", "rev3", false, Arrays.asList(new FileChange(ChangeType.Modified, "file2", "file2", EntryType.File))),
+                                               new CommitChange("rev5", "rev2", false, Arrays.asList(new FileChange(ChangeType.Modified, "file2", "file2", EntryType.File)))
     );
-    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev4", "rev5"))), 0, Integer.MAX_VALUE, false, true);
-    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5"), false, false, false, false, Integer.MAX_VALUE);
+    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev4", "rev5"))), 0, 1000, false, true);
+    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5"), false, false, false, false, 10_000);
 
     List<ModificationData> changesData = myCollectChangesPolicy.collectChanges(myVcsRootInstance,
                                                                              RepositoryStateData.createVersionState("master", map("master", "rev4")),
@@ -156,14 +158,14 @@ public class GitProxyServiceTests extends BaseServerTestCase {
 
     CommitList commitList = new CommitList();
     commitList.commits = Arrays.asList(new Commit("rev5", new CommitInfo("rev5", "", "merge rev4, rev3, rev2", new Person("user", "user@email.com"), 1, new Person("user", "user@email.com"), 2,
-                                                                         Arrays.asList("rev4", "rev3", "rev2"), Arrays.asList())));
-    List<CommitChange> changes = Arrays.asList(new CommitChange("rev5", "rev4",false, Arrays.asList(new FileChange(ChangeType.Added, "file1", "file1", "", "", EntryType.File),
-                                                                                                    new FileChange(ChangeType.Modified, "file2", "file2", "", "", EntryType.File))),
-                                               new CommitChange("rev5", "rev3", false, Arrays.asList(new FileChange(ChangeType.Modified, "file2", "file2", "", "", EntryType.File))),
-                                               new CommitChange("rev5", "rev2", false, Arrays.asList(new FileChange(ChangeType.Modified, "file3", "file3", "", "", EntryType.File)))
+                                                                         Arrays.asList("rev4", "rev3", "rev2"))));
+    List<CommitChange> changes = Arrays.asList(new CommitChange("rev5", "rev4",false, Arrays.asList(new FileChange(ChangeType.Added, "file1", "file1", EntryType.File),
+                                                                                                    new FileChange(ChangeType.Modified, "file2", "file2", EntryType.File))),
+                                               new CommitChange("rev5", "rev3", false, Arrays.asList(new FileChange(ChangeType.Modified, "file2", "file2", EntryType.File))),
+                                               new CommitChange("rev5", "rev2", false, Arrays.asList(new FileChange(ChangeType.Modified, "file3", "file3", EntryType.File)))
     );
-    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev4", "rev5"))), 0, Integer.MAX_VALUE, false, true);
-    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5"), false, false, false, false, Integer.MAX_VALUE);
+    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev4", "rev5"))), 0, 1000, false, true);
+    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5"), false, false, false, false, 10_000);
 
     List<ModificationData> changesData = myCollectChangesPolicy.collectChanges(myVcsRootInstance,
                                                                                RepositoryStateData.createVersionState("master", map("master", "rev4")),

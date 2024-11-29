@@ -6,10 +6,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Callable;
-import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitApiClientFactory;
-import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitProxyChangesCollector;
-import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitProxySettings;
-import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitRepoApi;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
 import jetbrains.buildServer.metrics.*;
 import jetbrains.buildServer.serverSide.SProject;
@@ -90,40 +87,41 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                @NotNull RepositoryStateData toState,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
     SProject project = retrieveProject(root);
+    String operationId = UUID.randomUUID().toString().substring(0, 8); // used for logging
     try (Stoppable stoppable = myCollectChangesMetric.startMsecsTimer()) {
       final GitProxySettings proxyCredentials = myGitProxyChangesCollector.getGitProxyInfo(root, project, "");
       if (proxyCredentials == null) {
-        List<ModificationData> jgitResult = runCollectChangesWithTimer("jgit", root, project, false, () -> collectChangesJgit(root, fromState, toState));
+        List<ModificationData> jgitResult = runCollectChangesWithTimer("jgit", operationId, root, project, false, () -> collectChangesJgit(root, fromState, toState));
         if (project != null && Boolean.parseBoolean(project.getParameterValue(ENABLE_GIT_PROXY_COMPARISON_LOGGING))) {
           try {
             GitProxySettings testProxyCredentials = myGitProxyChangesCollector.getGitProxyInfo(root, project, ".comparisonTest");
             if (testProxyCredentials != null) {
-              List<ModificationData> gitProxyResult = runCollectChangesWithTimer("gitProxy", root, project, true,
-                                                                                 () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, testProxyCredentials));
-              GitRepoApi api = myGitProxyChangesCollector.getClient(testProxyCredentials, root);
+              List<ModificationData> gitProxyResult = runCollectChangesWithTimer("gitProxy", operationId, root, project, true,
+                                                                                 () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, testProxyCredentials, operationId));
+              GitApiClient<GitRepoApi> api = myGitProxyChangesCollector.getClient(testProxyCredentials, root, operationId);
               myGitProxyChangesCollector.logAnyDifferences(jgitResult, gitProxyResult, fromState, toState, root, Objects.requireNonNull(api, "Git repo api can't be null"));
             }
           } catch (IgnoredCollectChangesFailure ignored) {
           } catch (Throwable t) {
-            LOG.error("Failed to compare gitProxy and jgit changes collection results", t);
+            LOG.error(String.format("Failed to compare gitProxy and jgit changes collection results. Operation id %s. %s", operationId, GitProxyChangesCollector.getStateDiff(fromState, toState)), t);
           }
         }
         return jgitResult;
       } else {
-        return runCollectChangesWithTimer("gitProxy", root, project, false, () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, proxyCredentials));
+        return runCollectChangesWithTimer("gitProxy", operationId, root, project, false, () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, proxyCredentials, operationId));
       }
     }
   }
 
   private static class IgnoredCollectChangesFailure extends RuntimeException { }
 
-  private List<ModificationData> runCollectChangesWithTimer(@NotNull String methodName, @NotNull VcsRoot root, @Nullable SProject project, boolean safeMode, Callable<List<ModificationData>> operation) throws VcsException {
+  private List<ModificationData> runCollectChangesWithTimer(@NotNull String methodName, @NotNull String operationId, @NotNull VcsRoot root, @Nullable SProject project, boolean safeMode, Callable<List<ModificationData>> operation) throws VcsException {
     long startTime = System.currentTimeMillis();
     List<ModificationData> result;
     try {
       result = operation.call();
     } catch (Exception e) {
-      logChangesCollectionOperationData(methodName, root, project, System.currentTimeMillis() - startTime, e);
+      logChangesCollectionOperationData(methodName, operationId, root, project, System.currentTimeMillis() - startTime, e);
       if (!safeMode) {
         if (e instanceof VcsException) {
           throw (VcsException)e;
@@ -134,15 +132,15 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       }
     }
 
-    logChangesCollectionOperationData(methodName, root, project, System.currentTimeMillis() - startTime, null);
+    logChangesCollectionOperationData(methodName, operationId, root, project, System.currentTimeMillis() - startTime, null);
 
     return result;
   }
 
-  private void logChangesCollectionOperationData(@NotNull String methodName, @NotNull VcsRoot root, @Nullable SProject project, long time, @Nullable Exception e) {
+  private void logChangesCollectionOperationData(@NotNull String methodName, @NotNull String operationId, @NotNull VcsRoot root, @Nullable SProject project, long time, @Nullable Exception e) {
     if (project != null && Boolean.parseBoolean(project.getParameterValue(ENABLE_CHANGES_COLLECTION_LOGGING))) {
-      LOG.info(String.format("Changes collection(%s) operation for Project %s, VCS Root %s: %d ms.",
-                             methodName, project.getProjectId(), root.getExternalId(), time) + (e == null ? "" : " Finished with exception"), e);
+      LOG.info(String.format("Changes collection(%s) operation(Operation id %s) for Project %s, VCS Root %s: %d ms.",
+                             methodName, operationId, project.getProjectId(), root.getExternalId(), time) + (e == null ? "" : " Finished with exception"), e);
     }
   }
 

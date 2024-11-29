@@ -11,9 +11,9 @@ public class CommitInfo {
   public Person committer;
   public int commitTime;
   public List<String> parents;
-  public List<String> refs;
+  // public List<String> refs;
   
-  public CommitInfo(String id, String treeId, String fullMessage, Person author, int authorTime, Person committer, int commitTime, List<String> parents, List<String> refs) {
+  public CommitInfo(String id, String treeId, String fullMessage, Person author, int authorTime, Person committer, int commitTime, List<String> parents) {
     this.id = id;
     this.treeId = treeId;
     this.fullMessage = fullMessage;
@@ -22,6 +22,5 @@ public class CommitInfo {
     this.committer = committer;
     this.commitTime = commitTime;
     this.parents = parents;
-    this.refs = refs;
   }
 }

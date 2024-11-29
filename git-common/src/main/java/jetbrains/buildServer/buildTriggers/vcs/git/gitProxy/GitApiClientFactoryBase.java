@@ -3,11 +3,15 @@ package jetbrains.buildServer.buildTriggers.vcs.git.gitProxy;
 import com.google.gson.Gson;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.*;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -37,12 +41,12 @@ public class GitApiClientFactoryBase {
   }
 
 
-  public <T> T create(@NotNull GitProxySettings proxyCredentials, @NotNull Map<String, String> headers, @NotNull String description, Class<T> clazz, Consumer<Map<String, Object>> additionalArgsBuilder) {
-    return clazz.cast(Proxy.newProxyInstance(
+  public <T> GitApiClient<T> create(@NotNull GitProxySettings proxyCredentials, @NotNull Map<String, String> headers, @NotNull String description, Class<T> clazz, Consumer<Map<String, Object>> additionalArgsBuilder) {
+    return new GitApiClient<T>((requestContext) -> clazz.cast(Proxy.newProxyInstance(
       clazz.getClassLoader(),
       new Class[]{clazz},
-      new Handler(clazz, proxyCredentials, headers, description, additionalArgsBuilder)
-    ));
+      new Handler(clazz, proxyCredentials, headers, description, additionalArgsBuilder, requestContext)
+    )));
   }
 
   private class Handler implements InvocationHandler {
@@ -52,16 +56,18 @@ public class GitApiClientFactoryBase {
     @NotNull private final String myEndpoint;
     @NotNull private final Map<String, String> myHeaders;
     @NotNull private final String myDescription;
+    @NotNull private final GitApiClient.RequestContext myRequestContext;
     private final Consumer<Map<String, Object>> myAdditionalArgsBuilder;
     @NotNull private final Gson myGson;
 
-    public Handler(@NotNull Class<?> clazz, @NotNull GitProxySettings proxyCredentials, @NotNull Map<String, String> headers, @NotNull String description, Consumer<Map<String, Object>> additionalArgsBuilder) {
+    public Handler(@NotNull Class<?> clazz, @NotNull GitProxySettings proxyCredentials, @NotNull Map<String, String> headers, @NotNull String description, Consumer<Map<String, Object>> additionalArgsBuilder, @NotNull GitApiClient.RequestContext requestContext) {
       myClass = clazz;
       myEndpoint = proxyCredentials.getUrl();
       myGitProxySettings = proxyCredentials;
       myHeaders = headers;
       myDescription = description;
       myAdditionalArgsBuilder = additionalArgsBuilder;
+      myRequestContext = requestContext;
       myGson = new Gson();
     }
 
@@ -91,7 +97,15 @@ public class GitApiClientFactoryBase {
       String payload = myGson.toJson(payloadArgs);
       AtomicReference<Exception> exception = new AtomicReference<>();
       AtomicInteger responseCode = new AtomicInteger();
-      AtomicReference<String> responseBody = new AtomicReference<>();
+      AtomicReference<Object> responseObject = new AtomicReference<>();
+      AtomicReference<String> responseErrorBody = new AtomicReference<>();
+
+      Map<String, String> headers = new HashMap<>(myHeaders);
+      String operationId = myRequestContext.getOperationId();
+      String requestId = "teamcity" + operationId + "_" + UUID.randomUUID();
+      headers.put("X-Request-ID", requestId);
+
+      LOG.info(String.format("Starting request with ID: %s. Operation id %s", requestId, operationId));
 
       long startTime = System.currentTimeMillis();
       int connectTimeoutMs = myGitProxySettings.getConnectTimeoutMs();
@@ -99,12 +113,14 @@ public class GitApiClientFactoryBase {
       while (System.currentTimeMillis() - startTime < myGitProxySettings.getTimeoutMs() && retryNum <= myGitProxySettings.getConnectRetryCnt()) {
         exception.set(null);
         responseCode.set(0);
-        responseBody.set(null);
+        responseObject.set(null);
+        responseErrorBody.set(null);
+
         HTTPRequestBuilder.Request request = new HTTPRequestBuilder(myEndpoint)
           .withTimeout(myGitProxySettings.getTimeoutMs())
           .withConnectionTimeoutMs(connectTimeoutMs)
           .withPreemptiveAuthentication(true)
-          .withHeader(myHeaders)
+          .withHeader(headers)
           .withTrustStore(myTrustStoreProvider.getTrustStore())
           .withMaxConnections(TeamCityProperties.getInteger(CLIENT_MAX_CONNECTIONS, CLIENT_MAX_CONNECTIONS_DEFAULT))
           .withData(payload.getBytes(StandardCharsets.UTF_8))
@@ -114,11 +130,13 @@ public class GitApiClientFactoryBase {
           })
           .onErrorResponse(response -> {
             responseCode.set(response.getStatusCode());
-            responseBody.set(response.getBodyAsString());
+            responseErrorBody.set(response.getBodyAsString());
           })
           .onSuccess(response -> {
             responseCode.set(response.getStatusCode());
-            responseBody.set(response.getBodyAsString());
+            InputStream bodyStream = response.getContentStream();
+            responseObject.set(myGson.fromJson(
+              new InputStreamReader(Objects.requireNonNull(bodyStream, "response body should not be empty")), method.getGenericReturnType()));
           })
           .build();
 
@@ -134,17 +152,18 @@ public class GitApiClientFactoryBase {
       }
 
       if (responseCode.get() != 200 || exception.get() != null) {
-        LOG.warn(String.format("Git proxy request to %s failed in %d ms.%s%s%s%s",
+        LOG.warn(String.format("Git proxy request to %s failed in %d ms.%s%s%s%s Operation id %s",
                                myEndpoint,
                                System.currentTimeMillis() - startTime,
                                responseCode.get() != 0 ? " Response code: " + responseCode.get() + "." : "",
-                               responseBody.get() != null ? " Body: " + responseBody.get() + "." : "",
+                               responseErrorBody.get() != null ? " Body: " + responseErrorBody.get() + "." : "",
                                exception.get() != null ? " Exception: " + exception.get().toString() + "." : "",
-                               getRequestDump(payload)));
-        throw new GitApiException("Api request failed", responseCode.get(), responseBody.get(), exception.get());
+                               getRequestDump(payload),
+                               operationId));
+        throw new GitApiException("Api request failed", responseCode.get(), responseErrorBody.get(), exception.get());
       }
 
-      return myGson.fromJson(responseBody.get(), method.getGenericReturnType());
+      return responseObject.get();
     }
 
     private String getRequestDump(@NotNull String payLoad) {

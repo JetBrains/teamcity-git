@@ -60,14 +60,27 @@ public class GitProxyChangesCollector {
   private static final String GIT_PROXY_URL_PROPERTY = "teamcity.internal.git.gitProxy.url";
   private static final String GIT_PROXY_AUTH_PROPERTY = "teamcity.internal.git.gitProxy.auth";
 
-  private static final String GIT_PROXY_REQUEST_TIMEOUT_INTERNAL_PROPERTY = "teamcity.git.gitProxy.requestTimeoutSeconds";
-  private static final int GIT_PROXY_REQUEST_TIMEOUT_DEFAULT = 20;
+  private static final String GIT_PROXY_REQUEST_TIMEOUT_SECONDS_INTERNAL_PROPERTY = "teamcity.git.gitProxy.requestTimeoutSeconds";
+  private static final int GIT_PROXY_REQUEST_TIMEOUT_SECONDS_DEFAULT = 20;
   private static final String GIT_PROXY_CONNECT_TIMEOUT_INTERNAL_PROPERTY = "teamcity.git.gitProxy.connectTimeoutMs";
   private static final int GIT_PROXY_CONNECT_TIMEOUT_DEFAULT = 3000;
   private static final String GIT_PROXY_CONNECT_RETRY_CNT_INTERNAL_PROPERTY = "teamcity.git.gitProxy.connectTimeout.retryCount";
   private static final int GIT_PROXY_CONNECT_RETRY_CNT_DEFAULT = 1;
 
+  // limits on result size and paging
+  private static final String GIT_PROXY_COMMITS_PER_PAGE = "teamcity.git.gitProxy.commitsPerPage";
+  private static final int GIT_PROXY_COMMITS_PER_PAGE_DEFAULT = 1000;
+
+  private static final String GIT_PROXY_MAX_FILE_CHANGES_PER_COMMIT = "teamcity.git.gitProxy.maxFileChangesPerCommit";
+  private static final int GIT_PROXY_MAX_FILE_CHANGES_PER_COMMIT_DEFAULT = 10_000;
+
+  private static final String GIT_PROXY_MAX_RESULT_SIZE_MB = "teamcity.git.gitProxy.maxResultSizeMb";
+  private static final int GIT_PROXY_MAX_RESULT_SIZE_MB_DEFAULT = 1000; // 1 GB
+
+
   private static final String COMPARE_MODIFICATIONS_WITHOUT_ORDER_LOGGING_PROPERTY = "teamcity.git.gitProxy.logging.unorderedModificationComparison";
+
+  private static final long GIT_COMMIT_ID_SIZE_BYTES = 120; // 40 chars(80 bytes) + 40 bytes approximate string overhead
 
 
   @Nullable
@@ -85,7 +98,7 @@ public class GitProxyChangesCollector {
 
       Parameter urlParam = project.getParameter(GIT_PROXY_URL_PROPERTY + suffix);
       Parameter authParam = project.getParameter(GIT_PROXY_AUTH_PROPERTY + suffix);
-      int requestTimeout = TeamCityProperties.getInteger(GIT_PROXY_REQUEST_TIMEOUT_INTERNAL_PROPERTY, GIT_PROXY_REQUEST_TIMEOUT_DEFAULT) * 1000;
+      int requestTimeout = TeamCityProperties.getInteger(GIT_PROXY_REQUEST_TIMEOUT_SECONDS_INTERNAL_PROPERTY, GIT_PROXY_REQUEST_TIMEOUT_SECONDS_DEFAULT) * 1000;
       int connectTimeout = TeamCityProperties.getInteger(GIT_PROXY_CONNECT_TIMEOUT_INTERNAL_PROPERTY, GIT_PROXY_CONNECT_TIMEOUT_DEFAULT);
       int connectRetryCnt = TeamCityProperties.getInteger(GIT_PROXY_CONNECT_RETRY_CNT_INTERNAL_PROPERTY, GIT_PROXY_CONNECT_RETRY_CNT_DEFAULT);
 
@@ -99,7 +112,7 @@ public class GitProxyChangesCollector {
   }
 
   @Nullable
-  public GitRepoApi getClient(@NotNull GitProxySettings proxySettings, @NotNull VcsRoot root) {
+  public GitApiClient<GitRepoApi> getClient(@NotNull GitProxySettings proxySettings, @NotNull VcsRoot root, String operationId) {
     String url = root.getProperty(Constants.FETCH_URL);
     if (url == null) {
       return null;
@@ -120,16 +133,18 @@ public class GitProxyChangesCollector {
     } else {
       fullRepoName = String.format("%s/%s", path.get(path.size() - 2), repoName);
     }
-    return myGitApiClientFactory.createRepoApi(proxySettings, null, fullRepoName);
+    return myGitApiClientFactory.createRepoApi(proxySettings, null, fullRepoName)
+                                .withOperationId(operationId);
   }
 
   @NotNull
   public List<ModificationData> collectChangesGitProxy(@NotNull VcsRoot root,
                                                         @NotNull RepositoryStateData fromState,
                                                         @NotNull RepositoryStateData toState,
-                                                        @NotNull GitProxySettings proxyCredentials) throws VcsException {
+                                                        @NotNull GitProxySettings proxyCredentials,
+                                                        @NotNull String operationId) throws VcsException {
     GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), null);
-    GitRepoApi client = getClient(proxyCredentials, root);
+    GitApiClient<GitRepoApi> client = getClient(proxyCredentials, root, operationId);
     if (client == null) {
       return Collections.emptyList();
     }
@@ -147,43 +162,128 @@ public class GitProxyChangesCollector {
       }
     }
 
-    CommitList commitList;
-    try {
-      commitList = client.listCommits(Collections.singletonList(new Pair<>("id-range", commitPatterns)), 0, Integer.MAX_VALUE, false, true);
-    } catch (Exception e) {
-      throw new VcsException("Failed to collect commits from git proxy for collectChanges operation", e);
-    }
-    List<String> commitIds = commitList.commits.stream().map(commit -> commit.id).collect(Collectors.toList());
-    Map<String, CommitInfo> commitInfoMap = commitList.commits.stream().collect(Collectors.toMap(commit -> commit.id, commit -> commit.info));
-    List<CommitChange> changes;
-    try {
-      changes = client.listChanges(commitIds, false, false, false, false, Integer.MAX_VALUE);
-    } catch (Exception e) {
-      throw new VcsException("Failed to collect changes from git proxy for collectChanges operation", e);
-    }
+    Map<String, CommitInfo> commitInfoMap = new HashMap<>();
+    List<CommitChange> changes = retrieveChanges(client, commitPatterns, commitInfoMap);
 
     List<ModificationData> result = new ArrayList<>();
-    int i = 0;
-    while (i < changes.size()) {
-      CommitChange change = changes.get(i);
+    int i = changes.size() - 1;
+    // traverse the list of changes from the end and remove elements from the end of 'changes' list after processing to make it possible for gc to collect those objects later
+    while (i >= 0) {
       CommitInfo info = commitInfoMap.get(changes.get(i).revision);
-      i++;
       List<CommitChange> mergeEdgeChanges = null;
       // find diff for other edges of merge commit, when inferMergeCommitChanges was set to false separate commit changes are returned for each edge of the merge commit
-      while (i < changes.size() && changes.get(i).revision.equals(info.id)) {
+      while (i - 1 >= 0 && changes.get(i - 1).revision.equals(info.id)) {
         if (mergeEdgeChanges == null) {
           mergeEdgeChanges = new ArrayList<>();
         }
         mergeEdgeChanges.add(changes.get(i));
-        i++;
+        changes.remove(i);  // remove last object for gc
+        i--;
       }
+      if (mergeEdgeChanges != null) {
+        Collections.reverse(mergeEdgeChanges);
+      }
+      CommitChange change = changes.get(i);
+      changes.remove(i); //remove last object for gc
+      i--;
       if (info == null) {
-        LOG.error("There is no commit info for returned revision " + change.revision);
+        LOG.error("There is no commit info for returned revision " + change.revision + "Operation id " + operationId);
         continue;
       }
+      commitInfoMap.remove(change.revision); // remove for gc
       result.add(createModificationDataGitProxy(info, change, gitRoot, root, mergeEdgeChanges));
     }
+    Collections.reverse(result);
     return result;
+  }
+
+  private List<CommitChange> retrieveChanges(@NotNull GitApiClient<GitRepoApi> client, @NotNull List<String> commitPatterns, @NotNull Map<String, CommitInfo> commitInfoMap) throws VcsException {
+    List<CommitChange> changes = new ArrayList<>();
+    int maxCommitsPerPage = TeamCityProperties.getInteger(GIT_PROXY_COMMITS_PER_PAGE, GIT_PROXY_COMMITS_PER_PAGE_DEFAULT);
+
+    long currentResultSize = 0;
+    long startTime = System.currentTimeMillis();
+    boolean shouldCollectFileChanges = true;
+    while (true) {
+      if (shouldCollectFileChanges && currentResultSize > getMaxChangesCollectionResultSizeInBytes()) {
+        LOG.warn(String.format("Failed to collect all the changes from git proxy. Reached the size limit of changes collection result. File changes will not be collected starting from revision %s. Operation id %s",
+                               changes.get(changes.size() - 1).revision, client.getOperationId()));
+        shouldCollectFileChanges = false;
+      }
+      if (!shouldCollectFileChanges && currentResultSize > 2 * getMaxChangesCollectionResultSizeInBytes()) {
+        LOG.warn(String.format("Failed to collect all the changes from git proxy. Reached the maximum size of changes collection result. Returning partial result ending with %s. Operation id %s",
+                               changes.get(changes.size() - 1).revision, client.getOperationId()));
+        return changes;
+      }
+
+      CommitList commitList;
+      try {
+        commitList = client.newRequest().listCommits(Collections.singletonList(new Pair<>("id-range", commitPatterns)), changes.size(), maxCommitsPerPage, false, true);
+      } catch (Exception e) {
+        throw new VcsException("Failed to collect commits from git proxy for collectChanges operation", e);
+      }
+
+      if (System.currentTimeMillis() - startTime > TeamCityProperties.getLong(GIT_PROXY_REQUEST_TIMEOUT_SECONDS_INTERNAL_PROPERTY, GIT_PROXY_REQUEST_TIMEOUT_SECONDS_DEFAULT) * 1000) {
+        throw new VcsException(String.format("Failed to collect all the changes from git proxy in specified time. Retrieved: %d, Total matched: %d", changes.size(), commitList.totalMatched));
+      }
+
+      if (shouldCollectFileChanges) {
+        List<String> commitIds = new ArrayList<>(commitList.commits.size());
+
+        for (Commit commit : commitList.commits) {
+          commitInfoMap.put(commit.id, commit.info);
+          commitIds.add(commit.id);
+
+          // size of data in commitInfoMap
+          currentResultSize += GIT_COMMIT_ID_SIZE_BYTES * 2; // commit.id, commit.info.id
+          currentResultSize += getStringSizeBytes(commit.info.fullMessage);
+          currentResultSize += commit.info.parents == null ? 0 : commit.info.parents.size() * GIT_COMMIT_ID_SIZE_BYTES;
+        }
+
+        try {
+          List<CommitChange> newChanges = client.newRequest().listChanges(commitIds, false, false, false, false,
+                                                                          TeamCityProperties.getInteger(GIT_PROXY_MAX_FILE_CHANGES_PER_COMMIT,
+                                                                                                        GIT_PROXY_MAX_FILE_CHANGES_PER_COMMIT_DEFAULT));
+          for (CommitChange change : newChanges) {
+            changes.add(change);
+            currentResultSize += GIT_COMMIT_ID_SIZE_BYTES; // change.revision
+            currentResultSize += change.compareTo == null ? 0 : GIT_COMMIT_ID_SIZE_BYTES;
+            for (FileChange fileChange : change.changes) {
+              currentResultSize += getStringSizeBytes(fileChange.oldPath);
+              currentResultSize += getStringSizeBytes(fileChange.newPath);
+            }
+          }
+        } catch (Exception e) {
+          throw new VcsException("Failed to collect changes from git proxy for collectChanges operation", e);
+        }
+      } else {
+        for (Commit commit : commitList.commits) {
+          String parent = commit.info.parents.isEmpty() ? null : commit.info.parents.get(0);
+
+          currentResultSize += GIT_COMMIT_ID_SIZE_BYTES;
+          currentResultSize += parent == null ? 0 : GIT_COMMIT_ID_SIZE_BYTES;
+          changes.add(new CommitChange(commit.id, parent, false, Collections.emptyList()));
+        }
+      }
+
+      if (changes.size() >= commitList.totalMatched) {
+        // all the result pages were retrieved, we can return result
+        break;
+      }
+    }
+
+    return changes;
+  }
+
+  private long getMaxChangesCollectionResultSizeInBytes() {
+    return TeamCityProperties.getLong(GIT_PROXY_MAX_RESULT_SIZE_MB, GIT_PROXY_MAX_RESULT_SIZE_MB_DEFAULT) * 1_000_000;
+  }
+
+  private long getStringSizeBytes(@Nullable String s) {
+    if (s == null) {
+      return 0;
+    }
+    return s.length() * 2L + 40;
   }
 
   private void logDiffLength(@NotNull List<ModificationData> jgitData, @NotNull List<ModificationData> gitProxyData, @NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState, @NotNull VcsRoot root, @NotNull String additionalData) {
@@ -195,12 +295,13 @@ public class GitProxyChangesCollector {
     UNKNOWN
   }
 
-  private boolean doesCommitStillExist(@NotNull String version, GitRepoApi repoApi) {
-    CommitList res = repoApi.listCommits(Collections.singletonList(new Pair<>("id", Collections.singletonList(version))), 0, Integer.MAX_VALUE, false, false);
+  private boolean doesCommitStillExist(@NotNull String version, GitApiClient<GitRepoApi> repoApi) {
+    CommitList res = repoApi.newRequest().listCommits(Collections.singletonList(new Pair<>("id", Collections.singletonList(version))), 0, Integer.MAX_VALUE, false, false);
     return res.totalMatched > 0;
   }
 
-  public void logAnyDifferences(@NotNull List<ModificationData> jgitData, @NotNull List<ModificationData> gitProxyData, @NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState, @NotNull VcsRoot root, @NotNull GitRepoApi gitRepoApi) {
+  public void logAnyDifferences(@NotNull List<ModificationData> jgitData, @NotNull List<ModificationData> gitProxyData, @NotNull RepositoryStateData fromState,
+                                @NotNull RepositoryStateData toState, @NotNull VcsRoot root, @NotNull GitApiClient<GitRepoApi> gitRepoApi) {
     long startTime = System.currentTimeMillis();
     if (jgitData.size() != gitProxyData.size()) {
       if (jgitData.size() == 0) {
@@ -443,7 +544,7 @@ public class GitProxyChangesCollector {
   }
 
   @NotNull
-  private static String getStateDiff(@NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState) {
+  public static String getStateDiff(@NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState) {
     StringBuilder result = new StringBuilder( "State_diff{");
     result.append("FromState[default=").append(fromState.getDefaultBranchName()).append(":").append(fromState.getDefaultBranchRevision()).append("] ");
     result.append("ToState[default=").append(fromState.getDefaultBranchName()).append(":").append(fromState.getDefaultBranchRevision()).append("] ");
