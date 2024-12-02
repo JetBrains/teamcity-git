@@ -1,5 +1,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.gitProxy;
 
+import org.jetbrains.annotations.NotNull;
+
 public class GitProxySettings {
 
   private final String myApiUrl;
@@ -14,7 +16,7 @@ public class GitProxySettings {
    * @param timoeutMs the response timeout for requests
    * @param connectTimeoutMs the timeout for establishing tcp connection with the server
    */
-  public GitProxySettings(String url, String authToken, int timoeutMs, int connectTimeoutMs, int connectRetryCnt) {
+  public GitProxySettings(@NotNull String url, @NotNull String authToken, int timoeutMs, int connectTimeoutMs, int connectRetryCnt) {
     myApiUrl = url;
     myAuthToken = authToken;
     myTimeoutMs = timoeutMs;
@@ -22,10 +24,12 @@ public class GitProxySettings {
     myConnectRetryCnt = connectRetryCnt;
   }
 
+  @NotNull
   public String getUrl() {
     return myApiUrl;
   }
 
+  @NotNull
   public String getAuthToken() {
     return myAuthToken;
   }

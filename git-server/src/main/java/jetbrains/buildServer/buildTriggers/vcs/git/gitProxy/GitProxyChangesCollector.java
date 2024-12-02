@@ -57,6 +57,9 @@ public class GitProxyChangesCollector {
     }).create();
   }
 
+  private static final String ENABLE_GIT_PROXY_COMPARISON_LOGGING = "teamcity.internal.git.gitProxy.changesCollectionComparison.enabled";
+  private static final String ENABLE_GIT_PROXY_CHANGES_COLLECTION = "teamcity.internal.git.gitProxy.changesCollection.enabled";
+
   private static final String GIT_PROXY_URL_PROPERTY = "teamcity.internal.git.gitProxy.url";
   private static final String GIT_PROXY_AUTH_PROPERTY = "teamcity.internal.git.gitProxy.auth";
 
@@ -82,8 +85,21 @@ public class GitProxyChangesCollector {
 
   private static final long GIT_COMMIT_ID_SIZE_BYTES = 120; // 40 chars(80 bytes) + 40 bytes approximate string overhead
 
+
+  public static boolean isGitProxyEnabled(@Nullable SProject project) {
+    if (project == null) return false;
+
+    return Boolean.parseBoolean(project.getParameterValue(ENABLE_GIT_PROXY_CHANGES_COLLECTION));
+  }
+
+  public static boolean isComparisonLoggingEnabled(@Nullable SProject project) {
+    if (project == null) return false;
+
+    return Boolean.parseBoolean(project.getParameterValue(ENABLE_GIT_PROXY_COMPARISON_LOGGING));
+  }
+
   @Nullable
-  public GitProxySettings getGitProxyInfo(@NotNull VcsRoot root, @Nullable SProject project, @NotNull String suffix) {
+  public GitProxySettings getGitProxyInfo(@NotNull VcsRoot root, @Nullable SProject project) {
     try {
       if (project == null) {
         return null;
@@ -95,8 +111,8 @@ public class GitProxyChangesCollector {
         return null;
       }
 
-      Parameter urlParam = project.getParameter(GIT_PROXY_URL_PROPERTY + suffix);
-      Parameter authParam = project.getParameter(GIT_PROXY_AUTH_PROPERTY + suffix);
+      Parameter urlParam = project.getParameter(GIT_PROXY_URL_PROPERTY);
+      Parameter authParam = project.getParameter(GIT_PROXY_AUTH_PROPERTY);
       int requestTimeout = TeamCityProperties.getInteger(GIT_PROXY_REQUEST_TIMEOUT_SECONDS_INTERNAL_PROPERTY, GIT_PROXY_REQUEST_TIMEOUT_SECONDS_DEFAULT) * 1000;
       int connectTimeout = TeamCityProperties.getInteger(GIT_PROXY_CONNECT_TIMEOUT_INTERNAL_PROPERTY, GIT_PROXY_CONNECT_TIMEOUT_DEFAULT);
       int connectRetryCnt = TeamCityProperties.getInteger(GIT_PROXY_CONNECT_RETRY_CNT_INTERNAL_PROPERTY, GIT_PROXY_CONNECT_RETRY_CNT_DEFAULT);
@@ -146,7 +162,8 @@ public class GitProxyChangesCollector {
                                                         @NotNull RepositoryStateData toState,
                                                         @NotNull GitProxySettings proxyCredentials,
                                                         @NotNull String operationId,
-                                                        @Nullable Map<String, List<String>> commitIdToSubmodulePrefixes) throws VcsException {
+                                                        @Nullable Map<String, List<String>> commitIdToSubmodulePrefixes,
+                                                        boolean exceptionOnSubmoduleChanges) throws VcsException {
     GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), null);
     GitApiClient<GitRepoApi> client = getClient(proxyCredentials, root, operationId);
     if (client == null) {
@@ -195,7 +212,7 @@ public class GitProxyChangesCollector {
         continue;
       }
       commitInfoMap.remove(change.revision); // remove for gc
-      result.add(createModificationDataGitProxy(info, change, gitRoot, root, mergeEdgeChanges, commitIdToSubmodulePrefixes));
+      result.add(createModificationDataGitProxy(info, change, gitRoot, root, mergeEdgeChanges, commitIdToSubmodulePrefixes, exceptionOnSubmoduleChanges));
     }
     Collections.reverse(result);
     return result;
@@ -486,7 +503,8 @@ public class GitProxyChangesCollector {
   }
 
   private ModificationData createModificationDataGitProxy(@NotNull CommitInfo info, @NotNull CommitChange firstEdgeChange, @NotNull GitVcsRoot gitRoot, @NotNull VcsRoot root,
-                                                          @Nullable List<CommitChange> mergeEdgeChanges, @Nullable Map<String, List<String>> submodulePrefixesMap) {
+                                                          @Nullable List<CommitChange> mergeEdgeChanges, @Nullable Map<String, List<String>> submodulePrefixesMap,
+                                                          boolean exceptionOnSubmoduleChanges) {
     CommitChange change;
     Map<String, LinkedHashMap<String, ChangeType>> perParentChangedFilesForMergeCommit = null;
 
@@ -513,6 +531,9 @@ public class GitProxyChangesCollector {
 
       String filePath = fileChange.getDisplayPath();
       if (fileChange.entryType == EntryType.GitLink) {
+        if (exceptionOnSubmoduleChanges) {
+          throw new GitProxySubmoduleChangesNotSupported();
+        }
         if (submodulePrefixesMap != null) {
           submodulePrefixesMap.computeIfAbsent(info.id, (k) -> new ArrayList<>()).add(filePath + "/");
         }
@@ -732,4 +753,6 @@ public class GitProxyChangesCollector {
     updData.setParentRevisions(data.getParentRevisions());
     return updData;
   }
+
+  public static class GitProxySubmoduleChangesNotSupported extends RuntimeException {}
 }

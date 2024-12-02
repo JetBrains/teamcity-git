@@ -29,7 +29,6 @@ import org.jetbrains.annotations.Nullable;
 public class GitCollectChangesPolicy implements CollectChangesBetweenRepositories, RevisionMatchedByCheckoutRulesCalculator {
 
   private static final String ENABLE_CHANGES_COLLECTION_LOGGING = "teamcity.internal.git.changesCollectionTimeLogging.enabled";
-  private static final String ENABLE_GIT_PROXY_COMPARISON_LOGGING = "teamcity.internal.git.gitProxy.changesCollectionComparison.enabled";
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
 
   private final GitVcsSupport myVcs;
@@ -89,19 +88,16 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     SProject project = retrieveProject(root);
     String operationId = UUID.randomUUID().toString().substring(0, 8); // used for logging
     try (Stoppable stoppable = myCollectChangesMetric.startMsecsTimer()) {
-      final GitProxySettings proxyCredentials = myGitProxyChangesCollector.getGitProxyInfo(root, project, "");
-      if (proxyCredentials == null) {
+      final GitProxySettings proxyCredentials = myGitProxyChangesCollector.getGitProxyInfo(root, project);
+      if (!GitProxyChangesCollector.isGitProxyEnabled(project) || proxyCredentials == null) {
         List<ModificationData> jgitResult = runCollectChangesWithTimer("jgit", operationId, root, project, false, () -> collectChangesJgit(root, fromState, toState));
-        if (project != null && Boolean.parseBoolean(project.getParameterValue(ENABLE_GIT_PROXY_COMPARISON_LOGGING))) {
+        if (project != null && GitProxyChangesCollector.isComparisonLoggingEnabled(project) && proxyCredentials != null) {
           try {
             Map<String, List<String>> submodulePrefixesMap = new HashMap<>();
-            GitProxySettings testProxyCredentials = myGitProxyChangesCollector.getGitProxyInfo(root, project, ".comparisonTest");
-            if (testProxyCredentials != null) {
-              List<ModificationData> gitProxyResult = runCollectChangesWithTimer("gitProxy", operationId, root, project, true,
-                                                                                 () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, testProxyCredentials, operationId, submodulePrefixesMap));
-              GitApiClient<GitRepoApi> api = myGitProxyChangesCollector.getClient(testProxyCredentials, root, operationId);
-              myGitProxyChangesCollector.logAnyDifferences(jgitResult, gitProxyResult, fromState, toState, root, Objects.requireNonNull(api, "Git repo api can't be null"), submodulePrefixesMap);
-            }
+            List<ModificationData> gitProxyResult = runCollectChangesWithTimer("gitProxy", operationId, root, project, true,
+                                                                               () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, proxyCredentials, operationId, submodulePrefixesMap, false));
+            GitApiClient<GitRepoApi> api = myGitProxyChangesCollector.getClient(proxyCredentials, root, operationId);
+            myGitProxyChangesCollector.logAnyDifferences(jgitResult, gitProxyResult, fromState, toState, root, Objects.requireNonNull(api, "Git repo api can't be null"), submodulePrefixesMap);
           } catch (IgnoredCollectChangesFailure ignored) {
           } catch (Throwable t) {
             LOG.error(String.format("Failed to compare gitProxy and jgit changes collection results. Operation id %s. %s", operationId, GitProxyChangesCollector.getStateDiff(fromState, toState)), t);
@@ -109,8 +105,20 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         }
         return jgitResult;
       } else {
-        return runCollectChangesWithTimer("gitProxy", operationId, root, project, false,
-                                          () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, proxyCredentials, operationId, null));
+        // we try to collect changes with gitProxy, if it fails(for example if there were some changes in submodule), then we fall back to jgit changes collection
+        try {
+          return runCollectChangesWithTimer("gitProxy", operationId, root, project, false,
+                                            () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, proxyCredentials, operationId, null, true));
+        } catch (Throwable t) {
+          if (t instanceof GitProxyChangesCollector.GitProxySubmoduleChangesNotSupported) {
+            LOG.info(String.format("Will not collect changes with gitProxy because changes in submodule were detected, will use jgit changes collection. " +
+                                   "State %s. Operation id %s",
+                                   GitProxyChangesCollector.getStateDiff(fromState, toState), operationId));
+          } else {
+            LOG.warn(String.format("Failed to collect changes with gitProxy, will collect changes with jgit. Operation id %s", operationId), t);
+          }
+          return runCollectChangesWithTimer("jgitFallback", operationId, root, project, false, () -> collectChangesJgit(root, fromState, toState));
+        }
       }
     }
   }
@@ -125,6 +133,9 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     } catch (Exception e) {
       logChangesCollectionOperationData(methodName, operationId, root, project, System.currentTimeMillis() - startTime, e);
       if (!safeMode) {
+        if (e instanceof GitProxyChangesCollector.GitProxySubmoduleChangesNotSupported) {
+          throw (GitProxyChangesCollector.GitProxySubmoduleChangesNotSupported)e;
+        }
         if (e instanceof VcsException) {
           throw (VcsException)e;
         }
