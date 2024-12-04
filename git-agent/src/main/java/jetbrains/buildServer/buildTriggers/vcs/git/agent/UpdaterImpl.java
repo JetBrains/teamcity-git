@@ -23,6 +23,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.messages.DefaultMessagesInfo;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
@@ -55,6 +56,8 @@ public class UpdaterImpl implements Updater {
   /** Git version supporting [credential] section in config (the first version including a6fc9fd3f4b42cd97b5262026e18bd451c28ee3c) */
   public final static GitVersion CREDENTIALS_SECTION_VERSION = new GitVersion(1, 7, 10);
   public final static GitVersion REV_PARSE_LEARNED_SHALLOW_CLONE = new GitVersion(2, 15, 0);
+
+  private static final String ENABLE_REMOVAL_OF_OUTDATED_REFS = "teamcity.internal.git.removeOutdatedRefs.enable";
 
   protected final FS myFS;
   private final SmartDirectoryCleaner myDirectoryCleaner;
@@ -866,8 +869,18 @@ public class UpdaterImpl implements Updater {
       LOG.warn("Push URL '" + push.toString() + "'for root " + myRoot.getName() + " uses an anonymous git protocol and contains a username, push will probably fail");
   }
 
+  private boolean shouldRemoveOutdatedRefs() {
+    String paramValue = myBuild.getSharedConfigParameters().get(ENABLE_REMOVAL_OF_OUTDATED_REFS);
+    if (paramValue != null) {
+      return Boolean.parseBoolean(paramValue);
+    }
+    return TeamCityProperties.getBooleanOrTrue(ENABLE_REMOVAL_OF_OUTDATED_REFS);
+  }
 
   protected boolean removeOutdatedRefs(@NotNull File workingDir) throws VcsException {
+    if (!shouldRemoveOutdatedRefs()) {
+      return false;
+    }
     boolean outdatedRefsRemoved = false;
     final AgentGitFacade git = myGitFactory.create(workingDir);
 
