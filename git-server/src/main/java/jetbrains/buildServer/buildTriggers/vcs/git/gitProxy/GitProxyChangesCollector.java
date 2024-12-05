@@ -8,21 +8,14 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import java.util.*;
 import java.util.stream.Collectors;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitCollectChangesPolicy;
-import jetbrains.buildServer.buildTriggers.vcs.git.LogUtil;
-import jetbrains.buildServer.buildTriggers.vcs.git.VcsChangeTreeWalk;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.RepositoryManager;
-import jetbrains.buildServer.buildTriggers.vcs.git.SGitVcsRoot;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
-import jetbrains.buildServer.buildTriggers.vcs.git.URIishHelperImpl;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.ChangeType;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.*;
 import jetbrains.buildServer.serverSide.Parameter;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
-import jetbrains.buildServer.vcs.*;
+import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.impl.DBVcsModification;
 import jetbrains.buildServer.vcshostings.url.ServerURIParser;
 import org.apache.commons.lang.StringUtils;
@@ -490,6 +483,8 @@ public class GitProxyChangesCollector {
         diff.add(getDataWithoutFileChanges(gitProxyData.get(i), false, false));
         differentPostions.add(i);
       }
+
+      if (diff.size() > TeamCityProperties.getInteger("teamcity.git.gitProxy.changesCollectionComparison.maxDiffSize", 100)) break; // too many different commits, it does not make sense to compute the rest
     }
     if (!differentPostions.isEmpty()) {
       LOG.info(
