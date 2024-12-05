@@ -15,7 +15,7 @@ import jetbrains.buildServer.serverSide.Parameter;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
-import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.DBVcsModification;
 import jetbrains.buildServer.vcshostings.url.ServerURIParser;
 import org.apache.commons.lang.StringUtils;
@@ -151,12 +151,12 @@ public class GitProxyChangesCollector {
    */
   @NotNull
   public List<ModificationData> collectChangesGitProxy(@NotNull VcsRoot root,
-                                                        @NotNull RepositoryStateData fromState,
-                                                        @NotNull RepositoryStateData toState,
-                                                        @NotNull GitProxySettings proxyCredentials,
-                                                        @NotNull String operationId,
-                                                        @Nullable Map<String, List<String>> commitIdToSubmodulePrefixes,
-                                                        boolean exceptionOnSubmoduleChanges) throws VcsException {
+                                                       @NotNull RepositoryStateData fromState,
+                                                       @NotNull RepositoryStateData toState,
+                                                       @NotNull GitProxySettings proxyCredentials,
+                                                       @NotNull String operationId,
+                                                       @Nullable Map<String, List<String>> commitIdToSubmodulePrefixes,
+                                                       boolean exceptionOnSubmoduleChanges) throws VcsException {
     GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), null);
     GitApiClient<GitRepoApi> client = getClient(proxyCredentials, root, operationId);
     if (client == null) {
