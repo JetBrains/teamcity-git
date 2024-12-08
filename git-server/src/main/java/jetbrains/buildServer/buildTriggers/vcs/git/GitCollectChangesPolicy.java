@@ -153,7 +153,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
   private void logChangesCollectionOperationData(@NotNull String methodName, @NotNull String operationId, @NotNull VcsRoot root, @Nullable SProject project, long time, @Nullable Exception e) {
     if (project != null && Boolean.parseBoolean(project.getParameterValue(ENABLE_CHANGES_COLLECTION_LOGGING))) {
       LOG.info(String.format("Changes collection(%s) operation(Operation id %s) for Project %s, VCS Root %s: %d ms.",
-                             methodName, operationId, project.getProjectId(), root.getExternalId(), time) + (e == null ? "" : " Finished with exception"), e);
+                             methodName, operationId, project.getExternalId(), LogUtil.describe(root), time) + (e == null ? "" : " Finished with exception"), e);
     }
   }
 
