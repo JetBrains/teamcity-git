@@ -6,9 +6,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitApiClient;
-import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitApiClientFactory;
-import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.GitRepoApi;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.ChangeType;
 import jetbrains.buildServer.serverSide.MockParameter;
@@ -59,7 +57,8 @@ public class GitProxyServiceTests extends BaseServerTestCase {
                                                                                Mockito.mock(RepositoryManager.class),
                                                                                Mockito.mock(CheckoutRulesLatestRevisionCache.class),
                                                                                gitApiClientFactory,
-                                                                               factory);
+                                                                               factory,
+                                                                               new ChangesCollectorCache());
   }
 
   @Test
@@ -187,6 +186,41 @@ public class GitProxyServiceTests extends BaseServerTestCase {
     List<ModificationData> expected = Arrays.asList(rev5data);
 
     assertModificationDataEqual(expected, changesData);
+  }
+
+  @Test
+  public void testShouldReuseChangesCollectionResultWithEnabledCache() throws VcsException {
+    setInternalProperty(GitProxyChangesCollector.GIT_PROXY_CACHING_PROPERTY, true);
+    CommitList commitList = new CommitList();
+    commitList.commits = Arrays.asList(new Commit("rev5", new CommitInfo("rev5", "", "commit5", new Person("user", "user@email.com"), 1, new Person("user2", "user2@email.com"), 2,
+                                                                         Arrays.asList("rev4"))),
+                                       new Commit("rev4", new CommitInfo("rev4", "", "commit4", new Person("user", "user@email.com"), 1, new Person("user", "user@email.com"), 2,
+                                                                         Arrays.asList("rev3"))),
+                                       new Commit("rev3", new CommitInfo("rev3", "", "commit3", new Person("user", "user@email.com"), 1, new Person("user", "user@email.com"), 2,
+                                                                         Arrays.asList("rev2")))
+    );
+    List<CommitChange> changes = Arrays.asList(new CommitChange("rev5", "rev4",false, Arrays.asList(new FileChange(ChangeType.Modified, "file1", "file1", EntryType.File),
+                                                                                                    new FileChange(ChangeType.Modified, "file2", "file2", EntryType.File))),
+                                               new CommitChange("rev4", "rev3", false, Arrays.asList(new FileChange(ChangeType.Added, "file2", "file2", EntryType.File))),
+                                               new CommitChange("rev3", "rev2", false, Arrays.asList(new FileChange(ChangeType.Deleted, null, "file0", EntryType.File)))
+    );
+
+    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev2", "^rev1", "rev5"))), 0, 1000, false, true);
+    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5", "rev4", "rev3"), false, false, false, false, 10_000);
+
+    List<ModificationData> changesData = myCollectChangesPolicy.collectChanges(myVcsRootInstance,
+                                                                               RepositoryStateData.createVersionState("master", map("master", "rev1", "branch1", "rev2")),
+                                                                               RepositoryStateData.createVersionState("master", map("master", "rev1", "branch1", "rev5")),
+                                                                               new CheckoutRules(""));
+
+    List<ModificationData> changesData2 = myCollectChangesPolicy.collectChanges(myVcsRootInstance,
+                                                                               RepositoryStateData.createVersionState("master", map("master", "rev1", "branch1", "rev2")),
+                                                                               RepositoryStateData.createVersionState("master", map("master", "rev1", "branch1", "rev5")),
+                                                                               new CheckoutRules(""));
+    assertModificationDataEqual(changesData, changesData2);
+    Mockito.verify(myGitRepoApi, Mockito.times(1)).listChanges(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean(), Mockito.anyBoolean(), Mockito.anyBoolean(), Mockito.anyInt());
+    Mockito.verify(myGitRepoApi, Mockito.times(1)).listCommits(Mockito.any(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyBoolean(), Mockito.anyBoolean());
+
   }
 
   private void assertModificationDataEqual(@NotNull List<ModificationData> expected, @NotNull List<ModificationData> actual) {

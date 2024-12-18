@@ -9,6 +9,7 @@ import java.util.List;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.ChangesCollectorCache;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.crypt.BaseEncryptionStrategy;
@@ -212,7 +213,7 @@ public class GitSupportBuilder {
       public KeyStore getTrustStore() {
         return null;
       }
-    }, getParametersFactory());
+    }, getParametersFactory(), new ChangesCollectorCache());
     git.addExtensions(myExtensions);
     git.setExtensionHolder(myExtensionHolder);
     return git;

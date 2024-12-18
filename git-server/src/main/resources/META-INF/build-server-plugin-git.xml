@@ -38,4 +38,5 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitHubPasswordAuthRootRegistryFactoryImpl"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.CheckoutRulesLatestRevisionCache"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.FetchSettingsFactoryImpl"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.ChangesCollectorCache"/>
 </beans>
