@@ -235,15 +235,29 @@ public class GitCommandLine extends GeneralCommandLine {
         }
 
         if (myProxy.isSshProxyEnabled()) {
-          String strType;
-          switch (Objects.requireNonNull(myProxy.getSshProxyType())) {
-            case SOCKS4: strType = "4"; break;
-            case SOCKS5: strType = "5"; break;
-            default: strType = "connect"; break;
-          }
           int port = myProxy.getSshProxyPort();
           String fullProxyAddr = port != 0 ? String.format("%s:%d", myProxy.getSshProxyHost(), port) : myProxy.getSshProxyHost();
-          gitSshCommand.append(String.format(" -o ProxyCommand=\"nc -v -X %s -x %s %%h %%p\"", strType, fullProxyAddr));
+          String socksProxyCommand;
+          if (SystemInfo.isWindows) {
+            String strType;
+            if (myProxy.getSshProxyType() == ProxyHandler.SshProxyType.HTTP) {
+              // http proxy
+              strType = "H";
+            } else {
+              // socks proxy
+              strType = "S";
+            }
+            socksProxyCommand = String.format(" -o ProxyCommand=\"connect -%s %s %%h %%p\"", strType, fullProxyAddr);
+          } else {
+            String strType;
+            switch (Objects.requireNonNull(myProxy.getSshProxyType())) {
+              case SOCKS4: strType = "4"; break;
+              case SOCKS5: strType = "5"; break;
+              default: strType = "connect"; break;
+            }
+            socksProxyCommand = String.format(" -o ProxyCommand=\"nc -v -X %s -x %s %%h %%p\"", strType, fullProxyAddr);
+          }
+          gitSshCommand.append(socksProxyCommand);
         }
 
         if (authSettings.getAuthMethod().isKeyAuth()) {
