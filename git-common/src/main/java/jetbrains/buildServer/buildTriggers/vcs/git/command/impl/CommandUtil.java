@@ -15,6 +15,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.CheckoutCanceledException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.SshKeyNotFoundException;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
@@ -220,6 +221,7 @@ public class CommandUtil {
     if (isCanceledError(ve)) return false;
     if (isSslError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
+    if (e.getCause() instanceof SshKeyNotFoundException) return false;
 
     if ((attempt == 1 || attemptsLeft) && shouldHandleRemoteRefNotFound() && isNotFoundRemoteRefError(ve))
       return true;
