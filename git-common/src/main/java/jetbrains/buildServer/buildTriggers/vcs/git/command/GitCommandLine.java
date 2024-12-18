@@ -17,6 +17,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelperConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.CheckoutCanceledException;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.SshKeyNotFoundException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitProgressListener;
 import jetbrains.buildServer.log.LogUtil;
@@ -498,7 +499,7 @@ public class GitCommandLine extends GeneralCommandLine {
     mySshKeyManager = root -> {
       final TeamCitySshKey key = sshKeyManager.getKey(root);
       if (key == null) {
-        throw new IllegalArgumentException("Failed to retrieve uploaded ssh key for root " + LogUtil.describe(root));
+        throw new SshKeyNotFoundException("Failed to retrieve uploaded ssh key for root " + LogUtil.describe(root));
       }
       return key;
     };
