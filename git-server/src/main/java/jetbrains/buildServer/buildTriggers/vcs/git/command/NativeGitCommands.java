@@ -3,10 +3,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.File;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.FetchCommand;
@@ -40,7 +37,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperati
 
 //see native-git-testng.xml suite for tests examples
 public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand, TagCommand, StatusCommandServer, InitCommandServer, LocalCommitCommandServer, ConfigCommand,
-                                          AddCommandServer, RepackCommandServer {
+                                          AddCommandServer, RepackCommandServer, ChangedPathsCommand {
 
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(NativeGitCommands.class.getName() + ".Performance");
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
@@ -521,5 +518,22 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     }
     sb.append(")");
     return sb.toString();
+  }
+
+  @NotNull
+  @Override
+  public Collection<String> changedPaths(@NotNull final Repository db,
+                                   @NotNull final GitVcsRoot gitRoot,
+                                   @NotNull final String startRevision,
+                                   @NotNull final Collection<String> excludedRevisions) throws VcsException {
+    final Context ctx = new ContextImpl(gitRoot, myConfig, myGitDetector.detectGit(), GitProgress.NO_OP, myKnownHostsManager);
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
+    gitFacade.setSshKeyManager(mySshKeyManager);
+
+    return executeCommand(ctx, "diff", LogUtil.describe(gitRoot), () -> gitFacade.diff()
+      .setFormat("--name-only")
+      .setStartCommit(startRevision)
+      .setExcludedCommits(excludedRevisions)
+      .call(), gitFacade);
   }
 }

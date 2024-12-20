@@ -1123,8 +1123,8 @@ public class UpdaterImpl implements Updater {
     try {
       return myGitFactory.create(myTargetDirectory).diff()
         .setFormat("--name-only")
-        .setCommit1(myRevision)
-        .setCommit2(upperLimitRevision)
+        .setStartCommit(upperLimitRevision)
+        .setExcludedCommits(Collections.singleton(myRevision))
         .call();
     } catch (VcsException e) {
       myLogger.warning("Error while computing changed files between build and upper limit revisions: " + e.toString());

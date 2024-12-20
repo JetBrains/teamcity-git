@@ -187,6 +187,12 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
     return (StatusCommandServer)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Status command is available only for native git"));
   }
 
+  @Override
+  @NotNull
+  public ChangedPathsCommand diffCommand() {
+    return (ChangedPathsCommand)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Diff command is available only for native git"));
+  }
+
   @NotNull
   @Override
   public LsRemoteCommand lsRemoteCommand(boolean nativeOperations) {
