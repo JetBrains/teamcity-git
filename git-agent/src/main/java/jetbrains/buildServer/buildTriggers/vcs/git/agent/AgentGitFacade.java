@@ -4,6 +4,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import java.io.File;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.DiffCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitFacade;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.InitCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.ListConfigCommand;

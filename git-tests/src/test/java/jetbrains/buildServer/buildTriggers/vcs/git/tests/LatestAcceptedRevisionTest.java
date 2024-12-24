@@ -2,11 +2,9 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
 import jetbrains.buildServer.TestLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.RepositoryStateData;
@@ -19,15 +17,18 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.io.File;
+import java.util.*;
+
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 import static org.assertj.core.api.BDDAssertions.then;
 
 @Test
 public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
-  private PluginConfigBuilder myConfig;
   private File myRepo;
   private GitCollectChangesPolicy myCollectChangesPolicy;
+  private GitVcsSupport myGit;
 
   public LatestAcceptedRevisionTest() {
     super("repo_for_checkout_rules");
@@ -39,19 +40,27 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     super.setUp();
     TestLogger logger = new TestLogger();
     logger.setLogLevel(Level.INFO);
-    myConfig = new PluginConfigBuilder(new ServerPaths(myTempFiles.createTempDir().getAbsolutePath()))
+    PluginConfigBuilder pluginConfig = new PluginConfigBuilder(new ServerPaths(myTempFiles.createTempDir().getAbsolutePath()))
       .setFetchAllRefsEnabled(true);
     myRepo = getRemoteRepositoryDir("repo_for_checkout_rules");
+
+    GitSupportBuilder gitSupportBuilder = gitSupport().withPluginConfig(pluginConfig.build());
+    myGit = gitSupportBuilder.build();
+
+    setInternalProperty(GitCollectChangesPolicy.REVISION_BY_CHECKOUT_RULES_USE_DIFF_COMMAND, "true");
   }
 
   @AfterMethod
   @Override
   public void tearDown() {
     myCollectChangesPolicy = null;
+    myGit = null;
     super.tearDown();
   }
 
-  public void test_include_all_exclude_all() throws IOException, VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void test_include_all_exclude_all(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:."),
@@ -81,7 +90,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     return result;
   }
 
-  public void test_start_and_stop_are_the_same() throws IOException, VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void test_start_and_stop_are_the_same(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:test"),
@@ -91,7 +102,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getReachableStopRevisions()).containsOnly("bbdf67dc5d1d2fa1ce08a0c7db7371f14cd918bf");
   }
 
-  public void test_start_and_stop_are_not_in_repository() throws IOException, VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void test_start_and_stop_are_not_in_repository(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:test"),
@@ -107,7 +120,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                              CheckoutRules.DEFAULT);
   }
 
-  public void test_search_by_path() throws IOException, VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void test_search_by_path(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
     ensureFetchPerformed(root, "refs/heads/br1", "d5a9a3c51fd53b1aec5e3746f521dc78355d7c78");
@@ -132,7 +147,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getRevision()).isEqualTo("a4bc5909156143a5590adadb2c20eaf71f2a3f8f");
   }
 
-  public void branch_merged_to_master() throws IOException, VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void branch_merged_to_master(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:src"),
@@ -146,7 +163,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getRevision()).isEqualTo("b265fd1608fe17f912a031312e1efc758c4e8a35");
   }
 
-  public void master_merged_to_branch() throws IOException, VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void master_merged_to_branch(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:src"),
@@ -155,7 +174,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getRevision()).isEqualTo("338563d3115318d610ad54839cab287e94b18925");
   }
 
-  public void both_parents_of_merge_are_interesting() throws IOException, VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void both_parents_of_merge_are_interesting(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:test"),
@@ -169,7 +190,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getRevision()).isEqualTo("a37f9e92344bd037787a98b1f7c8f80ade6d5b68");
   }
 
-  public void both_parents_of_merge_are_interesting_latest_parents_change_non_interesting_files() throws IOException, VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void both_parents_of_merge_are_interesting_latest_parents_change_non_interesting_files(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:src"),
@@ -178,7 +201,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getRevision()).isEqualTo("d036d012385a762568a474b57337b9cf398b96e0");
   }
 
-  public void traverse_through_merges_looking_for_interesting_commit() throws VcsException, IOException {
+  @Test(dataProvider = "nativeGit")
+  public void traverse_through_merges_looking_for_interesting_commit(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
     Set<String> visited = new HashSet<>();
@@ -220,7 +245,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
    * So although both c1 & c2 change interesting files we won't see a diff in trees in m3 comparing to its parents and
    * can think that nothing interesting was changed, while this is not true.
    */
-  public void merge_commit_tree_does_not_have_difference_with_parents() throws VcsException, IOException {
+  @Test(dataProvider = "nativeGit")
+  public void merge_commit_tree_does_not_have_difference_with_parents(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:src"),
@@ -240,7 +267,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getRevision()).isEqualTo("8fc8c2a8baf37a71a2cdd0c2b0cd1eedfd1649e8");
   }
 
-  public void return_reachable_and_visited_stop_revisions_only1() throws VcsException, IOException {
+  @Test(dataProvider = "nativeGit")
+  public void return_reachable_and_visited_stop_revisions_only1(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:src"),
@@ -250,7 +279,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getReachableStopRevisions()).containsOnly("e19e0ffec0a1512674db95ade28047fbfba76fdf");
   }
 
-  public void return_reachable_and_visited_stop_revisions_only2() throws IOException, VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void return_reachable_and_visited_stop_revisions_only2(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:non-existing-path"),
@@ -263,7 +294,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getReachableStopRevisions()).containsOnly("eea4a3e48901ba036998c9fe0afdc78cc8a05a33", "7c56bdca06b531bc0c923e857514a400b83d2e26");
   }
 
-  public void invalid_stop_revisions_should_be_ignored() throws IOException, VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void invalid_stop_revisions_should_be_ignored(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:src/File5.java"),
@@ -274,7 +307,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getReachableStopRevisions()).containsOnly("75c9325d5b129f299fba8567f0fd7f599d336e8f");
   }
 
-  public void should_return_nearest_stop_revision() throws IOException, VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void should_return_nearest_stop_revision(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().withSubmodulePolicy(SubmodulesCheckoutPolicy.CHECKOUT).build();
 
     Result rev = computeRevisionByCheckoutRulesWithEnabledCache(root, new CheckoutRules("+:src/File4.java"),
@@ -292,7 +327,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getReachableStopRevisions()).containsOnly("75c9325d5b129f299fba8567f0fd7f599d336e8f");
   }
 
-  public void merge_with_resolved_conflict() throws IOException, VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void merge_with_resolved_conflict(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().withSubmodulePolicy(SubmodulesCheckoutPolicy.CHECKOUT).build();
 
     final Set<String> visited = new HashSet<>();
@@ -305,7 +342,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(visited).containsOnly("f7a3bf64d3522fae44359fe2f4d24326475b3d8e");
   }
 
-  public void checked_commits_limit() throws VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void checked_commits_limit(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     setInternalProperty(CheckoutRulesRevWalk.TEAMCITY_MAX_CHECKED_COMMITS_PROP, "7");
     VcsRoot root = getVcsRootBuilder().build();
 
@@ -318,7 +357,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(visited.size()).isEqualTo(7);
   }
 
-  public void using_cached_value_no_stop_revisions() throws VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void using_cached_value_no_stop_revisions(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     enableResultCaching();
     setInternalProperty(CheckoutRulesRevWalk.TEAMCITY_MAX_CHECKED_COMMITS_PROP, "5");
     VcsRoot root = getVcsRootBuilder().build();
@@ -350,7 +391,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(visited).containsOnly("6d8cc5e06db390a20f5b2bf278206a0ec47f05dc", "7b4fe56d180eba5f22b88a6db13cd026a9af041e", "6ff32b16fe485e7a0a1e209bf10987e1ad46292e");
   }
 
-  public void using_cached_value_with_stop_revisions() throws VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void using_cached_value_with_stop_revisions(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     enableResultCaching();
     VcsRoot root = getVcsRootBuilder().build();
 
@@ -384,7 +427,9 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(visited).containsOnly("6399724fac6ec9c62e8795fc037ad385e873911f", "a2b61002b849eeff94900ba4ddfae4aeb5ea7ded", "bca91c783ab7431c83f2b8ebe0e45381662cf33b", "e19e0ffec0a1512674db95ade28047fbfba76fdf", "7e4a8739b038b5b3e551c96dc3a2ef6320772969");
   }
 
-  public void using_cached_value_with_stop_revisions_and_result() throws VcsException {
+  @Test(dataProvider = "nativeGit")
+  public void using_cached_value_with_stop_revisions_and_result(boolean withNativeGit) throws VcsException {
+    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     enableResultCaching();
     VcsRoot root = getVcsRootBuilder().build();
 
@@ -475,17 +520,12 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
   @NotNull
   private GitCollectChangesPolicy getCollectChangesPolicy() {
     if (myCollectChangesPolicy == null) {
-      myCollectChangesPolicy = git().getCollectChangesPolicy();
+      myCollectChangesPolicy = myGit.getCollectChangesPolicy();
     }
     return myCollectChangesPolicy;
   }
 
   private VcsRootBuilder getVcsRootBuilder() {
     return vcsRoot().withFetchUrl(GitUtils.toURL(myRepo));
-  }
-
-  @NotNull
-  private GitVcsSupport git() {
-    return gitSupport().withPluginConfig(myConfig).build();
   }
 }

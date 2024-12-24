@@ -41,7 +41,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitServerUtil.friendly
 
 public class GitRepoOperationsImpl implements GitRepoOperations {
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(GitRepoOperationsImpl.class.getName() + ".Performance");
-  private static final String GIT_NATIVE_OPERATIONS_ENABLED = "teamcity.git.nativeOperationsEnabled";
+  public static final String GIT_NATIVE_OPERATIONS_ENABLED = "teamcity.git.nativeOperationsEnabled";
   private static final Counter EMPTY_COUNTER = new NoOpCounter();
 
   private final TransportFactory myTransportFactory;
@@ -185,6 +185,12 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @Override
   public StatusCommandServer statusCommand(@NotNull String repoUrl) {
     return (StatusCommandServer)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Status command is available only for native git"));
+  }
+
+  @Override
+  @NotNull
+  public ChangedPathsCommand diffCommand() {
+    return (ChangedPathsCommand)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Diff command is available only for native git"));
   }
 
   @NotNull

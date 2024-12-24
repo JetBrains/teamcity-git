@@ -103,6 +103,10 @@ public class GitFacadeImpl implements GitFacade {
     return new SetConfigCommandImpl(createCommandLine());
   }
 
+  public DiffCommand diff() {
+    return new DiffCommandImpl(createCommandLine());
+  }
+
   @NotNull
   protected GitCommandLine createCommandLine() {
     final GitCommandLine cmd = makeCommandLine();

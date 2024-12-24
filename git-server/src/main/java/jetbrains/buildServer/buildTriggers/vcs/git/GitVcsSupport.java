@@ -229,7 +229,7 @@ public class GitVcsSupport extends ServerVcsSupport
       GitPatchBuilderDispatcher gitPatchBuilder = new GitPatchBuilderDispatcher(myConfig, mySshKeyManager, context, builder, fromRevision,
                                                                                 toRevision, checkoutRules,
                                                                                 trustedCertificatesDir == null ? null : trustedCertificatesDir.getAbsolutePath(),
-                                                                                myConfig.isSeparateProcessForPatch() && !myGitRepoOperations.isNativeGitOperationsEnabled(gitRoot.getRepositoryFetchURL().toString()),
+                                                                                myConfig.isSeparateProcessForPatch() && !isNativeGitOperationEnabled(gitRoot),
                                                                                 myTransportFactory);
       try {
         myCommitLoader.loadCommit(context, gitRoot, toRevision);
@@ -695,5 +695,14 @@ public class GitVcsSupport extends ServerVcsSupport
   @Nullable
   public ServerMetrics getServerMetrics() {
     return myServerMetrics;
+  }
+
+  public boolean isNativeGitOperationEnabled(@NotNull GitVcsRoot root) {
+    return myGitRepoOperations.isNativeGitOperationsEnabled(root.getRepositoryFetchURL().toString());
+  }
+
+  @NotNull
+  public GitRepoOperations getGitRepoOperations() {
+    return myGitRepoOperations;
   }
 }

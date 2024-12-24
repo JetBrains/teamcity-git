@@ -30,6 +30,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
 
   private static final String ENABLE_CHANGES_COLLECTION_LOGGING = "teamcity.internal.git.changesCollectionTimeLogging.enabled";
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
+  public static final String REVISION_BY_CHECKOUT_RULES_USE_DIFF_COMMAND = "teamcity.git.checkoutRulesRevisionCache.useDiffCommand";
 
   private final GitVcsSupport myVcs;
   private final VcsOperationProgressProvider myProgressProvider;
@@ -345,29 +346,56 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                 @Nullable Set<String> visited,
                                                 @NotNull OperationContext context,
                                                 @NotNull GitVcsRoot gitRoot) throws VcsException {
+    if (!stopRevisions.isEmpty() && myVcs.isNativeGitOperationEnabled(gitRoot) && TeamCityProperties.getBoolean(REVISION_BY_CHECKOUT_RULES_USE_DIFF_COMMAND)) {
+      boolean hasInterestingPaths = false;
+
+      // this revWalk helps us to compute reachable stop revisions, we do not need to apply checkout rules as we already checked that
+      // there are no interesting commits between start and stop revisions
+      CheckoutRulesRevWalk revWalk = new CheckoutRulesRevWalk(myConfig, context, rules) {
+        @Override
+        protected boolean isCurrentCommitIncluded() {
+          return false;
+        }
+      };
+
+      try {
+        Collection<String> changedPaths = null;
+        try {
+          Set<String> stopRevisionsParents = getParentsOfStopRevisions(stopRevisions, context, revWalk);
+          if (!stopRevisionsParents.isEmpty()) {
+            changedPaths = computeChangedPaths(startRevision, stopRevisionsParents, context, gitRoot);
+          }
+        } catch (Exception e) {
+          // could not compute the changed paths, maybe revisions are invalid
+        }
+
+        if (changedPaths != null) {
+          for (String path: changedPaths) {
+            if (rules.shouldInclude(path)) {
+              hasInterestingPaths = true;
+              break;
+            }
+          }
+
+          if (!hasInterestingPaths) {
+            try {
+              // only traverse DAG to compute visited and reachable stop revisions without checking the checkout rules
+              return computeResult(startRevision, stopRevisions, visited, gitRoot, revWalk);
+            } catch (Exception e) {
+              throw context.wrapException(e);
+            }
+          }
+        }
+      } finally {
+        revWalk.close();
+        revWalk.dispose();
+      }
+    }
+
     CheckoutRulesRevWalk revWalk = null;
     try {
       revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
-      List<RevCommit> startCommits = getCommits(revWalk.getRepository(), revWalk, Collections.singleton(startRevision));
-      if (startCommits.isEmpty()) {
-        LOG.warn("Could not find the start revision " + startRevision + " in the repository at path: " + gitRoot.getRepositoryDir());
-        return new Result(null, Collections.emptyList());
-      }
-
-      revWalk.setStartRevision(startCommits.get(0));
-      revWalk.setStopRevisions(stopRevisions);
-
-      String result = null;
-      RevCommit foundCommit = revWalk.findMatchedCommit();
-      if (foundCommit != null) {
-        result = foundCommit.name();
-      }
-
-      if (visited != null) {
-        visited.addAll(revWalk.getVisitedRevisions());
-      }
-
-      return new Result(result, revWalk.getReachedStopRevisions());
+      return computeResult(startRevision, stopRevisions, visited, gitRoot, revWalk);
     } catch (Exception e) {
       throw context.wrapException(e);
     } finally {
@@ -376,6 +404,62 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         revWalk.dispose();
       }
     }
+  }
+
+  @NotNull
+  private static Set<String> getParentsOfStopRevisions(final @NotNull Collection<String> stopRevisions,
+                                                       final @NotNull OperationContext context,
+                                                       final @NotNull CheckoutRulesRevWalk revWalk) throws IOException, VcsException {
+    final Map<String, Set<String>> parentsMap = revWalk.getParentsMap(context.getRepository(), stopRevisions);
+    Set<String> stopRevisionsParents = new HashSet<>();
+    for (Map.Entry<String, Set<String>> entry : parentsMap.entrySet()) {
+      if (entry.getValue().isEmpty()) {
+        // one of the stop revisions is the initial commit, we can't use git diff command in this case
+        return Collections.emptySet();
+      }
+      stopRevisionsParents.addAll(entry.getValue());
+    }
+    return stopRevisionsParents;
+  }
+
+  @NotNull
+  private Collection<String> computeChangedPaths(final @NotNull String startRevision,
+                                          final @NotNull Collection<String> excludedRevisions,
+                                          final @NotNull OperationContext context,
+                                          final @NotNull GitVcsRoot gitRoot) throws VcsException {
+    Set<String> paths = new HashSet<>();
+    for (String rev: excludedRevisions) {
+      paths.addAll(myVcs.getGitRepoOperations().diffCommand().changedPaths(context.getRepository(), gitRoot, startRevision, Collections.singleton(rev)));
+    }
+    return paths;
+  }
+
+  @NotNull
+  private Result computeResult(final @NotNull String startRevision,
+                               final @NotNull Collection<String> stopRevisions,
+                               final @Nullable Set<String> visited,
+                               final @NotNull GitVcsRoot gitRoot,
+                               final @NotNull CheckoutRulesRevWalk revWalk) throws IOException {
+    List<RevCommit> startCommits = getCommits(revWalk.getRepository(), revWalk, Collections.singleton(startRevision));
+    if (startCommits.isEmpty()) {
+      LOG.warn("Could not find the start revision " + startRevision + " in the repository at path: " + gitRoot.getRepositoryDir());
+      return new Result(null, Collections.emptyList());
+    }
+
+    revWalk.setStartRevision(startCommits.get(0));
+    revWalk.setStopRevisions(stopRevisions);
+
+    String result = null;
+    RevCommit foundCommit = revWalk.findMatchedCommit();
+    if (foundCommit != null) {
+      result = foundCommit.name();
+    }
+
+    if (visited != null) {
+      visited.addAll(revWalk.getVisitedRevisions());
+    }
+
+    return new Result(result, revWalk.getReachedStopRevisions());
   }
 
   private void ensureRevisionIsFetched(@NotNull String revision, @NotNull String branchName, @NotNull OperationContext context) {

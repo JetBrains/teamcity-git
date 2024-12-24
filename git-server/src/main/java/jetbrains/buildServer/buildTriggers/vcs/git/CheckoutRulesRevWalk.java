@@ -93,18 +93,31 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     }
   }
 
-  private void rememberStopRevisionsParents() throws IOException {
-    ObjectDatabase objectDatabase = getRepository().getObjectDatabase();
-    for (String stopRev: myStopRevisions) {
-      ObjectId stopRevId = ObjectId.fromString(GitUtils.versionRevision(stopRev));
-      if (!objectDatabase.has(stopRevId)) continue;
+  @NotNull
+  public Map<String, Set<String>> getParentsMap(@NotNull Repository db, @NotNull Collection<String> commits) throws IOException {
+    Map<String, Set<String>> parents = new HashMap<>();
+    ObjectDatabase objectDatabase = db.getObjectDatabase();
+    for (String rev: commits) {
+      ObjectId revId = ObjectId.fromString(GitUtils.versionRevision(rev));
+      if (!objectDatabase.has(revId)) continue;
 
-      RevCommit stopCommit = parseCommit(stopRevId);
-      for (RevCommit p: stopCommit.getParents()) {
-        myStopRevisionsParents.add(p.getId());
+      RevCommit commit = parseCommit(revId);
+      parents.computeIfAbsent(rev, r -> new HashSet<>());
+      for (RevCommit p: commit.getParents()) {
+        parents.get(rev).add(p.name());
       }
     }
 
+    return parents;
+  }
+
+  private void rememberStopRevisionsParents() throws IOException {
+    for (Set<String> parents: getParentsMap(getRepository(), myStopRevisions).values()) {
+      for (String parent: parents) {
+        ObjectId id = ObjectId.fromString(GitUtils.versionRevision(parent));
+        myStopRevisionsParents.add(id);
+      }
+    }
   }
 
   private void markStopRevisionsParentsAsUninteresting(@NotNull RevWalk revWalk) throws IOException {
@@ -123,7 +136,7 @@ public class CheckoutRulesRevWalk extends LimitingRevWalk {
     return new ArrayList<>(myReachedStopRevisions);
   }
 
-  private boolean isCurrentCommitIncluded() throws IOException {
+  protected boolean isCurrentCommitIncluded() throws IOException {
     checkCurrentCommit();
 
     final RevCommit[] parents = getCurrentCommit().getParents();

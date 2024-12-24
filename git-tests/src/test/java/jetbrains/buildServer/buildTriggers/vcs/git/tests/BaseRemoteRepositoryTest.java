@@ -11,9 +11,13 @@ import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.StubContext;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.InternalPropertiesHandler;
 import jetbrains.buildServer.log.LogInitializer;
+import jetbrains.buildServer.serverSide.IOGuard;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import org.jetbrains.annotations.NotNull;
@@ -90,5 +94,20 @@ public abstract class BaseRemoteRepositoryTest {
 
   private void cleanInternalProperties() {
     myInternalPropertiesHandler.tearDown();
+  }
+
+  @DataProvider(name = "nativeGit")
+  protected Object[][] nativeGitDataProvider() {
+    try {
+      GitVersion gitVersion = IOGuard.allowCommandLine(() -> new GitFacadeImpl(new File("."), new StubContext("git")).version().call());
+      if (gitVersion.isSupported()) {
+        return new Object[][]{{true}, {false}};
+      }
+      System.out.println("Unsupported Git version: " + gitVersion.toString());
+    } catch (Exception e) {
+      System.out.println("No Git executable found");
+    }
+
+    return new Object[][]{{false}};
   }
 }
