@@ -49,7 +49,7 @@ public class LatestAcceptedRevisionAndSubmodulesTest extends BaseRemoteRepositor
     File module2Repo = new File(myRepo.getParentFile(), "module2");
     copyRepository(dataFile("repo_for_checkout_rules_module2"), module2Repo);
 
-    setInternalProperty(GitCollectChangesPolicy.REVISION_BY_CHECKOUT_RULES_USE_DIFF_COMMAND, "true");
+    setInternalProperty(GitCollectChangesPolicy.REVISION_BY_CHECKOUT_RULES_USE_LOG_COMMAND, "true");
   }
 
   @Test(dataProvider = "nativeGit")

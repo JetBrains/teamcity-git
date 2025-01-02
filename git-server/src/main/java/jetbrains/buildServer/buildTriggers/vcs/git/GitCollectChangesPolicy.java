@@ -2,6 +2,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.google.common.collect.Lists;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.*;
@@ -16,6 +17,7 @@ import jetbrains.buildServer.util.Disposable;
 import jetbrains.buildServer.util.NamedDaemonThreadFactory;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
+import org.eclipse.egit.github.core.Team;
 import org.eclipse.jgit.lib.ObjectDatabase;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
@@ -30,7 +32,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
 
   private static final String ENABLE_CHANGES_COLLECTION_LOGGING = "teamcity.internal.git.changesCollectionTimeLogging.enabled";
   private static final Logger LOG = Logger.getInstance(GitCollectChangesPolicy.class.getName());
-  public static final String REVISION_BY_CHECKOUT_RULES_USE_DIFF_COMMAND = "teamcity.git.checkoutRulesRevisionCache.useDiffCommand";
+  public static final String REVISION_BY_CHECKOUT_RULES_USE_LOG_COMMAND = "teamcity.git.checkoutRulesRevision.useLogCommand";
 
   private final GitVcsSupport myVcs;
   private final VcsOperationProgressProvider myProgressProvider;
@@ -346,6 +348,49 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                 @Nullable Set<String> visited,
                                                 @NotNull OperationContext context,
                                                 @NotNull GitVcsRoot gitRoot) throws VcsException {
+    if (!stopRevisions.isEmpty() &&
+        myVcs.isNativeGitOperationEnabled(gitRoot) &&
+        rules.getExcludeRules().isEmpty() &&
+        TeamCityProperties.getBoolean(REVISION_BY_CHECKOUT_RULES_USE_LOG_COMMAND)) {
+
+      // this revWalk helps us to compute reachable stop revisions, we do not need to apply checkout rules as we already checked that
+      // there are no interesting commits between start and stop revisions
+      CheckoutRulesRevWalk revWalk = new CheckoutRulesRevWalk(myConfig, context, rules) {
+        @Override
+        protected boolean isCurrentCommitIncluded() {
+          return false;
+        }
+      };
+
+      try {
+        Boolean hasInterestingCommits = null;
+        Collection<String> paths = new HashSet<>();
+        try {
+          for (IncludeRule r: rules.getIncludeRules()) {
+            paths.add(r.getFrom());
+          }
+          Set<String> stopRevisionsParents = getParentsOfStopRevisions(stopRevisions, context, revWalk);
+          if (!stopRevisionsParents.isEmpty()) {
+            hasInterestingCommits = hasCommitsAffectingPaths(startRevision, stopRevisionsParents, paths, context, gitRoot);
+          }
+        } catch (Exception e) {
+          // could not compute the changed paths, maybe revisions are invalid
+        }
+
+        if (hasInterestingCommits != null && !hasInterestingCommits) {
+          try {
+            // only traverse DAG to compute visited and reachable stop revisions without checking the checkout rules
+            return computeResult(startRevision, stopRevisions, visited, gitRoot, revWalk);
+          } catch (Exception e) {
+            throw context.wrapException(e);
+          }
+        }
+      } finally {
+        revWalk.close();
+        revWalk.dispose();
+      }
+    }
+
     CheckoutRulesRevWalk revWalk = null;
     try {
       revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
@@ -358,6 +403,43 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         revWalk.dispose();
       }
     }
+  }
+
+  private boolean hasCommitsAffectingPaths(@NotNull final String startRevision,
+                                           @NotNull final Set<String> excludedRevisions,
+                                           @NotNull final Collection<String> paths,
+                                           @NotNull final OperationContext context,
+                                           @NotNull final GitVcsRoot gitRoot) throws VcsException {
+
+    // we do not want to pass too many paths to the command line otherwise it can become too big
+    int maxPaths = TeamCityProperties.getInteger("teamcity.git.checkoutRulesRevision.maxPathsForLogCommand", 10);
+    final ChangedPathsCommand cmd = myVcs.getGitRepoOperations().changedPathsCommand();
+
+    for (String rev: excludedRevisions) {
+      for (List<String> pathsPart: Lists.partition(new ArrayList<>(paths), maxPaths)) {
+        if (!cmd.commitsByPaths(context.getRepository(), gitRoot, startRevision, Collections.singleton(rev), 1, pathsPart).isEmpty()) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  @NotNull
+  private static Set<String> getParentsOfStopRevisions(final @NotNull Collection<String> stopRevisions,
+                                                       final @NotNull OperationContext context,
+                                                       final @NotNull CheckoutRulesRevWalk revWalk) throws IOException, VcsException {
+    final Map<String, Set<String>> parentsMap = revWalk.getParentsMap(context.getRepository(), stopRevisions);
+    Set<String> stopRevisionsParents = new HashSet<>();
+    for (Map.Entry<String, Set<String>> entry : parentsMap.entrySet()) {
+      if (entry.getValue().isEmpty()) {
+        // one of the stop revisions is the initial commit, we can't use git diff command in this case
+        return Collections.emptySet();
+      }
+      stopRevisionsParents.addAll(entry.getValue());
+    }
+    return stopRevisionsParents;
   }
 
   @NotNull

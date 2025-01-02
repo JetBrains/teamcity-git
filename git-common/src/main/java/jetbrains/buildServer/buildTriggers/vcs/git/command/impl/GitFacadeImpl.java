@@ -103,8 +103,14 @@ public class GitFacadeImpl implements GitFacade {
     return new SetConfigCommandImpl(createCommandLine());
   }
 
+  @NotNull
   public DiffCommand diff() {
     return new DiffCommandImpl(createCommandLine());
+  }
+
+  @NotNull
+  public CommitsTouchingPathsCommand commitsByPaths() {
+    return new CommitsTouchingPathsCommandImpl(createCommandLine());
   }
 
   @NotNull

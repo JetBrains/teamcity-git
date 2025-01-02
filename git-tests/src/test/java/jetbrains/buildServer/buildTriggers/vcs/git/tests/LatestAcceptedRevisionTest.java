@@ -47,7 +47,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     GitSupportBuilder gitSupportBuilder = gitSupport().withPluginConfig(pluginConfig.build());
     myGit = gitSupportBuilder.build();
 
-    setInternalProperty(GitCollectChangesPolicy.REVISION_BY_CHECKOUT_RULES_USE_DIFF_COMMAND, "true");
+    setInternalProperty(GitCollectChangesPolicy.REVISION_BY_CHECKOUT_RULES_USE_LOG_COMMAND, "true");
   }
 
   @AfterMethod

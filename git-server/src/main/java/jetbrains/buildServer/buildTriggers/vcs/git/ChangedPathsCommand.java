@@ -21,10 +21,18 @@ import org.eclipse.jgit.lib.Repository;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
-import java.util.List;
 
 public interface ChangedPathsCommand extends GitCommand {
   @NotNull
   Collection<String> changedPaths(@NotNull Repository db, @NotNull GitVcsRoot gitRoot, @NotNull String startRevision, @NotNull Collection<String> excludedRevisions)
+    throws VcsException;
+
+  @NotNull
+  Collection<String> commitsByPaths(@NotNull final Repository db,
+                                    @NotNull final GitVcsRoot gitRoot,
+                                    @NotNull final String startRevision,
+                                    @NotNull final Collection<String> excludedRevisions,
+                                    int maxCommits,
+                                    @NotNull Collection<String> paths)
     throws VcsException;
 }

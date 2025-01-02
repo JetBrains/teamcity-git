@@ -145,21 +145,19 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
 
   // Visible for testing
   protected <R> R executeCommand(@NotNull Context ctx, @NotNull String action, @NotNull String debugInfo, @NotNull FuncThrow<R, VcsException> cmd, @NotNull GitFacade gitFacade) throws VcsException{
-    return executeWithSslHandling(() ->  {
-      return NamedThreadFactory.executeWithNewThreadNameFuncThrow(
-        String.format("Running native git %s process for : %s", action, debugInfo),
-        () -> {
-          final long start = System.currentTimeMillis();
-          try {
-            return cmd.apply();
-          } finally {
-            final long finish = System.currentTimeMillis();
-            final String msg = "[git " + action + "] repository: " + debugInfo + " took " + (finish - start) + "ms";
-            if (ctx.isDebugGitCommands()) PERFORMANCE_LOG.info(msg);
-            else PERFORMANCE_LOG.debug(msg);
-          }
-        });
-    }, gitFacade);
+    return executeWithSslHandling(() -> NamedThreadFactory.executeWithNewThreadNameFuncThrow(
+      String.format("Running native git %s process for : %s", action, debugInfo),
+      () -> {
+        final long start = System.currentTimeMillis();
+        try {
+          return cmd.apply();
+        } finally {
+          final long finish = System.currentTimeMillis();
+          final String msg = "[git " + action + "] repository: " + debugInfo + " took " + (finish - start) + "ms";
+          if (ctx.isDebugGitCommands()) PERFORMANCE_LOG.info(msg);
+          else PERFORMANCE_LOG.debug(msg);
+        }
+      }), gitFacade);
   }
 
   private void prune(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull FetchSettings settings) throws VcsException {
@@ -440,17 +438,15 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
     final String debugInfo = LogUtil.describe(gitRoot);
     List<Ref> currentTags;
     try {
-      currentTags = executeCommand(ctx, "ls-remote", debugInfo, () -> {
-        return gitFacade.lsRemote()
-                        .setTags()
-                        .setBranches(tag)
-                        .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
-                        .setTimeout(myConfig.getPushTimeoutSeconds())
-                        .setRetryAttempts(myConfig.getConnectionRetryAttempts())
-                        .setRepoUrl(gitRoot.getRepositoryPushURL().get())
-                        .trace(myConfig.getGitTraceEnv())
-                        .call();
-      }, gitFacade);
+      currentTags = executeCommand(ctx, "ls-remote", debugInfo, () -> gitFacade.lsRemote()
+                      .setTags()
+                      .setBranches(tag)
+                      .setAuthSettings(gitRoot.getAuthSettings()).setUseNativeSsh(true)
+                      .setTimeout(myConfig.getPushTimeoutSeconds())
+                      .setRetryAttempts(myConfig.getConnectionRetryAttempts())
+                      .setRepoUrl(gitRoot.getRepositoryPushURL().get())
+                      .trace(myConfig.getGitTraceEnv())
+                      .call(), gitFacade);
     } catch (VcsException v) {
       Loggers.VCS.warn("Failed to get information about remote tag: " + tag + " for " + debugInfo, v);
       throw v;
@@ -535,5 +531,24 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
       .setStartCommit(startRevision)
       .setExcludedCommits(excludedRevisions)
       .call(), gitFacade);
+  }
+
+  @NotNull
+  @Override
+  public Collection<String> commitsByPaths(@NotNull final Repository db,
+                                           @NotNull final GitVcsRoot gitRoot,
+                                           @NotNull final String startRevision,
+                                           @NotNull final Collection<String> excludedRevisions,
+                                           int maxCommits,
+                                           @NotNull Collection<String> paths) throws VcsException {
+    final Context ctx = new ContextImpl(gitRoot, myConfig, myGitDetector.detectGit(), GitProgress.NO_OP, myKnownHostsManager);
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(db.getDirectory(), ctx);
+    gitFacade.setSshKeyManager(mySshKeyManager);
+
+    return executeCommand(ctx, "log", LogUtil.describe(gitRoot), () -> gitFacade.commitsByPaths()
+      .setStartCommit(startRevision)
+      .setExcludedCommits(excludedRevisions)
+      .setMaxCommits(maxCommits)
+      .call(paths), gitFacade);
   }
 }

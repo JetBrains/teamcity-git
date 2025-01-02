@@ -189,7 +189,7 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
 
   @Override
   @NotNull
-  public ChangedPathsCommand diffCommand() {
+  public ChangedPathsCommand changedPathsCommand() {
     return (ChangedPathsCommand)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Diff command is available only for native git"));
   }
 
