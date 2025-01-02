@@ -17,7 +17,7 @@ import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.DBVcsModification;
-//import jetbrains.buildServer.vcshostings.url.ServerURIParser;
+import jetbrains.buildServer.vcshostings.url.ServerURIParser;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -127,7 +127,7 @@ public class GitProxyChangesCollector {
     }
 
     // try to parse project name and repository name from url. For now git proxy only works with jetbrains.team repositories
-    List<String> path = Collections.emptyList(); //ServerURIParser.createServerURI(url).getPathFragments();
+    List<String> path = ServerURIParser.createServerURI(url).getPathFragments();
     if (path.size() == 0) {
       return null;
     }
