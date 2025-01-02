@@ -177,7 +177,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     OperationContext context = myVcs.createContext(root, "collecting changes", createProgress());
     GitVcsRoot gitRoot = context.getGitRoot();
     return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-      List<ModificationData> changes = new ArrayList<ModificationData>();
+      List<ModificationData> changes = new ArrayList<>();
       try {
         Repository r = context.getRepository();
         ModificationDataRevWalk revWalk = new ModificationDataRevWalk(myConfig, context);
@@ -234,7 +234,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
 
   @NotNull
   private List<String> getInterestingBranches(@NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState) {
-    Set<String> updatedBranches = new HashSet<String>();
+    Set<String> updatedBranches = new HashSet<>();
     Map<String, String> fromBranches = fromState.getBranchRevisions();
     Map<String, String> toBranches = toState.getBranchRevisions();
     for (Map.Entry<String, String> e : fromBranches.entrySet()) {
@@ -346,52 +346,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                 @Nullable Set<String> visited,
                                                 @NotNull OperationContext context,
                                                 @NotNull GitVcsRoot gitRoot) throws VcsException {
-    if (!stopRevisions.isEmpty() && myVcs.isNativeGitOperationEnabled(gitRoot) && TeamCityProperties.getBoolean(REVISION_BY_CHECKOUT_RULES_USE_DIFF_COMMAND)) {
-      boolean hasInterestingPaths = false;
-
-      // this revWalk helps us to compute reachable stop revisions, we do not need to apply checkout rules as we already checked that
-      // there are no interesting commits between start and stop revisions
-      CheckoutRulesRevWalk revWalk = new CheckoutRulesRevWalk(myConfig, context, rules) {
-        @Override
-        protected boolean isCurrentCommitIncluded() {
-          return false;
-        }
-      };
-
-      try {
-        Collection<String> changedPaths = null;
-        try {
-          Set<String> stopRevisionsParents = getParentsOfStopRevisions(stopRevisions, context, revWalk);
-          if (!stopRevisionsParents.isEmpty()) {
-            changedPaths = computeChangedPaths(startRevision, stopRevisionsParents, context, gitRoot);
-          }
-        } catch (Exception e) {
-          // could not compute the changed paths, maybe revisions are invalid
-        }
-
-        if (changedPaths != null) {
-          for (String path: changedPaths) {
-            if (rules.shouldInclude(path)) {
-              hasInterestingPaths = true;
-              break;
-            }
-          }
-
-          if (!hasInterestingPaths) {
-            try {
-              // only traverse DAG to compute visited and reachable stop revisions without checking the checkout rules
-              return computeResult(startRevision, stopRevisions, visited, gitRoot, revWalk);
-            } catch (Exception e) {
-              throw context.wrapException(e);
-            }
-          }
-        }
-      } finally {
-        revWalk.close();
-        revWalk.dispose();
-      }
-    }
-
     CheckoutRulesRevWalk revWalk = null;
     try {
       revWalk = new CheckoutRulesRevWalk(myConfig, context, rules);
@@ -404,34 +358,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         revWalk.dispose();
       }
     }
-  }
-
-  @NotNull
-  private static Set<String> getParentsOfStopRevisions(final @NotNull Collection<String> stopRevisions,
-                                                       final @NotNull OperationContext context,
-                                                       final @NotNull CheckoutRulesRevWalk revWalk) throws IOException, VcsException {
-    final Map<String, Set<String>> parentsMap = revWalk.getParentsMap(context.getRepository(), stopRevisions);
-    Set<String> stopRevisionsParents = new HashSet<>();
-    for (Map.Entry<String, Set<String>> entry : parentsMap.entrySet()) {
-      if (entry.getValue().isEmpty()) {
-        // one of the stop revisions is the initial commit, we can't use git diff command in this case
-        return Collections.emptySet();
-      }
-      stopRevisionsParents.addAll(entry.getValue());
-    }
-    return stopRevisionsParents;
-  }
-
-  @NotNull
-  private Collection<String> computeChangedPaths(final @NotNull String startRevision,
-                                          final @NotNull Collection<String> excludedRevisions,
-                                          final @NotNull OperationContext context,
-                                          final @NotNull GitVcsRoot gitRoot) throws VcsException {
-    Set<String> paths = new HashSet<>();
-    for (String rev: excludedRevisions) {
-      paths.addAll(myVcs.getGitRepoOperations().diffCommand().changedPaths(context.getRepository(), gitRoot, startRevision, Collections.singleton(rev)));
-    }
-    return paths;
   }
 
   @NotNull
