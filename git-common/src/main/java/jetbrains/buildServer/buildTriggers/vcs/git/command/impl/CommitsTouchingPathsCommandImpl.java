@@ -68,8 +68,9 @@ public class CommitsTouchingPathsCommandImpl extends BaseCommandImpl implements 
     }
 
     cmd.addParameter("-" + myMaxCommits);
-
+    cmd.addParameter("--format=%H");
     cmd.addParameter("--");
+
     for (String path : paths) {
       cmd.addParameter(path);
     }
