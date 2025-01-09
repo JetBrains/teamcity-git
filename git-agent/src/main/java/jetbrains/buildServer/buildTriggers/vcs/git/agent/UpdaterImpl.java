@@ -1009,8 +1009,9 @@ public class UpdaterImpl implements Updater {
   private Ref createCorrespondingRemoteRef(@NotNull Ref localRef) {
     if (!isRemoteTrackingBranch(localRef))
       return localRef;
-    return new RefImpl("refs/heads" + localRef.getName().substring("refs/remotes/origin".length()),
-                       localRef.getObjectId().name());
+    String localRefName = localRef.getName().substring("refs/remotes/origin/".length());
+
+    return new RefImpl("HEAD".equals(localRefName) ? "HEAD" : ("refs/heads/" + localRefName), localRef.getObjectId().name());
   }
 
 
