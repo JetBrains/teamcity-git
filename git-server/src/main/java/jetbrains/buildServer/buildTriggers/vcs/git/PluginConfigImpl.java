@@ -27,6 +27,7 @@ import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
+import jetbrains.buildServer.serverSide.crypt.EncryptionUtils;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.util.*;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
@@ -281,6 +282,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
       Decoder.class,
       TObjectHashingStrategy.class,
       EncryptUtil.class,
+      EncryptionUtils.class,
       DiagnosticUtil.class,
       FileUtil.class,
       Element.class,
