@@ -14,6 +14,7 @@ import jetbrains.buildServer.util.TestFor;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.Test;
 
+import static jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelper.*;
 import static jetbrains.buildServer.util.Util.map;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.data.MapEntry.entry;
@@ -99,6 +100,21 @@ public class CredentialsHelperTest {
                        entry("host", "unknown.org"),
                        entry("path", "/some/path"),
                        entry("password", "secret"));
+  }
+
+  @TestFor(issues = "TW-91547")
+  public void null_password() throws Exception {
+    Map<String, String> env = map(
+      credEnv(1, CRED_URL), "https://acme.org/user/repo.git",
+      credEnv(1, CRED_USER), "user"
+    );
+    Map<String, String> out = run(
+      map("protocol", "https",
+          "host", "unknown.org",
+          "path", "/some/path"),
+      env);
+
+    then(out).isEmpty();
   }
 
 

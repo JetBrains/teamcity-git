@@ -23,9 +23,9 @@ public class CredentialsHelper {
 
   public static final String SUPPORTED_OPERATION = "get";
   private static final String CRED_PREFIX = "TEAMCITY_GIT_CREDENTIALS_";
-  static final String CRED_URL = "URL";
-  static final String CRED_USER = "USER";
-  static final String CRED_PWD = "PWD";
+  public static final String CRED_URL = "URL";
+  public static final String CRED_USER = "USER";
+  public static final String CRED_PWD = "PWD";
   static final String CRED_MATCH_ALL_URLS = "MATCH_ALL_URLS";
 
   private final InputStream myIn;
@@ -175,7 +175,9 @@ public class CredentialsHelper {
           break;
         String username = env.get(credEnv(i, CRED_USER));
         String password = env.get(credEnv(i, CRED_PWD));
-        result.addCredentials(url, username, password);
+        if (password != null) {
+          result.addCredentials(url, username, password);
+        }
         i++;
       }
       String matchAllUrls = env.get(credEnv(CRED_MATCH_ALL_URLS));
@@ -210,7 +212,7 @@ public class CredentialsHelper {
     return CredentialsHelper.CRED_PREFIX + name;
   }
 
-  static String credEnv(int i, @NotNull String name) {
+  public static String credEnv(int i, @NotNull String name) {
     return CredentialsHelper.CRED_PREFIX + i + "_" + name;
   }
 
