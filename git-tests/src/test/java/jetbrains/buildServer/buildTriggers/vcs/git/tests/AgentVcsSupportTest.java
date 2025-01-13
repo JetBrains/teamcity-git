@@ -336,6 +336,7 @@ public class AgentVcsSupportTest {
 
 
     myVcsSupport.updateSources(root, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, myBuild, false);
+    System.out.println("check");
   }
 
 

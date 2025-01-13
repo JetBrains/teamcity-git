@@ -35,7 +35,8 @@ public class GitVersionProvider {
 
   @NotNull
   static String getGitPath() {
-    String path = System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH);
+    String path = "/Users/Danila.Manturov/source/git-2-48/git/bin-wrappers/git";
+    //String path = System.getenv(Constants.TEAMCITY_AGENT_GIT_PATH);
     if (!StringUtil.isEmpty(path)) {
       return path;
     } else {
