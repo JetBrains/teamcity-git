@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.jsch.SshPubkeyAcceptedAlgorithms;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchProcess;
+import jetbrains.buildServer.log.Loggable;
 import jetbrains.buildServer.messages.serviceMessages.ServiceMessage;
 import jetbrains.buildServer.metrics.Counter;
 import jetbrains.buildServer.connections.ExpiringAccessToken;
@@ -282,7 +283,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
       Decoder.class,
       TObjectHashingStrategy.class,
       EncryptUtil.class,
-      EncryptionUtils.class,
+      Loggable.class,
       DiagnosticUtil.class,
       FileUtil.class,
       Element.class,
