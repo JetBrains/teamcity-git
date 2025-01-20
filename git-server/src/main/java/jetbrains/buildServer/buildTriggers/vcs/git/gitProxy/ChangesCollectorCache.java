@@ -5,15 +5,16 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.ModificationData;
-import java.util.List;
 import jetbrains.buildServer.vcs.RepositoryStateData;
 import jetbrains.buildServer.vcs.VcsChange;
+import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -55,16 +56,16 @@ public class ChangesCollectorCache {
    *  if the type is COMPLETED, the result is present in cache and can be retrieved immidiately
    */
   @NotNull
-  public synchronized Result getOrCreateNew(@NotNull Key key) {
+  public synchronized Result getOrCreateNew(@NotNull Key key, @NotNull VcsRoot vcsRoot) {
     //check if we have result in cache
     CacheEntry entry = myCache.getIfPresent(key.get());
     if (entry != null) {
-      return new Result(entry.data);
+      return new Result(entry.data, vcsRoot);
     }
 
     //check if some operation is running for this key
     if (myRunningOperations.containsKey(key.get())) {
-      return new Result(ResultType.RUNNING, myRunningOperations.get(key.get()));
+      return new Result(ResultType.RUNNING, myRunningOperations.get(key.get()), vcsRoot);
     }
 
     // create new future, update cache when it is completed
@@ -76,7 +77,7 @@ public class ChangesCollectorCache {
       }
     });
     myRunningOperations.put(key.get(), future);
-    return new Result(ResultType.NEW, future);
+    return new Result(ResultType.NEW, future, vcsRoot);
   }
 
   private synchronized void add(@NotNull Key key, List<ModificationData> result, int sizeKb) {
@@ -91,10 +92,12 @@ public class ChangesCollectorCache {
       h.putUnencodedChars(entry.getValue());
     });
 
-    toState.getBranchRevisions().entrySet().stream().sorted((a, b) -> a.getKey().compareTo(b.getKey())).forEach(entry -> {
-      h.putUnencodedChars(entry.getKey());
-      h.putUnencodedChars(entry.getValue());
-    });
+    toState.getBranchRevisions().entrySet().stream().sorted((a, b) -> a.getKey().compareTo(b.getKey()))
+           .filter(entry -> !Objects.equals(entry.getValue(), fromState.getBranchRevisions().get(entry.getKey())))
+           .forEach(entry -> {
+             h.putUnencodedChars(entry.getKey());
+             h.putUnencodedChars(entry.getValue());
+           });
 
     return new Key(repoUrl + h.hash());
   }
@@ -142,15 +145,19 @@ public class ChangesCollectorCache {
     private final ResultType myType;
     @NotNull
     private final CompletableFuture<List<ModificationData>> myFuture;
+    @NotNull
+    private final VcsRoot myVcsRoot;
 
-    private Result(@NotNull List<ModificationData> data) {
+    private Result(@NotNull List<ModificationData> data, @NotNull VcsRoot vcsRoot) {
       myType = ResultType.COMPLETED;
       myFuture = CompletableFuture.completedFuture(data);
+      myVcsRoot = vcsRoot;
     }
 
-    private Result(@NotNull ResultType type, @NotNull CompletableFuture<List<ModificationData>> future) {
+    private Result(@NotNull ResultType type, @NotNull CompletableFuture<List<ModificationData>> future, @NotNull VcsRoot vcsRoot) {
       myType = type;
       myFuture = future;
+      myVcsRoot = vcsRoot;
     }
 
     @NotNull
@@ -158,9 +165,17 @@ public class ChangesCollectorCache {
       return myType;
     }
 
-    @NotNull
-    public CompletableFuture<List<ModificationData>> getFuture() {
-      return myFuture;
+    public List<ModificationData> getResult(long timeoutSeconds) throws ExecutionException, InterruptedException, TimeoutException {
+      return copyResult(myFuture.get(timeoutSeconds, TimeUnit.SECONDS), myVcsRoot);
+    }
+
+    public void complete(@NotNull List<ModificationData> result) {
+      List<ModificationData> copy = copyResult(result, myVcsRoot);
+      myFuture.complete(copy);
+    }
+
+    public void completeExceptionally(@NotNull Throwable ex) {
+      myFuture.completeExceptionally(ex);
     }
   }
 
@@ -168,6 +183,29 @@ public class ChangesCollectorCache {
     COMPLETED,
     RUNNING,
     NEW
+  }
+
+  @NotNull
+  private static List<ModificationData> copyResult(@NotNull List<ModificationData> result, @NotNull VcsRoot root) {
+    List<ModificationData> copy = new ArrayList<>(result.size());
+    for (ModificationData md : result) {
+      copy.add(copyModificationData(md, root));
+    }
+    return copy;
+  }
+
+  private static ModificationData copyModificationData(@NotNull ModificationData md, @NotNull VcsRoot vcsRoot) {
+    ModificationData copy = new ModificationData(md.getVcsDate(), copyVcsChanges(md.getChanges()), md.getDescription(), md.getUserName(), vcsRoot, md.getVersion(), md.getDisplayVersion());
+    copy.setAttributes(new HashMap<>(md.getAttributes()));
+    return copy;
+  }
+
+  private static List<VcsChange> copyVcsChanges(@NotNull List<VcsChange> changes) {
+    List<VcsChange> copy = new ArrayList<>(changes.size());
+    for (VcsChange change : changes) {
+      copy.add(new VcsChange(change.getType(), change.getFileName(), change.getRelativeFileName(), change.getBeforeChangeRevisionNumber(), change.getAfterChangeRevisionNumber()));
+    }
+    return copy;
   }
 
   private static int getAccessTtl() {

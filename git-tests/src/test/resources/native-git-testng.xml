@@ -19,6 +19,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CommandUtilTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ProxyTests"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.gitProxy.GitProxyServiceTests"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.gitProxy.ChangesCollectorCacheTest"/>
     </classes>
   </test>
 </suite>

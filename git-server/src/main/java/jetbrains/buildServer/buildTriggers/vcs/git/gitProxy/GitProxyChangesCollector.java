@@ -179,15 +179,15 @@ public class GitProxyChangesCollector {
 
     if (TeamCityProperties.getBoolean(GIT_PROXY_CACHING_PROPERTY)) {
       ChangesCollectorCache.Key cacheKey = myCache.getKey(fromState, toState, url);
-      ChangesCollectorCache.Result futureResult = myCache.getOrCreateNew(cacheKey);
+      ChangesCollectorCache.Result futureResult = myCache.getOrCreateNew(cacheKey, root);
       if (futureResult.getType() == ChangesCollectorCache.ResultType.NEW) {
         try {
           List<ModificationData> result =
             doCollectChanges(gitRoot, root, client, fromState, toState, proxyCredentials, operationId, commitIdToSubmodulePrefixes, exceptionOnSubmoduleChanges);
-          futureResult.getFuture().complete(result);
+          futureResult.complete(result);
           return result;
         } catch (Throwable t) {
-          futureResult.getFuture().completeExceptionally(t);
+          futureResult.completeExceptionally(t);
           throw t;
         }
       } else {
@@ -197,7 +197,7 @@ public class GitProxyChangesCollector {
           } else {
             LOG.info("Reusing result of other changes collection operation. Git operation id " + operationId);
           }
-          return futureResult.getFuture().get(getTotalTimeoutSeconds(), TimeUnit.SECONDS);
+          return futureResult.getResult(getTotalTimeoutSeconds());
         } catch (Throwable t) {
           throw new VcsException(t);
         }
