@@ -24,6 +24,7 @@ public class ChangesCollectorCache {
   private final Cache<String, CacheEntry> myCache;
   @NotNull
   private final HashFunction myHashFunction;
+  @NotNull
   private final Map<String, CompletableFuture<List<ModificationData>>> myRunningOperations;
 
   private static final String TTL_ACCESS_PROPERTY = "teamcity.git.changesCollection.cache.accessTtlSeconds";
@@ -80,12 +81,12 @@ public class ChangesCollectorCache {
     return new Result(ResultType.NEW, future, vcsRoot);
   }
 
-  private synchronized void add(@NotNull Key key, List<ModificationData> result, int sizeKb) {
+  private synchronized void add(@NotNull Key key, @NotNull List<ModificationData> result, int sizeKb) {
     myCache.put(key.get(), new CacheEntry(result, sizeKb));
   }
 
   @NotNull
-  public Key getKey(RepositoryStateData fromState, RepositoryStateData toState, String repoUrl) {
+  public Key getKey(@NotNull RepositoryStateData fromState, @NotNull RepositoryStateData toState, @NotNull String repoUrl) {
     Hasher h = myHashFunction.newHasher();
     fromState.getBranchRevisions().entrySet().stream().sorted((a, b) -> a.getKey().compareTo(b.getKey())).forEach(entry -> {
       h.putUnencodedChars(entry.getKey());
@@ -165,6 +166,7 @@ public class ChangesCollectorCache {
       return myType;
     }
 
+    @NotNull
     public List<ModificationData> getResult(long timeoutSeconds) throws ExecutionException, InterruptedException, TimeoutException {
       return copyResult(myFuture.get(timeoutSeconds, TimeUnit.SECONDS), myVcsRoot);
     }
@@ -194,12 +196,14 @@ public class ChangesCollectorCache {
     return copy;
   }
 
+  @NotNull
   private static ModificationData copyModificationData(@NotNull ModificationData md, @NotNull VcsRoot vcsRoot) {
     ModificationData copy = new ModificationData(md.getVcsDate(), copyVcsChanges(md.getChanges()), md.getDescription(), md.getUserName(), vcsRoot, md.getVersion(), md.getDisplayVersion());
     copy.setAttributes(new HashMap<>(md.getAttributes()));
     return copy;
   }
 
+  @NotNull
   private static List<VcsChange> copyVcsChanges(@NotNull List<VcsChange> changes) {
     List<VcsChange> copy = new ArrayList<>(changes.size());
     for (VcsChange change : changes) {
@@ -217,10 +221,11 @@ public class ChangesCollectorCache {
   }
 
   private static class CacheEntry {
+    @NotNull
     public final List<ModificationData> data;
     public final int sizeKb;
 
-    CacheEntry(List<ModificationData> data, int sizeKb) {
+    CacheEntry(@NotNull List<ModificationData> data, int sizeKb) {
       this.data = data;
       this.sizeKb = sizeKb;
     }
