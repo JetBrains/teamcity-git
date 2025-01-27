@@ -9,6 +9,7 @@ import org.jetbrains.annotations.Nullable;
 
 public class ProxyHandler {
 
+  private static final String PROXY_COMMAND = "teamcity.git.native.sshProxyCmd";
   private static final String ENABLED_PARAM_NAME = "teamcity.git.propagateProxy";
 
   @Nullable
@@ -122,6 +123,11 @@ public class ProxyHandler {
   @Nullable
   public String getSshProxyHost() {
     return mySshProxyHost;
+  }
+
+  @Nullable
+  public String getCustomSshProxyCommand() {
+    return TeamCityProperties.getPropertyOrNull(PROXY_COMMAND);
   }
 
   public int getSshProxyPort() {
