@@ -239,8 +239,10 @@ public class GitCommandLine extends GeneralCommandLine {
           String fullProxyAddr = port != 0 ? String.format("%s:%d", myProxy.getSshProxyHost(), port) : myProxy.getSshProxyHost();
           String socksProxyCommand;
           if (myProxy.getCustomSshProxyCommand() != null) {
-            String customProxyCommandWithAddr = String.format(myProxy.getCustomSshProxyCommand(), fullProxyAddr);
-            socksProxyCommand = String.format(" -o ProxyCommand=\"%s %%h %%p\"", customProxyCommandWithAddr);
+            String customCommand = myProxy.getCustomSshProxyCommand();
+            customCommand = customCommand.replace("%host", myProxy.getSshProxyHost()); // not null because isSshProxyEnabled check
+            customCommand = customCommand.replace("%port", String.valueOf(myProxy.getSshProxyPort()));
+            socksProxyCommand = String.format(" -o ProxyCommand=\"%s %%h %%p\"", customCommand);
           } else if (SystemInfo.isWindows) {
             String strType;
             if (myProxy.getSshProxyType() == ProxyHandler.SshProxyType.HTTP) {
