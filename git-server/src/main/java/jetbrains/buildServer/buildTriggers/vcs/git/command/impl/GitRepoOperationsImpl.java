@@ -51,8 +51,6 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   private final FetchCommand myJGitFetchCommand;
   private final LazyGitExec myGitExec = new LazyGitExec();
 
-  private FetchCommand myCustomNativeGitFetchCommand; // for tests
-
   private final Function<String, Counter> myFetchDurationTimerProvider;
   private final GitNativeOperationsStatus myMainConfigSettings;
 
@@ -93,34 +91,25 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   @Override
   public FetchCommand fetchCommand(@NotNull String repoUrl) {
-    return new MetricReportingFetchCommand((FetchCommand)getNativeGitCommandOptional(repoUrl, true).orElse(myJGitFetchCommand), myFetchDurationTimerProvider.apply(repoUrl));
+    return new MetricReportingFetchCommand((FetchCommand)getNativeGitFetchOptional(repoUrl).orElse(myJGitFetchCommand), myFetchDurationTimerProvider.apply(repoUrl));
+  }
+
+  protected Optional<GitCommand> getNativeGitFetchOptional(@NotNull String repoUrl) {
+    return getNativeGitCommandOptional(repoUrl);
   }
 
   @NotNull
   private Optional<GitCommand> getNativeGitCommandOptional(@NotNull String repoUrl) {
-    return getNativeGitCommandOptional(repoUrl, false);
-  }
-
-  @NotNull
-  private Optional<GitCommand> getNativeGitCommandOptional(@NotNull String repoUrl, boolean isFetchOnly) {
     if (isNativeGitOperationsEnabledInternal(repoUrl)) {
-      return getNativeGitCommandOptional(isFetchOnly);
+      return getNativeGitCommandOptional();
     }
     return Optional.empty();
   }
 
-  private Optional<GitCommand> getNativeGitCommandOptional() {
-    return getNativeGitCommandOptional(false);
-  }
-
   @NotNull
-  private Optional<GitCommand> getNativeGitCommandOptional(boolean isFetchOnly) {
+  private Optional<GitCommand> getNativeGitCommandOptional() {
     final GitExec gitExec = gitExecInternal();
     if (isNativeGitOperationsSupported(gitExec)) {
-      if (myCustomNativeGitFetchCommand != null && isFetchOnly) {
-        return Optional.of(myCustomNativeGitFetchCommand);
-      }
-
       //noinspection ConstantConditions
       return Optional.of(new NativeGitCommands(myConfig, () -> gitExec, mySshKeyManager, myTransportFactory.getCertificatesDir(), myKnownHostsManager));
     }
@@ -304,11 +293,6 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @Override
   public PushCommand pushCommand(@NotNull String repoUrl) {
     return (PushCommand)getNativeGitCommandOptional(repoUrl).orElse((PushCommand)this::pushJGit);
-  }
-
-  // for tests
-  public void withCustomNativeFetchCommand(@NotNull FetchCommand nativeGitCommands) {
-    myCustomNativeGitFetchCommand = nativeGitCommands;
   }
 
   @NotNull

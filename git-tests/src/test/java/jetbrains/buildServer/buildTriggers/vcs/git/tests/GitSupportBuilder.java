@@ -11,6 +11,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.TestGitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -203,9 +204,9 @@ public class GitSupportBuilder {
 
     if (myGitRepoOperations == null) {
       myGitRepoOperations =
-        new GitRepoOperationsImpl(myPluginConfig, myTransportFactory, myVcsRootSSHKeyManager, myFetchCommand, myKnownHostsManager);
+        new TestGitRepoOperationsImpl(myPluginConfig, myTransportFactory, myVcsRootSSHKeyManager, myFetchCommand, myKnownHostsManager);
       if (isNativeGitEnabled()) {
-        ((GitRepoOperationsImpl)myGitRepoOperations).withCustomNativeFetchCommand(myFetchCommand);
+        ((TestGitRepoOperationsImpl)myGitRepoOperations).withModifiedNativeGitFetchCommand(myFetchCommand);
       }
     }
 
