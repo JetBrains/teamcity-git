@@ -7,6 +7,7 @@ import com.google.gson.GsonBuilder;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.ChangeType;
@@ -32,11 +33,14 @@ public class GitProxyChangesCollector {
   private final Gson myGson;
   private final ParameterFactory myParameterFactory;
   private final RepositoryManager myRepositoryManager;
+  private final ChangesCollectorCache myCache;
 
-  public GitProxyChangesCollector(@NotNull ParameterFactory parameterFactory, @NotNull GitApiClientFactory gitApiClientFactory, @NotNull RepositoryManager repositoryManager) {
+  public GitProxyChangesCollector(@NotNull ParameterFactory parameterFactory, @NotNull GitApiClientFactory gitApiClientFactory, @NotNull RepositoryManager repositoryManager,
+                                  @NotNull ChangesCollectorCache cache) {
     myGitApiClientFactory = gitApiClientFactory;
     myRepositoryManager = repositoryManager;
     myParameterFactory = parameterFactory;
+    myCache = cache;
     myGson = new GsonBuilder().setExclusionStrategies(new ExclusionStrategy() {
       @Override
       public boolean shouldSkipField(FieldAttributes f) {
@@ -50,11 +54,16 @@ public class GitProxyChangesCollector {
     }).create();
   }
 
+  // project properties
   private static final String ENABLE_GIT_PROXY_COMPARISON_LOGGING = "teamcity.internal.git.gitProxy.changesCollectionComparison.enabled";
   private static final String ENABLE_GIT_PROXY_CHANGES_COLLECTION = "teamcity.internal.git.gitProxy.changesCollection.enabled";
 
   private static final String GIT_PROXY_URL_PROPERTY = "teamcity.internal.git.gitProxy.url";
   private static final String GIT_PROXY_AUTH_PROPERTY = "teamcity.internal.git.gitProxy.auth";
+
+
+  //internal properties
+  public static final String GIT_PROXY_CACHING_PROPERTY = "teamcity.git.gitProxy.cache.enabled";
 
   private static final String GIT_PROXY_REQUEST_TIMEOUT_SECONDS_INTERNAL_PROPERTY = "teamcity.git.gitProxy.requestTimeoutSeconds";
   private static final int GIT_PROXY_REQUEST_TIMEOUT_SECONDS_DEFAULT = 20;
@@ -163,6 +172,50 @@ public class GitProxyChangesCollector {
       return Collections.emptyList();
     }
 
+    String url = root.getProperty(Constants.FETCH_URL);
+    if (url == null) {
+      return Collections.emptyList();
+    }
+
+    if (TeamCityProperties.getBoolean(GIT_PROXY_CACHING_PROPERTY)) {
+      ChangesCollectorCache.Key cacheKey = myCache.getKey(fromState, toState, url);
+      ChangesCollectorCache.Result futureResult = myCache.getOrCreateNew(cacheKey, root);
+      if (futureResult.getType() == ChangesCollectorCache.ResultType.NEW) {
+        try {
+          List<ModificationData> result =
+            doCollectChanges(gitRoot, root, client, fromState, toState, proxyCredentials, operationId, commitIdToSubmodulePrefixes, exceptionOnSubmoduleChanges);
+          futureResult.complete(result);
+          return result;
+        } catch (Throwable t) {
+          futureResult.completeExceptionally(t);
+          throw t;
+        }
+      } else {
+        try {
+          if (futureResult.getType() == ChangesCollectorCache.ResultType.RUNNING) {
+            LOG.info("Waiting for completion of other request to proxy. Git operation id " + operationId);
+          } else {
+            LOG.info("Reusing result of other changes collection operation. Git operation id " + operationId);
+          }
+          return futureResult.getResult(getTotalTimeoutSeconds());
+        } catch (Throwable t) {
+          throw new VcsException(t);
+        }
+      }
+    } else {
+      return doCollectChanges(gitRoot, root, client, fromState, toState, proxyCredentials, operationId, commitIdToSubmodulePrefixes, exceptionOnSubmoduleChanges);
+    }
+  }
+
+  private List<ModificationData> doCollectChanges(@NotNull GitVcsRoot gitRoot,
+                                                  @NotNull VcsRoot root,
+                                                  GitApiClient<GitRepoApi> client,
+                                                  @NotNull RepositoryStateData fromState,
+                                                  @NotNull RepositoryStateData toState,
+                                                  @NotNull GitProxySettings proxyCredentials,
+                                                  @NotNull String operationId,
+                                                  @Nullable Map<String, List<String>> commitIdToSubmodulePrefixes,
+                                                  boolean exceptionOnSubmoduleChanges) throws VcsException {
     List<String> commitPatterns = new ArrayList<>();
     for (Map.Entry<String, String> entry: fromState.getBranchRevisions().entrySet()) {
       commitPatterns.add("^" + entry.getValue());
@@ -237,7 +290,7 @@ public class GitProxyChangesCollector {
         throw new VcsException("Failed to collect commits from git proxy for collectChanges operation", e);
       }
 
-      if (System.currentTimeMillis() - startTime > TeamCityProperties.getLong(GIT_PROXY_REQUEST_TIMEOUT_SECONDS_INTERNAL_PROPERTY, GIT_PROXY_REQUEST_TIMEOUT_SECONDS_DEFAULT) * 1000) {
+      if (System.currentTimeMillis() - startTime > getTotalTimeoutSeconds() * 1000) {
         throw new VcsException(String.format("Failed to collect all the changes from git proxy in specified time. Retrieved: %d, Total matched: %d", changes.size(), commitList.totalMatched));
       }
 
@@ -287,6 +340,10 @@ public class GitProxyChangesCollector {
     }
 
     return changes;
+  }
+
+  private long getTotalTimeoutSeconds() {
+    return TeamCityProperties.getLong(GIT_PROXY_REQUEST_TIMEOUT_SECONDS_INTERNAL_PROPERTY, GIT_PROXY_REQUEST_TIMEOUT_SECONDS_DEFAULT);
   }
 
   private long getMaxChangesCollectionResultSizeInBytes() {

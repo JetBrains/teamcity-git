@@ -49,13 +49,14 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                  @NotNull RepositoryManager repositoryManager,
                                  @NotNull CheckoutRulesLatestRevisionCache checkoutRulesLatestRevisionCache,
                                  @NotNull GitApiClientFactory gitApiClientFactory,
-                                 @NotNull ParameterFactory parameterFactory) {
+                                 @NotNull ParameterFactory parameterFactory,
+                                 @NotNull ChangesCollectorCache changesCollectorCache) {
     myVcs = vcs;
     myProgressProvider = progressProvider;
     myConfig = config;
     myRepositoryManager = repositoryManager;
     myCheckoutRulesLatestRevisionCache = checkoutRulesLatestRevisionCache;
-    myGitProxyChangesCollector = new GitProxyChangesCollector(parameterFactory, gitApiClientFactory, repositoryManager);
+    myGitProxyChangesCollector = new GitProxyChangesCollector(parameterFactory, gitApiClientFactory, repositoryManager, changesCollectorCache);
     ServerMetrics serverMetrics = vcs.getServerMetrics();
     if (serverMetrics != null) {
       myCollectChangesMetric = serverMetrics.metricBuilder("vcs.git.collectChanges.duration")
