@@ -1,12 +1,11 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests.util;
 
-import jetbrains.buildServer.BaseTestCase;
+import jetbrains.buildServer.serverSide.impl.BaseServerTestCase;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 
-public class BaseGitTestCase extends BaseTestCase {
-
+public class BaseGitServerTestCase extends BaseServerTestCase {
   private InternalPropertiesHandler myInternalPropertiesHandler;
 
   @BeforeMethod(alwaysRun = true)

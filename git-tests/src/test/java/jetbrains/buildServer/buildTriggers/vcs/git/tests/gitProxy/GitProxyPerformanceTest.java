@@ -5,8 +5,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.ChangeType;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseGitServerTestCase;
 import jetbrains.buildServer.serverSide.MockParameter;
-import jetbrains.buildServer.serverSide.impl.BaseServerTestCase;
 import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.SVcsRootImpl;
@@ -18,7 +18,7 @@ import org.testng.annotations.Test;
  * class for local experiments on performance.
  * This test is not intended to be executed in CI
  */
-public class GitProxyPerformanceTest extends BaseServerTestCase {
+public class GitProxyPerformanceTest extends BaseGitServerTestCase {
 
   private VcsRootInstance myVcsRootInstance;
   private GitRepoApi myGitRepoApi;

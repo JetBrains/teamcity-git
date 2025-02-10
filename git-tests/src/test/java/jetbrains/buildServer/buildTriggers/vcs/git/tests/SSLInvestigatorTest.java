@@ -19,6 +19,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitConfigCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.SetConfigCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseSimpleGitTestCase;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import org.eclipse.jgit.transport.URIish;
@@ -36,7 +37,7 @@ import static org.testng.Assert.*;
  * @since 2018.1.2
  */
 @Test
-public class SSLInvestigatorTest {
+public class SSLInvestigatorTest extends BaseSimpleGitTestCase {
 
   private TempFiles myTempFiles = new TempFiles();
   private File myHomeDirectory;
@@ -67,6 +68,7 @@ public class SSLInvestigatorTest {
 
   @BeforeMethod
   public void setUp() throws Exception {
+    super.setUp();
     myHomeDirectory = myTempFiles.createTempDir();
     myTempDirectory = myTempFiles.createTempDir();
 
@@ -82,7 +84,8 @@ public class SSLInvestigatorTest {
   }
 
   @AfterMethod
-  public void tearDown() {
+  public void tearDown() throws Exception {
+    super.tearDown();
     myTempFiles.cleanup();
   }
 
@@ -108,20 +111,20 @@ public class SSLInvestigatorTest {
   public void allTest(Plot plot, boolean alreadySet, Result result) throws Exception {
     switch (plot) {
       case FEATURE_OFF: {
-        System.setProperty("teamcity.ssl.useCustomTrustStore.git", "false");
+        setInternalProperty("teamcity.ssl.useCustomTrustStore.git", "false");
         break;
       }
       case NO_CERT: {
-        System.setProperty("teamcity.ssl.useCustomTrustStore.git", "true");
+        setInternalProperty("teamcity.ssl.useCustomTrustStore.git", "true");
         break;
       }
       case BAD_CERT: {
-        System.setProperty("teamcity.ssl.useCustomTrustStore.git", "true");
+        setInternalProperty("teamcity.ssl.useCustomTrustStore.git", "true");
         myTempFiles.registerAsTempFile(mySSLTestUtil.writeAnotherCert(myHomeDirectory));
         break;
       }
       case GOOD_CERT: {
-        System.setProperty("teamcity.ssl.useCustomTrustStore.git", "true");
+        setInternalProperty("teamcity.ssl.useCustomTrustStore.git", "true");
         myTempFiles.registerAsTempFile(mySSLTestUtil.writeServerCert(myHomeDirectory));
         break;
       }

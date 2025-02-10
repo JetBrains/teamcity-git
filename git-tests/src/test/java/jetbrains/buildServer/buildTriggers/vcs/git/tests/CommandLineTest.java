@@ -48,7 +48,7 @@ public class CommandLineTest extends BaseRemoteRepositoryTest {
     myVcsSupport = myBuilder.build();
     myRoot = null;
     myBuildDir = null;
-    System.setProperty("teamcity.git.extra.credentials.enable", "true");
+    setInternalProperty("teamcity.git.extra.credentials.enable", "true");
   }
 
   @Override
