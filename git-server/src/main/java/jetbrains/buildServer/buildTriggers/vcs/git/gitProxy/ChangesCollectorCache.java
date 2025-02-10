@@ -200,6 +200,7 @@ public class ChangesCollectorCache {
   private static ModificationData copyModificationData(@NotNull ModificationData md, @NotNull VcsRoot vcsRoot) {
     ModificationData copy = new ModificationData(md.getVcsDate(), copyVcsChanges(md.getChanges()), md.getDescription(), md.getUserName(), vcsRoot, md.getVersion(), md.getDisplayVersion());
     copy.setAttributes(new HashMap<>(md.getAttributes()));
+    copy.setParentRevisions(md.getParentRevisions());
     return copy;
   }
 
