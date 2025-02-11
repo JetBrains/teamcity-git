@@ -284,7 +284,7 @@
                 <configuration>
                   <reportNameSuffix>with-native</reportNameSuffix>
                   <suiteXmlFiles>
-                    <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
+                    <suiteXmlFile>src/test/resources/common-git-operations.xml</suiteXmlFile>
                   </suiteXmlFiles>
                   <argLine>-Dteamcity.git.nativeOperationsEnabled=true -Dteamcity.git.fetch.separate.process=false</argLine>
                   <skipTests>false</skipTests>
@@ -298,8 +298,9 @@
                 <configuration>
                   <reportNameSuffix>other-tests</reportNameSuffix>
                   <suiteXmlFiles>
-                    <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
+                    <suiteXmlFile>src/test/resources/common-git-operations.xml</suiteXmlFile>
                     <suiteXmlFile>src/test/resources/native-git-testng.xml</suiteXmlFile>
+                    <suiteXmlFile>src/test/resources/without-git-operations.xml</suiteXmlFile>
                   </suiteXmlFiles>
                   <argLine>-Dteamcity.git.fetch.separate.process=false</argLine> <!-- speed up jgit tests-->
                   <skipTests>false</skipTests>
@@ -380,7 +381,8 @@
                 <configuration>
                   <reportNameSuffix>other-tests</reportNameSuffix>
                   <suiteXmlFiles>
-                    <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
+                    <suiteXmlFile>src/test/resources/common-git-operations.xml</suiteXmlFile>
+                    <suiteXmlFile>src/test/resources/without-git-operations.xml</suiteXmlFile>
                     <suiteXmlFile>src/test/resources/native-git-testng.xml</suiteXmlFile>
                     <suiteXmlFile>src/test/resources/auth-git-tests.xml</suiteXmlFile>
                   </suiteXmlFiles>
@@ -395,7 +397,7 @@
                 <configuration>
                   <reportNameSuffix>with-native</reportNameSuffix>
                   <suiteXmlFiles>
-                    <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
+                    <suiteXmlFile>src/test/resources/common-git-operations.xml</suiteXmlFile>
                   </suiteXmlFiles>
                   <argLine>-Dteamcity.git.nativeOperationsEnabled=true</argLine>
                   <skipTests>false</skipTests>
