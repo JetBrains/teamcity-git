@@ -10,6 +10,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseSimpleGitTestCase;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -32,15 +33,14 @@ import static org.testng.AssertJUnit.*;
  * @author dmitry.neverov
  */
 @Test
-public class ServerPluginConfigTest {
+public class ServerPluginConfigTest extends BaseSimpleGitTestCase {
 
   private TempFiles myTempFiles;
   private ServerPaths myServerPaths;
-  private Properties myPropertiesBeforeTest;
-
 
   @BeforeMethod
   public void setUp() throws Exception {
+    super.setUp();
     new TeamCityProperties() {{
       setModel(new BasePropertiesModel() {});
     }};
@@ -48,13 +48,12 @@ public class ServerPluginConfigTest {
     myTempFiles = new TempFiles();
     File dotBuildServer = myTempFiles.createTempDir();
     myServerPaths = new ServerPaths(dotBuildServer.getAbsolutePath());
-    myPropertiesBeforeTest = GitTestUtil.copyCurrentProperties();
   }
 
 
   @AfterMethod
-  public void tearDown() {
-    GitTestUtil.restoreProperties(myPropertiesBeforeTest);
+  public void tearDown() throws Exception {
+    super.tearDown();
     myTempFiles.cleanup();
   }
 
@@ -66,21 +65,21 @@ public class ServerPluginConfigTest {
 
 
   public void test_idle_timeout() {
-    System.setProperty("teamcity.git.idle.timeout.seconds", "60");
+    setInternalProperty("teamcity.git.idle.timeout.seconds", "60");
     ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
     assertEquals(60, config.getIdleTimeoutSeconds());
   }
 
 
   public void should_correct_negative_stream_threshold() {
-    System.setProperty("teamcity.git.stream.file.threshold.mb", "-1");
+    setInternalProperty("teamcity.git.stream.file.threshold.mb", "-1");
     ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
     assertTrue(config.getStreamFileThresholdMb() > 0);
   }
 
 
   public void should_correct_zero_stream_threshold() {
-    System.setProperty("teamcity.git.stream.file.threshold.mb", "0");
+    setInternalProperty("teamcity.git.stream.file.threshold.mb", "0");
     ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
     assertTrue(config.getStreamFileThresholdMb() > 0);
   }
@@ -92,11 +91,11 @@ public class ServerPluginConfigTest {
     final String httpNonProxyHosts = "localhost|*.mydomain.com";
     final String httpsProxyPort = "3129";
     final String httpsProxyHost = "other.org";
-    System.setProperty("http.proxyHost", httpProxyHost);
-    System.setProperty("http.proxyPort", httpProxyPort);
-    System.setProperty("http.nonProxyHosts", httpNonProxyHosts);
-    System.setProperty("https.proxyHost", httpsProxyHost);
-    System.setProperty("https.proxyPort", httpsProxyPort);
+    setInternalProperty("http.proxyHost", httpProxyHost);
+    setInternalProperty("http.proxyPort", httpProxyPort);
+    setInternalProperty("http.nonProxyHosts", httpNonProxyHosts);
+    setInternalProperty("https.proxyHost", httpsProxyHost);
+    setInternalProperty("https.proxyPort", httpsProxyPort);
 
     ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
     assertEquals(asList("-Dhttp.proxyHost=" + httpProxyHost,
@@ -116,11 +115,11 @@ public class ServerPluginConfigTest {
     final String httpNonProxyHosts = "localhost|*.mydomain.com";
     final String httpsProxyPort = "3129";
     final String httpsProxyHost = "other.org";
-    System.setProperty("teamcity.http.proxyHost", httpProxyHost);
-    System.setProperty("teamcity.http.proxyPort", httpProxyPort);
-    System.setProperty("teamcity.http.nonProxyHosts", httpNonProxyHosts);
-    System.setProperty("teamcity.https.proxyHost", httpsProxyHost);
-    System.setProperty("teamcity.https.proxyPort", httpsProxyPort);
+    setInternalProperty("teamcity.http.proxyHost", httpProxyHost);
+    setInternalProperty("teamcity.http.proxyPort", httpProxyPort);
+    setInternalProperty("teamcity.http.nonProxyHosts", httpNonProxyHosts);
+    setInternalProperty("teamcity.https.proxyHost", httpsProxyHost);
+    setInternalProperty("teamcity.https.proxyPort", httpsProxyPort);
 
     ServerPluginConfig config = new PluginConfigImpl(myServerPaths);
     assertEquals(asList("-Dhttp.proxyHost=" + httpProxyHost,
@@ -138,9 +137,9 @@ public class ServerPluginConfigTest {
     final String sshProxyHost = "acme.org";
     final String sshProxyPort = "3128";
     final String sshProxyType = "http";
-    System.setProperty("teamcity.git.sshProxyType", sshProxyType);
-    System.setProperty("teamcity.git.sshProxyHost", sshProxyHost);
-    System.setProperty("teamcity.git.sshProxyPort", sshProxyPort);
+    setInternalProperty("teamcity.git.sshProxyType", sshProxyType);
+    setInternalProperty("teamcity.git.sshProxyHost", sshProxyHost);
+    setInternalProperty("teamcity.git.sshProxyPort", sshProxyPort);
 
     ServerPluginConfig config = new PluginConfigImpl();
     Proxy sshProxy = config.getJschProxy();
@@ -157,9 +156,9 @@ public class ServerPluginConfigTest {
   public void amazon_hosts() {
     ServerPluginConfig config = new PluginConfigImpl();
     assertTrue(config.getAmazonHosts().isEmpty());
-    System.setProperty(Constants.AMAZON_HOSTS, "host1");
+    setInternalProperty(Constants.AMAZON_HOSTS, "host1");
     assertThat(config.getAmazonHosts(), hasItems("host1"));
-    System.setProperty(Constants.AMAZON_HOSTS, "host1,host2");
+    setInternalProperty(Constants.AMAZON_HOSTS, "host1,host2");
     assertThat(config.getAmazonHosts(), hasItems("host1", "host2"));
   }
 }

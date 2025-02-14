@@ -1,15 +1,10 @@
-
+<!-- Only tests that do not perform git operations should be placed in this suite. Jgit only tests can be also placed in this suite -->
 
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
-<suite name="Git Suite">
-  <test name="Git Tests">
+<suite name="Without Git Operations Suite">
+  <test name="Without Git Operations Tests">
     <classes>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVcsSupportTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.TestConnectionTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AuthSettingsTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.SubmoduleTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CleanerTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitUrlSupportTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsPropertiesProcessorTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitUtilsTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitServerUtilTest"/>
@@ -19,23 +14,12 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RepositoryManagerTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentStartupGitDetectorTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitResetCacheHandlerTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ListFilesTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitVcsRootTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.MapFullPathTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.AgentMirrorCleanerTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CheckoutDirectoryCleanerTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.EchoArgumentEscapingTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.FetcherPropertiesTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitMergeSupportTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitCommitSupportTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitLabelingSupportTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitPatchTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitRepositoryInitializingExtensionTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ScriptGenTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ContentProviderTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CollectChangesTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.LatestAcceptedRevisionTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.LatestAcceptedRevisionAndSubmodulesTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RevisionsCacheTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.WellKnownHostingsTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ssh.SSHCommandLineTest"/>
@@ -46,8 +30,11 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RetryTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitHubPasswordAuthRootRegistryImplTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.NativeGitTestConnectionRunnerTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitUrlMapperTest"></class>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitUrlMapperTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ssh.JSchClientTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ProxyTests"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.gitProxy.GitProxyServiceTests"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.gitProxy.ChangesCollectorCacheTest"/>
     </classes>
   </test>
 </suite>

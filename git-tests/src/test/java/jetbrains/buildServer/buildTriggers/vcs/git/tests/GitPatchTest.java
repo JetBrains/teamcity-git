@@ -10,6 +10,7 @@ import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsSupport;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseGitPatchTestCase;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -39,7 +40,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.data
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
 
 @Test
-public class GitPatchTest extends PatchTestCase {
+public class GitPatchTest extends BaseGitPatchTestCase {
 
   private File myMainRepositoryDir;
   private PluginConfigBuilder myConfigBuilder;
@@ -67,7 +68,6 @@ public class GitPatchTest extends PatchTestCase {
     context.checking(new Expectations() {{
       allowing(myResetCacheManager).registerHandler(with(any(ResetCacheHandler.class)));
     }});
-    myPropertiesBeforeTest = GitTestUtil.copyCurrentProperties();
   }
 
 
@@ -75,7 +75,6 @@ public class GitPatchTest extends PatchTestCase {
   @AfterMethod
   public void tearDown() throws Exception {
     super.tearDown();
-    GitTestUtil.restoreProperties(myPropertiesBeforeTest);
   }
 
   protected File getTestData(final String subDirName) {
@@ -108,14 +107,14 @@ public class GitPatchTest extends PatchTestCase {
     myConfigBuilder.setSeparateProcessForPatch(true)
       .setPatchClassPath(classpath)
       .setPatchBuilderClassName(CheckProxyPropertiesPatchBuilder.class.getName());
-    System.setProperty("http.proxyHost", "httpProxyHost");
-    System.setProperty("http.proxyPort", "81");
-    System.setProperty("https.proxyHost", "httpsProxyHost");
-    System.setProperty("https.proxyPort", "82");
-    System.setProperty("http.nonProxyHosts", "some.org");
-    System.setProperty("teamcity.git.sshProxyType", "http");
-    System.setProperty("teamcity.git.sshProxyHost", "sshProxyHost");
-    System.setProperty("teamcity.git.sshProxyPort", "83");
+    setInternalProperty("http.proxyHost", "httpProxyHost");
+    setInternalProperty("http.proxyPort", "81");
+    setInternalProperty("https.proxyHost", "httpsProxyHost");
+    setInternalProperty("https.proxyPort", "82");
+    setInternalProperty("http.nonProxyHosts", "some.org");
+    setInternalProperty("teamcity.git.sshProxyType", "http");
+    setInternalProperty("teamcity.git.sshProxyHost", "sshProxyHost");
+    setInternalProperty("teamcity.git.sshProxyPort", "83");
     checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
   }
 
@@ -126,14 +125,14 @@ public class GitPatchTest extends PatchTestCase {
     myConfigBuilder.setSeparateProcessForPatch(true)
       .setPatchClassPath(classpath)
       .setPatchBuilderClassName(CheckProxyPropertiesPatchBuilder.class.getName());
-    System.setProperty("teamcity.http.proxyHost", "httpProxyHost");
-    System.setProperty("teamcity.http.proxyPort", "81");
-    System.setProperty("teamcity.https.proxyHost", "httpsProxyHost");
-    System.setProperty("teamcity.https.proxyPort", "82");
-    System.setProperty("teamcity.http.nonProxyHosts", "some.org");
-    System.setProperty("teamcity.git.sshProxyType", "http");
-    System.setProperty("teamcity.git.sshProxyHost", "sshProxyHost");
-    System.setProperty("teamcity.git.sshProxyPort", "83");
+    setInternalProperty("teamcity.http.proxyHost", "httpProxyHost");
+    setInternalProperty("teamcity.http.proxyPort", "81");
+    setInternalProperty("teamcity.https.proxyHost", "httpsProxyHost");
+    setInternalProperty("teamcity.https.proxyPort", "82");
+    setInternalProperty("teamcity.http.nonProxyHosts", "some.org");
+    setInternalProperty("teamcity.git.sshProxyType", "http");
+    setInternalProperty("teamcity.git.sshProxyHost", "sshProxyHost");
+    setInternalProperty("teamcity.git.sshProxyPort", "83");
     checkPatch("cleanPatch1", null, "a894d7d58ffde625019a9ecf8267f5f1d1e5c341");
   }
 
@@ -298,7 +297,7 @@ public class GitPatchTest extends PatchTestCase {
 
   //this test for debugging, it doesn't check logging
   private void build_patch_with_incorrect_memory_settings() throws Exception {
-    System.setProperty("teamcity.git.fetch.process.max.memory", "64G");
+    setInternalProperty("teamcity.git.fetch.process.max.memory", "64G");
     myConfigBuilder.setSeparateProcessForPatch(true)
       .setFetchProcessMaxMemory("64G")
       .setPatchClassPath(composeClasspath(new Class[]{CouldNotCreateJvmError.class}, null, null))

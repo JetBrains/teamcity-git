@@ -38,6 +38,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.UpdateRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.AgentRunningBuildBuilder;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseSimpleGitTestCase;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
@@ -79,7 +80,7 @@ import static org.testng.AssertJUnit.*;
  * @author dmitry.neverov
  */
 @Test
-public class AgentVcsSupportTest {
+public class AgentVcsSupportTest extends BaseSimpleGitTestCase {
 
   private static final Pattern NEW_LINE = Pattern.compile("(\r\n|\r|\n)");
 
@@ -96,6 +97,8 @@ public class AgentVcsSupportTest {
 
   @BeforeMethod
   public void setUp() throws Exception {
+    super.setUp();
+
     TestInternalProperties.init();
     myTempFiles = new TempFiles();
 
@@ -124,13 +127,12 @@ public class AgentVcsSupportTest {
       }
     };
     myTokenStorage = new AgentTokenStorage(EventDispatcher.create(AgentLifeCycleListener.class), tokenRetriever);
-    myPropertiesBeforeTest = GitTestUtil.copyCurrentProperties();
   }
 
 
   @AfterMethod
-  protected void tearDown() throws Exception {
-    GitTestUtil.restoreProperties(myPropertiesBeforeTest);
+  public void tearDown() throws Exception {
+    super.tearDown();
     myTempFiles.cleanup();
   }
 
@@ -241,7 +243,7 @@ public class AgentVcsSupportTest {
 
   @Test
   public void additional_http_creds_param_test() throws Exception {
-    System.setProperty("teamcity.git.extra.credentials.enable", "true");
+    setInternalProperty("teamcity.git.extra.credentials.enable", "true");
     VcsRootImpl root = vcsRoot().withAgentGitPath(getGitPath()).withFetchUrl(myTempFiles.createTempDir()).withUseMirrors(true).build();
     String buildBranchParam = GitUtils.getGitRootBranchParamName(root);
 
@@ -2290,9 +2292,9 @@ public class AgentVcsSupportTest {
 
   @TestFor(issues = "TW-84952")
   public void test_fetch_url_replacement() throws Exception {
-    System.setProperty(AgentGitVcsRoot.FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX + "1", "https://github.com/user/* => http://localhost:8123/");
-    System.setProperty(AgentGitVcsRoot.FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX + "2", " git@github.com:user/* => git@127.0.0.1:user/ ");
-    System.setProperty(AgentGitVcsRoot.FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX + "3", " https://github.com/user2/repo2 => http://localhost:8123/repo3");
+    setInternalProperty(AgentGitVcsRoot.FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX + "1", "https://github.com/user/* => http://localhost:8123/");
+    setInternalProperty(AgentGitVcsRoot.FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX + "2", " git@github.com:user/* => git@127.0.0.1:user/ ");
+    setInternalProperty(AgentGitVcsRoot.FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX + "3", " https://github.com/user2/repo2 => http://localhost:8123/repo3");
 
     myRoot.addProperty(Constants.FETCH_URL, "https://github.com/user/test");
     GitVcsRoot vcsRoot = new AgentGitVcsRoot(myBuilder.getMirrorManager(), myRoot, myTokenStorage, Collections.emptyList());
@@ -2316,7 +2318,7 @@ public class AgentVcsSupportTest {
 
   @TestFor(issues = "TW-84952")
   public void test_fetch_url_is_not_modified_by_mapper_if_password_based_auth_is_used() throws Exception {
-    System.setProperty(AgentGitVcsRoot.FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX + "1", "https://github.com/user/* => http://localhost:8123/");
+    setInternalProperty(AgentGitVcsRoot.FETCH_URL_MAPPING_PROPERTY_NAME_PREFIX + "1", "https://github.com/user/* => http://localhost:8123/");
 
     myRoot.addProperty(Constants.FETCH_URL, "https://github.com/user/test");
     myRoot.addProperty(Constants.AUTH_METHOD, AuthenticationMethod.ACCESS_TOKEN.toString());

@@ -21,6 +21,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleCommitException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleConfigException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleEntryException;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseGitPatchTestCase;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.InternalPropertiesHandler;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
@@ -69,7 +70,7 @@ import static jetbrains.buildServer.util.Util.map;
 import static jetbrains.buildServer.vcs.RepositoryStateData.createVersionState;
 import static org.assertj.core.api.BDDAssertions.then;
 
-public class GitVcsSupportTest extends PatchTestCase {
+public class GitVcsSupportTest extends BaseGitPatchTestCase {
 
   public static final String VERSION_TEST_HEAD = "2276eaf76a658f96b5cf3eb25f3e1fda90f6b653";
   public static final String CUD1_VERSION = "ad4528ed5c84092fdbe9e0502163cf8d6e6141e7";
@@ -90,16 +91,16 @@ public class GitVcsSupportTest extends PatchTestCase {
   private ServerPaths myServerPaths;
   private Mockery myContext;
   private SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl();
-  private InternalPropertiesHandler myInternalPropertiesHandler;
 
   @BeforeMethod
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
+    super.setUp();
+
     myTestLogger.setLogLevel(Level.INFO);
 
     new TeamCityProperties() {{
       setModel(new BasePropertiesModel() {});
     }};
-    myInternalPropertiesHandler = new InternalPropertiesHandler();
     myContext = new Mockery();
     myTempFiles = new TempFiles();
     myServerPaths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
@@ -118,8 +119,8 @@ public class GitVcsSupportTest extends PatchTestCase {
   }
 
   @AfterMethod
-  public void tearDown() {
-    cleanInternalProperties();
+  public void tearDown() throws Exception {
+    super.tearDown();
     myTempFiles.cleanup();
   }
 
@@ -742,9 +743,8 @@ public class GitVcsSupportTest extends PatchTestCase {
   public void fetch_process_should_respect_fetch_timeout() throws Exception {
     //MockFetcher waits for 10 seconds
     //set teamcity.execution.timeout = 2, we should not get TimeoutException
-    Properties beforeTestProperties = System.getProperties();
     final String defaultProcessExecutionTimeoutProperty = "teamcity.execution.timeout";
-    System.setProperty(defaultProcessExecutionTimeoutProperty, "2");
+    setInternalProperty(defaultProcessExecutionTimeoutProperty, "2");
     try {
       String classpath = myConfigBuilder.build().getFetchClasspath() + File.pathSeparator +
                          ClasspathUtil.composeClasspath(new Class[]{MockFetcher.class}, null, null);
@@ -757,8 +757,6 @@ public class GitVcsSupportTest extends PatchTestCase {
       support.collectChanges(root, VERSION_TEST_HEAD, MERGE_BRANCH_VERSION, CheckoutRules.DEFAULT);
     } catch (Exception e) {
       fail(e.getMessage());
-    } finally {
-      System.setProperties(beforeTestProperties);
     }
   }
 
@@ -1160,13 +1158,5 @@ public class GitVcsSupportTest extends PatchTestCase {
       result = e.getMessage();
     }
     return result;
-  }
-
-  protected void setInternalProperty(@NotNull String propKey, @NotNull String value) {
-    myInternalPropertiesHandler.setInternalProperty(propKey, value);
-  }
-
-  private void cleanInternalProperties() {
-    myInternalPropertiesHandler.tearDown();
   }
 }

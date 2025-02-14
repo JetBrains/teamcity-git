@@ -5,6 +5,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleUrlResolver;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseSimpleGitTestCase;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
@@ -20,19 +21,22 @@ import java.io.File;
 import java.io.IOException;
 
 @Test
-public class SubmoduleUrlResolverTest {
+public class SubmoduleUrlResolverTest extends BaseSimpleGitTestCase {
 
   private TempFiles myTempFiles;
   private ServerPluginConfig myServerPluginConfig;
 
   @BeforeMethod
   public void setUp() throws Exception {
+    super.setUp();
+
     myTempFiles = new TempFiles();
     myServerPluginConfig = new PluginConfigBuilder(new ServerPaths(myTempFiles.createTempDir().getAbsolutePath())).build();
   }
 
   @AfterMethod
-  public void tearDown() {
+  public void tearDown() throws Exception {
+    super.tearDown();
     myTempFiles.cleanup();
   }
 
@@ -107,7 +111,7 @@ public class SubmoduleUrlResolverTest {
     Repository r = createBareRepository();
     StoredConfig config = r.getConfig();
     config.setString("teamcity", null, "remote", arguments.getMainUrl());
-    System.setProperty("teamcity.git.setSubmoduleUserInAbsoluteUrls", arguments.getShouldSetSubmoduleUserInAbsoluteUrls().toString());
+    setInternalProperty("teamcity.git.setSubmoduleUserInAbsoluteUrls", arguments.getShouldSetSubmoduleUserInAbsoluteUrls().toString());
 
     final String actual = SubmoduleUrlResolver.resolveSubmoduleUrl(myServerPluginConfig, config, arguments.getSubUrl());
     Assert.assertEquals(arguments.getExpectUrl(), actual);
