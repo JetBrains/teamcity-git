@@ -8,10 +8,13 @@ import java.util.Collections;
 import java.util.List;
 import jetbrains.buildServer.ExtensionHolder;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.ChangesCollectorCache;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.TestGitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.BaseEncryptionStrategy;
 import jetbrains.buildServer.serverSide.crypt.EncryptionManager;
 import jetbrains.buildServer.serverSide.crypt.EncryptionSettings;
@@ -146,21 +149,38 @@ public class GitSupportBuilder {
     return new ParameterFactoryImpl(new ParameterDescriptionFactoryImpl(), new ParameterTypeManager(Collections.emptyList()), new EncryptionManager(new EncryptionSettings(), Collections.emptyList(), new BaseEncryptionStrategy()));
   }
 
-  @NotNull
-  public GitVcsSupport build() {
+  public FetchCommand getDefaultFetchCommand() {
+    init();
+    if (isNativeGitEnabled()) {
+      return new NativeGitCommands(myPluginConfig, () -> new GitExec("git", new GitVersion(2, 34, 0)), myVcsRootSSHKeyManager, null, myKnownHostsManager);
+    } else {
+      return new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), myVcsRootSSHKeyManager);
+    }
+  }
+
+  public static boolean isNativeGitEnabled() {
+    return TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled");
+  }
+
+  private void init() {
     if (myPluginConfigBuilder == null && myServerPaths == null && myPluginConfig == null)
       throw new IllegalStateException("Plugin config or server paths should be set");
     if (myPluginConfig == null)
       myPluginConfig = myPluginConfigBuilder != null ? myPluginConfigBuilder.build() : new PluginConfigImpl(myServerPaths);
     if (myTransportFactory == null)
       myTransportFactory = new TransportFactoryImpl(myPluginConfig, myVcsRootSSHKeyManager, myKnownHostsManager);
+  }
+
+  @NotNull
+  public GitVcsSupport build() {
+    init();
 
     Mockery context = new Mockery();
     if (myFetchCommand == null) {
       if (myBeforeFetchHook == null) {
-        myFetchCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), myVcsRootSSHKeyManager);
+        myFetchCommand = getDefaultFetchCommand();
       } else {
-        final FetchCommand originalCommand = new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), myVcsRootSSHKeyManager);
+        final FetchCommand originalCommand = getDefaultFetchCommand();
         myFetchCommand = (db, fetchURI, settings) -> {
           myBeforeFetchHook.run();
           originalCommand.fetch(db, fetchURI, settings);
@@ -182,8 +202,13 @@ public class GitSupportBuilder {
     RevisionsCache revisionsCache = new RevisionsCache(myPluginConfig);
     myMapFullPath = new GitMapFullPath(myPluginConfig, revisionsCache);
 
-    if (myGitRepoOperations == null)
-      myGitRepoOperations = new GitRepoOperationsImpl(myPluginConfig, myTransportFactory, myVcsRootSSHKeyManager, myFetchCommand, myKnownHostsManager);
+    if (myGitRepoOperations == null) {
+      myGitRepoOperations =
+        new TestGitRepoOperationsImpl(myPluginConfig, myTransportFactory, myVcsRootSSHKeyManager, myFetchCommand, myKnownHostsManager);
+      if (isNativeGitEnabled()) {
+        ((TestGitRepoOperationsImpl)myGitRepoOperations).withModifiedNativeGitFetchCommand(myFetchCommand);
+      }
+    }
 
     myCommitLoader = new CommitLoaderImpl(myRepositoryManager, myGitRepoOperations, myMapFullPath, myPluginConfig, new FetchSettingsFactoryImpl());
     GitResetCacheHandler resetCacheHandler = new GitResetCacheHandler(myRepositoryManager, new GcErrors());

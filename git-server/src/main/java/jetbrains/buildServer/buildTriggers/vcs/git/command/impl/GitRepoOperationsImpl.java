@@ -91,7 +91,11 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   @NotNull
   @Override
   public FetchCommand fetchCommand(@NotNull String repoUrl) {
-    return new MetricReportingFetchCommand((FetchCommand)getNativeGitCommandOptional(repoUrl).orElse(myJGitFetchCommand), myFetchDurationTimerProvider.apply(repoUrl));
+    return new MetricReportingFetchCommand((FetchCommand)getNativeGitFetchOptional(repoUrl).orElse(myJGitFetchCommand), myFetchDurationTimerProvider.apply(repoUrl));
+  }
+
+  protected Optional<GitCommand> getNativeGitFetchOptional(@NotNull String repoUrl) {
+    return getNativeGitCommandOptional(repoUrl);
   }
 
   @NotNull

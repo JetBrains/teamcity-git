@@ -33,6 +33,7 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.URIish;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.testng.SkipException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -327,10 +328,6 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
   @TestFor(issues = "TW-29798")
   public void do_not_do_fetch_per_branch() throws Exception {
-    if (TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled")) {
-      throw new SkipException("The test is not compatible with native git");
-    }
-
     VcsRoot root = vcsRoot().withFetchUrl(myRepo)
       .withBranch("master")
       .withReportTags(true)
@@ -338,10 +335,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
     //setup fetcher with counter
     ServerPluginConfig config = myConfig.build();
-    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager, myKnownHostsManager), new FetcherProperties(config), manager);
-    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
-    GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withFetchCommand(fetchCounter).build();
+    GitSupportBuilder gitSupportBuilder = gitSupport().withPluginConfig(myConfig);
+    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(gitSupportBuilder.getDefaultFetchCommand());
+    GitVcsSupport git = gitSupportBuilder.withFetchCommand(fetchCounter).build();
 
     RepositoryStateData state = git.getCurrentState(root);
     RepositoryStateData s1 = createVersionState("refs/heads/master", map("refs/heads/master", state.getBranchRevisions().get("refs/heads/master")));//has a single branch
@@ -360,9 +356,6 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   @Test
   @TestFor(issues = "http://youtrack.jetbrains.com/issue/TW-29798#comment=27-537697")
   public void fetch_should_fail_if_remote_repository_does_not_have_some_branches() throws Exception {
-    if (TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled")) {
-      throw new SkipException("The test is not compatible with native git");
-    }
     setInternalProperty("teamcity.git.failLoadCommitsIfRemoteBranchMissing", "true");
     VcsRoot root = vcsRoot().withFetchUrl(myRepo)
       .withBranch("master")
@@ -371,10 +364,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
     //setup fetcher with a counter
     ServerPluginConfig config = myConfig.build();
-    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager, myKnownHostsManager), new FetcherProperties(config), manager);
-    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
-    GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withFetchCommand(fetchCounter).build();
+    GitSupportBuilder gitSupportBuilder = gitSupport().withPluginConfig(myConfig);
+    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(gitSupportBuilder.getDefaultFetchCommand());
+    GitVcsSupport git = gitSupportBuilder.withFetchCommand(fetchCounter).build();
 
     RepositoryStateData state = git.getCurrentState(root);
     RepositoryStateData s1 = createVersionState("refs/heads/master", map("refs/heads/master", state.getBranchRevisions().get("refs/heads/master")));//has a single branch
@@ -398,10 +390,6 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
   @Test
   public void fetch_should_not_fail_if_remote_repository_does_not_have_some_branches() throws Exception {
-    if (TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled")) {
-      throw new SkipException("The test is not compatible with native git");
-    }
-
     VcsRoot root = vcsRoot().withFetchUrl(myRepo)
                             .withBranch("master")
                             .withReportTags(true)
@@ -409,10 +397,9 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
 
     //setup fetcher with a counter
     ServerPluginConfig config = myConfig.build();
-    VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager, myKnownHostsManager), new FetcherProperties(config), manager);
-    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
-    GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withFetchCommand(fetchCounter).build();
+    GitSupportBuilder gitSupportBuilder = gitSupport().withPluginConfig(myConfig);
+    FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(gitSupportBuilder.getDefaultFetchCommand());
+    GitVcsSupport git = gitSupportBuilder.withFetchCommand(fetchCounter).build();
 
     RepositoryStateData state = git.getCurrentState(root);
     RepositoryStateData s1 = createVersionState("refs/heads/master", map("refs/heads/master", state.getBranchRevisions().get("refs/heads/master")));//has a single branch
@@ -691,9 +678,6 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
   @TestFor(issues = "TW-38899")
   @Test(dataProvider = "doFetchInSeparateProcess", dataProviderClass = FetchOptionsDataProvider.class)
   public void ignore_missing_branch(boolean fetchInSeparateProcess) throws Exception {
-    if (TeamCityProperties.getBoolean("teamcity.git.nativeOperationsEnabled")) {
-      throw new SkipException("The test is not compatible with native git");
-    }
     myConfig.setSeparateProcessForFetch(fetchInSeparateProcess);
     myConfig.setIgnoreMissingRemoteRef(true);
     myConfig.withFetcherProperties(PluginConfigImpl.IGNORE_MISSING_REMOTE_REF, "true");
@@ -703,18 +687,17 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     ServerPluginConfig config = myConfig.build();
     VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
     AtomicBoolean updateRepo = new AtomicBoolean(false);
-    //wrapper for fetch command which will remove ref in remote repository just before fetch
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager, myKnownHostsManager), new FetcherProperties(config), manager) {
-      @Override
-      public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull FetchSettings settings) throws IOException, VcsException {
-        if (updateRepo.get()) {
-          FileUtil.delete(repo);
+    //this hook will remove ref in remote repository just before fetch
+    GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withBeforeFetchHook(() -> {
+      if (updateRepo.get()) {
+        FileUtil.delete(repo);
+        try {
           copyRepository(dataFile("repo_for_fetch.3"), repo);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
         }
-        super.fetch(db, fetchURI, settings);
       }
-    };
-    GitVcsSupport git = gitSupport().withPluginConfig(myConfig).withFetchCommand(fetchCommand).build();
+    }).build();
 
     VcsRoot root = vcsRoot().withFetchUrl(repo).build();
     RepositoryStateData s0 = createVersionState("refs/heads/master",
