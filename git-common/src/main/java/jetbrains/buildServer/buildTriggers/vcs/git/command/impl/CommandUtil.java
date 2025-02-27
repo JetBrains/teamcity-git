@@ -177,7 +177,8 @@ public class CommandUtil {
     return  isMessageContains(e, "SSL certificate problem")
             || isMessageContains(e, "error setting certificate verify locations")
             || isMessageContains(e, "server certificate verification failed")
-            || isMessageContains(e, "error setting certificate file");
+            || isMessageContains(e, "error setting certificate file")
+            || isMessageContains(e, "Problem with the SSL CA cert (path? access rights?)");
   }
 
   public static boolean isNoSuchFileOrDirError(@NotNull VcsException e) {
