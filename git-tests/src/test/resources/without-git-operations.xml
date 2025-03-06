@@ -28,7 +28,6 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ProcessXmxProviderTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RepositoryXmxStorageTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.RetryTest"/>
-      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitHubPasswordAuthRootRegistryImplTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.NativeGitTestConnectionRunnerTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitUrlMapperTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.ssh.JSchClientTest"/>
