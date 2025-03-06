@@ -14,6 +14,8 @@ import org.mockito.Mockito;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import static jetbrains.buildServer.util.Util.map;
+
 /**
  * class for local experiments on performance.
  * This test is not intended to be executed in CI
@@ -29,8 +31,9 @@ public class GitProxyPerformanceTest extends BaseGitServerTestCase {
   protected void setUp() throws Exception {
     super.setUp();
 
-    SVcsRootImpl root = myFixture.addVcsRoot("jetbrains.git", "", myBuildType);
-    root.addProperty("url", "http://jetbrains.team/project/repo");
+    myFixture.registerVcsSupport("jetbrains.git");
+    SVcsRoot root = myProject.createVcsRoot("jetbrains.git", "", map("url", "http://jetbrains.team/project/repo"));
+    myBuildType.addVcsRoot(root);
     myVcsRootInstance = myBuildType.getVcsRootInstanceForParent(root);
 
     ParameterFactory factory = myFixture.getSingletonService(ParameterFactory.class);
