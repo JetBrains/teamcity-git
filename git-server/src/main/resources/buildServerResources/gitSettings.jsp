@@ -116,7 +116,7 @@
     </tr>
     <tr class="advancedSetting">
       <th><label for="userForTags">Username for tags/merge:</label></th>
-      <td><props:textProperty name="userForTags" className="longField" disabled="${readOnly}/>
+      <td><props:textProperty name="userForTags" className="longField" disabled="${readOnly}"/>
         <div class="smallNote" style="margin: 0">Format: Username &lt;email&gt;</div>
       </td>
     </tr>
