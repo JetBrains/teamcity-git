@@ -53,7 +53,7 @@ public class GitVcsFileContentProvider extends GitAbstractVcsFileContentProvider
         RevCommit c = myCommitLoader.loadCommit(context, gitRoot, rev);
         tw.setFilter(PathFilterGroup.createFromStrings(Collections.singleton(filePath)));
         tw.setRecursive(tw.getFilter().shouldBeRecursive());
-        context.addTree(gitRoot, tw, r, c, true);
+        context.addTree(gitRoot, tw, r, c, null, true);
         if (!tw.next()) {
           throw new VcsFileNotFoundException("The file " + filePath + " could not be found in " + rev + gitRoot.debugInfo());
         }

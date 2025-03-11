@@ -8,6 +8,7 @@ import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 
 import java.io.IOException;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Indirect submodule-aware tree iterator. This iterator for the cases when directory entry reordering is needed.
@@ -54,8 +55,9 @@ public class IndirectSubmoduleAwareTreeIterator extends SubmoduleAwareTreeIterat
                                             String repositoryUrl,
                                             String pathFromRoot,
                                             SubmodulesCheckoutPolicy submodulesPolicy,
+                                            @Nullable MissingSubmoduleCommitInfo missingSubmoduleCommitInfo,
                                             boolean logSubmoduleErrors) throws IOException {
-    super(wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors);
+    super(wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy, missingSubmoduleCommitInfo, logSubmoduleErrors);
     myMapping = mapping;
     adjustStartPosition();
   }
@@ -80,8 +82,9 @@ public class IndirectSubmoduleAwareTreeIterator extends SubmoduleAwareTreeIterat
                                             String repositoryUrl,
                                             String pathFromRoot,
                                             SubmodulesCheckoutPolicy submodulesPolicy,
+                                            @Nullable MissingSubmoduleCommitInfo missingSubmoduleCommitInfo,
                                             boolean logSubmoduleErrors) throws CorruptObjectException {
-    super(parent, wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors);
+    super(parent, wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy, missingSubmoduleCommitInfo, logSubmoduleErrors);
     myMapping = mapping;
     adjustStartPosition();
   }

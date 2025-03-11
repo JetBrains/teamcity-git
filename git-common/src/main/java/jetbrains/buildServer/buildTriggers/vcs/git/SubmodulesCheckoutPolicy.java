@@ -2,6 +2,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import jetbrains.buildServer.serverSide.TeamCityProperties;
+
 /**
  * Submodule checkout policy
  */
@@ -32,7 +34,7 @@ public enum SubmodulesCheckoutPolicy {
   }
 
   public boolean isIgnoreSubmodulesErrors() {
-    return myIgnoreSubmodulesErrors;
+    return myIgnoreSubmodulesErrors || TeamCityProperties.getBoolean(Constants.IGNORE_SUBMODULE_ERRORS);
   }
 
   public static SubmodulesCheckoutPolicy getPolicyWithErrorsIgnored(SubmodulesCheckoutPolicy originalPolicy, boolean ignoreSubmodulesErrors) {

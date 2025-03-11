@@ -6,6 +6,8 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.IgnoreSubmoduleErrorsTreeFilter;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleCommitInfo;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.ModificationData;
 import jetbrains.buildServer.vcs.VcsChange;
 import jetbrains.buildServer.vcs.VcsException;
@@ -112,6 +114,8 @@ class ModificationDataRevWalk extends LimitingRevWalk {
     private final String repositoryDebugInfo = getGitRoot().debugInfo();
     private final IgnoreSubmoduleErrorsTreeFilter filter = new IgnoreSubmoduleErrorsTreeFilter(getGitRoot());
     private final Map<String, String> commitsWithFix = new HashMap<String, String>();
+    @Nullable
+    private final MissingSubmoduleCommitInfo missingSubmoduleCommitInfo;
 
     /**
      * @param commit current commit
@@ -124,6 +128,8 @@ class ModificationDataRevWalk extends LimitingRevWalk {
       this.commit = commit;
       this.currentVersion = currentVersion;
       this.parentVersion = parentVersion;
+      // TODO currently we don't use missingSubmoduleCommitInfo, but later it should be stored in attributes(the format is to be defined) and display the information in the ui. See TW-91296
+      missingSubmoduleCommitInfo = TeamCityProperties.getBoolean(Constants.IGNORE_SUBMODULE_ERRORS) ? new MissingSubmoduleCommitInfo() : null;
     }
 
     @NotNull
@@ -136,6 +142,11 @@ class ModificationDataRevWalk extends LimitingRevWalk {
       return myAttributes;
     }
 
+    @Nullable
+    public MissingSubmoduleCommitInfo getMissingSubmoduleCommitInfo() {
+      return missingSubmoduleCommitInfo;
+    }
+
     /**
      * collect changes for the commit
      */
@@ -143,18 +154,18 @@ class ModificationDataRevWalk extends LimitingRevWalk {
       try (VcsChangeTreeWalk tw = new VcsChangeTreeWalk(getRepository(), repositoryDebugInfo, getConfig().verboseTreeWalkLog())) {
         tw.setFilter(filter);
         tw.setRecursive(true);
-        getContext().addTree(getGitRoot(), tw, getRepository(), commit, shouldIgnoreSubmodulesErrors());
+        getContext().addTree(getGitRoot(), tw, getRepository(), commit, missingSubmoduleCommitInfo, shouldIgnoreSubmodulesErrors());
         RevCommit[] parents = commit.getParents();
         boolean reportPerParentChangedFiles =
           getConfig().reportPerParentChangedFiles() && parents.length > 1; // report only for merge commits
         for (RevCommit parentCommit : parents) {
-          getContext().addTree(getGitRoot(), tw, getRepository(), parentCommit, true);
+          getContext().addTree(getGitRoot(), tw, getRepository(), parentCommit, missingSubmoduleCommitInfo, true);
           if (reportPerParentChangedFiles) {
             tw.reportChangedFilesForParentCommit(parentCommit);
           }
         }
 
-        new VcsChangesTreeWalker(tw).walk();
+        new VcsChangesTreeWalker(tw, missingSubmoduleCommitInfo).walk();
 
         if (reportPerParentChangedFiles) {
           Map<String, String> changedFilesAttributes = tw.buildChangedFilesAttributes();
@@ -167,9 +178,12 @@ class ModificationDataRevWalk extends LimitingRevWalk {
 
     private class VcsChangesTreeWalker {
       private final VcsChangeTreeWalk tw;
+      @Nullable
+      private final MissingSubmoduleCommitInfo myMissingSubmoduleCommitInfo;
 
-      private VcsChangesTreeWalker(@NotNull final VcsChangeTreeWalk tw) {
+      private VcsChangesTreeWalker(@NotNull final VcsChangeTreeWalk tw, @Nullable MissingSubmoduleCommitInfo missingSubmoduleCommitInfo) {
         this.tw = tw;
+        myMissingSubmoduleCommitInfo = missingSubmoduleCommitInfo;
       }
 
       private void walk() throws IOException {
@@ -187,7 +201,7 @@ class ModificationDataRevWalk extends LimitingRevWalk {
         }
 
         if (filter.isBrokenSubmoduleEntry(path)) {
-          final RevCommit commitWithFix = getPreviousCommitWithFixedSubmodule(commit, path);
+          final RevCommit commitWithFix = getPreviousCommitWithFixedSubmodule(commit, path, myMissingSubmoduleCommitInfo);
           commitsWithFix.put(path, commitWithFix == null ? null : commitWithFix.getId().name());
           if (commitWithFix != null) {
             subWalk(path, commitWithFix);
@@ -210,8 +224,8 @@ class ModificationDataRevWalk extends LimitingRevWalk {
         try (VcsChangeTreeWalk tw2 = new VcsChangeTreeWalk(getRepository(), repositoryDebugInfo, getConfig().verboseTreeWalkLog())) {
           tw2.setFilter(TreeFilter.ANY_DIFF);
           tw2.setRecursive(true);
-          getContext().addTree(getGitRoot(), tw2, getRepository(), commit, true);
-          getContext().addTree(getGitRoot(), tw2, getRepository(), commitWithFix, true);
+          getContext().addTree(getGitRoot(), tw2, getRepository(), commit, myMissingSubmoduleCommitInfo, true);
+          getContext().addTree(getGitRoot(), tw2, getRepository(), commitWithFix, myMissingSubmoduleCommitInfo, true);
           while (tw2.next()) {
             if (tw2.getPathString().startsWith(path + "/")) {
               addVcsChange(currentVersion, commitWithFix.getId().name(), tw2);
@@ -233,7 +247,9 @@ class ModificationDataRevWalk extends LimitingRevWalk {
     }
 
     @Nullable
-    private RevCommit getPreviousCommitWithFixedSubmodule(@NotNull final RevCommit fromCommit, @NotNull final String submodulePath)
+    private RevCommit getPreviousCommitWithFixedSubmodule(@NotNull final RevCommit fromCommit,
+                                                          @NotNull final String submodulePath,
+                                                          @Nullable MissingSubmoduleCommitInfo missingSubmoduleCommitInfo)
       throws IOException {
       if (mySearchDepth == 0)
         return null;
@@ -252,7 +268,7 @@ class ModificationDataRevWalk extends LimitingRevWalk {
           try (TreeWalk prevTreeWalk = new TreeWalk(getRepository())) {
             prevTreeWalk.setFilter(TreeFilter.ALL);
             prevTreeWalk.setRecursive(true);
-            getContext().addTree(getGitRoot(), prevTreeWalk, getRepository(), prevRev, true, false, null);
+            getContext().addTree(getGitRoot(), prevTreeWalk, getRepository(), prevRev, missingSubmoduleCommitInfo, true, false, null);
             while (prevTreeWalk.next()) {
               String path = prevTreeWalk.getPathString();
               if (path.startsWith(submodulePath + "/")) {

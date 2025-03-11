@@ -7,8 +7,10 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import jetbrains.buildServer.buildTriggers.vcs.git.SubmodulesCheckoutPolicy;
 import jetbrains.buildServer.buildTriggers.vcs.git.VcsAuthenticationException;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleCommitInfo;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleFetchException;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolver;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.IncludeRule;
 import jetbrains.buildServer.vcs.VcsException;
@@ -17,6 +19,7 @@ import org.eclipse.jgit.errors.TransportException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleAwareTreeIteratorFactory.createSubmoduleAwareTreeIterator;
 
@@ -49,6 +52,11 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
    * The resolver for submodules
    */
   protected final SubmoduleResolver mySubmoduleResolver;
+  /**
+   * Information about missing revision in submodules for parent
+   */
+  @Nullable
+  private final MissingSubmoduleCommitInfo myMissingSubmoduleCommitInfo;
   /**
    * The local id buffer (for submodules)
    */
@@ -97,6 +105,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                     String repositoryUrl,
                                     String pathFromRoot,
                                     SubmodulesCheckoutPolicy submodulesPolicy,
+                                    @Nullable MissingSubmoduleCommitInfo missingSubmoduleCommitInfo,
                                     boolean logSubmoduleErrors)
     throws CorruptObjectException {
     myWrappedIterator = wrappedIterator;
@@ -105,6 +114,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     myPathFromRoot = pathFromRoot;
     mySubmodulesPolicy = submodulesPolicy;
     myLogSubmoduleErrors = logSubmoduleErrors;
+    myMissingSubmoduleCommitInfo = missingSubmoduleCommitInfo;
     movedToEntry();
   }
 
@@ -125,6 +135,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                     String repositoryUrl,
                                     String pathFromRoot,
                                     SubmodulesCheckoutPolicy submodulesPolicy,
+                                    @Nullable MissingSubmoduleCommitInfo missingSubmoduleCommitInfo,
                                     boolean logSubmoduleErrors)
     throws CorruptObjectException {
     super(parent);
@@ -135,6 +146,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
     myPathFromRoot = pathFromRoot;
     mySubmodulesPolicy = submodulesPolicy;
     myLogSubmoduleErrors = logSubmoduleErrors;
+    myMissingSubmoduleCommitInfo = missingSubmoduleCommitInfo;
     movedToEntry();
   }
 
@@ -180,6 +192,9 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
           myIsOnSubmodule = false;
           mySubmoduleError = true;
           mode = wrappedMode;
+          if (myMissingSubmoduleCommitInfo != null && TeamCityProperties.getBoolean(jetbrains.buildServer.buildTriggers.vcs.git.Constants.IGNORE_SUBMODULE_ERRORS)) {
+            myMissingSubmoduleCommitInfo.addMissingSubmoduleCommit(ObjectId.toString(myWrappedIterator.getEntryObjectId()), myWrappedIterator.getEntryPathString());
+          }
         } else {
           if (e instanceof CorruptObjectException) {
             throw (CorruptObjectException) e;
@@ -278,6 +293,9 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
   @Override
   public AbstractTreeIterator createSubtreeIterator(ObjectReader reader) throws IOException {
     String path = myWrappedIterator.getEntryPathString();
+    MissingSubmoduleCommitInfo missingSubmoduleCommitInfo = myMissingSubmoduleCommitInfo == null ?
+                                                            null :
+                                                            myMissingSubmoduleCommitInfo.createInfoForSubmodule(ObjectId.toString(myWrappedIterator.getEntryObjectId()), path);
     if (myIsOnSubmodule) {
       CanonicalTreeParser p = new CanonicalTreeParser();
       ObjectReader or = null;
@@ -302,7 +320,8 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                               getPathFromRoot(path),
                                               SubmodulesCheckoutPolicy.getSubSubModulePolicyFor(mySubmodulesPolicy),
                                               myLogSubmoduleErrors,
-                                              myRules);
+                                              myRules,
+                                              missingSubmoduleCommitInfo);
     } else {
       Repository r = mySubmoduleResolver.getRepository();
       ObjectReader or = r.newObjectReader();
@@ -320,7 +339,8 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
                                               myPathFromRoot,
                                               mySubmodulesPolicy,
                                               myLogSubmoduleErrors,
-                                              myRules);
+                                              myRules,
+                                              missingSubmoduleCommitInfo);
     }
   }
 
