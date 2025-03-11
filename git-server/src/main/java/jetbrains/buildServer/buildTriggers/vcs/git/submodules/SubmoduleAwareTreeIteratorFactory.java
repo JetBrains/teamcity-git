@@ -15,6 +15,7 @@ import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 
 import java.io.IOException;
 import java.util.LinkedList;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * @author dmitry.neverov
@@ -37,10 +38,12 @@ public class SubmoduleAwareTreeIteratorFactory {
                                                   String repositoryUrl,
                                                   String pathFromRoot,
                                                   SubmodulesCheckoutPolicy submodulePolicy,
+                                                  @Nullable MissingSubmoduleCommitInfo missingSubmoduleCommitInfo,
                                                   boolean logSubmoduleErrors,
                                                   CheckoutRules rules)
     throws IOException {
-    return createSubmoduleAwareTreeIterator(null, createTreeParser(db, commit), subResolver, "", repositoryUrl, pathFromRoot, submodulePolicy, logSubmoduleErrors, rules);
+    return createSubmoduleAwareTreeIterator(null, createTreeParser(db, commit), subResolver, "", repositoryUrl, pathFromRoot, submodulePolicy, logSubmoduleErrors,
+                                            rules, missingSubmoduleCommitInfo);
   }
 
 
@@ -65,7 +68,8 @@ public class SubmoduleAwareTreeIteratorFactory {
                                                                              String pathFromRoot,
                                                                              SubmodulesCheckoutPolicy submodulesPolicy,
                                                                              boolean logSubmoduleErrors,
-                                                                             CheckoutRules rules) throws IOException {
+                                                                             CheckoutRules rules,
+                                                                             @Nullable MissingSubmoduleCommitInfo missingSubmoduleCommitInfo) throws IOException {
     SubmoduleAwareTreeIterator result;
     if (subResolver.containsSubmodule(path)) {
       int[] mapping = buildMapping(wrapped);
@@ -74,17 +78,17 @@ public class SubmoduleAwareTreeIteratorFactory {
         submoduleUrl = repositoryUrl;
       if (mapping == null) {
         result = parent == null
-               ? new DirectSubmoduleAwareTreeIterator(wrapped, subResolver, submoduleUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors)
-               : new DirectSubmoduleAwareTreeIterator(parent, wrapped, subResolver, submoduleUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors);
+               ? new DirectSubmoduleAwareTreeIterator(wrapped, subResolver, submoduleUrl, pathFromRoot, submodulesPolicy, missingSubmoduleCommitInfo, logSubmoduleErrors)
+               : new DirectSubmoduleAwareTreeIterator(parent, wrapped, subResolver, submoduleUrl, pathFromRoot, submodulesPolicy, missingSubmoduleCommitInfo, logSubmoduleErrors);
       } else {
         result = parent == null
-               ? new IndirectSubmoduleAwareTreeIterator(wrapped, subResolver, mapping, submoduleUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors)
-               : new IndirectSubmoduleAwareTreeIterator(parent, wrapped, subResolver, mapping, submoduleUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors);
+               ? new IndirectSubmoduleAwareTreeIterator(wrapped, subResolver, mapping, submoduleUrl, pathFromRoot, submodulesPolicy, missingSubmoduleCommitInfo, logSubmoduleErrors)
+               : new IndirectSubmoduleAwareTreeIterator(parent, wrapped, subResolver, mapping, submoduleUrl, pathFromRoot, submodulesPolicy, missingSubmoduleCommitInfo, logSubmoduleErrors);
       }
     } else {
       result = parent == null
-           ? new DirectSubmoduleAwareTreeIterator(wrapped, subResolver, repositoryUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors)
-           : new DirectSubmoduleAwareTreeIterator(parent, wrapped, subResolver, repositoryUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors);
+           ? new DirectSubmoduleAwareTreeIterator(wrapped, subResolver, repositoryUrl, pathFromRoot, submodulesPolicy, missingSubmoduleCommitInfo, logSubmoduleErrors)
+           : new DirectSubmoduleAwareTreeIterator(parent, wrapped, subResolver, repositoryUrl, pathFromRoot, submodulesPolicy, missingSubmoduleCommitInfo, logSubmoduleErrors);
     }
     result.setCheckoutRules(rules);
     return result;

@@ -8,6 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.submodules.MissingSubmoduleCommitInfo;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleResolverImpl;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.util.StringUtil;
@@ -200,21 +201,23 @@ public class OperationContext {
                       @NotNull TreeWalk tw,
                       @NotNull Repository db,
                       @NotNull RevCommit commit,
+                      @Nullable MissingSubmoduleCommitInfo missingSubmoduleCommitInfo,
                       boolean ignoreSubmodulesErrors) throws IOException {
-    addTree(root, tw, db, commit, ignoreSubmodulesErrors, true, null);
+    addTree(root, tw, db, commit, missingSubmoduleCommitInfo, ignoreSubmodulesErrors, true, null);
   }
 
   public void addTree(@NotNull GitVcsRoot root,
                       @NotNull TreeWalk tw,
                       @NotNull Repository db,
                       @NotNull RevCommit commit,
+                      @Nullable MissingSubmoduleCommitInfo missingSubmoduleCommitInfo,
                       boolean ignoreSubmodulesErrors,
                       boolean logSubmoduleErrors,
                       @Nullable CheckoutRules rules) throws IOException {
     if (root.isCheckoutSubmodules()) {
       SubmoduleResolverImpl submoduleResolver = new SubmoduleResolverImpl(this, myCommitLoader, db, commit, "");
       SubmodulesCheckoutPolicy checkoutPolicy = getPolicyWithErrorsIgnored(root.getSubmodulesCheckoutPolicy(), ignoreSubmodulesErrors);
-      tw.addTree(create(db, commit, submoduleResolver, root.getRepositoryFetchURL().toString(), "", checkoutPolicy, logSubmoduleErrors, rules));
+      tw.addTree(create(db, commit, submoduleResolver, root.getRepositoryFetchURL().toString(), "", checkoutPolicy, missingSubmoduleCommitInfo, logSubmoduleErrors, rules));
     } else {
       tw.addTree(commit.getTree().getId());
     }

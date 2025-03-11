@@ -8,6 +8,7 @@ import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.SubmoduleAwareTreeIterator;
 
 import java.io.IOException;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Direct submodule-aware tree iterator. This iterator for the cases when no directory entry reordering is needed.
@@ -21,14 +22,16 @@ public class DirectSubmoduleAwareTreeIterator extends SubmoduleAwareTreeIterator
    * @param repositoryUrl     the url of the repository of this iterator
    * @param pathFromRoot      the path from the root of main repository to the entry of this repository
    * @param submodulesPolicy  should created iterator checkout submodules
+   * @param missingSubmoduleCommitInfo information about missing commits in submodules
    * @throws IOException in case of submodule processing problem
    */
   public DirectSubmoduleAwareTreeIterator(AbstractTreeIterator wrappedIterator,
                                           SubmoduleResolver submoduleResolver,
                                           String repositoryUrl, String pathFromRoot,
                                           SubmodulesCheckoutPolicy submodulesPolicy,
+                                          @Nullable MissingSubmoduleCommitInfo missingSubmoduleCommitInfo,
                                           boolean logSubmoduleErrors) throws IOException {
-    super(wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors);
+    super(wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy, missingSubmoduleCommitInfo, logSubmoduleErrors);
   }
 
   /**
@@ -48,8 +51,9 @@ public class DirectSubmoduleAwareTreeIterator extends SubmoduleAwareTreeIterator
                                           String repositoryUrl,
                                           String pathFromRoot,
                                           SubmodulesCheckoutPolicy submodulesPolicy,
+                                          @Nullable MissingSubmoduleCommitInfo missingSubmoduleCommitInfo,
                                           boolean logSubmoduleErrors) throws IOException {
-    super(parent, wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy, logSubmoduleErrors);
+    super(parent, wrappedIterator, submoduleResolver, repositoryUrl, pathFromRoot, submodulesPolicy, missingSubmoduleCommitInfo, logSubmoduleErrors);
   }
 
   /**
