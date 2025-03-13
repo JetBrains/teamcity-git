@@ -4,6 +4,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.google.common.collect.Lists;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.Pair;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -74,7 +75,6 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     }
   }
 
-
   @NotNull
   public List<ModificationData> collectChanges(@NotNull VcsRoot fromRoot,
                                                @NotNull RepositoryStateData fromState,
@@ -89,19 +89,47 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
                                                @NotNull RepositoryStateData fromState,
                                                @NotNull RepositoryStateData toState,
                                                @NotNull CheckoutRules checkoutRules) throws VcsException {
+    return collectChangesInternal(root, fromState, toState, false).getModificationDataList();
+  }
+
+
+  @NotNull
+  public ChangesCollectionResult collectChanges(@NotNull VcsRoot fromRoot,
+                                                @NotNull RepositoryStateData fromState,
+                                                @NotNull VcsRoot toRoot,
+                                                @NotNull RepositoryStateData toState,
+                                                @NotNull CheckoutRules checkoutRules,
+                                                boolean allowMissingTips) throws VcsException {
+    return collectChangesInternal(toRoot, fromState, toState, true).toChangesCollectionResult();
+  }
+
+  @Override
+  public ChangesCollectionResult collectChanges(@NotNull VcsRoot repository,
+                                                @NotNull RepositoryStateData fromState,
+                                                @NotNull RepositoryStateData toState,
+                                                @NotNull CheckoutRules checkoutRules,
+                                                boolean allowMissingTips) throws VcsException {
+    return collectChangesInternal(repository, fromState, toState, allowMissingTips).toChangesCollectionResult();
+  }
+
+  @NotNull
+  private GitChangesCollectionResult collectChangesInternal(@NotNull VcsRoot root,
+                                                @NotNull RepositoryStateData fromState,
+                                                @NotNull RepositoryStateData toState,
+                                                boolean allowMissingTips) throws VcsException {
     SProject project = retrieveProject(root);
     String operationId = UUID.randomUUID().toString().substring(0, 8); // used for logging
     try (Stoppable stoppable = myCollectChangesMetric.startMsecsTimer()) {
       final GitProxySettings proxyCredentials = myGitProxyChangesCollector.getGitProxyInfo(root, project);
       if (!GitProxyChangesCollector.isGitProxyEnabled(project) || proxyCredentials == null) {
-        List<ModificationData> jgitResult = runCollectChangesWithTimer("jgit", operationId, root, project, false, () -> collectChangesJgit(root, fromState, toState));
+        GitChangesCollectionResult jgitResult = runCollectChangesWithTimer("jgit", operationId, root, project, false, () -> collectGitChangesJgit(root, fromState, toState));
         if (project != null && GitProxyChangesCollector.isComparisonLoggingEnabled(project) && proxyCredentials != null) {
           try {
             Map<String, List<String>> submodulePrefixesMap = new HashMap<>();
-            List<ModificationData> gitProxyResult = runCollectChangesWithTimer("gitProxy", operationId, root, project, true,
-                                                                               () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, proxyCredentials, operationId, submodulePrefixesMap, false));
+            GitChangesCollectionResult gitProxyResult = runCollectChangesWithTimer("gitProxy", operationId, root, project, true,
+                                                                               () -> myGitProxyChangesCollector.collectChangesGitProxy(myConfig, root, fromState, toState, proxyCredentials, operationId, submodulePrefixesMap, false, allowMissingTips));
             GitApiClient<GitRepoApi> api = myGitProxyChangesCollector.getClient(proxyCredentials, root, operationId);
-            myGitProxyChangesCollector.logAnyDifferences(jgitResult, gitProxyResult, fromState, toState, root, Objects.requireNonNull(api, "Git repo api can't be null"), submodulePrefixesMap);
+            myGitProxyChangesCollector.logAnyDifferences(jgitResult.getModificationDataList(), gitProxyResult.getModificationDataList(), fromState, toState, root, Objects.requireNonNull(api, "Git repo api can't be null"), submodulePrefixesMap);
           } catch (IgnoredCollectChangesFailure ignored) {
           } catch (Throwable t) {
             LOG.error(String.format("Failed to compare gitProxy and jgit changes collection results. Operation id %s. %s", operationId, GitProxyChangesCollector.getStateDiff(fromState, toState)), t);
@@ -112,16 +140,23 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         // we try to collect changes with gitProxy, if it fails(for example if there were some changes in submodule), then we fall back to jgit changes collection
         try {
           return runCollectChangesWithTimer("gitProxy", operationId, root, project, false,
-                                            () -> myGitProxyChangesCollector.collectChangesGitProxy(root, fromState, toState, proxyCredentials, operationId, null, true));
+                                            () -> myGitProxyChangesCollector.collectChangesGitProxy(myConfig, root, fromState, toState, proxyCredentials, operationId, null, true, allowMissingTips));
         } catch (Throwable t) {
+          boolean shouldRunFallbackChangesCollections = TeamCityProperties.getBooleanOrTrue(GitProxyChangesCollector.ENABLE_JGIT_FALLBACK_CHANGES_COLLECTION);
           if (t instanceof GitProxyChangesCollector.GitProxySubmoduleChangesNotSupported) {
             LOG.info(String.format("Will not collect changes with gitProxy because changes in submodule were detected, will use jgit changes collection. " +
                                    "State %s. Operation id %s",
                                    GitProxyChangesCollector.getStateDiff(fromState, toState), operationId));
+            shouldRunFallbackChangesCollections = true;
           } else {
-            LOG.warn(String.format("Failed to collect changes with gitProxy, will collect changes with jgit. Operation id %s", operationId), t);
+            LOG.warn(String.format("Failed to collect changes with gitProxy%s. Operation id %s",
+                                   shouldRunFallbackChangesCollections ? ", will collect changes with jgit" : "", operationId), t);
           }
-          return runCollectChangesWithTimer("jgitFallback", operationId, root, project, false, () -> collectChangesJgit(root, fromState, toState));
+          if (shouldRunFallbackChangesCollections) {
+            return runCollectChangesWithTimer("jgitFallback", operationId, root, project, false, () -> collectGitChangesJgit(root, fromState, toState));
+          } else {
+            throw t;
+          }
         }
       }
     }
@@ -129,9 +164,9 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
 
   private static class IgnoredCollectChangesFailure extends RuntimeException { }
 
-  private List<ModificationData> runCollectChangesWithTimer(@NotNull String methodName, @NotNull String operationId, @NotNull VcsRoot root, @Nullable SProject project, boolean safeMode, Callable<List<ModificationData>> operation) throws VcsException {
+  private GitChangesCollectionResult runCollectChangesWithTimer(@NotNull String methodName, @NotNull String operationId, @NotNull VcsRoot root, @Nullable SProject project, boolean safeMode, Callable<GitChangesCollectionResult> operation) throws VcsException {
     long startTime = System.currentTimeMillis();
-    List<ModificationData> result;
+    GitChangesCollectionResult result;
     try {
       result = operation.call();
     } catch (Exception e) {
@@ -172,6 +207,12 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     } catch (Throwable e) {
       return null;
     }
+  }
+
+  private GitChangesCollectionResult collectGitChangesJgit(@NotNull VcsRoot root,
+                                                           @NotNull RepositoryStateData fromState,
+                                                           @NotNull RepositoryStateData toState) throws VcsException {
+    return new GitChangesCollectionResult(collectChangesJgit(root, fromState, toState), null);
   }
 
   private List<ModificationData> collectChangesJgit(@NotNull VcsRoot root,
@@ -586,6 +627,38 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
       return new GitVcsOperationProgress(myProgressProvider.getProgress());
     } catch (IllegalStateException e) {
       return GitProgress.NO_OP;
+    }
+  }
+
+  public static class GitChangesCollectionResult {
+    @NotNull
+    private final List<ModificationData> myModificationDataList;
+    @Nullable
+    private final List<Pair<String, String>> myBranchRevisions;
+
+    private static final GitChangesCollectionResult EMPTY = new GitChangesCollectionResult(Collections.emptyList(), null);
+
+    public GitChangesCollectionResult(@NotNull List<ModificationData> modificationDataList, @Nullable List<Pair<String, String>> failedToFindTipBranches) {
+      myModificationDataList = modificationDataList;
+      myBranchRevisions = failedToFindTipBranches;
+    }
+
+    @NotNull
+    public List<ModificationData> getModificationDataList() {
+      return myModificationDataList;
+    }
+
+    @Nullable
+    public List<Pair<String, String>> getBranchRevisions() {
+      return myBranchRevisions;
+    }
+
+    public ChangesCollectionResult toChangesCollectionResult() {
+      return new ChangesCollectionResult(myModificationDataList, myBranchRevisions);
+    }
+
+    public static GitChangesCollectionResult empty() {
+      return EMPTY;
     }
   }
 }

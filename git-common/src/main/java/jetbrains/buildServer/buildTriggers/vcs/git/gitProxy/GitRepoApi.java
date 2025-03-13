@@ -1,6 +1,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.gitProxy;
 
 import com.intellij.openapi.util.Pair;
+import java.util.Collection;
 import java.util.List;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.CommitChange;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.CommitList;
@@ -36,7 +37,7 @@ public interface GitRepoApi {
    * @param commitsInfo true if should return commit information
    * @return List commits matching query. The resulted commits are returned in topo-sorted order
    */
-  CommitList listCommits(@NotNull List<Pair<String, List<String>>> query,
+  CommitList listCommits(@NotNull List<Pair<String, ? extends Collection<String>>> query,
                                 int skip,
                                 int limit,
                                 boolean layout,
