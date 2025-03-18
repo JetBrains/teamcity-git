@@ -198,15 +198,15 @@ public class GitProxyChangesCollector {
 
         if (allowMissingTips) {
           // we don't fail and provide information about which revision should be persisted in the state for branches without tips
-          List<Pair<String, String>> branchRevisionPairs = new ArrayList<>();
+          Map<String, String> branchRevisionMapping = new HashMap<>();
           for (Map.Entry<String, String> entry : toState.getBranchRevisions().entrySet()) {
             if (missingTipsSet.contains(entry.getValue())) {
               // we don't know for which revision the changes were collected, in theory we can make a request to git proxy api and retrieve the tip of the branch
               // but for now we don't know the actual branch revision, so the toState for this branch will be persisted with the same revision as fromState
-              branchRevisionPairs.add(new Pair<>(entry.getKey(), null));
+              branchRevisionMapping.put(entry.getKey(), null);
             }
           }
-          return new GitCollectChangesPolicy.GitChangesCollectionResult(modificationDataList, branchRevisionPairs);
+          return new GitCollectChangesPolicy.GitChangesCollectionResult(modificationDataList, branchRevisionMapping);
         } else {
           // otherwise throw exception the same as in CommitLoaderImpl#findRefsToFetch
           final VcsException error = new VcsException("Revisions missing in the local repository: " + StringUtil.join(missingTipsSet, ", "));

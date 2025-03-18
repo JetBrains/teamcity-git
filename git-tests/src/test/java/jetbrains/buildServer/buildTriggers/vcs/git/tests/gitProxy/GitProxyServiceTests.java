@@ -11,6 +11,7 @@ import jetbrains.buildServer.serverSide.impl.BaseServerTestCase;
 import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.SVcsRootImpl;
+import org.assertj.core.data.MapEntry;
 import org.jetbrains.annotations.NotNull;
 import org.mockito.Mockito;
 import org.testng.annotations.BeforeMethod;
@@ -257,7 +258,7 @@ public class GitProxyServiceTests extends BaseServerTestCase {
     // branch2 had tip revision in the collection result, branch3 didn't have the revision in the result, but the tip still exists in the repo(which means it was just excluded by some other branch)
     then(result.getActualBranchChangesCollectionRevision())
       .hasSize(2)
-      .containsAll(Arrays.asList(new Pair<>("branch1", null), new Pair<>("branch4", null)));
+      .containsOnly(MapEntry.entry("branch1", null), MapEntry.entry("branch4", null));
   }
 
   @Test

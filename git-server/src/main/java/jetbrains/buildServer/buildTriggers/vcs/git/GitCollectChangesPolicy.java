@@ -634,11 +634,11 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     @NotNull
     private final List<ModificationData> myModificationDataList;
     @Nullable
-    private final List<Pair<String, String>> myBranchRevisions;
+    private final Map<String, String> myBranchRevisions;
 
     private static final GitChangesCollectionResult EMPTY = new GitChangesCollectionResult(Collections.emptyList(), null);
 
-    public GitChangesCollectionResult(@NotNull List<ModificationData> modificationDataList, @Nullable List<Pair<String, String>> failedToFindTipBranches) {
+    public GitChangesCollectionResult(@NotNull List<ModificationData> modificationDataList, @Nullable Map<String, String> failedToFindTipBranches) {
       myModificationDataList = modificationDataList;
       myBranchRevisions = failedToFindTipBranches;
     }
@@ -649,7 +649,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     }
 
     @Nullable
-    public List<Pair<String, String>> getBranchRevisions() {
+    public Map<String, String> getBranchRevisions() {
       return myBranchRevisions;
     }
 
