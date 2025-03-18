@@ -183,4 +183,10 @@ public class BuildContext implements Context {
   public int getSshConnectTimeoutSeconds() {
     return myConfig.getSshConnectTimeoutSeconds();
   }
+
+  @NotNull
+  @Override
+  public Collection<String> getCustomRecoverableMessages() {
+    return myConfig.getCustomRecoverableMessages();
+  }
 }

@@ -5,10 +5,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import com.jcraft.jsch.Proxy;
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfigImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.ServerPluginConfig;
@@ -90,6 +87,12 @@ public class PluginConfigBuilder {
       }
     }
     return new ServerPluginConfig() {
+
+      @NotNull
+      @Override
+      public Collection<String> getCustomRecoverableMessages() {
+        return myDelegate.getCustomRecoverableMessages();
+      }
 
       @NotNull
       public File getCachesDir() {

@@ -3,8 +3,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
@@ -56,6 +55,21 @@ public class AgentConfigPluginTest {
     myMirrorManager = new MirrorManagerImpl(new AgentMirrorConfig(myAgentConfig), new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
   }
 
+  public void test_default_custom_recoverable_messages() throws VcsException {
+    PluginConfigImpl config = getPluginConfig();
+    assertEquals(Collections.emptyList(), config.getCustomRecoverableMessages());
+  }
+
+  public void test_custom_recoverable_messages() throws VcsException {
+    myBuildSharedConfigParameters.put("teamcity.git.agent.recoverableMessages", "msg1; msg2 ;    three ; msg4;");
+    PluginConfigImpl config = getPluginConfig();
+    List<String> expected = new ArrayList<String>();
+    expected.add("msg1");
+    expected.add(" msg2 ");
+    expected.add("    three ");
+    expected.add(" msg4");
+    assertEquals(expected, config.getCustomRecoverableMessages());
+  }
 
   public void test_default_idle_timeout() throws VcsException {
     PluginConfigImpl config = getPluginConfig();

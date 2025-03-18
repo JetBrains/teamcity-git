@@ -5,6 +5,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import jetbrains.buildServer.ExecResult;
@@ -165,6 +166,7 @@ public class CommandUtil {
 
   public static boolean isTimeoutError(@NotNull VcsException e) {
     return isMessageContains(e, "exception: jetbrains.buildServer.ProcessTimeoutException") ||
+           isMessageContains(e, "java.net.SocketTimeoutException: Read timed out") ||
            isMessageContains(e, "Connection timed out") ||
            isMessageContains(e, "Operation timed out");
   }
@@ -210,7 +212,7 @@ public class CommandUtil {
     return isMessageContains(e, "Connection reset");
   }
 
-  public static boolean isRecoverable(@NotNull Exception e, @NotNull AuthSettings authSettings, int attempt, int maxAttempts) {
+  public static boolean isRecoverable(@NotNull Exception e, @NotNull AuthSettings authSettings, int attempt, int maxAttempts, @NotNull Collection<String> customRecoverableMessages) {
     boolean attemptsLeft = attempt < maxAttempts;
 
     if (e instanceof ProcessTimeoutException || e instanceof GitExecTimeout) return attemptsLeft;
@@ -229,6 +231,10 @@ public class CommandUtil {
 
     if (authSettings.doesTokenNeedRefresh() && attempt == 1)
       return true;
+
+    for (String message : customRecoverableMessages) {
+      if (isMessageContains(ve, message)) return attemptsLeft;
+    }
 
     return attemptsLeft && !isRemoteAccessError(ve);
   }

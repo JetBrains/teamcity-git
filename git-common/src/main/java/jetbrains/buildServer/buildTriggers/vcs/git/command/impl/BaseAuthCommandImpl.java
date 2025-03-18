@@ -92,7 +92,7 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
 
     @Override
     public boolean requiresRetry(@NotNull Exception e, int attempt, int maxAttempts) {
-      return CommandUtil.isRecoverable(e, myAuthSettings, attempt, maxAttempts);
+      return CommandUtil.isRecoverable(e, myAuthSettings, attempt, maxAttempts, myCmd.getContext().getCustomRecoverableMessages());
     }
 
     @Override

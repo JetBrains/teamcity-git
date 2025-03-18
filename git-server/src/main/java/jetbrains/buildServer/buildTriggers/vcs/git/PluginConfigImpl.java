@@ -84,6 +84,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private static final String PATCH_DOWNLOAD_LFS_OBJECTS = "teamcity.git.patch.downloadLfsObjects";
   private static final String FETCH_DURATION_METRIC_REPOS = "teamcity.git.fetch.durationMetricRepos";
   public static final String SSH_CONNECT_TIMEOUT_SECONDS = "teamcity.git.ssh.connect.timeout.seconds";
+  private static final String CUSTOM_RECOVERABLE_MESSAGES = "teamcity.git.server.recoverableMessages";
 
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
@@ -706,6 +707,15 @@ public class PluginConfigImpl implements ServerPluginConfig {
       LOG.warnAndDebugDetails("Failed to parse \"" + GIT_TRACE_ENV + "\" property value \"" + prop + "\", git trace won't be enabled", e);
       return Collections.emptyMap();
     }
+  }
+
+  @NotNull
+  @Override
+  public Collection<String> getCustomRecoverableMessages() {
+    final String property = TeamCityProperties.getProperty(CUSTOM_RECOVERABLE_MESSAGES);
+    if (StringUtil.isEmptyOrSpaces(property)) return Collections.emptyList();
+
+    return StringUtil.split(property, true, ';');
   }
 
   @Nullable

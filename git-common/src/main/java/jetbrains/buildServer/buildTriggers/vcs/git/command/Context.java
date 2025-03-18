@@ -75,4 +75,7 @@ public interface Context {
   String getSshCommandOptions();
 
   int getSshConnectTimeoutSeconds();
+
+  @NotNull
+  Collection<String> getCustomRecoverableMessages();
 }

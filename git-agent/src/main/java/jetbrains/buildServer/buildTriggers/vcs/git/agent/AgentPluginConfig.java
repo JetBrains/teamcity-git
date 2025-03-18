@@ -93,6 +93,9 @@ public interface AgentPluginConfig extends PluginConfig {
   @NotNull
   Map<String, String> getGitTraceEnv();
 
+  @NotNull
+  Collection<String> getCustomRecoverableMessages();
+
   /**
    * Defines how progress output from git commands is written into build log
    */

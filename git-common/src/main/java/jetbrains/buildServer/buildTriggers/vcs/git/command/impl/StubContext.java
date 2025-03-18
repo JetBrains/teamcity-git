@@ -173,4 +173,10 @@ public class StubContext implements Context {
   public int getSshConnectTimeoutSeconds() {
     return PluginConfig.DEFAULT_SSH_CONNECT_TIMEOUT;
   }
+
+  @NotNull
+  @Override
+  public Collection<String> getCustomRecoverableMessages() {
+    return Collections.emptyList();
+  }
 }

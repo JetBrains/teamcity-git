@@ -4,6 +4,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.jcraft.jsch.Proxy;
 import java.io.File;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -172,6 +173,9 @@ public interface ServerPluginConfig extends PluginConfig {
 
   @NotNull
   Map<String, String> getGitTraceEnv();
+
+  @NotNull
+  Collection<String> getCustomRecoverableMessages();
 
   boolean downloadLfsObjectsForPatch();
 
