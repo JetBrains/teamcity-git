@@ -219,6 +219,7 @@
       <groupId>org.objenesis</groupId>
       <artifactId>objenesis</artifactId>
       <version>1.0</version>
+      <scope>test</scope>
     </dependency>
 
     <dependency>
