@@ -248,7 +248,10 @@ public class CommandUtil {
            msg.contains("access denied") ||
            msg.contains("permission denied") ||
            msg.contains("could not read from remote repository") ||
-           msg.contains("server does not allow request for unadvertised object");
+           msg.contains("server does not allow request for unadvertised object") ||
+           msg.contains("the remote end hung up unexpectedly") ||
+           //msg.contains("protocol error: bad pack header") ||
+           msg.contains("server has no resource to complete operation"); // temporary JetBrains Space hotfix
   }
 
   public static boolean shouldFetchFromScratch(@NotNull VcsException e) {
