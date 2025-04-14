@@ -250,8 +250,7 @@ public class CommandUtil {
            msg.contains("could not read from remote repository") ||
            msg.contains("server does not allow request for unadvertised object") ||
            msg.contains("the remote end hung up unexpectedly") ||
-           //msg.contains("protocol error: bad pack header") ||
-           msg.contains("server has no resource to complete operation"); // temporary JetBrains Space hotfix
+           msg.contains("protocol error: bad pack header");
   }
 
   public static boolean shouldFetchFromScratch(@NotNull VcsException e) {
