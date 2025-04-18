@@ -16,6 +16,7 @@ import jetbrains.buildServer.serverSide.Parameter;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
+import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.*;
 import jetbrains.buildServer.vcs.impl.DBVcsModification;
 import jetbrains.buildServer.vcshostings.url.ServerURIParser;
@@ -57,6 +58,7 @@ public class GitProxyChangesCollector {
   // project properties
   private static final String ENABLE_GIT_PROXY_COMPARISON_LOGGING = "teamcity.internal.git.gitProxy.changesCollectionComparison.enabled";
   private static final String ENABLE_GIT_PROXY_CHANGES_COLLECTION = "teamcity.internal.git.gitProxy.changesCollection.enabled";
+  public static final String ENABLE_JGIT_FALLBACK_CHANGES_COLLECTION = "teamcity.internal.git.gitProxy.changesCollection.jgitFallbackEnabled";
 
   private static final String GIT_PROXY_URL_PROPERTY = "teamcity.internal.git.gitProxy.url";
   private static final String GIT_PROXY_AUTH_PROPERTY = "teamcity.internal.git.gitProxy.auth";
@@ -154,24 +156,82 @@ public class GitProxyChangesCollector {
                                 .withOperationId(operationId);
   }
 
+  public GitCollectChangesPolicy.GitChangesCollectionResult collectChangesGitProxy(@NotNull ServerPluginConfig gitPluginConfig,
+                                                                                   @NotNull VcsRoot root,
+                                                                                   @NotNull RepositoryStateData fromState,
+                                                                                   @NotNull RepositoryStateData toState,
+                                                                                   @NotNull GitProxySettings proxyCredentials,
+                                                                                   @NotNull String operationId,
+                                                                                   @Nullable Map<String, List<String>> commitIdToSubmodulePrefixes,
+                                                                                   boolean exceptionOnSubmoduleChanges,
+                                                                                   boolean allowMissingTips) throws VcsException {
+
+    GitApiClient<GitRepoApi> client = getClient(proxyCredentials, root, operationId);
+    if (client == null) {
+      return GitCollectChangesPolicy.GitChangesCollectionResult.empty();
+    }
+    List<ModificationData> modificationDataList = collectChangesGitProxyInternal(root, fromState, toState, client, operationId, commitIdToSubmodulePrefixes,
+                                                                                 exceptionOnSubmoduleChanges);
+
+    // now we need to verify that branch tips from toState were collected and if not
+    // we need either to return the information about such branches or throw an exception(depends on allowMissingTips)
+    Map<String, Boolean> toStateChangedRevision = new HashMap<>();
+    Map<String, String> fromStateRevisions = fromState.getBranchRevisions();
+    for (Map.Entry<String, String> entry : toState.getBranchRevisions().entrySet()) {
+      if (!Objects.equals(fromStateRevisions.get(entry.getKey()), entry.getValue())) {
+        toStateChangedRevision.put(entry.getValue(), false);
+      }
+    }
+
+    for (ModificationData modificationData : modificationDataList) {
+      String revision = modificationData.getVersion();
+      toStateChangedRevision.computeIfPresent(revision, (key, value) -> true);
+    }
+
+    List<String> missingTipRevisions = toStateChangedRevision.entrySet().stream().filter(entry -> !entry.getValue()).map(entry -> entry.getKey()).collect(Collectors.toList());
+    if (!missingTipRevisions.isEmpty()) {
+      Set<String> foundCommits = client.newRequest().listCommits(Collections.singletonList(new Pair<>("id", missingTipRevisions)), 0, Integer.MAX_VALUE, false, false)
+        .commits.stream().map(commit -> commit.id).collect(Collectors.toSet());
+
+      if (foundCommits.size() != missingTipRevisions.size()) {
+        Set<String> missingTipsSet = missingTipRevisions.stream().filter(commit -> !foundCommits.contains(commit)).collect(Collectors.toSet());
+
+        if (allowMissingTips) {
+          // we don't fail and provide information about which revision should be persisted in the state for branches without tips
+          Map<String, String> branchRevisionMapping = new HashMap<>();
+          for (Map.Entry<String, String> entry : toState.getBranchRevisions().entrySet()) {
+            if (missingTipsSet.contains(entry.getValue())) {
+              // we don't know for which revision the changes were collected, in theory we can make a request to git proxy api and retrieve the tip of the branch
+              // but for now we don't know the actual branch revision, so the toState for this branch will be persisted with the same revision as fromState
+              branchRevisionMapping.put(entry.getKey(), null);
+            }
+          }
+          return new GitCollectChangesPolicy.GitChangesCollectionResult(modificationDataList, branchRevisionMapping);
+        } else {
+          // otherwise throw exception the same as in CommitLoaderImpl#findRefsToFetch
+          final VcsException error = new VcsException("Revisions missing in the local repository: " + StringUtil.join(missingTipsSet, ", "));
+          error.setRecoverable(gitPluginConfig.treatMissingBranchTipAsRecoverableError());
+          throw error;
+        }
+      }
+    }
+
+    return new GitCollectChangesPolicy.GitChangesCollectionResult(modificationDataList, null);
+  }
+
   /**
    * @param commitIdToSubmodulePrefixes commit id to list of paths to submodules that were changed in that commit
    * @throws VcsException
    */
   @NotNull
-  public List<ModificationData> collectChangesGitProxy(@NotNull VcsRoot root,
+  private List<ModificationData> collectChangesGitProxyInternal(@NotNull VcsRoot root,
                                                        @NotNull RepositoryStateData fromState,
                                                        @NotNull RepositoryStateData toState,
-                                                       @NotNull GitProxySettings proxyCredentials,
+                                                       @NotNull GitApiClient<GitRepoApi> client,
                                                        @NotNull String operationId,
                                                        @Nullable Map<String, List<String>> commitIdToSubmodulePrefixes,
                                                        boolean exceptionOnSubmoduleChanges) throws VcsException {
     GitVcsRoot gitRoot = new SGitVcsRoot(myRepositoryManager, root, new URIishHelperImpl(), null);
-    GitApiClient<GitRepoApi> client = getClient(proxyCredentials, root, operationId);
-    if (client == null) {
-      return Collections.emptyList();
-    }
-
     String url = root.getProperty(Constants.FETCH_URL);
     if (url == null) {
       return Collections.emptyList();
@@ -183,7 +243,7 @@ public class GitProxyChangesCollector {
       if (futureResult.getType() == ChangesCollectorCache.ResultType.NEW) {
         try {
           List<ModificationData> result =
-            doCollectChanges(gitRoot, root, client, fromState, toState, proxyCredentials, operationId, commitIdToSubmodulePrefixes, exceptionOnSubmoduleChanges);
+            doCollectChanges(gitRoot, root, client, fromState, toState, operationId, commitIdToSubmodulePrefixes, exceptionOnSubmoduleChanges);
           futureResult.complete(result);
           return result;
         } catch (Throwable t) {
@@ -203,7 +263,7 @@ public class GitProxyChangesCollector {
         }
       }
     } else {
-      return doCollectChanges(gitRoot, root, client, fromState, toState, proxyCredentials, operationId, commitIdToSubmodulePrefixes, exceptionOnSubmoduleChanges);
+      return doCollectChanges(gitRoot, root, client, fromState, toState, operationId, commitIdToSubmodulePrefixes, exceptionOnSubmoduleChanges);
     }
   }
 
@@ -212,11 +272,10 @@ public class GitProxyChangesCollector {
                                                   GitApiClient<GitRepoApi> client,
                                                   @NotNull RepositoryStateData fromState,
                                                   @NotNull RepositoryStateData toState,
-                                                  @NotNull GitProxySettings proxyCredentials,
                                                   @NotNull String operationId,
                                                   @Nullable Map<String, List<String>> commitIdToSubmodulePrefixes,
                                                   boolean exceptionOnSubmoduleChanges) throws VcsException {
-    List<String> commitPatterns = new ArrayList<>();
+    LinkedHashSet<String> commitPatterns = new LinkedHashSet<>();
     for (Map.Entry<String, String> entry: fromState.getBranchRevisions().entrySet()) {
       commitPatterns.add("^" + entry.getValue());
     }
@@ -264,7 +323,7 @@ public class GitProxyChangesCollector {
     return result;
   }
 
-  private List<CommitChange> retrieveChanges(@NotNull GitApiClient<GitRepoApi> client, @NotNull List<String> commitPatterns, @NotNull Map<String, CommitInfo> commitInfoMap) throws VcsException {
+  private List<CommitChange> retrieveChanges(@NotNull GitApiClient<GitRepoApi> client, @NotNull LinkedHashSet<String> commitPatterns, @NotNull Map<String, CommitInfo> commitInfoMap) throws VcsException {
     List<CommitChange> changes = new ArrayList<>();
     int maxCommitsPerPage = TeamCityProperties.getInteger(GIT_PROXY_COMMITS_PER_PAGE, GIT_PROXY_COMMITS_PER_PAGE_DEFAULT);
 

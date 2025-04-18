@@ -1,10 +1,7 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.tests.gitProxy;
 
 import com.intellij.openapi.util.Pair;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.data.*;
@@ -13,7 +10,7 @@ import jetbrains.buildServer.serverSide.MockParameter;
 import jetbrains.buildServer.serverSide.impl.BaseServerTestCase;
 import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
 import jetbrains.buildServer.vcs.*;
-import jetbrains.buildServer.vcs.impl.SVcsRootImpl;
+import org.assertj.core.data.MapEntry;
 import org.jetbrains.annotations.NotNull;
 import org.mockito.Mockito;
 import org.testng.annotations.BeforeMethod;
@@ -53,14 +50,16 @@ public class GitProxyServiceTests extends BaseServerTestCase {
     Mockito.doReturn(new GitVcsRoot(Mockito.mock(MirrorManager.class), myVcsRootInstance, new URIishHelperImpl())).when(mockOperationContext).getGitRoot();
     GitVcsSupport mockGitVcsSupport = Mockito.mock(GitVcsSupport.class);
     Mockito.doReturn(mockOperationContext).when(mockGitVcsSupport).createContext(myVcsRootInstance, "collecting changes");
+    ServerPluginConfig serverPluginConfig = Mockito.mock(ServerPluginConfig.class);
+    Mockito.doReturn(true).when(serverPluginConfig).treatMissingBranchTipAsRecoverableError();
     myCollectChangesPolicy = new GitCollectChangesPolicy(mockGitVcsSupport,
-                                                                               Mockito.mock(VcsOperationProgressProvider.class),
-                                                                               Mockito.mock(ServerPluginConfig.class),
-                                                                               Mockito.mock(RepositoryManager.class),
-                                                                               Mockito.mock(CheckoutRulesLatestRevisionCache.class),
-                                                                               gitApiClientFactory,
-                                                                               factory,
-                                                                               new ChangesCollectorCache());
+                                                         Mockito.mock(VcsOperationProgressProvider.class),
+                                                         serverPluginConfig,
+                                                         Mockito.mock(RepositoryManager.class),
+                                                         Mockito.mock(CheckoutRulesLatestRevisionCache.class),
+                                                         gitApiClientFactory,
+                                                         factory,
+                                                         new ChangesCollectorCache());
   }
 
   @Test
@@ -78,7 +77,7 @@ public class GitProxyServiceTests extends BaseServerTestCase {
                                                new CommitChange("rev4", "rev3", false, Arrays.asList(new FileChange(ChangeType.Added, "file2", "file2", EntryType.File))),
                                                new CommitChange("rev3", "rev2", false, Arrays.asList(new FileChange(ChangeType.Deleted, null, "file0", EntryType.File)))
     );
-    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev2", "^rev1", "rev5"))), 0, 1000, false, true);
+    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", asSet(Arrays.asList( "^rev2", "^rev1", "rev5")))), 0, 1000, false, true);
     Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5", "rev4", "rev3"), false, false, false, false, 10_000);
 
     List<ModificationData> changesData = myCollectChangesPolicy.collectChanges(myVcsRootInstance,
@@ -131,7 +130,7 @@ public class GitProxyServiceTests extends BaseServerTestCase {
                                                new CommitChange("rev5", "rev3", false, Arrays.asList(new FileChange(ChangeType.Modified, "file2", "file2", EntryType.File))),
                                                new CommitChange("rev5", "rev2", false, Arrays.asList(new FileChange(ChangeType.Modified, "file2", "file2", EntryType.File)))
     );
-    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev4", "rev5"))), 0, 1000, false, true);
+    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", asSet(Arrays.asList( "^rev4", "rev5")))), 0, 1000, false, true);
     Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5"), false, false, false, false, 10_000);
 
     List<ModificationData> changesData = myCollectChangesPolicy.collectChanges(myVcsRootInstance,
@@ -166,7 +165,7 @@ public class GitProxyServiceTests extends BaseServerTestCase {
                                                new CommitChange("rev5", "rev3", false, Arrays.asList(new FileChange(ChangeType.Modified, "file2", "file2", EntryType.File))),
                                                new CommitChange("rev5", "rev2", false, Arrays.asList(new FileChange(ChangeType.Modified, "file3", "file3", EntryType.File)))
     );
-    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev4", "rev5"))), 0, 1000, false, true);
+    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", asSet(Arrays.asList( "^rev4", "rev5")))), 0, 1000, false, true);
     Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5"), false, false, false, false, 10_000);
 
     List<ModificationData> changesData = myCollectChangesPolicy.collectChanges(myVcsRootInstance,
@@ -207,7 +206,7 @@ public class GitProxyServiceTests extends BaseServerTestCase {
                                                new CommitChange("rev3", "rev2", false, Arrays.asList(new FileChange(ChangeType.Deleted, null, "file0", EntryType.File)))
     );
 
-    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", Arrays.asList( "^rev2", "^rev1", "rev5"))), 0, 1000, false, true);
+    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", asSet(Arrays.asList( "^rev2", "^rev1", "rev5")))), 0, 1000, false, true);
     Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("rev5", "rev4", "rev3"), false, false, false, false, 10_000);
 
     List<ModificationData> changesData = myCollectChangesPolicy.collectChanges(myVcsRootInstance,
@@ -223,6 +222,75 @@ public class GitProxyServiceTests extends BaseServerTestCase {
     Mockito.verify(myGitRepoApi, Mockito.times(1)).listChanges(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean(), Mockito.anyBoolean(), Mockito.anyBoolean(), Mockito.anyInt());
     Mockito.verify(myGitRepoApi, Mockito.times(1)).listCommits(Mockito.any(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyBoolean(), Mockito.anyBoolean());
 
+  }
+
+  @Test
+  public void testShouldReturnOnlyBranchesWithoutTipRevision() throws VcsException {
+    CommitList commitList = new CommitList();
+    commitList.commits = Arrays.asList(new Commit("branch2_rev2", new CommitInfo("branch2_rev2", "", "branch2_commit2", new Person("user", "user@email.com"), 1, new Person("user", "user@email.com"), 2, Arrays.asList("branch2_rev1"))),
+                                       new Commit("branch2_rev1", new CommitInfo("branch2_rev1", "", "branch2_commit1", new Person("user", "user@email.com"), 1, new Person("user", "user@email.com"), 2, Arrays.asList("rev0")))
+    );
+    List<CommitChange> changes = Arrays.asList(new CommitChange("branch2_rev2", "branch2_rev1",false, Arrays.asList(new FileChange(ChangeType.Modified, "file1", "file1", EntryType.File),
+                                                                                                    new FileChange(ChangeType.Modified, "file2", "file2", EntryType.File))),
+                                               new CommitChange("branch2_rev1", "rev0", false, Arrays.asList(new FileChange(ChangeType.Added, "file2", "file2", EntryType.File)))
+    );
+    CommitList existingCommitsResponse = new CommitList();
+    existingCommitsResponse.commits = Arrays.asList(new Commit("branch3_rev2", null));
+
+    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", asSet(Arrays.asList( "^rev0", "branch1_rev2", "branch2_rev2", "branch3_rev2")))), 0, 1000, false, true);
+    Mockito.doReturn(existingCommitsResponse).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id", Arrays.asList( "branch1_rev2", "branch3_rev2"))), 0, Integer.MAX_VALUE, false, false);
+    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("branch2_rev2", "branch2_rev1"), false, false, false, false, 10_000);
+
+    ChangesCollectionResult result = myCollectChangesPolicy.collectChangesExtended(null,
+                                                                                   RepositoryStateData.createVersionState("master", map("master", "rev0")),
+                                                                                   myVcsRootInstance,
+                                                                                   RepositoryStateData.createVersionState("master", map("master", "rev0",
+                                                                                                                      "branch1", "branch1_rev2",
+                                                                                                                      "branch2", "branch2_rev2",
+                                                                                                                      "branch3", "branch3_rev2",
+                                                                                                                      "branch4", "branch1_rev2")),
+                                                                                   new CheckoutRules(""));
+
+
+    then(result.getCollectChangesResult()).hasSize(2);
+
+    // branch2 had tip revision in the collection result, branch3 didn't have the revision in the result, but the tip still exists in the repo(which means it was just excluded by some other branch)
+    then(result.getUpToDateState())
+      .hasSize(2)
+      .containsOnly(MapEntry.entry("branch1", null), MapEntry.entry("branch4", null));
+  }
+
+  @Test
+  public void testShouldThrowExceptionIfMissingTipsAreNotAllowed() throws VcsException {
+    setInternalProperty(GitProxyChangesCollector.ENABLE_JGIT_FALLBACK_CHANGES_COLLECTION, "false");
+    CommitList commitList = new CommitList();
+    commitList.commits = Arrays.asList(new Commit("branch2_rev2", new CommitInfo("branch2_rev2", "", "branch2_commit2", new Person("user", "user@email.com"), 1, new Person("user", "user@email.com"), 2, Arrays.asList("branch2_rev1"))),
+                                       new Commit("branch2_rev1", new CommitInfo("branch2_rev1", "", "branch2_commit1", new Person("user", "user@email.com"), 1, new Person("user", "user@email.com"), 2, Arrays.asList("rev0")))
+    );
+    List<CommitChange> changes = Arrays.asList(new CommitChange("branch2_rev2", "branch2_rev1",false, Arrays.asList(new FileChange(ChangeType.Modified, "file1", "file1", EntryType.File),
+                                                                                                                    new FileChange(ChangeType.Modified, "file2", "file2", EntryType.File))),
+                                               new CommitChange("branch2_rev1", "rev0", false, Arrays.asList(new FileChange(ChangeType.Added, "file2", "file2", EntryType.File)))
+    );
+    CommitList existingCommitsResponse = new CommitList();
+    existingCommitsResponse.commits = Arrays.asList(new Commit("branch3_rev2", null));
+
+    Mockito.doReturn(commitList).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id-range", asSet(Arrays.asList( "^rev0", "branch1_rev2", "branch2_rev2", "branch3_rev2")))), 0, 1000, false, true);
+    Mockito.doReturn(existingCommitsResponse).when(myGitRepoApi).listCommits(Arrays.asList(new Pair<>("id", Arrays.asList( "branch1_rev2", "branch3_rev2"))), 0, Integer.MAX_VALUE, false, false);
+    Mockito.doReturn(changes).when(myGitRepoApi).listChanges(Arrays.asList("branch2_rev2", "branch2_rev1"), false, false, false, false, 10_000);
+
+    try {
+      myCollectChangesPolicy.collectChanges(myVcsRootInstance,
+                                                    RepositoryStateData.createVersionState("master", map("master", "rev0")),
+                                                    RepositoryStateData.createVersionState("master", map("master", "rev0",
+                                                                                                "branch1", "branch1_rev2",
+                                                                                                "branch2", "branch2_rev2",
+                                                                                                "branch3", "branch3_rev2",
+                                                                                                "branch4", "branch1_rev2")),
+                                                    new CheckoutRules(""));
+      fail("should throw VcsException");
+    } catch (VcsException e) {
+      then(e.getMessage()).contains("Revisions missing in the local repository", "branch1_rev2");
+    }
   }
 
   private void assertModificationDataEqual(@NotNull List<ModificationData> expected, @NotNull List<ModificationData> actual) {
@@ -242,5 +310,9 @@ public class GitProxyServiceTests extends BaseServerTestCase {
       then(actualData.getVersion()).isEqualTo(expectedData.getVersion());
       then(actualData.getAttributes()).isEqualTo(expectedData.getAttributes());
     }
+  }
+
+  private static <T> LinkedHashSet<T> asSet(Collection<T> collection) {
+    return new LinkedHashSet<>(collection);
   }
 }
