@@ -26,8 +26,13 @@ public class FSImpl implements FS {
       return false;
     }
 
+
+    File[] files = dir.listFiles();
+    if (files == null) {
+      return false;
+    }
     boolean successfull = true;
-    for (File file : Objects.requireNonNull(dir.listFiles())) {
+    for (File file : files) {
       successfull &= FileUtil.delete(file);
     }
     return successfull;
