@@ -105,7 +105,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
     } else {
       configureRemoteUrl(bareRepositoryDir, fetchUrl);
       sslInvestigator.setCertificateOptions(git);
-      fetchRequired = removeOutdatedRefs(bareRepositoryDir);
+      fetchRequired = removeOutdatedRefs(bareRepositoryDir, false);
     }
 
     final AgentCommitLoader commitLoader =
@@ -115,10 +115,22 @@ public class UpdaterWithMirror extends UpdaterImpl {
     try {
       loadCommits(fetchRequired, commitLoader, revisions);
     } catch (VcsException e) {
-      if (myPluginConfig.isFailOnCleanCheckout() || !CommandUtil.shouldFetchFromScratch(e)) {
-        throw e;
+      VcsException vcsException = e;
+      if (shouldRetryFetchAfterRemovingOutadedRefs(vcsException)) {
+        try {
+          LOG.warnAndDebugDetails("Fetch failed. Removing outdated refs and retrying fetch", e);
+          myLogger.warning("Fetch failed. Removing outdated refs and retrying fetch");
+          fetchRequired |= removeOutdatedRefs(bareRepositoryDir, true);
+          loadCommits(fetchRequired, commitLoader, revisions);
+          return;
+        } catch (VcsException retryException) {
+          vcsException = retryException;
+        }
       }
-      LOG.warnAndDebugDetails("Failed to fetch mirror, will try removing it and cloning from scratch", e);
+      if (myPluginConfig.isFailOnCleanCheckout() || !CommandUtil.shouldFetchFromScratch(vcsException)) {
+        throw vcsException;
+      }
+      LOG.warnAndDebugDetails("Failed to fetch mirror, will try removing it and cloning from scratch", vcsException);
       if (cleanDir(bareRepositoryDir)) {
         git.init().setBare(true).call();
         configureRemoteUrl(bareRepositoryDir, fetchUrl);

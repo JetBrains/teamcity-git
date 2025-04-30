@@ -8,6 +8,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import jetbrains.buildServer.BuildProblemData;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildDirectoryCleanerCallback;
@@ -58,6 +59,7 @@ public class UpdaterImpl implements Updater {
   public final static GitVersion REV_PARSE_LEARNED_SHALLOW_CLONE = new GitVersion(2, 15, 0);
 
   private static final String ENABLE_REMOVAL_OF_OUTDATED_REFS = "teamcity.internal.git.removeOutdatedRefs.enable";
+  private static final Pattern BRANCH_COLLISION_ERROR_PATTERN = Pattern.compile("cannot lock ref '.*': '.*' exists");
 
   protected final FS myFS;
   private final SmartDirectoryCleaner myDirectoryCleaner;
@@ -722,8 +724,19 @@ public class UpdaterImpl implements Updater {
 
 
   private void doFetch() throws VcsException {
-    boolean outdatedRefsFound = removeOutdatedRefs(myTargetDirectory);
-    ensureCommitLoaded(outdatedRefsFound);
+    boolean outdatedRefsFound = removeOutdatedRefs(myTargetDirectory, false);
+    try {
+      ensureCommitLoaded(outdatedRefsFound);
+    } catch (VcsException e) {
+      if (shouldRetryFetchAfterRemovingOutadedRefs(e)) {
+        LOG.warn("Fetch failed. Removing outdated refs and retrying fetch", e);
+        myLogger.warning("Fetch failed. Removing outdated refs and retrying fetch");
+        outdatedRefsFound = removeOutdatedRefs(myTargetDirectory, true);
+        ensureCommitLoaded(outdatedRefsFound);
+      } else {
+        throw e;
+      }
+    }
   }
 
 
@@ -877,8 +890,13 @@ public class UpdaterImpl implements Updater {
     return TeamCityProperties.getBooleanOrTrue(ENABLE_REMOVAL_OF_OUTDATED_REFS);
   }
 
-  protected boolean removeOutdatedRefs(@NotNull File workingDir) throws VcsException {
-    if (!shouldRemoveOutdatedRefs()) {
+  protected boolean shouldRetryFetchAfterRemovingOutadedRefs(@NotNull VcsException e) {
+    // we should retry fetch after removing outdated refs only if we didn't try to remove them before
+    return !shouldRemoveOutdatedRefs() && BRANCH_COLLISION_ERROR_PATTERN.matcher(e.getMessage()).find();
+  }
+
+  protected boolean removeOutdatedRefs(@NotNull File workingDir, boolean forceOutdatedRefsCheck) throws VcsException {
+    if (!forceOutdatedRefsCheck && !shouldRemoveOutdatedRefs()) {
       return false;
     }
     boolean outdatedRefsRemoved = false;
