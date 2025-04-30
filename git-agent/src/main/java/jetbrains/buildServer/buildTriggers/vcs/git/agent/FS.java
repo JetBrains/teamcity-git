@@ -12,4 +12,6 @@ public interface FS {
 
   boolean mkdirs(@NotNull File dir);
 
+  boolean deleteDirContent(@NotNull File dir);
+
 }

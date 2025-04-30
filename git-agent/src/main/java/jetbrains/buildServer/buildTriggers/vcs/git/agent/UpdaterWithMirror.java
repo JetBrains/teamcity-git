@@ -87,15 +87,17 @@ public class UpdaterWithMirror extends UpdaterImpl {
     final boolean isSubmodule = !isRootRepositoryDir(bareRepositoryDir);
     String mirrorDescription = (isSubmodule ? "submodule " : "") + "local mirror of root " + myRoot.getName() + " at " + bareRepositoryDir;
     LOG.info("Update " + mirrorDescription);
+    boolean shouldInit = false;
     if (isValidGitRepo(bareRepositoryDir)) {
       removeOrphanedIdxFiles(bareRepositoryDir);
     } else {
-      FileUtil.delete(bareRepositoryDir);
+      cleanDir(bareRepositoryDir);
+      shouldInit = true;
     }
     final AgentGitFacade git = myGitFactory.create(bareRepositoryDir);
     final SSLInvestigator sslInvestigator = getSSLInvestigator(fetchUrl);
     boolean fetchRequired;
-    if (!bareRepositoryDir.exists()) {
+    if (shouldInit || !bareRepositoryDir.exists()) {
       LOG.info("Init " + mirrorDescription);
       bareRepositoryDir.mkdirs();
       git.init().setBare(true).call();
@@ -145,7 +147,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
   }
 
   private boolean cleanDir(final @NotNull File repositoryDir) {
-    return myFS.delete(repositoryDir) && myFS.mkdirs(repositoryDir);
+    return myFS.deleteDirContent(repositoryDir);
   }
 
 
