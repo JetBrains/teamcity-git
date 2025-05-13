@@ -134,7 +134,7 @@ public class ContextImpl implements Context {
   @Override
   public String getSshRequestToken() {
     if (myRoot == null) return null;
-    if (TeamCityProperties.getBooleanOrTrue("teamcity.git.sendSshSendEnvRequestToken")) {
+    if (TeamCityProperties.getBoolean("teamcity.git.sendSshSendEnvRequestToken")) {
       final String token = myRoot.getProperty("sshSendEnvRequestToken");
       if (token == null) return null;
       return token.contains("%") ? null : token;

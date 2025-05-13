@@ -64,7 +64,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   private static final String LS_REMOTE_TIMEOUT_SECONDS = "teamcity.git.lsRemoteTimeoutSeconds";
   private static final String SUBMODULE_UPDATE_TIMEOUT_SECONDS = "teamcity.internal.git.agent.submodules.update.timeout.seconds";
   public static final String SSH_SEND_ENV_REQUEST_TOKEN = "sshSendEnvRequestToken";
-  private static final String SSH_SEND_ENV_REQUEST_TOKEN_PARAM = "vcsroot." + SSH_SEND_ENV_REQUEST_TOKEN;
+  public static final String SSH_SEND_ENV_REQUEST_TOKEN_PARAM = "teamcity.internal.git." + SSH_SEND_ENV_REQUEST_TOKEN;
   public static final String SSH_CONNECT_TIMEOUT_SECONDS = "teamcity.git.ssh.connect.timeout.seconds";
   public static final String CLEAN_RESPECTS_OTHER_ROOTS = "teamcity.internal.git.cleanRespectsOtherRoots";
   public static final String CUSTOM_GIT_CONFIG = "teamcity.internal.git.customConfig";
@@ -388,7 +388,7 @@ public class PluginConfigImpl implements AgentPluginConfig {
   @Nullable
   @Override
   public String getSshRequestToken() {
-    return myBuild.getSharedConfigParameters().get(SSH_SEND_ENV_REQUEST_TOKEN_PARAM);
+    return myVcsRoot.getProperty(SSH_SEND_ENV_REQUEST_TOKEN, myBuild.getSharedConfigParameters().get(SSH_SEND_ENV_REQUEST_TOKEN_PARAM));
   }
 
   @Override
