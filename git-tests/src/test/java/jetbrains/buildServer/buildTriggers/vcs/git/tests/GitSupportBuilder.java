@@ -12,9 +12,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.ChangesCollectorCache;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.TestGitRepoOperationsImpl;
-import jetbrains.buildServer.serverSide.SProject;
-import jetbrains.buildServer.serverSide.ServerPaths;
-import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.crypt.BaseEncryptionStrategy;
 import jetbrains.buildServer.serverSide.crypt.EncryptionManager;
 import jetbrains.buildServer.serverSide.crypt.EncryptionSettings;
@@ -145,8 +143,9 @@ public class GitSupportBuilder {
     return myTransportFactory;
   }
 
-  public static ParameterFactory getParametersFactory() {
-    return new ParameterFactoryImpl(new ParameterDescriptionFactoryImpl(), new ParameterTypeManager(Collections.emptyList()), new EncryptionManager(new EncryptionSettings(), Collections.emptyList(), new BaseEncryptionStrategy()));
+  public ParameterFactory getParametersFactory(ServerResponsibility serverResponsibility, SettingsPersister settingsPersister) {
+    return new ParameterFactoryImpl(new ParameterDescriptionFactoryImpl(), new ParameterTypeManager(Collections.emptyList()), new EncryptionManager(new EncryptionSettings(), Collections.emptyList(), new BaseEncryptionStrategy(),
+                                                                                                                                                    myServerPaths, settingsPersister, serverResponsibility));
   }
 
   public FetchCommand getDefaultFetchCommand() {
@@ -229,6 +228,13 @@ public class GitSupportBuilder {
       }
     };
 
+    ServerResponsibility serverResponsibility = context.mock(ServerResponsibility.class);
+    SettingsPersister settingsPersister = context.mock(SettingsPersister.class);
+
+    context.checking(new Expectations() {{
+      allowing(serverResponsibility).canWriteToConfigDirectory(); will(returnValue(false));
+    }});
+
     GitVcsSupport git = new GitVcsSupport(myGitRepoOperations, myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
                                           myVcsRootSSHKeyManager, new MockVcsOperationProgressProvider(),
                                           resetCacheHandler, resetRevisionsCacheHandler, tokenRefresher, myTestConnectionSupport,
@@ -238,7 +244,7 @@ public class GitSupportBuilder {
       public KeyStore getTrustStore() {
         return null;
       }
-    }, getParametersFactory(), new ChangesCollectorCache());
+    }, getParametersFactory(serverResponsibility, settingsPersister), new ChangesCollectorCache());
     git.addExtensions(myExtensions);
     git.setExtensionHolder(myExtensionHolder);
     return git;
