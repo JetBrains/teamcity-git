@@ -79,10 +79,10 @@ class AgentSupportBuilder {
 
     AgentControlClient mockAgentControlClient = new AgentControlClient() {
       @Override
-      public void terminateAgent(String reason) { }
+      public void terminateAgent(@NotNull String reason) { }
 
       @Override
-      public void disableAgent() { }
+      public void disableAgent(@NotNull String reason) { }
     };
 
     return new GitAgentVcsSupport(myFS, new MockDirectoryCleaner(), myGitAgentSSHService,
