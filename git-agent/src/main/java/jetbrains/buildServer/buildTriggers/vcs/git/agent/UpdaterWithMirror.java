@@ -3,7 +3,6 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -20,12 +19,14 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.Converter;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import org.apache.http.client.utils.URLEncodedUtils;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.transport.URIish;
@@ -40,6 +41,8 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.GitUtils.getGitDir;
 public class UpdaterWithMirror extends UpdaterImpl {
 
   private final static Logger LOG = Logger.getInstance(UpdaterWithMirror.class.getName());
+  private static final String PROP_PREFIX_AGENT_TERMINATION_MODE = "teamcity.git.fetchFromScratch.";
+  private final AgentControlClient myAgentControlClient;
 
   public UpdaterWithMirror(@NotNull FS fs,
                            @NotNull AgentPluginConfig pluginConfig,
@@ -53,8 +56,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
                            @NotNull CheckoutRules rules,
                            @NotNull CheckoutMode mode,
                            @NotNull SubmoduleManager submoduleManager,
-                           @NotNull AgentTokenStorage tokenStorage) throws VcsException {
+                           @NotNull AgentTokenStorage tokenStorage,
+                           @NotNull AgentControlClient agentControlClient) throws VcsException {
     super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode, submoduleManager, tokenStorage);
+    myAgentControlClient = agentControlClient;
   }
 
   @Override
@@ -132,6 +137,9 @@ public class UpdaterWithMirror extends UpdaterImpl {
       if (myPluginConfig.isFailOnCleanCheckout() || !CommandUtil.shouldFetchFromScratch(vcsException)) {
         throw vcsException;
       }
+      if (tryStopTheAgent(vcsException)) {
+        throw vcsException;
+      }
       LOG.warnAndDebugDetails("Failed to fetch mirror, will try removing it and cloning from scratch", vcsException);
       if (cleanDir(bareRepositoryDir)) {
         git.init().setBare(true).call();
@@ -144,6 +152,55 @@ public class UpdaterWithMirror extends UpdaterImpl {
         updateLocalMirror(myMirrorManager.getMirrorDir(originalFetchUrl.toString()), fetchUrl, originalFetchUrl, revisions);
       }
     }
+  }
+
+  private boolean tryStopTheAgent(VcsException vcsException) {
+    String repoUrl = myRoot.getRepositoryFetchURL().toString();
+    if (repoUrl == null)
+      return false;
+    String mode = getAgentTerminationMode(repoUrl);
+    if (mode == null)
+      return false;
+    String msg = "Failed to fetch a Git mirror from " + repoUrl;
+    if (mode.equals("terminate")) {
+      LOG.warnAndDebugDetails(msg + ", will request agent termination", vcsException);
+      myAgentControlClient.terminateAgent(msg);
+    } else if (mode.equals("disable")) {
+      LOG.warnAndDebugDetails(msg + ", will disable the agent", vcsException);
+      myAgentControlClient.disableAgent(msg);
+    } else if (mode.equals("fail")) {
+      LOG.warnAndDebugDetails(msg + ", will fail the build", vcsException);
+    } else {
+      LOG.warnAndDebugDetails(msg + ", unknown agent stopping mode: " + mode, vcsException);
+      return false;
+    }
+    return true;
+  }
+
+  @Nullable
+  private String getAgentTerminationMode(@NotNull final String repoURL) {
+    final Map<String, String> properties = TeamCityProperties.getPropertiesWithPrefix(PROP_PREFIX_AGENT_TERMINATION_MODE);
+    final String repoURLLowerCase = repoURL.toLowerCase();
+    for (Map.Entry<String, String> entry: properties.entrySet()) {
+      String v = entry.getValue();
+      if (v == null)
+        continue;
+      v = v.toLowerCase();
+      if (repoURLLowerCase.contains(v)) {
+        String key = entry.getKey();
+        if (StringUtil.isEmpty(key))
+          continue;
+        String[] propIdAndName = key.substring(PROP_PREFIX_AGENT_TERMINATION_MODE.length()).split("\\.");
+        if (propIdAndName.length != 2)
+          continue;
+        String propId = propIdAndName[0];
+        String propName = propIdAndName[1];
+        if (StringUtil.isEmpty(propId) || StringUtil.isEmpty(propName) || !"repo".equals(propName))
+          continue;
+        return properties.get(PROP_PREFIX_AGENT_TERMINATION_MODE + propId + ".mode");
+      }
+    }
+    return null;
   }
 
   private boolean cleanDir(final @NotNull File repositoryDir) {

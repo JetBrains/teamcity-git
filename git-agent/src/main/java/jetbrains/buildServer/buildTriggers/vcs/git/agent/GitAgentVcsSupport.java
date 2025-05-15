@@ -58,6 +58,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
 
   final static String agentCheckoutRulesErrorMessage = "The checkout rule '%s' is unsupported for agent-side checkout mode. " +
                                                        "The rules 'a=>[prefix/]a/postfix' are unsupported. Only the rules 'a=>[prefix/]a' are supported for agent-side checkout, the [prefix/] must be the same for all rules. " + switchCheckoutModeMessage;
+  private final AgentControlClient myAgentControlClient;
 
 
   public GitAgentVcsSupport(@NotNull FS fs,
@@ -69,7 +70,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull GitMetaFactory gitMetaFactory,
                             @NotNull EventDispatcher<AgentLifeCycleListener> agentEventDispatcher,
                             @NotNull AgentTokenStorage tokenStorage,
-                            @NotNull SshKnownHostsManager sshKnownHostsManager) {
+                            @NotNull SshKnownHostsManager sshKnownHostsManager,
+                            @NotNull AgentControlClient agentControlClient) {
     myFS = fs;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
@@ -79,6 +81,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     myGitMetaFactory = gitMetaFactory;
     myTokenStorage = tokenStorage;
     mySshKnownHostsManager = sshKnownHostsManager;
+    myAgentControlClient = agentControlClient;
 
     agentEventDispatcher.addListener(new AgentLifeCycleAdapter() {
       @Override
@@ -121,9 +124,11 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     if (config.isUseShallowClone(gitRoot)) {
       updater = new ShallowUpdater(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
     } else if (config.isUseAlternates(gitRoot)) {
-      updater = new UpdaterWithAlternates(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
+      updater = new UpdaterWithAlternates(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage,
+                                          myAgentControlClient);
     } else if (config.isUseLocalMirrors(gitRoot)) {
-      updater = new UpdaterWithMirror(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
+      updater = new UpdaterWithMirror(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage,
+                                      myAgentControlClient);
     } else {
       updater = new UpdaterImpl(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
     }

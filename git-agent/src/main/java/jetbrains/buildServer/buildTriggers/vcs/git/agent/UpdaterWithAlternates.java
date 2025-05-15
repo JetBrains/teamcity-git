@@ -38,8 +38,9 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
                                @NotNull CheckoutRules rules,
                                @NotNull CheckoutMode mode,
                                @NotNull SubmoduleManager submoduleManager,
-                               @NotNull AgentTokenStorage tokenStorage) throws VcsException {
-    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode, submoduleManager, tokenStorage);
+                               @NotNull AgentTokenStorage tokenStorage,
+                               @NotNull AgentControlClient agentControlClient) throws VcsException {
+    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode, submoduleManager, tokenStorage, agentControlClient);
     myGitDir = new File(myTargetDirectory, ".git");
   }
 
