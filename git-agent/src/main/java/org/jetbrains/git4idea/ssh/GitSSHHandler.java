@@ -25,6 +25,7 @@ public interface GitSSHHandler {
    * Name of environment variable for SSH executable
    */
   @NonNls String GIT_SSH_ENV = "GIT_SSH";
+  @NonNls String GIT_SSH_COMMAND_ENV = "GIT_SSH_COMMAND";
   String GIT_SSH_VARIANT_ENV = "GIT_SSH_VARIANT";
 
   String TEAMCITY_PRIVATE_KEY_PATH = "TEAMCITY_PRIVATE_KEY";
