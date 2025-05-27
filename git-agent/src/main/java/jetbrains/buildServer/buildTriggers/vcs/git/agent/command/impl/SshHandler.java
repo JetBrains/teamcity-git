@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Properties;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -31,11 +30,6 @@ import org.jetbrains.git4idea.ssh.GitSSHService;
  * SSH handler implementation
  */
 public class SshHandler implements GitSSHService.Handler {
-
-  private static final String USE_SSH_COMMAND_ENV_INTERNAL_PROPERTY = "teamcity.git.ssh.useSshCommandEnv";
-  private static final GitVersion MIN_GIT_SSH_COMMAND = new GitVersion(2, 3, 0); //GIT_SSH_COMMAND was introduced in git 2.3.0
-
-
   /**
    * SSH service
    */
@@ -125,8 +119,7 @@ public class SshHandler implements GitSSHService.Handler {
     }
 
     try {
-      boolean shouldUseSshCommandEnv = !ctx.getGitVersion().isLessThan(MIN_GIT_SSH_COMMAND) && TeamCityProperties.getBooleanOrTrue(USE_SSH_COMMAND_ENV_INTERNAL_PROPERTY);
-      cmd.addEnvParam(shouldUseSshCommandEnv ? GitSSHHandler.GIT_SSH_COMMAND_ENV : GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath());
+      cmd.addEnvParam(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath());
       // ask git to treat our command as OpenSSH compatible:
       cmd.addEnvParam(GitSSHHandler.GIT_SSH_VARIANT_ENV, "ssh");
     } catch (IOException e) {
