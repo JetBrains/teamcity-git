@@ -211,4 +211,10 @@ public class ContextImpl implements Context {
   public Collection<String> getCustomRecoverableMessages() {
     return myConfig.getCustomRecoverableMessages();
   }
+
+  @Nullable
+  @Override
+  public String getInternalProperty(@NotNull String key) {
+    return TeamCityProperties.getPropertyOrNull(key);
+  }
 }

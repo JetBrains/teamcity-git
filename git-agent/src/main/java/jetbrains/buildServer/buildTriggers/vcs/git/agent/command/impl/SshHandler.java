@@ -2,6 +2,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
+import com.intellij.openapi.util.SystemInfo;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -32,7 +33,7 @@ import org.jetbrains.git4idea.ssh.GitSSHService;
  */
 public class SshHandler implements GitSSHService.Handler {
 
-  private static final String USE_SSH_COMMAND_ENV_INTERNAL_PROPERTY = "teamcity.git.ssh.useSshCommandEnv";
+  private static final String USE_SSH_COMMAND_ENV_INTERNAL_PROPERTY = "teamcity.internal.git.ssh.useSshCommandEnv";
   private static final GitVersion MIN_GIT_SSH_COMMAND = new GitVersion(2, 3, 0); //GIT_SSH_COMMAND was introduced in git 2.3.0
 
 
@@ -125,8 +126,14 @@ public class SshHandler implements GitSSHService.Handler {
     }
 
     try {
-      boolean shouldUseSshCommandEnv = !ctx.getGitVersion().isLessThan(MIN_GIT_SSH_COMMAND) && TeamCityProperties.getBooleanOrTrue(USE_SSH_COMMAND_ENV_INTERNAL_PROPERTY);
-      cmd.addEnvParam(shouldUseSshCommandEnv ? GitSSHHandler.GIT_SSH_COMMAND_ENV : GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath());
+
+      boolean shouldUseSshCommandEnv = !ctx.getGitVersion().isLessThan(MIN_GIT_SSH_COMMAND) && ctx.getBooleanInternalProperty(USE_SSH_COMMAND_ENV_INTERNAL_PROPERTY, true);
+      String path = ssh.getScriptPath();
+      if (SystemInfo.isWindows && shouldUseSshCommandEnv) {
+        // replace the backslashes because they don't work with GIT_SSH_COMMAND env param on windows(but they work with GIT_SSH)
+        path = path.replaceAll("\\\\", "/");
+      }
+      cmd.addEnvParam(shouldUseSshCommandEnv ? GitSSHHandler.GIT_SSH_COMMAND_ENV : GitSSHHandler.GIT_SSH_ENV, path);
       // ask git to treat our command as OpenSSH compatible:
       cmd.addEnvParam(GitSSHHandler.GIT_SSH_VARIANT_ENV, "ssh");
     } catch (IOException e) {

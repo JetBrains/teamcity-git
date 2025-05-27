@@ -13,6 +13,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
@@ -188,5 +189,15 @@ public class BuildContext implements Context {
   @Override
   public Collection<String> getCustomRecoverableMessages() {
     return myConfig.getCustomRecoverableMessages();
+  }
+
+  @Nullable
+  @Override
+  public String getInternalProperty(@NotNull String key) {
+    String value = TeamCityProperties.getPropertyOrNull(key);
+    if (value != null) {
+      return value;
+    }
+    return myBuild.getSharedConfigParameters().get(key);
   }
 }
