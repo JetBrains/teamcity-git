@@ -177,6 +177,19 @@ public class UpdaterWithMirror extends UpdaterImpl {
   }
 
   @Nullable
+  /**
+   * The method extracts the following properties either from the agent properties or from the build parameters:
+   *   teamcity.internal.git.fetchFromScratch.N.repo - must contain a substring of a repo URL
+   *   teamcity.internal.git.fetchFromScratch.N.mode - an alternative behaviour mode.
+   *
+   *   The mode may have one of the four possible values:
+   *     disable - disable the agent, fail the build;
+   *     terminate - terminate the agent - applies to cloud agents only, fail the build in any case;
+   *     fail - fail the build, keep the agent functional;
+   *     auto - terminate in case of a cloud agent, otherwise disable it, fail the build in any case.
+   *
+   *   Build parameters have a priority over agent properties.
+   */
   private String getAgentTerminationMode(@NotNull final String repoURL) {
     final Map<String, String> properties = TeamCityProperties.getPropertiesWithPrefix(PROP_PREFIX_AGENT_TERMINATION_MODE);
     for(Map.Entry<String, String> e : myBuild.getSharedConfigParameters().entrySet()) {
@@ -184,23 +197,26 @@ public class UpdaterWithMirror extends UpdaterImpl {
         properties.put(e.getKey(), e.getValue());
       }
     }
+    if (properties.isEmpty())
+      return null;
     final String repoURLLowerCase = repoURL.toLowerCase();
+    LOG.debug("Matching " + repoURLLowerCase + " to non-default agent termination mode properties: " + properties);
     for (Map.Entry<String, String> entry: properties.entrySet()) {
+      String key = entry.getKey();
+      if (StringUtil.isEmpty(key) || !key.endsWith(".repo"))
+        continue;
       String v = entry.getValue();
       if (v == null)
         continue;
       v = v.toLowerCase();
       if (repoURLLowerCase.contains(v)) {
-        String key = entry.getKey();
-        if (StringUtil.isEmpty(key))
+        LOG.debug("URL match found: " + entry);
+        String propIdAndName = key.substring(PROP_PREFIX_AGENT_TERMINATION_MODE.length());
+        String propId = propIdAndName.substring(0, propIdAndName.lastIndexOf('.'));
+        if (StringUtil.isEmpty(propId)) {
+          LOG.debug("Wrong property name format " + key);
           continue;
-        String[] propIdAndName = key.substring(PROP_PREFIX_AGENT_TERMINATION_MODE.length()).split("\\.");
-        if (propIdAndName.length != 2)
-          continue;
-        String propId = propIdAndName[0];
-        String propName = propIdAndName[1];
-        if (StringUtil.isEmpty(propId) || StringUtil.isEmpty(propName) || !"repo".equals(propName))
-          continue;
+        }
         return properties.get(PROP_PREFIX_AGENT_TERMINATION_MODE + propId + ".mode");
       }
     }
