@@ -78,4 +78,16 @@ public interface Context {
 
   @NotNull
   Collection<String> getCustomRecoverableMessages();
+
+  /**
+   * @return internal property or null if it is absent.
+   * On agent tries to get a property from the agent properties. If it's absent, then tries to get it from build parameters
+   */
+  @Nullable
+  String getInternalProperty(@NotNull String key);
+
+  default boolean getBooleanInternalProperty(@NotNull String key, boolean defaultValue) {
+    String value = getInternalProperty(key);
+    return value == null ? defaultValue : Boolean.parseBoolean(value);
+  }
 }

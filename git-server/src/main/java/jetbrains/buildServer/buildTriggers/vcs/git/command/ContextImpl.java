@@ -134,7 +134,7 @@ public class ContextImpl implements Context {
   @Override
   public String getSshRequestToken() {
     if (myRoot == null) return null;
-    if (TeamCityProperties.getBoolean("teamcity.git.sendSshSendEnvRequestToken")) {
+    if (TeamCityProperties.getBooleanOrTrue("teamcity.git.sendSshSendEnvRequestToken")) {
       final String token = myRoot.getProperty("sshSendEnvRequestToken");
       if (token == null) return null;
       return token.contains("%") ? null : token;
@@ -210,5 +210,11 @@ public class ContextImpl implements Context {
   @Override
   public Collection<String> getCustomRecoverableMessages() {
     return myConfig.getCustomRecoverableMessages();
+  }
+
+  @Nullable
+  @Override
+  public String getInternalProperty(@NotNull String key) {
+    return TeamCityProperties.getPropertyOrNull(key);
   }
 }

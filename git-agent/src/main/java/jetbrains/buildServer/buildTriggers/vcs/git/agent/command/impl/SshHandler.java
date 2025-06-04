@@ -2,6 +2,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.agent.command.impl;
 
+import com.intellij.openapi.util.SystemInfo;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Properties;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthenticationMethod;
+import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentGitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -30,6 +32,11 @@ import org.jetbrains.git4idea.ssh.GitSSHService;
  * SSH handler implementation
  */
 public class SshHandler implements GitSSHService.Handler {
+
+  private static final String USE_SSH_COMMAND_ENV_INTERNAL_PROPERTY = "teamcity.internal.git.ssh.useSshCommandEnv";
+  private static final GitVersion MIN_GIT_SSH_COMMAND = new GitVersion(2, 3, 0); //GIT_SSH_COMMAND was introduced in git 2.3.0
+
+
   /**
    * SSH service
    */
@@ -119,7 +126,14 @@ public class SshHandler implements GitSSHService.Handler {
     }
 
     try {
-      cmd.addEnvParam(GitSSHHandler.GIT_SSH_ENV, ssh.getScriptPath());
+
+      boolean shouldUseSshCommandEnv = !ctx.getGitVersion().isLessThan(MIN_GIT_SSH_COMMAND) && ctx.getBooleanInternalProperty(USE_SSH_COMMAND_ENV_INTERNAL_PROPERTY, true);
+      String path = ssh.getScriptPath();
+      if (SystemInfo.isWindows && shouldUseSshCommandEnv) {
+        // replace the backslashes because they don't work with GIT_SSH_COMMAND env param on windows(but they work with GIT_SSH)
+        path = path.replaceAll("\\\\", "/");
+      }
+      cmd.addEnvParam(shouldUseSshCommandEnv ? GitSSHHandler.GIT_SSH_COMMAND_ENV : GitSSHHandler.GIT_SSH_ENV, path);
       // ask git to treat our command as OpenSSH compatible:
       cmd.addEnvParam(GitSSHHandler.GIT_SSH_VARIANT_ENV, "ssh");
     } catch (IOException e) {
