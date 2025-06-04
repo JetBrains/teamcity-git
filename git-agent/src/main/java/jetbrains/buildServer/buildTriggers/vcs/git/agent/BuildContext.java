@@ -9,11 +9,13 @@ import java.util.*;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildInterruptReason;
 import jetbrains.buildServer.agent.ssh.AgentSshKnownHostsContext;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.ssh.ServerSshKnownHostsContext;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
@@ -72,12 +74,12 @@ public class BuildContext implements Context {
 
   @Override
   public boolean sshIgnoreKnownHosts() {
-    return getSshKnownHosts() == null;
+    return mySshKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE);
   }
 
   @Nullable
   @Override
-  public String getSshKnownHosts() {
+  public String getSshKnownHosts(AuthSettings settings) {
     return mySshKnownHostsManager.getKnownHosts(new AgentSshKnownHostsContext(myBuild));
   }
 

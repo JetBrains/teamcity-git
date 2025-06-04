@@ -90,8 +90,7 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
   private ResetCacheRegister myResetCacheManager;
   private ServerPaths myServerPaths;
   private Mockery myContext;
-  private SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl();
-
+  private SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl(null);
   @BeforeMethod
   public void setUp() throws Exception {
     super.setUp();

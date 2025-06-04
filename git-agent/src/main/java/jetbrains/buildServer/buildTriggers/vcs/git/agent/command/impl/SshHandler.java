@@ -63,7 +63,7 @@ public class SshHandler implements GitSSHService.Handler {
     if (myAuthSettings.isIgnoreKnownHosts() && ctx.sshIgnoreKnownHosts()) {
       cmd.addEnvParam(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV, "true");
     } else {
-      String knownHostsFromParam = ctx.getSshKnownHosts();
+      String knownHostsFromParam = ctx.getSshKnownHosts(authSettings);
       if (knownHostsFromParam != null) {
         try {
           File knownHostsFile = FileUtil.createTempFile(ctx.getTempDir(), "known_hosts", "", true);

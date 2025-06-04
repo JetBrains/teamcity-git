@@ -6,7 +6,6 @@
         <webroots>
           <root url="file://$MODULE_DIR$/resources/buildServerResources" relative="/plugins/jetbrains.git" />
         </webroots>
-        <sourceRoots />
       </configuration>
     </facet>
     <facet type="Spring" name="Spring">
@@ -38,5 +37,6 @@
     <orderEntry type="module" module-name="web-openapi" />
     <orderEntry type="module" module-name="oauth-integration" />
     <orderEntry type="module" module-name="migration" />
+    <orderEntry type="module" module-name="vcs-hostings-plugin-api" />
   </component>
 </module>

@@ -44,7 +44,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.data
 @Test
 public class SshAuthenticationTest extends BaseGitTestCase {
   protected TempFiles myTempFiles;
-  private final SshKnownHostsManager mySshKnownHostsManager = new ServerSshKnownHostsManagerImpl();
+  private final SshKnownHostsManager mySshKnownHostsManager = new ServerSshKnownHostsManagerImpl(null);
 
   @BeforeMethod
   public void setUp() throws Exception {

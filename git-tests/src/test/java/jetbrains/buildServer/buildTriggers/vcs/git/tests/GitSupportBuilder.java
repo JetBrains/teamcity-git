@@ -53,7 +53,7 @@ public class GitSupportBuilder {
   private final List<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
   private VcsRootSshKeyManager myVcsRootSSHKeyManager = new EmptyVcsRootSshKeyManager();
   private GitRepoOperations myGitRepoOperations;
-  private SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl();
+  private SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl(null);
 
   public static GitSupportBuilder gitSupport() {
     return new GitSupportBuilder();

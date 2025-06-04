@@ -69,7 +69,7 @@ public class Fetcher {
       gcListener.startListen();
       exec.scheduleAtFixedRate(new Monitoring(threadDumpFilePath, gitOutput), 10, 10, TimeUnit.SECONDS);
 
-      SshKnownHostsManager knownHostsManager = new ServerSshKnownHostsManagerImpl();
+      SshKnownHostsManager knownHostsManager = new ServerSshKnownHostsManagerImpl(null);
       fetch(new File(repositoryPath), properties, progress, knownHostsManager, debug);
 
       if (System.currentTimeMillis() - start <= new PluginConfigImpl().getMonitoringFileThresholdMillis()) {

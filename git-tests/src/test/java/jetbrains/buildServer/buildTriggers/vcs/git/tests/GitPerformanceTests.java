@@ -53,7 +53,7 @@ public class GitPerformanceTests extends BaseTestCase {
         public TeamCitySshKey getKey(@NotNull VcsRoot root) {
           return null;
         }
-      }, null, new ServerSshKnownHostsManagerImpl()));
+      }, null, new ServerSshKnownHostsManagerImpl(null)));
     GitVcsSupport support = builder.build();
 
     final RepositoryStateData currentState = support.getCurrentState(root);

@@ -3,15 +3,15 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command;
 import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.ServerSshKnownHostsContext;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcshostings.url.ServerURI;
+import jetbrains.buildServer.vcshostings.url.ServerURIParser;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -65,12 +65,18 @@ public class ContextImpl implements Context {
 
   @Override
   public boolean sshIgnoreKnownHosts() {
-    return getSshKnownHosts() == null;
+    return !myKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE);
   }
 
   @Nullable
   @Override
-  public String getSshKnownHosts() {
+  public String getSshKnownHosts(AuthSettings settings) {
+    VcsRoot root = Objects.requireNonNull(settings.getRoot());
+    String fetchUrl = Objects.requireNonNull(root.getProperty(Constants.FETCH_URL));
+    ServerURI serverURI = ServerURIParser.createServerURI(fetchUrl);
+    String portString = serverURI.getPort();
+    int port = portString != null ? Integer.parseInt(portString) : 0;
+    myKnownHostsManager.updateKnownHosts(ServerSshKnownHostsContext.INSTANCE, serverURI.getHost(), port);
     return myKnownHostsManager.getKnownHosts(ServerSshKnownHostsContext.INSTANCE);
   }
 

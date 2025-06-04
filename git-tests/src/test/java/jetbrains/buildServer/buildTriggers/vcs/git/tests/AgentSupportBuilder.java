@@ -79,7 +79,7 @@ class AgentSupportBuilder {
     return new GitAgentVcsSupport(myFS, new MockDirectoryCleaner(), myGitAgentSSHService,
                                   myPluginConfigFactory, myMirrorManager, new SubmoduleManagerImpl(myMirrorManager), myGitMetaFactory,
                                   EventDispatcher.create(AgentLifeCycleListener.class), new AgentTokenStorage(EventDispatcher.create(AgentLifeCycleListener.class), tokenRetriever),
-                                  new ServerSshKnownHostsManagerImpl());
+                                  new ServerSshKnownHostsManagerImpl(null));
   }
 
 
