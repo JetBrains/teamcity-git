@@ -15,7 +15,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
-import jetbrains.buildServer.ssh.ServerSshKnownHostsContext;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
@@ -74,7 +73,7 @@ public class BuildContext implements Context {
 
   @Override
   public boolean sshIgnoreKnownHosts() {
-    return mySshKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE);
+    return mySshKnownHostsManager.isKnownHostsEnabled(new AgentSshKnownHostsContext(myBuild));
   }
 
   @Nullable

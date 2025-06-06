@@ -479,7 +479,7 @@ public class SshAuthenticationTest extends BaseGitTestCase {
       final GitRepoOperationsImpl repoOperations = new GitRepoOperationsImpl(config, transportFactory, keyManager,
                                                                              new FetchCommandImpl(config, transportFactory,
                                                                                                   new FetcherProperties(config),
-                                                                                                  keyManager), mySshKnownHostsManager);
+                                                                                                  keyManager, mySshKnownHostsManager), mySshKnownHostsManager);
       final MirrorManagerImpl mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
       final RepositoryManagerImpl repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
       final String repoUrl = String.format(urlFormat, container.getContainerIpAddress(), container.getMappedPort(22));

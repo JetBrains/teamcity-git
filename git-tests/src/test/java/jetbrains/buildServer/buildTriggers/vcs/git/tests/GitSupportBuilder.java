@@ -153,7 +153,7 @@ public class GitSupportBuilder {
     if (isNativeGitEnabled()) {
       return new NativeGitCommands(myPluginConfig, () -> new GitExec("git", new GitVersion(2, 34, 0)), myVcsRootSSHKeyManager, null, myKnownHostsManager);
     } else {
-      return new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), myVcsRootSSHKeyManager);
+      return new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), myVcsRootSSHKeyManager, myKnownHostsManager);
     }
   }
 

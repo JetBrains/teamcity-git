@@ -87,6 +87,9 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     try {
       checkUrl(url);
       URIish preparedURI = prepareURI(url);
+      if (preparedURI.getScheme().equals("ssh")) {
+        myKnownHostsManager.updateKnownHosts(ServerSshKnownHostsContext.INSTANCE, preparedURI.getHost(), preparedURI.getPort());
+      }
       final Transport t = Transport.open(r, preparedURI);
       t.setCredentialsProvider(new AuthCredentialsProvider(authSettings));
       if (t instanceof SshTransport) {

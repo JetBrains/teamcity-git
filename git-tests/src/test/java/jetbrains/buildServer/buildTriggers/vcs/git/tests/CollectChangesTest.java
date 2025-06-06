@@ -724,7 +724,7 @@ public class CollectChangesTest extends BaseRemoteRepositoryTest {
     final ServerPluginConfig config = myConfig.build();
     final VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
     final String[] fetchExpected = {"refs/heads/b1;refs/heads/b3;refs/heads/b4;refs/heads/master", "refs/heads/master", "refs/heads/b1;refs/heads/b3;refs/heads/b4"};
-    final FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager, myKnownHostsManager), new FetcherProperties(config), manager) {
+    final FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager, myKnownHostsManager), new FetcherProperties(config), manager, myKnownHostsManager) {
       final AtomicInteger fetchHappened = new AtomicInteger(0);
       @Override
       public void fetch(@NotNull Repository db, @NotNull URIish fetchURI, @NotNull FetchSettings settings) throws IOException, VcsException {

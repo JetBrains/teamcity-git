@@ -41,7 +41,7 @@ public class GitPatchProcess {
     SshKnownHostsManager knownHostsManager = new ServerSshKnownHostsManagerImpl(null);
     TransportFactory transportFactory = new TransportFactoryImpl(config, sshKeyManager, settings.getGitTrustStoreProvider(), knownHostsManager);
     FetcherProperties fetcherProperties = new FetcherProperties(config);
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, fetcherProperties, sshKeyManager, settings.getGitTrustStoreProvider());
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, fetcherProperties, sshKeyManager, settings.getGitTrustStoreProvider(), new ServerSshKnownHostsManagerImpl(null));
     GitRepoOperations repoOperations = new GitRepoOperationsImpl(config, transportFactory, sshKeyManager, fetchCommand, knownHostsManager);
     CommitLoader commitLoader = new CommitLoaderImpl(repositoryManager, repoOperations, mapFullPath, config, new FetchSettingsFactoryImpl());
 
