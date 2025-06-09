@@ -229,7 +229,7 @@
     <tr id="gitTeamCityKeyRow" class="auth uploadedKey">
       <th><label for="teamcitySshKey">Uploaded Key: <l:star/></label></th>
       <td>
-        <admin:sshKeys projectId="${projectId}" keySelectionCallback="uploadedKeySelected"/>
+        <admin:sshKeys projectId="${projectId}" keySelectionCallback="uploadedKeySelected" readOnly="${readOnly}"/>
         <span class="error" id="error_teamcitySshKey"></span>
       </td>
     </tr>
