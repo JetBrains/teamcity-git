@@ -20,6 +20,9 @@ import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
+import jetbrains.buildServer.vcshostings.url.InvalidUriException;
+import jetbrains.buildServer.vcshostings.url.ServerURI;
+import jetbrains.buildServer.vcshostings.url.ServerURIParser;
 import jetbrains.buildServer.version.ServerVersionHolder;
 import jetbrains.buildServer.version.ServerVersionInfo;
 import org.eclipse.jgit.errors.NotSupportedException;
@@ -87,9 +90,17 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     try {
       checkUrl(url);
       URIish preparedURI = prepareURI(url);
-      if (preparedURI.getScheme().equals("ssh")) {
-        myKnownHostsManager.updateKnownHosts(ServerSshKnownHostsContext.INSTANCE, preparedURI.getHost(), preparedURI.getPort());
+      if (myKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE)) {
+        try {
+          ServerURI serverURI = ServerURIParser.createServerURI(preparedURI.toString());
+          if (serverURI.getScheme().equals("ssh")) {
+            myKnownHostsManager.updateKnownHosts(ServerSshKnownHostsContext.INSTANCE, preparedURI.getHost(), preparedURI.getPort());
+          }
+        } catch (InvalidUriException e) {
+          LOG.warn("Failed to update known hosts for " + preparedURI, e);
+        }
       }
+
       final Transport t = Transport.open(r, preparedURI);
       t.setCredentialsProvider(new AuthCredentialsProvider(authSettings));
       if (t instanceof SshTransport) {
