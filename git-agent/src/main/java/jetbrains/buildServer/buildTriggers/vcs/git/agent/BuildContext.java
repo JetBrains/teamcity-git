@@ -72,14 +72,18 @@ public class BuildContext implements Context {
   }
 
   @Override
-  public boolean sshIgnoreKnownHosts() {
+  public boolean knownHostsEnabled() {
     return mySshKnownHostsManager.isKnownHostsEnabled(new AgentSshKnownHostsContext(myBuild));
   }
 
+  /**
+   * @return known hosts if they are enabled, otherwise returns null
+   */
   @Nullable
   @Override
   public String getSshKnownHosts(AuthSettings settings) {
-    return mySshKnownHostsManager.getKnownHosts(new AgentSshKnownHostsContext(myBuild));
+    AgentSshKnownHostsContext sshKnownHostsContext = new AgentSshKnownHostsContext(myBuild);
+    return mySshKnownHostsManager.isKnownHostsEnabled(sshKnownHostsContext) ? mySshKnownHostsManager.getKnownHosts(sshKnownHostsContext) : null;
   }
 
   @Override

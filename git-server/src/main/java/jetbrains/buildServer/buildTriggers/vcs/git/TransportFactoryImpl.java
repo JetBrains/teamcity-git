@@ -4,6 +4,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.SystemInfo;
+import com.intellij.openapi.util.text.StringUtil;
 import com.jcraft.jsch.Cipher;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -210,7 +211,7 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     protected void configure(OpenSshConfig.Host hc, Session session) {
       configureClientVersion(session);
       session.setProxy(myConfig.getJschProxy());//null proxy is allowed
-      if (myAuthSettings.isIgnoreKnownHosts() && myKnownHostsManager.getKnownHosts(ServerSshKnownHostsContext.INSTANCE) == null) {
+      if (myAuthSettings.isIgnoreKnownHosts() && !myKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE)) {
         session.setConfig("StrictHostKeyChecking", "no");
       }
       if (!myConfig.alwaysCheckCiphers()) {
@@ -236,8 +237,11 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     }
 
     protected void configureKnownHosts(JSch jSch) throws JSchException{
+      if (!myKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE)) {
+        return;
+      }
       String sshKnownHostsFromParam = myKnownHostsManager.getKnownHosts(ServerSshKnownHostsContext.INSTANCE);
-      if (sshKnownHostsFromParam != null) {
+      if (!StringUtil.isEmptyOrSpaces(sshKnownHostsFromParam)) {
         File knownHostsFile;
         try {
           knownHostsFile = FileUtil.createTempFile("known_hosts", "");
@@ -312,7 +316,7 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     @Override
     protected void configure(OpenSshConfig.Host hc, Session session) {
       super.configure(hc, session);
-      if (myKnownHostsManager.getKnownHosts(ServerSshKnownHostsContext.INSTANCE) == null) {
+      if (!myKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE)) {
         session.setConfig("StrictHostKeyChecking", "no");
       }
       SshPubkeyAcceptedAlgorithms.configureSession(session);
@@ -379,7 +383,7 @@ public class TransportFactoryImpl implements TransportFactory, SshSessionMetaFac
     @Override
     protected void configure(OpenSshConfig.Host hc, Session session) {
       super.configure(hc, session);
-      if (myKnownHostsManager.getKnownHosts(ServerSshKnownHostsContext.INSTANCE) == null) {
+      if (!myKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE)) {
         session.setConfig("StrictHostKeyChecking", "no");
       }
       SshPubkeyAcceptedAlgorithms.configureSession(session);

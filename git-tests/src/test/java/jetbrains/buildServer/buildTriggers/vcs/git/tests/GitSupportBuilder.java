@@ -16,6 +16,7 @@ import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.crypt.BaseEncryptionStrategy;
 import jetbrains.buildServer.serverSide.crypt.EncryptionManager;
 import jetbrains.buildServer.serverSide.crypt.EncryptionSettings;
+import jetbrains.buildServer.serverSide.impl.ssh.ConstantServerSshKnownHostsManager;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.serverSide.oauth.OAuthToken;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
@@ -53,7 +54,7 @@ public class GitSupportBuilder {
   private final List<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
   private VcsRootSshKeyManager myVcsRootSSHKeyManager = new EmptyVcsRootSshKeyManager();
   private GitRepoOperations myGitRepoOperations;
-  private SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl(null);
+  private final SshKnownHostsManager myKnownHostsManager = new ConstantServerSshKnownHostsManager();
 
   public static GitSupportBuilder gitSupport() {
     return new GitSupportBuilder();

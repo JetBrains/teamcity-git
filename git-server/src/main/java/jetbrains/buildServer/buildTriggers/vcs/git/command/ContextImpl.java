@@ -64,13 +64,16 @@ public class ContextImpl implements Context {
   }
 
   @Override
-  public boolean sshIgnoreKnownHosts() {
-    return !myKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE);
+  public boolean knownHostsEnabled() {
+    return myKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE);
   }
 
   @Nullable
   @Override
   public String getSshKnownHosts(AuthSettings settings) {
+    if (!myKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE)) {
+      return null;
+    }
     VcsRoot root = Objects.requireNonNull(settings.getRoot());
     String fetchUrl = Objects.requireNonNull(root.getProperty(Constants.FETCH_URL));
     ServerURI serverURI = ServerURIParser.createServerURI(fetchUrl);

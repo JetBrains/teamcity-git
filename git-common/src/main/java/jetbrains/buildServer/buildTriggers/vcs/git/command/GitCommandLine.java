@@ -301,7 +301,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private boolean isIgnoreKnownHosts(@NotNull AuthSettings authSettings) {
     // see TW-74389
     final AuthenticationMethod authMethod = authSettings.getAuthMethod();
-    return myCtx.sshIgnoreKnownHosts() && (authSettings.isIgnoreKnownHosts() ||
+    return !myCtx.knownHostsEnabled() && (authSettings.isIgnoreKnownHosts() || // if known hosts feature is enabled we shouldn't ignore them
            authMethod == AuthenticationMethod.TEAMCITY_SSH_KEY ||
            authMethod == AuthenticationMethod.PRIVATE_KEY_FILE);
   }

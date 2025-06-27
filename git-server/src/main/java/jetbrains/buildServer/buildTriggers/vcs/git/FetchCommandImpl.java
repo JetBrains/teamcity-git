@@ -370,6 +370,10 @@ public class FetchCommandImpl implements FetchCommand {
       if (trustedCertificatesDir != null) {
         properties.put(Constants.GIT_TRUST_STORE_PROVIDER, trustedCertificatesDir.getAbsolutePath());
       }
+      if (mySshKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE)) {
+        properties.put(SshKnownHostsManager.SSH_KNOWN_HOSTS_ENABLED_PARAM_NAME, Boolean.TRUE.toString());
+        properties.put(SshKnownHostsManager.SSH_KNOWN_HOSTS_PARAM_NAME, mySshKnownHostsManager.getKnownHosts(ServerSshKnownHostsContext.INSTANCE));
+      }
       return VcsUtil.propertiesToStringSecure(properties).getBytes(StandardCharsets.UTF_8);
     } catch (IOException e) {
       throw new VcsException("Error while generating fetch process input: " + e.getMessage(), e);

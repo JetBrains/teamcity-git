@@ -19,6 +19,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseGitTestCase;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.impl.ssh.ConstantServerSshKnownHostsManager;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
@@ -44,7 +45,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.data
 @Test
 public class SshAuthenticationTest extends BaseGitTestCase {
   protected TempFiles myTempFiles;
-  private final SshKnownHostsManager mySshKnownHostsManager = new ServerSshKnownHostsManagerImpl(null);
+  private final SshKnownHostsManager mySshKnownHostsManager = new ConstantServerSshKnownHostsManager();
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -432,6 +433,7 @@ public class SshAuthenticationTest extends BaseGitTestCase {
 
   @Test(dataProvider = "true,false")
   public void ssh_known_hosts_set_via_internal_property(boolean nativeOperationsEnabled) throws Exception {
+    // on the server we retrieve known hosts list from the custom data storage, but ConstantServerSshKnownHostsManager works with internal properties. Interface is the same
     setInternalProperty(SshKnownHostsManager.SSH_KNOWN_HOSTS_PARAM_NAME + ".1", "localhost " + FileUtil.readText(dataFile("keys/docker_key.pub")));
     final File key = dataFile("keys/id_rsa");
     do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", Files.readAllBytes(key.toPath()), false), "keys/id_rsa.pub",

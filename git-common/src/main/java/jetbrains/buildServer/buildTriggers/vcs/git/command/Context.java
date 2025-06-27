@@ -28,7 +28,7 @@ public interface Context {
 
   boolean isCleanCredHelperScript();
 
-  boolean sshIgnoreKnownHosts();
+  boolean knownHostsEnabled();
 
   @Nullable
   String getSshKnownHosts(AuthSettings settings);

@@ -67,8 +67,8 @@ public class StubContext implements Context {
   }
 
   @Override
-  public boolean sshIgnoreKnownHosts() {
-    return true;
+  public boolean knownHostsEnabled() {
+    return false;
   }
 
   @Nullable
