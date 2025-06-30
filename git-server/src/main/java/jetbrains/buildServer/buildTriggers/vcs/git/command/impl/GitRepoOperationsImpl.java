@@ -192,6 +192,11 @@ public class GitRepoOperationsImpl implements GitRepoOperations {
   }
 
   @Override
+  public FsckCommandServer fsckCommand() {
+    return (FsckCommandServer)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Fsck command is available only for native git"));
+  }
+
+  @Override
   @NotNull
   public ChangedPathsCommand changedPathsCommand() {
     return (ChangedPathsCommand)getNativeGitCommandOptional().orElseThrow(() -> new RuntimeException("Diff command is available only for native git"));

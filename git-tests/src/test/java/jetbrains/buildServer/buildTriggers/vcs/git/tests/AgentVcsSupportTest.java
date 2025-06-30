@@ -996,6 +996,25 @@ public class AgentVcsSupportTest extends BaseSimpleGitTestCase {
     then(showRefResult.isFailed()).isFalse();
   }
 
+  @Test
+  public void fsck_simple_reference_currupting_test() throws Exception{
+    final File repo = new File(getTempDirectory(), "repo.git");
+    FileUtil.delete(repo);
+    copyDir(dataFile("repo.git"), repo);
+    AgentGitFacade facade = new AgentGitFacadeImpl(getGitPath(), repo);
+    int fsckResult0 = facade.fsck().call();
+    assertEquals(0, fsckResult0);
+
+    //corrupting reference
+    FileUtil.rename(new File(repo, "objects/0a/f9903a9ccc46e21a1e4ed4eb44e4b5819382d4"), new File(repo, "objects/0a/f9903a9ccc46e21a1e4ed4eb44e4b5819382d45"));
+
+    int fsckResult2 = facade.fsck().call();
+    assertEquals(2, fsckResult2);
+
+    int fsckCOResult2 = facade.fsck().setConnectivityOnly().call();
+    assertEquals(2, fsckCOResult2);
+  }
+
   @NotNull
   private static String readText(@NotNull File f) throws IOException {
     return f.isFile() ? FileUtil.readText(f) : "";

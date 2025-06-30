@@ -68,6 +68,10 @@ public class GitFacadeImpl implements GitFacade {
     return new CommitCommandImpl(createCommandLine());
   }
 
+  public FsckCommand fsck() {
+    return new FsckCommandImpl(createCommandLine());
+  }
+
   @NotNull
   @Override
   public RemoteCommand remote() {
