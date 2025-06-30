@@ -37,7 +37,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.command.ssl.SslOperati
 
 //see native-git-testng.xml suite for tests examples
 public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCommand, TagCommand, StatusCommandServer, InitCommandServer, LocalCommitCommandServer, ConfigCommand,
-                                          AddCommandServer, RepackCommandServer, ChangedPathsCommand {
+                                          AddCommandServer, RepackCommandServer, ChangedPathsCommand, FsckCommandServer {
 
   private static final Logger PERFORMANCE_LOG = Logger.getInstance(NativeGitCommands.class.getName() + ".Performance");
   private static final GitVersion GIT_WITH_PROGRESS_VERSION = new GitVersion(1, 7, 1, 0);
@@ -360,6 +360,17 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                  .setAuthor(commitSettings.getUserName());
       addCommand.call();
       return null;
+    }, gitFacade);
+  }
+
+  @Override
+  public int fsck(@NotNull String repositoryPath) throws VcsException {
+    final Context ctx = new ContextImpl(null, myConfig, myGitDetector.detectGit(), myKnownHostsManager);
+    final GitFacadeImpl gitFacade = new GitFacadeImpl(new File(repositoryPath), ctx);
+
+    return executeCommand(ctx, "fsck", "git fsck for repository: " + repositoryPath, () -> {
+      final FsckCommand fsckCommand = gitFacade.fsck();
+      return fsckCommand.call();
     }, gitFacade);
   }
 

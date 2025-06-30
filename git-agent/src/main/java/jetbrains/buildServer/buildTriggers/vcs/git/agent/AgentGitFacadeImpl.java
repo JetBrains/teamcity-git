@@ -177,6 +177,12 @@ public class AgentGitFacadeImpl extends GitFacadeImpl implements AgentGitFacade 
   }
 
   @NotNull
+  @Override
+  public FsckCommand fsck() {
+    return new FsckCommandImpl(createCommandLine());
+  }
+
+  @NotNull
   public Branches listBranches(boolean all) throws VcsException {
     GitCommandLine cmd = createCommandLine();
     cmd.addParameter("branch");
