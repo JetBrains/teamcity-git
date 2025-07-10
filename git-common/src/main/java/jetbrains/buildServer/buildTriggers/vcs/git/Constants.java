@@ -112,6 +112,7 @@ public interface Constants {
   String USE_DEPRECATED_GIT_BRANCH_PARAMETERS_INTERNAL_PROP = "teamcity.git.deprecatedGitBranchParameters.enabled";
 
   String IGNORE_SUBMODULE_ERRORS = "teamcity.git.changesCollection.ignoreSubmoduleErrors";
+  String COLLECT_BROKEN_SUBMODULES_INFO = "teamcity.git.changesCollection.collectBrokenSubmodulesInfo";
 
   String RECORD_SEPARATOR = new String(new char[]{30});
 

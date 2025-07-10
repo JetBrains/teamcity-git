@@ -129,7 +129,7 @@ class ModificationDataRevWalk extends LimitingRevWalk {
       this.currentVersion = currentVersion;
       this.parentVersion = parentVersion;
       // TODO currently we don't use missingSubmoduleCommitInfo, but later it should be stored in attributes(the format is to be defined) and display the information in the ui. See TW-91296
-      missingSubmoduleCommitInfo = TeamCityProperties.getBoolean(Constants.IGNORE_SUBMODULE_ERRORS) ? new MissingSubmoduleCommitInfo() : null;
+      missingSubmoduleCommitInfo = TeamCityProperties.getBoolean(Constants.COLLECT_BROKEN_SUBMODULES_INFO) ? new MissingSubmoduleCommitInfo() : null;
     }
 
     @NotNull

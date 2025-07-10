@@ -192,7 +192,7 @@ public abstract class SubmoduleAwareTreeIterator extends AbstractTreeIterator {
           myIsOnSubmodule = false;
           mySubmoduleError = true;
           mode = wrappedMode;
-          if (myMissingSubmoduleCommitInfo != null && TeamCityProperties.getBoolean(jetbrains.buildServer.buildTriggers.vcs.git.Constants.IGNORE_SUBMODULE_ERRORS)) {
+          if (myMissingSubmoduleCommitInfo != null && TeamCityProperties.getBoolean(jetbrains.buildServer.buildTriggers.vcs.git.Constants.COLLECT_BROKEN_SUBMODULES_INFO)) {
             myMissingSubmoduleCommitInfo.addMissingSubmoduleCommit(ObjectId.toString(myWrappedIterator.getEntryObjectId()), myWrappedIterator.getEntryPathString());
           }
         } else {

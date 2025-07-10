@@ -34,7 +34,7 @@ public enum SubmodulesCheckoutPolicy {
   }
 
   public boolean isIgnoreSubmodulesErrors() {
-    return myIgnoreSubmodulesErrors || TeamCityProperties.getBoolean(Constants.IGNORE_SUBMODULE_ERRORS);
+    return myIgnoreSubmodulesErrors || TeamCityProperties.getBooleanOrTrue(Constants.IGNORE_SUBMODULE_ERRORS);
   }
 
   public static SubmodulesCheckoutPolicy getPolicyWithErrorsIgnored(SubmodulesCheckoutPolicy originalPolicy, boolean ignoreSubmodulesErrors) {
