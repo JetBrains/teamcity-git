@@ -49,8 +49,8 @@
     </dependency>
 
     <dependency>
-      <groupId>org.eclipse.jgit</groupId>
-      <artifactId>org.eclipse.jgit</artifactId>
+      <groupId>org.jetbrains.teamcity</groupId>
+      <artifactId>tcgit</artifactId>
       <version>${jgit.version}</version>
     </dependency>
 

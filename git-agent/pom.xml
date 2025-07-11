@@ -68,8 +68,8 @@
     </dependency>
 
     <dependency>
-      <groupId>org.eclipse.jgit</groupId>
-      <artifactId>org.eclipse.jgit.ssh.jsch</artifactId>
+      <groupId>org.jetbrains.teamcity</groupId>
+      <artifactId>tcgit.ssh.jsch</artifactId>
       <version>${jgit.version}</version>
       <exclusions>
         <exclusion>
@@ -80,8 +80,8 @@
     </dependency>
 
     <dependency>
-      <groupId>org.eclipse.jgit</groupId>
-      <artifactId>org.eclipse.jgit.http.apache</artifactId>
+      <groupId>org.jetbrains.teamcity</groupId>
+      <artifactId>tcgit.http.apache</artifactId>
       <version>${jgit.version}</version>
     </dependency>
 
