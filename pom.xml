@@ -24,7 +24,7 @@
     <TC_LOCAL_REPO>local-repo</TC_LOCAL_REPO>
     <maven.compiler.source>8</maven.compiler.source>
     <maven.compiler.target>8</maven.compiler.target>
-    <jgit.version>5.10.0.202012080955-r-teamcity-2</jgit.version>
+    <jgit.version>5.10.0.202012080955-r-teamcity-3</jgit.version>
   </properties>
 
   <modules>
