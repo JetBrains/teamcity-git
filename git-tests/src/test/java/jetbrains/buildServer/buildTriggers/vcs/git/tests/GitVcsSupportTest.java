@@ -264,6 +264,7 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
   @TestFor(issues = "TW-13127")
   @Test
   public void testCollectBuildChangesWithBrokenSubmoduleOnLastCommit() throws Exception {
+    setInternalProperty("teamcity.git.changesCollection.ignoreSubmoduleErrors", "false");
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("wrong-submodule", true);
     try {
@@ -334,6 +335,7 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
 
   @Test
   public void should_throw_descriptive_error_when_referenced_commit_not_found() throws Exception {
+    setInternalProperty("teamcity.git.changesCollection.ignoreSubmoduleErrors", "false");
     GitVcsSupport support = getSupport();
     VcsRoot root = getRoot("reference-wrong-commit", true);
     try {
