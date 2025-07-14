@@ -12,6 +12,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.impl.ssh.ConstantServerSshKnownHostsManager;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -53,7 +54,7 @@ public class GitPerformanceTests extends BaseTestCase {
         public TeamCitySshKey getKey(@NotNull VcsRoot root) {
           return null;
         }
-      }, null, new ServerSshKnownHostsManagerImpl()));
+      }, null, new ConstantServerSshKnownHostsManager()));
     GitVcsSupport support = builder.build();
 
     final RepositoryStateData currentState = support.getCurrentState(root);

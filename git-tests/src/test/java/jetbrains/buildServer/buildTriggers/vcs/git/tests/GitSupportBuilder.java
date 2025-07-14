@@ -16,6 +16,7 @@ import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.crypt.BaseEncryptionStrategy;
 import jetbrains.buildServer.serverSide.crypt.EncryptionManager;
 import jetbrains.buildServer.serverSide.crypt.EncryptionSettings;
+import jetbrains.buildServer.serverSide.impl.ssh.ConstantServerSshKnownHostsManager;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.serverSide.oauth.OAuthToken;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
@@ -53,7 +54,7 @@ public class GitSupportBuilder {
   private final List<GitServerExtension> myExtensions = new ArrayList<GitServerExtension>();
   private VcsRootSshKeyManager myVcsRootSSHKeyManager = new EmptyVcsRootSshKeyManager();
   private GitRepoOperations myGitRepoOperations;
-  private SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl();
+  private final SshKnownHostsManager myKnownHostsManager = new ConstantServerSshKnownHostsManager();
 
   public static GitSupportBuilder gitSupport() {
     return new GitSupportBuilder();
@@ -153,7 +154,7 @@ public class GitSupportBuilder {
     if (isNativeGitEnabled()) {
       return new NativeGitCommands(myPluginConfig, () -> new GitExec("git", new GitVersion(2, 34, 0)), myVcsRootSSHKeyManager, null, myKnownHostsManager);
     } else {
-      return new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), myVcsRootSSHKeyManager);
+      return new FetchCommandImpl(myPluginConfig, myTransportFactory, new FetcherProperties(myPluginConfig), myVcsRootSSHKeyManager, myKnownHostsManager);
     }
   }
 

@@ -19,6 +19,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseGitTestCase;
 import jetbrains.buildServer.serverSide.ServerPaths;
+import jetbrains.buildServer.serverSide.impl.ssh.ConstantServerSshKnownHostsManager;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
@@ -44,7 +45,7 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitTestUtil.data
 @Test
 public class SshAuthenticationTest extends BaseGitTestCase {
   protected TempFiles myTempFiles;
-  private final SshKnownHostsManager mySshKnownHostsManager = new ServerSshKnownHostsManagerImpl();
+  private final SshKnownHostsManager mySshKnownHostsManager = new ConstantServerSshKnownHostsManager();
 
   @BeforeMethod
   public void setUp() throws Exception {
@@ -423,6 +424,7 @@ public class SshAuthenticationTest extends BaseGitTestCase {
   @Test(dataProvider = "true,false")
   public void ssh_git_rsa_key_ignore_known_hosts(boolean nativeOperationsEnabled) throws Exception {
     final File key = dataFile("keys/id_rsa");
+    setInternalProperty(SshKnownHostsManager.SSH_KNOWN_HOSTS_ENABLED_PARAM_NAME, "false");
     withSubstitutedLocalKeys("known_hosts", () -> {
       do_ssh_test(nativeOperationsEnabled, false, "ssh://git@%s:%s/home/git/repo.git", "PasswordAuthentication no\nPubkeyAuthentication yes", null, "keys/id_rsa.pub",
                   b -> b.withAuthMethod(AuthenticationMethod.PRIVATE_KEY_FILE).withPrivateKeyPath(key.getAbsolutePath()), false, false);
@@ -432,7 +434,9 @@ public class SshAuthenticationTest extends BaseGitTestCase {
 
   @Test(dataProvider = "true,false")
   public void ssh_known_hosts_set_via_internal_property(boolean nativeOperationsEnabled) throws Exception {
-    setInternalProperty(SshKnownHostsManager.SSH_KNOWN_HOSTS_PARAM_NAME + ".1", "localhost " + FileUtil.readText(dataFile("keys/docker_key.pub")));
+    // on the server we retrieve known hosts list from the custom data storage, but ConstantServerSshKnownHostsManager works with internal properties. Interface is the same
+    setInternalProperty(SshKnownHostsManager.SSH_KNOWN_HOSTS_ENABLED_PARAM_NAME, "true");
+    setInternalProperty(SshKnownHostsManager.SSH_KNOWN_HOSTS_PARAM_NAME, "localhost " + FileUtil.readText(dataFile("keys/docker_key.pub")));
     final File key = dataFile("keys/id_rsa");
     do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", Files.readAllBytes(key.toPath()), false), "keys/id_rsa.pub",
                 b -> b.withAuthMethod(AuthenticationMethod.TEAMCITY_SSH_KEY).withTeamCitySshKey("test_key"), false, true);
@@ -440,7 +444,8 @@ public class SshAuthenticationTest extends BaseGitTestCase {
 
   @Test(dataProvider = "true,false")
   public void ssh_known_hosts_set_via_internal_property_server_key_is_not_present(boolean nativeOperationsEnabled) throws Exception {
-    setInternalProperty(SshKnownHostsManager.SSH_KNOWN_HOSTS_PARAM_NAME + ".1", "localhost " + FileUtil.readText(dataFile("keys/id_rsa.pub")));
+    setInternalProperty(SshKnownHostsManager.SSH_KNOWN_HOSTS_ENABLED_PARAM_NAME, "true");
+    setInternalProperty(SshKnownHostsManager.SSH_KNOWN_HOSTS_PARAM_NAME, "localhost " + FileUtil.readText(dataFile("keys/id_rsa.pub")));
     final File key = dataFile("keys/id_rsa");
     try {
       do_ssh_test(nativeOperationsEnabled, true, "ssh://git@%s:%s/home/git/repo.git", "", new TeamCitySshKey("test_key", Files.readAllBytes(key.toPath()), false),
@@ -479,7 +484,7 @@ public class SshAuthenticationTest extends BaseGitTestCase {
       final GitRepoOperationsImpl repoOperations = new GitRepoOperationsImpl(config, transportFactory, keyManager,
                                                                              new FetchCommandImpl(config, transportFactory,
                                                                                                   new FetcherProperties(config),
-                                                                                                  keyManager), mySshKnownHostsManager);
+                                                                                                  keyManager, mySshKnownHostsManager), mySshKnownHostsManager);
       final MirrorManagerImpl mirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
       final RepositoryManagerImpl repositoryManager = new RepositoryManagerImpl(config, mirrorManager);
       final String repoUrl = String.format(urlFormat, container.getContainerIpAddress(), container.getMappedPort(22));

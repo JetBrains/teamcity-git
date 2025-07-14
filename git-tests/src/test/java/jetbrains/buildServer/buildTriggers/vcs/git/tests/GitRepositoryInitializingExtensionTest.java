@@ -44,7 +44,7 @@ public class GitRepositoryInitializingExtensionTest extends BaseRemoteRepository
     final GitRepoOperationsImpl repoOperations = new GitRepoOperationsImpl(config, transportFactory, keyManager,
                                                                            new FetchCommandImpl(config, transportFactory,
                                                                                                 new FetcherProperties(config),
-                                                                                                keyManager), myKnownHostsManager);
+                                                                                                keyManager, myKnownHostsManager), myKnownHostsManager);
     myVcsSupport = gitSupport().withPluginConfig(config).build();
     myExtension = new GitRepositoryInitializingExtension(myVcsSupport, repoOperations, myServerPaths);
 

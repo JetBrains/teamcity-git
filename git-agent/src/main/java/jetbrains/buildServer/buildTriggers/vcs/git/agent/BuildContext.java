@@ -9,6 +9,7 @@ import java.util.*;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.BuildInterruptReason;
 import jetbrains.buildServer.agent.ssh.AgentSshKnownHostsContext;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.Context;
@@ -71,14 +72,18 @@ public class BuildContext implements Context {
   }
 
   @Override
-  public boolean sshIgnoreKnownHosts() {
-    return getSshKnownHosts() == null;
+  public boolean knownHostsEnabled() {
+    return mySshKnownHostsManager.isKnownHostsEnabled(new AgentSshKnownHostsContext(myBuild));
   }
 
+  /**
+   * @return known hosts if they are enabled, otherwise returns null
+   */
   @Nullable
   @Override
-  public String getSshKnownHosts() {
-    return mySshKnownHostsManager.getKnownHosts(new AgentSshKnownHostsContext(myBuild));
+  public String getSshKnownHosts(@Nullable AuthSettings settings) {
+    AgentSshKnownHostsContext sshKnownHostsContext = new AgentSshKnownHostsContext(myBuild);
+    return mySshKnownHostsManager.isKnownHostsEnabled(sshKnownHostsContext) ? mySshKnownHostsManager.getKnownHosts(sshKnownHostsContext) : null;
   }
 
   @Override

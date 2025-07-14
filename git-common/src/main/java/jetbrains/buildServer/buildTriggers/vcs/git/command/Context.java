@@ -7,6 +7,7 @@ import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import org.jetbrains.annotations.NotNull;
@@ -27,10 +28,10 @@ public interface Context {
 
   boolean isCleanCredHelperScript();
 
-  boolean sshIgnoreKnownHosts();
+  boolean knownHostsEnabled();
 
   @Nullable
-  String getSshKnownHosts();
+  String getSshKnownHosts(@Nullable AuthSettings settings);
 
   @Nullable
   Charset getCharset();

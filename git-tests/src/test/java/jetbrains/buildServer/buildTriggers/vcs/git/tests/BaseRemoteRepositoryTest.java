@@ -10,6 +10,7 @@ import java.util.Set;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.TestInternalProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
+import jetbrains.buildServer.agent.impl.ssh.AgentSshKnownHostsManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitFacadeImpl;
@@ -18,7 +19,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConf
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.InternalPropertiesHandler;
 import jetbrains.buildServer.log.LogInitializer;
 import jetbrains.buildServer.serverSide.IOGuard;
-import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
+import jetbrains.buildServer.serverSide.impl.ssh.ConstantServerSshKnownHostsManager;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
@@ -35,8 +36,8 @@ public abstract class BaseRemoteRepositoryTest {
   protected BuildAgentConfiguration myAgentConfiguration;
   private String[] myRepositories;
   private Map<String, File> myRemoteRepositories;
-  protected SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl();
   private InternalPropertiesHandler myInternalPropertiesHandler;
+  protected SshKnownHostsManager myKnownHostsManager = new ConstantServerSshKnownHostsManager();
 
   protected BaseRemoteRepositoryTest(String... repositories) {
     myRepositories = repositories;

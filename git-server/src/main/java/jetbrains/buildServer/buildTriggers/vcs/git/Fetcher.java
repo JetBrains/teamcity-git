@@ -4,6 +4,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.util.Pair;
 import com.jcraft.jsch.JSch;
+import jetbrains.buildServer.serverSide.impl.ssh.ConstantServerSshKnownHostsManager;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.util.DiagnosticUtil;
@@ -69,7 +70,7 @@ public class Fetcher {
       gcListener.startListen();
       exec.scheduleAtFixedRate(new Monitoring(threadDumpFilePath, gitOutput), 10, 10, TimeUnit.SECONDS);
 
-      SshKnownHostsManager knownHostsManager = new ServerSshKnownHostsManagerImpl();
+      SshKnownHostsManager knownHostsManager = new ConstantServerSshKnownHostsManager();
       fetch(new File(repositoryPath), properties, progress, knownHostsManager, debug);
 
       if (System.currentTimeMillis() - start <= new PluginConfigImpl().getMonitoringFileThresholdMillis()) {

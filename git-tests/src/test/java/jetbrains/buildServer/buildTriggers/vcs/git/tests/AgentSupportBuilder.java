@@ -5,6 +5,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 import java.io.IOException;
 import jetbrains.buildServer.TempFiles;
 import jetbrains.buildServer.agent.*;
+import jetbrains.buildServer.agent.impl.ssh.AgentSshKnownHostsManagerImpl;
 import jetbrains.buildServer.agent.oauth.AgentTokenRetriever;
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.agent.oauth.InvalidAccessToken;
@@ -13,7 +14,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManagerImpl;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.builders.BuildAgentConfigurationBuilder;
 import jetbrains.buildServer.connections.ExpiringAccessToken;
-import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.util.EventDispatcher;
 import org.jetbrains.annotations.NotNull;
 
@@ -79,7 +79,7 @@ class AgentSupportBuilder {
     return new GitAgentVcsSupport(myFS, new MockDirectoryCleaner(), myGitAgentSSHService,
                                   myPluginConfigFactory, myMirrorManager, new SubmoduleManagerImpl(myMirrorManager), myGitMetaFactory,
                                   EventDispatcher.create(AgentLifeCycleListener.class), new AgentTokenStorage(EventDispatcher.create(AgentLifeCycleListener.class), tokenRetriever),
-                                  new ServerSshKnownHostsManagerImpl());
+                                  new AgentSshKnownHostsManagerImpl());
   }
 
 

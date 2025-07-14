@@ -60,10 +60,8 @@ public class SshHandler implements GitSSHService.Handler {
     mySsh = ssh;
     myAuthSettings = authSettings;
     cmd.addEnvParam(GitSSHHandler.SSH_PORT_ENV, Integer.toString(mySsh.getXmlRcpPort()));
-    if (myAuthSettings.isIgnoreKnownHosts() && ctx.sshIgnoreKnownHosts()) {
-      cmd.addEnvParam(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV, "true");
-    } else {
-      String knownHostsFromParam = ctx.getSshKnownHosts();
+    if (ctx.knownHostsEnabled()) {
+      String knownHostsFromParam = ctx.getSshKnownHosts(authSettings);
       if (knownHostsFromParam != null) {
         try {
           File knownHostsFile = FileUtil.createTempFile(ctx.getTempDir(), "known_hosts", "", true);
@@ -77,7 +75,12 @@ public class SshHandler implements GitSSHService.Handler {
         }
 
       }
+    } else {
+      if (myAuthSettings.isIgnoreKnownHosts()) {
+        cmd.addEnvParam(GitSSHHandler.SSH_IGNORE_KNOWN_HOSTS_ENV, "true");
+      }
     }
+
     if (authSettings.getAuthMethod() == AuthenticationMethod.TEAMCITY_SSH_KEY) {
       String keyId = authSettings.getTeamCitySshKeyId();
       if (keyId != null && sshKeyManager != null) {

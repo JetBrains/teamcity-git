@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitProgressLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig;
@@ -66,13 +67,13 @@ public class StubContext implements Context {
   }
 
   @Override
-  public boolean sshIgnoreKnownHosts() {
-    return true;
+  public boolean knownHostsEnabled() {
+    return false;
   }
 
   @Nullable
   @Override
-  public String getSshKnownHosts() {
+  public String getSshKnownHosts(@Nullable AuthSettings settings) {
     return null;
   }
 

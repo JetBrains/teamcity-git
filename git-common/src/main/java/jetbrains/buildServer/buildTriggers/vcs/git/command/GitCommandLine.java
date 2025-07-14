@@ -218,7 +218,7 @@ public class GitCommandLine extends GeneralCommandLine {
         if (ignoreKnownHosts) {
           gitSshCommand.append(" -o \"StrictHostKeyChecking=no\" -o \"UserKnownHostsFile=/dev/null\" -o \"GlobalKnownHostsFile=/dev/null\"");
         } else {
-          String knownHosts = myCtx.getSshKnownHosts();
+          String knownHosts = myCtx.getSshKnownHosts(authSettings);
           if (knownHosts == null) {
             myLogger.warning(
               "\"Ignore known hosts database\" setting is disabled, please make sure that per-user or global known host key database contains remote host key, otherwise git operations may hang or fail in unexpected way");
@@ -301,7 +301,7 @@ public class GitCommandLine extends GeneralCommandLine {
   private boolean isIgnoreKnownHosts(@NotNull AuthSettings authSettings) {
     // see TW-74389
     final AuthenticationMethod authMethod = authSettings.getAuthMethod();
-    return myCtx.sshIgnoreKnownHosts() && (authSettings.isIgnoreKnownHosts() ||
+    return !myCtx.knownHostsEnabled() && (authSettings.isIgnoreKnownHosts() || // if known hosts feature is enabled we shouldn't ignore them
            authMethod == AuthenticationMethod.TEAMCITY_SSH_KEY ||
            authMethod == AuthenticationMethod.PRIVATE_KEY_FILE);
   }

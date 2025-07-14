@@ -27,6 +27,7 @@ import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.BasePropertiesModel;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
+import jetbrains.buildServer.serverSide.impl.ssh.ConstantServerSshKnownHostsManager;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
@@ -90,8 +91,7 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
   private ResetCacheRegister myResetCacheManager;
   private ServerPaths myServerPaths;
   private Mockery myContext;
-  private SshKnownHostsManager myKnownHostsManager = new ServerSshKnownHostsManagerImpl();
-
+  private final SshKnownHostsManager myKnownHostsManager = new ConstantServerSshKnownHostsManager();
   @BeforeMethod
   public void setUp() throws Exception {
     super.setUp();
@@ -982,7 +982,7 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
   public void getCurrentVersion_should_not_do_fetch() throws Exception {
     ServerPluginConfig config = myConfigBuilder.build();
     VcsRootSshKeyManager manager = new EmptyVcsRootSshKeyManager();
-    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager, myKnownHostsManager), new FetcherProperties(config), manager);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, new TransportFactoryImpl(config, manager, myKnownHostsManager), new FetcherProperties(config), manager, myKnownHostsManager);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitVcsSupport git = gitSupport().withPluginConfig(myConfigBuilder).withResetCacheManager(myResetCacheManager).withFetchCommand(fetchCounter).build();
 
@@ -1070,7 +1070,7 @@ public class GitVcsSupportTest extends BaseGitPatchTestCase {
       }
     };
 
-    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, new FetcherProperties(config), manager);
+    FetchCommand fetchCommand = new FetchCommandImpl(config, transportFactory, new FetcherProperties(config), manager, myKnownHostsManager);
     FetchCommandCountDecorator fetchCounter = new FetchCommandCountDecorator(fetchCommand);
     GitSupportBuilder supportBuilder = gitSupport()
       .withPluginConfig(config)

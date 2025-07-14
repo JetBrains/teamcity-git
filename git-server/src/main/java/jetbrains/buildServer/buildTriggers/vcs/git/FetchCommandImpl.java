@@ -16,6 +16,8 @@ import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessExecutor;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.GitProcessStuckMonitor;
 import jetbrains.buildServer.buildTriggers.vcs.git.process.RepositoryXmxStorage;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.ssh.ServerSshKnownHostsContext;
+import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.Dates;
@@ -24,6 +26,8 @@ import jetbrains.buildServer.util.TimePrinter;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
+import jetbrains.buildServer.vcshostings.url.ServerURI;
+import jetbrains.buildServer.vcshostings.url.ServerURIParser;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.RefSpec;
@@ -45,24 +49,29 @@ public class FetchCommandImpl implements FetchCommand {
   private final FetcherProperties myFetcherProperties;
   private final VcsRootSshKeyManager mySshKeyManager;
   private final GitTrustStoreProvider myGitTrustStoreProvider;
+  private final SshKnownHostsManager mySshKnownHostsManager;
 
   public FetchCommandImpl(@NotNull ServerPluginConfig config,
                           @NotNull TransportFactory transportFactory,
                           @NotNull FetcherProperties fetcherProperties,
-                          @NotNull VcsRootSshKeyManager sshKeyManager) {
-    this(config, transportFactory, fetcherProperties, sshKeyManager, new GitTrustStoreProviderStatic(null));
+                          @NotNull VcsRootSshKeyManager sshKeyManager,
+                          @NotNull SshKnownHostsManager sshKnownHostsManager) {
+    this(config, transportFactory, fetcherProperties, sshKeyManager, new GitTrustStoreProviderStatic(null), sshKnownHostsManager);
   }
 
   public FetchCommandImpl(@NotNull ServerPluginConfig config,
                           @NotNull TransportFactory transportFactory,
                           @NotNull FetcherProperties fetcherProperties,
                           @NotNull VcsRootSshKeyManager sshKeyManager,
-                          @NotNull GitTrustStoreProvider gitTrustStoreProvider) {
+                          @NotNull GitTrustStoreProvider gitTrustStoreProvider,
+                          @NotNull SshKnownHostsManager sshKnownHostsManager) {
     myConfig = config;
     myTransportFactory = transportFactory;
     myFetcherProperties = fetcherProperties;
     mySshKeyManager = sshKeyManager;
     myGitTrustStoreProvider = gitTrustStoreProvider;
+    mySshKnownHostsManager = sshKnownHostsManager;
+
   }
 
   public void fetch(@NotNull Repository db,
@@ -79,6 +88,18 @@ public class FetchCommandImpl implements FetchCommand {
   private void fetchInSeparateProcess(@NotNull Repository repository,
                                       @NotNull URIish uri,
                                       @NotNull FetchSettings settings) throws VcsException {
+
+    if (mySshKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE)) {
+      try {
+        ServerURI serverURI = ServerURIParser.createServerURI(uri.toString());
+        if ("ssh".equals(serverURI.getScheme())) {
+          mySshKnownHostsManager.updateKnownHosts(ServerSshKnownHostsContext.INSTANCE, uri.getHost(), uri.getPort());
+        }
+      } catch (Exception e) {
+        LOG.warnAndDebugDetails("Failed to update known hosts for " + uri, e);
+      }
+    }
+
     final Collection<RefSpec> specs = settings.getRefSpecs();
     final String debugInfo = getDebugInfo(repository, uri, specs);
     final ProcessXmxProvider xmxProvider = new ProcessXmxProvider(new RepositoryXmxStorage(repository, "fetch"), myConfig, "fetch", debugInfo);
@@ -357,6 +378,10 @@ public class FetchCommandImpl implements FetchCommand {
       final File trustedCertificatesDir = myGitTrustStoreProvider.getTrustedCertificatesDir();
       if (trustedCertificatesDir != null) {
         properties.put(Constants.GIT_TRUST_STORE_PROVIDER, trustedCertificatesDir.getAbsolutePath());
+      }
+      if (mySshKnownHostsManager.isKnownHostsEnabled(ServerSshKnownHostsContext.INSTANCE)) {
+        properties.put(SshKnownHostsManager.SSH_KNOWN_HOSTS_ENABLED_PARAM_NAME, Boolean.TRUE.toString());
+        properties.put(SshKnownHostsManager.SSH_KNOWN_HOSTS_PARAM_NAME, mySshKnownHostsManager.getKnownHosts(ServerSshKnownHostsContext.INSTANCE));
       }
       return VcsUtil.propertiesToStringSecure(properties).getBytes(StandardCharsets.UTF_8);
     } catch (IOException e) {
