@@ -45,6 +45,11 @@ public class GitClonesUpdater {
         if (!TeamCityProperties.getBooleanOrTrue("teamcity.git.localClones.updateIfNoCheckingForChangesResponsibility")) return;
 
         if (root.getVcsName().equals(Constants.VCS_NAME)) {
+          if (myScheduledForUpdate.size() > TeamCityProperties.getInteger("teamcity.git.localClones.maxScheduledUpdates", 1000) && !myScheduledForUpdate.containsKey(root)) {
+            Loggers.VCS.warn("Cannot schedule update of the local clone for: " + LogUtil.describe(root) + " because the number of already scheduled updates is too big");
+            return;
+          }
+
           myScheduledForUpdate.put(root, RepositoryStateFactory.toData(newState));
           synchronized (myScheduledForUpdate) {
             if (myExecutor == null) {
