@@ -11,6 +11,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.CredentialsHelper;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.util.FileUtil;
+import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -63,9 +64,11 @@ public class WinScriptGen extends ScriptGen {
     try (PrintWriter out = new PrintWriter(script)) {
       out.println("@echo off");
       out.println("if \"\"%1\"\" == \"\"erase\"\" goto erase");
-      out.printf("%s -cp \"%s\" %s %%*%n",
+
+      out.printf("%s -cp \"%s\" %s %s %%*%n",
                  getJavaPath(),
-                 ClasspathUtil.composeClasspath(new Class[]{CredentialsHelper.class}, null, null),
+                 ClasspathUtil.composeClasspath(myClasses, null, null),
+                 getLoggingSystemProperties(),
                  CredentialsHelper.class.getName()).flush();
       out.println("goto end");
       out.println(":erase");
