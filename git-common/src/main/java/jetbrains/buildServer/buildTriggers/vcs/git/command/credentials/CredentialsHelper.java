@@ -152,7 +152,7 @@ public class CredentialsHelper {
         } catch (MalformedURLException ignored) {
         }
       }
-      logger.debug("Unable to find credentials.");
+      logger.debug("Unable to find credentials for host: " + context.myHost );
       return null;
     }
 
