@@ -223,24 +223,24 @@ public class CommandUtil {
     if (isTimeoutError(ve) || isConnectionRefused(ve) || isConnectionReset(ve)) return attemptsLeft;
     if (isCanceledError(ve)) return false;
     if (isSslError(ve)) return false;
+    if (isRemoteAccessNonRetriableError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
     if (e.getCause() instanceof SshKeyNotFoundException) return false;
 
     if ((attempt == 1 || attemptsLeft) && shouldHandleRemoteRefNotFound() && isNotFoundRemoteRefError(ve))
       return true;
 
-    if (authSettings.doesTokenNeedRefresh() && attempt == 1)
+    if ((attempt == 1 || attemptsLeft) && authSettings.doesTokenNeedRefresh())
       return true;
 
     for (String message : customRecoverableMessages) {
       if (isMessageContains(ve, message)) return attemptsLeft;
     }
 
-    return attemptsLeft && !isRemoteAccessError(ve);
+    return attemptsLeft;
   }
 
-  @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-  private static boolean isRemoteAccessError(@NotNull VcsException e) {
+  private static boolean isRemoteAccessNonRetriableError(@NotNull VcsException e) {
     final String msg = e.getMessage().toLowerCase();
     return msg.contains("couldn't find remote ref") ||
            msg.contains("no remote repository specified") ||
@@ -248,14 +248,7 @@ public class CommandUtil {
            msg.contains("access denied") ||
            msg.contains("permission denied") ||
            msg.contains("could not read from remote repository") ||
-           msg.contains("server does not allow request for unadvertised object") ||
-           msg.contains("the remote end hung up unexpectedly") ||
-           msg.contains("protocol error: bad pack header");
-  }
-
-  public static boolean shouldFetchFromScratch(@NotNull VcsException e) {
-    if (e instanceof GitExecTimeout || CommandUtil.isCanceledError(e)) return false;
-    return !isRemoteAccessError(e);
+           msg.contains("server does not allow request for unadvertised object");
   }
 
   @NotNull

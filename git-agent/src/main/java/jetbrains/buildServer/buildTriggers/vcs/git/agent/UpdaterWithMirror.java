@@ -17,7 +17,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentControlClient.StopAction;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsTreeResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -133,11 +132,12 @@ public class UpdaterWithMirror extends UpdaterImpl {
           vcsException = retryException;
         }
       }
-      if (myPluginConfig.isFailOnCleanCheckout() || !CommandUtil.shouldFetchFromScratch(vcsException)) {
-        throw vcsException;
-      }
 
       stopAgentIfNecessary(vcsException);
+
+      if (myPluginConfig.isFailOnCleanCheckout() || commitLoader.isMirrorValid()) {
+        throw vcsException;
+      }
 
       LOG.warnAndDebugDetails("Failed to fetch mirror, will try removing it and cloning from scratch", vcsException);
       if (cleanDir(bareRepositoryDir)) {

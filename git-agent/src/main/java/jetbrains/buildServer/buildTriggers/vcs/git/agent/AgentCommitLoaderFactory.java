@@ -276,6 +276,16 @@ public class AgentCommitLoaderFactory {
       return true; // always return true, return value never used, calling code is anyway incorrect
     }
 
+    @Override
+    public boolean isMirrorValid() throws VcsException {
+      AgentGitFacade git = myGitFactory.create(myTargetDirectory);
+      int fsckResult = git.fsck().call();
+      if (fsckResult != 0) {
+        myLogger.error("Connectivity and validity problems were detected by git fsck for the repository " + myTargetDirectory.getPath()  + ". Result code is " + fsckResult);
+      }
+      return fsckResult == 0;
+    }
+
     @NotNull protected abstract String getRemoteRefName(@NotNull String branch);
 
     @NotNull protected abstract File getGitDir();

@@ -15,4 +15,6 @@ public interface AgentCommitLoader {
    * @deprecated this method is only used backward compatibility and will be deleted
    */
   boolean loadShallowBranch(@NotNull String sha, @NotNull String branch) throws VcsException;
+
+  boolean isMirrorValid() throws VcsException;
 }
