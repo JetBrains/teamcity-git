@@ -242,8 +242,7 @@ public class CommandUtil {
 
   private static boolean isRemoteAccessNonRetriableError(@NotNull VcsException e) {
     final String msg = e.getMessage().toLowerCase();
-    return msg.contains("couldn't find remote ref") ||
-           msg.contains("no remote repository specified") ||
+    return msg.contains("no remote repository specified") ||
            msg.contains("no such remote") ||
            msg.contains("access denied") ||
            msg.contains("permission denied") ||
