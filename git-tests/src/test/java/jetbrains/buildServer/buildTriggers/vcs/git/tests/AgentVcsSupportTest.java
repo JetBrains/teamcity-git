@@ -33,6 +33,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.ShowRefResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.UpdateRefBatchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.FsckCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.UpdateRefCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
@@ -1049,7 +1050,7 @@ public class AgentVcsSupportTest extends BaseSimpleGitTestCase {
 
 
   @TestFor(issues = "TW-43884")
-  public void should_remap_mirror_if_its_fetch_and_remove_failed() throws Exception {
+  public void should_remap_mirror_if_its_fetch_and_remove_failed_and_repo_corrupted() throws Exception {
     MockFS fs = new MockFS();
     LoggingGitMetaFactory loggingFactory = new LoggingGitMetaFactory();
     myVcsSupport = myBuilder.setGitMetaFactory(loggingFactory).setFS(fs).build();
@@ -1068,12 +1069,12 @@ public class AgentVcsSupportTest extends BaseSimpleGitTestCase {
     copyRepository(updatedRepo, remoteRepo);
 
 
-    //make first fetch in local mirror to fail:
+    //make 1-2 fetches in local mirror to fail:
     AtomicInteger invocationCount = new AtomicInteger(0);
     loggingFactory.addCallback(FetchCommand.class.getName() + ".call", new GitCommandProxyCallback() {
       @Override
       public Optional<Object> call(final Method method, final Object[] args) throws VcsException {
-        if (invocationCount.getAndIncrement() == 0)
+        if (invocationCount.getAndIncrement() < 2)
           throw new VcsException("TEST ERROR");
         return null;
       }
@@ -1081,7 +1082,6 @@ public class AgentVcsSupportTest extends BaseSimpleGitTestCase {
     File mirror = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));
 
     //try to fetch unknown branch, fetch fails and delete of the mirror also fails
-    //build should succeed anyway
     fs.makeDeleteFail(mirror);
     VcsRootImpl root2 = vcsRoot().withAgentGitPath(getGitPath()).withBranch("refs/heads/personal").withFetchUrl(GitUtils.toURL(remoteRepo)).build();
     AgentRunningBuild build = runningBuild()
@@ -1089,9 +1089,16 @@ public class AgentVcsSupportTest extends BaseSimpleGitTestCase {
       .sharedConfigParams("teamcity.internal.git.remoteOperationAttempts", "1")
       .withAgentConfiguration(myBuilder.getAgentConfiguration())
       .build();
+    try {
+      myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
+      fail(); // should fail with exception
+    } catch (Exception e) {}
+
+    FileUtil.delete(new File(mirror, "objects/08")); // fetch from clone only if repo is corrupted
+
     myVcsSupport.updateSources(root2, CheckoutRules.DEFAULT, "d47dda159b27b9a8c4cee4ce98e4435eb5b17168", myCheckoutDir, build, false);
     File mirrorAfterBuild = myBuilder.getMirrorManager().getMirrorDir(GitUtils.toURL(remoteRepo));
-    then(mirrorAfterBuild).isNotEqualTo(mirror);//repository was remapped to another dir
+    then(mirrorAfterBuild).isNotEqualTo(mirror);
   }
 
   @TestFor(issues = "TW-56415")
