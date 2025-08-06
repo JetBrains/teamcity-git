@@ -69,9 +69,10 @@ public class UnixScriptGen extends ScriptGen {
       out.println("exit;");
       out.println("fi");
 
-      out.printf("%s -cp '%s' %s $*%n",
+      out.printf("%s -cp '%s' %s %s $*%n",
                  getJavaPath(),
-                 ClasspathUtil.composeClasspath(new Class[]{CredentialsHelper.class}, null, null),
+                 ClasspathUtil.composeClasspath(myClasses, null, null),
+                 getLoggingSystemProperties(),
                  CredentialsHelper.class.getName()).flush();
 
       if (!script.setExecutable(true))

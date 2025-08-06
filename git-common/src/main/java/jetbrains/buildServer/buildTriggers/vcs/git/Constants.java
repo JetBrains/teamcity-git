@@ -137,4 +137,9 @@ public interface Constants {
   String GIT_HTTP_CRED_PREFIX = "teamcity.git.https.credentials";
 
   String NON_RECURSIVE_SUBMODULES_ENABLE = "teamcity.git.submodules.nonrecursive.enable";
+
+  String CREDHELPER_LOGGING_CONFIGURATION_FILE="credentials-helper-log4j2.xml";
+  String CREDHELPER_LOGGING_ENABLED = "teamcity.git.credhelper.debug.enabled";
+  // used to identify logs produced by teamcity processes executed by git, e.g., credhelper
+  String GIT_LOGGING_PREFIX = "[teamcity-git]";
 }
