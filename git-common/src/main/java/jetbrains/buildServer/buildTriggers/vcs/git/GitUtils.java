@@ -11,14 +11,12 @@ import java.util.*;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.agent.ServerProvidedProperties;
-import jetbrains.buildServer.buildTriggers.vcs.git.jgit.LenientSystemReader;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
 import jetbrains.buildServer.vcs.VcsUtil;
-import org.eclipse.jgit.util.SystemReader;
 import org.jetbrains.annotations.NotNull;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_HTTP_CRED_PREFIX;
@@ -28,10 +26,6 @@ import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.GIT_HTTP_CRE
  */
 public class GitUtils {
   private static final String SSH_V2 = "SSH-2.0";
-
-  static {
-    SystemReader.setInstance(LenientSystemReader.INSTANCE);
-  }
 
   /**
    * Convert remote URL to JGIT form
