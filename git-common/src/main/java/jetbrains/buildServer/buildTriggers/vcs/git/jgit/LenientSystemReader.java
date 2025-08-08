@@ -8,6 +8,8 @@ import java.net.UnknownHostException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.storage.file.FileBasedConfig;
@@ -22,9 +24,14 @@ public class LenientSystemReader extends SystemReader {
 
   private static final Logger LOG = Logger.getInstance(LenientSystemReader.class);
 
-  public static final LenientSystemReader INSTANCE = new LenientSystemReader();
+  @PostConstruct
+  public void init() {
+    SystemReader.setInstance(this);
+  }
 
-  private LenientSystemReader() {
+  @PreDestroy
+  public void dispose() {
+    SystemReader.setInstance(null);
   }
 
   public FS getFS() {
