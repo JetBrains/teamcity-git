@@ -134,6 +134,10 @@ public class UpdaterWithMirror extends UpdaterImpl {
         }
       }
 
+      if (CommandUtil.isCanceledError(vcsException)) {
+        throw vcsException;
+      }
+
       stopAgentIfNecessary(vcsException);
 
       if (myPluginConfig.isFailOnCleanCheckout() || CommandUtil.isNotFoundRemoteRefError(vcsException) || commitLoader.isMirrorValid()) {
