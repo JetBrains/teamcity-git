@@ -24,6 +24,7 @@ import jetbrains.buildServer.serverSide.parameters.ParameterDescriptionFactoryIm
 import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
 import jetbrains.buildServer.serverSide.parameters.ParameterFactoryImpl;
 import jetbrains.buildServer.serverSide.parameters.types.ParameterTypeManager;
+import jetbrains.buildServer.serverSide.reEncryption.EncryptionEventDispatcher;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.cache.ResetCacheHandler;
@@ -146,7 +147,7 @@ public class GitSupportBuilder {
 
   public ParameterFactory getParametersFactory(ServerResponsibility serverResponsibility, SettingsPersister settingsPersister) {
     return new ParameterFactoryImpl(new ParameterDescriptionFactoryImpl(), new ParameterTypeManager(Collections.emptyList()), new EncryptionManager(new EncryptionSettings(), Collections.emptyList(), new BaseEncryptionStrategy(),
-                                                                                                                                                    myServerPaths, settingsPersister, serverResponsibility));
+                                                                                                                                                    myServerPaths, settingsPersister, new EncryptionEventDispatcher(), serverResponsibility));
   }
 
   public FetchCommand getDefaultFetchCommand() {
