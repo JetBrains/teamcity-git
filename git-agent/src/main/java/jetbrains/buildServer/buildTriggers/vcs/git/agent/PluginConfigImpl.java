@@ -313,8 +313,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
   }
 
   @Override
-  public int skipFsckRepositorySizeGiB() {
-    return Integer.parseInt(myBuild.getSharedConfigParameters().getOrDefault("teamcity.git.skipFsckRepoSizeGiB", "5"));
+  public int maxRepositorySizeForFsckGiB() {
+    return Integer.parseInt(myBuild.getSharedConfigParameters().getOrDefault("teamcity.git.maxRepoSizeForFsckGiB", "5"));
   }
 
   @Override

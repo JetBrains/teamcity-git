@@ -144,9 +144,8 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
       stopAgentIfNecessary(vcsException);
 
-      // todo check parameter works
-      if (myPluginConfig.skipFsckRepositorySizeGiB() <= 0 ||
-          commitLoader.getMirrorSizeGiB() > myPluginConfig.skipFsckRepositorySizeGiB() ||
+      if (myPluginConfig.maxRepositorySizeForFsckGiB() <= 0 ||
+          commitLoader.getMirrorSizeGiB() >= myPluginConfig.maxRepositorySizeForFsckGiB() ||
           commitLoader.isMirrorValid()) { // git fsck: time-consuming command
         throw vcsException;
       }
