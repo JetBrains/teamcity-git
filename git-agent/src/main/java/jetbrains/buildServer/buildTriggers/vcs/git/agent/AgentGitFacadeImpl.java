@@ -182,6 +182,11 @@ public class AgentGitFacadeImpl extends GitFacadeImpl implements AgentGitFacade 
     return new FsckCommandImpl(createCommandLine());
   }
 
+  @Override
+  public CountObjectsCommand countObjects() {
+    return new CountObjectsCommandImpl(createCommandLine());
+  }
+
   @NotNull
   public Branches listBranches(boolean all) throws VcsException {
     GitCommandLine cmd = createCommandLine();

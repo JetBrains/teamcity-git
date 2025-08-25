@@ -312,6 +312,10 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return "true".equals(myBuild.getSharedConfigParameters().get(AgentRuntimeProperties.FAIL_ON_CLEAN_CHECKOUT));
   }
 
+  @Override
+  public int skipFsckRepositorySizeGiB() {
+    return Integer.parseInt(myBuild.getSharedConfigParameters().getOrDefault("teamcity.git.skipFsckRepoSizeGiB", "5"));
+  }
 
   @Override
   public boolean isFetchTags() {

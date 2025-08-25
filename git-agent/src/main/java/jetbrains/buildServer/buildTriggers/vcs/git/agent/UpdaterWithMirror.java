@@ -17,6 +17,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.AgentControlClient.StopAction;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.LsTreeResult;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
 import jetbrains.buildServer.log.Loggers;
@@ -134,13 +135,19 @@ public class UpdaterWithMirror extends UpdaterImpl {
         }
       }
 
-      if (CommandUtil.isCanceledError(vcsException)) {
+      if (myPluginConfig.isFailOnCleanCheckout() ||
+          CommandUtil.isRemoteAccessNonRetriableError(vcsException) ||
+          CommandUtil.isCanceledError(vcsException) ||
+          vcsException instanceof GitExecTimeout) {
         throw vcsException;
       }
 
       stopAgentIfNecessary(vcsException);
 
-      if (myPluginConfig.isFailOnCleanCheckout() || CommandUtil.isNotFoundRemoteRefError(vcsException) || commitLoader.isMirrorValid()) {
+      // todo check parameter works
+      if (myPluginConfig.skipFsckRepositorySizeGiB() <= 0 ||
+          commitLoader.getMirrorSizeGiB() > myPluginConfig.skipFsckRepositorySizeGiB() ||
+          commitLoader.isMirrorValid()) { // git fsck: time-consuming command
         throw vcsException;
       }
 

@@ -17,4 +17,6 @@ public interface AgentCommitLoader {
   boolean loadShallowBranch(@NotNull String sha, @NotNull String branch) throws VcsException;
 
   boolean isMirrorValid() throws VcsException;
+
+  int getMirrorSizeGiB() throws VcsException;
 }

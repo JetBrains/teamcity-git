@@ -57,6 +57,8 @@ public interface AgentPluginConfig extends PluginConfig {
 
   boolean isFailOnCleanCheckout();
 
+  int skipFsckRepositorySizeGiB();
+
   boolean isFetchTags();
 
   boolean isCredHelperMatchesAllUrls();
