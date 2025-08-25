@@ -37,6 +37,6 @@ public class CountObjectsCommandImpl extends BaseCommandImpl implements CountObj
       throw new VcsException("Failed to count objects in the repository " + repositopryPath);
     }
 
-    return (int)Math.ceil((packsSizeKiB + looseObjectsSizeKiB) / 1024.0 / 1024.0); // KiB to GiB
+    return (int)((packsSizeKiB + looseObjectsSizeKiB) / 1024.0 / 1024.0); // KiB to GiB
   }
 }

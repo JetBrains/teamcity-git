@@ -136,7 +136,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
       }
 
       if (myPluginConfig.isFailOnCleanCheckout() ||
-          CommandUtil.isRemoteAccessNonRetriableError(vcsException) ||
+          CommandUtil.isRemoteAccessError(vcsException) ||
           CommandUtil.isCanceledError(vcsException) ||
           vcsException instanceof GitExecTimeout) {
         throw vcsException;

@@ -1012,7 +1012,7 @@ public class AgentVcsSupportTest extends BaseSimpleGitTestCase {
     sizeMap.put("size", (long)(5 * 1024 * 1024));
     sizeMap.put("size-pack", (long)(10 * 1024 * 1024) + 1);
 
-    assertEquals(16, CountObjectsCommandImpl.calculateRepositorySizeGiB(sizeMap, ""));
+    assertEquals(15, CountObjectsCommandImpl.calculateRepositorySizeGiB(sizeMap, ""));
   }
 
   @Test

@@ -266,7 +266,7 @@ public class CommandUtil {
     if ((attempt == 1 || attemptsLeft) && shouldHandleRemoteRefNotFound() && isNotFoundRemoteRefError(ve))
       return true;
 
-    if (isRemoteAccessNonRetriableError(ve)) return false;
+    if (isRemoteAccessError(ve)) return false;
     if (e instanceof GitIndexCorruptedException) return false;
     if (e.getCause() instanceof SshKeyNotFoundException) return false;
 
@@ -280,7 +280,7 @@ public class CommandUtil {
     return attemptsLeft;
   }
 
-  public static boolean isRemoteAccessNonRetriableError(@NotNull VcsException e) { // todo rename to smt like valid error
+  public static boolean isRemoteAccessError(@NotNull VcsException e) {
     final String msg = e.getMessage().toLowerCase();
     return isNotFoundRemoteRefError(e) ||
            msg.contains("no remote repository specified") ||
