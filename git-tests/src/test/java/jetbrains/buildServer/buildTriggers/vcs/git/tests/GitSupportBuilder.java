@@ -14,10 +14,10 @@ import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.ChangesCollectorCach
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.TestGitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.*;
 import jetbrains.buildServer.serverSide.crypt.BaseEncryptionStrategy;
+import jetbrains.buildServer.serverSide.crypt.EncryptionKeysStorageProvider;
 import jetbrains.buildServer.serverSide.crypt.EncryptionManager;
 import jetbrains.buildServer.serverSide.crypt.EncryptionSettings;
 import jetbrains.buildServer.serverSide.impl.ssh.ConstantServerSshKnownHostsManager;
-import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.serverSide.oauth.OAuthToken;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
 import jetbrains.buildServer.serverSide.parameters.ParameterDescriptionFactoryImpl;
@@ -147,7 +147,8 @@ public class GitSupportBuilder {
 
   public ParameterFactory getParametersFactory(ServerResponsibility serverResponsibility, SettingsPersister settingsPersister) {
     return new ParameterFactoryImpl(new ParameterDescriptionFactoryImpl(), new ParameterTypeManager(Collections.emptyList()), new EncryptionManager(new EncryptionSettings(), Collections.emptyList(), new BaseEncryptionStrategy(),
-                                                                                                                                                    myServerPaths, settingsPersister, new EncryptionEventDispatcher(), serverResponsibility));
+                                                                                                                                                    myServerPaths, settingsPersister, new EncryptionEventDispatcher(), serverResponsibility,
+                                                                                                                                                    new EncryptionKeysStorageProvider(myServerPaths)));
   }
 
   public FetchCommand getDefaultFetchCommand() {
