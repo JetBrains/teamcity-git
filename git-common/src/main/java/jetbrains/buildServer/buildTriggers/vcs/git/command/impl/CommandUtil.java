@@ -262,12 +262,13 @@ public class CommandUtil {
     if (isTimeoutError(ve) || isConnectionRefused(ve) || isConnectionReset(ve)) return attemptsLeft;
     if (isCanceledError(ve)) return false;
     if (isSslError(ve)) return false;
-    if (isRemoteAccessNonRetriableError(ve)) return false;
-    if (e instanceof GitIndexCorruptedException) return false;
-    if (e.getCause() instanceof SshKeyNotFoundException) return false;
 
     if ((attempt == 1 || attemptsLeft) && shouldHandleRemoteRefNotFound() && isNotFoundRemoteRefError(ve))
       return true;
+
+    if (isRemoteAccessError(ve)) return false;
+    if (e instanceof GitIndexCorruptedException) return false;
+    if (e.getCause() instanceof SshKeyNotFoundException) return false;
 
     if ((attempt == 1 || attemptsLeft) && authSettings.doesTokenNeedRefresh())
       return true;
@@ -279,14 +280,16 @@ public class CommandUtil {
     return attemptsLeft;
   }
 
-  private static boolean isRemoteAccessNonRetriableError(@NotNull VcsException e) {
+  public static boolean isRemoteAccessError(@NotNull VcsException e) {
     final String msg = e.getMessage().toLowerCase();
-    return msg.contains("no remote repository specified") ||
+    return isNotFoundRemoteRefError(e) ||
+           msg.contains("no remote repository specified") ||
            msg.contains("no such remote") ||
            msg.contains("access denied") ||
            msg.contains("permission denied") ||
            msg.contains("could not read from remote repository") ||
-           msg.contains("server does not allow request for unadvertised object");
+           msg.contains("server does not allow request for unadvertised object") ||
+           msg.contains("cannot find commit");
   }
 
   @NotNull

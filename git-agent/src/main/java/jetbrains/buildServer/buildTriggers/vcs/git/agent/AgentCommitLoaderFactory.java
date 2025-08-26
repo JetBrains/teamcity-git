@@ -10,9 +10,11 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.Refs;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.CountObjectsCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.FetchCommand;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorruptedException;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CountObjectsCommandImpl;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsException;
@@ -284,6 +286,13 @@ public class AgentCommitLoaderFactory {
         myLogger.error("Connectivity and validity problems were detected by git fsck for the repository " + myTargetDirectory.getPath()  + ". Result code is " + fsckResult);
       }
       return fsckResult == 0;
+    }
+
+    public int getMirrorSizeGiB() throws VcsException {
+      AgentGitFacade git = myGitFactory.create(myTargetDirectory);
+      Map<String, Long> sizeMap = git.countObjects().call();
+
+      return CountObjectsCommandImpl.calculateRepositorySizeGiB(sizeMap, myTargetDirectory.getName());
     }
 
     @NotNull protected abstract String getRemoteRefName(@NotNull String branch);

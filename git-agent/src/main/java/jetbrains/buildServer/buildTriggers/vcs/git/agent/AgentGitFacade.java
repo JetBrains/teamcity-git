@@ -4,11 +4,7 @@ package jetbrains.buildServer.buildTriggers.vcs.git.agent;
 
 import java.io.File;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.*;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.DiffCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.GitFacade;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.InitCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.FsckCommand;
-import jetbrains.buildServer.buildTriggers.vcs.git.command.ListConfigCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.command.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.credentials.ScriptGen;
 import jetbrains.buildServer.vcs.VcsException;
 import org.jetbrains.annotations.NotNull;
@@ -104,4 +100,6 @@ public interface AgentGitFacade extends GitFacade {
 
   @NotNull
   FsckCommand fsck();
+
+  CountObjectsCommand countObjects();
 }

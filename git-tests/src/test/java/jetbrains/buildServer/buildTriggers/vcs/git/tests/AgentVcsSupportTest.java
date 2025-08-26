@@ -997,6 +997,24 @@ public class AgentVcsSupportTest extends BaseSimpleGitTestCase {
     then(showRefResult.isFailed()).isFalse();
   }
 
+
+  @Test
+  public void repository_size_test() throws Exception {
+    final File repo = new File(getTempDirectory(), "repo.git");
+    FileUtil.delete(repo);
+    copyDir(dataFile("repo.git"), repo);
+    AgentGitFacade facade = new AgentGitFacadeImpl(getGitPath(), repo);
+    Map<String, Long> sizeMap = facade.countObjects().call();
+
+    assertTrue(sizeMap.containsKey("size"));
+    assertTrue(sizeMap.containsKey("size-pack"));
+
+    sizeMap.put("size", (long)(5 * 1024 * 1024));
+    sizeMap.put("size-pack", (long)(10 * 1024 * 1024) + 1);
+
+    assertEquals(15, CountObjectsCommandImpl.calculateRepositorySizeGiB(sizeMap, ""));
+  }
+
   @Test
   public void fsck_simple_reference_currupting_test() throws Exception{
     final File repo = new File(getTempDirectory(), "repo.git");
