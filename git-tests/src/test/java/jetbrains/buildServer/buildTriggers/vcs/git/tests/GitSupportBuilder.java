@@ -13,10 +13,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.NativeGitCommands;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.ChangesCollectorCache;
 import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.TestGitRepoOperationsImpl;
 import jetbrains.buildServer.serverSide.*;
-import jetbrains.buildServer.serverSide.crypt.BaseEncryptionStrategy;
-import jetbrains.buildServer.serverSide.crypt.EncryptionKeysStorageProvider;
-import jetbrains.buildServer.serverSide.crypt.EncryptionManager;
-import jetbrains.buildServer.serverSide.crypt.EncryptionSettings;
+import jetbrains.buildServer.serverSide.crypt.*;
 import jetbrains.buildServer.serverSide.impl.ssh.ConstantServerSshKnownHostsManager;
 import jetbrains.buildServer.serverSide.oauth.OAuthToken;
 import jetbrains.buildServer.serverSide.oauth.TokenRefresher;
@@ -146,9 +143,13 @@ public class GitSupportBuilder {
   }
 
   public ParameterFactory getParametersFactory(ServerResponsibility serverResponsibility, SettingsPersister settingsPersister) {
-    return new ParameterFactoryImpl(new ParameterDescriptionFactoryImpl(), new ParameterTypeManager(Collections.emptyList()), new EncryptionManager(new EncryptionSettings(), Collections.emptyList(), new BaseEncryptionStrategy(),
+    final BaseEncryptionStrategy defaultEncryptionStrategy = new BaseEncryptionStrategy();
+    return new ParameterFactoryImpl(new ParameterDescriptionFactoryImpl(), new ParameterTypeManager(Collections.emptyList()), new EncryptionManager(new EncryptionSettings(),
                                                                                                                                                     myServerPaths, settingsPersister, new EncryptionEventDispatcher(), serverResponsibility,
-                                                                                                                                                    new EncryptionKeysStorageProvider(myServerPaths)));
+                                                                                                                                                    new EncryptionKeysStorageProvider(myServerPaths),
+                                                                                                                                                    new CoreEncryptionManager(
+                                                                                                                                                      Collections.emptyList(),
+                                                                                                                                                      defaultEncryptionStrategy)));
   }
 
   public FetchCommand getDefaultFetchCommand() {
