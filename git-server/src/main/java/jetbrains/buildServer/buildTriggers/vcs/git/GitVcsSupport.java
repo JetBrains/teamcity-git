@@ -657,10 +657,6 @@ public class GitVcsSupport extends ServerVcsSupport
   @Override
   @Nullable
   protected <T extends VcsExtension> T getVcsCustomExtension(@NotNull final Class<T> extensionClass) {
-    if (ChangesInfoBuilder.class.equals(extensionClass)) {
-      return extensionClass.cast(getCollectChangesPolicy());
-    }
-
     for (GitServerExtension e : myExtensions) {
       if (extensionClass.isInstance(e))
         return extensionClass.cast(e);
