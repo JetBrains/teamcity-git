@@ -18,6 +18,8 @@
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitServerVersionHealthPage"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.SwitchToNativeGitHealthReport"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.SwitchToNativeGitHealthPage"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitLocalFileUrlHealthReport"/>
+  <bean class="jetbrains.buildServer.buildTriggers.vcs.git.health.GitLocalFileUrlHealthPage"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.GitExternalChangeViewerExtension"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.SpaceExternalChangeViewerExtension"/>
   <bean class="jetbrains.buildServer.buildTriggers.vcs.git.CleanupCustomizer"/>

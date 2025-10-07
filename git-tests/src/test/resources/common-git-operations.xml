@@ -21,6 +21,7 @@
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.CollectChangesTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.LatestAcceptedRevisionTest"/>
       <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.LatestAcceptedRevisionAndSubmodulesTest"/>
+      <class name="jetbrains.buildServer.buildTriggers.vcs.git.tests.GitRemoteUrlInspectorTest"/>
     </classes>
   </test>
 </suite>

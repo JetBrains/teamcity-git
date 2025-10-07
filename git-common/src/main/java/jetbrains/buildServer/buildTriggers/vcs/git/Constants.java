@@ -142,4 +142,6 @@ public interface Constants {
   String CREDHELPER_LOGGING_ENABLED = "teamcity.git.credhelper.debug.enabled";
   // used to identify logs produced by teamcity processes executed by git, e.g., credhelper
   String GIT_LOGGING_PREFIX = "[teamcity-git]";
+
+  String WARN_FILE_URL = "teamcity.git.health.warnFileUrl";
 }
