@@ -1,4 +1,4 @@
-package jetbrains.buildServer.buildTriggers.vcs.git;
+package jetbrains.buildServer.buildTriggers.vcs.git.apiCredentials;
 
 import com.intellij.openapi.diagnostic.Logger;
 import java.util.Map;
@@ -50,9 +50,6 @@ public class GitApiCredentialsSupport implements ApiCredentialsSupport {
       switch (type) {
         case ConnectionApiCredential.API_CREDENTIAL_CONNECTION_TYPE:
           apiCredential = new ConnectionApiCredential(properties);
-          break;
-        case RefreshableTokenApiCredential.API_CREDENTIAL_REFRESHABLE_TOKEN_TYPE:
-          apiCredential = new RefreshableTokenApiCredential(properties);
           break;
         case PersonalTokenApiCredential.API_CREDEDENTIAL_PERSONAL_TOKEN_TYPE:
           apiCredential = new PersonalTokenApiCredential(properties);
