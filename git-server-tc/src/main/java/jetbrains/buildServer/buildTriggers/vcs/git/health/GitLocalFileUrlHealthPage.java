@@ -1,10 +1,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git.health;
 
-import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
-import jetbrains.buildServer.serverSide.healthStatus.HealthStatusItem;
 import jetbrains.buildServer.web.openapi.PagePlaces;
 import jetbrains.buildServer.web.openapi.PluginDescriptor;
 import jetbrains.buildServer.web.openapi.healthStatus.HealthStatusItemPageExtension;
