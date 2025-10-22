@@ -10,6 +10,7 @@ import jetbrains.buildServer.parameters.ProcessingResult;
 import jetbrains.buildServer.parameters.ReferencesResolverUtil;
 import jetbrains.buildServer.parameters.ValueResolver;
 import jetbrains.buildServer.serverSide.SBuildType;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.healthStatus.HealthStatusItem;
 import jetbrains.buildServer.serverSide.healthStatus.HealthStatusItemConsumer;
 import jetbrains.buildServer.serverSide.healthStatus.HealthStatusReport;
@@ -64,6 +65,10 @@ public class GitLocalFileUrlHealthReport extends HealthStatusReport {
 
   @Override
   public void report(@NotNull HealthStatusScope scope, @NotNull HealthStatusItemConsumer consumer) {
+    if (!TeamCityProperties.getBoolean(Constants.WARN_FILE_URL)) {
+      return;
+    }
+
     for (SVcsRoot root : scope.getVcsRoots()) {
       if (!isGitRoot(root)) continue;
 
