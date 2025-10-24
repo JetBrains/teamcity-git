@@ -198,26 +198,24 @@ public class GitVcsSupport extends ServerVcsSupport
 
   @NotNull
   public RepositoryStateData getCurrentState(@NotNull GitVcsRoot gitRoot) throws VcsException {
-    return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-      String refInRoot = gitRoot.getRef();
-      String fullRef = GitUtils.expandRef(refInRoot);
-      Map<String, String> branchRevisions = new HashMap<String, String>();
-      for (Ref ref : getRemoteRefs(gitRoot.getOriginalRoot()).values()) {
-        if (!ref.getName().startsWith("ref"))
-          continue;
-        if (!gitRoot.isReportTags() && GitServerUtil.isTag(ref) && !fullRef.equals(ref.getName()))
-          continue;
-        branchRevisions.put(ref.getName(), GitServerUtil.getRevision(ref));
+    String refInRoot = gitRoot.getRef();
+    String fullRef = GitUtils.expandRef(refInRoot);
+    Map<String, String> branchRevisions = new HashMap<String, String>();
+    for (Ref ref : getRemoteRefs(gitRoot.getOriginalRoot()).values()) {
+      if (!ref.getName().startsWith("ref"))
+        continue;
+      if (!gitRoot.isReportTags() && GitServerUtil.isTag(ref) && !fullRef.equals(ref.getName()))
+        continue;
+      branchRevisions.put(ref.getName(), GitServerUtil.getRevision(ref));
+    }
+    if (branchRevisions.get(fullRef) == null && !gitRoot.isIgnoreMissingDefaultBranch()) {
+      if (branchRevisions.isEmpty()) {
+        throw new VcsException(GIT_REPOSITORY_HAS_NO_BRANCHES);
+      } else {
+        throw new VcsException(DEFAULT_BRANCH_REVISION_NOT_FOUND + " '" + refInRoot + "' of vcs root '" + gitRoot.getName() + "'");
       }
-      if (branchRevisions.get(fullRef) == null && !gitRoot.isIgnoreMissingDefaultBranch()) {
-        if (branchRevisions.isEmpty()) {
-          throw new VcsException(GIT_REPOSITORY_HAS_NO_BRANCHES);
-        } else {
-          throw new VcsException(DEFAULT_BRANCH_REVISION_NOT_FOUND + " '" + refInRoot + "' of vcs root '" + gitRoot.getName() + "'");
-        }
-      }
-      return RepositoryStateData.createVersionState(fullRef, branchRevisions);
-    });
+    }
+    return RepositoryStateData.createVersionState(fullRef, branchRevisions);
   }
 
   public void buildPatch(@NotNull VcsRoot root,
