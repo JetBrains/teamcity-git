@@ -396,7 +396,7 @@ public class AgentCommitLoaderFactory {
         result.setShowProgress(true);
 
       if (shallowClone)
-        result.setDepth(1);
+        result.setDepth(myPluginConfig.getShallowCloneDepth());
 
       result.call();
     }

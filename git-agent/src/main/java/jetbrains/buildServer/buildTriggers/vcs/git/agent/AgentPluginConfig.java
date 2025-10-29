@@ -98,6 +98,10 @@ public interface AgentPluginConfig extends PluginConfig {
   @NotNull
   Collection<String> getCustomRecoverableMessages();
 
+  int getShallowCloneDepth();
+
+  int getSubmodulesShallowDepth();
+
   /**
    * Defines how progress output from git commands is written into build log
    */

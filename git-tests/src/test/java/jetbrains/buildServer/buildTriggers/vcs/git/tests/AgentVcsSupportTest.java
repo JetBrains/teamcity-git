@@ -390,6 +390,27 @@ public class AgentVcsSupportTest extends BaseSimpleGitTestCase {
     assertTrue(new File(myCheckoutDir, ".git/modules/submodule/shallow").isFile());
   }
 
+  public void testSubmodulesConfigurableShallowClone() throws VcsException, IOException {
+    final AgentRunningBuild build = createRunningBuild(new HashMap<String, String>(){{
+      put(PluginConfigImpl.USE_SHALLOW_CLONE_INTERNAL, "true");
+      put(PluginConfigImpl.SUBMODULES_SHALLOW_DEPTH, "3");
+    }});
+
+    myRoot.addProperty(Constants.BRANCH_NAME, "TW-96384");
+    myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
+
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "71eb746d13bee55a3a6f27f35e1528f16088f447", myCheckoutDir, build, false);
+
+    File shallowFile = new File(myCheckoutDir, ".git/modules/submodule/shallow");
+    assertTrue(shallowFile.isFile());
+    assertEquals("6d944ac86dd5a45265873ddaa60e7ec343c1c4bb", FileUtil.readText(shallowFile).trim());
+    /** In the submodule repo:
+      * - 42fd281 add dir
+      * - 293a6e0 new file added
+      * - 6d944ac Initial commit
+     */
+  }
+
 
   @TestFor(issues = "TW-71691")
   public void testRespectSubmoduleBranch() throws Exception {
@@ -1738,6 +1759,27 @@ public class AgentVcsSupportTest extends BaseSimpleGitTestCase {
     }});
     myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.VERSION_TEST_HEAD, myCheckoutDir, build, false);
   }
+
+  @Test(dataProvider = "shallow_clone_param_name")
+  public void test_shallow_clone_with_configurable_depth(String shallowCloneParamName) throws Exception {
+    AgentRunningBuild build = createRunningBuild(new HashMap<String, String>() {{
+      put(PluginConfigImpl.USE_MIRRORS, "true");
+      put(shallowCloneParamName, "true");
+      put(PluginConfigImpl.SHALLOW_CLONE_DEPTH, "2");
+    }});
+    myVcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, GitVcsSupportTest.CUD1_VERSION, myCheckoutDir, build, false);
+
+    File shallowFile = new File(myCheckoutDir, ".git/shallow");
+    assertTrue(shallowFile.isFile());
+    assertEquals("97442a720324a0bd092fb9235f72246dc8b345bc", FileUtil.readText(shallowFile).trim());
+    /**
+     * In this repo:
+     * - ad4528e more changes
+     * - 97442a7 The second commit
+     * - 2276eaf first commit
+     */
+  }
+
 
   @TestFor(issues = "TW-71077")
   public void test_shallow_clone_to_checkout_dir() throws Exception {
