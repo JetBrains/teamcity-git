@@ -94,7 +94,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
       cmd.addParameter("--stdin");
       cmd.addParameter(getRemote());
       if (CommandUtil.shouldHandleRemoteRefNotFound()) {
-        runCmd(new FetchCommandRetryable(cmd));
+        runCmd(new FetchCommandRetryable(cmd.stdErrLogLevel("info")));
       } else {
         runCmd(cmd.stdErrLogLevel("debug"), refSpecsToBytes(cmd));
       }

@@ -39,7 +39,7 @@ public class CommandUtil {
       commandFailed(cmdName, res);
     } else if (res.getStderr().length() > 0 && !isOnlyTeamCityDebugLogs(res.getStderr())) {
       if (cmd.isStdErrExpected()) {
-        logMessage("Error output produced by " + cmdName + ":\n" + res.getStderr().trim(), cmd.getStdErrLogLevel());
+        logMessage("Stderr from git command " + cmdName + ":\n" + res.getStderr().trim(), cmd.getStdErrLogLevel());
       } else {
         commandFailed(cmdName, res);
       }
