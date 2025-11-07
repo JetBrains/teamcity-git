@@ -70,6 +70,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String REMOTE_OPERATION_ATTEMPTS = "teamcity.internal.git.remoteOperationAttempts";
   public static final String TEAMCITY_GIT_SSH_DEBUG = "teamcity.internal.git.sshDebug";
   private static final String CUSTOM_RECOVERABLE_MESSAGES = "teamcity.git.agent.recoverableMessages";
+  public static final String SHALLOW_CLONE_DEPTH = "teamcity.git.agent.shallowCloneDepth";
+  public static final String SUBMODULES_SHALLOW_DEPTH = "teamcity.git.agent.submodules.shallowCloneDepth";
 
   public static final String IGNORE_CHECKOUT_RULES_POSIFIX_CHECK_PARAMETER = "teamcity.internal.git.agent.ignoreCheckoutRulesPostfixCheck";
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class);
@@ -491,5 +493,33 @@ public class PluginConfigImpl implements AgentPluginConfig {
     }
 
     return parseTimeout(valueFromBuild, DEFAULT_SSH_CONNECT_TIMEOUT);
+  }
+
+  @Override
+  public int getShallowCloneDepth() {
+    return getDepthParameter(SHALLOW_CLONE_DEPTH, 1);
+  }
+
+  @Override
+  public int getSubmodulesShallowDepth() {
+    return getDepthParameter(SUBMODULES_SHALLOW_DEPTH, 1);
+  }
+
+  @SuppressWarnings("SameParameterValue")
+  private int getDepthParameter(@NotNull String parameterName, int defaultValue) {
+    String depth = myBuild.getSharedConfigParameters().get(parameterName);
+    if (depth != null) {
+      try {
+        int parsedDepth = Integer.parseInt(depth);
+        if (parsedDepth < 1) {
+          LOG.warn("Invalid value for " + parameterName + ": '" + depth + "' (must be >= 1), using default depth of " + defaultValue);
+          return defaultValue;
+        }
+        return parsedDepth;
+      } catch (NumberFormatException e) {
+        LOG.warn("Invalid value for " + parameterName + ": '" + depth + "', using default depth of " + defaultValue);
+      }
+    }
+    return defaultValue;
   }
 }

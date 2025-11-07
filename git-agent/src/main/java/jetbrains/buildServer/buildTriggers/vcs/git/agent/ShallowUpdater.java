@@ -47,7 +47,7 @@ public class ShallowUpdater extends UpdaterImpl {
                                                 .setUseNativeSsh(myPluginConfig.isUseNativeSSH())
                                                 .setTimeout(myPluginConfig.getSubmoduleUpdateTimeoutSeconds())
                                                 .setForce(isForceUpdateSupported())
-                                                .setDepth(1);
+                                                .setDepth(myPluginConfig.getSubmodulesShallowDepth());
     submoduleUpdate.addConfig("protocol.file.allow", "always");
     submoduleUpdate.call();
   }
