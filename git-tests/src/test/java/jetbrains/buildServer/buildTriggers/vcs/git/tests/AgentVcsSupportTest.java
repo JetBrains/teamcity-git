@@ -399,7 +399,7 @@ public class AgentVcsSupportTest extends BaseSimpleGitTestCase {
     myRoot.addProperty(Constants.BRANCH_NAME, "TW-96384");
     myRoot.addProperty(Constants.SUBMODULES_CHECKOUT, SubmodulesCheckoutPolicy.CHECKOUT.name());
 
-    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "71eb746d13bee55a3a6f27f35e1528f16088f447", myCheckoutDir, build, false);
+    myVcsSupport.updateSources(myRoot, new CheckoutRules(""), "d21fe3885411b75d4c28b2f0546247283258bf50", myCheckoutDir, build, false);
 
     File shallowFile = new File(myCheckoutDir, ".git/modules/submodule/shallow");
     assertTrue(shallowFile.isFile());
