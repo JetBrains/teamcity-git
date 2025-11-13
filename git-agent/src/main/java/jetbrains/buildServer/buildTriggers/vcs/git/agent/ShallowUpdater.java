@@ -10,6 +10,7 @@ import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.SubmoduleUpdateCommand;
+import jetbrains.buildServer.buildTriggers.vcs.git.jgit.LenientSystemReader;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
 import jetbrains.buildServer.vcs.VcsRoot;
@@ -30,8 +31,9 @@ public class ShallowUpdater extends UpdaterImpl {
                         @NotNull final CheckoutRules rules,
                         @NotNull final CheckoutMode checkoutMode,
                         final SubmoduleManager submoduleManager,
-                        @NotNull AgentTokenStorage tokenStorage) throws VcsException {
-    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, checkoutMode, submoduleManager, tokenStorage);
+                        @NotNull AgentTokenStorage tokenStorage,
+                        @NotNull LenientSystemReader systemReader) throws VcsException {
+    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, checkoutMode, submoduleManager, tokenStorage, systemReader);
   }
 
   @Override

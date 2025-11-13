@@ -20,6 +20,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.agent.ssl.SSLInvestigator;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.jgit.LenientSystemReader;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.CollectionsUtil;
@@ -57,8 +58,9 @@ public class UpdaterWithMirror extends UpdaterImpl {
                            @NotNull CheckoutRules rules,
                            @NotNull CheckoutMode mode,
                            @NotNull SubmoduleManager submoduleManager,
-                           @NotNull AgentTokenStorage tokenStorage) throws VcsException {
-    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode, submoduleManager, tokenStorage);
+                           @NotNull AgentTokenStorage tokenStorage,
+                           @NotNull LenientSystemReader systemReader) throws VcsException {
+    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode, submoduleManager, tokenStorage, systemReader);
     myAgentControlClient = new AgentControlClient();
   }
 
@@ -241,7 +243,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
   private boolean isValidGitRepo(@NotNull File gitDir) {
     try {
-      new RepositoryBuilder().setGitDir(gitDir).setMustExist(true).build();
+      newRepositoryBuilder().setGitDir(gitDir).setMustExist(true).build();
       return true;
     } catch (IOException e) {
       return false;
@@ -284,7 +286,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
   private String readRemoteUrl() throws VcsException {
     Repository repository = null;
     try {
-      repository = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
+      repository = newRepositoryBuilder().setWorkTree(myTargetDirectory).build();
       return repository.getConfig().getString("remote", "origin", "url");
     } catch (IOException e) {
       throw new VcsException("Error while reading remote repository url: " + e.getMessage(), e);
@@ -439,7 +441,7 @@ public class UpdaterWithMirror extends UpdaterImpl {
 
     Repository r = null;
     try {
-      r = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
+      r = newRepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
 
       final StoredConfig gitConfig = r.getConfig();
       final Set<String> submodules = gitModules.getSubsections("submodule");
