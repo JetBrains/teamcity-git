@@ -9,7 +9,6 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import org.eclipse.jgit.errors.ConfigInvalidException;
 import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.storage.file.FileBasedConfig;
@@ -25,13 +24,19 @@ public class LenientSystemReader extends SystemReader {
   private static final Logger LOG = Logger.getInstance(LenientSystemReader.class);
 
   @PostConstruct
-  public void init() {
+  public void register() {
+    LOG.debug("Registering LenientSystemReader as JGit system reader.");
     SystemReader.setInstance(this);
   }
 
-  @PreDestroy
-  public void dispose() {
-    SystemReader.setInstance(null);
+  public void ensureRegistered() {
+    final SystemReader currentSystemReader = SystemReader.getInstance();
+    if (!(currentSystemReader instanceof LenientSystemReader)) {
+      if (currentSystemReader != null) {
+        LOG.warn("Unexpected JGit system reader type registered: " + currentSystemReader.getClass().getName() + " overriding with LenientSystemReader.");
+      }
+      register();
+    }
   }
 
   public FS getFS() {

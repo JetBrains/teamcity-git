@@ -12,6 +12,7 @@ import jetbrains.buildServer.agent.SmartDirectoryCleaner;
 import jetbrains.buildServer.agent.oauth.AgentTokenStorage;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitUtils;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
+import jetbrains.buildServer.buildTriggers.vcs.git.jgit.LenientSystemReader;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CheckoutRules;
 import jetbrains.buildServer.vcs.VcsException;
@@ -38,8 +39,9 @@ public class UpdaterWithAlternates extends UpdaterWithMirror {
                                @NotNull CheckoutRules rules,
                                @NotNull CheckoutMode mode,
                                @NotNull SubmoduleManager submoduleManager,
-                               @NotNull AgentTokenStorage tokenStorage) throws VcsException {
-    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode, submoduleManager, tokenStorage);
+                               @NotNull AgentTokenStorage tokenStorage,
+                               @NotNull LenientSystemReader systemReader) throws VcsException {
+    super(fs, pluginConfig, mirrorManager, directoryCleaner, gitFactory, build, root, version, targetDir, rules, mode, submoduleManager, tokenStorage, systemReader);
     myGitDir = new File(myTargetDirectory, ".git");
   }
 

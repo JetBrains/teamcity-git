@@ -22,6 +22,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
 import jetbrains.buildServer.buildTriggers.vcs.git.MirrorManager;
 import jetbrains.buildServer.buildTriggers.vcs.git.agent.command.CleanCommandUtil;
+import jetbrains.buildServer.buildTriggers.vcs.git.jgit.LenientSystemReader;
 import jetbrains.buildServer.ssh.SshKnownHostsManager;
 import jetbrains.buildServer.util.EventDispatcher;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
@@ -44,6 +45,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
   private final GitMetaFactory myGitMetaFactory;
   private final AgentTokenStorage myTokenStorage;
   private final SshKnownHostsManager mySshKnownHostsManager;
+  private final LenientSystemReader mySystemReader;
 
   //The canCheckout() method should check that roots are not checked out in the same dir (TW-49786).
   //To do that we need to create AgentPluginConfig for each VCS root which involves 'git version'
@@ -69,7 +71,8 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
                             @NotNull GitMetaFactory gitMetaFactory,
                             @NotNull EventDispatcher<AgentLifeCycleListener> agentEventDispatcher,
                             @NotNull AgentTokenStorage tokenStorage,
-                            @NotNull SshKnownHostsManager sshKnownHostsManager) {
+                            @NotNull SshKnownHostsManager sshKnownHostsManager,
+                            @NotNull LenientSystemReader systemReader) {
     myFS = fs;
     myDirectoryCleaner = directoryCleaner;
     mySshService = sshService;
@@ -79,6 +82,7 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     myGitMetaFactory = gitMetaFactory;
     myTokenStorage = tokenStorage;
     mySshKnownHostsManager = sshKnownHostsManager;
+    mySystemReader = systemReader;
 
     agentEventDispatcher.addListener(new AgentLifeCycleAdapter() {
       @Override
@@ -119,13 +123,13 @@ public class GitAgentVcsSupport extends AgentVcsSupport implements UpdateByCheck
     Updater updater;
     AgentGitVcsRoot gitRoot = new AgentGitVcsRoot(myMirrorManager, targetDir, root, myTokenStorage, detectExtraHTTPCredentialsInBuild(build));
     if (config.isUseShallowClone(gitRoot)) {
-      updater = new ShallowUpdater(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
+      updater = new ShallowUpdater(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage, mySystemReader);
     } else if (config.isUseAlternates(gitRoot)) {
-      updater = new UpdaterWithAlternates(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
+      updater = new UpdaterWithAlternates(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage, mySystemReader);
     } else if (config.isUseLocalMirrors(gitRoot)) {
-      updater = new UpdaterWithMirror(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
+      updater = new UpdaterWithMirror(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage, mySystemReader);
     } else {
-      updater = new UpdaterImpl(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage);
+      updater = new UpdaterImpl(myFS, config, myMirrorManager, myDirectoryCleaner, gitFactory, build, root, toVersion, targetDir, rules, mode, mySubmoduleManager, myTokenStorage, mySystemReader);
     }
     updater.update();
   }

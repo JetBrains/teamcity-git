@@ -22,6 +22,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitIndexCorrup
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitOutdatedIndexException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.RefImpl;
+import jetbrains.buildServer.buildTriggers.vcs.git.jgit.LenientSystemReader;
 import jetbrains.buildServer.log.Loggers;
 import jetbrains.buildServer.messages.DefaultMessagesInfo;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
@@ -75,6 +76,7 @@ public class UpdaterImpl implements Updater {
   private final CheckoutMode myCheckoutMode;
   protected final MirrorManager myMirrorManager;
   protected final SubmoduleManager mySubmoduleManager;
+  private final LenientSystemReader mySystemReader;
   //remote repository refs, stored in field in order to not run 'git ls-remote' command twice
   private Refs myRemoteRefs;
 
@@ -90,7 +92,8 @@ public class UpdaterImpl implements Updater {
                      @NotNull CheckoutRules rules,
                      @NotNull CheckoutMode checkoutMode,
                      final SubmoduleManager submoduleManager,
-                     @NotNull AgentTokenStorage tokenStorage) throws VcsException {
+                     @NotNull AgentTokenStorage tokenStorage,
+                     @NotNull LenientSystemReader systemReader) throws VcsException {
     myFS = fs;
     myPluginConfig = pluginConfig;
     myDirectoryCleaner = directoryCleaner;
@@ -114,6 +117,7 @@ public class UpdaterImpl implements Updater {
     myRules = rules;
     myCheckoutMode = checkoutMode;
     myMirrorManager = mirrorManager;
+    mySystemReader = systemReader;
   }
 
 
@@ -422,7 +426,7 @@ public class UpdaterImpl implements Updater {
 
     Repository r = null;
     try {
-      r = new RepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
+      r = newRepositoryBuilder().setBare().setGitDir(getGitDir(repositoryDir)).build();
       StoredConfig gitConfig = r.getConfig();
 
       Set<String> submodules = gitModules.getSubsections("submodule");
@@ -479,7 +483,7 @@ public class UpdaterImpl implements Updater {
   private void updateOriginUrl(@NotNull File repoDir, @NotNull String url) throws IOException {
     Repository r = null;
     try {
-      r = new RepositoryBuilder().setBare().setGitDir(repoDir).build();
+      r = newRepositoryBuilder().setBare().setGitDir(repoDir).build();
       StoredConfig config = r.getConfig();
       config.setString("remote", "origin", "url", url);
       config.save();
@@ -662,7 +666,7 @@ public class UpdaterImpl implements Updater {
   protected void removeUrlSections() throws VcsException {
     Repository r = null;
     try {
-      r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
+      r = newRepositoryBuilder().setWorkTree(myTargetDirectory).build();
       StoredConfig config = r.getConfig();
       Set<String> urlSubsections = config.getSubsections("url");
       for (String subsection : urlSubsections) {
@@ -683,7 +687,7 @@ public class UpdaterImpl implements Updater {
   private void removeLfsStorage() throws VcsException {
     Repository r = null;
     try {
-      r = new RepositoryBuilder().setWorkTree(myTargetDirectory).build();
+      r = newRepositoryBuilder().setWorkTree(myTargetDirectory).build();
       StoredConfig config = r.getConfig();
       config.unsetSection("lfs", null);
       config.save();
@@ -830,6 +834,7 @@ public class UpdaterImpl implements Updater {
   }
 
   void configureRemoteUrl(@NotNull File gitDir, CommonURIish remoteUrl) throws VcsException {
+    mySystemReader.ensureRegistered();
     RemoteRepositoryConfigurator cfg = new RemoteRepositoryConfigurator();
     cfg.setGitDir(gitDir);
     cfg.setExcludeUsernameFromHttpUrls(myPluginConfig.isExcludeUsernameFromHttpUrl() && !myPluginConfig.getGitVersion().isLessThan(UpdaterImpl.CREDENTIALS_SECTION_VERSION));
@@ -1185,5 +1190,11 @@ public class UpdaterImpl implements Updater {
   @NotNull
   protected AgentCommitLoader getCommitLoader(@NotNull File repo) {
     return AgentCommitLoaderFactory.getCommitLoader(myRoot, repo, myGitFactory, myPluginConfig, myLogger);
+  }
+
+  @NotNull
+  protected RepositoryBuilder newRepositoryBuilder() {
+    mySystemReader.ensureRegistered();
+    return new RepositoryBuilder();
   }
 }
