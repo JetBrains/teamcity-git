@@ -144,4 +144,5 @@ public interface Constants {
   String GIT_LOGGING_PREFIX = "[teamcity-git]";
 
   String WARN_FILE_URL = "teamcity.git.health.warnFileUrl";
+  String BLOCK_FILE_URL = "teamcity.git.blockFileUrl";
 }

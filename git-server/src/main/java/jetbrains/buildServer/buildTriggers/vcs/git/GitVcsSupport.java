@@ -298,7 +298,7 @@ public class GitVcsSupport extends ServerVcsSupport
   }
 
   public PropertiesProcessor getVcsPropertiesProcessor() {
-    return new VcsPropertiesProcessor();
+    return new VcsPropertiesProcessor(myConfig);
   }
 
   @NotNull
@@ -345,7 +345,7 @@ public class GitVcsSupport extends ServerVcsSupport
     OperationContext context = createContext(vcsRoot, "connection test");
     GitVcsRoot gitRoot = context.getGitRoot();
     return myRepositoryManager.runWithDisabledRemove(gitRoot.getRepositoryDir(), () -> {
-      TestConnectionCommand command = new TestConnectionCommand(this, myTransportFactory, myRepositoryManager);
+      TestConnectionCommand command = new TestConnectionCommand(this, myTransportFactory, myRepositoryManager, myConfig);
       try {
         return command.testConnection(context);
       } catch (Exception e) {

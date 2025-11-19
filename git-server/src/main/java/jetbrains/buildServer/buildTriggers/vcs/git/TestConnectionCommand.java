@@ -32,13 +32,16 @@ public class TestConnectionCommand {
   private final GitVcsSupport myGit;
   private final TransportFactory myTransportFactory;
   private final RepositoryManager myRepositoryManager;
+  private final ServerPluginConfig myConfig;
 
   public TestConnectionCommand(@NotNull GitVcsSupport git,
                                @NotNull TransportFactory transportFactory,
-                               @NotNull RepositoryManager repositoryManager) {
+                               @NotNull RepositoryManager repositoryManager,
+                               @NotNull ServerPluginConfig config) {
     myGit = git;
     myTransportFactory = transportFactory;
     myRepositoryManager = repositoryManager;
+    myConfig = config;
   }
 
 
@@ -77,7 +80,7 @@ public class TestConnectionCommand {
 
   private void validateBranchSpec(@NotNull GitVcsRoot root) throws VcsException {
     String specStr = root.getBranchSpec();
-    VcsPropertiesProcessor validator = new VcsPropertiesProcessor();
+    VcsPropertiesProcessor validator = new VcsPropertiesProcessor(myConfig);
     InvalidProperty error = validator.validateBranchSpec(specStr);
     if (error != null)
       throw new VcsException("Branch specification error: " + error.getInvalidReason());

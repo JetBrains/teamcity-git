@@ -2,12 +2,18 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.util.Collections;
+import java.util.Map;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
+import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.InternalPropertiesHandler;
 import jetbrains.buildServer.serverSide.InvalidProperty;
 import jetbrains.buildServer.util.TestFor;
 import jetbrains.buildServer.vcs.VcsException;
 import junit.framework.TestCase;
 import org.jetbrains.annotations.NotNull;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -26,8 +32,27 @@ import static org.testng.AssertJUnit.fail;
 @Test
 public class VcsPropertiesProcessorTest extends TestCase {
 
-  private VcsPropertiesProcessor myProcessor = new VcsPropertiesProcessor();
+  private VcsPropertiesProcessor myProcessor = new VcsPropertiesProcessor(new PluginConfigImpl());
 
+  private InternalPropertiesHandler myInternalPropertiesHandler;
+
+  @BeforeMethod
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+
+    myInternalPropertiesHandler = new InternalPropertiesHandler();
+  }
+
+  @AfterMethod
+  @Override
+  public void tearDown() throws Exception {
+    if (myInternalPropertiesHandler != null) {
+      myInternalPropertiesHandler.tearDown();
+    }
+
+    super.tearDown();
+  }
 
   public void empty_push_url_is_allowed() {
     Collection<InvalidProperty> invalids = myProcessor.process(new HashMap<String, String>() {{
@@ -183,5 +208,50 @@ public class VcsPropertiesProcessorTest extends TestCase {
     } catch (VcsException e) {
       fail("Unexpected error for url '" + url + "'");
     }
+  }
+
+  @TestFor(issues = "TW-95933")
+  @Test
+  public void testLocalFileFetchUrlIsBlocked() {
+    myInternalPropertiesHandler.setInternalProperty("teamcity.git.blockFileUrl", "true");
+    final Map<String, String> props = ImmutableMap.of(
+      "branch", "refs/heads/main",
+      "url", "file:///tmp/testrepo.git"
+    );
+
+    final Collection<InvalidProperty> invalidProps = myProcessor.process(props);
+
+    then(invalidProps).extracting("propertyName", "invalidReason")
+                      .containsExactly(tuple("url", "The URL most not be a local file URL"));
+  }
+
+  @TestFor(issues = "TW-95933")
+  @Test
+  public void testLocalFilePushUrlIsBlocked() {
+    myInternalPropertiesHandler.setInternalProperty("teamcity.git.blockFileUrl", "true");
+    final Map<String, String> props = ImmutableMap.of(
+      "branch", "refs/heads/main",
+      "url", "https://my.git.test/testrepo.git",
+      "push_url", "file:///tmp/testrepo.git"
+    );
+
+    final Collection<InvalidProperty> invalidProps = myProcessor.process(props);
+
+    then(invalidProps).extracting("propertyName", "invalidReason")
+                      .containsExactly(tuple("push_url", "The URL most not be a local file URL"));
+  }
+
+
+  @TestFor(issues = "TW-95933")
+  @Test
+  public void testLocalFileFetchUrlIsNotBlockedByDefault() {
+    final Map<String, String> props = ImmutableMap.of(
+      "branch", "refs/heads/main",
+      "url", "file:///tmp/testrepo.git"
+    );
+
+    final Collection<InvalidProperty> invalidProps = myProcessor.process(props);
+
+    then(invalidProps).isEmpty();
   }
 }

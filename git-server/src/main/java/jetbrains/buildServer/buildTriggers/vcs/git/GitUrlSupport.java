@@ -43,12 +43,14 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
 
   private final GitVcsSupport myGitSupport;
   private final TokenRefresher myTokenRefresher;
+  private final ServerPluginConfig myConfig;
   private volatile ExtensionsProvider myExtensionsProvider;
   private volatile ProjectManager myProjectManager;
 
-  public GitUrlSupport(@NotNull GitVcsSupport gitSupport, @NotNull TokenRefresher tokenRefresher) {
+  public GitUrlSupport(@NotNull GitVcsSupport gitSupport, @NotNull TokenRefresher tokenRefresher, @NotNull ServerPluginConfig config) {
     myGitSupport = gitSupport;
     myTokenRefresher = tokenRefresher;
+    myConfig = config;
     gitSupport.addExtension(this);
   }
 
@@ -83,6 +85,10 @@ public class GitUrlSupport implements ContextAwareUrlSupport, PositionAware, Git
 
     String fetchUrl = getFetchUrl(url);
     String lowerCaseFetchUrl = StringUtil.toLowerCase(fetchUrl);
+
+    if (myConfig.isBlockFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(fetchUrl)) {
+      throw new VcsException("The git fetch URL most not be a local file URL");
+    }
 
     URIish uri = parseURIish(fetchUrl);
 

@@ -24,6 +24,13 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
 
   private static final Pattern EOL_SPLIT_PATTERN = Pattern.compile("(\r|\n|\r\n)");
 
+  @NotNull
+  private final ServerPluginConfig myConfig;
+
+  public VcsPropertiesProcessor(@NotNull ServerPluginConfig config) {
+    myConfig = config;
+  }
+
   public Collection<InvalidProperty> process(Map<String, String> properties) {
     Collection<InvalidProperty> rc = new LinkedList<InvalidProperty>();
 
@@ -50,6 +57,10 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
           rc.add(new InvalidProperty(Constants.FETCH_URL, e.getMessage()));
           rc.add(new InvalidProperty(Constants.AUTH_METHOD, e.getMessage()));
         }
+
+        if (myConfig.isBlockFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(url)) {
+          rc.add(new InvalidProperty(Constants.FETCH_URL, "The URL most not be a local file URL"));
+        }
       }
     }
     String pushUrl = properties.get(Constants.PUSH_URL);
@@ -68,6 +79,10 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
         } catch (VcsException e) {
           rc.add(new InvalidProperty(Constants.PUSH_URL, e.getMessage()));
           rc.add(new InvalidProperty(Constants.AUTH_METHOD, e.getMessage()));
+        }
+
+        if (myConfig.isBlockFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(pushUrl)) {
+          rc.add(new InvalidProperty(Constants.PUSH_URL, "The URL most not be a local file URL"));
         }
       }
     }

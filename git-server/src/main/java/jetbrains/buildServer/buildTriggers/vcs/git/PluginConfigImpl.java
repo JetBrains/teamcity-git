@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import jetbrains.buildServer.DevelopmentMode;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.jsch.SshPubkeyAcceptedAlgorithms;
 import jetbrains.buildServer.buildTriggers.vcs.git.patch.GitPatchProcess;
@@ -28,7 +29,6 @@ import jetbrains.buildServer.connections.ExpiringAccessToken;
 import jetbrains.buildServer.serverSide.CachePaths;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.crypt.EncryptUtil;
-import jetbrains.buildServer.serverSide.crypt.EncryptionUtils;
 import jetbrains.buildServer.serverSide.impl.ssh.ServerSshKnownHostsManagerImpl;
 import jetbrains.buildServer.util.*;
 import jetbrains.buildServer.util.jsch.JSchConfigInitializer;
@@ -744,5 +744,10 @@ public class PluginConfigImpl implements ServerPluginConfig {
   @Override
   public int getSshConnectTimeoutSeconds() {
     return TeamCityProperties.getInteger(SSH_CONNECT_TIMEOUT_SECONDS, DEFAULT_SSH_CONNECT_TIMEOUT);
+  }
+
+  @Override
+  public boolean isBlockFileUrl() {
+    return !DevelopmentMode.isEnabled && TeamCityProperties.getBoolean(Constants.BLOCK_FILE_URL);
   }
 }

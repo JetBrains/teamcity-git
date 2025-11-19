@@ -9,6 +9,7 @@ import java.util.*;
 import jetbrains.buildServer.BaseTestCase;
 import jetbrains.buildServer.ExtensionsProvider;
 import jetbrains.buildServer.TempFiles;
+import jetbrains.buildServer.agentServer.Server;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.parameters.ParametersProvider;
 import jetbrains.buildServer.serverSide.ProjectManager;
@@ -52,7 +53,7 @@ public class GitUrlSupportTest extends BaseTestCase {
   public void setUp() throws Exception {
     super.setUp();
     ServerPaths paths = new ServerPaths(myTempFiles.createTempDir().getAbsolutePath());
-    PluginConfig config = new PluginConfigBuilder(paths).build();
+    ServerPluginConfig config = new PluginConfigBuilder(paths).build();
     myMirrorManager = new MirrorManagerImpl(config, new HashCalculatorImpl(), new RemoteRepositoryUrlInvestigatorImpl());
 
     myProjectMock = mock(SProject.class);
@@ -76,7 +77,7 @@ public class GitUrlSupportTest extends BaseTestCase {
     }).build();
 
     final TokenRefresher tokenRefresher = (TokenRefresher)mock(TokenRefresher.class).proxy();
-    myUrlSupport = new GitUrlSupport(myGitVcsSupport, tokenRefresher) {
+    myUrlSupport = new GitUrlSupport(myGitVcsSupport, tokenRefresher, config) {
       @NotNull
       @Override
       protected VcsRoot createDummyRoot(@NotNull final Map<String, String> props, @Nullable final SProject curProject) {
@@ -295,6 +296,14 @@ public class GitUrlSupportTest extends BaseTestCase {
     VcsUrl url = new VcsUrl("https://gitlab.com/fdroid/repomaker");
     GitVcsRoot root = toGitRoot(url);
     assertEquals("https://gitlab.com/fdroid/repomaker.git", root.getProperty(Constants.FETCH_URL));
+  }
+
+  @TestFor(issues = "TW-95933")
+  @Test
+  public void shouldThrowForFileUrlIfBlocked() {
+    setInternalProperty("teamcity.git.blockFileUrl", true);
+    final VcsUrl url = new VcsUrl("file:///tmp/test");
+    assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, "The git fetch URL most not be a local file URL");
   }
 
   private void checkAuthMethod(MavenVcsUrl url, GitVcsRoot root) {

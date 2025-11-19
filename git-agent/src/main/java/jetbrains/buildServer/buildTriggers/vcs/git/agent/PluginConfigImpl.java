@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.regex.Pattern;
+import jetbrains.buildServer.DevelopmentMode;
 import jetbrains.buildServer.agent.AgentMiscConstants;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
@@ -23,6 +24,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.util.PropertiesUtil;
 import jetbrains.buildServer.util.StringUtil;
@@ -493,6 +495,11 @@ public class PluginConfigImpl implements AgentPluginConfig {
     }
 
     return parseTimeout(valueFromBuild, DEFAULT_SSH_CONNECT_TIMEOUT);
+  }
+
+  @Override
+  public boolean isBlockFileUrl() {
+    return !DevelopmentMode.isEnabled && TeamCityProperties.getBoolean(Constants.BLOCK_FILE_URL);
   }
 
   @Override
