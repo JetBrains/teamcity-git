@@ -2,6 +2,8 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.tests;
 
+import java.io.File;
+import java.util.*;
 import jetbrains.buildServer.TestLogger;
 import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitRepoOperationsImpl;
@@ -16,9 +18,6 @@ import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.util.*;
 
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.GitSupportBuilder.gitSupport;
 import static jetbrains.buildServer.buildTriggers.vcs.git.tests.VcsRootBuilder.vcsRoot;
@@ -80,8 +79,6 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
                                                                 @NotNull String startRevision,
                                                                 @NotNull String branchName,
                                                                 @NotNull Collection<String> stopRevisions) throws VcsException {
-    enableResultCaching();
-
     Result result = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevision, branchName, stopRevisions);
     // compute one more time using the cached value
     Result fromCache = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevision, branchName, stopRevisions);
@@ -360,7 +357,6 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
   @Test(dataProvider = "nativeGit")
   public void using_cached_value_no_stop_revisions(boolean withNativeGit) throws VcsException {
     setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
-    enableResultCaching();
     setInternalProperty(CheckoutRulesRevWalk.TEAMCITY_MAX_CHECKED_COMMITS_PROP, "5");
     VcsRoot root = getVcsRootBuilder().build();
 
@@ -394,7 +390,6 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
   @Test(dataProvider = "nativeGit")
   public void using_cached_value_with_stop_revisions(boolean withNativeGit) throws VcsException {
     setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
-    enableResultCaching();
     VcsRoot root = getVcsRootBuilder().build();
 
     final Set<String> visited = new HashSet<>();
@@ -430,7 +425,6 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
   @Test(dataProvider = "nativeGit")
   public void using_cached_value_with_stop_revisions_and_result(boolean withNativeGit) throws VcsException {
     setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
-    enableResultCaching();
     VcsRoot root = getVcsRootBuilder().build();
 
     final Set<String> visited = new HashSet<>();
@@ -453,13 +447,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(visited).hasSize(2);
   }
 
-  private void enableResultCaching() {
-    setInternalProperty(CheckoutRulesLatestRevisionCache.CHECKOUT_RULES_REVISION_CACHE_ENABLED, "true");
-  }
-
-  @Test(dataProvider = "true,false")
-  public void using_cached_value_with_stop_revisions_and_result_cached_start_revision_is_unreachable1(boolean cacheEnabled) throws VcsException {
-    setInternalProperty(CheckoutRulesLatestRevisionCache.CHECKOUT_RULES_REVISION_CACHE_ENABLED, String.valueOf(cacheEnabled));
+  public void using_cached_value_with_stop_revisions_and_result_cached_start_revision_is_unreachable1() throws VcsException {
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:README"),
@@ -477,9 +465,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getReachableStopRevisions()).isEmpty();
   }
 
-  @Test(dataProvider = "true,false")
-  public void using_cached_value_with_stop_revisions_and_result_cached_start_revision_is_unreachable2(boolean cacheEnabled) throws VcsException {
-    setInternalProperty(CheckoutRulesLatestRevisionCache.CHECKOUT_RULES_REVISION_CACHE_ENABLED, String.valueOf(cacheEnabled));
+  public void using_cached_value_with_stop_revisions_and_result_cached_start_revision_is_unreachable2() throws VcsException {
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:README"),
@@ -497,9 +483,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     then(rev.getReachableStopRevisions()).isEmpty();
   }
 
-  @Test(dataProvider = "true,false")
-  public void using_cached_value_with_stop_revisions_and_result_cached_start_revision_is_unreachable3(boolean cacheEnabled) throws VcsException {
-    setInternalProperty(CheckoutRulesLatestRevisionCache.CHECKOUT_RULES_REVISION_CACHE_ENABLED, String.valueOf(cacheEnabled));
+  public void using_cached_value_with_stop_revisions_and_result_cached_start_revision_is_unreachable3() throws VcsException {
     VcsRoot root = getVcsRootBuilder().build();
 
     Result rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test/TestFile7.java"),

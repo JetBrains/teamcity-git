@@ -241,8 +241,7 @@ public class GitSupportBuilder {
 
     GitVcsSupport git = new GitVcsSupport(myGitRepoOperations, myPluginConfig, resetCacheManager, myTransportFactory, myRepositoryManager, myMapFullPath, myCommitLoader,
                                           myVcsRootSSHKeyManager, new MockVcsOperationProgressProvider(),
-                                          resetCacheHandler, resetRevisionsCacheHandler, tokenRefresher, myTestConnectionSupport,
-                                          new CheckoutRulesLatestRevisionCache(), new SSLTrustStoreProvider() {
+                                          resetCacheHandler, resetRevisionsCacheHandler, tokenRefresher, myTestConnectionSupport, new SSLTrustStoreProvider() {
       @Nullable
       @Override
       public KeyStore getTrustStore() {

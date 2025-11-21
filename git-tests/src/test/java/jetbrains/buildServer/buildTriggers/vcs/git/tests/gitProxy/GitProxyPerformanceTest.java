@@ -9,7 +9,6 @@ import jetbrains.buildServer.buildTriggers.vcs.git.tests.util.BaseGitServerTestC
 import jetbrains.buildServer.serverSide.MockParameter;
 import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
 import jetbrains.buildServer.vcs.*;
-import jetbrains.buildServer.vcs.impl.SVcsRootImpl;
 import org.mockito.Mockito;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -54,7 +53,6 @@ public class GitProxyPerformanceTest extends BaseGitServerTestCase {
                                                          Mockito.mock(VcsOperationProgressProvider.class),
                                                          Mockito.mock(ServerPluginConfig.class),
                                                          Mockito.mock(RepositoryManager.class),
-                                                         Mockito.mock(CheckoutRulesLatestRevisionCache.class),
                                                          gitApiClientFactory,
                                                          factory,
                                                          new ChangesCollectorCache());

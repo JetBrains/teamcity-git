@@ -56,7 +56,6 @@ public class GitProxyServiceTests extends BaseServerTestCase {
                                                          Mockito.mock(VcsOperationProgressProvider.class),
                                                          serverPluginConfig,
                                                          Mockito.mock(RepositoryManager.class),
-                                                         Mockito.mock(CheckoutRulesLatestRevisionCache.class),
                                                          gitApiClientFactory,
                                                          factory,
                                                          new ChangesCollectorCache());
