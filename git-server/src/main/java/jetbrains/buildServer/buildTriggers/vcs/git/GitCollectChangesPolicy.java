@@ -334,7 +334,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     if (!stopRevisions.isEmpty() &&
         myVcs.isNativeGitOperationEnabled(gitRoot) &&
         rules.getExcludeRules().isEmpty() &&
-        TeamCityProperties.getBoolean(REVISION_BY_CHECKOUT_RULES_USE_LOG_COMMAND)) {
+        TeamCityProperties.getBooleanOrTrue(REVISION_BY_CHECKOUT_RULES_USE_LOG_COMMAND)) {
 
       // this revWalk helps us to compute reachable stop revisions, we do not need to apply checkout rules as we already checked that
       // there are no interesting commits between start and stop revisions
@@ -357,7 +357,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
             hasInterestingCommits = hasCommitsAffectingPaths(startRevision, stopRevisionsParents, paths, context, gitRoot);
           }
         } catch (Exception e) {
-          // could not compute the changed paths, maybe revisions are invalid
+          LOG.warnAndDebugDetails("Could not compute changed paths from: " + startRevision + " with stop revisions: " + stopRevisions + " in VCS root: " + gitRoot.toString(), e);
         }
 
         if (hasInterestingCommits != null && !hasInterestingCommits) {
