@@ -2,6 +2,7 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
@@ -299,6 +300,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     return getLatestRevisionAcceptedByCheckoutRules(root, rules, startRevision, startRevisionBranchName, stopRevisions, null);
   }
 
+  @VisibleForTesting
   @NotNull
   public Result getLatestRevisionAcceptedByCheckoutRules(@NotNull VcsRoot root,
                                                          @NotNull CheckoutRules rules,

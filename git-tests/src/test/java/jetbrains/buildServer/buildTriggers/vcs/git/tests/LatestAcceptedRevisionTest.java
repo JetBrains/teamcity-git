@@ -355,7 +355,7 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
   }
 
   @Test(dataProvider = "nativeGit")
-  public void using_cached_value_no_stop_revisions(boolean withNativeGit) throws VcsException {
+  public void no_stop_revisions_and_non_existing_path(boolean withNativeGit) throws VcsException {
     setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     setInternalProperty(CheckoutRulesRevWalk.TEAMCITY_MAX_CHECKED_COMMITS_PROP, "5");
     VcsRoot root = getVcsRootBuilder().build();
@@ -371,24 +371,15 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     visited.clear();
 
     rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:non-existing-path"),
-                                                                             "6ff32b16fe485e7a0a1e209bf10987e1ad46292e", "refs/heads/master",
-                                                                             Collections.emptySet(),
-                                                                             visited);
-    then(rev.getRevision()).isNull();
-    then(visited).isEmpty();
-
-    visited.clear();
-
-    rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:non-existing-path"),
                                                                              "6d8cc5e06db390a20f5b2bf278206a0ec47f05dc", "refs/heads/master",
                                                                              Collections.emptySet(),
                                                                              visited);
     then(rev.getRevision()).isNull();
-    then(visited).containsOnly("6d8cc5e06db390a20f5b2bf278206a0ec47f05dc", "7b4fe56d180eba5f22b88a6db13cd026a9af041e", "6ff32b16fe485e7a0a1e209bf10987e1ad46292e");
+    then(visited).containsOnly("6d8cc5e06db390a20f5b2bf278206a0ec47f05dc", "7b4fe56d180eba5f22b88a6db13cd026a9af041e", "6ff32b16fe485e7a0a1e209bf10987e1ad46292e", "eea4a3e48901ba036998c9fe0afdc78cc8a05a33", "7c56bdca06b531bc0c923e857514a400b83d2e26");
   }
 
   @Test(dataProvider = "nativeGit")
-  public void using_cached_value_with_stop_revisions(boolean withNativeGit) throws VcsException {
+  public void stop_revisions_and_non_existing_path(boolean withNativeGit) throws VcsException {
     setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
     VcsRoot root = getVcsRootBuilder().build();
 
@@ -404,101 +395,12 @@ public class LatestAcceptedRevisionTest extends BaseRemoteRepositoryTest {
     visited.clear();
 
     rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:non-existing-path"),
-                                                                                    "6399724fac6ec9c62e8795fc037ad385e873911f", "refs/heads/master",
-                                                                                    Arrays.asList("6ff32b16fe485e7a0a1e209bf10987e1ad46292e", "a9a11243032a529274e7d8599ba8a6bf55a89e91", "6d8cc5e06db390a20f5b2bf278206a0ec47f05dc"),
-                                                                                    visited);
-    then(rev.getRevision()).isNull();
-    then(rev.getReachableStopRevisions()).containsOnly("a9a11243032a529274e7d8599ba8a6bf55a89e91");
-    then(visited).isEmpty();
-
-    visited.clear();
-
-    rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:non-existing-path"),
                                                                                     "a2b61002b849eeff94900ba4ddfae4aeb5ea7ded", "refs/heads/master",
                                                                                     Arrays.asList("6ff32b16fe485e7a0a1e209bf10987e1ad46292e", "a9a11243032a529274e7d8599ba8a6bf55a89e91", "6d8cc5e06db390a20f5b2bf278206a0ec47f05dc"),
                                                                                     visited);
     then(rev.getRevision()).isNull();
     then(rev.getReachableStopRevisions()).containsOnly("a9a11243032a529274e7d8599ba8a6bf55a89e91");
-    then(visited).containsOnly("6399724fac6ec9c62e8795fc037ad385e873911f", "a2b61002b849eeff94900ba4ddfae4aeb5ea7ded", "bca91c783ab7431c83f2b8ebe0e45381662cf33b", "e19e0ffec0a1512674db95ade28047fbfba76fdf", "7e4a8739b038b5b3e551c96dc3a2ef6320772969");
-  }
-
-  @Test(dataProvider = "nativeGit")
-  public void using_cached_value_with_stop_revisions_and_result(boolean withNativeGit) throws VcsException {
-    setInternalProperty(GitRepoOperationsImpl.GIT_NATIVE_OPERATIONS_ENABLED, String.valueOf(withNativeGit));
-    VcsRoot root = getVcsRootBuilder().build();
-
-    final Set<String> visited = new HashSet<>();
-    Result rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test/TestFile5.java"),
-                                                                                    "bca91c783ab7431c83f2b8ebe0e45381662cf33b", "refs/heads/master",
-                                                                                    Arrays.asList("1c143dd503f3abe5bf17a01f003ca4f601a6473c"),
-                                                                                    visited);
-    then(rev.getRevision()).isEqualTo("8fc8c2a8baf37a71a2cdd0c2b0cd1eedfd1649e8");
-    then(rev.getReachableStopRevisions()).isEmpty();
-    then(visited).hasSize(5);
-
-    visited.clear();
-
-    rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test/TestFile5.java"),
-                                                                                    "e19e0ffec0a1512674db95ade28047fbfba76fdf", "refs/heads/master",
-                                                                                    Arrays.asList("1c143dd503f3abe5bf17a01f003ca4f601a6473c"),
-                                                                                    visited);
-    then(rev.getRevision()).isEqualTo("8fc8c2a8baf37a71a2cdd0c2b0cd1eedfd1649e8");
-    then(rev.getReachableStopRevisions()).isEmpty();
-    then(visited).hasSize(2);
-  }
-
-  public void using_cached_value_with_stop_revisions_and_result_cached_start_revision_is_unreachable1() throws VcsException {
-    VcsRoot root = getVcsRootBuilder().build();
-
-    Result rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:README"),
-                                                                                    "3d0b399a7119f88f08effe84b46b34301532486c", "refs/heads/master",
-                                                                                    Arrays.asList("3dada99f39b112fe1de4da19a6ed5113f0035f21"),
-                                                                                    null);
-    then(rev.getRevision()).isEqualTo("05bf0e98112db7ee945ebe428d89c2b8fab7f036");
-    then(rev.getReachableStopRevisions()).isEmpty();
-
-    rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:README"),
-                                                                                    "bca91c783ab7431c83f2b8ebe0e45381662cf33b", "refs/heads/master",
-                                                                                    Arrays.asList("3dada99f39b112fe1de4da19a6ed5113f0035f21"),
-                                                                                    null);
-    then(rev.getRevision()).isEqualTo("7b4fe56d180eba5f22b88a6db13cd026a9af041e");
-    then(rev.getReachableStopRevisions()).isEmpty();
-  }
-
-  public void using_cached_value_with_stop_revisions_and_result_cached_start_revision_is_unreachable2() throws VcsException {
-    VcsRoot root = getVcsRootBuilder().build();
-
-    Result rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:README"),
-                                                                                    "a2b61002b849eeff94900ba4ddfae4aeb5ea7ded", "refs/heads/master",
-                                                                                    Arrays.asList("1c143dd503f3abe5bf17a01f003ca4f601a6473c"),
-                                                                                    null);
-    then(rev.getRevision()).isEqualTo("e19e0ffec0a1512674db95ade28047fbfba76fdf");
-    then(rev.getReachableStopRevisions()).isEmpty();
-
-    rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:README"),
-                                                                                    "3d0b399a7119f88f08effe84b46b34301532486c", "refs/heads/master",
-                                                                                    Arrays.asList("1c143dd503f3abe5bf17a01f003ca4f601a6473c"),
-                                                                                    null);
-    then(rev.getRevision()).isEqualTo("05bf0e98112db7ee945ebe428d89c2b8fab7f036");
-    then(rev.getReachableStopRevisions()).isEmpty();
-  }
-
-  public void using_cached_value_with_stop_revisions_and_result_cached_start_revision_is_unreachable3() throws VcsException {
-    VcsRoot root = getVcsRootBuilder().build();
-
-    Result rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test/TestFile7.java"),
-                                                                                    "7e4a8739b038b5b3e551c96dc3a2ef6320772969", "refs/heads/master",
-                                                                                    Arrays.asList("6d8cc5e06db390a20f5b2bf278206a0ec47f05dc"),
-                                                                                    null);
-    then(rev.getRevision()).isEqualTo("1c143dd503f3abe5bf17a01f003ca4f601a6473c");
-    then(rev.getReachableStopRevisions()).isEmpty();
-
-    rev = getCollectChangesPolicy().getLatestRevisionAcceptedByCheckoutRules(root, new CheckoutRules("+:test/TestFile7.java"),
-                                                                                    "3d0b399a7119f88f08effe84b46b34301532486c", "refs/heads/master",
-                                                                                    Arrays.asList("6d8cc5e06db390a20f5b2bf278206a0ec47f05dc"),
-                                                                                    null);
-    then(rev.getRevision()).isEqualTo("1c143dd503f3abe5bf17a01f003ca4f601a6473c");
-    then(rev.getReachableStopRevisions()).isEmpty();
+    then(visited).containsOnly("6399724fac6ec9c62e8795fc037ad385e873911f", "a2b61002b849eeff94900ba4ddfae4aeb5ea7ded", "bca91c783ab7431c83f2b8ebe0e45381662cf33b", "e19e0ffec0a1512674db95ade28047fbfba76fdf", "7e4a8739b038b5b3e551c96dc3a2ef6320772969", "8fc8c2a8baf37a71a2cdd0c2b0cd1eedfd1649e8", "6394695f179d87f7f5fc712e12dfac0ed0d98652", "45f1b9531036c9f700cd21c24c1e61cedc44f5a1", "658e25230fd75975a2491945ac2664e10aec4f23", "a9a11243032a529274e7d8599ba8a6bf55a89e91", "1c143dd503f3abe5bf17a01f003ca4f601a6473c", "dee82b6bb7c77fb35c995f5bab7ce56fbeb339d9", "bcd19bdf351b6a64ad1d9a5ce3edc19bf4797db8");
   }
 
   @NotNull
