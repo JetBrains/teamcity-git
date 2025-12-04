@@ -8,12 +8,14 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.buildTriggers.vcs.git.gitProxy.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.submodules.SubmoduleException;
 import jetbrains.buildServer.metrics.*;
 import jetbrains.buildServer.serverSide.SProject;
 import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.serverSide.parameters.ParameterFactory;
+import jetbrains.buildServer.util.CollectionsUtil;
 import jetbrains.buildServer.util.Disposable;
 import jetbrains.buildServer.util.NamedDaemonThreadFactory;
 import jetbrains.buildServer.util.StringUtil;
@@ -215,6 +217,7 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         ensureRepositoryStateLoadedFor(context, fromState, toState);
         markStart(r, revWalk, toState);
         markUninteresting(r, revWalk, fromState, toState);
+        markForLimitedBranches(r, revWalk, fromState, toState);
         while (revWalk.next() != null) {
           changes.add(revWalk.createModificationData());
 
@@ -519,6 +522,48 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
     } catch (Exception e) {
       throw new VcsException(e.getMessage(), e);
     }
+  }
+
+  /**
+   * @see PluginConfigImpl#COLLECT_ONLY_HEADS_FOR_PREFIXES
+   */
+  private void markForLimitedBranches(@NotNull Repository r,
+                                      @NotNull ModificationDataRevWalk walk,
+                                      @NotNull final RepositoryStateData fromState,
+                                      @NotNull final RepositoryStateData toState) throws IOException {
+    Collection<String> limitedRefPrefixes = myConfig.getPrefixesToCollectOnlyHeads();
+    if (limitedRefPrefixes.isEmpty()) return;
+
+    Map<String, String> newRevisions = toState.getBranchRevisions();
+    Set<String> revisionsFromLimitedRefs = new HashSet<>();
+    Set<String> revisionsToSkip = new HashSet<>();
+    newRevisions.forEach((branch, revision) -> {
+      if (limitedRefPrefixes.stream().anyMatch(refPrefix -> branch.startsWith(refPrefix))) {
+        revisionsFromLimitedRefs.add(revision);
+      } else {
+        // if the same revision is pointed to by both a "limited" and a regular branch, we should not report it separately
+        revisionsToSkip.add(revision);
+      }
+    });
+    // since we don't consider markUninteresting here, we must manually ensure the unchanged heads of the "limited" branches are not reported as changes
+    revisionsToSkip.addAll(fromState.getBranchRevisions().values());
+
+    revisionsFromLimitedRefs.removeAll(revisionsToSkip);
+    logRevisionsListAsUnreachable(revisionsFromLimitedRefs);
+
+    List<RevCommit> commitsFromIgnoredNamespace = getCommits(r, walk, revisionsFromLimitedRefs);
+    for (RevCommit commit : commitsFromIgnoredNamespace) {
+      for (RevCommit parent : commit.getParents()) {
+        walk.markUninteresting(parent);
+      }
+    }
+  }
+
+  private void logRevisionsListAsUnreachable(Collection<String> revisions) {
+    String revisionsListAsString = CollectionsUtil.asString(revisions.stream().map(rev -> rev.substring(0, 6)).collect(Collectors.toList()), 50);
+    String message = String.format("Marking the parents of the following commits as unreachable because of the %s='%s' configuration: %s", PluginConfigImpl.COLLECT_ONLY_HEADS_FOR_PREFIXES,
+                                   TeamCityProperties.getProperty(PluginConfigImpl.COLLECT_ONLY_HEADS_FOR_PREFIXES), revisionsListAsString);
+    LOG.info(message);
   }
 
   private void markUninteresting(@NotNull Repository r,

@@ -184,4 +184,6 @@ public interface ServerPluginConfig extends PluginConfig {
 
   @NotNull
   File getSslDir();
+
+  Collection<String> getPrefixesToCollectOnlyHeads();
 }
