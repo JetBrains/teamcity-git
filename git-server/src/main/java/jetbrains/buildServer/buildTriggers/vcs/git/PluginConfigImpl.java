@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.DevelopmentMode;
 import jetbrains.buildServer.agent.ClasspathUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.jsch.SshPubkeyAcceptedAlgorithms;
@@ -51,8 +52,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.quartz.CronExpression;
 
-import static com.intellij.openapi.util.text.StringUtil.isEmpty;
-import static com.intellij.openapi.util.text.StringUtil.isEmptyOrSpaces;
+import static com.intellij.openapi.util.text.StringUtil.*;
 import static java.util.Arrays.asList;
 import static jetbrains.buildServer.util.CollectionsUtil.setOf;
 
@@ -85,6 +85,14 @@ public class PluginConfigImpl implements ServerPluginConfig {
   private static final String FETCH_DURATION_METRIC_REPOS = "teamcity.git.fetch.durationMetricRepos";
   public static final String SSH_CONNECT_TIMEOUT_SECONDS = "teamcity.git.ssh.connect.timeout.seconds";
   private static final String CUSTOM_RECOVERABLE_MESSAGES = "teamcity.git.server.recoverableMessages";
+
+  /**
+   * `;`-separated list of refs prefixes to collect only heads as changes for:
+   * for any ref which full name starts with one of the specified prefixes, TeamCity will collect only the HEAD revision as a change
+   * <br>
+   * e.g. <code>teamcity.git.changesCollection.collectOnlyHeadsForPrefixes=refs/hidden;refs/rewritten/main</code> matches <code>refs/hidden/foo, refs/hidden/bar, refs/rewritten/main</code>
+   */
+  public static final String COLLECT_ONLY_HEADS_FOR_PREFIXES = "teamcity.git.changesCollection.collectOnlyHeadsForPrefixes";
 
   private final static Logger LOG = Logger.getInstance(PluginConfigImpl.class.getName());
   private final static int GB = 1024 * 1024 * 1024;//bytes
@@ -143,6 +151,14 @@ public class PluginConfigImpl implements ServerPluginConfig {
     if (mySslDir == null)
       throw new IllegalStateException("Ssl dir is not initialized");
     return mySslDir;
+  }
+
+  @Override
+  public Collection<String> getPrefixesToCollectOnlyHeads() {
+    String property = TeamCityProperties.getProperty(COLLECT_ONLY_HEADS_FOR_PREFIXES);
+    if (property.isEmpty()) return Collections.emptyList();
+
+    return Arrays.stream(property.split(";")).filter(prefix -> isNotEmpty(prefix)).collect(Collectors.toList());
   }
 
   public int getStreamFileThresholdMb() {

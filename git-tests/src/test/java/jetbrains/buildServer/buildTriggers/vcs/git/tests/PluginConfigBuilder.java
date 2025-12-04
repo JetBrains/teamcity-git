@@ -88,6 +88,11 @@ public class PluginConfigBuilder {
     }
     return new ServerPluginConfig() {
 
+      @Override
+      public Collection<String> getPrefixesToCollectOnlyHeads() {
+        return myDelegate.getPrefixesToCollectOnlyHeads();
+      }
+
       @NotNull
       @Override
       public Collection<String> getCustomRecoverableMessages() {
