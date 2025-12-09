@@ -2,7 +2,6 @@
 
 package jetbrains.buildServer.buildTriggers.vcs.git.command.credentials;
 
-import com.intellij.openapi.diagnostic.Logger;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -34,8 +33,6 @@ public class CredentialsHelper {
   private final Map<String, String> myEnv;
   private final String[] myArgs;
 
-  private static final Logger logger = Logger.getInstance(CredentialsHelper.class);
-
   public CredentialsHelper(@NotNull InputStream in,
                            @NotNull OutputStream out,
                            @NotNull Map<String, String> env,
@@ -51,15 +48,12 @@ public class CredentialsHelper {
   }
 
   public void run() throws IOException {
-    logger.debug("Credentials helper started.");
     if (myArgs.length < 1)
       return;
 
     String operation = myArgs[0];
-    if (!SUPPORTED_OPERATION.equals(operation)) {
-      logger.debug("Unsupported operation: " + operation);
+    if (!SUPPORTED_OPERATION.equals(operation))
       return;
-    }
 
     Credentials credentials = Credentials.parseCredentials(myEnv);
     Context context = Context.parseContext(myIn);
@@ -152,7 +146,6 @@ public class CredentialsHelper {
         } catch (MalformedURLException ignored) {
         }
       }
-      logger.debug("Unable to find credentials for host: " + context.myHost );
       return null;
     }
 
