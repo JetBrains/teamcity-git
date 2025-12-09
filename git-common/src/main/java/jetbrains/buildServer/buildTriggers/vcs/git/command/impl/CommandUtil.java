@@ -4,13 +4,14 @@ package jetbrains.buildServer.buildTriggers.vcs.git.command.impl;
 
 import com.intellij.openapi.diagnostic.Logger;
 import java.io.*;
-import java.util.*;
-import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import jetbrains.buildServer.ExecResult;
 import jetbrains.buildServer.ProcessTimeoutException;
 import jetbrains.buildServer.SimpleCommandLineProcessRunner;
 import jetbrains.buildServer.buildTriggers.vcs.git.AuthSettings;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitCommandLine;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.CheckoutCanceledException;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.errors.GitExecTimeout;
@@ -28,23 +29,19 @@ public class CommandUtil {
   private static final Logger LOG = Logger.getInstance(CommandUtil.class);
   
   public static final int DEFAULT_COMMAND_TIMEOUT_SEC = 3600;
-  private static final Pattern NEWLINE_PATTERN = Pattern.compile("\\r?\\n");
 
   @SuppressWarnings({"ThrowableResultOfMethodCallIgnored"})
   private static void checkCommandFailed(@NotNull GitCommandLine cmd, @NotNull String cmdName, @NotNull ExecResult res) throws VcsException {
     if (cmd.isAbnormalExitExpected() && res.getExitCode() != 0 && res.getException() == null) {
-      publishTeamCityDebugLogs(res.getStderr());
       logMessage(cmdName + " exit code is " + res.getExitCode() + ": it is expected behaviour.", "debug");
     } else if (res.getExitCode() != 0 || res.getException() != null) {
       commandFailed(cmdName, res);
-    } else if (res.getStderr().length() > 0 && !isOnlyTeamCityDebugLogs(res.getStderr())) {
+    } else if (res.getStderr().length() > 0) {
       if (cmd.isStdErrExpected()) {
         logMessage("Stderr from git command " + cmdName + ":\n" + res.getStderr().trim(), cmd.getStdErrLogLevel());
       } else {
         commandFailed(cmdName, res);
       }
-    } else {
-      publishTeamCityDebugLogs(res.getStderr());
     }
   }
 
@@ -94,42 +91,6 @@ public class CommandUtil {
     } else if (theLevel.equals("info")) {
       LOG.info(message);
     }
-  }
-
-  /**
-   * @param output
-   * @return true if output contains only teamcity-produced log messages prefixed with {@link Constants#GIT_LOGGING_PREFIX}
-   */
-  private static boolean isOnlyTeamCityDebugLogs(@NotNull String output) {
-    return Arrays.stream(NEWLINE_PATTERN.split(output)).filter(s -> !s.trim().isEmpty()).allMatch(s -> s.startsWith(Constants.GIT_LOGGING_PREFIX));
-  }
-
-  /**
-   * Extract teamcity-produced log messages (prefixed with {@link Constants#GIT_LOGGING_PREFIX}) from the output and post them to the regular log under debug
-   */
-  private static void publishTeamCityDebugLogs(@NotNull String err) throws VcsException {
-    if (!LOG.isDebugEnabled()) {
-      return;
-    }
-
-    if (StringUtil.isEmptyOrSpaces(err)) {
-      return;
-    }
-
-    BufferedReader errReader = new BufferedReader(new StringReader(err));
-    StringBuilder logBuilder = new StringBuilder();
-    String line;
-    try {
-      while ((line = errReader.readLine()) != null) {
-        if (!line.startsWith(Constants.GIT_LOGGING_PREFIX)) continue;
-
-        String logLine = line.substring(Constants.GIT_LOGGING_PREFIX.length()).trim();
-        logBuilder.append(logLine).append("\n\t");
-      }
-    } catch (IOException e) {
-      throw new VcsException("Error processing TeamCity logs from git error output", e);
-    }
-    LOG.debug("Log messages produced by TeamCity processes called from git:\n\t" + logBuilder.toString().trim());
   }
 
   private static String logLevel(String... level) {

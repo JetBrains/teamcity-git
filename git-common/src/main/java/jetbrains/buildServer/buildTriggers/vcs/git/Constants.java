@@ -138,10 +138,6 @@ public interface Constants {
 
   String NON_RECURSIVE_SUBMODULES_ENABLE = "teamcity.git.submodules.nonrecursive.enable";
 
-  String CREDHELPER_LOGGING_CONFIGURATION_FILE="credentials-helper-log4j2.xml";
-  String CREDHELPER_LOGGING_ENABLED = "teamcity.git.credhelper.debug.enabled";
-  // used to identify logs produced by teamcity processes executed by git, e.g., credhelper
-  String GIT_LOGGING_PREFIX = "[teamcity-git]";
 
   String WARN_FILE_URL = "teamcity.git.health.warnFileUrl";
   String BLOCK_FILE_URL = "teamcity.git.blockFileUrl";
