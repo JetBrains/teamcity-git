@@ -545,6 +545,9 @@ public class GitCollectChangesPolicy implements CollectChangesBetweenRepositorie
         revisionsToSkip.add(revision);
       }
     });
+
+    if (revisionsFromLimitedRefs.isEmpty()) return;
+
     // since we don't consider markUninteresting here, we must manually ensure the unchanged heads of the "limited" branches are not reported as changes
     revisionsToSkip.addAll(fromState.getBranchRevisions().values());
 
