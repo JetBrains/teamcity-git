@@ -455,8 +455,8 @@ public class PluginConfigBuilder {
       }
 
       @Override
-      public boolean isBlockFileUrl() {
-        return myDelegate.isBlockFileUrl();
+      public boolean isAllowFileUrl() {
+        return myDelegate.isAllowFileUrl();
       }
     };
   }

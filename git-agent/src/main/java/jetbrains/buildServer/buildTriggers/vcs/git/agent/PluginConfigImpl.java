@@ -498,8 +498,8 @@ public class PluginConfigImpl implements AgentPluginConfig {
   }
 
   @Override
-  public boolean isBlockFileUrl() {
-    return !DevelopmentMode.isEnabled && TeamCityProperties.getBoolean(Constants.BLOCK_FILE_URL);
+  public boolean isAllowFileUrl() {
+    return DevelopmentMode.isEnabled || TeamCityProperties.getBooleanOrTrue(Constants.ALLOW_FILE_URL);
   }
 
   @Override

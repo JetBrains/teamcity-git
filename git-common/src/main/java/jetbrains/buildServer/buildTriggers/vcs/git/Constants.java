@@ -140,5 +140,10 @@ public interface Constants {
 
 
   String WARN_FILE_URL = "teamcity.git.health.warnFileUrl";
-  String BLOCK_FILE_URL = "teamcity.git.blockFileUrl";
+
+  /**
+   * @since 2026.1
+   * @see jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig#isAllowFileUrl
+   */
+  String ALLOW_FILE_URL = "teamcity.git.allowFileUrl";
 }

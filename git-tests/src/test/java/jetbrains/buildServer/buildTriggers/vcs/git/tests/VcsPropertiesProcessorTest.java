@@ -213,7 +213,7 @@ public class VcsPropertiesProcessorTest extends TestCase {
   @TestFor(issues = "TW-95933")
   @Test
   public void testLocalFileFetchUrlIsBlocked() {
-    myInternalPropertiesHandler.setInternalProperty("teamcity.git.blockFileUrl", "true");
+    myInternalPropertiesHandler.setInternalProperty("teamcity.git.allowFileUrl", "false");
     final Map<String, String> props = ImmutableMap.of(
       "branch", "refs/heads/main",
       "url", "file:///tmp/testrepo.git"
@@ -228,7 +228,7 @@ public class VcsPropertiesProcessorTest extends TestCase {
   @TestFor(issues = "TW-95933")
   @Test
   public void testLocalFilePushUrlIsBlocked() {
-    myInternalPropertiesHandler.setInternalProperty("teamcity.git.blockFileUrl", "true");
+    myInternalPropertiesHandler.setInternalProperty("teamcity.git.allowFileUrl", "false");
     final Map<String, String> props = ImmutableMap.of(
       "branch", "refs/heads/main",
       "url", "https://my.git.test/testrepo.git",

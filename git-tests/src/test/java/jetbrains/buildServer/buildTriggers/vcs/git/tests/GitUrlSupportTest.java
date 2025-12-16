@@ -301,7 +301,7 @@ public class GitUrlSupportTest extends BaseTestCase {
   @TestFor(issues = "TW-95933")
   @Test
   public void shouldThrowForFileUrlIfBlocked() {
-    setInternalProperty("teamcity.git.blockFileUrl", true);
+    setInternalProperty("teamcity.git.allowFileUrl", false);
     final VcsUrl url = new VcsUrl("file:///tmp/test");
     assertExceptionThrown(() -> myUrlSupport.convertToVcsRootProperties(url, createRootContext()), VcsException.class, "The git fetch URL most not be a local file URL");
   }

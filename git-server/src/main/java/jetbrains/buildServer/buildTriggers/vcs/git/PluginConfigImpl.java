@@ -763,7 +763,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
   }
 
   @Override
-  public boolean isBlockFileUrl() {
-    return !DevelopmentMode.isEnabled && TeamCityProperties.getBoolean(Constants.BLOCK_FILE_URL);
+  public boolean isAllowFileUrl() {
+    return DevelopmentMode.isEnabled || TeamCityProperties.getBooleanOrTrue(Constants.ALLOW_FILE_URL);
   }
 }
