@@ -146,4 +146,11 @@ public interface Constants {
    * @see jetbrains.buildServer.buildTriggers.vcs.git.PluginConfig#isAllowFileUrl
    */
   String ALLOW_FILE_URL = "teamcity.git.allowFileUrl";
+
+  /**
+   * If set, native ssh will fallback to default config (~/.ssh/config and /etc/ssh/ssh_config) if the specified key is invalid
+   *
+   * @since 2026.1
+   */
+  String SSH_FALLBACK_TO_DEFAULT_CONFIG = "teamcity.git.ssh.fallbackToDefaultConfig";
 }

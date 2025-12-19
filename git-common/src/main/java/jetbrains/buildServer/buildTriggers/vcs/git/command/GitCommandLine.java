@@ -22,6 +22,7 @@ import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.GitProgressListener;
 import jetbrains.buildServer.log.LogUtil;
 import jetbrains.buildServer.log.Loggers;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import jetbrains.buildServer.ssh.TeamCitySshKey;
 import jetbrains.buildServer.ssh.VcsRootSshKeyManager;
 import jetbrains.buildServer.util.FileUtil;
@@ -31,6 +32,8 @@ import jetbrains.buildServer.vcs.VcsRoot;
 import org.apache.http.auth.Credentials;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.Constants.SSH_FALLBACK_TO_DEFAULT_CONFIG;
 
 public class GitCommandLine extends GeneralCommandLine {
 
@@ -214,6 +217,9 @@ public class GitCommandLine extends GeneralCommandLine {
         final StringBuilder gitSshCommand = new StringBuilder("ssh");
         if (privateKey != null) {
           gitSshCommand.append(" -i \"").append(privateKey.getAbsolutePath().replace('\\', '/')).append("\"");
+          if (!TeamCityProperties.getBoolean(SSH_FALLBACK_TO_DEFAULT_CONFIG)) {
+            gitSshCommand.append(" -F \"none\"");
+          }
         }
         if (ignoreKnownHosts) {
           gitSshCommand.append(" -o \"StrictHostKeyChecking=no\" -o \"UserKnownHostsFile=/dev/null\" -o \"GlobalKnownHostsFile=/dev/null\"");
