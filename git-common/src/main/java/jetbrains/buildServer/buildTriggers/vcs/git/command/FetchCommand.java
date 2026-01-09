@@ -28,6 +28,9 @@ public interface FetchCommand extends BaseCommand, AuthCommand<FetchCommand> {
   @NotNull
   FetchCommand setRefSpecsRefresher(jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand lsRemote);
 
+  @NotNull
+  FetchCommand setNoShowForcedUpdates(boolean noShowForcedUpdates);
+
   void call() throws VcsException;
 
 }

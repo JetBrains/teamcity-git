@@ -102,6 +102,8 @@ public interface AgentPluginConfig extends PluginConfig {
 
   int getSubmodulesShallowDepth();
 
+  boolean isNoShowForcedUpdates();
+
   /**
    * Defines how progress output from git commands is written into build log
    */

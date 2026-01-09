@@ -171,6 +171,8 @@ public interface ServerPluginConfig extends PluginConfig {
 
   int fetchRemoteBranchesThreshold();
 
+  boolean isNoShowForcedUpdates();
+
   @NotNull
   Map<String, String> getGitTraceEnv();
 

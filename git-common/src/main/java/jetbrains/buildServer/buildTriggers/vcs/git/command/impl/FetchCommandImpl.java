@@ -20,6 +20,7 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
   private Integer myDepth;
   private boolean myFetchTags = true;
   private String myRemoteUrl;
+  private boolean myNoShowForcedUpdates = false;
 
   private jetbrains.buildServer.buildTriggers.vcs.git.command.LsRemoteCommand myLsRemote;
 
@@ -71,6 +72,13 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
     return this;
   }
 
+  @NotNull
+  @Override
+  public FetchCommand setNoShowForcedUpdates(boolean noShowForcedUpdates) {
+    myNoShowForcedUpdates = noShowForcedUpdates;
+    return this;
+  }
+
   public void call() throws VcsException {
     final GitCommandLine cmd = getCmd();
     final GitVersion gitVersion = cmd.getGitVersion();
@@ -84,6 +92,9 @@ public class FetchCommandImpl extends BaseAuthCommandImpl<FetchCommand> implemen
       cmd.addParameter("--depth=" + myDepth);
     if (!myFetchTags)
       cmd.addParameter("--no-tags");
+    if(myNoShowForcedUpdates && GitVersion.isNoShowForcedUpdatesSupported(gitVersion)){
+      cmd.addParameter("--no-show-forced-updates");
+    }
     if (gitVersion.isGreaterThan(new GitVersion(1, 7, 3))) {
       cmd.addParameter("--recurse-submodules=no"); // we process submodules separately
     }

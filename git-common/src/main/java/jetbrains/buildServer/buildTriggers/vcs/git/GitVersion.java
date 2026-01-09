@@ -148,6 +148,10 @@ public final class GitVersion implements Comparable<GitVersion> {
     return !version.isLessThan(GIT_VERSION_2_29);
   }
 
+  public static boolean isNoShowForcedUpdatesSupported(@NotNull GitVersion version) {
+    return !version.isLessThan(new GitVersion(2, 23, 0));
+  }
+
   public static boolean negativeRefSpecSupported(@NotNull GitVersion version) {
     return !version.isLessThan(GIT_VERSION_2_29);
   }
