@@ -433,6 +433,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
     return Boolean.parseBoolean(myBuild.getSharedConfigParameters().get("teamcity.git.noFetchIfRevisionInRepo"));
   }
 
+  @Override
+  public boolean isNoShowForcedUpdates() {
+    return Boolean.parseBoolean(myBuild.getSharedConfigParameters().get("teamcity.git.noShowForcedUpdates"));
+  }
+
+
   @NotNull
   private Collection<String> parseCustomConfig() {
     String customConfig = myBuild.getSharedConfigParameters().get(CUSTOM_GIT_CONFIG);

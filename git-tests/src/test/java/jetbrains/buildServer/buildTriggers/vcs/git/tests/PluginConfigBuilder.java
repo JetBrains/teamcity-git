@@ -420,6 +420,11 @@ public class PluginConfigBuilder {
         return myFetchRemoteBranchesThreshold;
       }
 
+      @Override
+      public boolean isNoShowForcedUpdates() {
+        return false;
+      }
+
       @NotNull
       @Override
       public Map<String, String> getGitTraceEnv() {

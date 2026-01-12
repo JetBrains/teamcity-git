@@ -388,6 +388,7 @@ public class AgentCommitLoaderFactory {
                                               .setFetchTags(myPluginConfig.isFetchTags())
                                               .setRetryAttempts(myPluginConfig.getRemoteOperationAttempts())
                                               .trace(myPluginConfig.getGitTraceEnv())
+                                              .setNoShowForcedUpdates(myPluginConfig.isNoShowForcedUpdates())
                                               .addPreAction(() -> GitUtils.removeRefLocks(getGitDir()));
 
       if (silent)

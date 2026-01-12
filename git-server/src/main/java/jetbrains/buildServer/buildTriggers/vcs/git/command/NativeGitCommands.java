@@ -193,6 +193,7 @@ public class NativeGitCommands implements FetchCommand, LsRemoteCommand, PushCom
                .setTimeout(myConfig.getFetchTimeoutSeconds())
                .setRetryAttempts(myConfig.getConnectionRetryAttempts())
                .setRepoUrl(fetchURI)
+               .setNoShowForcedUpdates(myConfig.isNoShowForcedUpdates())
                .trace(myConfig.getGitTraceEnv())
                .addPreAction(() -> GitServerUtil.removeRefLocks(db.getDirectory()))
                .setRefSpecsRefresher(

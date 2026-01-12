@@ -532,6 +532,11 @@ public class PluginConfigImpl implements ServerPluginConfig {
     return TeamCityProperties.getBoolean("teamcity.git.mapFullPathIgnoresFetchedCommits");
   }
 
+  @Override
+  public boolean isNoShowForcedUpdates() {
+    return TeamCityProperties.getBoolean("teamcity.git.noShowForcedUpdates");
+  }
+
   @Nullable
   public CronExpression getCleanupCronExpression() {
     String cron = TeamCityProperties.getProperty("teamcity.git.cleanupCron", "0 0 2 * * ? *");
