@@ -534,7 +534,7 @@ public class PluginConfigImpl implements ServerPluginConfig {
 
   @Override
   public boolean isNoShowForcedUpdates() {
-    return TeamCityProperties.getBoolean("teamcity.git.noShowForcedUpdates");
+    return TeamCityProperties.getBooleanOrTrue("teamcity.git.noShowForcedUpdates");
   }
 
   @Nullable
