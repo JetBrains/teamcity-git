@@ -435,7 +435,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
   @Override
   public boolean isNoShowForcedUpdates() {
-    return Boolean.parseBoolean(myBuild.getSharedConfigParameters().get("teamcity.git.noShowForcedUpdates"));
+    String buildParameterNoShowForcedUpdates = myBuild.getSharedConfigParameters().get("teamcity.git.noShowForcedUpdates");
+    if (buildParameterNoShowForcedUpdates == null) {
+      return true;
+    }
+
+    return Boolean.parseBoolean(buildParameterNoShowForcedUpdates);
   }
 
 
