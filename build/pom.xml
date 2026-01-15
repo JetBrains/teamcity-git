@@ -9,12 +9,6 @@
   </parent>
   <artifactId>build</artifactId>
   <packaging>pom</packaging>
-  <properties>
-      <maven.build.timestamp.format>yyyyMMddHHmmss</maven.build.timestamp.format>
-      <teamcity.teacmcity-git.plugin.version>snapshot-${maven.build.timestamp}</teamcity.teacmcity-git.plugin.version>
-      <teamcity.teacmcity-git.plugin.vendorName>JetBrains</teamcity.teacmcity-git.plugin.vendorName>
-      <teamcity.teacmcity-git.plugin.vendorUrl>www.jetbrains.com</teamcity.teacmcity-git.plugin.vendorUrl>
-  </properties>
   <dependencies>
       <dependency>
            <groupId>org.jetbrains.teamcity.plugins</groupId>
@@ -56,16 +50,8 @@
                 <outputFile>${basedir}/target/teamcity-plugin.xml</outputFile>
                 <replacements>
                     <replacement>
-                        <token>@Version@</token>
-                        <value>${teamcity.teacmcity-git.plugin.version}</value>
-                    </replacement>
-                    <replacement>
-                        <token>@VendorName@</token>
-                        <value>${teamcity.teacmcity-git.plugin.vendorName}</value>
-                    </replacement>
-                    <replacement>
-                        <token>@VendorURL@</token>
-                        <value>${teamcity.teacmcity-git.plugin.vendorUrl}</value>
+                        <token>@Plugin_Version@</token>
+                        <value>${PluginVersion}</value>
                     </replacement>
                 </replacements>                        
             </configuration>
