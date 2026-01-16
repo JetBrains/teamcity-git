@@ -3,6 +3,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import java.io.File;
+import jetbrains.buildServer.DevelopmentMode;
+import jetbrains.buildServer.serverSide.TeamCityProperties;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,5 +41,7 @@ public interface PluginConfig extends MirrorConfig {
    * @see Constants#ALLOW_FILE_URL
    * @since 2026.1
    */
-  boolean isAllowFileUrl();
+  static boolean isAllowFileUrl() {
+    return !DevelopmentMode.isEnabled && TeamCityProperties.getBoolean(Constants.ALLOW_FILE_URL);
+  }
 }

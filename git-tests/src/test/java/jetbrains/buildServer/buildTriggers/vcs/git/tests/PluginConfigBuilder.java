@@ -458,11 +458,6 @@ public class PluginConfigBuilder {
       public int getSshConnectTimeoutSeconds() {
         return mySshConnectTimeoutSeconds != null ? mySshConnectTimeoutSeconds : myDelegate.getSshConnectTimeoutSeconds();
       }
-
-      @Override
-      public boolean isAllowFileUrl() {
-        return myDelegate.isAllowFileUrl();
-      }
     };
   }
 

@@ -105,6 +105,20 @@ public class GitVcsRoot {
     myIgnoreMissingDefaultBranch = Boolean.valueOf(getProperty(Constants.IGNORE_MISSING_DEFAULT_BRANCH, "false"));
     myIncludeCommitInfoSubmodules = Boolean.valueOf(getProperty(Constants.INCLUDE_COMMIT_INFO_SUBMODULES, "false"));
     myCheckoutPolicy = readCheckoutPolicy();
+
+    checkLocalFileUrls();
+  }
+
+  private void checkLocalFileUrls() throws VcsException {
+    if (PluginConfig.isAllowFileUrl()) return;
+
+    if (GitRemoteUrlInspector.isLocalFileAccess(myRawFetchUrl)) {
+      throw new VcsException(String.format("VCS root '%s' is using local file fetch URL '%s', which is forbidden for security reasons. Please configure remote repository URLs to use network protocols like SSH or HTTPS.", getName(), myRawFetchUrl));
+    }
+
+    if (GitRemoteUrlInspector.isLocalFileAccess(myPushUrl)) {
+      throw new VcsException(String.format("VCS root '%s' is using local file push URL '%s', which is forbidden for security reasons. Please configure remote repository URLs to use network protocols like SSH or HTTPS.", getName(), myPushUrl));
+    }
   }
 
   @Nullable
