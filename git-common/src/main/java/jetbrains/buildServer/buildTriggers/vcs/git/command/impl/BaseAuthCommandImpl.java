@@ -159,6 +159,16 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
                                "a token is missing from the TeamCity storage, " +
                                "and so on.\n" + e.getMessage() , e);
       }
+
+      String remoteMessage = Errors.getRemoteMessage(e);
+      if (remoteMessage != null) {
+        throw new VcsException(remoteMessage + " \nFull error: " + e.getMessage(), e);
+      }
+
+      String fatalMessage = Errors.getFatalMessage(e);
+      if (fatalMessage != null) {
+        throw new VcsException(fatalMessage + " \nFull error: " + e.getMessage(), e);
+      }
       throw e;
     }
   }
