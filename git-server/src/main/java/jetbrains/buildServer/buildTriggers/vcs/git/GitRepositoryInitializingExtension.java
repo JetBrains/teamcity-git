@@ -50,6 +50,24 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
 
   @NotNull
   @Override
+  public Map<String, String> getRootProperties(@NotNull CentralRepositoryConfiguration repositoryConfiguration) {
+    String repositoryUrl = repositoryConfiguration.getRepositoryUrl().replace(TC_DATA_DIR, myServerPaths.getDataDirectory().getAbsolutePath());
+    Map<String, String> props = myVcs.getDefaultVcsProperties();
+    props.put(Constants.FETCH_URL, repositoryUrl);
+    props.put(Constants.BRANCH_NAME, repositoryConfiguration.getBranch());
+    if (CentralRepositoryConfiguration.Auth.KEY.equals(repositoryConfiguration.getAuth())) {
+      props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.toString());
+      Path authKeyPath = CentralConfigsRepositoryUtils.getCentralConfigsRepositoryPluginData(myServerPaths).resolve(CentralConfigsRepository.KEY_FILE_NAME).toAbsolutePath();
+      if (!Files.exists(authKeyPath)) {
+        throw new RuntimeException("Private key for repository isn't found. Upload private key with write access to the repository");
+      }
+      props.put(Constants.PRIVATE_KEY_PATH, authKeyPath.toString());
+    }
+    return props;
+  }
+
+  @NotNull
+  @Override
   public Map<String, String> commitAllChanges(@NotNull CentralRepositoryConfiguration repositoryConfiguration,
                                               @NotNull CommitSettings commitSettings,
                                               @NotNull List<String> ignoredPaths,
