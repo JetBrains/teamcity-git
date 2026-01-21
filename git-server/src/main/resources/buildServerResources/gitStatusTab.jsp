@@ -100,7 +100,7 @@
         <tr>
           <td colspan="2">
             <div class="smallNote" style="margin-left:0">
-              TeamCity supports official native Git versions 2.29+ installed as per <a href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">this guide</a> with the latest OpenSSH as an SSH client. <bs:help file="Git" anchor="nativeGitDefaultMode"/><br/>
+              TeamCity supports official native Git versions 2.29+ installed as per <a href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">this guide</a> with the latest OpenSSH as an SSH client. <bs:help file="Git#Native+Git+for+VCS-related+operations+on+the+server" preservePlus="true"/><br/>
               Before enabling this feature, it is recommended to test the connection via native Git to ensure your VCS roots can be successfully switched to it.<br/>
               The connection test will not show the existing VCS errors, only the errors which will arise after enabling native Git operations. Note that the test might be time-consuming on servers with many VCS roots.
             </div>

@@ -13,7 +13,7 @@
     ${gitVersionAgentCount} build <bs:plural txt="agent" val="${gitVersionAgentCount}"/> running git version prior to ${GitVersion.DEPRECATED}, which will be no longer supported starting from the next major TeamCity release.
   </c:otherwise>
 </c:choose>
-<bs:helpLink file="Git" anchor="agentGitPath">Update git executable on <bs:plural txt="agent" val="${gitVersionAgentCount}"/></bs:helpLink>.
+<bs:helpLink file="Git#agentGitPath">Update git executable on <bs:plural txt="agent" val="${gitVersionAgentCount}"/></bs:helpLink>.
 
 <bs:agentsGroupedByPool containerId="gitAgentVersion"
                         agentsGroupedByPools="${gitVersionAgents}"
