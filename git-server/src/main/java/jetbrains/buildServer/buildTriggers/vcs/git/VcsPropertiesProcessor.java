@@ -58,7 +58,7 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
           rc.add(new InvalidProperty(Constants.AUTH_METHOD, e.getMessage()));
         }
 
-        if (!PluginConfig.isAllowFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(url)) {
+        if (!ServerPluginConfig.isAllowFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(url)) {
           rc.add(new InvalidProperty(Constants.FETCH_URL, "The URL must not be a local file URL"));
         }
       }
@@ -81,7 +81,7 @@ public class VcsPropertiesProcessor extends AbstractVcsPropertiesProcessor {
           rc.add(new InvalidProperty(Constants.AUTH_METHOD, e.getMessage()));
         }
 
-        if (!PluginConfig.isAllowFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(pushUrl)) {
+        if (!ServerPluginConfig.isAllowFileUrl() && GitRemoteUrlInspector.isLocalFileAccess(pushUrl)) {
           rc.add(new InvalidProperty(Constants.PUSH_URL, "The URL must not be a local file URL"));
         }
       }

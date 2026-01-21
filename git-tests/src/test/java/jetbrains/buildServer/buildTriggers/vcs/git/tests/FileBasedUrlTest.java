@@ -55,10 +55,8 @@ public class FileBasedUrlTest extends BaseRemoteRepositoryTest {
   @Test
   public void creation_of_GitVcsRoots_with_file_url_throws() {
     List<Callable> ctors = new ArrayList<Callable>() {{
-      add(() -> new GitVcsRoot(Mockito.mock(MirrorManager.class), myRoot, Mockito.mock(URIishHelper.class)));
-      add(() -> new GitVcsRoot(Mockito.mock(MirrorManager.class), myRoot, Mockito.mock(URIishHelper.class), Collections.emptyList()));
-      add(() -> new GitVcsRoot(Mockito.mock(MirrorManager.class), myRoot, Mockito.mock(URIishHelper.class), Collections.emptyList(), false));
-      add(() -> new GitVcsRoot(Mockito.mock(MirrorManager.class), myRoot, null, Mockito.mock(URIishHelper.class), Collections.emptyList(), false));
+      add(() -> new GitVcsRoot(Mockito.mock(MirrorManager.class), myRoot, Mockito.mock(URIishHelper.class), Collections.emptyList(), false, false));
+      add(() -> new GitVcsRoot(Mockito.mock(MirrorManager.class), myRoot, null, Mockito.mock(URIishHelper.class), Collections.emptyList(), false, false));
       add(() -> new AgentGitVcsRoot(Mockito.mock(MirrorManager.class), myRoot, Mockito.mock(AgentTokenStorage.class), Collections.emptyList()));
       add(() -> new AgentGitVcsRoot(Mockito.mock(MirrorManager.class), Mockito.mock(File.class), myRoot, Mockito.mock(AgentTokenStorage.class), Collections.emptyList()));
       add(() -> new SGitVcsRoot(Mockito.mock(MirrorManager.class), myRoot, Mockito.mock(URIishHelper.class), Mockito.mock(TokenRefresher.class)));

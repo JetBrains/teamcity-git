@@ -21,7 +21,7 @@ public class SGitVcsRoot extends GitVcsRoot {
                      @NotNull VcsRoot root,
                      @NotNull URIishHelper urIishHelper,
                      @Nullable TokenRefresher tokenRefresher) throws VcsException {
-    super(mirrorManager, root, urIishHelper, detectExtraHTTPCredentialsInVcsRoot(root), tokenRefresher != null);
+    super(mirrorManager, root, urIishHelper, detectExtraHTTPCredentialsInVcsRoot(root), tokenRefresher != null, ServerPluginConfig.isAllowFileUrl());
     myTokenRefresher = tokenRefresher;
     myCheckProjectScope = (root.getId() >= 0);
   }
