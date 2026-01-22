@@ -177,7 +177,7 @@ public interface ServerPluginConfig extends PluginConfig {
   Map<String, String> getGitTraceEnv();
 
   @NotNull
-  Collection<String> getCustomRecoverableMessages();
+  Map<String, Long> getCustomRecoverableMessages();
 
   boolean downloadLfsObjectsForPatch();
 

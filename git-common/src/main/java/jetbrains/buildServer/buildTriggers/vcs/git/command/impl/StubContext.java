@@ -178,8 +178,8 @@ public class StubContext implements Context {
 
   @NotNull
   @Override
-  public Collection<String> getCustomRecoverableMessages() {
-    return Collections.emptyList();
+  public Map<String, Long> getCustomRecoverableMessages() {
+    return Collections.emptyMap();
   }
 
   @Nullable

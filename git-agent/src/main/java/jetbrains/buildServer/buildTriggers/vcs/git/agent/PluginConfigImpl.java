@@ -7,20 +7,15 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import jetbrains.buildServer.DevelopmentMode;
 import jetbrains.buildServer.agent.AgentMiscConstants;
 import jetbrains.buildServer.agent.AgentRunningBuild;
 import jetbrains.buildServer.agent.AgentRuntimeProperties;
 import jetbrains.buildServer.agent.BuildAgentConfiguration;
-import jetbrains.buildServer.buildTriggers.vcs.git.AgentCheckoutPolicy;
-import jetbrains.buildServer.buildTriggers.vcs.git.Constants;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVcsRoot;
-import jetbrains.buildServer.buildTriggers.vcs.git.GitVersion;
+import jetbrains.buildServer.buildTriggers.vcs.git.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitExec;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.impl.CommandUtil;
 import jetbrains.buildServer.log.Loggers;
@@ -31,6 +26,8 @@ import jetbrains.buildServer.util.StringUtil;
 import jetbrains.buildServer.vcs.VcsRoot;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import static jetbrains.buildServer.buildTriggers.vcs.git.GitCommandRetryPolicy.INITIAL_DELAY_MS;
 
 /**
  * @author dmitry.neverov
@@ -486,11 +483,28 @@ public class PluginConfigImpl implements AgentPluginConfig {
 
   @NotNull
   @Override
-  public Collection<String> getCustomRecoverableMessages() {
-    final String property = myBuild.getSharedConfigParameters().get(CUSTOM_RECOVERABLE_MESSAGES);
-    if (StringUtil.isEmptyOrSpaces(property)) return Collections.emptyList();
+  public Map<String, Long> getCustomRecoverableMessages() {
+    Map<String, String> buildParameters = myBuild.getSharedConfigParameters();
+    final String property = buildParameters.get(CUSTOM_RECOVERABLE_MESSAGES);
+    if (!StringUtil.isEmptyOrSpaces(property)) return StringUtil.split(property, true, ';').stream().collect(Collectors.toMap(msg -> msg, msg -> INITIAL_DELAY_MS));
 
-    return StringUtil.split(property, true, ';');
+    Map<String, Map<String, String>> aggregatedCustomProperties = PropertiesHelper.aggregatePropertiesByAlias(buildParameters, CUSTOM_RECOVERABLE_MESSAGES);
+
+    Map<String, Long> result = new HashMap<>();
+    for(Map<String, String> retryProperty : aggregatedCustomProperties.values()) {
+      String errorMessage = retryProperty.get(CUSTOM_RECOVERABLE_MESSAGES + ".msg");
+      if (errorMessage != null) {
+        long delayMs = INITIAL_DELAY_MS;
+        String delayValue = retryProperty.get(CUSTOM_RECOVERABLE_MESSAGES + ".delayMs");
+        if (!StringUtil.isEmptyOrSpaces(delayValue)) {
+          delayMs = Long.parseLong(delayValue);
+        }
+
+        result.put(errorMessage, delayMs);
+      }
+    }
+
+    return result;
   }
 
   @Override

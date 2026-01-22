@@ -192,7 +192,7 @@ public class BuildContext implements Context {
 
   @NotNull
   @Override
-  public Collection<String> getCustomRecoverableMessages() {
+  public Map<String, Long> getCustomRecoverableMessages() {
     return myConfig.getCustomRecoverableMessages();
   }
 
