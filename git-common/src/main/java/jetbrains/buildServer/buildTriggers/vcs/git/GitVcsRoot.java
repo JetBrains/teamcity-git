@@ -295,7 +295,7 @@ public class GitVcsRoot {
    * @return debug information that allows identify repository operation context
    */
   public String debugInfo() {
-    return " (" + getRepositoryDir() + ", " + getRepositoryFetchURL().toString() + "#" + getRef() + ")";
+    return " (" + getRepositoryDir() + ", " + myRepositoryFetchURL.get().toString() + "#" + getRef() + ")";
   }
 
   public String getUsernameForTags() {
