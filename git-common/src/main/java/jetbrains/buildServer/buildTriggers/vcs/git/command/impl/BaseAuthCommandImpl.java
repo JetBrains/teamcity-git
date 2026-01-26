@@ -111,7 +111,7 @@ public abstract class BaseAuthCommandImpl<T extends BaseCommand> extends BaseCom
         }
       }
 
-      if(CommandUtil.isRecoverable(e, myAuthSettings, attempt, maxAttempts)) {
+      if(requiresRetry(e, attempt, maxAttempts)) {
         return new GitCommandRetryPolicy();
       }
 
