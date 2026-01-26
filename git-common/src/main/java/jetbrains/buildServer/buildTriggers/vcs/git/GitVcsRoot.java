@@ -107,7 +107,6 @@ public class GitVcsRoot {
     myCheckoutPolicy = readCheckoutPolicy();
   }
 
-
   @Nullable
   private String getRawPushUrl(boolean modifiedFetchUrlUsed) {
     String url = getProperty(Constants.PUSH_URL);
