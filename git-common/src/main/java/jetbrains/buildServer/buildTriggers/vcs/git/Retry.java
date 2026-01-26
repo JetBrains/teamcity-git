@@ -25,7 +25,12 @@ public abstract class Retry {
     boolean requiresRetry(@NotNull Exception e, int attempt, int maxAttempts);
     @Nullable V call() throws Exception;
     @NotNull Logger getLogger();
-    default @NotNull GitCommandRetryPolicy findRetryPolicyForException(@NotNull Exception e, int attempt, int maxAttempts) { return new GitCommandRetryPolicy(); }
+    default @NotNull GitCommandRetryPolicy findRetryPolicyForException(@NotNull Exception e, int attempt, int maxAttempts) {
+      if (requiresRetry(e, attempt, maxAttempts)) {
+        return new GitCommandRetryPolicy();
+      }
+      return new GitCommandRetryPolicy(NOT_REQUIRED);
+    }
   }
 
   public static <V> V retry(@NotNull Retryable<V> operation) throws Exception {
