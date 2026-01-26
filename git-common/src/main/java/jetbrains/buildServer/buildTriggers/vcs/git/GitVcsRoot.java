@@ -51,38 +51,27 @@ public class GitVcsRoot {
   protected final String myPushUrl;
   protected final boolean myModifiedFetchUrlUsed;
 
-  /**
-   * @deprecated use {@link GitVcsRoot#GitVcsRoot(MirrorManager, VcsRoot, URIishHelper, List, boolean, boolean)} to specify if file-based repository access should be allowed.
-   * This constructor always enables file-access!
-   */
-  @Deprecated
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager, @NotNull final VcsRoot root,
                     @NotNull URIishHelper urIishHelper) throws VcsException {
-    this(mirrorManager, root, urIishHelper, new ArrayList<>(), false, true);
+    this(mirrorManager, root, urIishHelper, new ArrayList<>(), false);
   }
 
-  /**
-   * @deprecated use {@link GitVcsRoot#GitVcsRoot(MirrorManager, VcsRoot, URIishHelper, List, boolean, boolean)} to specify if file-based repository access should be allowed.
-   * This constructor always enables file-access!
-   */
-  @Deprecated
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager,
                     @NotNull final VcsRoot root,
                     @NotNull URIishHelper urIishHelper,
                     @NotNull List<ExtraHTTPCredentials> extraHTTPCredentials) throws VcsException {
-    this(mirrorManager, root, urIishHelper, extraHTTPCredentials, false, true);
+    this(mirrorManager, root, urIishHelper, extraHTTPCredentials, false);
   }
 
   public GitVcsRoot(@NotNull final MirrorManager mirrorManager,
                     @NotNull final VcsRoot root,
                     @NotNull URIishHelper urIishHelper,
                     @NotNull List<ExtraHTTPCredentials> extraHTTPCredentials,
-                    boolean isTokenRefreshEnabled,
-                    boolean allowFileAccess) throws VcsException {
-    this(mirrorManager, root, root.getProperty(Constants.BRANCH_NAME), urIishHelper, extraHTTPCredentials, isTokenRefreshEnabled, allowFileAccess);
+                    boolean isTokenRefreshEnabled) throws VcsException {
+    this(mirrorManager, root, root.getProperty(Constants.BRANCH_NAME), urIishHelper, extraHTTPCredentials, isTokenRefreshEnabled);
   }
 
-  public GitVcsRoot(@NotNull MirrorManager mirrorManager, @NotNull VcsRoot root, @Nullable String ref, @NotNull URIishHelper urIishHelper, @NotNull List<ExtraHTTPCredentials> extraHTTPCredentials, boolean isTokenRefreshEnabled, boolean allowFileAccess) throws VcsException {
+  public GitVcsRoot(@NotNull MirrorManager mirrorManager, @NotNull VcsRoot root, @Nullable String ref, @NotNull URIishHelper urIishHelper, @NotNull List<ExtraHTTPCredentials> extraHTTPCredentials, boolean isTokenRefreshEnabled) throws VcsException {
     myMirrorManager = mirrorManager;
     myDelegate = root;
     myCustomRepositoryDir = getPath();
@@ -116,21 +105,8 @@ public class GitVcsRoot {
     myIgnoreMissingDefaultBranch = Boolean.valueOf(getProperty(Constants.IGNORE_MISSING_DEFAULT_BRANCH, "false"));
     myIncludeCommitInfoSubmodules = Boolean.valueOf(getProperty(Constants.INCLUDE_COMMIT_INFO_SUBMODULES, "false"));
     myCheckoutPolicy = readCheckoutPolicy();
-
-    checkLocalFileUrls(allowFileAccess);
   }
 
-  private void checkLocalFileUrls(boolean allowFileAccess) throws VcsException {
-    if (allowFileAccess) return;
-
-    if (GitRemoteUrlInspector.isLocalFileAccess(myRawFetchUrl)) {
-      throw new VcsException(String.format("VCS root '%s' is using local file fetch URL '%s', which is forbidden for security reasons. Please configure remote repository URLs to use network protocols like SSH or HTTPS.", getName(), myRawFetchUrl));
-    }
-
-    if (GitRemoteUrlInspector.isLocalFileAccess(myPushUrl)) {
-      throw new VcsException(String.format("VCS root '%s' is using local file push URL '%s', which is forbidden for security reasons. Please configure remote repository URLs to use network protocols like SSH or HTTPS.", getName(), myPushUrl));
-    }
-  }
 
   @Nullable
   private String getRawPushUrl(boolean modifiedFetchUrlUsed) {

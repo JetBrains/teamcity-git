@@ -21,9 +21,24 @@ public class SGitVcsRoot extends GitVcsRoot {
                      @NotNull VcsRoot root,
                      @NotNull URIishHelper urIishHelper,
                      @Nullable TokenRefresher tokenRefresher) throws VcsException {
-    super(mirrorManager, root, urIishHelper, detectExtraHTTPCredentialsInVcsRoot(root), tokenRefresher != null, ServerPluginConfig.isAllowFileUrl());
+    super(mirrorManager, root, urIishHelper, detectExtraHTTPCredentialsInVcsRoot(root), tokenRefresher != null);
+
+    checkLocalFileUrls();
+
     myTokenRefresher = tokenRefresher;
     myCheckProjectScope = (root.getId() >= 0);
+  }
+
+  private void checkLocalFileUrls() throws VcsException {
+    if (ServerPluginConfig.isAllowFileUrl()) return;
+
+    if (GitRemoteUrlInspector.isLocalFileAccess(myRawFetchUrl)) {
+      throw new VcsException(String.format("VCS root '%s' is using local file fetch URL '%s', which is forbidden for security reasons. Please configure remote repository URLs to use network protocols like SSH or HTTPS.", getName(), myRawFetchUrl));
+    }
+
+    if (GitRemoteUrlInspector.isLocalFileAccess(myPushUrl)) {
+      throw new VcsException(String.format("VCS root '%s' is using local file push URL '%s', which is forbidden for security reasons. Please configure remote repository URLs to use network protocols like SSH or HTTPS.", getName(), myPushUrl));
+    }
   }
 
   @Nullable
