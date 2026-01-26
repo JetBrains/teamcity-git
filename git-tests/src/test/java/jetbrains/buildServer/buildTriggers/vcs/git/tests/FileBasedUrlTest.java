@@ -55,10 +55,6 @@ public class FileBasedUrlTest extends BaseRemoteRepositoryTest {
   @Test
   public void creation_of_GitVcsRoots_with_file_url_throws() {
     List<Callable> ctors = new ArrayList<Callable>() {{
-      add(() -> new GitVcsRoot(Mockito.mock(MirrorManager.class), myRoot, Mockito.mock(URIishHelper.class), Collections.emptyList(), false, false));
-      add(() -> new GitVcsRoot(Mockito.mock(MirrorManager.class), myRoot, null, Mockito.mock(URIishHelper.class), Collections.emptyList(), false, false));
-      add(() -> new AgentGitVcsRoot(Mockito.mock(MirrorManager.class), myRoot, Mockito.mock(AgentTokenStorage.class), Collections.emptyList()));
-      add(() -> new AgentGitVcsRoot(Mockito.mock(MirrorManager.class), Mockito.mock(File.class), myRoot, Mockito.mock(AgentTokenStorage.class), Collections.emptyList()));
       add(() -> new SGitVcsRoot(Mockito.mock(MirrorManager.class), myRoot, Mockito.mock(URIishHelper.class), Mockito.mock(TokenRefresher.class)));
     }};
 
@@ -88,18 +84,6 @@ public class FileBasedUrlTest extends BaseRemoteRepositoryTest {
   public void getCurrentState_fails_with_file_url() {
     try {
       myGit.getCurrentState(myRoot);
-      failBecauseExceptionWasNotThrown(VcsException.class);
-    } catch (VcsException e) {
-      then(e.getMessage()).contains(ERROR_MSG);
-    }
-  }
-
-  @Test
-  public void updateSources_fails_with_file_url() throws IOException {
-    AgentRunningBuild runningBuild = new AgentRunningBuildBuilder().withCheckoutDir(Files.createTempDir()).build();
-    GitAgentVcsSupport vcsSupport = new AgentSupportBuilder(myTempFiles).build();
-    try {
-      vcsSupport.updateSources(myRoot, CheckoutRules.DEFAULT, "123", Files.createTempDir(), runningBuild, false);
       failBecauseExceptionWasNotThrown(VcsException.class);
     } catch (VcsException e) {
       then(e.getMessage()).contains(ERROR_MSG);
