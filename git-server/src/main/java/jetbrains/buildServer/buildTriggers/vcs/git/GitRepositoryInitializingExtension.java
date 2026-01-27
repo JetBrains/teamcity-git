@@ -15,9 +15,9 @@ import jetbrains.buildServer.serverSide.impl.configsRepo.RepositoryInitializingE
 import jetbrains.buildServer.util.FileUtil;
 import jetbrains.buildServer.vcs.CommitSettings;
 import jetbrains.buildServer.vcs.VcsException;
+import jetbrains.buildServer.vcs.VcsUtil;
 import jetbrains.buildServer.vcs.impl.VcsRootImpl;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -54,6 +54,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
     String repositoryUrl = repositoryConfiguration.getRepositoryUrl().replace(TC_DATA_DIR, myServerPaths.getDataDirectory().getAbsolutePath());
     Map<String, String> props = myVcs.getDefaultVcsProperties();
     props.put(Constants.FETCH_URL, repositoryUrl);
+    props.put(VcsUtil.VCS_NAME_PROP, Constants.VCS_NAME);
     props.put(Constants.BRANCH_NAME, repositoryConfiguration.getBranch());
     if (CentralRepositoryConfiguration.Auth.KEY.equals(repositoryConfiguration.getAuth())) {
       props.put(Constants.AUTH_METHOD, AuthenticationMethod.PRIVATE_KEY_FILE.toString());
