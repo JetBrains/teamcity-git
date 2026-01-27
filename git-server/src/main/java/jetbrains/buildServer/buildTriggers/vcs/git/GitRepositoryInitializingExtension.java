@@ -7,6 +7,7 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import jetbrains.buildServer.buildTriggers.vcs.git.command.GitConfigCommand;
+import jetbrains.buildServer.maintenance.configs.CentralRepositoryStartupUtils;
 import jetbrains.buildServer.serverSide.ServerPaths;
 import jetbrains.buildServer.serverSide.impl.configsRepo.CentralConfigsRepository;
 import jetbrains.buildServer.serverSide.impl.configsRepo.CentralConfigsRepositoryUtils;
@@ -89,7 +90,7 @@ public class GitRepositoryInitializingExtension implements RepositoryInitializin
       GitVcsRoot gitRoot;
       final String initBranch = "tempInitializationBranch";
       Map<String, String> props = myVcs.getDefaultVcsProperties();
-      Path localRepo = myServerPaths.getCacheDirectory("centralConfigsRepository").toPath().resolve("localMirror");
+      Path localRepo = myServerPaths.getCacheDirectory(CentralRepositoryStartupUtils.CENTRAL_CONFIGS_REPOSITORY_CACHE_DIR_NAME).toPath().resolve("localMirror");
       boolean shouldCreateRepo = shouldCreateRepo(localRepo, repositoryUrl);
       try {
         if (shouldCreateRepo && Files.exists(localRepo)) {
