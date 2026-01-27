@@ -68,7 +68,12 @@ public class PluginConfigImpl implements AgentPluginConfig {
   public static final String CUSTOM_GIT_CONFIG = "teamcity.internal.git.customConfig";
   public static final String REMOTE_OPERATION_ATTEMPTS = "teamcity.internal.git.remoteOperationAttempts";
   public static final String TEAMCITY_GIT_SSH_DEBUG = "teamcity.internal.git.sshDebug";
-  private static final String CUSTOM_RECOVERABLE_MESSAGES = "teamcity.git.agent.recoverableMessages";
+
+  /**
+   * teamcity.git.agent.recoverableMessages.<ALIAS>.msg - message
+   * teamcity.git.agent.recoverableMessages.<ALIAS>.delayMs - delay in milliseconds (optional)
+   */
+  private static final String CUSTOM_RECOVERABLE_MESSAGES_PREFIX = "teamcity.git.agent.recoverableMessages";
   public static final String SHALLOW_CLONE_DEPTH = "teamcity.git.agent.shallowCloneDepth";
   public static final String SUBMODULES_SHALLOW_DEPTH = "teamcity.git.agent.submodules.shallowCloneDepth";
 
@@ -485,26 +490,10 @@ public class PluginConfigImpl implements AgentPluginConfig {
   @Override
   public Map<String, Long> getCustomRecoverableMessages() {
     Map<String, String> buildParameters = myBuild.getSharedConfigParameters();
-    final String property = buildParameters.get(CUSTOM_RECOVERABLE_MESSAGES);
+    final String property = buildParameters.get(CUSTOM_RECOVERABLE_MESSAGES_PREFIX);
     if (!StringUtil.isEmptyOrSpaces(property)) return StringUtil.split(property, true, ';').stream().collect(Collectors.toMap(msg -> msg, msg -> INITIAL_DELAY_MS));
 
-    Map<String, Map<String, String>> aggregatedCustomProperties = PropertiesHelper.aggregatePropertiesByAlias(buildParameters, CUSTOM_RECOVERABLE_MESSAGES);
-
-    Map<String, Long> result = new HashMap<>();
-    for(Map<String, String> retryProperty : aggregatedCustomProperties.values()) {
-      String errorMessage = retryProperty.get(CUSTOM_RECOVERABLE_MESSAGES + ".msg");
-      if (errorMessage != null) {
-        long delayMs = INITIAL_DELAY_MS;
-        String delayValue = retryProperty.get(CUSTOM_RECOVERABLE_MESSAGES + ".delayMs");
-        if (!StringUtil.isEmptyOrSpaces(delayValue)) {
-          delayMs = Long.parseLong(delayValue);
-        }
-
-        result.put(errorMessage, delayMs);
-      }
-    }
-
-    return result;
+    return Retry.aggregateCustomDelayMessages(CUSTOM_RECOVERABLE_MESSAGES_PREFIX, buildParameters);
   }
 
   @Override

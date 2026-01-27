@@ -3,6 +3,8 @@
 package jetbrains.buildServer.buildTriggers.vcs.git;
 
 import com.intellij.openapi.diagnostic.Logger;
+import java.util.HashMap;
+import java.util.Map;
 import jetbrains.buildServer.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -75,9 +77,29 @@ public abstract class Retry {
     throw new IllegalArgumentException("At least one retry attempt expected");
   }
 
-  // todo move away from here
   @SuppressWarnings("unchecked")
   public static long backOff(long previousDelay) {
     return previousDelay * BACKOFF_FACTOR + (long)(new Random().nextGaussian() * previousDelay * BACKOFF_JITTER);
+  }
+
+  @NotNull
+  public static Map<String, Long> aggregateCustomDelayMessages(@NotNull String customRecoverableMessagesPrefix, @NotNull Map<String, String> properties) {
+    Map<String, Map<String, String>> aggregatedCustomProperties = PropertiesHelper.aggregatePropertiesByAlias(properties, customRecoverableMessagesPrefix);
+
+    Map<String, Long> result = new HashMap<>();
+    for(Map<String, String> retryProperty : aggregatedCustomProperties.values()) {
+      String errorMessage = retryProperty.get(customRecoverableMessagesPrefix + ".msg");
+      if (errorMessage != null) {
+        long delayMs = INITIAL_DELAY_MS;
+        String delayValue = retryProperty.get(customRecoverableMessagesPrefix + ".delayMs");
+        if (!StringUtil.isEmptyOrSpaces(delayValue)) {
+          delayMs = Long.parseLong(delayValue);
+        }
+
+        result.put(errorMessage, delayMs);
+      }
+    }
+
+    return result;
   }
 }
