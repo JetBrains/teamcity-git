@@ -64,6 +64,7 @@ public class GitRemoteUrlInspectorTest {
       // scp-like syntax
       {"git@example.com:owner/repo.git"},
       {"user@host:~/repo.git"},
+      {"host:org/repo.git"},
 
       // No separators (conservatively not marked as local)
       {"repo.git"},

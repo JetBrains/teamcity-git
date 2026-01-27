@@ -73,11 +73,9 @@ public final class GitRemoteUrlInspector {
       return null;
     }
 
-    // 7) scp-like syntax user@host:path should not be considered local
-    // Quick check: presence of '@' before a ':' suggests scp-like form
-    int atIdx = url.indexOf('@');
+    // 7) scp-like syntax [user@]host:path should not be considered local
     int colonIdx = url.indexOf(':');
-    if (atIdx >= 0 && colonIdx > atIdx) {
+    if (colonIdx > 0) {
       return null; // likely scp syntax
     }
 
