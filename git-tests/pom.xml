@@ -268,6 +268,20 @@
       </build>
     </profile>
 
+    <profile>
+      <id>javac-release-flag-compat</id>
+      <activation>
+        <jdk>[9,)</jdk>
+      </activation>
+      <properties>
+        <maven.compiler.release>8</maven.compiler.release>
+        <surefire.jvm.params>-XX:+IgnoreUnrecognizedVMOptions
+          --add-opens=java.base/java.lang=ALL-UNNAMED
+          --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+          --add-opens=java.base/java.util=ALL-UNNAMED
+          --add-opens=java.base/java.io=ALL-UNNAMED</surefire.jvm.params>
+      </properties>
+    </profile>
 
     <profile>
       <id>tests-without-auth</id>
@@ -287,7 +301,7 @@
                   <suiteXmlFiles>
                     <suiteXmlFile>src/test/resources/common-git-operations.xml</suiteXmlFile>
                   </suiteXmlFiles>
-                  <argLine>-Dteamcity.git.nativeOperationsEnabled=true -Dteamcity.git.fetch.separate.process=false</argLine>
+                  <argLine>${surefire.jvm.params} -Dteamcity.git.nativeOperationsEnabled=true -Dteamcity.git.fetch.separate.process=false</argLine>
                   <skipTests>false</skipTests>
                 </configuration>
               </execution>
@@ -303,7 +317,7 @@
                     <suiteXmlFile>src/test/resources/native-git-testng.xml</suiteXmlFile>
                     <suiteXmlFile>src/test/resources/without-git-operations.xml</suiteXmlFile>
                   </suiteXmlFiles>
-                  <argLine>-Dteamcity.git.fetch.separate.process=false</argLine> <!-- speed up jgit tests-->
+                  <argLine>${surefire.jvm.params} -Dteamcity.git.fetch.separate.process=false</argLine> <!-- speed up jgit tests-->
                   <skipTests>false</skipTests>
                 </configuration>
               </execution>
